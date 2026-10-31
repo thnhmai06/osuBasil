@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 using Basil.Testing;
 using static Basil.Testing.BeatmapsetWorld;
@@ -79,7 +79,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, _, set, _) = await SetupAsync();
 		using var _ = app;
 
-		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Ranked, set.Record.Status);
+		Assert.Equal(BeatmapsetStatus.Ranked, set.Record.Status);
 	}
 
 	[Fact]
@@ -88,12 +88,12 @@ public sealed class ScopedBeatmapsetTests
 		var (app, world, set, by) = await SetupAsync();
 		using var _ = app;
 
-		var result = await set.ScopeTo(by).SetStatusAsync(Basil.Domain.Beatmaps.BeatmapsetStatus.Loved,
+		var result = await set.ScopeTo(by).SetStatusAsync(BeatmapsetStatus.Loved,
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
-		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Loved, set.Record.Status);
-		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Loved, world.Sets.Records[set.Record.Id].Status);
+		Assert.Equal(BeatmapsetStatus.Loved, set.Record.Status);
+		Assert.Equal(BeatmapsetStatus.Loved, world.Sets.Records[set.Record.Id].Status);
 	}
 
 	[Fact]
@@ -103,20 +103,10 @@ public sealed class ScopedBeatmapsetTests
 		using var _ = app;
 
 		var denied = await set.ScopeTo(new FixedActor(by.Record, UserPermissionsGroups.Default)).SetStatusAsync(
-			Basil.Domain.Beatmaps.BeatmapsetStatus.Loved, TestContext.Current.CancellationToken);
+			BeatmapsetStatus.Loved, TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPermissions.BeatmapsetManage, denied.Missing);
-		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Ranked, set.Record.Status);
-	}
-
-	private sealed class FixedActor(UserRecord record, UserPermissions permissions) : IActor
-	{
-		public UserRecord Record { get; } = record;
-
-		public UserPermissions EffectivePermissions(DateTimeOffset now)
-		{
-			return permissions;
-		}
+		Assert.Equal(BeatmapsetStatus.Ranked, set.Record.Status);
 	}
 
 	[Fact]
@@ -244,5 +234,15 @@ public sealed class ScopedBeatmapsetTests
 		using var _ = app;
 
 		Assert.Equal(world.Sets.Records.Values.Single(), set.Record);
+	}
+
+	private sealed class FixedActor(UserRecord record, UserPermissions permissions) : IActor
+	{
+		public UserRecord Record { get; } = record;
+
+		public UserPermissions EffectivePermissions(DateTimeOffset now)
+		{
+			return permissions;
+		}
 	}
 }

@@ -1,9 +1,8 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
+using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Servers.Capabilities;
 
@@ -27,7 +26,8 @@ public sealed class ScopedServerChannels
 	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing) return Result<ServerOutcome>.Denied(missing);
+		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing)
+			return Result<ServerOutcome>.Denied(missing);
 
 		var chat = _scoped.Server.Context.Chat;
 		if (_scoped.Server.OpenChannel(record) is null) return ServerOutcome.NameTaken;

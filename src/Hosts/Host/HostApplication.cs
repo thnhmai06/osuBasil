@@ -11,10 +11,8 @@ using Basil.Host.Rest;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Images;
 using Basil.Host.Shared.Diagnostics;
-using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Storage;
 using Basil.Infrastructure.Common.Persistence;
-using Microsoft.Extensions.Logging;
+using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Caching;
 
@@ -29,7 +27,8 @@ public static class HostApplication
 	/// <returns>The application, not started.</returns>
 	public static WebApplication Create(string[] args, Action<WebApplicationBuilder>? configure = null)
 	{
-		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected, CliModes.TerminalSupportsColour());
+		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected,
+			CliModes.TerminalSupportsColour());
 		args = CliModes.Strip(args);
 		var builder = WebApplication.CreateBuilder(args);
 		ConfigurationSetup.Add(builder, args);
@@ -54,13 +53,16 @@ public static class HostApplication
 		builder.Services.AddIrcListener();
 		builder.Services.AddRestApi();
 		builder.Services.AddRestImages();
-		builder.Services.AddOptions<PhysicalFileSystemCacheOptions>().Configure<IOptions<StorageOptions>>((cache, storage) =>
-		{
-			cache.CacheRootPath = Path.Combine(storage.Value.DataDirectory, "Cache");
-			cache.CacheFolder = "imagesharp";
-		});
+		builder.Services.AddOptions<PhysicalFileSystemCacheOptions>()
+			.Configure<IOptions<StorageOptions>>((cache, storage) =>
+			{
+				cache.CacheRootPath = Path.Combine(storage.Value.DataDirectory, "Cache");
+				cache.CacheFolder = "imagesharp";
+			});
 		builder.Services.AddSingleton<ICacheCleaner, CacheCleaner>();
-		builder.Services.AddCli(mode, provider => ControlSocket.PathIn(provider.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory),
+		builder.Services.AddCli(mode,
+			provider => ControlSocket.PathIn(
+				provider.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory),
 			Path.Combine(AppContext.BaseDirectory, "Configurations"));
 		builder.Services.AddSingleton<ShutdownSequence>();
 		// Registered last, so that it stops first: the other services are told and the rooms closed while they still run.
@@ -69,10 +71,13 @@ public static class HostApplication
 		configure?.Invoke(builder);
 
 		// Read once, after the caller's changes, so a later edit of the files waits for the next start.
-		ConfigurationSetup.AddAtStart<ServerOptions>(builder.Services, builder.Configuration.GetSection("Basil:Server"));
-		ConfigurationSetup.AddAtStart<StorageOptions>(builder.Services, builder.Configuration.GetSection("Basil:Storage"),
+		ConfigurationSetup.AddAtStart<ServerOptions>(builder.Services,
+			builder.Configuration.GetSection("Basil:Server"));
+		ConfigurationSetup.AddAtStart<StorageOptions>(builder.Services,
+			builder.Configuration.GetSection("Basil:Storage"),
 			storage => storage.DataDirectory = ConfigurationSetup.Resolve(storage.DataDirectory ?? "Data"));
-		ConfigurationSetup.AddAtStart<DatabaseOptions>(builder.Services, builder.Configuration.GetSection("Basil:Database"));
+		ConfigurationSetup.AddAtStart<DatabaseOptions>(builder.Services,
+			builder.Configuration.GetSection("Basil:Database"));
 		KestrelSetup.Configure(builder);
 
 		var app = builder.Build();

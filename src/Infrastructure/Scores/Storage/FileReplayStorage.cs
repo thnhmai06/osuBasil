@@ -1,7 +1,6 @@
 using System.Buffers;
 using System.Globalization;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Mechanics;

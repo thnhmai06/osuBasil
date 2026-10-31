@@ -3,7 +3,10 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Irc;
 
-/// <summary>Remembers in which channels each user is visible to IRC clients, so a user shows up once however many connections they have.</summary>
+/// <summary>
+///     Remembers in which channels each user is visible to IRC clients, so a user shows up once however many
+///     connections they have.
+/// </summary>
 internal sealed class IrcPresence
 {
 	private readonly Dictionary<int, HashSet<Channel>> _channels = [];

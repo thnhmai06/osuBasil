@@ -1,3 +1,4 @@
+using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Shared.Views;
@@ -67,7 +68,8 @@ public sealed class OutputTests
 	public void A_view_prints_its_fields_with_api_names_booleans_and_dashes_for_nothing()
 	{
 		var output = new CollectedOutput();
-		var view = new UserView(3, "alice", "vn", (ulong)UserPermissions.ChatPost, (ulong)UserPermissions.ChatPost, null);
+		var view = new UserView(3, "alice", "vn", (ulong)UserPermissions.ChatPost, (ulong)UserPermissions.ChatPost,
+			null);
 
 		Utc.Print(output, view);
 
@@ -81,8 +83,8 @@ public sealed class OutputTests
 	{
 		var output = new CollectedOutput();
 		var room = new RoomView(1, 2, "R", true, false, false, false, false, new UserRef(7, "bob"), null, [], [], null,
-			Basil.Domain.Mechanics.GameMode.Standard, "NoMod", false, Basil.Domain.Mechanics.GameTeamType.HeadToHead,
-			Basil.Domain.Mechanics.GameWinCondition.Score, []);
+			GameMode.Standard, "NoMod", false, GameTeamType.HeadToHead,
+			GameWinCondition.Score, []);
 
 		Utc.Print(output, room);
 

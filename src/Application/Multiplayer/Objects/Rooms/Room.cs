@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Capabilities.Rooms;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Users.Objects.Connections;
 using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
 using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
 

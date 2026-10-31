@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Basil.Host.Bancho.Tests.Support;
 
 /// <summary>Builds a PNG that has the given size in its header and a body the server never decodes.</summary>
@@ -18,11 +20,14 @@ internal static class Png
 		];
 	}
 
-	private static byte[] BigEndian(int value) => [(byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value];
+	private static byte[] BigEndian(int value)
+	{
+		return [(byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value];
+	}
 
 	private static byte[] Chunk(string type, byte[] data)
 	{
-		var body = System.Text.Encoding.ASCII.GetBytes(type).Concat(data).ToArray();
+		var body = Encoding.ASCII.GetBytes(type).Concat(data).ToArray();
 		return [.. BigEndian(data.Length), .. body, .. BigEndian((int)Crc32(body))];
 	}
 

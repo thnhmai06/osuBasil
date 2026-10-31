@@ -1,9 +1,6 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 
@@ -33,7 +30,10 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	///     first spectator brings the host into it too. A connection spectating another client stops spectating it first.
 	///     Spectating this host again announces the spectator, as an osu! client does once it has the beatmap.
 	/// </remarks>
-	/// <exception cref="ArgumentException"><see cref="Scoped{TPermissions,TActor}.By" /> is an IRC connection, which cannot spectate.</exception>
+	/// <exception cref="ArgumentException">
+	///     <see cref="Scoped{TPermissions,TActor}.By" /> is an IRC connection, which cannot
+	///     spectate.
+	/// </exception>
 	public async Task<Result<ConnectionOutcome>> SpectateAsync()
 	{
 		if (By is IrcConnection)
@@ -107,7 +107,10 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 
 	/// <summary>Hands the frames this client sent to the HTTP API connections spectating it.</summary>
 	/// <param name="bundle">The decoded frames.</param>
-	/// <returns><see langword="true" /> if the frames were published; only the client itself may, and only while an API connection spectates it.</returns>
+	/// <returns>
+	///     <see langword="true" /> if the frames were published; only the client itself may, and only while an API
+	///     connection spectates it.
+	/// </returns>
 	public bool PublishFrames(SpectatorBundle bundle)
 	{
 		if (!ReferenceEquals(By, Host) || !Host.IsOpen || !Host.HasApiSpectators) return false;

@@ -1,5 +1,5 @@
-using Basil.Application.Users.Persistence;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;

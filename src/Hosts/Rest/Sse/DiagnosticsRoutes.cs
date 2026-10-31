@@ -1,7 +1,6 @@
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Diagnostics;
 using Microsoft.Extensions.Hosting;
@@ -21,19 +20,21 @@ internal static class DiagnosticsRoutes
 		diagnostics.MapGet("/", (HttpContext c, Server server) => StreamAsync(c, server, null)).Sse()
 			.WithSummary("Watch every diagnostics category.")
 			.WithDescription("""
-				The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample. Data is up to about one second old.
-				""");
-		diagnostics.MapGet("/{category}", (HttpContext c, string category, Server server) => StreamAsync(c, server, category)).Sse()
+			                 The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample. Data is up to about one second old.
+			                 """);
+		diagnostics.MapGet("/{category}",
+				(HttpContext c, string category, Server server) => StreamAsync(c, server, category)).Sse()
 			.WithSummary("Watch one diagnostics category.")
 			.WithDescription("""
-				The categories are process, gc, threadpool, runtime, exceptions, http, application, database, bancho, irc, events and sessions. Streamed like the full diagnostics.
-				""");
+			                 The categories are process, gc, threadpool, runtime, exceptions, http, application, database, bancho, irc, events and sessions. Streamed like the full diagnostics.
+			                 """);
 		diagnostics.MapPost("/{category}/{**action}", ActionAsync)
 			.WithSummary("Run a maintenance action.")
 			.WithDescription("The actions are `gc/collect`, `caches/clear` and `exceptions/reset`.");
 	}
 
-	private static object Sample(RuntimeSampler runtime, UserRegistry registry, Lobby lobby, SseHub hub, string? category)
+	private static object Sample(RuntimeSampler runtime, UserRegistry registry, Lobby lobby, SseHub hub,
+		string? category)
 	{
 		var all = DiagnosticsSample.Create(runtime, registry, lobby, hub.OpenStreams);
 		return category is null ? all : all[category];

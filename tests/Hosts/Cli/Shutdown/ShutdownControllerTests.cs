@@ -8,28 +8,14 @@ namespace Basil.Host.Cli.Tests.Shutdown;
 /// <summary>The Ctrl+C rules acting on the host: what is stopped, what is shown, which exit code the process gets.</summary>
 public sealed class ShutdownControllerTests
 {
-	private sealed class Lifetime : IHostApplicationLifetime
-	{
-		public int Stops { get; private set; }
-
-		public CancellationToken ApplicationStarted => CancellationToken.None;
-
-		public CancellationToken ApplicationStopping => CancellationToken.None;
-
-		public CancellationToken ApplicationStopped => CancellationToken.None;
-
-		public void StopApplication()
-		{
-			Stops++;
-		}
-	}
-
-	private static (ShutdownController Controller, Lifetime Lifetime, FakeTimeProvider Clock, List<ShutdownMessage> Messages, List<int> Exits) Create(CliMode mode)
+	private static (ShutdownController Controller, Lifetime Lifetime, FakeTimeProvider Clock, List<ShutdownMessage>
+		Messages, List<int> Exits) Create(CliMode mode)
 	{
 		var clock = new FakeTimeProvider();
 		var lifetime = new Lifetime();
 		var exits = new List<int>();
-		var controller = new ShutdownController(new CtrlCMachine(clock, mode), lifetime, NullLogger<ShutdownController>.Instance, exits.Add);
+		var controller = new ShutdownController(new CtrlCMachine(clock, mode), lifetime,
+			NullLogger<ShutdownController>.Instance, exits.Add);
 		var messages = new List<ShutdownMessage>();
 		controller.Message += messages.Add;
 		return (controller, lifetime, clock, messages, exits);
@@ -71,7 +57,9 @@ public sealed class ShutdownControllerTests
 		controller.Tick();
 		controller.Interrupt();
 
-		Assert.Equal("Shutdown is taking longer than expected. Press Ctrl+C again to force shutdown (data loss may occur).", messages[^1].Text);
+		Assert.Equal(
+			"Shutdown is taking longer than expected. Press Ctrl+C again to force shutdown (data loss may occur).",
+			messages[^1].Text);
 		Assert.Equal([ProcessExitCodes.Error], exits);
 	}
 
@@ -119,7 +107,8 @@ public sealed class ShutdownControllerTests
 	[InlineData(new string[0], false, true, true, CliMode.NoGui)]
 	[InlineData(new string[0], false, false, false, CliMode.NoGui)]
 	[InlineData(new[] { "--noconsole" }, false, true, true, CliMode.NoGui)]
-	public void The_display_mode_follows_the_arguments_and_the_terminal(string[] args, bool inRedirected, bool outRedirected, bool colour, CliMode expected)
+	public void The_display_mode_follows_the_arguments_and_the_terminal(string[] args, bool inRedirected,
+		bool outRedirected, bool colour, CliMode expected)
 	{
 		Assert.Equal(expected, CliModes.Choose(args, inRedirected, outRedirected, colour));
 	}
@@ -128,5 +117,21 @@ public sealed class ShutdownControllerTests
 	public void The_display_arguments_are_not_left_for_the_configuration()
 	{
 		Assert.Equal(["--urls", "http://x"], CliModes.Strip(["--nogui", "--urls", "http://x", "--noconsole"]));
+	}
+
+	private sealed class Lifetime : IHostApplicationLifetime
+	{
+		public int Stops { get; private set; }
+
+		public CancellationToken ApplicationStarted => CancellationToken.None;
+
+		public CancellationToken ApplicationStopping => CancellationToken.None;
+
+		public CancellationToken ApplicationStopped => CancellationToken.None;
+
+		public void StopApplication()
+		{
+			Stops++;
+		}
 	}
 }

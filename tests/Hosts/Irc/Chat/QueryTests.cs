@@ -86,7 +86,8 @@ public sealed class QueryTests(IrcHostFixture fixture)
 		await irc.ExpectAsync("321");
 		var listing = new List<string>();
 		string line;
-		while (IrcClient.CommandOf(line = await irc.ReadLineAsync() ?? throw new InvalidOperationException()) != "323") listing.Add(line);
+		while (IrcClient.CommandOf(line = await irc.ReadLineAsync() ?? throw new InvalidOperationException()) != "323")
+			listing.Add(line);
 
 		Assert.Contains(":irc.basil.test 322 LiLister #listed1 0 :visible one", listing);
 		Assert.DoesNotContain(listing, row => row.Contains("#staff3"));
@@ -105,9 +106,12 @@ public sealed class QueryTests(IrcHostFixture fixture)
 
 		var rows = new List<string>();
 		string line;
-		while (IrcClient.CommandOf(line = await irc.ReadLineAsync() ?? throw new InvalidOperationException()) != "315") rows.Add(line);
-		Assert.Contains(":irc.basil.test 352 WhoAsker #osu WhoAway basil.test irc.basil.test WhoAway G+ :0 WhoAway", rows);
-		Assert.Contains(":irc.basil.test 352 WhoAsker #osu WhoAsker basil.test irc.basil.test WhoAsker H+ :0 WhoAsker", rows);
+		while (IrcClient.CommandOf(line = await irc.ReadLineAsync() ?? throw new InvalidOperationException()) !=
+		       "315") rows.Add(line);
+		Assert.Contains(":irc.basil.test 352 WhoAsker #osu WhoAway basil.test irc.basil.test WhoAway G+ :0 WhoAway",
+			rows);
+		Assert.Contains(":irc.basil.test 352 WhoAsker #osu WhoAsker basil.test irc.basil.test WhoAsker H+ :0 WhoAsker",
+			rows);
 		Assert.Equal(1, rows.Count(row => row.Contains(" WhoAway basil.test ")));
 		Assert.Equal(":irc.basil.test 315 WhoAsker #osu :End of /WHO list.", line);
 	}
@@ -120,7 +124,8 @@ public sealed class QueryTests(IrcHostFixture fixture)
 
 		await irc.SendAsync("WHO WhoNickOther");
 
-		Assert.Equal(":irc.basil.test 352 WhoNickAsker * WhoNickOther basil.test irc.basil.test WhoNickOther H :0 WhoNickOther",
+		Assert.Equal(
+			":irc.basil.test 352 WhoNickAsker * WhoNickOther basil.test irc.basil.test WhoNickOther H :0 WhoNickOther",
 			await irc.ExpectAsync("352"));
 	}
 
@@ -132,7 +137,8 @@ public sealed class QueryTests(IrcHostFixture fixture)
 
 		await asker.SendAsync("WHOIS WsOther");
 
-		Assert.Equal(":irc.basil.test 311 WsAsker WsOther WsOther basil.test * :WsOther", await asker.ExpectAsync("311"));
+		Assert.Equal(":irc.basil.test 311 WsAsker WsOther WsOther basil.test * :WsOther",
+			await asker.ExpectAsync("311"));
 		Assert.Equal(":irc.basil.test 312 WsAsker WsOther irc.basil.test :Basil", await asker.ExpectAsync("312"));
 		Assert.Equal(":irc.basil.test 330 WsAsker WsOther WsOther :is logged in as", await asker.ExpectAsync("330"));
 		Assert.Equal(":irc.basil.test 319 WsAsker WsOther :+#osu", await asker.ExpectAsync("319"));
@@ -171,7 +177,8 @@ public sealed class QueryTests(IrcHostFixture fixture)
 
 		await asker.SendAsync("WHOIS Ws_Space");
 
-		Assert.Equal(":irc.basil.test 311 WsSpacer Ws_Space Ws_Space basil.test * :Ws_Space", await asker.ExpectAsync("311"));
+		Assert.Equal(":irc.basil.test 311 WsSpacer Ws_Space Ws_Space basil.test * :Ws_Space",
+			await asker.ExpectAsync("311"));
 	}
 
 	[Fact]

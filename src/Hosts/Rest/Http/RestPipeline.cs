@@ -1,10 +1,8 @@
 using System.Globalization;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Sse;
 using Microsoft.AspNetCore.Cors.Infrastructure;
-using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Rest.Http;
 
@@ -24,7 +22,8 @@ internal sealed class RestPipeline(RequestDelegate next)
 		if (hub.Stopping)
 		{
 			context.Response.Headers.RetryAfter = RetryAfterWhileStopping;
-			await Api.Error(StatusCodes.Status503ServiceUnavailable, "shuttingDown", "The server is shutting down.").ExecuteAsync(context);
+			await Api.Error(StatusCodes.Status503ServiceUnavailable, "shuttingDown", "The server is shutting down.")
+				.ExecuteAsync(context);
 			return;
 		}
 
@@ -41,7 +40,8 @@ internal sealed class RestPipeline(RequestDelegate next)
 		}
 	}
 
-	private static async Task<bool> RateLimitedAsync(HttpContext context, bool authenticated, ISettingsRepository settings,
+	private static async Task<bool> RateLimitedAsync(HttpContext context, bool authenticated,
+		ISettingsRepository settings,
 		RateLimiter limiter)
 	{
 		var limits = (await settings.GetAsync(context.RequestAborted)).RateLimits.Rest;
@@ -50,14 +50,16 @@ internal sealed class RestPipeline(RequestDelegate next)
 		if (authenticated && mutation)
 		{
 			var user = context.Connection().Record.Id;
-			if (limiter.TryAcquire($"rest-mutation:{user}", limits.Mutations.Count, limits.Mutations.Window)) return false;
+			if (limiter.TryAcquire($"rest-mutation:{user}", limits.Mutations.Count, limits.Mutations.Window))
+				return false;
 
 			await TooManyAsync(context, limits.Mutations.Window);
 			return true;
 		}
 
 		if (authenticated ||
-		    limiter.TryAcquire($"rest-anonymous:{context.Ip()}", limits.Anonymous.PerIp.Count, limits.Anonymous.PerIp.Window))
+		    limiter.TryAcquire($"rest-anonymous:{context.Ip()}", limits.Anonymous.PerIp.Count,
+			    limits.Anonymous.PerIp.Window))
 			return false;
 
 		await TooManyAsync(context, limits.Anonymous.PerIp.Window);
@@ -74,8 +76,10 @@ internal sealed class RestPipeline(RequestDelegate next)
 
 	private static Task TooManyAsync(HttpContext context, TimeSpan retryAfter)
 	{
-		context.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
-		return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many requests.").ExecuteAsync(context);
+		context.Response.Headers.RetryAfter =
+			((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+		return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many requests.")
+			.ExecuteAsync(context);
 	}
 }
 

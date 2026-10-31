@@ -7,7 +7,8 @@ namespace Basil.Host.Shared.Views;
 /// <summary>The categories of the server settings and how each one is read, changed by a JSON merge patch and replaced.</summary>
 public static class SettingsCategories
 {
-	private static readonly Dictionary<string, (Func<ServerSettings, object> Get, Func<ServerSettings, JsonNode, ServerSettings> Apply)>
+	private static readonly Dictionary<string, (Func<ServerSettings, object> Get,
+			Func<ServerSettings, JsonNode, ServerSettings> Apply)>
 		Categories = new(StringComparer.OrdinalIgnoreCase)
 		{
 			["general"] = Category(s => s.General, (s, v) => s with { General = v }),

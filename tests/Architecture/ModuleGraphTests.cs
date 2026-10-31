@@ -81,9 +81,10 @@ public class ModuleGraphTests
 	private static bool IsKnown(string name)
 	{
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
-			or "Basil.Host" or "Basil.Bot" or "Basil.Protocol.Bancho" or "Basil.Protocol.Irc"
-			|| Modules.Any(module => name == $"Basil.Application.{module}" ||
-			                         (name == $"Basil.Infrastructure.{module}" && module is not ("Anticheat" or "Servers")));
+			       or "Basil.Host" or "Basil.Bot" or "Basil.Protocol.Bancho" or "Basil.Protocol.Irc"
+		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
+		                                (name == $"Basil.Infrastructure.{module}" &&
+		                                 module is not ("Anticheat" or "Servers")));
 	}
 
 	private static bool IsAllowed(string from, string to)
@@ -120,7 +121,8 @@ public class ModuleGraphTests
 		var hosts = Path.Combine(source, "Hosts");
 
 		return Directory.GetFiles(source, "*.csproj", SearchOption.AllDirectories)
-			.Where(project => !IsUnder(project, hosts) && !project.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+			.Where(project => !IsUnder(project, hosts) &&
+			                  !project.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
 			.ToArray();
 	}
 

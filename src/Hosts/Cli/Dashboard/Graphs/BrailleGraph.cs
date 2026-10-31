@@ -10,11 +10,11 @@ public static class BrailleGraph
 	private const int DotsPerColumn = 2;
 	private const int DotsPerRow = 4;
 
-	/// <summary>The bit of each dot in a braille character, by [dot column, dot row from the top].</summary>
-	private static readonly int[,] Bits = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
-
 	/// <summary>Gets the narrowest terminal that shows the big graphs; below it they are hidden.</summary>
 	public const int MinimumWidthForGraphs = 100;
+
+	/// <summary>The bit of each dot in a braille character, by [dot column, dot row from the top].</summary>
+	private static readonly int[,] Bits = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
 
 	/// <summary>Draws the most recent values of a series, newest at the right edge.</summary>
 	/// <param name="surface">Where to draw.</param>

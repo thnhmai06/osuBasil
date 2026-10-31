@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Http;
 using Microsoft.Extensions.Hosting;
@@ -27,8 +26,10 @@ public sealed class SseStream
 {
 	private const int Capacity = 8;
 	private const int MaxLag = 3;
+
 	private readonly Channel<byte[]> _channel = Channel.CreateBounded<byte[]>(
 		new BoundedChannelOptions(Capacity) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
+
 	private int _lag;
 
 	internal SseStream(string key, ApiConnection? connection, string owner)
@@ -75,10 +76,14 @@ public sealed class SseStream
 public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsRepository settings) : IHostedService
 {
 	private static readonly byte[] KeepAlive = ": keep-alive\n\n"u8.ToArray();
-	private readonly object _sync = new();
 	private readonly Dictionary<string, Root> _roots = new();
-	private ITimer? _timer;
+	private readonly object _sync = new();
 	private volatile bool _stopping;
+
+	private long _tick;
+
+	private int _ticking;
+	private ITimer? _timer;
 
 	/// <summary>Gets a value that indicates whether the server is shutting down and takes no new streams.</summary>
 	public bool Stopping => _stopping;
@@ -109,7 +114,10 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Stops taking new streams and makes the API answer new requests with 503, without touching the streams that are open.</summary>
+	/// <summary>
+	///     Stops taking new streams and makes the API answer new requests with 503, without touching the streams that are
+	///     open.
+	/// </summary>
 	public void StopAccepting()
 	{
 		_stopping = true;
@@ -119,7 +127,10 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	///     Tells every open stream that the server is going away with one final <c>server</c> event, at once and not at the
 	///     next second, and ends the streams.
 	/// </summary>
-	/// <param name="restarting">Whether the server comes back, which the event says as <c>restarting</c> or <c>shuttingDown</c>.</param>
+	/// <param name="restarting">
+	///     Whether the server comes back, which the event says as <c>restarting</c> or
+	///     <c>shuttingDown</c>.
+	/// </param>
 	public void Announce(bool restarting)
 	{
 		_stopping = true;
@@ -252,7 +263,8 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 
 	internal static byte[] Frame(string eventName, string? id, byte[] json)
 	{
-		var head = Encoding.UTF8.GetBytes((id is null ? "" : $"id: {id}\n") + $"event: {eventName}\nretry: 3000\ndata: ");
+		var head = Encoding.UTF8.GetBytes(
+			(id is null ? "" : $"id: {id}\n") + $"event: {eventName}\nretry: 3000\ndata: ");
 		var frame = new byte[head.Length + json.Length + 2];
 		head.CopyTo(frame, 0);
 		json.CopyTo(frame, head.Length);
@@ -266,8 +278,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		return Api.Error(StatusCodes.Status503ServiceUnavailable, "shuttingDown", "The server is shutting down.");
 	}
 
-	private long _tick;
-
 	/// <summary>Runs one second of the hub: bundles each root's events and ships them to its streams.</summary>
 	internal void Tick()
 	{
@@ -275,8 +285,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 
 		_ = TickAsync();
 	}
-
-	private int _ticking;
 
 	private async Task TickAsync()
 	{
@@ -309,7 +317,8 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 
 				var chunk = events.Count == 0
 					? KeepAlive
-					: Frame("bundle", events[^1].Id, JsonSerializer.SerializeToUtf8Bytes(events.Select(e => e.Data), Api.Json));
+					: Frame("bundle", events[^1].Id,
+						JsonSerializer.SerializeToUtf8Bytes(events.Select(e => e.Data), Api.Json));
 				foreach (var stream in root.Streams.ToArray())
 				{
 					if (stream.Connection is { IsOpen: false })
@@ -346,7 +355,8 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 
 		/// <summary>Builds the snapshot once for every stream that joins during the same second.</summary>
 		public async Task<(byte[] Data, string? Id)> SnapshotAsync(
-			Func<CancellationToken, Task<(object Data, string? Id)>> build, long tick, CancellationToken cancellationToken)
+			Func<CancellationToken, Task<(object Data, string? Id)>> build, long tick,
+			CancellationToken cancellationToken)
 		{
 			await _snapshotLock.WaitAsync(cancellationToken);
 			try

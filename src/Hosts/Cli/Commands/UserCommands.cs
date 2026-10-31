@@ -1,8 +1,7 @@
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Capabilities;
-using Basil.Application.Users.Objects;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
@@ -20,18 +19,19 @@ internal static class UserCommands
 		yield return new CommandDef
 		{
 			Pattern = "users list", Route = "GET /v1/users", Offline = true, Summary = "Searches accounts.",
-			Options = [new("query", "The user search syntax."), .. CommandHelpers.Paging], Run = ListAsync
+			Options = [new OptionDef("query", "The user search syntax."), .. CommandHelpers.Paging], Run = ListAsync
 		};
 		yield return new CommandDef
 		{
 			Pattern = "users create", Route = "POST /v1/users", Offline = true, Summary = "Creates an account.",
 			Options =
 			[
-				new("username", "The name of the account.", Required: true, Alias: "u"),
-				new("password", "The plain password.", Required: true, Alias: "p", Secret: true),
-				new("country", "A two-letter country code."),
-				new("permissions", "The permissions, as a bitmask (default: the default permissions).", OptionKind.Mask),
-				new("admin", "Give the account every permission.", OptionKind.Bool)
+				new OptionDef("username", "The name of the account.", Required: true, Alias: "u"),
+				new OptionDef("password", "The plain password.", Required: true, Alias: "p", Secret: true),
+				new OptionDef("country", "A two-letter country code."),
+				new OptionDef("permissions", "The permissions, as a bitmask (default: the default permissions).",
+					OptionKind.Mask),
+				new OptionDef("admin", "Give the account every permission.", OptionKind.Bool)
 			],
 			Run = CreateAsync
 		};
@@ -46,10 +46,11 @@ internal static class UserCommands
 			Offline = true, Summary = "Changes the given fields of an account.",
 			Options =
 			[
-				new("username", "The new name."), new("country", "A two-letter country code."),
-				new("away", "The away message; empty clears it."), new("pmPrivate", "Block private messages from strangers.", OptionKind.Bool),
-				new("permissions", "The granted permissions, as a bitmask.", OptionKind.Mask),
-				new("password", "A new plain password; every session of the account is closed.", Secret: true)
+				new OptionDef("username", "The new name."), new OptionDef("country", "A two-letter country code."),
+				new OptionDef("away", "The away message; empty clears it."),
+				new OptionDef("pmPrivate", "Block private messages from strangers.", OptionKind.Bool),
+				new OptionDef("permissions", "The granted permissions, as a bitmask.", OptionKind.Mask),
+				new OptionDef("password", "A new plain password; every session of the account is closed.", Secret: true)
 			],
 			Run = SetAsync
 		};
@@ -57,7 +58,7 @@ internal static class UserCommands
 		{
 			Pattern = "users <id:int> avatar", Route = "PUT /v1/users/{id}/avatar", Offline = true,
 			Summary = "Sets the avatar from an image file.",
-			Options = [new("file", "The path of the image.", OptionKind.Path, true)], Run = SetAvatarAsync
+			Options = [new OptionDef("file", "The path of the image.", OptionKind.Path, true)], Run = SetAvatarAsync
 		};
 		yield return new CommandDef
 		{
@@ -70,19 +71,23 @@ internal static class UserCommands
 			yield return new CommandDef
 			{
 				Pattern = $"users <id:int> {word} list", Route = $"GET /v1/users/{{id}}/{word}", Offline = true,
-				Summary = $"Lists the accounts this account has {(kind == RelationshipType.Friend ? "as friends" : "blocked")}.",
+				Summary =
+					$"Lists the accounts this account has {(kind == RelationshipType.Friend ? "as friends" : "blocked")}.",
 				Run = call => RelationsAsync(call, kind)
 			};
 			yield return new CommandDef
 			{
 				Pattern = $"users <id:int> {word} <other:int> put", Route = $"PUT /v1/users/{{id}}/{word}/{{otherId}}",
-				Offline = true, Summary = kind == RelationshipType.Friend ? "Makes the account a friend." : "Blocks the account.",
+				Offline = true,
+				Summary = kind == RelationshipType.Friend ? "Makes the account a friend." : "Blocks the account.",
 				Run = call => HoldAsync(call, kind, true)
 			};
 			yield return new CommandDef
 			{
-				Pattern = $"users <id:int> {word} <other:int> delete", Route = $"DELETE /v1/users/{{id}}/{word}/{{otherId}}",
-				Offline = true, Summary = kind == RelationshipType.Friend ? "Removes the friend." : "Removes the block.",
+				Pattern = $"users <id:int> {word} <other:int> delete",
+				Route = $"DELETE /v1/users/{{id}}/{word}/{{otherId}}",
+				Offline = true,
+				Summary = kind == RelationshipType.Friend ? "Removes the friend." : "Removes the block.",
 				Run = call => HoldAsync(call, kind, false)
 			};
 		}
@@ -98,21 +103,25 @@ internal static class UserCommands
 			Summary = "Restricts an account.",
 			Options =
 			[
-				new("permissions", "The suspended permissions, as a bitmask.", OptionKind.Mask, true),
-				new("duration", "How long it lasts, such as 30m, 12h or 7d; none means until lifted.", OptionKind.Duration),
-				new("reason", "Why.")
+				new OptionDef("permissions", "The suspended permissions, as a bitmask.", OptionKind.Mask, true),
+				new OptionDef("duration", "How long it lasts, such as 30m, 12h or 7d; none means until lifted.",
+					OptionKind.Duration),
+				new OptionDef("reason", "Why.")
 			],
 			Run = RestrictAsync
 		};
 		yield return new CommandDef
 		{
-			Pattern = "users <id:int> restrictions <rid:int> lift", Route = "POST /v1/users/{id}/restrictions/{rid}/lift",
+			Pattern = "users <id:int> restrictions <rid:int> lift",
+			Route = "POST /v1/users/{id}/restrictions/{rid}/lift",
 			Offline = true, Summary = "Ends a restriction now and keeps it in the history.", Run = LiftAsync
 		};
 		yield return new CommandDef
 		{
-			Pattern = "users <id:int> restrictions <rid:int> delete", Route = "DELETE /v1/users/{id}/restrictions/{rid}",
-			Offline = true, Summary = "Ends a restriction and removes it from the history.", Run = DeleteRestrictionAsync
+			Pattern = "users <id:int> restrictions <rid:int> delete",
+			Route = "DELETE /v1/users/{id}/restrictions/{rid}",
+			Offline = true, Summary = "Ends a restriction and removes it from the history.",
+			Run = DeleteRestrictionAsync
 		};
 		yield return new CommandDef
 		{
@@ -120,8 +129,8 @@ internal static class UserCommands
 			Summary = "Lists the sessions of an account.",
 			Options =
 			[
-				new("state", "all, online or offline (default all)."),
-				new("types", "The connection kinds, as a bitmask.", OptionKind.Mask), .. CommandHelpers.Paging
+				new OptionDef("state", "all, online or offline (default all)."),
+				new OptionDef("types", "The connection kinds, as a bitmask.", OptionKind.Mask), .. CommandHelpers.Paging
 			],
 			Run = SessionsAsync
 		};
@@ -152,7 +161,8 @@ internal static class UserCommands
 		var page = call.Page();
 		var registry = call.Get<UserRegistry>();
 		var clock = call.Get<TimeProvider>();
-		var found = await call.Get<IUserRepository>().ListAsync(UserQuery.Parse(call.Text("query") ?? string.Empty), page,
+		var found = await call.Get<IUserRepository>().ListAsync(UserQuery.Parse(call.Text("query") ?? string.Empty),
+			page,
 			call.CancellationToken);
 		call.PrintPage(new Page<UserView>(
 			[.. found.Items.Select(user => UserView.Of(registry, user, clock))], found.Total), page);
@@ -166,10 +176,13 @@ internal static class UserCommands
 			Name = call.Required("username"),
 			Permissions = call.Bool("admin") == true
 				? UserPermissionsGroups.All
-				: call.Mask("permissions") is { } mask ? (UserPermissions)mask : UserPermissionsGroups.Default
+				: call.Mask("permissions") is { } mask
+					? (UserPermissions)mask
+					: UserPermissionsGroups.Default
 		};
 		if (call.Text("country") is { } code)
-			data.Country = Enum.TryParse<Country>(code, true, out var country) && code.Length == 2 && Enum.IsDefined(country)
+			data.Country = Enum.TryParse<Country>(code, true, out var country) && code.Length == 2 &&
+			               Enum.IsDefined(country)
 				? country
 				: throw CommandException.Invalid("--country must be a two-letter code.");
 
@@ -192,7 +205,8 @@ internal static class UserCommands
 		if (await call.FindUserAsync() is not { } record) return call.NotFound(NoUser);
 
 		var restrictions = await call.Get<IRestrictionRepository>().ListAsync(record, call.CancellationToken);
-		call.Formatter.Print(call.Output, UserView.Of(call.Get<UserRegistry>(), record, call.Get<TimeProvider>(), restrictions));
+		call.Formatter.Print(call.Output,
+			UserView.Of(call.Get<UserRegistry>(), record, call.Get<TimeProvider>(), restrictions));
 		return ExitCodes.Success;
 	}
 
@@ -217,7 +231,8 @@ internal static class UserCommands
 		{
 			if (!(code.Length == 2 && Enum.TryParse<Country>(code, true, out var country) && Enum.IsDefined(country)))
 				throw CommandException.Invalid("--country must be a two-letter code.");
-			if (await scoped.Profile.SetCountryAsync(country, ct) is { IsOk: false } changed) return call.Refuse(changed);
+			if (await scoped.Profile.SetCountryAsync(country, ct) is { IsOk: false } changed)
+				return call.Refuse(changed);
 		}
 
 		if (call.Text("away") is { } away) scoped.Profile.SetAway(away.Length == 0 ? null : away);
@@ -233,7 +248,8 @@ internal static class UserCommands
 			return call.Refuse(set);
 
 		if (call.Text("password") is { } password &&
-		    await scoped.Credentials.ChangePasswordAsync(CommandHelpers.Md5Of(password), null, false, ct) is { IsOk: false } changedPassword)
+		    await scoped.Credentials.ChangePasswordAsync(CommandHelpers.Md5Of(password), null, false, ct) is
+			    { IsOk: false } changedPassword)
 			return call.Refuse(changedPassword);
 
 		return null;
@@ -293,7 +309,8 @@ internal static class UserCommands
 
 		var duration = call.Duration("duration");
 		var endsAt = duration is { } length ? call.Get<TimeProvider>().GetUtcNow() + length : (DateTimeOffset?)null;
-		var (result, restriction) = await scoped.Restrictions.RestrictAsync((UserPermissions)call.Mask("permissions")!.Value,
+		var (result, restriction) = await scoped.Restrictions.RestrictAsync(
+			(UserPermissions)call.Mask("permissions")!.Value,
 			endsAt, call.Text("reason"), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
@@ -305,18 +322,22 @@ internal static class UserCommands
 	{
 		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
 
-		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not { } restriction
+		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
+			{ } restriction
 			? call.NotFound("restriction")
-			: call.Report(await scoped.Restrictions.LiftAsync(restriction, null, call.CancellationToken), "Restriction lifted.");
+			: call.Report(await scoped.Restrictions.LiftAsync(restriction, null, call.CancellationToken),
+				"Restriction lifted.");
 	}
 
 	private static async Task<int> DeleteRestrictionAsync(CommandCall call)
 	{
 		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
 
-		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not { } restriction
+		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
+			{ } restriction
 			? call.NotFound("restriction")
-			: call.Report(await scoped.Restrictions.DeleteAsync(restriction, null, call.CancellationToken), "Restriction deleted.");
+			: call.Report(await scoped.Restrictions.DeleteAsync(restriction, null, call.CancellationToken),
+				"Restriction deleted.");
 	}
 
 	private static async Task<int> SessionsAsync(CommandCall call)
@@ -357,7 +378,8 @@ internal static class UserCommands
 	{
 		return await call.ScopeUserAsync() is not { } scoped
 			? call.NotFound(NoUser)
-			: call.Report(await scoped.Sessions.CloseAsync(Guid.Parse(call.Word("sid")), call.CancellationToken), "Session closed.");
+			: call.Report(await scoped.Sessions.CloseAsync(Guid.Parse(call.Word("sid")), call.CancellationToken),
+				"Session closed.");
 	}
 
 	private static async Task<int> CloseSessionsAsync(CommandCall call)

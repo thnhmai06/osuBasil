@@ -1,10 +1,10 @@
-using Basil.Domain.Auth;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Auth;
+using Basil.Host.Bancho.Delivery;
 using Basil.Host.Bancho.Login;
 using Basil.Host.Bancho.Packets;
 using Basil.Host.Bancho.Support;
 using Basil.Host.Bancho.Web;
-using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho;
 
@@ -29,7 +29,7 @@ public static class BanchoRoutes
 		services.AddSingleton<PacketHandlers>();
 		services.AddSingleton<PacketDispatcher>();
 		services.AddSingleton<WebAuthentication>();
-		services.AddSingleton<Delivery.RoomAudience>();
+		services.AddSingleton<RoomAudience>();
 		return services;
 	}
 

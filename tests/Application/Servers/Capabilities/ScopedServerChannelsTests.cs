@@ -30,10 +30,13 @@ public sealed class ScopedServerChannelsTests
 	public async Task CreateAsync_WithChatManageChannels_OpensTheChannel_AndTheSameNameIsTakenAfterwards()
 	{
 		using var app = new TestApplication();
-		var manager = await RoomFixture.PlayerAsync(app, "Boss", UserPermissionsGroups.Default | UserPermissions.ChatManageChannels);
+		var manager = await RoomFixture.PlayerAsync(app, "Boss",
+			UserPermissionsGroups.Default | UserPermissions.ChatManageChannels);
 
-		var first = await app.Server.ScopeTo(manager).Channels.CreateAsync(Record("#fresh"), TestContext.Current.CancellationToken);
-		var second = await app.Server.ScopeTo(manager).Channels.CreateAsync(Record("#FRESH"), TestContext.Current.CancellationToken);
+		var first = await app.Server.ScopeTo(manager).Channels
+			.CreateAsync(Record("#fresh"), TestContext.Current.CancellationToken);
+		var second = await app.Server.ScopeTo(manager).Channels
+			.CreateAsync(Record("#FRESH"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerOutcome.Ok, first.Outcome);
 		Assert.Equal(ServerOutcome.NameTaken, second.Outcome);

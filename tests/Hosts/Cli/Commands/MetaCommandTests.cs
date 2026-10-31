@@ -1,5 +1,5 @@
 using Basil.Host.Cli.Commands;
-using Basil.Host.Cli.Shutdown;
+using Basil.Host.Cli.Dashboard;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -39,13 +39,23 @@ internal sealed class CapturedLog : ILoggerProvider
 
 	private sealed class Logger(List<string> messages) : ILogger
 	{
-		public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-		public bool IsEnabled(LogLevel logLevel) => true;
-
-		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+		public IDisposable? BeginScope<TState>(TState state) where TState : notnull
 		{
-			lock (messages) messages.Add(formatter(state, exception));
+			return null;
+		}
+
+		public bool IsEnabled(LogLevel logLevel)
+		{
+			return true;
+		}
+
+		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+			Func<TState, Exception?, string> formatter)
+		{
+			lock (messages)
+			{
+				messages.Add(formatter(state, exception));
+			}
 		}
 	}
 }
@@ -62,14 +72,17 @@ public sealed class MetaCommandTests(CliFixture fixture)
 		{
 			if (log is not null) builder.AddProvider(log);
 		});
-		return (new CommandRunner(catalog, new WithControl(fixture.Host.Services, control), new ViewFormatter(TimeZoneInfo.Utc),
+		return (new CommandRunner(catalog, new WithControl(fixture.Host.Services, control),
+			new ViewFormatter(TimeZoneInfo.Utc),
 			factory.CreateLogger<CommandRunner>()), control);
 	}
 
-	private static async Task<(int Code, string Text)> RunAsync(CommandRunner runner, string line, bool running = true, CommandSession? session = null)
+	private static async Task<(int Code, string Text)> RunAsync(CommandRunner runner, string line, bool running = true,
+		CommandSession? session = null)
 	{
 		var output = new CollectedOutput();
-		var code = await runner.RunAsync(CommandCatalog.Split(line), output, running, session, TestContext.Current.CancellationToken);
+		var code = await runner.RunAsync(CommandCatalog.Split(line), output, running, session,
+			TestContext.Current.CancellationToken);
 		return (code, output.Text);
 	}
 
@@ -93,7 +106,8 @@ public sealed class MetaCommandTests(CliFixture fixture)
 		var (code, text) = await fixture.RunAsync("status");
 
 		Assert.Equal(0, code);
-		foreach (var label in new[] { "version:", "uptime:", "users online:", "osu connections:", "rooms:", "rounds in progress:" })
+		foreach (var label in new[]
+			         { "version:", "uptime:", "users online:", "osu connections:", "rooms:", "rounds in progress:" })
 			Assert.Contains(label, text);
 	}
 
@@ -143,7 +157,8 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	{
 		var (runner, control) = RunnerWithControl();
 
-		var (code, _) = await RunAsync(runner, "shutdown", session: new CommandSession(true, (_, _) => Task.FromResult(true)));
+		var (code, _) = await RunAsync(runner, "shutdown",
+			session: new CommandSession(true, (_, _) => Task.FromResult(true)));
 
 		Assert.Equal(0, code);
 		Assert.Equal([false], control.Requests);
@@ -166,7 +181,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	{
 		var (runner, _) = RunnerWithControl();
 
-		var (code, text) = await RunAsync(runner, "rooms list", running: false);
+		var (code, text) = await RunAsync(runner, "rooms list", false);
 
 		Assert.Equal(3, code);
 		Assert.Contains("serverNotRunning", text);
@@ -187,7 +202,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 		await fixture.RunAsync($"theme \"{original}\"", dashboard);
 
 		Assert.Equal(2, outside);
-		Assert.Contains(Basil.Host.Cli.Dashboard.ThemeStore.DefaultScheme, lines[1]);
+		Assert.Contains(ThemeStore.DefaultScheme, lines[1]);
 		Assert.Equal(0, changed);
 		Assert.StartsWith($"current: {other}", current);
 		Assert.Equal(1, unknown);

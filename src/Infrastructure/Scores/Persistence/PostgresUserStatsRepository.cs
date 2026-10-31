@@ -1,8 +1,8 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Scores.Persistence;

@@ -1,46 +1,23 @@
 using System.Text;
-using Basil.Application.Common;
+using Basil.Application.Auth.Persistence;
+using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
-using Basil.Host.Shared.Views;
 using Basil.Host.Rest.Sse;
-using Basil.Application.Auth.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Rest.Routes;
 
 /// <summary>Accounts, their sessions, friends, blocks and restrictions.</summary>
 internal static class UserRoutes
 {
-	/// <summary>The fields of an account that can change; absent fields stay as they are.</summary>
-	public sealed record PatchUserRequest(string? Name, string? Country, string? Away, bool? PmPrivate,
-		ulong? Permissions);
-
-	/// <summary>A password change: the current password is needed for one's own account only.</summary>
-	public sealed record PasswordRequest(string? Current, string? New, bool? IncludeCurrent);
-
-	/// <summary>A new account made by staff.</summary>
-	public sealed record CreateUserRequest(string? Username, string? Password, string? Country, ulong? Permissions);
-
-	/// <summary>A request to close all sessions of one's own account.</summary>
-	public sealed record CloseSessionsRequest(bool? KeepCurrent);
-
-	/// <summary>A request to open an IRC key.</summary>
-	public sealed record IrcKeyRequest(string? Label);
-
-	/// <summary>A new IRC key; the key is shown only here.</summary>
-	public sealed record IrcKeyResponse(Guid SessionId, string Key);
-
-	/// <summary>A new restriction.</summary>
-	public sealed record RestrictRequest(ulong Permissions, DateTimeOffset? EndsAt, string? Reason);
-
 	public static void MapUsers(this RouteGroupBuilder v1)
 	{
 		var users = v1.MapGroup("/users").WithTags("Users");
@@ -59,47 +36,50 @@ internal static class UserRoutes
 		token.MapPatch("/{id:int}", PatchAsync).WithSummary("Change an account.");
 		token.MapPut("/{id:int}/password", PasswordAsync).WithSummary("Change the password of an account.")
 			.WithDescription("""
-				For one's own account the current password is required and every other session is closed; with
-				`includeCurrent` the calling session is closed too. Staff change another account's password without
-				the current one and every session of that account is closed.
+			                 For one's own account the current password is required and every other session is closed; with
+			                 `includeCurrent` the calling session is closed too. Staff change another account's password without
+			                 the current one and every session of that account is closed.
 
-				Signing an osu! client out only makes the device ask for the password again; changing the password
-				is what keeps the client out. While the profiles area is locked, only staff can change a password.
-				""");
+			                 Signing an osu! client out only makes the device ask for the password again; changing the password
+			                 is what keeps the client out. While the profiles area is locked, only staff can change a password.
+			                 """);
 		token.MapDelete("/{id:int}", DeleteAsync).WithSummary("Delete an account.");
 		token.MapPut("/{id:int}/avatar", PutAvatarAsync).DisableAntiforgery()
 			.WithSummary("Upload the avatar of an account as an image in the `file` field.")
 			.WithDescription("""
-				While the profiles area is locked only staff can change an avatar. The avatar is shown on the avatar host.
+			                 While the profiles area is locked only staff can change an avatar. The avatar is shown on the avatar host.
 
-				The file must be a PNG or JPEG picture within the configured size and pixel limits. Content that is not
-				such a picture, or that exceeds a limit, is refused with `422`.
-				""");
+			                 The file must be a PNG or JPEG picture within the configured size and pixel limits. Content that is not
+			                 such a picture, or that exceeds a limit, is refused with `422`.
+			                 """);
 		token.MapDelete("/{id:int}/avatar", DeleteAvatarAsync).WithSummary("Remove the avatar of an account.");
 
 		token.MapGet("/{id:int}/sessions", ListSessionsAsync).WithSummary("List the sessions of an account.")
-			.WithDescription("Filter by `state` (all, online, offline) and by `types`, a bitmask of the connection kinds.");
-		token.MapGet("/{id:int}/sessions/{sid:guid}", GetSessionAsync).WithSummary("Retrieve one session of an account.");
+			.WithDescription(
+				"Filter by `state` (all, online, offline) and by `types`, a bitmask of the connection kinds.");
+		token.MapGet("/{id:int}/sessions/{sid:guid}", GetSessionAsync)
+			.WithSummary("Retrieve one session of an account.");
 		token.MapDelete("/{id:int}/sessions/{sid:guid}", CloseSessionAsync)
 			.WithSummary("Close one session of an account.")
-			.WithDescription("Closing an osu! session only makes the device ask for the password again; change the password to keep the client out.");
+			.WithDescription(
+				"Closing an osu! session only makes the device ask for the password again; change the password to keep the client out.");
 		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Close every session of an account.");
 		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).WithSummary("Create an IRC key for one device.")
 			.WithDescription("The key is shown only in this response. Close the key's session to revoke it.");
 
 		token.MapGet("/{id:int}/friends", FriendsAsync).WithSummary("List the friends of the calling account.");
 		token.MapPut("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
-			RelationAsync(c, id, otherId, s => s.Relationships.AddFriendAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, s => s.Relationships.AddFriendAsync(c.RequestAborted)))
 			.WithSummary("Add a friend.");
 		token.MapDelete("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
-			RelationAsync(c, id, otherId, s => s.Relationships.RemoveFriendAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, s => s.Relationships.RemoveFriendAsync(c.RequestAborted)))
 			.WithSummary("Remove a friend.");
 		token.MapGet("/{id:int}/blocks", BlocksAsync).WithSummary("List the accounts the calling account blocked.");
 		token.MapPut("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
-			RelationAsync(c, id, otherId, s => s.Relationships.BlockAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, s => s.Relationships.BlockAsync(c.RequestAborted)))
 			.WithSummary("Block an account.");
 		token.MapDelete("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
-			RelationAsync(c, id, otherId, s => s.Relationships.UnblockAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, s => s.Relationships.UnblockAsync(c.RequestAborted)))
 			.WithSummary("Unblock an account.");
 
 		token.MapPost("/{id:int}/restrictions", RestrictAsync).WithSummary("Restrict an account.");
@@ -118,7 +98,8 @@ internal static class UserRoutes
 			: Api.Ok(UserView.Of(registry, record, clock, await restrictions.ListAsync(record, cancellationToken)));
 	}
 
-	private static async Task<IResult> RestrictionsAsync(int id, IUserRepository users, IRestrictionRepository restrictions,
+	private static async Task<IResult> RestrictionsAsync(int id, IUserRepository users,
+		IRestrictionRepository restrictions,
 		CancellationToken cancellationToken)
 	{
 		var record = await users.GetAsync(id, cancellationToken);
@@ -134,10 +115,12 @@ internal static class UserRoutes
 		if (error is not null) return error;
 
 		var found = await users.ListAsync(UserQuery.Parse(query ?? string.Empty), page!, cancellationToken);
-		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.Total), page!);
+		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.Total),
+			page!);
 	}
 
-	private static async Task<IResult> CreateAsync(HttpContext context, CreateUserRequest request, UserRegistry registry,
+	private static async Task<IResult> CreateAsync(HttpContext context, CreateUserRequest request,
+		UserRegistry registry,
 		TimeProvider clock)
 	{
 		if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrEmpty(request.Password))
@@ -167,7 +150,8 @@ internal static class UserRoutes
 		return Api.Ok(UserView.Of(registry, scoped.User.Record, clock), "Updated successfully");
 	}
 
-	private static async Task<IResult?> PatchNameAndCountryAsync(ScopedUser scoped, PatchUserRequest request, CancellationToken ct)
+	private static async Task<IResult?> PatchNameAndCountryAsync(ScopedUser scoped, PatchUserRequest request,
+		CancellationToken ct)
 	{
 		if (request.Name is not null && await scoped.Profile.RenameAsync(request.Name, ct) is { IsOk: false } renamed)
 			return renamed.Refusal();
@@ -178,7 +162,8 @@ internal static class UserRoutes
 		return await scoped.Profile.SetCountryAsync(country, ct) is { IsOk: false } changed ? changed.Refusal() : null;
 	}
 
-	private static async Task<IResult?> PatchSelfAndPermissionsAsync(ScopedUser scoped, PatchUserRequest request, CancellationToken ct)
+	private static async Task<IResult?> PatchSelfAndPermissionsAsync(ScopedUser scoped, PatchUserRequest request,
+		CancellationToken ct)
 	{
 		if (request.Away is not null && !scoped.Profile.SetAway(request.Away.Length == 0 ? null : request.Away))
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
@@ -196,7 +181,7 @@ internal static class UserRoutes
 		if (string.IsNullOrEmpty(request.New)) return Api.Invalid("new is required.");
 		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
 
-		Md5? current = request.Current is null ? (Md5?)null : new Md5(Encoding.UTF8.GetBytes(request.Current));
+		var current = request.Current is null ? (Md5?)null : new Md5(Encoding.UTF8.GetBytes(request.Current));
 		return (await scoped.Credentials.ChangePasswordAsync(new Md5(Encoding.UTF8.GetBytes(request.New)), current,
 			request.IncludeCurrent ?? false, context.RequestAborted)).Answer();
 	}
@@ -249,7 +234,8 @@ internal static class UserRoutes
 			: Enum.GetValues<SessionType>().Where(t => (types.Value & (int)t) != 0).ToList();
 		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
 
-		var (result, sessions) = await scoped.Sessions.ListAsync(page!, sessionState.Value, kinds, context.RequestAborted);
+		var (result, sessions) =
+			await scoped.Sessions.ListAsync(page!, sessionState.Value, kinds, context.RequestAborted);
 		if (!result.IsOk) return result.Refusal();
 
 		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)], sessions.Total), page!);
@@ -341,4 +327,30 @@ internal static class UserRoutes
 			? Api.NotFound("No such restriction.")
 			: (await scoped.Restrictions.DeleteAsync(restriction, null, context.RequestAborted)).Answer();
 	}
+
+	/// <summary>The fields of an account that can change; absent fields stay as they are.</summary>
+	public sealed record PatchUserRequest(
+		string? Name,
+		string? Country,
+		string? Away,
+		bool? PmPrivate,
+		ulong? Permissions);
+
+	/// <summary>A password change: the current password is needed for one's own account only.</summary>
+	public sealed record PasswordRequest(string? Current, string? New, bool? IncludeCurrent);
+
+	/// <summary>A new account made by staff.</summary>
+	public sealed record CreateUserRequest(string? Username, string? Password, string? Country, ulong? Permissions);
+
+	/// <summary>A request to close all sessions of one's own account.</summary>
+	public sealed record CloseSessionsRequest(bool? KeepCurrent);
+
+	/// <summary>A request to open an IRC key.</summary>
+	public sealed record IrcKeyRequest(string? Label);
+
+	/// <summary>A new IRC key; the key is shown only here.</summary>
+	public sealed record IrcKeyResponse(Guid SessionId, string Key);
+
+	/// <summary>A new restriction.</summary>
+	public sealed record RestrictRequest(ulong Permissions, DateTimeOffset? EndsAt, string? Reason);
 }

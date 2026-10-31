@@ -9,7 +9,8 @@ public sealed class MatchTests(RestHostFixture fixture)
 {
 	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.RoomManageAny;
 
-	private static async Task<(int RoomId, int MatchId)> OpenAsync(RestClient client, string name, bool isPrivate = false)
+	private static async Task<(int RoomId, int MatchId)> OpenAsync(RestClient client, string name,
+		bool isPrivate = false)
 	{
 		var (status, envelope) = await client.CallAsync(HttpMethod.Post, "/v1/rooms", new { name, isPrivate });
 		Assert.Equal(201, status);
@@ -45,7 +46,9 @@ public sealed class MatchTests(RestHostFixture fixture)
 
 		var (response, _) = await anon.OpenStreamAsync("/v1/matches/999999");
 		using (response)
+		{
 			Assert.Equal(404, (int)response.StatusCode);
+		}
 	}
 
 	[Fact]

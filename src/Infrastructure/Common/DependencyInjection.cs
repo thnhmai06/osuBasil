@@ -1,7 +1,7 @@
 using Basil.Application.Common;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Workers;
 using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Common.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

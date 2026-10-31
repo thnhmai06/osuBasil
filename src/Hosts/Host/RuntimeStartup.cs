@@ -1,6 +1,4 @@
 using Basil.Application.Servers.Objects;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Basil.Host;
 

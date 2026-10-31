@@ -38,7 +38,10 @@ public sealed class ShutdownSequence(TimeProvider clock, ILogger<ShutdownSequenc
 {
 	/// <summary>Runs the steps in order.</summary>
 	/// <param name="steps">The steps.</param>
-	/// <param name="cancellationToken">A token that ends the whole shutdown at once: the running step is cancelled and the rest are skipped.</param>
+	/// <param name="cancellationToken">
+	///     A token that ends the whole shutdown at once: the running step is cancelled and the
+	///     rest are skipped.
+	/// </param>
 	/// <returns>What happened to each step that started.</returns>
 	public async Task<IReadOnlyList<ShutdownStepResult>> RunAsync(IEnumerable<ShutdownStep> steps,
 		CancellationToken cancellationToken)
@@ -53,10 +56,12 @@ public sealed class ShutdownSequence(TimeProvider clock, ILogger<ShutdownSequenc
 			switch (outcome)
 			{
 				case ShutdownStepOutcome.Completed:
-					logger.LogInformation("Shutdown step {Step} done in {Milliseconds} ms", step.Name, (long)result.Elapsed.TotalMilliseconds);
+					logger.LogInformation("Shutdown step {Step} done in {Milliseconds} ms", step.Name,
+						(long)result.Elapsed.TotalMilliseconds);
 					break;
 				case ShutdownStepOutcome.TimedOut:
-					logger.LogWarning("Shutdown step {Step} did not finish within {Seconds} s and was left behind", step.Name,
+					logger.LogWarning("Shutdown step {Step} did not finish within {Seconds} s and was left behind",
+						step.Name,
 						step.Timeout.TotalSeconds);
 					break;
 				case ShutdownStepOutcome.Cancelled:

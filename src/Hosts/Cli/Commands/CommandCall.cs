@@ -1,11 +1,13 @@
 using System.Globalization;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>A refusal or invalid input detected while a command runs; the runner prints it and ends with the matching exit code.</summary>
+/// <summary>
+///     A refusal or invalid input detected while a command runs; the runner prints it and ends with the matching exit
+///     code.
+/// </summary>
 /// <param name="exitCode">The exit code of the command.</param>
 /// <param name="code">The camelCase error code.</param>
 /// <param name="message">The human-readable message.</param>
@@ -61,8 +63,8 @@ public sealed record CommandSession(bool Dashboard, Func<string, CancellationTok
 /// <summary>Everything a command needs to run: its words and options, the services of the server, and where to print.</summary>
 public sealed class CommandCall
 {
-	private readonly Dictionary<string, string> _words;
 	private readonly Dictionary<string, string> _options;
+	private readonly Dictionary<string, string> _words;
 	private OperatorConnection? _by;
 
 	/// <summary>Creates a call.</summary>
@@ -94,10 +96,14 @@ public sealed class CommandCall
 	/// <summary>Gets the token that cancels the command.</summary>
 	public CancellationToken CancellationToken { get; }
 
+	/// <summary>Gets every option that was given, for commands that take open-ended fields.</summary>
+	public IReadOnlyDictionary<string, string> Options => _options;
+
 	/// <summary>Gets a service.</summary>
 	public T Get<T>() where T : notnull
 	{
-		return (T)Services.GetService(typeof(T))! ?? throw new InvalidOperationException($"{typeof(T).Name} is not registered.");
+		return (T)Services.GetService(typeof(T))! ??
+		       throw new InvalidOperationException($"{typeof(T).Name} is not registered.");
 	}
 
 	/// <summary>Gets the connection the command acts with: BasilBot, without rights checks.</summary>
@@ -165,7 +171,8 @@ public sealed class CommandCall
 	{
 		if (!_options.TryGetValue(name, out var text)) return null;
 
-		if (text.Length > 1 && double.TryParse(text[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var amount) &&
+		if (text.Length > 1 &&
+		    double.TryParse(text[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out var amount) &&
 		    amount > 0)
 			switch (char.ToLowerInvariant(text[^1]))
 			{
@@ -193,7 +200,4 @@ public sealed class CommandCall
 			? text
 			: throw CommandException.Invalid($"--{name} is required.");
 	}
-
-	/// <summary>Gets every option that was given, for commands that take open-ended fields.</summary>
-	public IReadOnlyDictionary<string, string> Options => _options;
 }

@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
@@ -57,7 +57,8 @@ public sealed class ScopedUserCredentialsTests
 		Assert.True(current.IsOpen);
 		Assert.False(otherApi.IsOpen);
 		Assert.False(osu.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, otherApi.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken,
+			(await OpenWithTokenAsync(app, SessionType.Api, otherApi.Token)).Failure);
 		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, key)).Failure);
 		Assert.True((await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Succeeded);
 	}
@@ -69,10 +70,12 @@ public sealed class ScopedUserCredentialsTests
 		var user = await app.CreateUserAsync("Everything", "old");
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
-		await app.Users.Of(user).ScopeTo(current).Credentials.ChangePasswordAsync(Hash("new"), Hash("old"), true, Token);
+		await app.Users.Of(user).ScopeTo(current).Credentials
+			.ChangePasswordAsync(Hash("new"), Hash("old"), true, Token);
 
 		Assert.False(current.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken,
+			(await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Failure);
 	}
 
 	[Fact]
@@ -192,7 +195,8 @@ public sealed class ScopedUserCredentialsTests
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Profiles });
-		var user = await app.CreateUserAsync("Manager", "old", UserPermissionsGroups.Default | UserPermissions.UserManage);
+		var user = await app.CreateUserAsync("Manager", "old",
+			UserPermissionsGroups.Default | UserPermissions.UserManage);
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials

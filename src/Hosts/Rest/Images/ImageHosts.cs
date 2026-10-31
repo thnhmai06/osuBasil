@@ -1,9 +1,7 @@
 using Basil.Application.Content.Persistence;
 using Basil.Host.Rest.Http;
-using Microsoft.AspNetCore.Http;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Web.DependencyInjection;
-using SixLabors.ImageSharp.Web.Middleware;
 
 namespace Basil.Host.Rest.Images;
 
@@ -86,7 +84,8 @@ internal sealed class ImageRateLimitMiddleware(RequestDelegate next)
 		if (limiter.Count(key, limit.Window) >= limit.Count)
 		{
 			context.Response.Headers.RetryAfter = ((int)limit.Window.TotalSeconds).ToString();
-			await Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many requests.").ExecuteAsync(context);
+			await Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many requests.")
+				.ExecuteAsync(context);
 			return;
 		}
 

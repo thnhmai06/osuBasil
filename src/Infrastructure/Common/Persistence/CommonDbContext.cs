@@ -1,4 +1,3 @@
-using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Common.Persistence;
@@ -8,13 +7,15 @@ namespace Basil.Infrastructure.Common.Persistence;
 public sealed class CommonDbContext(DbContextOptions<CommonDbContext> options) : DbContext(options),
 	IDatabaseContext<CommonDbContext>, IWriteTicketContext
 {
-	/// <summary>Gets the records that identify committed writes.</summary>
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
-
 	static string IDatabaseContext<CommonDbContext>.HistoryTable => "__ef_migrations_common";
 
-	static CommonDbContext IDatabaseContext<CommonDbContext>.Create(DbContextOptions<CommonDbContext> options) =>
-		new(options);
+	static CommonDbContext IDatabaseContext<CommonDbContext>.Create(DbContextOptions<CommonDbContext> options)
+	{
+		return new CommonDbContext(options);
+	}
+
+	/// <summary>Gets the records that identify committed writes.</summary>
+	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

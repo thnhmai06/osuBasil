@@ -1,8 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 

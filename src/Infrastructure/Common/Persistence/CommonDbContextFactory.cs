@@ -1,4 +1,3 @@
-using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace Basil.Infrastructure.Common.Persistence;

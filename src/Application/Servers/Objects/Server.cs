@@ -1,12 +1,10 @@
-﻿using Basil.Application.Chat.Registry;
-using Basil.Application.Users.Objects.Connections;
+﻿using Basil.Application.Chat.Objects;
+using Basil.Application.Servers.Capabilities;
 using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
-using Basil.Application.Servers.Capabilities;
-using Basil.Application.Chat.Objects;
 
 namespace Basil.Application.Servers.Objects;
 

@@ -8,12 +8,15 @@ internal sealed class AuthDbContext(DbContextOptions<AuthDbContext> options) : D
 {
 	public DbSet<CredentialRow> Credentials => Set<CredentialRow>();
 	public DbSet<SessionRow> Sessions => Set<SessionRow>();
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	static string IDatabaseContext<AuthDbContext>.HistoryTable => "__ef_migrations_auth";
 
-	static AuthDbContext IDatabaseContext<AuthDbContext>.Create(DbContextOptions<AuthDbContext> options) =>
-		new(options);
+	static AuthDbContext IDatabaseContext<AuthDbContext>.Create(DbContextOptions<AuthDbContext> options)
+	{
+		return new AuthDbContext(options);
+	}
+
+	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

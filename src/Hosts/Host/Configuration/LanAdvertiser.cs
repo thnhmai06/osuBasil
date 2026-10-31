@@ -1,15 +1,26 @@
+using System.Net.Sockets;
 using Makaretu.Dns;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Configuration;
 
-/// <summary>Answers multicast DNS queries for the server's domain and the sub-domains it serves, so a client on the same network finds it.</summary>
-internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<LanAdvertiser> logger) : IHostedService, IDisposable
+/// <summary>
+///     Answers multicast DNS queries for the server's domain and the sub-domains it serves, so a client on the same
+///     network finds it.
+/// </summary>
+internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<LanAdvertiser> logger)
+	: IHostedService, IDisposable
 {
 	/// <summary>The sub-domains the server serves; the <c>ppy.sh</c> hosts are never advertised.</summary>
 	internal static readonly string[] Labels = ["c", "ce", "c4", "c5", "c6", "osu", "b", "a", "api", "assets"];
 
 	private MulticastService? _service;
+
+	public void Dispose()
+	{
+		_service?.Dispose();
+		_service = null;
+	}
 
 	public Task StartAsync(CancellationToken cancellationToken)
 	{
@@ -23,12 +34,15 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 			_service.QueryReceived += (_, query) =>
 			{
 				var response = query.Message.CreateResponse();
-				foreach (var question in query.Message.Questions.Where(q => names.Contains(q.Name.ToString().TrimEnd('.'))))
-					foreach (var address in MulticastService.GetIPAddresses())
-						if (question.Type is DnsType.A or DnsType.ANY && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-							response.Answers.Add(new ARecord { Name = question.Name, Address = address });
-						else if (question.Type is DnsType.AAAA or DnsType.ANY && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-							response.Answers.Add(new AAAARecord { Name = question.Name, Address = address });
+				foreach (var question in query.Message.Questions.Where(q =>
+					         names.Contains(q.Name.ToString().TrimEnd('.'))))
+				foreach (var address in MulticastService.GetIPAddresses())
+					if (question.Type is DnsType.A or DnsType.ANY &&
+					    address.AddressFamily == AddressFamily.InterNetwork)
+						response.Answers.Add(new ARecord { Name = question.Name, Address = address });
+					else if (question.Type is DnsType.AAAA or DnsType.ANY &&
+					         address.AddressFamily == AddressFamily.InterNetworkV6)
+						response.Answers.Add(new AAAARecord { Name = question.Name, Address = address });
 
 				if (response.Answers.Count > 0) _service.SendAnswer(response);
 			};
@@ -49,14 +63,9 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		return Task.CompletedTask;
 	}
 
-	public void Dispose()
-	{
-		_service?.Dispose();
-		_service = null;
-	}
-
 	internal static HashSet<string> Names(string domain)
 	{
-		return new HashSet<string>([domain, .. Labels.Select(label => $"{label}.{domain}")], StringComparer.OrdinalIgnoreCase);
+		return new HashSet<string>([domain, .. Labels.Select(label => $"{label}.{domain}")],
+			StringComparer.OrdinalIgnoreCase);
 	}
 }

@@ -1,11 +1,10 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Common;
+using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 
@@ -18,7 +17,8 @@ internal static class ScoreRoutes
 	{
 		var scores = v1.MapGroup("/scores").WithTags("Scores");
 		scores.MapGet("/", ListAsync).WithSummary("List scores.")
-			.WithDescription("Filter by `beatmap` (a beatmap id) and `user` (a user id). Newest first, paged with `offset` and `limit`.");
+			.WithDescription(
+				"Filter by `beatmap` (a beatmap id) and `user` (a user id). Newest first, paged with `offset` and `limit`.");
 		scores.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve a score.");
 		scores.MapGet("/{id:int}/replay", ReplayAsync).RequireToken().WithSummary("Download the replay of a score.");
 	}
@@ -30,14 +30,14 @@ internal static class ScoreRoutes
 		if (error is not null) return error;
 
 		var ct = context.RequestAborted;
-		Domain.Common.Md5? hash = null;
+		Md5? hash = null;
 		if (beatmap is { } beatmapId)
 		{
 			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map) return Api.NotFound("No such beatmap.");
 			hash = map.Hash;
 		}
 
-		Domain.Users.UserRecord? player = null;
+		UserRecord? player = null;
 		if (user is { } userId && (player = await users.GetAsync(userId, ct)) is null)
 			return Api.NotFound("No such user.");
 

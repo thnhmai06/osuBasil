@@ -1,5 +1,4 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Mediator;
 
@@ -23,7 +22,8 @@ internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandle
 	public ValueTask Handle(UserConnectionClosed notification, CancellationToken cancellationToken)
 	{
 		var connection = notification.Connection;
-		logger.LogInformation("{Type} logout of {User} ({UserId}): {Reason}", connection.Type, connection.Record.Value.Name,
+		logger.LogInformation("{Type} logout of {User} ({UserId}): {Reason}", connection.Type,
+			connection.Record.Value.Name,
 			connection.Record.Id, notification.Reason);
 		return ValueTask.CompletedTask;
 	}
@@ -54,7 +54,8 @@ internal sealed class RoundStartedLog(ILogger<RoundStartedLog> logger) : INotifi
 {
 	public ValueTask Handle(RoomRoundStarted notification, CancellationToken cancellationToken)
 	{
-		logger.LogInformation("Round {Round} started in room {RoomId} with {PlayerCount} players", notification.Round.Index,
+		logger.LogInformation("Round {Round} started in room {RoomId} with {PlayerCount} players",
+			notification.Round.Index,
 			notification.Room.Id, notification.Players.Count);
 		return ValueTask.CompletedTask;
 	}

@@ -1,5 +1,4 @@
 using System.Net;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
@@ -33,8 +32,14 @@ public sealed record SessionFilter(SessionState State, IReadOnlyList<SessionType
 /// <param name="ClientInfo">The client details or label of the session.</param>
 /// <param name="StartedAt">When the session started.</param>
 /// <param name="ExpiresAt">When the token expires, or <see langword="null" /> if it never does.</param>
-public sealed record StoredSession(Guid Id, int UserId, SessionType Type, IPAddress Ip, string? ClientInfo,
-	DateTimeOffset StartedAt, DateTimeOffset? ExpiresAt);
+public sealed record StoredSession(
+	Guid Id,
+	int UserId,
+	SessionType Type,
+	IPAddress Ip,
+	string? ClientInfo,
+	DateTimeOffset StartedAt,
+	DateTimeOffset? ExpiresAt);
 
 /// <summary>The latest activity of one session.</summary>
 /// <param name="Id">The session's public identifier.</param>

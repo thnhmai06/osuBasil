@@ -19,7 +19,8 @@ public sealed class DashboardRenderingTests
 		return (model, new DashboardRenderer(model, new ViewFormatter(TimeZoneInfo.Utc)));
 	}
 
-	private static GridSurface Paint(DashboardModel model, DashboardRenderer renderer, int width = 120, int height = 40, bool output = false)
+	private static GridSurface Paint(DashboardModel model, DashboardRenderer renderer, int width = 120, int height = 40,
+		bool output = false)
 	{
 		var surface = new GridSurface(width, height);
 		renderer.Paint(surface, output);
@@ -34,7 +35,8 @@ public sealed class DashboardRenderingTests
 
 		var surface = Paint(model, renderer);
 
-		foreach (var name in new[] { "Overview", "Users", "Rooms", "Metrics", "Logs", "Chat" }) Assert.Contains(name, surface.Row(0));
+		foreach (var name in new[] { "Overview", "Users", "Rooms", "Metrics", "Logs", "Chat" })
+			Assert.Contains(name, surface.Row(0));
 		var at = surface.Row(0).IndexOf(" F5 Logs ", StringComparison.Ordinal);
 		Assert.Equal(Tone.Selected, surface.ToneAt(at + 1, 0));
 	}
@@ -44,7 +46,11 @@ public sealed class DashboardRenderingTests
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Users;
-		model.Users = [new UserRow(5, "alice", "osu irc", "Idle", "#3", TimeSpan.FromSeconds(75), 12), new UserRow(6, "bob", "api", "-", "-", TimeSpan.Zero, 0)];
+		model.Users =
+		[
+			new UserRow(5, "alice", "osu irc", "Idle", "#3", TimeSpan.FromSeconds(75), 12),
+			new UserRow(6, "bob", "api", "-", "-", TimeSpan.Zero, 0)
+		];
 		model.Selected = 1;
 
 		var surface = Paint(model, renderer);
@@ -63,7 +69,11 @@ public sealed class DashboardRenderingTests
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Users;
-		model.Users = [new UserRow(5, "alice", "osu", "-", "-", TimeSpan.Zero, 0), new UserRow(6, "bob", "osu", "-", "-", TimeSpan.Zero, 0)];
+		model.Users =
+		[
+			new UserRow(5, "alice", "osu", "-", "-", TimeSpan.Zero, 0),
+			new UserRow(6, "bob", "osu", "-", "-", TimeSpan.Zero, 0)
+		];
 		model.Filter = "bo";
 
 		var text = Paint(model, renderer).ToString();
@@ -163,8 +173,8 @@ public sealed class DashboardRenderingTests
 		var (model, renderer) = Create();
 		for (var i = 0; i < 200; i++) model.Cpu.Add(i % 100);
 
-		var wide = Paint(model, renderer, 140, 40).ToString();
-		var narrow = Paint(model, renderer, 80, 40).ToString();
+		var wide = Paint(model, renderer, 140).ToString();
+		var narrow = Paint(model, renderer, 80).ToString();
 
 		Assert.Contains(wide, character => character is >= '⠁' and <= '⣿');
 		Assert.DoesNotContain(narrow, character => character is >= '⠁' and <= '⣿');
@@ -180,7 +190,7 @@ public sealed class DashboardRenderingTests
 		model.Rooms.Add(3);
 		model.Cores = [10, 90];
 
-		var text = Paint(model, renderer, 140, 40).ToString();
+		var text = Paint(model, renderer, 140).ToString();
 
 		Assert.Contains("users online : 7", text);
 		Assert.Contains("rooms : 3", text);
@@ -196,7 +206,7 @@ public sealed class DashboardRenderingTests
 		model.Tab = DashboardTab.Metrics;
 		model.Diagnostics = [("process.cpuPercent", "12.5"), ("application.rooms", "3")];
 
-		var text = Paint(model, renderer, 140, 40).ToString();
+		var text = Paint(model, renderer, 140).ToString();
 
 		Assert.Contains("process.cpuPercent", text);
 		Assert.Contains("12.5", text);

@@ -1,16 +1,14 @@
 using System.Collections.Concurrent;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Multiplayer.Capabilities;
 
 namespace Basil.Application.Multiplayer.Registry;
 
@@ -64,11 +62,6 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>Gets the osu! clients watching the multiplayer lobby, for changing them.</summary>
 	internal ISet<BanchoConnection> MutableWatchers => _watchers;
 
-	bool IScoreBeatmapAcceptance.AcceptsUnknown(UserRecord player, Md5 beatmap)
-	{
-		return _rooms.Values.Any(room => room.AwaitsScore(player, beatmap));
-	}
-
 	Room? IRoomLobbyPort.RoomOf(BanchoConnection player)
 	{
 		return RoomOf(player);
@@ -97,6 +90,11 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	void IRoomLobbyPort.Release(BanchoConnection player, Room room)
 	{
 		Release(player, room);
+	}
+
+	bool IScoreBeatmapAcceptance.AcceptsUnknown(UserRecord player, Md5 beatmap)
+	{
+		return _rooms.Values.Any(room => room.AwaitsScore(player, beatmap));
 	}
 
 	/// <summary>Finds an open room by its id.</summary>

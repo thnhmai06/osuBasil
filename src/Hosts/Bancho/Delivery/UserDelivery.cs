@@ -1,16 +1,18 @@
-using Basil.Domain.Auth;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
+using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Auth;
+using Basil.Domain.Mechanics;
 using Basil.Host.Bancho.Support;
-using Basil.Application.Scores.Persistence;
 using Mediator;
 
 namespace Basil.Host.Bancho.Delivery;
 
 /// <summary>Tells every osu! client that a user came online.</summary>
-internal sealed class UserOnlineDelivery(UserRegistry registry, Outbox outbox, IUserStatsRepository statsRepository,
+internal sealed class UserOnlineDelivery(
+	UserRegistry registry,
+	Outbox outbox,
+	IUserStatsRepository statsRepository,
 	TimeProvider clock) : INotificationHandler<UserConnectionOpened>
 {
 	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken cancellationToken)
@@ -18,7 +20,7 @@ internal sealed class UserOnlineDelivery(UserRegistry registry, Outbox outbox, I
 		if (!notification.CameOnline || notification.Connection.Type is not (SessionType.Osu or SessionType.Bot))
 			return;
 		var user = notification.Connection.User;
-		var stats = await statsRepository.GetAsync(user.Record, user.Bancho?.Status.GameMode ?? Basil.Domain.Mechanics.GameMode.Standard,
+		var stats = await statsRepository.GetAsync(user.Record, user.Bancho?.Status.GameMode ?? GameMode.Standard,
 			cancellationToken);
 		var now = clock.GetUtcNow();
 		outbox.Send(registry.OpenBanchoClients(), writer =>
@@ -30,7 +32,8 @@ internal sealed class UserOnlineDelivery(UserRegistry registry, Outbox outbox, I
 }
 
 /// <summary>Tells every osu! client that a user went offline.</summary>
-internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox) : INotificationHandler<UserConnectionClosed>
+internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
+	: INotificationHandler<UserConnectionClosed>
 {
 	public ValueTask Handle(UserConnectionClosed notification, CancellationToken cancellationToken)
 	{

@@ -1,11 +1,11 @@
 using Basil.Bot;
-using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Persistence;
 using Basil.Host;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using DependencyInjection = Basil.Bot.DependencyInjection;
 
 namespace Basil.ArchitectureTests;
 
@@ -49,7 +49,7 @@ public sealed class CompositionTests
 		services.AddBot();
 		await using var provider = services.BuildServiceProvider();
 
-		var contracts = ModuleAssemblies.Applications.Append(typeof(Bot.DependencyInjection).Assembly)
+		var contracts = ModuleAssemblies.Applications.Append(typeof(DependencyInjection).Assembly)
 			.SelectMany(assembly => assembly.GetTypes())
 			.Where(type => type is { IsClass: true, IsAbstract: false })
 			.SelectMany(type => type.GetInterfaces()

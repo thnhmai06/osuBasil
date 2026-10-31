@@ -91,7 +91,8 @@ public static class SurfaceExtensions
 {
 	/// <summary>Writes text from a cell, cut at the edge of the area.</summary>
 	/// <returns>The column after the last character written.</returns>
-	public static int Text(this IPaintSurface surface, Area area, int column, int row, string text, Tone tone = Tone.Text)
+	public static int Text(this IPaintSurface surface, Area area, int column, int row, string text,
+		Tone tone = Tone.Text)
 	{
 		if (row < 0 || row >= area.Height) return area.X + column;
 

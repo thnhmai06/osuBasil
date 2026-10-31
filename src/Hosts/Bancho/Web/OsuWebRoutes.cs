@@ -5,27 +5,23 @@ using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
-using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Models.Auth;
 using Basil.Protocol.Bancho.Models.Scores;
 using Basil.Protocol.Bancho.Wire.Security;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Basil.Host.Bancho.Web;
 
@@ -48,7 +44,8 @@ internal static class OsuWebRoutes
 		app.MapGet("/web/osu-search-set.php", SearchSetAsync);
 		app.MapGet("/d/{setId}", DownloadAsync);
 		app.MapPost("/users", RegisterAsync);
-		foreach (var stub in new[] { "bancho_connect.php", "check-updates.php", "osu-getseasonal.php", "osu-markasread.php" })
+		foreach (var stub in new[]
+			         { "bancho_connect.php", "check-updates.php", "osu-getseasonal.php", "osu-markasread.php" })
 			app.MapGet("/web/" + stub, () => Results.Text(stub == "osu-getseasonal.php" ? "[]" : string.Empty));
 	}
 
@@ -61,7 +58,8 @@ internal static class OsuWebRoutes
 		IBeatmapRepository beatmaps, IScoreRepository scores, IUserRepository users, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player)
+			return Results.Unauthorized();
 		if (!Md5Text.TryParse(query["c"], out var hash)) return Text("-1|false");
 		if (await beatmaps.GetAsync(hash, ct) is not { } map) return Text("-1|false");
 		_ = int.TryParse(query["mods"], out var mods);
@@ -71,7 +69,8 @@ internal static class OsuWebRoutes
 			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? (GameMods)mods : null, BestPerPlayer: true),
 			new PageRequest(0, 50), ct);
 		var rows = new List<string>();
-		foreach (var (score, index) in page.Items.Where(score => score.Value.Mode == mode).Select((score, i) => (score, i)))
+		foreach (var (score, index) in page.Items.Where(score => score.Value.Mode == mode)
+			         .Select((score, i) => (score, i)))
 			rows.Add(await ScoreRowAsync(score, index, users, ct));
 
 		var lines = new List<string>
@@ -88,7 +87,8 @@ internal static class OsuWebRoutes
 		return int.TryParse(text, out var m) && Enum.IsDefined((GameMode)m) ? (GameMode)m : GameMode.Standard;
 	}
 
-	private static async Task<string> ScoreRowAsync(ScoreRecord score, int index, IUserRepository users, CancellationToken ct)
+	private static async Task<string> ScoreRowAsync(ScoreRecord score, int index, IUserRepository users,
+		CancellationToken ct)
 	{
 		var name = score.Value.UserId is { } id && await users.GetAsync(id, ct) is { } user ? user.Value.Name : "?";
 		var hits = score.Value.HitCounts;
@@ -96,10 +96,12 @@ internal static class OsuWebRoutes
 			$"{score.Id}|{name}|{score.Value.TotalScore}|{score.Value.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.IsFullCombo ? 1 : 0)}|{(int)score.Value.Mods}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
 	}
 
-	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth, CancellationToken ct)
+	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth,
+		CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
 		var (_, friends) = await player.User.ScopeTo(player).Relationships.FriendsAsync(ct);
 		return Text(string.Join('\n', friends.Select(friend => friend.Id)));
 	}
@@ -109,22 +111,19 @@ internal static class OsuWebRoutes
 	{
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null) return Results.Unauthorized();
-		var request = await JsonSerializer.DeserializeAsync<BeatmapInfoBody>(context.Request.Body, cancellationToken: ct)
-		              ?? new BeatmapInfoBody();
+		var request =
+			await JsonSerializer.DeserializeAsync<BeatmapInfoBody>(context.Request.Body, cancellationToken: ct)
+			?? new BeatmapInfoBody();
 		var lines = new List<string>();
 		for (var index = 0; index < request.Filenames.Length; index++)
 		{
-			var page = await beatmaps.ListAsync(new BeatmapQuery(FileName: request.Filenames[index]), new PageRequest(0, 1), ct);
+			var page = await beatmaps.ListAsync(new BeatmapQuery(FileName: request.Filenames[index]),
+				new PageRequest(0, 1), ct);
 			if (page.Items.FirstOrDefault() is { } map)
 				lines.Add($"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)map.Beatmapset.Status}|N|N|N|N|{map.Hash}");
 		}
 
 		return Text(string.Join('\n', lines));
-	}
-
-	private sealed record BeatmapInfoBody
-	{
-		public string[] Filenames { get; init; } = [];
 	}
 
 	private static async Task<IResult> SubmitAsync(HttpContext context, UserRegistry registry, ScoreSubmitter submitter,
@@ -144,18 +143,22 @@ internal static class OsuWebRoutes
 			var ids = form["c1"].ToString().Split('|');
 			var fingerprint = Fingerprint(hash);
 			var beatmapHash = new Md5(data.BeatmapHash);
-			var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0], ids.ElementAtOrDefault(1) ?? string.Empty,
+			var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0],
+				ids.ElementAtOrDefault(1) ?? string.Empty,
 				version[..8], beatmapHash);
 			var known = await beatmaps.GetAsync(beatmapHash, ct);
-			Md5? storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5?)null;
+			var storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5?)null;
 			var submission = ToSubmission(data, beatmapHash);
 			anticheat.Report(client, submission.Flags);
 			await using var replay = OpenReplay(context);
 			var (result, _) = await submitter.ScopeTo(client).SubmitAsync(submission,
 				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay, ct);
-			return Text(result.IsOk ? "beatmapId:0|beatmapSetId:0|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:\n" : "error: no");
+			return Text(result.IsOk
+				? "beatmapId:0|beatmapSetId:0|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:\n"
+				: "error: no");
 		}
-		catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException or OverflowException)
+		catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
+			                           or OverflowException)
 		{
 			return Text("error: no");
 		}
@@ -164,7 +167,8 @@ internal static class OsuWebRoutes
 	private static OsuFingerprint Fingerprint(ClientHash hash)
 	{
 		return new OsuFingerprint(new Md5(hash.OsuPathHash),
-			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash), new NetworkAdapters { Adapters = hash.Adapters, Hash = new Md5(hash.AdaptersHash) });
+			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash),
+			new NetworkAdapters { Adapters = hash.Adapters, Hash = new Md5(hash.AdaptersHash) });
 	}
 
 	private static Submission ToSubmission(ScoreSubmission data, Md5 beatmapHash)
@@ -173,7 +177,8 @@ internal static class OsuWebRoutes
 			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
 			data.TotalScore, (short)data.MaxCombo, (short)data.MaxCombo, ParseGrade(data.Grade), data.IsPassed,
 			data.IsFullCombo, data.Timestamp);
-		return new Submission { Score = score, Flags = (OsuFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
+		return new Submission
+			{ Score = score, Flags = (OsuFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
 	}
 
 	private static Stream? OpenReplay(HttpContext context)
@@ -186,7 +191,8 @@ internal static class OsuWebRoutes
 		return Enum.TryParse<Grade>(grade, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : Grade.N;
 	}
 
-	private static async Task<IResult> GetReplayAsync(HttpContext context, WebAuthentication auth, IScoreRepository scores,
+	private static async Task<IResult> GetReplayAsync(HttpContext context, WebAuthentication auth,
+		IScoreRepository scores,
 		IReplayStorage replays, CancellationToken ct)
 	{
 		var query = context.Request.Query;
@@ -202,18 +208,23 @@ internal static class OsuWebRoutes
 		CancellationToken ct)
 	{
 		var form = await context.Request.ReadFormAsync(ct);
-		if (await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is not { } player)
+			return Results.Unauthorized();
 		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
 		await using var stream = file.OpenReadStream();
 		var (reference, result) = await server.ScopeTo(player).Screenshots.UploadAsync(stream, ct);
-		return result.IsOk ? Text(reference?.ToString() ?? string.Empty) : Text(string.Empty, result.Outcome == ServerOutcome.DimensionsTooLarge ? 413 : 400);
+		return result.IsOk
+			? Text(reference?.ToString() ?? string.Empty)
+			: Text(string.Empty, result.Outcome == ServerOutcome.DimensionsTooLarge ? 413 : 400);
 	}
 
-	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth, IAnticheatReporter anticheat,
+	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth,
+		IAnticheatReporter anticheat,
 		CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player)
+			return Results.Unauthorized();
 		var b = query["b"].ToString();
 		// bancho.py: a leading "a" marks the flags the client detected; the rest is the flag bitmask.
 		if (!b.StartsWith('a') || !int.TryParse(b.AsSpan(1), out var flags)) return Text(string.Empty);
@@ -225,9 +236,10 @@ internal static class OsuWebRoutes
 		IBeatmapsetRepository sets, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
-		var page = await sets.ListAsync(new BeatmapQuery(Text: query["q"]), new PageRequest(0, 100), ct);
+		var page = await sets.ListAsync(new BeatmapQuery(query["q"]), new PageRequest(0, 100), ct);
 		return Text(string.Join('\n', new[] { page.Items.Count.ToString(CultureInfo.InvariantCulture) }
 			.Concat(page.Items.Select(DirectLine))));
 	}
@@ -236,9 +248,11 @@ internal static class OsuWebRoutes
 		IBeatmapsetRepository sets, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
-		if (!int.TryParse(query["s"], out var id) || await sets.GetAsync(id, ct) is not { } set) return Text(string.Empty);
+		if (!int.TryParse(query["s"], out var id) || await sets.GetAsync(id, ct) is not { } set)
+			return Text(string.Empty);
 		return Text(DirectLine(set));
 	}
 
@@ -247,7 +261,8 @@ internal static class OsuWebRoutes
 		IBeatmapsetRepository sets, IBeatmapsetStorage storage, IBeatmapsetMirror mirror, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
+			return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		var withVideo = !setId.EndsWith('n');
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
@@ -261,10 +276,12 @@ internal static class OsuWebRoutes
 	private static string DirectLine(BeatmapsetRecord set)
 	{
 		var meta = set.Metadata;
-		return $"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)set.Status}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
+		return
+			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)set.Status}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
 	}
 
-	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry, ISettingsRepository settings,
+	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry,
+		ISettingsRepository settings,
 		RateLimiter limiter, CancellationToken ct)
 	{
 		var form = await context.Request.ReadFormAsync(ct);
@@ -281,12 +298,20 @@ internal static class OsuWebRoutes
 		var ip = ClientAddress.Resolve(context);
 		if (!limiter.TryAcquire($"register:{ip}", rules.PerIp.Count, rules.PerIp.Window) ||
 		    !limiter.TryAcquire("register:server", rules.PerServer.Count, rules.PerServer.Window))
-			return Results.Json(new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
+			return Results.Json(
+				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
 				statusCode: 429);
 		var (_, error) = await registry.RegisterAsync(
 			new RegisterAttempt(name, new Md5(Encoding.UTF8.GetBytes(password))), ct);
-		return error is null ? Text("ok") : Results.Json(new { form_error = new { user = new { username = new[] { error.ToString() } } } },
-			statusCode: 400);
+		return error is null
+			? Text("ok")
+			: Results.Json(new { form_error = new { user = new { username = new[] { error.ToString() } } } },
+				statusCode: 400);
+	}
+
+	private sealed record BeatmapInfoBody
+	{
+		public string[] Filenames { get; init; } = [];
 	}
 }
 

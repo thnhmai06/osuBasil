@@ -6,14 +6,14 @@ using System.Text;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common.Common;
 using Basil.Application.Users.Capabilities;
-using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
 
 namespace Basil.Application.Users.Registry;
 
@@ -27,11 +27,11 @@ public sealed class UserRegistry
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
 	private readonly AccountService _accounts;
+	private readonly ConcurrentDictionary<Guid, Session> _activity = new();
+	private readonly ConnectionContext _connectionContext;
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
-	private readonly ConcurrentDictionary<Guid, Session> _activity = new();
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
-	private readonly ConnectionContext _connectionContext;
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <summary>Creates the registry that owns online users and their connections.</summary>
@@ -264,7 +264,8 @@ public sealed class UserRegistry
 		};
 	}
 
-	private LoginResult? OpenUnlessRaced(string token, Connection connection, IReadOnlyList<UserRestriction> restrictions)
+	private LoginResult? OpenUnlessRaced(string token, Connection connection,
+		IReadOnlyList<UserRestriction> restrictions)
 	{
 		using (Enter())
 		{
@@ -569,14 +570,18 @@ public sealed class UserRegistry
 		await _context.Sessions.WriteActivityAsync(batch, cancellationToken);
 	}
 
-	/// <summary>Deletes the sessions that ended longer ago than the server settings keep them; the moderation log is never touched.</summary>
+	/// <summary>
+	///     Deletes the sessions that ended longer ago than the server settings keep them; the moderation log is never
+	///     touched.
+	/// </summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many sessions were deleted.</returns>
 	/// <remarks>Run regularly; the server calls it on its own, so it needs no rights.</remarks>
 	public async Task<int> PurgeEndedSessionsAsync(CancellationToken cancellationToken = default)
 	{
 		var retention = (await _context.Settings.GetAsync(cancellationToken)).Sessions.RetentionPeriod;
-		return await _context.Sessions.DeleteEndedBeforeAsync(_context.Clock.GetUtcNow() - retention, cancellationToken);
+		return await _context.Sessions.DeleteEndedBeforeAsync(_context.Clock.GetUtcNow() - retention,
+			cancellationToken);
 	}
 
 	/// <summary>Closes connections of kinds the user may no longer use.</summary>

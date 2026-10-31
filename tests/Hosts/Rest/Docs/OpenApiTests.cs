@@ -19,7 +19,12 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	{
 		var paths = (await DocumentAsync())["paths"]!.AsObject();
 
-		foreach (var command in new[] { "close", "lock", "unlock", "size", "move", "host", "clearhost", "set", "start", "abort", "timer", "aborttimer", "team", "map", "mods", "kick", "ban", "unban", "invite", "password", "name", "private", "addref", "removeref" })
+		foreach (var command in new[]
+		         {
+			         "close", "lock", "unlock", "size", "move", "host", "clearhost", "set", "start", "abort", "timer",
+			         "aborttimer", "team", "map", "mods", "kick", "ban", "unban", "invite", "password", "name",
+			         "private", "addref", "removeref"
+		         })
 			Assert.NotNull(paths[$"/v1/rooms/{{id}}/{command}"]?["post"]);
 	}
 

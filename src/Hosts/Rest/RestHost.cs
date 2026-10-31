@@ -3,7 +3,6 @@ using Basil.Host.Rest.Routes;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Diagnostics;
 using Microsoft.AspNetCore.Cors.Infrastructure;
-using Microsoft.AspNetCore.Http.Json;
 
 namespace Basil.Host.Rest;
 
@@ -45,23 +44,25 @@ public static class RestHost
 	/// <returns><paramref name="app" />, for chaining.</returns>
 	public static IApplicationBuilder UseRest(this IApplicationBuilder app)
 	{
-		app.MapWhen(context => context.Request.Host.Host.StartsWith("api.", StringComparison.OrdinalIgnoreCase), branch =>
-		{
-			branch.UseMiddleware<RestPipeline>();
-			branch.UseCors();
-			branch.UseRouting();
-			branch.UseEndpoints(endpoints =>
+		app.MapWhen(context => context.Request.Host.Host.StartsWith("api.", StringComparison.OrdinalIgnoreCase),
+			branch =>
 			{
-				endpoints.MapRest();
-				endpoints.MapFallback(() => Api.NotFound("No such route."));
+				branch.UseMiddleware<RestPipeline>();
+				branch.UseCors();
+				branch.UseRouting();
+				branch.UseEndpoints(endpoints =>
+				{
+					endpoints.MapRest();
+					endpoints.MapFallback(() => Api.NotFound("No such route."));
+				});
 			});
-		});
 		return app;
 	}
 
 	private static void MapRest(this IEndpointRouteBuilder app)
 	{
-		app.MapGet("/health", () => Api.Ok("healthy")).WithTags("Operations").WithSummary("Check that the server answers.");
+		app.MapGet("/health", () => Api.Ok("healthy")).WithTags("Operations")
+			.WithSummary("Check that the server answers.");
 		app.MapDocs();
 		var v1 = app.MapGroup("/v1");
 		v1.MapAuth();

@@ -1,4 +1,3 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Mechanics;
 
@@ -9,7 +8,7 @@ public interface IBeatmapMirrorSettings
 {
 	/// <summary>Gets the search and download endpoints in effect for the request.</summary>
 	/// <param name="cancellationToken">A token that cancels the read.</param>
-	/// <returns>The search endpoint followed by the download endpoint; either may be <see langword="null"/>.</returns>
+	/// <returns>The search endpoint followed by the download endpoint; either may be <see langword="null" />.</returns>
 	Task<(Uri? SearchEndpoint, Uri? DownloadEndpoint)> GetAsync(CancellationToken cancellationToken = default);
 }
 

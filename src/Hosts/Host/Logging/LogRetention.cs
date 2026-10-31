@@ -1,5 +1,4 @@
 using Basil.Host.Configuration;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Logging;
@@ -37,7 +36,10 @@ public static class LogRetention
 }
 
 /// <summary>Runs the log retention when the server starts and then every six hours.</summary>
-internal sealed class LogRetentionJob(IOptionsMonitor<LoggingOptions> options, TimeProvider time, ILogger<LogRetentionJob> logger)
+internal sealed class LogRetentionJob(
+	IOptionsMonitor<LoggingOptions> options,
+	TimeProvider time,
+	ILogger<LogRetentionJob> logger)
 	: BackgroundService
 {
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)

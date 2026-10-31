@@ -10,12 +10,15 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 
 	public DbSet<BeatmapsetRow> Beatmapsets => Set<BeatmapsetRow>();
 	public DbSet<BeatmapRow> Beatmaps => Set<BeatmapRow>();
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	static string IDatabaseContext<BeatmapsDbContext>.HistoryTable => "__ef_migrations_beatmaps";
 
-	static BeatmapsDbContext IDatabaseContext<BeatmapsDbContext>.Create(DbContextOptions<BeatmapsDbContext> options) =>
-		new(options);
+	static BeatmapsDbContext IDatabaseContext<BeatmapsDbContext>.Create(DbContextOptions<BeatmapsDbContext> options)
+	{
+		return new BeatmapsDbContext(options);
+	}
+
+	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

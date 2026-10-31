@@ -1,12 +1,10 @@
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Storage;
-using Basil.Domain.Users;
-using Basil.Domain.Beatmaps;
+using Basil.Domain.Content;
 
 namespace Basil.Host.Rest.Images;
 
@@ -22,7 +20,9 @@ public sealed partial class AvatarProvider(IUserRepository users, IUserAvatarSto
 		    await avatars.OpenAsync(user, cancellationToken) is { } own)
 			return own;
 
-		return typeof(AvatarProvider).Assembly.GetManifestResourceStream(id == 1 ? "Avatars.basil.png" : "Avatars.default.png");
+		return typeof(AvatarProvider).Assembly.GetManifestResourceStream(id == 1
+			? "Avatars.basil.png"
+			: "Avatars.default.png");
 	}
 
 	[GeneratedRegex(@"^/(\d+)$")]
@@ -30,7 +30,9 @@ public sealed partial class AvatarProvider(IUserRepository users, IUserAvatarSto
 }
 
 /// <summary>Menu banners, seasonal backgrounds and the icon on <c>assets.&lt;domain&gt;/menu/...</c>.</summary>
-public sealed partial class MenuImageProvider(IMenuBannerStorage banners, IMenuSeasonalsStorage seasonals,
+public sealed partial class MenuImageProvider(
+	IMenuBannerStorage banners,
+	IMenuSeasonalsStorage seasonals,
 	IMenuIconStorage icon) : StreamImageProvider("assets", path => MenuPath().IsMatch(path.Value ?? ""))
 {
 	/// <inheritdoc />
@@ -48,8 +50,8 @@ public sealed partial class MenuImageProvider(IMenuBannerStorage banners, IMenuS
 		};
 	}
 
-	internal static async Task<Stream?> OpenNamedAsync(IEnumerable<Domain.Content.ContentReference> list, string name,
-		Func<Domain.Content.ContentReference, CancellationToken, Task<Stream?>> open, CancellationToken cancellationToken)
+	internal static async Task<Stream?> OpenNamedAsync(IEnumerable<ContentReference> list, string name,
+		Func<ContentReference, CancellationToken, Task<Stream?>> open, CancellationToken cancellationToken)
 	{
 		foreach (var reference in list)
 			if (Path.GetFileName(reference.Value).Equals(name, StringComparison.OrdinalIgnoreCase))
@@ -84,7 +86,9 @@ public sealed partial class ScreenshotProvider(IScreenshotStorage screenshots)
 }
 
 /// <summary>Beatmapset thumbnails and covers; a hidden set shows nothing, because every image is public.</summary>
-public sealed partial class BeatmapImageProvider(IBeatmapsetRepository sets, IBeatmapRepository beatmaps,
+public sealed partial class BeatmapImageProvider(
+	IBeatmapsetRepository sets,
+	IBeatmapRepository beatmaps,
 	IBeatmapsetStorage storage) : StreamImageProvider("assets", path => CoverPath().IsMatch(path.Value ?? ""))
 {
 	private static readonly Dictionary<string, (int Width, int Height)> Variants = new()
@@ -122,7 +126,8 @@ public sealed partial class BeatmapImageProvider(IBeatmapsetRepository sets, IBe
 			.FirstOrDefault(b => b.Visible && b.Assets.BackgroundFile is not null);
 		return map is null
 			? null
-			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!, cancellationToken);
+			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,
+				cancellationToken);
 	}
 
 	[GeneratedRegex(@"^/beatmapsets/(?<id>\d+)/covers/(?<variant>[a-z]+)\.jpg$")]
@@ -130,7 +135,9 @@ public sealed partial class BeatmapImageProvider(IBeatmapsetRepository sets, IBe
 }
 
 /// <summary>Beatmapset thumbnails on <c>b.&lt;domain&gt;/thumb/{id}.jpg</c>, the fixed paths of the game client.</summary>
-public sealed partial class BeatmapThumbnailProvider(IBeatmapsetRepository sets, IBeatmapRepository beatmaps,
+public sealed partial class BeatmapThumbnailProvider(
+	IBeatmapsetRepository sets,
+	IBeatmapRepository beatmaps,
 	IBeatmapsetStorage storage) : StreamImageProvider("b", path => ThumbPath().IsMatch(path.Value ?? ""))
 {
 	/// <summary>Finds the crop size a thumbnail path asks for.</summary>
@@ -155,7 +162,8 @@ public sealed partial class BeatmapThumbnailProvider(IBeatmapsetRepository sets,
 			.FirstOrDefault(b => b.Visible && b.Assets.BackgroundFile is not null);
 		return map is null
 			? null
-			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!, cancellationToken);
+			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,
+				cancellationToken);
 	}
 
 	[GeneratedRegex(@"^/thumb/(?<id>\d+)(?<large>l)?\.jpg$")]

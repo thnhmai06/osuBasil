@@ -1,9 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
@@ -169,7 +168,8 @@ internal sealed class PostgresBeatmapsetRepository(
 		return stored;
 	}
 
-	private static async Task<StoredSet> StoreOneAsync(BeatmapsetRecord? existing, BeatmapsetData data, DateTimeOffset now,
+	private static async Task<StoredSet> StoreOneAsync(BeatmapsetRecord? existing, BeatmapsetData data,
+		DateTimeOffset now,
 		IReadOnlySet<int> releasable, BeatmapsDbContext context, CancellationToken token)
 	{
 		var knownId = existing?.Id ?? data.OnlineId;

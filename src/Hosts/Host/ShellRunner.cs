@@ -1,11 +1,6 @@
-using Basil.Host.Cli;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
-using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Workers;
 using Basil.Infrastructure.Common.Storage;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host;
@@ -25,7 +20,8 @@ public static class ShellRunner
 	{
 		if (args.Length == 0 || args[0].StartsWith('-')) return false;
 
-		return CommandCatalogFactory.Create().All.Any(command => command.Words[0].Equals(args[0], StringComparison.OrdinalIgnoreCase));
+		return CommandCatalogFactory.Create().All
+			.Any(command => command.Words[0].Equals(args[0], StringComparison.OrdinalIgnoreCase));
 	}
 
 	/// <summary>Runs the command.</summary>
@@ -35,7 +31,8 @@ public static class ShellRunner
 	/// <param name="input">Where the confirmation is read from (default: the console).</param>
 	/// <param name="cancellationToken">A token that cancels the command.</param>
 	/// <returns>The exit code of the command.</returns>
-	public static async Task<int> RunAsync(string[] args, Action<WebApplicationBuilder>? configure = null, TextWriter? output = null,
+	public static async Task<int> RunAsync(string[] args, Action<WebApplicationBuilder>? configure = null,
+		TextWriter? output = null,
 		TextReader? input = null, CancellationToken cancellationToken = default)
 	{
 		output ??= Console.Out;
@@ -54,7 +51,8 @@ public static class ShellRunner
 			return ExitCodes.Invalid;
 		}
 
-		var path = ControlSocket.PathIn(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory);
+		var path = ControlSocket.PathIn(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value
+			.DataDirectory);
 		using (var running = await ControlClient.ConnectAsync(path, cancellationToken))
 		{
 			if (running is not null) return await ForwardAsync(running, parsed, args, output, input, cancellationToken);
@@ -70,17 +68,20 @@ public static class ShellRunner
 		if (!parsed.Command.NeedsStorage)
 			return await runner.RunAsync(args, new PlainOutput(output), false, null, cancellationToken);
 
-		var started = app.Services.GetServices<IHostedService>().Where(service => OfflineServices.Contains(service.GetType().Name)).ToList();
+		var started = app.Services.GetServices<IHostedService>()
+			.Where(service => OfflineServices.Contains(service.GetType().Name)).ToList();
 		return await RunWithServicesAsync(runner, started, args, output, cancellationToken);
 	}
 
-	private static async Task<int> ForwardAsync(ControlConnection running, ParsedCommand parsed, string[] args, TextWriter output,
+	private static async Task<int> ForwardAsync(ControlConnection running, ParsedCommand parsed, string[] args,
+		TextWriter output,
 		TextReader input, CancellationToken cancellationToken)
 	{
 		var forwarded = args;
 		if (IsShutdown(parsed) && !parsed.Options.ContainsKey("now"))
 		{
-			if (!await ConfirmAsync(output, input, $"Really {(parsed.Command.Words[0] == "restart" ? "restart" : "shut down")} the server?"))
+			if (!await ConfirmAsync(output, input,
+				    $"Really {(parsed.Command.Words[0] == "restart" ? "restart" : "shut down")} the server?"))
 			{
 				await output.WriteLineAsync("Cancelled.");
 				return ExitCodes.Declined;
@@ -92,7 +93,8 @@ public static class ShellRunner
 		return await running.RunAsync(forwarded, output, cancellationToken);
 	}
 
-	private static async Task<int> RunWithServicesAsync(CommandRunner runner, List<IHostedService> started, string[] args,
+	private static async Task<int> RunWithServicesAsync(CommandRunner runner, List<IHostedService> started,
+		string[] args,
 		TextWriter output, CancellationToken cancellationToken)
 	{
 		var lifecycle = started.OfType<IHostedLifecycleService>().ToList();

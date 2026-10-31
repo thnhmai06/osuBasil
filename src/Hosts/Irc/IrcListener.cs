@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Host.Irc.Support;
@@ -64,7 +63,7 @@ internal sealed class IrcListener(
 				tcp = await _listener!.AcceptTcpClientAsync(stoppingToken);
 			}
 			catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or
-				                          SocketException { SocketErrorCode: SocketError.OperationAborted })
+				                           SocketException { SocketErrorCode: SocketError.OperationAborted })
 			{
 				return;
 			}
@@ -104,7 +103,8 @@ internal sealed class IrcListener(
 		var counted = _perAddress.AddOrUpdate(session.Address, 1, (_, count) => count + 1);
 		var stream = tcp.GetStream();
 		var writer = session.WriteAsync(stream, CancellationToken.None);
-		using var deadline = session.Every(() => CloseIfUnregistered(session), RegistrationDeadline, Timeout.InfiniteTimeSpan);
+		using var deadline = session.Every(() => CloseIfUnregistered(session), RegistrationDeadline,
+			Timeout.InfiniteTimeSpan);
 		using var ping = session.Every(() => PingIfRegistered(session), KeepAlive, KeepAlive);
 		try
 		{

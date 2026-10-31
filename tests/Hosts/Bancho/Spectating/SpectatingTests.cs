@@ -19,11 +19,14 @@ public sealed class SpectatingTests(BanchoHostFixture fixture)
 		await second.LoginAsync();
 
 		await first.SendAsync(writer => writer.Int(OsuClient.Out.StartSpectating, host.LoginCode));
-		Assert.NotNull(await host.WaitForAsync(OsuClient.In.SpectatorJoined, packet => packet.AsInt() == first.LoginCode));
+		Assert.NotNull(await host.WaitForAsync(OsuClient.In.SpectatorJoined,
+			packet => packet.AsInt() == first.LoginCode));
 		await second.SendAsync(writer => writer.Int(OsuClient.Out.StartSpectating, host.LoginCode));
 
-		Assert.NotNull(await first.WaitForAsync(OsuClient.In.FellowSpectatorJoined, packet => packet.AsInt() == second.LoginCode));
-		Assert.NotNull(await second.WaitForAsync(OsuClient.In.FellowSpectatorJoined, packet => packet.AsInt() == first.LoginCode));
+		Assert.NotNull(await first.WaitForAsync(OsuClient.In.FellowSpectatorJoined,
+			packet => packet.AsInt() == second.LoginCode));
+		Assert.NotNull(await second.WaitForAsync(OsuClient.In.FellowSpectatorJoined,
+			packet => packet.AsInt() == first.LoginCode));
 	}
 
 	[Fact]
@@ -72,7 +75,8 @@ public sealed class SpectatingTests(BanchoHostFixture fixture)
 
 		await spectator.SendAsync(writer => writer.Packet(OsuClient.Out.StopSpectating));
 
-		Assert.NotNull(await host.WaitForAsync(OsuClient.In.SpectatorLeft, packet => packet.AsInt() == spectator.LoginCode));
+		Assert.NotNull(await host.WaitForAsync(OsuClient.In.SpectatorLeft,
+			packet => packet.AsInt() == spectator.LoginCode));
 	}
 
 	[Fact]
@@ -87,6 +91,7 @@ public sealed class SpectatingTests(BanchoHostFixture fixture)
 
 		await spectator.SendAsync(writer => writer.Packet(OsuClient.Out.CantSpectate));
 
-		Assert.NotNull(await host.WaitForAsync(OsuClient.In.SpectatorCantSpectate, packet => packet.AsInt() == spectator.LoginCode));
+		Assert.NotNull(await host.WaitForAsync(OsuClient.In.SpectatorCantSpectate,
+			packet => packet.AsInt() == spectator.LoginCode));
 	}
 }

@@ -19,14 +19,18 @@ public static class HostLabels
 	/// <summary>Chooses the label of a request.</summary>
 	/// <param name="host">The host name the request was sent to.</param>
 	/// <param name="domain">The configured public domain.</param>
-	/// <returns>The sub-domain when <paramref name="host" /> is a known sub-domain of <paramref name="domain" />, <see cref="Domain" /> for the domain itself, otherwise <see cref="Other" />.</returns>
+	/// <returns>
+	///     The sub-domain when <paramref name="host" /> is a known sub-domain of <paramref name="domain" />,
+	///     <see cref="Domain" /> for the domain itself, otherwise <see cref="Other" />.
+	/// </returns>
 	public static string Resolve(string? host, string domain)
 	{
 		if (string.IsNullOrEmpty(host)) return Other;
 		if (host.Equals(domain, StringComparison.OrdinalIgnoreCase)) return Domain;
 
 		foreach (var sub in SubDomains)
-			if (host.Length == sub.Length + 1 + domain.Length && host.StartsWith(sub, StringComparison.OrdinalIgnoreCase) &&
+			if (host.Length == sub.Length + 1 + domain.Length &&
+			    host.StartsWith(sub, StringComparison.OrdinalIgnoreCase) &&
 			    host[sub.Length] == '.' && host.EndsWith(domain, StringComparison.OrdinalIgnoreCase))
 				return sub;
 

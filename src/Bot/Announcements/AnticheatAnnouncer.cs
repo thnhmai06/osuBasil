@@ -1,10 +1,8 @@
 using Basil.Application.Anticheat.Objects.Events;
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Bot.Replies;
 using Basil.Domain.Client;

@@ -1,5 +1,6 @@
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -110,8 +111,8 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 		Assert.Equal(rename, room.Settings.Name);
 		Assert.Equal("hunter2", room.Settings.Password);
 		Assert.True(room.Settings.IsPrivate);
-		Assert.Equal(Basil.Domain.Mechanics.GameTeamType.TeamVs, room.Settings.MatchSettings.TeamType);
-		Assert.Equal(Basil.Domain.Mechanics.GameWinCondition.Accuracy, room.Settings.MatchSettings.WinCondition);
+		Assert.Equal(GameTeamType.TeamVs, room.Settings.MatchSettings.TeamType);
+		Assert.Equal(GameWinCondition.Accuracy, room.Settings.MatchSettings.WinCondition);
 	}
 
 	[Fact]
@@ -133,7 +134,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 		var (code, _) = await fixture.RunAsync($"rooms {id} mods --mods HD,DT");
 
 		Assert.Equal(0, code);
-		Assert.Equal(Basil.Domain.Mechanics.GameMods.Hidden | Basil.Domain.Mechanics.GameMods.DoubleTime, Lobby.Rooms[id].Settings.MatchSettings.Mods);
+		Assert.Equal(GameMods.Hidden | GameMods.DoubleTime, Lobby.Rooms[id].Settings.MatchSettings.Mods);
 	}
 
 	[Fact]
@@ -186,12 +187,12 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 		var id = await OpenRoomAsync(name);
 		var matchId = Lobby.Rooms[id].Match.Id;
 
-		var (_, listed) = await fixture.RunAsync($"matches list --query ended:false");
+		var (_, listed) = await fixture.RunAsync("matches list --query ended:false");
 		var (code, shown) = await fixture.RunAsync($"matches {matchId}");
 
 		Assert.Contains(name, listed);
 		Assert.Equal(0, code);
-		Assert.Contains($"id:", shown);
+		Assert.Contains("id:", shown);
 		Assert.Contains("entries:", shown);
 		Assert.Equal(1, (await fixture.RunAsync("matches 999999")).Code);
 	}

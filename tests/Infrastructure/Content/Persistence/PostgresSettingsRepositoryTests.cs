@@ -36,7 +36,8 @@ public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container
 				Rounds = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.FromSeconds(4) }
 			},
 			Bot = new ServerSettings.BotSettings { CommandPrefix = "?" },
-			RateLimits = new ServerSettings.RateLimitSettings { Chat = new ServerSettings.Limit(3, TimeSpan.FromSeconds(2)) },
+			RateLimits = new ServerSettings.RateLimitSettings
+				{ Chat = new ServerSettings.Limit(3, TimeSpan.FromSeconds(2)) },
 			Uploads = new ServerSettings.UploadSettings { AvatarMaxSide = 512 },
 			Cors = new ServerSettings.CorsSettings { AllowedOrigins = ["https://example.com"] },
 			MenuIcon = new ServerSettings.MenuIconSettings
@@ -82,7 +83,8 @@ public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container
 	[Fact]
 	public async Task The_settings_are_stored_when_storing_them_returns()
 	{
-		var settings = new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "Welcome to the server." } };
+		var settings = new ServerSettings
+			{ General = new ServerSettings.GeneralSettings { Motd = "Welcome to the server." } };
 
 		await Settings.CreateOrUpdateAsync(settings, TestContext.Current.CancellationToken);
 

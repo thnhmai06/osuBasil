@@ -213,14 +213,18 @@ public static class UserPermissionsGroups
 		UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomObserve |
 		UserPermissions.RoomManageViewPrivate |
 		UserPermissions.RoomManageAny | UserPermissions.RoomManageCreateUnlimited | UserPermissions.ChatPost |
-		UserPermissions.ChatPostPrivate | UserPermissions.ChatManagePostAnyRoom | UserPermissions.ChatManageMessageAnyone |
-		UserPermissions.ChatManageAnnounce | UserPermissions.ChatManageChannels | UserPermissions.SpectatingWatch | UserPermissions.ScoreSubmit |
-		UserPermissions.BeatmapsetUpload | UserPermissions.BeatmapsetDirect | UserPermissions.BeatmapsetManageViewHidden |
+		UserPermissions.ChatPostPrivate | UserPermissions.ChatManagePostAnyRoom |
+		UserPermissions.ChatManageMessageAnyone |
+		UserPermissions.ChatManageAnnounce | UserPermissions.ChatManageChannels | UserPermissions.SpectatingWatch |
+		UserPermissions.ScoreSubmit |
+		UserPermissions.BeatmapsetUpload | UserPermissions.BeatmapsetDirect |
+		UserPermissions.BeatmapsetManageViewHidden |
 		UserPermissions.BeatmapsetManage | UserPermissions.ScreenshotUpload | UserPermissions.ScreenshotManage |
 		UserPermissions.UserManageNote | UserPermissions.UserManageSilence | UserPermissions.UserManageViewSessions |
 		UserPermissions.UserManageRestrict |
 		UserPermissions.UserManageViewDeleted | UserPermissions.UserManage | UserPermissions.UserManagePermissions |
-		UserPermissions.ServerManageSettings | UserPermissions.ServerManageDiagnostics | UserPermissions.ServerManageContent;
+		UserPermissions.ServerManageSettings | UserPermissions.ServerManageDiagnostics |
+		UserPermissions.ServerManageContent;
 
 	/// <summary>The permissions a new account holds.</summary>
 	public static readonly UserPermissions Default =

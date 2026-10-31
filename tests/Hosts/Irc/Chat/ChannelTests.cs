@@ -289,7 +289,10 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
 		var before = await settings.GetAsync();
-		await settings.CreateOrUpdateAsync(before with { General = new ServerSettings.GeneralSettings { Motd = "first line\nsecond line" } });
+		await settings.CreateOrUpdateAsync(before with
+		{
+			General = new ServerSettings.GeneralSettings { Motd = "first line\nsecond line" }
+		});
 		try
 		{
 			using var irc = await Host.SignInAsync("MoMotdSet");

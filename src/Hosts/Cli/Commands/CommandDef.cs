@@ -32,16 +32,30 @@ public enum OptionKind : byte
 /// <param name="Required">Whether the command cannot run without it.</param>
 /// <param name="Alias">An optional one-letter short name.</param>
 /// <param name="Secret">Whether the value is a password or a key, masked wherever the command is recorded.</param>
-public sealed record OptionDef(string Name, string Description, OptionKind Kind = OptionKind.Text, bool Required = false,
-	string? Alias = null, bool Secret = false);
+public sealed record OptionDef(
+	string Name,
+	string Description,
+	OptionKind Kind = OptionKind.Text,
+	bool Required = false,
+	string? Alias = null,
+	bool Secret = false);
 
-/// <summary>A console command: where it is typed, which API route it mirrors, whether it needs the server, and what it does.</summary>
+/// <summary>
+///     A console command: where it is typed, which API route it mirrors, whether it needs the server, and what it
+///     does.
+/// </summary>
 public sealed class CommandDef
 {
-	/// <summary>Gets the words of the command; <c>&lt;id:int&gt;</c> stands for a value, such as <c>users &lt;id:int&gt; set</c>.</summary>
+	/// <summary>
+	///     Gets the words of the command; <c>&lt;id:int&gt;</c> stands for a value, such as
+	///     <c>users &lt;id:int&gt; set</c>.
+	/// </summary>
 	public required string Pattern { get; init; }
 
-	/// <summary>Gets the HTTP route this command mirrors (<c>GET /v1/users</c>), or <see langword="null" /> for a console-only command.</summary>
+	/// <summary>
+	///     Gets the HTTP route this command mirrors (<c>GET /v1/users</c>), or <see langword="null" /> for a console-only
+	///     command.
+	/// </summary>
 	public string? Route { get; init; }
 
 	/// <summary>Gets additional routes the same command covers.</summary>
@@ -50,7 +64,10 @@ public sealed class CommandDef
 	/// <summary>Gets a value that indicates whether the command runs with the server stopped (the P column).</summary>
 	public bool Offline { get; init; }
 
-	/// <summary>Gets a value that indicates whether running the command offline needs the storage started (<c>help</c> does not).</summary>
+	/// <summary>
+	///     Gets a value that indicates whether running the command offline needs the storage started (<c>help</c> does
+	///     not).
+	/// </summary>
 	public bool NeedsStorage { get; init; } = true;
 
 	/// <summary>Gets a value that indicates whether the command only makes sense in the dashboard.</summary>
@@ -62,7 +79,10 @@ public sealed class CommandDef
 	/// <summary>Gets the options of the command.</summary>
 	public IReadOnlyList<OptionDef> Options { get; init; } = [];
 
-	/// <summary>Gets a value that indicates whether the command takes any <c>--field.path value</c> besides its listed options.</summary>
+	/// <summary>
+	///     Gets a value that indicates whether the command takes any <c>--field.path value</c> besides its listed
+	///     options.
+	/// </summary>
 	public bool OpenOptions { get; init; }
 
 	/// <summary>Gets what the command does.</summary>

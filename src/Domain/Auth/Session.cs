@@ -7,8 +7,8 @@ namespace Basil.Domain.Auth;
 /// <summary>A persistent record of one client session.</summary>
 public sealed class Session
 {
-	private DateTimeOffset? _lastActiveAt;
 	private DateTimeOffset? _expiresAt;
+	private DateTimeOffset? _lastActiveAt;
 
 	/// <summary>Gets the public identifier of this session.</summary>
 	public required Guid Id { get; init; }

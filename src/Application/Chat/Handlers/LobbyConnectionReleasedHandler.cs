@@ -1,7 +1,7 @@
+using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Registry;
 using Mediator;
-using Basil.Application.Chat.Registry;
 
 namespace Basil.Application.Chat.Handlers;
 

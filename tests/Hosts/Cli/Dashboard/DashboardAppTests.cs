@@ -16,65 +16,34 @@ namespace Basil.Host.Cli.Tests.Dashboard;
 [Collection("CLI host")]
 public sealed partial class DashboardAppTests(CliFixture fixture)
 {
-	private sealed class Lifetime : IHostApplicationLifetime
-	{
-		public int Stops;
-		public CancellationToken ApplicationStarted => CancellationToken.None;
-		public CancellationToken ApplicationStopping => CancellationToken.None;
-		public CancellationToken ApplicationStopped => CancellationToken.None;
-
-		public void StopApplication()
-		{
-			Interlocked.Increment(ref Stops);
-		}
-	}
-
 	[GeneratedRegex(@"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)")]
 	private static partial Regex Ansi();
-
-	private sealed class Running : IAsyncDisposable
-	{
-		public required InMemoryTerminalBackend Backend { get; init; }
-		public required Thread Thread { get; init; }
-		public required CancellationTokenSource Stop { get; init; }
-		public required Lifetime Lifetime { get; init; }
-		public required DashboardModel Model { get; init; }
-
-		public string Screen => Ansi().Replace(Backend.GetOutText(), string.Empty);
-
-		public async ValueTask DisposeAsync()
-		{
-			await Stop.CancelAsync();
-			Thread.Join(TimeSpan.FromSeconds(10));
-		}
-	}
 
 	private Running Start(int width = 140, int height = 40)
 	{
 		var backend = new InMemoryTerminalBackend(new TerminalSize(width, height), new TerminalCapabilities
 		{
-			AnsiEnabled = true, ColorLevel = TerminalColorLevel.TrueColor, IsOutputRedirected = false, IsInputRedirected = false,
-			SupportsAlternateScreen = true, SupportsRawMode = true, SupportsCursorVisibility = true, SupportsWindowSize = true
+			AnsiEnabled = true, ColorLevel = TerminalColorLevel.TrueColor, IsOutputRedirected = false,
+			IsInputRedirected = false,
+			SupportsAlternateScreen = true, SupportsRawMode = true, SupportsCursorVisibility = true,
+			SupportsWindowSize = true
 		});
 		var terminal = Terminal.Initialize(backend, new TerminalOptions { TreatControlCAsInput = true }, true);
 		var services = fixture.Host.Services;
 		var model = new DashboardModel { Log = new LogBuffer(TimeProvider.System), Chat = new ChatFeed() };
 		var lifetime = new Lifetime();
-		var shutdown = new ShutdownController(new CtrlCMachine(TimeProvider.System, CliMode.Full), lifetime, NullLogger<ShutdownController>.Instance, _ => { });
+		var shutdown = new ShutdownController(new CtrlCMachine(TimeProvider.System, CliMode.Full), lifetime,
+			NullLogger<ShutdownController>.Instance, _ => { });
 		var catalog = services.GetRequiredService<CommandCatalog>();
 		var app = new DashboardApp(model, new DashboardRenderer(model, new ViewFormatter(TimeZoneInfo.Utc)),
 			new DashboardSampler(services, model, TimeProvider.System), services.GetRequiredService<CommandRunner>(),
-			new CommandSuggestions(catalog, new FixedIds()), shutdown, new ThemeStore(Path.Combine(Path.GetTempPath(), "dash-" + Guid.NewGuid().ToString("N"))),
+			new CommandSuggestions(catalog, new FixedIds()), shutdown,
+			new ThemeStore(Path.Combine(Path.GetTempPath(), "dash-" + Guid.NewGuid().ToString("N"))),
 			CliMode.Full, TimeProvider.System, NullLogger<DashboardApp>.Instance);
 		var stop = new CancellationTokenSource();
 		var thread = new Thread(() => app.Run(terminal, stop.Token)) { IsBackground = true };
 		thread.Start();
 		return new Running { Backend = backend, Thread = thread, Stop = stop, Lifetime = lifetime, Model = model };
-	}
-
-	private sealed class FixedIds : ISuggestionSource
-	{
-		public IEnumerable<string> Ids(string resource) => [];
 	}
 
 	// The terminal runs on a thread of its own, so a test can only wait for it by looking again; the wait is bounded.
@@ -96,7 +65,8 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	{
 		await using var run = Start();
 
-		Assert.True(await WaitAsync(() => run.Screen.Contains("Overview") && run.Screen.Contains("Metrics")), run.Screen);
+		Assert.True(await WaitAsync(() => run.Screen.Contains("Overview") && run.Screen.Contains("Metrics")),
+			run.Screen);
 		Assert.Contains("❯", run.Screen);
 	}
 
@@ -145,10 +115,50 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 		await using var run = Start();
 		await WaitAsync(() => run.Screen.Contains("Overview"));
 
-		run.Backend.PushEvent(new TerminalKeyEvent { Key = TerminalKey.Unknown, Char = 'c', Modifiers = TerminalModifiers.Ctrl });
+		run.Backend.PushEvent(new TerminalKeyEvent
+			{ Key = TerminalKey.Unknown, Char = 'c', Modifiers = TerminalModifiers.Ctrl });
 		Assert.True(await WaitAsync(() => run.Model.Notice.StartsWith("Press Ctrl+C again within 3 seconds")));
-		run.Backend.PushEvent(new TerminalKeyEvent { Key = TerminalKey.Unknown, Char = 'c', Modifiers = TerminalModifiers.Ctrl });
+		run.Backend.PushEvent(new TerminalKeyEvent
+			{ Key = TerminalKey.Unknown, Char = 'c', Modifiers = TerminalModifiers.Ctrl });
 
 		Assert.True(await WaitAsync(() => run.Lifetime.Stops == 1));
+	}
+
+	private sealed class Lifetime : IHostApplicationLifetime
+	{
+		public int Stops;
+		public CancellationToken ApplicationStarted => CancellationToken.None;
+		public CancellationToken ApplicationStopping => CancellationToken.None;
+		public CancellationToken ApplicationStopped => CancellationToken.None;
+
+		public void StopApplication()
+		{
+			Interlocked.Increment(ref Stops);
+		}
+	}
+
+	private sealed class Running : IAsyncDisposable
+	{
+		public required InMemoryTerminalBackend Backend { get; init; }
+		public required Thread Thread { get; init; }
+		public required CancellationTokenSource Stop { get; init; }
+		public required Lifetime Lifetime { get; init; }
+		public required DashboardModel Model { get; init; }
+
+		public string Screen => Ansi().Replace(Backend.GetOutText(), string.Empty);
+
+		public async ValueTask DisposeAsync()
+		{
+			await Stop.CancelAsync();
+			Thread.Join(TimeSpan.FromSeconds(10));
+		}
+	}
+
+	private sealed class FixedIds : ISuggestionSource
+	{
+		public IEnumerable<string> Ids(string resource)
+		{
+			return [];
+		}
 	}
 }

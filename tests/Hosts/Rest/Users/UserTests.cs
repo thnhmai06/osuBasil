@@ -208,7 +208,8 @@ public sealed class UserTests(RestHostFixture fixture)
 		var other = await fixture.Host.CreateUserAsync("SessListOther");
 		using (client)
 		{
-			var (own, envelope) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}/sessions?state=online&types=8");
+			var (own, envelope) =
+				await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}/sessions?state=online&types=8");
 			var (foreign, _) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{other.Id}/sessions");
 
 			Assert.Equal(200, own);

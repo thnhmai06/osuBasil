@@ -67,5 +67,17 @@ public readonly record struct SpectatorFrame(byte ButtonState, byte TaikoByte, f
 /// <param name="CurrentCombo">The current combo.</param>
 /// <param name="Perfect">Whether the play is perfect so far.</param>
 /// <param name="CurrentHp">The player's health, from 0 to 254.</param>
-public readonly record struct SpectatorScore(int Time, int Id, int Num300, int Num100, int Num50, int NumGeki,
-	int NumKatu, int NumMiss, int TotalScore, int MaxCombo, int CurrentCombo, bool Perfect, int CurrentHp);
+public readonly record struct SpectatorScore(
+	int Time,
+	int Id,
+	int Num300,
+	int Num100,
+	int Num50,
+	int NumGeki,
+	int NumKatu,
+	int NumMiss,
+	int TotalScore,
+	int MaxCombo,
+	int CurrentCombo,
+	bool Perfect,
+	int CurrentHp);

@@ -4,20 +4,42 @@ using Basil.Domain.Mechanics;
 namespace Basil.Host.Shared.Views;
 
 /// <summary>A beatmapset as the API shows it.</summary>
-public sealed record SetView(int Id, string Artist, string Title, string Creator, BeatmapsetStatus Status,
-	bool Visible, bool Locked, bool HasStoryboard, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt)
+public sealed record SetView(
+	int Id,
+	string Artist,
+	string Title,
+	string Creator,
+	BeatmapsetStatus Status,
+	bool Visible,
+	bool Locked,
+	bool HasStoryboard,
+	DateTimeOffset CreatedAt,
+	DateTimeOffset UpdatedAt)
 {
 	/// <summary>Describes a beatmapset.</summary>
 	public static SetView Of(BeatmapsetRecord set)
 	{
-		return new SetView(set.Id, set.Metadata.Artist, set.Metadata.Title, set.Metadata.Creator, set.Status, set.Visible,
+		return new SetView(set.Id, set.Metadata.Artist, set.Metadata.Title, set.Metadata.Creator, set.Status,
+			set.Visible,
 			set.Locked, set.Assets.HasStoryboard, set.CreatedAt, set.UpdatedAt);
 	}
 }
 
 /// <summary>A beatmap as the API shows it; <c>Set</c> is the set it belongs to.</summary>
-public sealed record BeatmapView(int Id, string Version, GameMode Mode, double Stars, double Bpm, double Ar,
-	double Cs, double Od, double Hp, double LengthSeconds, bool Visible, bool Locked, SetView? Set)
+public sealed record BeatmapView(
+	int Id,
+	string Version,
+	GameMode Mode,
+	double Stars,
+	double Bpm,
+	double Ar,
+	double Cs,
+	double Od,
+	double Hp,
+	double LengthSeconds,
+	bool Visible,
+	bool Locked,
+	SetView? Set)
 {
 	/// <summary>Describes a beatmap, with its set when asked.</summary>
 	public static BeatmapView Of(BeatmapRecord map, bool withSet)

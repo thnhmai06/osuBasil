@@ -16,7 +16,8 @@ namespace Basil.Application.Multiplayer.Objects;
 /// <param name="ClearBeatmap">Whether the room drops its beatmap while the host chooses another one.</param>
 /// <param name="IsPrivate">
 ///     Whether the match is private (hidden from the lobby, its history viewable only by participants,
-///     managers and users with <c>RoomManageViewPrivate</c>; joining is not affected), or <see langword="null" /> to leave it.
+///     managers and users with <c>RoomManageViewPrivate</c>; joining is not affected), or <see langword="null" /> to leave
+///     it.
 /// </param>
 public sealed record RoomSettingsChange(
 	string? Name = null,

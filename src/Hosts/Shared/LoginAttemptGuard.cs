@@ -28,8 +28,8 @@ public sealed class LoginAttemptGuard(RateLimiter limiter)
 	/// <summary>A reserved attempt, given back on disposal unless the credentials were wrong.</summary>
 	public sealed class Attempt : IDisposable
 	{
-		private readonly RateLimiter _limiter;
 		private readonly string _ipKey;
+		private readonly RateLimiter _limiter;
 		private readonly string _pairKey;
 		private bool _kept;
 
@@ -40,12 +40,6 @@ public sealed class LoginAttemptGuard(RateLimiter limiter)
 			_pairKey = pairKey;
 		}
 
-		/// <summary>Keeps the attempt counted because the credentials were wrong.</summary>
-		public void Keep()
-		{
-			_kept = true;
-		}
-
 		/// <inheritdoc />
 		public void Dispose()
 		{
@@ -54,6 +48,12 @@ public sealed class LoginAttemptGuard(RateLimiter limiter)
 			_kept = true;
 			_limiter.Refund(_ipKey);
 			_limiter.Refund(_pairKey);
+		}
+
+		/// <summary>Keeps the attempt counted because the credentials were wrong.</summary>
+		public void Keep()
+		{
+			_kept = true;
 		}
 	}
 }

@@ -9,25 +9,30 @@ namespace Basil.Host.Cli.Tests;
 /// <summary>One server and one PostgreSQL container for the command tests, which use names of their own.</summary>
 public sealed class CliFixture : IAsyncLifetime
 {
-	private readonly PersistenceFixture _database = new();
-
 	public BasilHost Host { get; private set; } = null!;
 
-	public PersistenceFixture Database => _database;
+	public PersistenceFixture Database { get; } = new();
 
 	public CommandRunner Runner => Host.Services.GetRequiredService<CommandRunner>();
 
 	public async ValueTask InitializeAsync()
 	{
-		await _database.InitializeAsync();
-		Host = await BasilHost.StartAsync(_database);
+		await Database.InitializeAsync();
+		Host = await BasilHost.StartAsync(Database);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		await Host.DisposeAsync();
+		await Database.DisposeAsync();
 	}
 
 	/// <summary>Runs a typed command line as the operator would.</summary>
 	public async Task<(int Code, string Text)> RunAsync(string line, CommandSession? session = null)
 	{
 		var output = new CollectedOutput();
-		var code = await Runner.RunAsync(CommandCatalog.Split(line), output, true, session, TestContext.Current.CancellationToken);
+		var code = await Runner.RunAsync(CommandCatalog.Split(line), output, true, session,
+			TestContext.Current.CancellationToken);
 		return (code, output.Text);
 	}
 
@@ -40,12 +45,6 @@ public sealed class CliFixture : IAsyncLifetime
 	public async Task<UserRecord> UserAsync(string name)
 	{
 		return (await Host.Services.GetRequiredService<IUserRepository>().GetByNameAsync(name))!;
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		await Host.DisposeAsync();
-		await _database.DisposeAsync();
 	}
 }
 

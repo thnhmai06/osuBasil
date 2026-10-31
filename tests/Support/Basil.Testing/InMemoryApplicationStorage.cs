@@ -1,5 +1,4 @@
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Persistence;
@@ -191,13 +190,6 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 
 	public IReadOnlyList<SessionEntry> Entries => _entries;
 
-	/// <summary>Drops a stored session, as if its record had not reached the store yet.</summary>
-	public void Forget(Guid id)
-	{
-		_entries.RemoveAll(entry => entry.Id == id);
-		_tokens.Remove(id);
-	}
-
 	public Task RecordAsync(Session login, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -268,7 +260,8 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 				EndedAt = entry.EndedAt ?? at,
 				EndReason = entry.EndReason ?? (entry.EndedAt is null ? reason : null),
 				MustReauthenticate = entry.MustReauthenticate ||
-				                     (requireReauthentication && entry.Type is SessionType.Osu or SessionType.OsuTourney)
+				                     (requireReauthentication &&
+				                      entry.Type is SessionType.Osu or SessionType.OsuTourney)
 			};
 		}
 
@@ -294,7 +287,8 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 	{
 		var deleted = _entries.RemoveAll(entry => !entry.MustReauthenticate &&
 		                                          (entry.EndedAt < cutoff ||
-		                                           (entry.EndedAt is null && _tokens.GetValueOrDefault(entry.Id).ExpiresAt < cutoff)));
+		                                           (entry.EndedAt is null &&
+		                                            _tokens.GetValueOrDefault(entry.Id).ExpiresAt < cutoff)));
 		return Task.FromResult(deleted);
 	}
 
@@ -306,6 +300,13 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 
 		_entries[index] = _entries[index] with { MustReauthenticate = false };
 		return Task.FromResult(true);
+	}
+
+	/// <summary>Drops a stored session, as if its record had not reached the store yet.</summary>
+	public void Forget(Guid id)
+	{
+		_entries.RemoveAll(entry => entry.Id == id);
+		_tokens.Remove(id);
 	}
 
 	/// <summary>Reads the stored expiry of a session's token.</summary>
@@ -490,20 +491,18 @@ internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
 
 internal sealed class InMemorySettingsRepository : ISettingsRepository
 {
-	private ServerSettings _settings = new();
-
-	public ServerSettings Current => _settings;
+	public ServerSettings Current { get; private set; } = new();
 
 	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		return ValueTask.FromResult(_settings);
+		return ValueTask.FromResult(Current);
 	}
 
 	public Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		_settings = settings;
+		Current = settings;
 		return Task.CompletedTask;
 	}
 }

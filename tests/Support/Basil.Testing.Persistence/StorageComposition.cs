@@ -1,6 +1,5 @@
-using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Persistence;
 using Basil.Host;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.DependencyInjection;

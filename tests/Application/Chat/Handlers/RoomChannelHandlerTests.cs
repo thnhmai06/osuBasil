@@ -1,8 +1,6 @@
 using Basil.Application.Chat.Handlers;
-using Basil.Application.Chat.Registry;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Testing;

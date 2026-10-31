@@ -26,23 +26,6 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <remarks>Only the written form changes; two messages that differ only here are equal.</remarks>
 	public bool ForceTrailing { get; init; }
 
-	/// <summary>Finds the value of a message tag.</summary>
-	/// <param name="key">The tag key, including a leading <c>+</c> for a client-only tag.</param>
-	/// <returns>The tag's value, an empty string for a tag without a value, or <see langword="null" /> when absent.</returns>
-	public string? Tag(string key)
-	{
-		return Tags.FirstOrDefault(tag => tag.Key == key) is { } found ? found.Value ?? string.Empty : null;
-	}
-
-	/// <summary>Returns a copy of this message that carries one more tag.</summary>
-	/// <param name="key">The tag key.</param>
-	/// <param name="value">The tag value, or <see langword="null" /> for a tag without a value.</param>
-	/// <returns>The tagged message.</returns>
-	public IrcMessage WithTag(string key, string? value = null)
-	{
-		return this with { Tags = [.. Tags, new IrcTag(key, value)] };
-	}
-
 	/// <summary>
 	///     Determines whether this message has the same content as another message.
 	/// </summary>
@@ -67,7 +50,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <param name="formatProvider">Ignored.</param>
 	/// <returns>
 	///     The wire line: the tags (prefixed with '@') when present, then the prefix (prefixed with ':') when
-	///     present, then the command, then the parameters. The final parameter is prefixed with " :" when it contains a space, starts
+	///     present, then the command, then the parameters. The final parameter is prefixed with " :" when it contains a space,
+	///     starts
 	///     with a colon, or is empty; all other parameters are emitted as-is.
 	/// </returns>
 	/// <exception cref="ArgumentException">
@@ -105,7 +89,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 			var parameter = Parameters[i];
 			var isLast = i == Parameters.Count - 1;
 
-			line += isLast && (ForceTrailing || parameter.Contains(' ') || parameter.StartsWith(':') || parameter.Length == 0)
+			line += isLast && (ForceTrailing || parameter.Contains(' ') || parameter.StartsWith(':') ||
+			                   parameter.Length == 0)
 				? $" :{parameter}"
 				: $" {parameter}";
 		}
@@ -122,7 +107,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <remarks>
 	///     A line that contains a carriage return, a line feed or a null character is rejected, and a
 	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is read into
-	///     <see cref="Tags" />, and the command is upper-cased with the invariant culture. Keeping a line within the protocol's
+	///     <see cref="Tags" />, and the command is upper-cased with the invariant culture. Keeping a line within the
+	///     protocol's
 	///     length limit is the caller's job.
 	/// </remarks>
 	/// <exception cref="FormatException">The line is empty or malformed.</exception>
@@ -143,7 +129,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <remarks>
 	///     A line that contains a carriage return, a line feed or a null character is rejected, and a
 	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is read into
-	///     <see cref="Tags" />, and the command is upper-cased with the invariant culture. Keeping a line within the protocol's
+	///     <see cref="Tags" />, and the command is upper-cased with the invariant culture. Keeping a line within the
+	///     protocol's
 	///     length limit is the caller's job.
 	/// </remarks>
 	public static bool TryParse(
@@ -215,6 +202,23 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 
 		result = new IrcMessage(tokens[0].ToUpperInvariant(), prefix, parameters) { Tags = tags };
 		return true;
+	}
+
+	/// <summary>Finds the value of a message tag.</summary>
+	/// <param name="key">The tag key, including a leading <c>+</c> for a client-only tag.</param>
+	/// <returns>The tag's value, an empty string for a tag without a value, or <see langword="null" /> when absent.</returns>
+	public string? Tag(string key)
+	{
+		return Tags.FirstOrDefault(tag => tag.Key == key) is { } found ? found.Value ?? string.Empty : null;
+	}
+
+	/// <summary>Returns a copy of this message that carries one more tag.</summary>
+	/// <param name="key">The tag key.</param>
+	/// <param name="value">The tag value, or <see langword="null" /> for a tag without a value.</param>
+	/// <returns>The tagged message.</returns>
+	public IrcMessage WithTag(string key, string? value = null)
+	{
+		return this with { Tags = [.. Tags, new IrcTag(key, value)] };
 	}
 
 	/// <summary>

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
@@ -10,22 +9,23 @@ internal static class OpenApiSetup
 	private const string SchemeId = "Bearer";
 
 	private const string Overview = """
-		The HTTP API of Basil. Every route is under `/v1`.
+	                                The HTTP API of Basil. Every route is under `/v1`.
 
-		**Authentication.** Routes marked with a lock need `Authorization: Bearer <token>`; the others are public. Sign in with `POST /v1/auth/login`. To learn the id of your own user, call `GET /v1/auth/session`. `/v1/me` and `/v1/sessions` redirect with 307 to the same route under your own user.
+	                                **Authentication.** Routes marked with a lock need `Authorization: Bearer <token>`; the others are public. Sign in with `POST /v1/auth/login`. To learn the id of your own user, call `GET /v1/auth/session`. `/v1/me` and `/v1/sessions` redirect with 307 to the same route under your own user.
 
-		**Envelope.** Every JSON answer has the shape `{ success, code, message, data, meta, errors, timestamp }`. A failed answer carries a stable `errors.code`; a refusal for lack of permissions also carries the missing permission mask in `errors.missing`. Images, files and Server-Sent Events are not wrapped.
+	                                **Envelope.** Every JSON answer has the shape `{ success, code, message, data, meta, errors, timestamp }`. A failed answer carries a stable `errors.code`; a refusal for lack of permissions also carries the missing permission mask in `errors.missing`. Images, files and Server-Sent Events are not wrapped.
 
-		**Paging.** Lists take `offset` (default 0) and `limit` (default 25, at most 100; more is 422).
+	                                **Paging.** Lists take `offset` (default 0) and `limit` (default 25, at most 100; more is 422).
 
-		**Live data.** Routes marked as streams use Server-Sent Events and need no content negotiation; data is up to about one second old.
-		""";
+	                                **Live data.** Routes marked as streams use Server-Sent Events and need no content negotiation; data is up to about one second old.
+	                                """;
 
 	public static IServiceCollection AddBasilOpenApi(this IServiceCollection services)
 	{
 		services.AddOpenApi("v1", options =>
 		{
-			options.ShouldInclude = description => description.RelativePath?.StartsWith("v1/", StringComparison.Ordinal) == true;
+			options.ShouldInclude = description =>
+				description.RelativePath?.StartsWith("v1/", StringComparison.Ordinal) == true;
 			options.AddDocumentTransformer((document, _, _) =>
 			{
 				document.Info = new OpenApiInfo { Title = "Basil API", Version = "v1", Description = Overview };
@@ -87,7 +87,8 @@ internal static class OpenApiSetup
 						Description = description,
 						Content = new Dictionary<string, OpenApiMediaType>
 						{
-							["application/json"] = new() { Schema = new OpenApiSchemaReference("Envelope", context.Document) }
+							["application/json"] = new()
+								{ Schema = new OpenApiSchemaReference("Envelope", context.Document) }
 						}
 					};
 				}
@@ -118,7 +119,8 @@ internal static class OpenApiSetup
 				operation.Responses["404"] = Json("The thing does not exist or the caller may not see it.");
 				if (method != "GET")
 				{
-					operation.Responses["409"] = Json("The state of the system does not allow it, or an area is locked.");
+					operation.Responses["409"] =
+						Json("The state of the system does not allow it, or an area is locked.");
 					operation.Responses["422"] = Json("The input is not valid.");
 				}
 				else
@@ -135,10 +137,9 @@ internal static class OpenApiSetup
 
 	public static void MapDocs(this IEndpointRouteBuilder app)
 	{
-		app.MapOpenApi("/openapi/{documentName}.json").ExcludeFromDescription();
-		app.MapScalarApiReference("/docs", options =>
-		{
-			options.WithTitle("Basil API").WithOpenApiRoutePattern("/openapi/{documentName}.json");
-		}).ExcludeFromDescription();
+		app.MapOpenApi().ExcludeFromDescription();
+		app.MapScalarApiReference("/docs",
+				options => { options.WithTitle("Basil API").WithOpenApiRoutePattern("/openapi/{documentName}.json"); })
+			.ExcludeFromDescription();
 	}
 }

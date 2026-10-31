@@ -1,13 +1,10 @@
 using System.Text;
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Host.Irc.Support;
@@ -60,7 +57,8 @@ internal sealed partial class IrcCommands(
 				return;
 			case "QUIT":
 				session.Quit = true;
-				session.Close($"Quit: {(message.Parameters.Count > 0 ? message.Parameters[0] : string.Empty)}".TrimEnd());
+				session.Close(
+					$"Quit: {(message.Parameters.Count > 0 ? message.Parameters[0] : string.Empty)}".TrimEnd());
 				return;
 		}
 
@@ -73,7 +71,8 @@ internal sealed partial class IrcCommands(
 		if (message.Parameters.Count == 0)
 			session.Numeric(IrcNumericReply.ErrNeedMoreParams, "PING", IrcReplies.NeedMoreParams);
 		else
-			session.Send(new IrcMessage("PONG", session.ServerName, session.ServerName, message.Parameters[0]) { ForceTrailing = true });
+			session.Send(new IrcMessage("PONG", session.ServerName, session.ServerName, message.Parameters[0])
+				{ ForceTrailing = true });
 	}
 
 	private async Task RegisteringAsync(IrcSession session, IrcMessage message, CancellationToken cancellationToken)
@@ -264,6 +263,7 @@ internal sealed partial class IrcCommands(
 	private async Task CapAsync(IrcSession session, IrcMessage message, CancellationToken cancellationToken)
 	{
 		var who = session.Registered ? session.Nick : "*";
+
 		void Reply(string subcommand, string caps)
 		{
 			session.Send(new IrcMessage("CAP", session.ServerName, who, subcommand, caps) { ForceTrailing = true });
@@ -299,14 +299,17 @@ internal sealed partial class IrcCommands(
 	private static void CapLs(IrcSession session, IrcMessage message, Action<string, string> reply)
 	{
 		if (!session.Registered) session.Negotiating = true;
-		var v302 = message.Parameters.Count > 1 && int.TryParse(message.Parameters[1], out var version) && version >= 302;
+		var v302 = message.Parameters.Count > 1 && int.TryParse(message.Parameters[1], out var version) &&
+		           version >= 302;
 		reply("LS", string.Join(' ', Offered.Select(cap => cap == "sasl" && v302 ? "sasl=PLAIN" : cap)));
 	}
 
 	private static void CapReq(IrcSession session, IrcMessage message, Action<string, string> reply)
 	{
 		if (!session.Registered) session.Negotiating = true;
-		var requested = message.Parameters.Count > 1 ? message.Parameters[1].Split(' ', StringSplitOptions.RemoveEmptyEntries) : [];
+		var requested = message.Parameters.Count > 1
+			? message.Parameters[1].Split(' ', StringSplitOptions.RemoveEmptyEntries)
+			: [];
 		if (requested.All(cap => Offered.Contains(cap.TrimStart('-'))))
 		{
 			foreach (var cap in requested) session.Set(cap.TrimStart('-'), !cap.StartsWith('-'));

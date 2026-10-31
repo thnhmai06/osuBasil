@@ -1,4 +1,3 @@
-using Basil.Application.Common;
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
@@ -6,6 +5,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
+using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Models.Multiplayer;
 using Basil.Protocol.Bancho.Wire.Packets;
 
@@ -33,7 +33,8 @@ internal sealed partial class PacketHandlers
 			ClientPacketType.MatchReady => scoped.Slots.SetReadyAsync(true, cancellationToken),
 			ClientPacketType.MatchNotReady => scoped.Slots.SetReadyAsync(false, cancellationToken),
 			ClientPacketType.MatchLock => scoped.Slots.ToggleLockAsync(reader.ReadInt32(), cancellationToken),
-			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync((GameMods)reader.ReadInt32(), cancellationToken),
+			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync((GameMods)reader.ReadInt32(),
+				cancellationToken),
 			ClientPacketType.MatchChangeTeam => scoped.Slots.ToggleTeamAsync(cancellationToken),
 			ClientPacketType.MatchNoBeatmap => scoped.Slots.SetHasMapAsync(false, cancellationToken),
 			ClientPacketType.MatchHasBeatmap => scoped.Slots.SetHasMapAsync(true, cancellationToken),
@@ -42,20 +43,24 @@ internal sealed partial class PacketHandlers
 			ClientPacketType.MatchSkipRequest => scoped.Rounds.SkipAsync(cancellationToken),
 			ClientPacketType.MatchFailed => scoped.Rounds.FailAsync(cancellationToken),
 			ClientPacketType.MatchComplete => scoped.Rounds.CompleteAsync(cancellationToken),
-			ClientPacketType.MatchTransferHost => TransferHostAsync(scoped, room, reader.ReadInt32(), cancellationToken),
+			ClientPacketType.MatchTransferHost =>
+				TransferHostAsync(scoped, room, reader.ReadInt32(), cancellationToken),
 			ClientPacketType.MatchInvite => InviteAsync(scoped, reader.ReadInt32(), cancellationToken),
 			ClientPacketType.MatchChangePassword => ConfigureAsync(scoped,
 				new RoomSettingsChange(Password: reader.ReadMatch().Password), cancellationToken),
-			ClientPacketType.MatchChangeSettings => ChangeSettingsAsync(scoped, room, reader.ReadMatch(), cancellationToken),
+			ClientPacketType.MatchChangeSettings => ChangeSettingsAsync(scoped, room, reader.ReadMatch(),
+				cancellationToken),
 			ClientPacketType.MatchScoreUpdate => Run(() => ForwardScore(osu, room, reader)),
 			_ => Task.CompletedTask
 		};
 	}
 
-	private async Task CreateMatchAsync(BanchoConnection osu, RoomStatePacket match, CancellationToken cancellationToken)
+	private async Task CreateMatchAsync(BanchoConnection osu, RoomStatePacket match,
+		CancellationToken cancellationToken)
 	{
 		var matchSettings = SettingsOf(match);
-		var (room, result) = await lobby.ScopeTo(osu).OpenRoomAsync(match.Name, match.Password, false, false, matchSettings,
+		var (room, result) = await lobby.ScopeTo(osu).OpenRoomAsync(match.Name, match.Password, false, false,
+			matchSettings,
 			cancellationToken);
 		if (room is null || !result.IsOk)
 		{
@@ -67,7 +72,7 @@ internal sealed partial class PacketHandlers
 			await room.ScopeTo(osu).Settings.ConfigureAsync(await beatmapChange, cancellationToken);
 	}
 
-	private async Task JoinMatchAsync(BanchoConnection osu, Protocol.Bancho.Models.Multiplayer.JoinMatchRequest request,
+	private async Task JoinMatchAsync(BanchoConnection osu, JoinMatchRequest request,
 		CancellationToken cancellationToken)
 	{
 		var result = lobby.Find(request.MatchId) is { IsClosed: false } room
@@ -81,7 +86,8 @@ internal sealed partial class PacketHandlers
 		var settings = new MatchSettings();
 		if (Enum.IsDefined((GameMode)match.Mode)) settings.Mode = (GameMode)match.Mode;
 		if (Enum.IsDefined((GameTeamType)match.TeamType)) settings.TeamType = (GameTeamType)match.TeamType;
-		if (Enum.IsDefined((GameWinCondition)match.WinCondition)) settings.WinCondition = (GameWinCondition)match.WinCondition;
+		if (Enum.IsDefined((GameWinCondition)match.WinCondition))
+			settings.WinCondition = (GameWinCondition)match.WinCondition;
 		return settings;
 	}
 
@@ -103,8 +109,10 @@ internal sealed partial class PacketHandlers
 	{
 		var current = room.Settings.MatchSettings;
 		var change = new RoomSettingsChange(
-			Name: match.Name != room.Settings.Name ? match.Name : null,
-			Mode: Enum.IsDefined((GameMode)match.Mode) && (GameMode)match.Mode != current.Mode ? (GameMode)match.Mode : null,
+			match.Name != room.Settings.Name ? match.Name : null,
+			Mode: Enum.IsDefined((GameMode)match.Mode) && (GameMode)match.Mode != current.Mode
+				? (GameMode)match.Mode
+				: null,
 			Mods: (GameMods)match.Mods != current.Mods ? (GameMods)match.Mods : null,
 			Freemods: match.FreeMods != current.Freemods ? match.FreeMods : null,
 			TeamType: Enum.IsDefined((GameTeamType)match.TeamType) && (GameTeamType)match.TeamType != current.TeamType
@@ -120,7 +128,8 @@ internal sealed partial class PacketHandlers
 		await ConfigureAsync(scoped, change, cancellationToken);
 	}
 
-	private static Task ConfigureAsync(ScopedRoom scoped, RoomSettingsChange change, CancellationToken cancellationToken)
+	private static Task ConfigureAsync(ScopedRoom scoped, RoomSettingsChange change,
+		CancellationToken cancellationToken)
 	{
 		return scoped.Settings.ConfigureAsync(change, cancellationToken);
 	}
@@ -150,7 +159,7 @@ internal sealed partial class PacketHandlers
 	{
 		if (by is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
 		if (!await lobby.ScopeTo(by).CanViewAsync(room.Match, cancellationToken)) return;
-		var match = Support.BanchoView.Match(room);
+		var match = BanchoView.Match(room);
 		outbox.Send(by, writer => writer.UpdateMatch(match, false));
 	}
 

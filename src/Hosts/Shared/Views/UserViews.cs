@@ -1,4 +1,3 @@
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
@@ -16,7 +15,12 @@ public sealed record UserRef(int Id, string Name)
 }
 
 /// <summary>An account as the API shows it.</summary>
-public sealed record UserView(int Id, string Name, string Country, ulong Permissions, ulong EffectivePermissions,
+public sealed record UserView(
+	int Id,
+	string Name,
+	string Country,
+	ulong Permissions,
+	ulong EffectivePermissions,
 	IReadOnlyList<RestrictionView>? Restrictions)
 {
 	/// <summary>Describes an account with the restrictions in force at the moment, when they are given.</summary>
@@ -27,7 +31,9 @@ public sealed record UserView(int Id, string Name, string Country, ulong Permiss
 		var now = clock.GetUtcNow();
 		return new UserView(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToLowerInvariant(),
 			(ulong)record.Value.Permissions, (ulong)user.EffectivePermissions(now),
-			restrictions is null ? null : [.. restrictions.Where(r => r.Value.IsActive(now)).Select(RestrictionView.Of)]);
+			restrictions is null
+				? null
+				: [.. restrictions.Where(r => r.Value.IsActive(now)).Select(RestrictionView.Of)]);
 	}
 }
 
@@ -42,8 +48,15 @@ public sealed record RestrictionView(int Id, ulong Permissions, DateTimeOffset S
 }
 
 /// <summary>A session as the API shows it.</summary>
-public sealed record SessionView(Guid Id, SessionType Type, string Ip, string? ClientInfo,
-	DateTimeOffset StartedAt, DateTimeOffset LastActiveAt, DateTimeOffset? EndedAt, SessionEndReason? EndReason)
+public sealed record SessionView(
+	Guid Id,
+	SessionType Type,
+	string Ip,
+	string? ClientInfo,
+	DateTimeOffset StartedAt,
+	DateTimeOffset LastActiveAt,
+	DateTimeOffset? EndedAt,
+	SessionEndReason? EndReason)
 {
 	/// <summary>Describes a session.</summary>
 	public static SessionView Of(SessionEntry s)

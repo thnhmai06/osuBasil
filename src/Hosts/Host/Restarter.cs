@@ -7,14 +7,18 @@ namespace Basil.Host;
 /// <summary>Starts the server again after a <c>restart</c> when no manager does it.</summary>
 public static class Restarter
 {
-	/// <summary>The environment variable that tells the new process that it replaces a server that is still letting go of its ports.</summary>
+	/// <summary>
+	///     The environment variable that tells the new process that it replaces a server that is still letting go of its
+	///     ports.
+	/// </summary>
 	public const string RestartedVariable = "BASIL_RESTARTED";
 
 	/// <summary>Tells whether systemd or a container runtime manages the process and restarts it from its exit code.</summary>
 	public static bool UnderManager()
 	{
 		return Environment.GetEnvironmentVariable("INVOCATION_ID") is not null ||
-		       string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+		       string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true",
+			       StringComparison.OrdinalIgnoreCase);
 	}
 
 	/// <summary>Starts the same executable with the same arguments.</summary>
@@ -40,7 +44,10 @@ public static class Restarter
 	/// <param name="clock">The clock the waiting uses.</param>
 	/// <param name="timeout">The longest time to wait.</param>
 	/// <param name="cancellationToken">A token that stops the wait.</param>
-	/// <returns><see langword="true" /> when the ports are free; <see langword="false" /> when the time ran out, and the server then starts and reports the failure itself.</returns>
+	/// <returns>
+	///     <see langword="true" /> when the ports are free; <see langword="false" /> when the time ran out, and the
+	///     server then starts and reports the failure itself.
+	/// </returns>
 	public static async Task<bool> WaitForPortsAsync(Func<bool> isFree, TimeProvider clock, TimeSpan timeout,
 		CancellationToken cancellationToken = default)
 	{

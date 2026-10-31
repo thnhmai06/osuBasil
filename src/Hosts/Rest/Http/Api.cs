@@ -1,9 +1,6 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Users;
-using Basil.Host.Shared;
 
 namespace Basil.Host.Rest.Http;
 
@@ -16,7 +13,13 @@ namespace Basil.Host.Rest.Http;
 /// <param name="Meta">Pagination information, or <see langword="null" />.</param>
 /// <param name="Errors">The machine-readable error, or <see langword="null" />.</param>
 /// <param name="Timestamp">When the response was produced.</param>
-public sealed record Envelope<T>(bool Success, int Code, string Message, T? Data, PageMeta? Meta, ErrorBody? Errors,
+public sealed record Envelope<T>(
+	bool Success,
+	int Code,
+	string Message,
+	T? Data,
+	PageMeta? Meta,
+	ErrorBody? Errors,
 	DateTimeOffset Timestamp);
 
 /// <summary>The machine-readable part of an error response.</summary>
@@ -33,11 +36,11 @@ public sealed record PageMeta(int Offset, int Limit, int Total);
 /// <summary>Builds the results of the API: always inside the envelope.</summary>
 public static class Api
 {
-	/// <summary>The serializer options of the API: camelCase, enums as camelCase strings.</summary>
-	public static readonly JsonSerializerOptions Json = ApiJson.Options;
-
 	/// <summary>The largest page a client may ask for.</summary>
 	public const int MaxLimit = 100;
+
+	/// <summary>The serializer options of the API: camelCase, enums as camelCase strings.</summary>
+	public static readonly JsonSerializerOptions Json = ApiJson.Options;
 
 	/// <summary>Answers 200 with a payload.</summary>
 	public static IResult Ok<T>(T data, string message = "Retrieval successful")

@@ -27,7 +27,8 @@ public sealed class LobbyPasswordTests(BanchoHostFixture fixture)
 		await creator.LoginAsync();
 		await watcher.SendAsync(writer => writer.Packet(OsuClient.Out.JoinLobby));
 
-		await creator.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw live room", Secret)));
+		await creator.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw live room", Secret)));
 
 		var announced = await watcher.WaitForAsync(OsuClient.In.NewMatch);
 		Assert.NotNull(announced);
@@ -40,7 +41,8 @@ public sealed class LobbyPasswordTests(BanchoHostFixture fixture)
 		var creator = await Host.NewClientAsync("PwOwnCreator");
 		await creator.LoginAsync();
 
-		await creator.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw own room", Secret)));
+		await creator.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw own room", Secret)));
 
 		var joined = await creator.WaitForAsync(OsuClient.In.MatchJoinSuccess);
 		Assert.NotNull(joined);
@@ -54,7 +56,8 @@ public sealed class LobbyPasswordTests(BanchoHostFixture fixture)
 		var watcher = await Host.NewClientAsync("PwListWatcher");
 		await creator.LoginAsync();
 		await watcher.LoginAsync();
-		await creator.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw list room", Secret)));
+		await creator.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw list room", Secret)));
 		var matchId = BitConverter.ToUInt16((await creator.WaitForAsync(OsuClient.In.MatchJoinSuccess))!.Payload, 0);
 
 		await watcher.SendAsync(writer => writer.Packet(OsuClient.Out.JoinLobby));

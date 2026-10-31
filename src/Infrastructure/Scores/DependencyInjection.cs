@@ -1,6 +1,6 @@
-using Basil.Infrastructure.Common.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Scores.Persistence;
 using Basil.Infrastructure.Scores.Storage;
 using Microsoft.Extensions.DependencyInjection;

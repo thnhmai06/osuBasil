@@ -16,7 +16,7 @@ public sealed record ServerSettings
 	{
 		get;
 		init => field = value.ThrowIfUndefined();
-	} = global::Basil.Application.Content.Persistence.Locks.Beatmapsets;
+	} = Locks.Beatmapsets;
 
 	/// <summary>Gets the lifetimes of sessions and tokens.</summary>
 	public SessionSettings Sessions { get; init; } = new();
@@ -46,6 +46,27 @@ public sealed record ServerSettings
 		get;
 		init => field = value ?? throw new ArgumentNullException(nameof(value));
 	} = new();
+
+	private static TimeSpan Positive(TimeSpan value)
+	{
+		return value > TimeSpan.Zero
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The duration must be positive.");
+	}
+
+	private static int Positive(int value)
+	{
+		return value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
+	}
+
+	private static long Positive(long value)
+	{
+		return value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
+	}
 
 	/// <summary>The general settings.</summary>
 	public sealed record GeneralSettings
@@ -336,26 +357,5 @@ public sealed record ServerSettings
 			get;
 			init => field = value?.ThrowIfHttp();
 		}
-	}
-
-	private static TimeSpan Positive(TimeSpan value)
-	{
-		return value > TimeSpan.Zero
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The duration must be positive.");
-	}
-
-	private static int Positive(int value)
-	{
-		return value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
-	}
-
-	private static long Positive(long value)
-	{
-		return value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
 	}
 }

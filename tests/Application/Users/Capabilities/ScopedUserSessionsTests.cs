@@ -1,11 +1,9 @@
 using System.Net;
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
@@ -67,7 +65,8 @@ public sealed class ScopedUserSessionsTests
 		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAsync(offline.Session.Id, Token);
 
 		Assert.True(result.IsOk);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, offline.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken,
+			(await OpenWithTokenAsync(app, SessionType.Api, offline.Token)).Failure);
 	}
 
 	[Fact]
@@ -210,7 +209,8 @@ public sealed class ScopedUserSessionsTests
 		Assert.True(current.IsOpen);
 		Assert.False(otherApi.IsOpen);
 		Assert.False(osu.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, otherApi.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken,
+			(await OpenWithTokenAsync(app, SessionType.Api, otherApi.Token)).Failure);
 		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, ircKey)).Failure);
 		Assert.True((await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Succeeded);
 	}
@@ -225,7 +225,8 @@ public sealed class ScopedUserSessionsTests
 		Assert.True((await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(false, Token)).IsOk);
 
 		Assert.False(current.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken,
+			(await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Failure);
 	}
 
 	[Fact]

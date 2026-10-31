@@ -15,7 +15,8 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 		using (other)
 		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
 		{
-			var (_, envelope) = await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Hidden", isPrivate = true });
+			var (_, envelope) =
+				await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Hidden", isPrivate = true });
 			var roomId = (int)envelope!["data"]!["id"]!;
 
 			var (noToken, _) = await anon.OpenStreamAsync($"/v1/rooms/{roomId}/live");

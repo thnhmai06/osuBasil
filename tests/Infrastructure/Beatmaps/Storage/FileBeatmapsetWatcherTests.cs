@@ -1,5 +1,4 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;

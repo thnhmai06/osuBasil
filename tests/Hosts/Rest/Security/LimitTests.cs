@@ -1,4 +1,3 @@
-using System.Net;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Sse;
@@ -32,7 +31,8 @@ public sealed class LimitTests(RestHostFixture fixture)
 		});
 
 		var statuses = new List<int>();
-		for (var i = 0; i < 3; i++) statuses.Add((await client.CallAsync(HttpMethod.Patch, "/v1/users/1", new { away = "x" })).Status);
+		for (var i = 0; i < 3; i++)
+			statuses.Add((await client.CallAsync(HttpMethod.Patch, "/v1/users/1", new { away = "x" })).Status);
 		using var limited = await client.SendAsync(HttpMethod.Patch, "/v1/users/1", new { away = "x" });
 		var body = await limited.Content.ReadAsStringAsync();
 
@@ -50,18 +50,21 @@ public sealed class LimitTests(RestHostFixture fixture)
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await RestHostFixture.RaiseLimitsAsync(host);
 		await host.CreateUserAsync("LimitRace");
-		var maxAttempts = (await host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
+		var maxAttempts = (await host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login
+			.MaxAttempts;
 		using var client = new RestClient(host.Url, host.Domain);
 
 		var statuses = await Task.WhenAll(Enumerable.Range(0, maxAttempts * 6).Select(async _ =>
-			(await client.CallAsync(HttpMethod.Post, "/v1/auth/login", new { username = "LimitRace", password = "wrong" })).Status));
+			(await client.CallAsync(HttpMethod.Post, "/v1/auth/login",
+				new { username = "LimitRace", password = "wrong" })).Status));
 
 		Assert.Equal(maxAttempts, statuses.Count(status => status == 401));
 		Assert.All(statuses.Where(status => status != 401), status => Assert.Equal(429, status));
 	}
 
 	[Fact]
-	public async Task AnonymousRequests_BeyondTheLimitOfAnAddress_Answer429_ButATokenIsNotCounted() // the login is anonymous too, so 3 allowed = login + 2
+	public async Task
+		AnonymousRequests_BeyondTheLimitOfAnAddress_Answer429_ButATokenIsNotCounted() // the login is anonymous too, so 3 allowed = login + 2
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("LimitAnon");
@@ -73,7 +76,10 @@ public sealed class LimitTests(RestHostFixture fixture)
 			{
 				Rest = s.RateLimits.Rest with
 				{
-					Anonymous = s.RateLimits.Rest.Anonymous with { PerIp = new ServerSettings.Limit(3, TimeSpan.FromMinutes(1)) }
+					Anonymous = s.RateLimits.Rest.Anonymous with
+					{
+						PerIp = new ServerSettings.Limit(3, TimeSpan.FromMinutes(1))
+					}
 				}
 			}
 		});
@@ -91,7 +97,8 @@ public sealed class LimitTests(RestHostFixture fixture)
 	public async Task OpenStreams_BeyondTheLimitPerAddress_Answer429()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
-		await host.CreateUserAsync("LimitStream", "password", UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
+		await host.CreateUserAsync("LimitStream", "password",
+			UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("LimitStream");
 		await ChangeAsync(host, s => s with
@@ -105,14 +112,17 @@ public sealed class LimitTests(RestHostFixture fixture)
 		using (first)
 		using (second)
 		using (third)
+		{
 			Assert.Equal([200, 200, 429], [(int)first.StatusCode, (int)second.StatusCode, (int)third.StatusCode]);
+		}
 	}
 
 	[Fact]
 	public async Task Shutdown_SendsAFinalServerEvent_EndsStreams_AndRefusesNewOnesWith503()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
-		await host.CreateUserAsync("LimitStop", "password", UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
+		await host.CreateUserAsync("LimitStop", "password",
+			UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("LimitStop");
 		var (response, reader) = await client.OpenStreamAsync("/v1/diagnostics/runtime");
@@ -152,7 +162,8 @@ public sealed class LimitTests(RestHostFixture fixture)
 		}
 
 		var before = await AskAsync("https://overlay.example");
-		await ChangeAsync(host, s => s with { Cors = new ServerSettings.CorsSettings { AllowedOrigins = ["https://overlay.example"] } });
+		await ChangeAsync(host,
+			s => s with { Cors = new ServerSettings.CorsSettings { AllowedOrigins = ["https://overlay.example"] } });
 		var allowed = await AskAsync("https://overlay.example");
 		var other = await AskAsync("https://evil.example");
 

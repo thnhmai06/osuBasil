@@ -1,6 +1,6 @@
-using Basil.Testing.Persistence;
 using Basil.Application.Content.Capabilities;
 using Basil.Infrastructure.Content.Capabilities;
+using Basil.Testing.Persistence;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Bmp;

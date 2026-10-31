@@ -7,12 +7,18 @@ namespace Basil.Host.Shared.Views;
 public sealed record FaqView(string Entry, string Text);
 
 /// <summary>A main-menu banner; <c>Image</c> names the image on the assets host under <c>/menu/banners</c>.</summary>
-public sealed record BannerView(string Image, string Url, DateTimeOffset? StartsAt, DateTimeOffset? EndsAt, bool Current)
+public sealed record BannerView(
+	string Image,
+	string Url,
+	DateTimeOffset? StartsAt,
+	DateTimeOffset? EndsAt,
+	bool Current)
 {
 	/// <summary>Describes a banner at a moment.</summary>
 	public static BannerView Of(MenuBanner banner, DateTimeOffset now)
 	{
-		return new BannerView(Path.GetFileName(banner.Image.Value), banner.Url.AbsoluteUri, banner.StartsAt, banner.EndsAt,
+		return new BannerView(Path.GetFileName(banner.Image.Value), banner.Url.AbsoluteUri, banner.StartsAt,
+			banner.EndsAt,
 			banner.IsCurrent(now));
 	}
 }

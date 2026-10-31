@@ -20,7 +20,8 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 
 		await joiner.SendAsync("JOIN #presence1");
 
-		Assert.Equal(":PrJoiner!PrJoiner@basil.test JOIN #presence1", await watcher.ExpectFromAsync("JOIN", "#presence1"));
+		Assert.Equal(":PrJoiner!PrJoiner@basil.test JOIN #presence1",
+			await watcher.ExpectFromAsync("JOIN", "#presence1"));
 	}
 
 	[Fact]
@@ -42,7 +43,8 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 
 		using var osu = await Host.LoginOsuAsync("PrOsuComes");
 
-		Assert.Equal(":PrOsuComes!PrOsuComes@basil.test JOIN #osu", await watcher.ExpectFromAsync("JOIN", "PrOsuComes"));
+		Assert.Equal(":PrOsuComes!PrOsuComes@basil.test JOIN #osu",
+			await watcher.ExpectFromAsync("JOIN", "PrOsuComes"));
 	}
 
 	[Fact]

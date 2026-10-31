@@ -1,5 +1,6 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
+using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 using Mediator;
@@ -39,9 +40,11 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 	private void EchoToPrivateSender(ChannelMessagePosted notification, string command, string prefix)
 	{
 		var message = notification.Message;
-		if (notification.Channel is PmChannel owner && notification.By is { } by && !ReferenceEquals(by.User, owner.Owner) &&
+		if (notification.Channel is PmChannel owner && notification.By is { } by &&
+		    !ReferenceEquals(by.User, owner.Owner) &&
 		    clients.Find(by) is { } own && own.Has("echo-message"))
-			Send(own, command, prefix, IrcView.Nick(owner.Owner.Record), message.Content, message.Timestamp, message.Author);
+			Send(own, command, prefix, IrcView.Nick(owner.Owner.Record), message.Content, message.Timestamp,
+				message.Author);
 	}
 
 	private void DeliverAwayReply(ChannelMessagePosted notification)
@@ -52,7 +55,7 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 	}
 
 	private static void Send(IrcSession session, string command, string prefix, string target, string text,
-		DateTimeOffset at, Basil.Domain.Users.UserRecord author)
+		DateTimeOffset at, UserRecord author)
 	{
 		foreach (var line in IrcText.Lines(text))
 			session.Relay(new IrcMessage(command, prefix, target, line) { ForceTrailing = true }, author, at);

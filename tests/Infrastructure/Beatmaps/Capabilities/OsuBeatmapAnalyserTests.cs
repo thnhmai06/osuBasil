@@ -1,11 +1,9 @@
-using Basil.Testing.Persistence;
 using System.IO.Compression;
-using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Beatmaps.Capabilities;
-using Basil.Infrastructure.Beatmaps.Tests.Support;
+using Basil.Testing.Persistence;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Capabilities;

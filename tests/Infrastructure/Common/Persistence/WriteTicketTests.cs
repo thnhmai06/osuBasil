@@ -1,5 +1,4 @@
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;

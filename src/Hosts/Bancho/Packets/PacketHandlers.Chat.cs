@@ -34,14 +34,16 @@ internal sealed partial class PacketHandlers
 		return text.Length > BanchoReplies.MaxMessageLength ? text[..BanchoReplies.MaxMessageLength] : text;
 	}
 
-	private async Task PublicMessageAsync(BanchoConnection osu, BanchoMessage message, CancellationToken cancellationToken)
+	private async Task PublicMessageAsync(BanchoConnection osu, BanchoMessage message,
+		CancellationToken cancellationToken)
 	{
 		if (channels.Resolve(message.Recipient, osu) is not { } channel) return;
 		if (!await MayChatAsync(osu, cancellationToken)) return;
 		await channel.ScopeTo(osu).PostAsync(Limit(message.Text), cancellationToken: cancellationToken);
 	}
 
-	private async Task PrivateMessageAsync(BanchoConnection osu, BanchoMessage message, CancellationToken cancellationToken)
+	private async Task PrivateMessageAsync(BanchoConnection osu, BanchoMessage message,
+		CancellationToken cancellationToken)
 	{
 		if (await users.GetByNameAsync(message.Recipient, cancellationToken) is not { } record) return;
 		var target = registry.Of(record);

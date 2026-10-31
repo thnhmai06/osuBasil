@@ -1,8 +1,7 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Domain.Users;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
 

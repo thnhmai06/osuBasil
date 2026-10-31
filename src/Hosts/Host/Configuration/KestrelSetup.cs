@@ -17,10 +17,11 @@ public static class KestrelSetup
 
 		var server = builder.Configuration.GetSection("Basil:Server").Get<ServerOptions>() ?? new ServerOptions();
 		var certificate = Load(server.Certificate);
-		builder.WebHost.ConfigureKestrel(kestrel => kestrel.Listen(IPAddress.Parse(server.Bind), server.Ports.Https, listen =>
-		{
-			if (certificate is not null) listen.UseHttps(certificate);
-		}));
+		builder.WebHost.ConfigureKestrel(kestrel => kestrel.Listen(IPAddress.Parse(server.Bind), server.Ports.Https,
+			listen =>
+			{
+				if (certificate is not null) listen.UseHttps(certificate);
+			}));
 	}
 
 	private static X509Certificate2? Load(ServerOptions.CertificateOptions options)

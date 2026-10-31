@@ -6,8 +6,11 @@ namespace Basil.Host.Rest.Tests.Content;
 [Collection("REST host")]
 public sealed class MenuTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.ServerManageContent;
-	private static readonly byte[] Png = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "avatar-default.png"));
+	private static readonly UserPermissions Manager =
+		UserPermissionsGroups.Default | UserPermissions.ServerManageContent;
+
+	private static readonly byte[] Png =
+		File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "avatar-default.png"));
 
 	[Fact]
 	public async Task Faq_IsPublicToRead_AndManagersWriteIt()
@@ -49,8 +52,10 @@ public sealed class MenuTests(RestHostFixture fixture)
 		using (plain)
 		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
 		{
-			var (denied, _) = await plain.FormAsync(HttpMethod.Post, "/v1/menu/banners", ("image", "b.png", Png), ("url", "https://example.org"));
-			var (created, banner) = await manager.FormAsync(HttpMethod.Post, "/v1/menu/banners", ("image", "menu-b.png", Png), ("url", "https://example.org"));
+			var (denied, _) = await plain.FormAsync(HttpMethod.Post, "/v1/menu/banners", ("image", "b.png", Png),
+				("url", "https://example.org"));
+			var (created, banner) = await manager.FormAsync(HttpMethod.Post, "/v1/menu/banners",
+				("image", "menu-b.png", Png), ("url", "https://example.org"));
 			var (noUrl, _) = await manager.FormAsync(HttpMethod.Post, "/v1/menu/banners", ("image", "menu-c.png", Png));
 			var (listed, list) = await anon.CallAsync(HttpMethod.Get, "/v1/menu/banners");
 			var image = (string)banner!["data"]!["image"]!;
@@ -77,11 +82,14 @@ public sealed class MenuTests(RestHostFixture fixture)
 		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
 		{
 			var (denied, _) = await plain.FormAsync(HttpMethod.Post, "/v1/menu/seasonals", ("image", "s.png", Png));
-			var (created, _) = await manager.FormAsync(HttpMethod.Post, "/v1/menu/seasonals", ("image", "winter.png", Png));
+			var (created, _) =
+				await manager.FormAsync(HttpMethod.Post, "/v1/menu/seasonals", ("image", "winter.png", Png));
 			var (listed, list) = await anon.CallAsync(HttpMethod.Get, "/v1/menu/seasonals");
 			var (removed, _) = await manager.CallAsync(HttpMethod.Delete, "/v1/menu/seasonals/winter.png");
-			var (iconDenied, _) = await plain.FormAsync(HttpMethod.Put, "/v1/menu/icon", ("image", "i.png", Png), ("url", "https://example.org"));
-			var (iconSet, _) = await manager.FormAsync(HttpMethod.Put, "/v1/menu/icon", ("image", "icon.png", Png), ("url", "https://example.org"));
+			var (iconDenied, _) = await plain.FormAsync(HttpMethod.Put, "/v1/menu/icon", ("image", "i.png", Png),
+				("url", "https://example.org"));
+			var (iconSet, _) = await manager.FormAsync(HttpMethod.Put, "/v1/menu/icon", ("image", "icon.png", Png),
+				("url", "https://example.org"));
 			var (icon, view) = await anon.CallAsync(HttpMethod.Get, "/v1/menu/icon");
 			var (iconCleared, _) = await manager.CallAsync(HttpMethod.Delete, "/v1/menu/icon");
 

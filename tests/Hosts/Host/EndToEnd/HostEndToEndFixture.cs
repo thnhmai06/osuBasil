@@ -6,25 +6,23 @@ namespace Basil.Host.Tests.EndToEnd;
 /// <summary>One real server for the end-to-end scenarios that join the osu!, IRC and HTTP hosts.</summary>
 public sealed class HostEndToEndFixture : IAsyncLifetime
 {
-	private readonly PersistenceFixture _database = new();
-
 	/// <summary>Gets the server every client of the collection talks to.</summary>
 	public BasilHost Host { get; private set; } = null!;
 
 	/// <summary>Gets the database server, for a scenario that starts a server of its own and stops it.</summary>
-	public PersistenceFixture Database => _database;
+	public PersistenceFixture Database { get; } = new();
 
 	public async ValueTask InitializeAsync()
 	{
-		await _database.InitializeAsync();
-		Host = await BasilHost.StartAsync(_database);
+		await Database.InitializeAsync();
+		Host = await BasilHost.StartAsync(Database);
 		Host.OpenChannel("#osu");
 	}
 
 	public async ValueTask DisposeAsync()
 	{
 		await Host.DisposeAsync();
-		await _database.DisposeAsync();
+		await Database.DisposeAsync();
 	}
 }
 

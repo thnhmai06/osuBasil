@@ -40,7 +40,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 			Assert.NotEmpty(migrations);
 
 			var createdTables = migrations.SelectMany(type =>
-					((Migration)Activator.CreateInstance(type, nonPublic: true)!).UpOperations
+					((Migration)Activator.CreateInstance(type, true)!).UpOperations
 					.OfType<CreateTableOperation>())
 				.Select(operation => operation.Name)
 				.ToHashSet(StringComparer.Ordinal);

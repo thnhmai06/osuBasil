@@ -1,9 +1,8 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Domain.Moderation;
-using Basil.Domain.Users;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
+using Basil.Domain.Moderation;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
 
@@ -27,7 +26,8 @@ public sealed class ScopedUserRestrictions
 	public Task<(Result<UserOutcome> Result, UserRestriction? Restriction)> SilenceAsync(DateTimeOffset endsAt,
 		string? reason = null, CancellationToken cancellationToken = default)
 	{
-		return ImposeAsync(UserPermissions.UserManageSilence, RestrictionData.Silence, endsAt, reason, cancellationToken);
+		return ImposeAsync(UserPermissions.UserManageSilence, RestrictionData.Silence, endsAt, reason,
+			cancellationToken);
 	}
 
 	/// <summary>Suspends selected permissions until lifted or their end time.</summary>

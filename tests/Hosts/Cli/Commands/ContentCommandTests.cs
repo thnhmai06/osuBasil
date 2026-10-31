@@ -2,7 +2,6 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Beatmaps;
-using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;
@@ -24,7 +23,8 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	[Fact]
 	public async Task Beatmapsets_Create_ImportsAnOsz_ThenShowListAndBeatmapsPrintIt()
 	{
-		var (code, text) = await fixture.RunAsync($"beatmapsets create --file {SamplePath("hopes-and-dreams-catch.osz")}");
+		var (code, text) =
+			await fixture.RunAsync($"beatmapsets create --file {SamplePath("hopes-and-dreams-catch.osz")}");
 		var set = (await Get<IBeatmapsetRepository>().ListAsync(new BeatmapQuery(), new PageRequest(0, 100)))
 			.Items.First(item => item.Metadata.Title.Contains("Hopes", StringComparison.OrdinalIgnoreCase));
 		var maps = await Get<IBeatmapRepository>().ListAsync(set);
@@ -32,7 +32,8 @@ public sealed class ContentCommandTests(CliFixture fixture)
 		var (shown, shownText) = await fixture.RunAsync($"beatmapsets {set.Id}");
 		var (listed, listedText) = await fixture.RunAsync("beatmapsets list --query hopes");
 		var (map, mapText) = await fixture.RunAsync($"beatmaps {maps[0].Id}");
-		var (again, againText) = await fixture.RunAsync($"beatmapsets create --file {SamplePath("hopes-and-dreams-catch.osz")}");
+		var (again, againText) =
+			await fixture.RunAsync($"beatmapsets create --file {SamplePath("hopes-and-dreams-catch.osz")}");
 
 		Assert.True(code == 0 || code == 1, text);
 		Assert.Equal(0, shown);
@@ -51,7 +52,8 @@ public sealed class ContentCommandTests(CliFixture fixture)
 		var maps = await fixture.Host.ImportSampleAsync("Sets/selene-ui-mania.osz");
 		var set = maps[0].Beatmapset;
 
-		var (code, _) = await fixture.RunAsync($"beatmapsets {set.Id} set --status loved --visible false --locked true");
+		var (code, _) =
+			await fixture.RunAsync($"beatmapsets {set.Id} set --status loved --visible false --locked true");
 		var stored = (await Get<IBeatmapsetRepository>().GetAsync(set.Id))!;
 		var (status, visible, locked) = (stored.Status, stored.Visible, stored.Locked);
 		var (bad, _) = await fixture.RunAsync($"beatmapsets {set.Id} set --status bogus");
@@ -137,7 +139,8 @@ public sealed class ContentCommandTests(CliFixture fixture)
 		var (code, _) = await fixture.RunAsync("settings locks set --accounts true --rooms false");
 		var locks = (await Get<ISettingsRepository>().GetAsync()).Locks;
 		var (bad, _) = await fixture.RunAsync("settings rateLimits set --chat.count 0");
-		await fixture.RunAsync($"settings locks set --accounts {before.HasFlag(Locks.Accounts)} --rooms {before.HasFlag(Locks.Rooms)}");
+		await fixture.RunAsync(
+			$"settings locks set --accounts {before.HasFlag(Locks.Accounts)} --rooms {before.HasFlag(Locks.Rooms)}");
 
 		Assert.Equal(0, code);
 		Assert.True(locks.HasFlag(Locks.Accounts));

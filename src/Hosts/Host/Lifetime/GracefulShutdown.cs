@@ -1,5 +1,4 @@
 using Basil.Application.Common.Events;
-using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Bancho.Support;
 using Basil.Host.Cli.Shutdown;
@@ -7,7 +6,6 @@ using Basil.Host.Irc;
 using Basil.Host.Logging;
 using Basil.Host.Rest.Sse;
 using Basil.Infrastructure.Common.Persistence;
-using Microsoft.Extensions.Hosting;
 
 namespace Basil.Host.Lifetime;
 
@@ -69,6 +67,44 @@ internal sealed class GracefulShutdown(
 	/// <summary>Gets what each step did, once the shutdown ran.</summary>
 	public IReadOnlyList<ShutdownStepResult> Results { get; private set; } = [];
 
+	/// <inheritdoc />
+	public async Task StoppingAsync(CancellationToken cancellationToken)
+	{
+		var restarting = control.RestartRequested;
+		logger.LogInformation(restarting ? "Restarting the server" : "Shutting down the server");
+		Results = await sequence.RunAsync(Steps(restarting), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task StartingAsync(CancellationToken cancellationToken)
+	{
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public Task StartAsync(CancellationToken cancellationToken)
+	{
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public Task StartedAsync(CancellationToken cancellationToken)
+	{
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public Task StopAsync(CancellationToken cancellationToken)
+	{
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public Task StoppedAsync(CancellationToken cancellationToken)
+	{
+		return Task.CompletedTask;
+	}
+
 	/// <summary>Creates the steps for a shutdown or a restart.</summary>
 	/// <param name="restarting">Whether the server comes back.</param>
 	internal IReadOnlyList<ShutdownStep> Steps(bool restarting)
@@ -106,43 +142,5 @@ internal sealed class GracefulShutdown(
 				while (logs.Pending > 0) await Task.Delay(10, token);
 			})
 		];
-	}
-
-	/// <inheritdoc />
-	public async Task StoppingAsync(CancellationToken cancellationToken)
-	{
-		var restarting = control.RestartRequested;
-		logger.LogInformation(restarting ? "Restarting the server" : "Shutting down the server");
-		Results = await sequence.RunAsync(Steps(restarting), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task StartingAsync(CancellationToken cancellationToken)
-	{
-		return Task.CompletedTask;
-	}
-
-	/// <inheritdoc />
-	public Task StartAsync(CancellationToken cancellationToken)
-	{
-		return Task.CompletedTask;
-	}
-
-	/// <inheritdoc />
-	public Task StartedAsync(CancellationToken cancellationToken)
-	{
-		return Task.CompletedTask;
-	}
-
-	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken)
-	{
-		return Task.CompletedTask;
-	}
-
-	/// <inheritdoc />
-	public Task StoppedAsync(CancellationToken cancellationToken)
-	{
-		return Task.CompletedTask;
 	}
 }

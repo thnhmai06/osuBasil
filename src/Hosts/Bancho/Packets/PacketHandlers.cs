@@ -4,15 +4,16 @@ using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Host.Bancho.Support;
+using Basil.Protocol.Bancho.Models.Beatmaps;
 using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho.Packets;
@@ -47,8 +48,10 @@ internal sealed partial class PacketHandlers(
 				registry.Online.Keys.Select(user => user.Id).ToList(), cancellationToken),
 			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(by, reader.ReadInt32(), cancellationToken),
 			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(by, reader.ReadInt32(), cancellationToken),
-			ClientPacketType.TournamentLeaveMatchChannel => TourneyLeaveAsync(by, reader.ReadInt32(), cancellationToken),
-			_ when by is BanchoConnection osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader, cancellationToken),
+			ClientPacketType.TournamentLeaveMatchChannel =>
+				TourneyLeaveAsync(by, reader.ReadInt32(), cancellationToken),
+			_ when by is BanchoConnection osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,
+				cancellationToken),
 			_ => Task.CompletedTask
 		};
 	}
@@ -65,7 +68,8 @@ internal sealed partial class PacketHandlers(
 			ClientPacketType.SetAwayMessage => Run(() => SetAway(osu, reader.ReadMessage().Text)),
 			ClientPacketType.ToggleBlockNonFriendDms => Run(() =>
 				osu.User.ScopeTo(osu).Profile.SetPmPrivate(reader.ReadInt32() == 1)),
-			ClientPacketType.BeatmapInfoRequest => BeatmapInfoAsync(osu, reader.ReadBeatmapInfoRequest(), cancellationToken),
+			ClientPacketType.BeatmapInfoRequest => BeatmapInfoAsync(osu, reader.ReadBeatmapInfoRequest(),
+				cancellationToken),
 			ClientPacketType.ChannelJoin => Run(() => JoinChannel(osu, reader.ReadOsuString())),
 			ClientPacketType.ChannelPart => Run(() => PartChannel(osu, reader.ReadOsuString())),
 			ClientPacketType.SendPublicMessage => PublicMessageAsync(osu, reader.ReadMessage(), cancellationToken),
@@ -74,7 +78,8 @@ internal sealed partial class PacketHandlers(
 			ClientPacketType.PartLobby => Run(() => lobby.ScopeTo(osu).Unwatch()),
 			ClientPacketType.StartSpectating => StartSpectatingAsync(osu, reader.ReadInt32(), cancellationToken),
 			ClientPacketType.StopSpectating => Run(() => registry.FindSpectating(osu)?.ScopeTo(osu).StopSpectating()),
-			ClientPacketType.CantSpectate => Run(() => registry.FindSpectating(osu)?.ScopeTo(osu).ReportSpectatingFailed()),
+			ClientPacketType.CantSpectate => Run(() =>
+				registry.FindSpectating(osu)?.ScopeTo(osu).ReportSpectatingFailed()),
 			ClientPacketType.SpectateFrames => Run(() => ForwardFrames(osu, payload)),
 			_ => HandleRoomAsync(osu, type, payload, reader, cancellationToken)
 		};
@@ -124,7 +129,8 @@ internal sealed partial class PacketHandlers(
 				cancellationToken));
 		outbox.Send(by, writer =>
 		{
-			for (var index = 0; index < wanted.Count; index++) BanchoView.WriteStats(writer, wanted[index], stats[index]);
+			for (var index = 0; index < wanted.Count; index++)
+				BanchoView.WriteStats(writer, wanted[index], stats[index]);
 		});
 	}
 
@@ -160,16 +166,16 @@ internal sealed partial class PacketHandlers(
 		osu.User.ScopeTo(osu).Profile.SetAway(string.IsNullOrEmpty(text) ? null : text);
 	}
 
-	private async Task BeatmapInfoAsync(BanchoConnection osu, Protocol.Bancho.Models.Beatmaps.BeatmapInfoRequest request,
+	private async Task BeatmapInfoAsync(BanchoConnection osu, BeatmapInfoRequest request,
 		CancellationToken cancellationToken)
 	{
-		var entries = new List<Protocol.Bancho.Models.Beatmaps.BeatmapInfoReplyEntry>();
+		var entries = new List<BeatmapInfoReplyEntry>();
 		for (var index = 0; index < request.Filenames.Count; index++)
 		{
-			var page = await beatmaps.ListAsync(new Basil.Application.Beatmaps.Persistence.BeatmapQuery(
+			var page = await beatmaps.ListAsync(new BeatmapQuery(
 				FileName: request.Filenames[index]), new PageRequest(0, 1), cancellationToken);
 			if (page.Items.FirstOrDefault() is { } map)
-				entries.Add(new Protocol.Bancho.Models.Beatmaps.BeatmapInfoReplyEntry((short)index, map.Id,
+				entries.Add(new BeatmapInfoReplyEntry((short)index, map.Id,
 					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1, map.Hash.ToString()));
 		}
 

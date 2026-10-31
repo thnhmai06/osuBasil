@@ -1,10 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
-using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
 using Basil.Domain.Users;
-using Basil.Testing.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Images;
@@ -13,9 +10,13 @@ namespace Basil.Host.Rest.Tests.Images;
 [Collection("REST host")]
 public sealed class ImageTests(RestHostFixture fixture)
 {
-	private static readonly byte[] Png = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "avatar-default.png"));
+	private static readonly byte[] Png =
+		File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "avatar-default.png"));
 
-	private RestClient Anonymous() => new(fixture.Host.Url, fixture.Host.Domain);
+	private RestClient Anonymous()
+	{
+		return new RestClient(fixture.Host.Url, fixture.Host.Domain);
+	}
 
 	[Fact]
 	public async Task Avatar_OfAUserWithoutOne_IsTheDefault_AndBasilBotsIsItsOwn()
@@ -54,7 +55,8 @@ public sealed class ImageTests(RestHostFixture fixture)
 	[Fact]
 	public async Task Avatar_WhosePictureCannotBeDecoded_IsNotFound()
 	{
-		var headerOnly = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "seasonal-3500x2487-header.png"));
+		var headerOnly = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images",
+			"seasonal-3500x2487-header.png"));
 		var (owner, id) = await fixture.SignInAsync("ImgBrokenAvatar");
 		using (owner)
 		using (var anon = Anonymous())
@@ -80,7 +82,8 @@ public sealed class ImageTests(RestHostFixture fixture)
 			using var full = await anon.GetFromAsync("a", $"/{id}");
 
 			Assert.Equal(200, (int)small.StatusCode);
-			Assert.True((await small.Content.ReadAsByteArrayAsync()).Length < (await full.Content.ReadAsByteArrayAsync()).Length);
+			Assert.True((await small.Content.ReadAsByteArrayAsync()).Length <
+			            (await full.Content.ReadAsByteArrayAsync()).Length);
 		}
 	}
 
@@ -130,7 +133,8 @@ public sealed class ImageTests(RestHostFixture fixture)
 	[Fact]
 	public async Task MenuBanner_IsServedOnTheAssetsHost()
 	{
-		await fixture.Host.Services.GetRequiredService<IMenuBannerStorage>().SaveAsync("rest-banner.png", new MemoryStream(Png));
+		await fixture.Host.Services.GetRequiredService<IMenuBannerStorage>()
+			.SaveAsync("rest-banner.png", new MemoryStream(Png));
 		using var client = Anonymous();
 
 		using var response = await client.GetFromAsync("assets", "/menu/banners/rest-banner.png");
@@ -144,7 +148,8 @@ public sealed class ImageTests(RestHostFixture fixture)
 	{
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/padoru-standard.osz");
 		var set = beatmaps.First().Beatmapset;
-		var (manager, _) = await fixture.SignInAsync("ImgManager", UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage);
+		var (manager, _) = await fixture.SignInAsync("ImgManager",
+			UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage);
 		using (manager)
 		using (var anon = Anonymous())
 		{

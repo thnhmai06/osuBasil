@@ -83,7 +83,8 @@ internal sealed class BeatmapsetPlanner(
 
 	private async Task<BeatmapData> SyncDifficultyAsync(BeatmapsetDifficulty difficulty, Md5 hash,
 		BeatmapRecord? stored, IReadOnlyDictionary<BeatmapsetContentFile, string> backgrounds,
-		IReadOnlyDictionary<BeatmapsetContentFile, string> audio, IReadOnlyDictionary<BeatmapsetContentFile, string> video,
+		IReadOnlyDictionary<BeatmapsetContentFile, string> audio,
+		IReadOnlyDictionary<BeatmapsetContentFile, string> video,
 		CancellationToken cancellationToken)
 	{
 		var analysis = await analyser.AnalyseAsync(difficulty, stored, cancellationToken);

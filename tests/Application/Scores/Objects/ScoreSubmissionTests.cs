@@ -1,13 +1,11 @@
-using Basil.Application.Scores.Persistence;
-using Basil.Application.Common;
-using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Common.Common;
 using Basil.Application.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Scores.Persistence;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
@@ -31,7 +29,7 @@ public sealed class ScoreSubmissionTests
 
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
-	private static Task<(Common.Common.Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
+	private static Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{
@@ -171,7 +169,8 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var score = ScoreSubmissionFixture.PassedScore();
-		var submission = new Submission { Score = score, Flags = OsuFlags.Clean, HashByClient = new Md5("00000000000000000000000000000000") };
+		var submission = new Submission
+			{ Score = score, Flags = OsuFlags.Clean, HashByClient = new Md5("00000000000000000000000000000000") };
 
 		var (result, rejection) = await SubmitAsync(f, submission);
 

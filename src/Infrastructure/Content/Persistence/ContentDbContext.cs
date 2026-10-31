@@ -8,12 +8,15 @@ internal sealed class ContentDbContext(DbContextOptions<ContentDbContext> option
 {
 	public DbSet<SettingRow> Settings => Set<SettingRow>();
 	public DbSet<MenuBannerRow> MenuBanners => Set<MenuBannerRow>();
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	static string IDatabaseContext<ContentDbContext>.HistoryTable => "__ef_migrations_content";
 
-	static ContentDbContext IDatabaseContext<ContentDbContext>.Create(DbContextOptions<ContentDbContext> options) =>
-		new(options);
+	static ContentDbContext IDatabaseContext<ContentDbContext>.Create(DbContextOptions<ContentDbContext> options)
+	{
+		return new ContentDbContext(options);
+	}
+
+	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

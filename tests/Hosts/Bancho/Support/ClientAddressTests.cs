@@ -25,7 +25,8 @@ public sealed class ClientAddressTests
 	[Fact]
 	public void Resolve_CloudflareHeader_WinsOverTheOthers()
 	{
-		var context = Request(("CF-Connecting-IP", "1.1.1.1"), ("X-Forwarded-For", "2.2.2.2"), ("X-Real-IP", "3.3.3.3"));
+		var context = Request(("CF-Connecting-IP", "1.1.1.1"), ("X-Forwarded-For", "2.2.2.2"),
+			("X-Real-IP", "3.3.3.3"));
 
 		Assert.Equal(IPAddress.Parse("1.1.1.1"), ClientAddress.Resolve(context));
 	}

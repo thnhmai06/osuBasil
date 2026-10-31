@@ -1,5 +1,5 @@
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Persistence;
 
 namespace Basil.Application.Users.Objects;
 

@@ -4,7 +4,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Common.Tests.Events;
 
-/// <summary>Pins that queued deliveries run in order, one at a time, only while the queue runs, and that a failing one ends nothing.</summary>
+/// <summary>
+///     Pins that queued deliveries run in order, one at a time, only while the queue runs, and that a failing one
+///     ends nothing.
+/// </summary>
 public sealed class EventQueueTests
 {
 	/// <summary>How long a test waits for a delivery before calling the queue dead.</summary>

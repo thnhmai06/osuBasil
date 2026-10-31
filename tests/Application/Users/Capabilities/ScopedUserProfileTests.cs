@@ -1,10 +1,8 @@
 using System.Text;
 using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Storage;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Storage;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,43 +18,6 @@ namespace Basil.Application.Users.Tests.Capabilities;
 public sealed class ScopedUserProfileTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
-
-	/// <summary>An avatar store that keeps the images in memory.</summary>
-	private sealed class MemoryAvatars : IUserAvatarStorage
-	{
-		public Dictionary<int, byte[]> Images { get; } = [];
-
-		public async Task SaveAsync(UserRecord user, Stream content, CancellationToken cancellationToken = default)
-		{
-			using var copy = new MemoryStream();
-			await content.CopyToAsync(copy, cancellationToken);
-			Images[user.Id] = copy.ToArray();
-		}
-
-		public Task<Stream?> OpenAsync(UserRecord user, CancellationToken cancellationToken = default)
-		{
-			return Task.FromResult<Stream?>(Images.TryGetValue(user.Id, out var image) ? new MemoryStream(image) : null);
-		}
-
-		public Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
-		{
-			Images.Remove(user.Id);
-			return Task.CompletedTask;
-		}
-	}
-
-	/// <summary>A stream that counts the bytes handed to its reader.</summary>
-	private sealed class CountingStream(byte[] content) : MemoryStream(content)
-	{
-		public long BytesRead { get; private set; }
-
-		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-		{
-			var read = await base.ReadAsync(buffer, cancellationToken);
-			BytesRead += read;
-			return read;
-		}
-	}
 
 	private static IScreenshotInspector InspectorOf(TestApplication app)
 	{
@@ -74,7 +35,8 @@ public sealed class ScopedUserProfileTests
 		var avatars = new MemoryAvatars();
 		var app = new TestApplication(services => services.AddSingleton<IUserAvatarStorage>(avatars));
 		InspectedAs(app, new ScreenshotInfo("png", 64, 64));
-		await app.SetSettingsAsync(new ServerSettings { Locks = locks, Uploads = uploads ?? new() });
+		await app.SetSettingsAsync(new ServerSettings
+			{ Locks = locks, Uploads = uploads ?? new ServerSettings.UploadSettings() });
 		return (app, avatars);
 	}
 
@@ -105,7 +67,7 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("Nowhere", "password");
 		var by = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetCountryAsync((Country)0, Token);
+		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetCountryAsync(0, Token);
 
 		Assert.Equal(UserOutcome.InvalidCountry, result.Outcome);
 	}
@@ -358,5 +320,45 @@ public sealed class ScopedUserProfileTests
 		Assert.True((await profile.SetAvatarAsync(new MemoryStream([9]), Token)).IsOk);
 		Assert.Equal("Basilisk", bot.Value.Name);
 		Assert.Equal([9], avatars.Images[bot.Id]);
+	}
+
+	/// <summary>An avatar store that keeps the images in memory.</summary>
+	private sealed class MemoryAvatars : IUserAvatarStorage
+	{
+		public Dictionary<int, byte[]> Images { get; } = [];
+
+		public async Task SaveAsync(UserRecord user, Stream content, CancellationToken cancellationToken = default)
+		{
+			using var copy = new MemoryStream();
+			await content.CopyToAsync(copy, cancellationToken);
+			Images[user.Id] = copy.ToArray();
+		}
+
+		public Task<Stream?> OpenAsync(UserRecord user, CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<Stream?>(Images.TryGetValue(user.Id, out var image)
+				? new MemoryStream(image)
+				: null);
+		}
+
+		public Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
+		{
+			Images.Remove(user.Id);
+			return Task.CompletedTask;
+		}
+	}
+
+	/// <summary>A stream that counts the bytes handed to its reader.</summary>
+	private sealed class CountingStream(byte[] content) : MemoryStream(content)
+	{
+		public long BytesRead { get; private set; }
+
+		public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
+			CancellationToken cancellationToken = default)
+		{
+			var read = await base.ReadAsync(buffer, cancellationToken);
+			BytesRead += read;
+			return read;
+		}
 	}
 }

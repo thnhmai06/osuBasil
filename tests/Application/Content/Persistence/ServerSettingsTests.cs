@@ -5,6 +5,27 @@ namespace Basil.Application.Content.Tests.Persistence;
 /// <summary>Verifies the validation of the settings an administrator changes while the server runs.</summary>
 public class ServerSettingsTests
 {
+	public static TheoryData<Action> InvalidValues => new()
+	{
+		() => _ = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.Zero },
+		() => _ = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.FromSeconds(-1) },
+		() => _ = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.Zero },
+		() => _ = new ServerSettings.SessionSettings { IdleWindow = TimeSpan.Zero },
+		() => _ = new ServerSettings.SessionSettings { RetentionPeriod = TimeSpan.FromDays(-1) },
+		() => _ = new ServerSettings.LoginLimitSettings { MaxAttempts = 0 },
+		() => _ = new ServerSettings.LoginLimitSettings { Window = TimeSpan.Zero },
+		() => _ = new ServerSettings.LoginLimitSettings { Lockout = TimeSpan.Zero },
+		() => _ = new ServerSettings.ConnectionLimitSettings { PerIp = 0 },
+		() => _ = new ServerSettings.Limit(0, TimeSpan.FromSeconds(1)),
+		() => _ = new ServerSettings.Limit(1, TimeSpan.Zero),
+		() => _ = new ServerSettings.UploadSettings { OszMaxSize = 0 },
+		() => _ = new ServerSettings.UploadSettings { ScreenshotMaxSize = -1 },
+		() => _ = new ServerSettings.UploadSettings { ScreenshotMaxSide = 0 },
+		() => _ = new ServerSettings.UploadSettings { AvatarMaxSize = 0 },
+		() => _ = new ServerSettings.UploadSettings { AvatarMaxSide = 0 },
+		() => _ = new ServerSettings.BotSettings { CommandPrefix = " " }
+	};
+
 	[Fact]
 	public void MenuIconUrl_FileScheme_Throws()
 	{
@@ -33,7 +54,8 @@ public class ServerSettingsTests
 		{
 			Beatmaps = new ServerSettings.BeatmapSettings
 			{
-				Mirror = new ServerSettings.BeatmapMirrorSettings { SearchEndpoint = new Uri("/search", UriKind.Relative) }
+				Mirror = new ServerSettings.BeatmapMirrorSettings
+					{ SearchEndpoint = new Uri("/search", UriKind.Relative) }
 			}
 		});
 	}
@@ -71,27 +93,6 @@ public class ServerSettingsTests
 		Assert.Equal(Locks.Beatmapsets, settings.Locks);
 		Assert.Empty(settings.Cors.AllowedOrigins);
 	}
-
-	public static TheoryData<Action> InvalidValues => new()
-	{
-		() => _ = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.Zero },
-		() => _ = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.FromSeconds(-1) },
-		() => _ = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.Zero },
-		() => _ = new ServerSettings.SessionSettings { IdleWindow = TimeSpan.Zero },
-		() => _ = new ServerSettings.SessionSettings { RetentionPeriod = TimeSpan.FromDays(-1) },
-		() => _ = new ServerSettings.LoginLimitSettings { MaxAttempts = 0 },
-		() => _ = new ServerSettings.LoginLimitSettings { Window = TimeSpan.Zero },
-		() => _ = new ServerSettings.LoginLimitSettings { Lockout = TimeSpan.Zero },
-		() => _ = new ServerSettings.ConnectionLimitSettings { PerIp = 0 },
-		() => _ = new ServerSettings.Limit(0, TimeSpan.FromSeconds(1)),
-		() => _ = new ServerSettings.Limit(1, TimeSpan.Zero),
-		() => _ = new ServerSettings.UploadSettings { OszMaxSize = 0 },
-		() => _ = new ServerSettings.UploadSettings { ScreenshotMaxSize = -1 },
-		() => _ = new ServerSettings.UploadSettings { ScreenshotMaxSide = 0 },
-		() => _ = new ServerSettings.UploadSettings { AvatarMaxSize = 0 },
-		() => _ = new ServerSettings.UploadSettings { AvatarMaxSide = 0 },
-		() => _ = new ServerSettings.BotSettings { CommandPrefix = " " }
-	};
 
 	[Theory]
 	[MemberData(nameof(InvalidValues))]

@@ -1,4 +1,3 @@
-using Basil.Host.Cli;
 using Basil.Host.Cli.Shutdown;
 using Microsoft.Extensions.Time.Testing;
 

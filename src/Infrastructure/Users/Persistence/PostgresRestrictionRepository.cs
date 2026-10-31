@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Users.Persistence;

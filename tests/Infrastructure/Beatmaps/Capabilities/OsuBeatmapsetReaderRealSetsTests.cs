@@ -1,7 +1,6 @@
-using Basil.Testing.Persistence;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Beatmaps.Capabilities;
-using Basil.Infrastructure.Beatmaps.Tests.Support;
+using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Capabilities;
 

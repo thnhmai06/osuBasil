@@ -1,3 +1,4 @@
+using System.Net;
 using Basil.Testing.Clients;
 
 namespace Basil.Host.Bancho.Tests.Multiplayer;
@@ -8,9 +9,13 @@ public sealed class MultiplayerTests(BanchoHostFixture fixture)
 {
 	private BasilHost Host => fixture.Host;
 
-	private static int MatchIdOf(ServerPacket joinSuccess) => BitConverter.ToUInt16(joinSuccess.Payload, 0);
+	private static int MatchIdOf(ServerPacket joinSuccess)
+	{
+		return BitConverter.ToUInt16(joinSuccess.Payload, 0);
+	}
 
-	private async Task<(OsuClient Host, OsuClient Guest, int MatchId)> SeatedPairAsync(string hostName, string guestName)
+	private async Task<(OsuClient Host, OsuClient Guest, int MatchId)> SeatedPairAsync(string hostName,
+		string guestName)
 	{
 		var beatmap = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		var hostClient = await Host.NewClientAsync(hostName);
@@ -23,7 +28,8 @@ public sealed class MultiplayerTests(BanchoHostFixture fixture)
 		var created = await hostClient.WaitForAsync(OsuClient.In.MatchJoinSuccess);
 		Assert.NotNull(created);
 		var matchId = MatchIdOf(created);
-		await guest.SendAsync(writer => writer.Packet(OsuClient.Out.JoinMatch, ClientPacketWriter.JoinMatch(matchId, "pw")));
+		await guest.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.JoinMatch, ClientPacketWriter.JoinMatch(matchId, "pw")));
 		Assert.NotNull(await guest.WaitForAsync(OsuClient.In.MatchJoinSuccess));
 		return (hostClient, guest, matchId);
 	}
@@ -37,7 +43,8 @@ public sealed class MultiplayerTests(BanchoHostFixture fixture)
 		var creator = await Host.NewClientAsync("RoomCreator");
 		await creator.LoginAsync();
 
-		await creator.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("lobby room", "")));
+		await creator.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("lobby room", "")));
 
 		Assert.NotNull(await creator.WaitForAsync(OsuClient.In.MatchJoinSuccess));
 		Assert.NotNull(await watcher.WaitForAsync(OsuClient.In.NewMatch));
@@ -50,7 +57,8 @@ public sealed class MultiplayerTests(BanchoHostFixture fixture)
 		var guest = await Host.NewClientAsync("PwGuest");
 		await creator.LoginAsync();
 		await guest.LoginAsync();
-		await creator.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw room", "secret")));
+		await creator.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("pw room", "secret")));
 		var matchId = MatchIdOf((await creator.WaitForAsync(OsuClient.In.MatchJoinSuccess))!);
 
 		var answer = await guest.SendAsync(writer =>
@@ -101,7 +109,7 @@ public sealed class MultiplayerTests(BanchoHostFixture fixture)
 		var (status, text) = await guest.SubmitScoreAsync(beatmap.Hash.ToString(), 424242, replay: new byte[64]);
 		var (_, board) = await guest.GetScoresAsync(beatmap.Hash.ToString());
 
-		Assert.Equal(System.Net.HttpStatusCode.OK, status);
+		Assert.Equal(HttpStatusCode.OK, status);
 		Assert.StartsWith("beatmapId:", text);
 		Assert.Contains("|ScoreGuest|424242|", board);
 	}

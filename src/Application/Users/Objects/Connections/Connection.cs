@@ -1,12 +1,9 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Objects;
+using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Users.Capabilities;
 
 namespace Basil.Application.Users.Objects.Connections;
 
@@ -21,6 +18,19 @@ public abstract class Connection(Session login, string token) : IActor
 
 	/// <summary>Gets the opaque token that identifies this connection.</summary>
 	public string Token { get; } = token;
+
+	/// <summary>Gets the kind of connection.</summary>
+	public abstract SessionType Type { get; }
+
+	/// <summary>Gets a value that indicates whether the connection is still open.</summary>
+	public bool IsOpen { get; internal set; }
+
+	/// <summary>Gets when this connection was last active.</summary>
+	public DateTimeOffset LastActiveAt
+	{
+		get => Session.LastActiveAt;
+		internal set => Session.MarkActive(value);
+	}
 
 	/// <summary>Gets the user who owns this connection.</summary>
 	public UserRecord Record => Session.User;
@@ -39,19 +49,6 @@ public abstract class Connection(Session login, string token) : IActor
 	{
 		return granted.Allows(target) && granted != target;
 	}
-
-	/// <summary>Gets the kind of connection.</summary>
-	public abstract SessionType Type { get; }
-
-	/// <summary>Gets a value that indicates whether the connection is still open.</summary>
-	public bool IsOpen { get; internal set; }
-
-	/// <summary>Gets when this connection was last active.</summary>
-	public DateTimeOffset LastActiveAt
-	{
-		get => Session.LastActiveAt;
-		internal set => Session.MarkActive(value);
-	}
 }
 
 /// <summary>A connection from an osu! game client.</summary>
@@ -65,7 +62,8 @@ public sealed class BanchoConnection : Connection
 	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="context">The runtime dependencies for the connection's behaviour.</param>
-	internal BanchoConnection(Session login, string token, int utcOffset, ConnectionContext context) : base(login, token)
+	internal BanchoConnection(Session login, string token, int utcOffset, ConnectionContext context) : base(login,
+		token)
 	{
 		UtcOffset = utcOffset;
 		Context = context;

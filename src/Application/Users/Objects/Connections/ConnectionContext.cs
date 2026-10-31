@@ -1,6 +1,6 @@
-using Basil.Application.Users.Persistence;
 using Basil.Application.Common.Events;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 
 namespace Basil.Application.Users.Objects.Connections;

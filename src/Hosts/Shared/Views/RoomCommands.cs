@@ -1,12 +1,9 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
@@ -55,7 +52,10 @@ public sealed record PrivateRequest(bool Private);
 /// <param name="Summary">One sentence that says what the command does.</param>
 /// <param name="Body">The type of the body, or <see langword="null" /> when the command takes none.</param>
 /// <param name="Run">Runs the command on a scoped room with the body.</param>
-public sealed record RoomCommand(string Name, string Summary, Type? Body,
+public sealed record RoomCommand(
+	string Name,
+	string Summary,
+	Type? Body,
 	Func<ScopedRoom, object?, IServiceProvider, CancellationToken, Task<Result<RoomOutcome>>> Run);
 
 /// <summary>The room commands that both the HTTP API and the console offer, one for each room command of <c>!mp</c>.</summary>
@@ -71,7 +71,8 @@ public static class RoomCommands
 	public static IReadOnlyList<RoomCommand> All { get; } =
 	[
 		Command<object?>("close", "Close the room.", (r, _, _, ct) => r.CloseAsync(ct)),
-		Command<object?>("lock", "Lock the room so nobody else can join.", (r, _, _, ct) => r.Settings.SetLockedAsync(true, ct)),
+		Command<object?>("lock", "Lock the room so nobody else can join.",
+			(r, _, _, ct) => r.Settings.SetLockedAsync(true, ct)),
 		Command<object?>("unlock", "Unlock the room.", (r, _, _, ct) => r.Settings.SetLockedAsync(false, ct)),
 		Command<SizeRequest>("size", "Change the number of usable slots.", (r, b, _, ct) =>
 			b.Size is < 1 or > MaxRoomSize
@@ -87,7 +88,8 @@ public static class RoomCommands
 				? Refuse(RoomOutcome.InvalidSettings)
 				: r.Settings.ConfigureAsync(new RoomSettingsChange(Truncate(b.Name)), ct)),
 		Command<PasswordRequest>("password", "Change the password of the room; empty removes it.",
-			(r, b, _, ct) => r.Settings.ConfigureAsync(new RoomSettingsChange(Password: b.Password ?? string.Empty), ct)),
+			(r, b, _, ct) =>
+				r.Settings.ConfigureAsync(new RoomSettingsChange(Password: b.Password ?? string.Empty), ct)),
 		Command<PrivateRequest>("private", "Make the room private or public.",
 			(r, b, _, ct) => r.Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: b.Private), ct)),
 		Command<MapRequest>("map", "Select the beatmap of the room.", MapAsync),
@@ -101,7 +103,9 @@ public static class RoomCommands
 			return r.Settings.ConfigureAsync(new RoomSettingsChange(Mods: mods, Freemods: b.Freemod ?? false), ct);
 		}),
 		Command<MoveRequest>("move", "Move a player to a slot.", (r, b, s, ct) => WithUser(s, b.User, ct,
-			u => b.Slot is < 1 or > MaxRoomSize ? Refuse(RoomOutcome.InvalidSettings) : r.Slots.MoveAsync(u, b.Slot, ct))),
+			u => b.Slot is < 1 or > MaxRoomSize
+				? Refuse(RoomOutcome.InvalidSettings)
+				: r.Slots.MoveAsync(u, b.Slot, ct))),
 		Command<TeamRequest>("team", "Put a player in a team.",
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Slots.SetTeamAsync(u, b.Team, ct))),
 		Command<UserRequest>("host", "Give the host to a player.", (r, b, s, ct) => WithUser(s, b.User, ct, u =>
@@ -116,11 +120,12 @@ public static class RoomCommands
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Members.BanAsync(u, ct))),
 		Command<UserRequest>("unban", "Lift the ban of a player.",
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Members.UnbanAsync(u, ct))),
-		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) => WithUser(s, b.User, ct, u =>
-		{
-			var target = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u);
-			return target is null ? Refuse(RoomOutcome.TargetOffline) : r.Members.InviteAsync(target, ct);
-		})),
+		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) => WithUser(s, b.User, ct,
+			u =>
+			{
+				var target = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u);
+				return target is null ? Refuse(RoomOutcome.TargetOffline) : r.Members.InviteAsync(target, ct);
+			})),
 		Command<UserRequest>("addref", "Make a player a referee.",
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Authority.AddRefereeAsync(u, ct))),
 		Command<UserRequest>("removeref", "Remove a referee.",
@@ -129,7 +134,8 @@ public static class RoomCommands
 			b.Seconds is { } seconds and > 0 ? Countdown(r, seconds, true, ct) : r.Rounds.StartAsync(ct)),
 		Command<CountdownRequest>("timer", "Start a countdown of 30 seconds or the given length.",
 			(r, b, _, ct) => Countdown(r, b.Seconds ?? 30, false, ct)),
-		Command<object?>("aborttimer", "Cancel the running countdown.", (r, _, _, ct) => r.Rounds.CancelCountdownAsync(ct)),
+		Command<object?>("aborttimer", "Cancel the running countdown.",
+			(r, _, _, ct) => r.Rounds.CancelCountdownAsync(ct)),
 		Command<object?>("abort", "Abort the round in progress.", (r, _, _, ct) => r.Rounds.AbortAsync(ct))
 	];
 
@@ -151,7 +157,8 @@ public static class RoomCommands
 		return Task.FromResult<Result<RoomOutcome>>(outcome);
 	}
 
-	private static Task<Result<RoomOutcome>> Countdown(ScopedRoom room, int seconds, bool startsRound, CancellationToken ct)
+	private static Task<Result<RoomOutcome>> Countdown(ScopedRoom room, int seconds, bool startsRound,
+		CancellationToken ct)
 	{
 		return seconds < 1 || TimeSpan.FromSeconds(seconds) > ScopedRoomRounds.MaxCountdown
 			? Refuse(RoomOutcome.InvalidSettings)

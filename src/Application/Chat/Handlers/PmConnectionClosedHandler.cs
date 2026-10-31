@@ -1,12 +1,13 @@
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
-using Mediator;
 using Basil.Application.Chat.Registry;
+using Basil.Application.Users.Objects.Events;
+using Mediator;
 
 namespace Basil.Application.Chat.Handlers;
 
-/// <summary>Takes a closed connection out of its user's private-message channel and closes the channel when the user goes offline.</summary>
+/// <summary>
+///     Takes a closed connection out of its user's private-message channel and closes the channel when the user goes
+///     offline.
+/// </summary>
 internal sealed class PmConnectionClosedHandler(PmChannels channels) : INotificationHandler<UserConnectionClosed>
 {
 	/// <inheritdoc />

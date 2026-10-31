@@ -1,4 +1,3 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 
 namespace Basil.Host.Rest.Http;
@@ -13,7 +12,8 @@ public static class OutcomeResults
 	{
 		return kind switch
 		{
-			ErrorKind.PermissionDenied or ErrorKind.Forbidden or ErrorKind.WrongPassword => StatusCodes.Status403Forbidden,
+			ErrorKind.PermissionDenied or ErrorKind.Forbidden or ErrorKind.WrongPassword => StatusCodes
+				.Status403Forbidden,
 			ErrorKind.NotFound => StatusCodes.Status404NotFound,
 			ErrorKind.Conflict or ErrorKind.Locked or ErrorKind.SystemAccount => StatusCodes.Status409Conflict,
 			ErrorKind.Gone => StatusCodes.Status410Gone,

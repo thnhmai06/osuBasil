@@ -1,5 +1,5 @@
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Common.Events;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat.Objects.Events;

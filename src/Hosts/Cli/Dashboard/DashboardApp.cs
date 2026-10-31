@@ -26,25 +26,26 @@ internal sealed class CanvasSurface(CanvasContext context, Theme theme) : IPaint
 	public int Height => context.Size.Height;
 
 	/// <inheritdoc />
-	public void Put(int x, int y, char character, Basil.Host.Cli.Dashboard.Tone tone, double heat = 0)
+	public void Put(int x, int y, char character, Tone tone, double heat = 0)
 	{
 		if (x < 0 || y < 0 || x >= Width || y >= Height) return;
 
 		context.WriteText(x, y, character.ToString(), StyleOf(tone, heat));
 	}
 
-	private Style StyleOf(Basil.Host.Cli.Dashboard.Tone tone, double heat)
+	private Style StyleOf(Tone tone, double heat)
 	{
 		var foreground = theme.Foreground ?? Colors.TerminalWhite;
 		return tone switch
 		{
-			Basil.Host.Cli.Dashboard.Tone.Muted => Style.None.WithForeground(theme.Muted ?? Colors.TerminalBrightBlack),
-			Basil.Host.Cli.Dashboard.Tone.Accent => Style.None.WithForeground(theme.Accent ?? theme.Primary ?? Colors.TerminalCyan),
-			Basil.Host.Cli.Dashboard.Tone.Good => Style.None.WithForeground(theme.Success ?? Colors.TerminalGreen),
-			Basil.Host.Cli.Dashboard.Tone.Warn => Style.None.WithForeground(theme.Warning ?? Colors.TerminalYellow),
-			Basil.Host.Cli.Dashboard.Tone.Bad => Style.None.WithForeground(theme.Error ?? Colors.TerminalRed),
-			Basil.Host.Cli.Dashboard.Tone.Selected => Style.None.WithForeground(foreground).WithBackground(theme.Selection ?? Colors.TerminalBlue),
-			Basil.Host.Cli.Dashboard.Tone.Heat => Style.None.WithForeground(Gradient(heat)),
+			Tone.Muted => Style.None.WithForeground(theme.Muted ?? Colors.TerminalBrightBlack),
+			Tone.Accent => Style.None.WithForeground(theme.Accent ?? theme.Primary ?? Colors.TerminalCyan),
+			Tone.Good => Style.None.WithForeground(theme.Success ?? Colors.TerminalGreen),
+			Tone.Warn => Style.None.WithForeground(theme.Warning ?? Colors.TerminalYellow),
+			Tone.Bad => Style.None.WithForeground(theme.Error ?? Colors.TerminalRed),
+			Tone.Selected => Style.None.WithForeground(foreground)
+				.WithBackground(theme.Selection ?? Colors.TerminalBlue),
+			Tone.Heat => Style.None.WithForeground(Gradient(heat)),
 			_ => Style.None.WithForeground(foreground)
 		};
 	}
@@ -67,26 +68,28 @@ internal sealed class CanvasSurface(CanvasContext context, Theme theme) : IPaint
 /// </summary>
 public sealed class DashboardApp
 {
+	private readonly CancellationTokenSource _cancel = new();
+	private readonly TimeProvider _clock;
+	private readonly PromptEditorHistory _history = new();
+	private readonly ILogger<DashboardApp> _logger;
+	private readonly CliMode _mode;
 	private readonly DashboardModel _model;
 	private readonly DashboardRenderer _renderer;
-	private readonly DashboardSampler _sampler;
 	private readonly CommandRunner _runner;
-	private readonly CommandSuggestions _suggestions;
+	private readonly DashboardSampler _sampler;
 	private readonly ShutdownController _shutdown;
+	private readonly CommandSuggestions _suggestions;
 	private readonly ThemeStore _themes;
-	private readonly CliMode _mode;
-	private readonly TimeProvider _clock;
-	private readonly ILogger<DashboardApp> _logger;
-	private readonly PromptEditorHistory _history = new();
-	private readonly CancellationTokenSource _cancel = new();
-	private TaskCompletionSource<bool>? _confirmation;
-	private PromptEditor? _prompt;
 	private TerminalApp? _app;
+	private TaskCompletionSource<bool>? _confirmation;
 	private long _lastSample;
+	private PromptEditor? _prompt;
 
 	/// <summary>Creates the dashboard.</summary>
-	public DashboardApp(DashboardModel model, DashboardRenderer renderer, DashboardSampler sampler, CommandRunner runner,
-		CommandSuggestions suggestions, ShutdownController shutdown, ThemeStore themes, CliMode mode, TimeProvider clock,
+	public DashboardApp(DashboardModel model, DashboardRenderer renderer, DashboardSampler sampler,
+		CommandRunner runner,
+		CommandSuggestions suggestions, ShutdownController shutdown, ThemeStore themes, CliMode mode,
+		TimeProvider clock,
 		ILogger<DashboardApp> logger)
 	{
 		_model = model;
@@ -104,7 +107,8 @@ public sealed class DashboardApp
 	/// <summary>Builds what the dashboard shows.</summary>
 	public Visual Build()
 	{
-		var canvas = new Canvas().Painter(context => _renderer.Paint(new CanvasSurface(context, _themes.Theme), _mode == CliMode.Full))
+		var canvas = new Canvas().Painter(context =>
+				_renderer.Paint(new CanvasSurface(context, _themes.Theme), _mode == CliMode.Full))
 			.UseFinePixels(true);
 		if (_mode != CliMode.Full) return canvas;
 
@@ -117,10 +121,10 @@ public sealed class DashboardApp
 			.Highlighter(Highlight)
 			.Accepted(OnAccepted);
 		var grid = new Grid()
-			.Columns(new ColumnDefinition { Width = GridLength.Star(1) })
-			.Rows(new RowDefinition { Height = GridLength.Star(1) }, new RowDefinition { Height = GridLength.Auto })
-			.Cell(canvas, row: 0, column: 0)
-			.Cell(_prompt, row: 1, column: 0);
+			.Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
+			.Cell(canvas, 0, 0)
+			.Cell(_prompt, 1, 0);
 		return grid;
 	}
 
@@ -176,7 +180,7 @@ public sealed class DashboardApp
 			var tab = (DashboardTab)i;
 			app.AddGlobalCommand(new Command
 			{
-				Id = $"tab.{tab}", LabelMarkup = tab.ToString(), Gesture = new KeyGesture(TerminalKey.F1 + i, TerminalModifiers.None),
+				Id = $"tab.{tab}", LabelMarkup = tab.ToString(), Gesture = new KeyGesture(TerminalKey.F1 + i),
 				Execute = _ =>
 				{
 					_model.Tab = tab;
@@ -193,27 +197,30 @@ public sealed class DashboardApp
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "select.up", LabelMarkup = "Select up", Gesture = new KeyGesture(TerminalKey.Up, TerminalModifiers.Alt),
+			Id = "select.up", LabelMarkup = "Select up",
+			Gesture = new KeyGesture(TerminalKey.Up, TerminalModifiers.Alt),
 			Execute = _ => Move(-1)
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "select.down", LabelMarkup = "Select down", Gesture = new KeyGesture(TerminalKey.Down, TerminalModifiers.Alt),
+			Id = "select.down", LabelMarkup = "Select down",
+			Gesture = new KeyGesture(TerminalKey.Down, TerminalModifiers.Alt),
 			Execute = _ => Move(1)
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "select.fill", LabelMarkup = "Use the selected id", Gesture = new KeyGesture(TerminalKey.Enter, TerminalModifiers.Alt),
+			Id = "select.fill", LabelMarkup = "Use the selected id",
+			Gesture = new KeyGesture(TerminalKey.Enter, TerminalModifiers.Alt),
 			Execute = _ => FillSelectedId()
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "log.pause", LabelMarkup = "Pause the log", Gesture = new KeyGesture(TerminalKey.PageUp, TerminalModifiers.None),
+			Id = "log.pause", LabelMarkup = "Pause the log", Gesture = new KeyGesture(TerminalKey.PageUp),
 			Execute = _ => PauseLog(true)
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "log.follow", LabelMarkup = "Follow the log", Gesture = new KeyGesture(TerminalKey.PageDown, TerminalModifiers.None),
+			Id = "log.follow", LabelMarkup = "Follow the log", Gesture = new KeyGesture(TerminalKey.PageDown),
 			Execute = _ => PauseLog(false)
 		});
 	}
@@ -283,7 +290,8 @@ public sealed class DashboardApp
 		{
 			_confirmation = null;
 			_model.Notice = string.Empty;
-			pending.TrySetResult(line.Equals("y", StringComparison.OrdinalIgnoreCase) || line.Equals("yes", StringComparison.OrdinalIgnoreCase));
+			pending.TrySetResult(line.Equals("y", StringComparison.OrdinalIgnoreCase) ||
+			                     line.Equals("yes", StringComparison.OrdinalIgnoreCase));
 			return;
 		}
 

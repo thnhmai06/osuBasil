@@ -7,12 +7,15 @@ internal sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : D
 	IDatabaseContext<ChatDbContext>, IWriteTicketContext
 {
 	public DbSet<ChannelRow> Channels => Set<ChannelRow>();
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	static string IDatabaseContext<ChatDbContext>.HistoryTable => "__ef_migrations_chat";
 
-	static ChatDbContext IDatabaseContext<ChatDbContext>.Create(DbContextOptions<ChatDbContext> options) =>
-		new(options);
+	static ChatDbContext IDatabaseContext<ChatDbContext>.Create(DbContextOptions<ChatDbContext> options)
+	{
+		return new ChatDbContext(options);
+	}
+
+	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

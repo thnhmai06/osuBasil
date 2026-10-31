@@ -1,5 +1,4 @@
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 
@@ -10,7 +9,10 @@ public static class DiagnosticsSample
 {
 	/// <summary>The names of the categories, in the order the API lists them.</summary>
 	public static readonly string[] Categories =
-		["process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database", "bancho", "irc", "events", "sessions"];
+	[
+		"process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database", "bancho", "irc",
+		"events", "sessions"
+	];
 
 	/// <summary>Takes the sample of the second.</summary>
 	/// <param name="runtime">The sampler of the process.</param>
@@ -18,7 +20,8 @@ public static class DiagnosticsSample
 	/// <param name="lobby">The rooms.</param>
 	/// <param name="openStreams">How many live HTTP streams are open.</param>
 	/// <returns>The value of each category.</returns>
-	public static Dictionary<string, object> Create(RuntimeSampler runtime, UserRegistry registry, Lobby lobby, int openStreams)
+	public static Dictionary<string, object> Create(RuntimeSampler runtime, UserRegistry registry, Lobby lobby,
+		int openStreams)
 	{
 		int Count(SessionType type)
 		{
@@ -32,7 +35,8 @@ public static class DiagnosticsSample
 				usersOnline = registry.Online.Count, rooms = lobby.Rooms.Count,
 				roundsInProgress = lobby.Rooms.Values.Count(room => room.Rounds.InProgress), openStreams
 			},
-			["sessions"] = Enum.GetValues<SessionType>().ToDictionary(type => type.ToString().ToLowerInvariant(), Count),
+			["sessions"] =
+				Enum.GetValues<SessionType>().ToDictionary(type => type.ToString().ToLowerInvariant(), Count),
 			["bancho"] = new { osu = Count(SessionType.Osu), tourney = Count(SessionType.OsuTourney) },
 			["irc"] = new { connections = Count(SessionType.Irc) },
 			["database"] = new { available = false },

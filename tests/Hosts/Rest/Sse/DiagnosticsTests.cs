@@ -7,7 +7,8 @@ namespace Basil.Host.Rest.Tests.Sse;
 [Collection("REST host")]
 public sealed class DiagnosticsTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Staff = UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics;
+	private static readonly UserPermissions Staff = UserPermissionsGroups.Default |
+	                                                UserPermissions.ServerManageDiagnostics;
 
 	[Fact]
 	public async Task Diagnostics_WithoutPermission_Answer403_AndWithoutAToken401()
@@ -45,7 +46,11 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 			using (unknown)
 			{
 				var snapshot = JsonNode.Parse((await allReader!.ReadAsync())!.Value.Data)!;
-				foreach (var category in new[] { "process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database", "bancho", "irc", "events", "sessions" })
+				foreach (var category in new[]
+				         {
+					         "process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database",
+					         "bancho", "irc", "events", "sessions"
+				         })
 					Assert.NotNull(snapshot[category]);
 				var application = JsonNode.Parse((await oneReader!.ReadAsync())!.Value.Data)!;
 				Assert.NotNull(application["usersOnline"]);

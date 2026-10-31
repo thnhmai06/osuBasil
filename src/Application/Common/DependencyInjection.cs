@@ -1,4 +1,5 @@
 using Basil.Application.Common.Events;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -15,7 +16,7 @@ public static class DependencyInjection
 		services.TryAddSingleton(TimeProvider.System);
 		services.TryAddSingleton<EventQueue>();
 		services.TryAddSingleton(sp => new EventPublisher(
-			new Lazy<Mediator.IPublisher>(sp.GetRequiredService<Mediator.IPublisher>),
+			new Lazy<IPublisher>(sp.GetRequiredService<IPublisher>),
 			sp.GetRequiredService<TimeProvider>()));
 		return services;
 	}

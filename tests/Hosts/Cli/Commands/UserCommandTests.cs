@@ -1,12 +1,10 @@
 using System.Text;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;
@@ -18,7 +16,8 @@ public sealed class UserCommandTests(CliFixture fixture)
 	private async Task<bool> CanSignInAsync(string name, string password)
 	{
 		var credentials = fixture.Host.Services.GetRequiredService<ICredentialRepository>();
-		return await credentials.VerifyAsync(new Credentials(await fixture.UserAsync(name), new Md5(Encoding.UTF8.GetBytes(password))));
+		return await credentials.VerifyAsync(new Credentials(await fixture.UserAsync(name),
+			new Md5(Encoding.UTF8.GetBytes(password))));
 	}
 
 	[Fact]
@@ -42,7 +41,8 @@ public sealed class UserCommandTests(CliFixture fixture)
 		var mask = CliFixture.Name("mask");
 
 		await fixture.RunAsync($"users create --username {admin} --password pw --admin");
-		await fixture.RunAsync($"users create --username {mask} --password pw --permissions {(ulong)UserPermissions.ChatPost}");
+		await fixture.RunAsync(
+			$"users create --username {mask} --password pw --permissions {(ulong)UserPermissions.ChatPost}");
 
 		Assert.Equal(UserPermissionsGroups.All, (await fixture.UserAsync(admin)).Value.Permissions);
 		Assert.Equal(UserPermissions.ChatPost, (await fixture.UserAsync(mask)).Value.Permissions);
@@ -73,13 +73,14 @@ public sealed class UserCommandTests(CliFixture fixture)
 	public async Task Show_PrintsTheAccountWithTheNamesOfItsPermissions()
 	{
 		var name = CliFixture.Name("show");
-		await fixture.RunAsync($"users create --username {name} --password pw --permissions {(ulong)(UserPermissions.ChatPost | UserPermissions.ChatPostPrivate)}");
+		await fixture.RunAsync(
+			$"users create --username {name} --password pw --permissions {(ulong)(UserPermissions.ChatPost | UserPermissions.ChatPostPrivate)}");
 		var user = await fixture.UserAsync(name);
 
 		var (code, text) = await fixture.RunAsync($"users {user.Id}");
 
 		Assert.Equal(0, code);
-		Assert.Contains($"name:", text);
+		Assert.Contains("name:", text);
 		Assert.Contains(name, text);
 		Assert.Contains("(ChatPost, ChatPostPrivate)", text);
 	}
@@ -122,7 +123,9 @@ public sealed class UserCommandTests(CliFixture fixture)
 		await fixture.RunAsync($"users create --username {name} --password pw");
 		var user = await fixture.UserAsync(name);
 
-		var (code, _) = await fixture.RunAsync($"users {user.Id} set --username {renamed} --country vn --permissions {(ulong)UserPermissions.ChatPost}");
+		var (code, _) =
+			await fixture.RunAsync(
+				$"users {user.Id} set --username {renamed} --country vn --permissions {(ulong)UserPermissions.ChatPost}");
 
 		Assert.Equal(0, code);
 		var changed = await fixture.UserAsync(renamed);
@@ -178,7 +181,8 @@ public sealed class UserCommandTests(CliFixture fixture)
 	[Fact]
 	public async Task Set_PermissionsOnBasilBot_IsRefusedAsASystemAccount()
 	{
-		var (code, text) = await fixture.RunAsync($"users {BasilBot.Id} set --permissions {(ulong)UserPermissionsGroups.All}");
+		var (code, text) =
+			await fixture.RunAsync($"users {BasilBot.Id} set --permissions {(ulong)UserPermissionsGroups.All}");
 
 		Assert.Equal(1, code);
 		Assert.Contains("systemAccount", text);
@@ -248,7 +252,9 @@ public sealed class UserCommandTests(CliFixture fixture)
 		var user = await NewAsync("rs");
 		var mask = (ulong)UserPermissions.ChatPost;
 
-		var (created, createdText) = await fixture.RunAsync($"users {user.Id} restrictions create --permissions {mask} --duration 2h --reason spam");
+		var (created, createdText) =
+			await fixture.RunAsync(
+				$"users {user.Id} restrictions create --permissions {mask} --duration 2h --reason spam");
 		var (_, listed) = await fixture.RunAsync($"users {user.Id} restrictions list");
 		var restrictions = await fixture.Host.Services.GetRequiredService<IRestrictionRepository>().ListAsync(user);
 		var id = restrictions.Single().Id;
@@ -268,9 +274,11 @@ public sealed class UserCommandTests(CliFixture fixture)
 	{
 		var user = await NewAsync("rd");
 
-		await fixture.RunAsync($"users {user.Id} restrictions create --permissions {(ulong)UserPermissions.ChatPost} --duration 90m");
+		await fixture.RunAsync(
+			$"users {user.Id} restrictions create --permissions {(ulong)UserPermissions.ChatPost} --duration 90m");
 
-		var restriction = (await fixture.Host.Services.GetRequiredService<IRestrictionRepository>().ListAsync(user)).Single();
+		var restriction = (await fixture.Host.Services.GetRequiredService<IRestrictionRepository>().ListAsync(user))
+			.Single();
 		Assert.Equal(fixture.Host.Time.GetUtcNow() + TimeSpan.FromMinutes(90), restriction.Value.EndsAt);
 	}
 
@@ -292,8 +300,10 @@ public sealed class UserCommandTests(CliFixture fixture)
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 		var id = await client.LoginAsync(name);
 
-		var (_, listed) = await fixture.RunAsync($"users {id} sessions list --state online --types {(int)SessionType.Api}");
-		var sessionId = listed.Split('\n').Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0]).First(word => Guid.TryParse(word, out _));
+		var (_, listed) =
+			await fixture.RunAsync($"users {id} sessions list --state online --types {(int)SessionType.Api}");
+		var sessionId = listed.Split('\n').Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0])
+			.First(word => Guid.TryParse(word, out _));
 		var (shown, shownText) = await fixture.RunAsync($"users {id} sessions {sessionId}");
 		var (closed, _) = await fixture.RunAsync($"users {id} sessions {sessionId} delete");
 		var (status, _) = await client.CallAsync(HttpMethod.Get, "/v1/auth/session");

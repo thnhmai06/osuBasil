@@ -11,7 +11,7 @@ internal static class StreamHelpers
 		{
 			host.Time.Advance(TimeSpan.FromSeconds(1));
 			var finished = await Task.WhenAny(read, Task.Delay(100));
-			if (finished == read) return (await read) ?? throw new InvalidOperationException("The stream ended.");
+			if (finished == read) return await read ?? throw new InvalidOperationException("The stream ended.");
 		}
 
 		throw new TimeoutException("No bundle arrived.");

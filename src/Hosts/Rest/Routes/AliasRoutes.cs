@@ -23,7 +23,8 @@ internal static class AliasRoutes
 			               context.Request.QueryString;
 			return Results.Redirect(location, false, true).ExecuteAsync(context);
 		};
-		v1.Map(prefix, redirect).WithTags("Aliases").WithSummary("Redirect to the same route under the caller's own account.")
+		v1.Map(prefix, redirect).WithTags("Aliases")
+			.WithSummary("Redirect to the same route under the caller's own account.")
 			.ExcludeFromDescription();
 		v1.Map(prefix + "/{**rest}", redirect).ExcludeFromDescription();
 	}

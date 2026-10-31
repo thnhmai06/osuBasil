@@ -1,10 +1,11 @@
+using System.Net;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
@@ -13,7 +14,6 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Models.Auth;
-using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho.Login;
 
@@ -58,7 +58,8 @@ internal sealed class BanchoLogin(
 		LoginResult result;
 		try
 		{
-			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5(request.PasswordMd5)), type, ip,
+			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5(request.PasswordMd5)), type,
+				ip,
 				client, request.UtcOffset, cancellationToken);
 		}
 		catch (ArgumentException)
@@ -85,7 +86,9 @@ internal sealed class BanchoLogin(
 			client = new OsuClient(
 				new OsuVersion(build.Date, build.Revision, (OsuVersionStream)(byte)build.Stream),
 				new OsuFingerprint(new Md5(request.ClientHash.OsuPathHash),
-					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash), new NetworkAdapters { Adapters = request.ClientHash.Adapters, Hash = new Md5(request.ClientHash.AdaptersHash) }));
+					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash),
+					new NetworkAdapters
+						{ Adapters = request.ClientHash.Adapters, Hash = new Md5(request.ClientHash.AdaptersHash) }));
 			return true;
 		}
 		catch (Exception ex) when (ex is FormatException or ArgumentException)
@@ -97,7 +100,7 @@ internal sealed class BanchoLogin(
 		}
 	}
 
-	private int CountOpenConnections(System.Net.IPAddress? ip)
+	private int CountOpenConnections(IPAddress? ip)
 	{
 		return registry.Online.Values.SelectMany(user => user.Connections)
 			.Count(connection => connection.IsOpen && Equals(connection.Session.Ip, ip));

@@ -1,7 +1,7 @@
-using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Common.Events;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;

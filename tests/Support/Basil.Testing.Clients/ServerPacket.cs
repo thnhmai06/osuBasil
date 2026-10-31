@@ -24,7 +24,10 @@ public sealed record ServerPacket(int Id, byte[] Payload)
 	}
 
 	/// <summary>Reads the payload as one 32-bit integer.</summary>
-	public int AsInt() => BitConverter.ToInt32(Payload, 0);
+	public int AsInt()
+	{
+		return BitConverter.ToInt32(Payload, 0);
+	}
 
 	/// <summary>Reads the strings at the start of the payload, osu! encoded.</summary>
 	/// <param name="count">How many strings to read.</param>

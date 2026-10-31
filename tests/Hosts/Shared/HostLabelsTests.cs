@@ -30,7 +30,8 @@ public sealed class HostLabelsTests
 	{
 		var random = new Random(1);
 		var labels = Enumerable.Range(0, 1000).Select(_ =>
-			HostLabels.Resolve($"{Guid.NewGuid():N}{random.Next()}.{(random.Next(2) == 0 ? Domain : "x.test")}", Domain)).ToHashSet();
+			HostLabels.Resolve($"{Guid.NewGuid():N}{random.Next()}.{(random.Next(2) == 0 ? Domain : "x.test")}",
+				Domain)).ToHashSet();
 
 		Assert.True(labels.Count <= HostLabels.All.Count);
 		Assert.All(labels, label => Assert.Contains(label, HostLabels.All));

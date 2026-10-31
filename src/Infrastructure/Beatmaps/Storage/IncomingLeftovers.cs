@@ -1,4 +1,3 @@
-using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Storage;
 

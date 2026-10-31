@@ -1,11 +1,9 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Auth;
-using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Users.Capabilities;
 
@@ -103,5 +101,4 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 		User.Context.Registry.CloseAll(User.Record, SessionEndReason.Deleted);
 		return UserOutcome.Ok;
 	}
-
 }

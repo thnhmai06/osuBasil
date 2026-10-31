@@ -1,7 +1,5 @@
 using Basil.Application.Common.Events;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Testing;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;

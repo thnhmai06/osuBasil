@@ -1,3 +1,4 @@
+using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing.Clients;
@@ -33,7 +34,7 @@ internal static class IrcWorld
 		UserPrivileges write = UserPrivileges.None, bool autoJoin = false, string topic = "test topic",
 		bool visible = true)
 	{
-		host.Services.GetRequiredService<Basil.Application.Servers.Objects.Server>().OpenChannel(new GeneralChannelRecord
+		host.Services.GetRequiredService<Server>().OpenChannel(new GeneralChannelRecord
 		{
 			Name = name,
 			Value = new GeneralChannelData
@@ -49,8 +50,11 @@ internal static class IrcWorld
 	{
 		await irc.SendAsync($"NAMES {channel}");
 		var lines = await irc.BarrierAsync();
-		return [.. lines.Where(line => IrcClient.CommandOf(line) == "353" && line.Contains($" {channel} :"))
-			.SelectMany(line => line.Split(" :", 2)[1].Split(' '))];
+		return
+		[
+			.. lines.Where(line => IrcClient.CommandOf(line) == "353" && line.Contains($" {channel} :"))
+				.SelectMany(line => line.Split(" :", 2)[1].Split(' '))
+		];
 	}
 
 	/// <summary>Waits until a line of the given command arrives for the client and returns it.</summary>

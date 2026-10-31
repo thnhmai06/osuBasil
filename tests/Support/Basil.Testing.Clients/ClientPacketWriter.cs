@@ -8,7 +8,10 @@ public sealed class ClientPacketWriter
 	private readonly MemoryStream _bytes = new();
 
 	/// <summary>Gets the bytes written so far.</summary>
-	public byte[] ToArray() => _bytes.ToArray();
+	public byte[] ToArray()
+	{
+		return _bytes.ToArray();
+	}
 
 	/// <summary>Writes a packet.</summary>
 	/// <param name="id">The client packet id.</param>
@@ -25,10 +28,16 @@ public sealed class ClientPacketWriter
 	}
 
 	/// <summary>Writes a packet whose payload is one 32-bit integer.</summary>
-	public ClientPacketWriter Int(int id, int value) => Packet(id, BitConverter.GetBytes(value));
+	public ClientPacketWriter Int(int id, int value)
+	{
+		return Packet(id, BitConverter.GetBytes(value));
+	}
 
 	/// <summary>Writes a packet whose payload is one osu! string.</summary>
-	public ClientPacketWriter Text(int id, string value) => Packet(id, OsuString(value));
+	public ClientPacketWriter Text(int id, string value)
+	{
+		return Packet(id, OsuString(value));
+	}
 
 	/// <summary>Writes a packet whose payload is a list of 32-bit integers (u16 count first).</summary>
 	public ClientPacketWriter IntList(int id, IEnumerable<int> values)
@@ -55,11 +64,16 @@ public sealed class ClientPacketWriter
 	}
 
 	/// <summary>Encodes a chat message: sender, text, recipient and sender id.</summary>
-	public static byte[] Message(string text, string recipient) =>
-		[.. OsuString(string.Empty), .. OsuString(text), .. OsuString(recipient), .. BitConverter.GetBytes(0)];
+	public static byte[] Message(string text, string recipient)
+	{
+		return [.. OsuString(string.Empty), .. OsuString(text), .. OsuString(recipient), .. BitConverter.GetBytes(0)];
+	}
 
 	/// <summary>Encodes the payload of a join-match packet: match id and password.</summary>
-	public static byte[] JoinMatch(int matchId, string password) => [.. BitConverter.GetBytes(matchId), .. OsuString(password)];
+	public static byte[] JoinMatch(int matchId, string password)
+	{
+		return [.. BitConverter.GetBytes(matchId), .. OsuString(password)];
+	}
 
 	/// <summary>Encodes a 29-byte score frame with a score and a combo, as the client sends during a round.</summary>
 	public static byte[] ScoreFrame(int time, int totalScore, int combo)
@@ -76,9 +90,14 @@ public sealed class ClientPacketWriter
 	}
 
 	/// <summary>Encodes a frame bundle with no frames and the given score frame, as spectating hosts send.</summary>
-	public static byte[] FrameBundle(int action, int sequence, byte[] scoreFrame) =>
-		[.. BitConverter.GetBytes(0), .. BitConverter.GetBytes((ushort)0), (byte)action, .. scoreFrame,
-			.. BitConverter.GetBytes((ushort)sequence)];
+	public static byte[] FrameBundle(int action, int sequence, byte[] scoreFrame)
+	{
+		return
+		[
+			.. BitConverter.GetBytes(0), .. BitConverter.GetBytes((ushort)0), (byte)action, .. scoreFrame,
+			.. BitConverter.GetBytes((ushort)sequence)
+		];
+	}
 
 	/// <summary>Encodes the match a client sends when it creates a room or changes its settings.</summary>
 	public static byte[] Match(string name, string password, int mode = 0, int mods = 0, string mapMd5 = "",

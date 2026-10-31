@@ -81,7 +81,8 @@ internal sealed class ChannelConfiguredDelivery(IrcClients clients) : INotificat
 	public ValueTask Handle(ChannelConfigured notification, CancellationToken cancellationToken)
 	{
 		foreach (var session in clients.Of(notification.Removed))
-			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel, "You may no longer read the channel"));
+			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel,
+				"You may no longer read the channel"));
 		return ValueTask.CompletedTask;
 	}
 }

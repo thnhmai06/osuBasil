@@ -1,11 +1,9 @@
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -220,11 +218,11 @@ public sealed class RoomScoringTests
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
-		await app.SetSettingsAsync(new Basil.Application.Content.Persistence.ServerSettings
+		await app.SetSettingsAsync(new ServerSettings
 		{
-			Multiplayer = new Basil.Application.Content.Persistence.ServerSettings.MultiplayerSettings
+			Multiplayer = new ServerSettings.MultiplayerSettings
 			{
-				Rounds = new Basil.Application.Content.Persistence.ServerSettings.RoundSettings
+				Rounds = new ServerSettings.RoundSettings
 					{ ScoreWait = TimeSpan.FromSeconds(3) }
 			}
 		});

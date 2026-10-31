@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Options;
 using Basil.Host.Shared.Diagnostics;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Rest.Http;
 

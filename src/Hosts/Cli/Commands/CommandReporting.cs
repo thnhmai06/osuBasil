@@ -1,5 +1,4 @@
 using System.Text;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Host.Shared;
 
@@ -29,7 +28,9 @@ public static class CommandReporting
 	public static int Refuse<TOutcome>(this CommandCall call, Result<TOutcome> result) where TOutcome : struct, Enum
 	{
 		// The console skips the rights checks, so a missing permission only happens through a bug; it is still shown.
-		var info = result.Missing is null ? OutcomeErrors.Describe(result.Outcome) : new ErrorInfo(OutcomeErrors.PermissionDeniedCode, ErrorKind.PermissionDenied);
+		var info = result.Missing is null
+			? OutcomeErrors.Describe(result.Outcome)
+			: new ErrorInfo(OutcomeErrors.PermissionDeniedCode, ErrorKind.PermissionDenied);
 		call.Output.Error(info.Code, Humanize(info.Code));
 		return info.Kind == ErrorKind.Invalid ? ExitCodes.Invalid : ExitCodes.Refused;
 	}
@@ -46,7 +47,6 @@ public static class CommandReporting
 	{
 		var text = new StringBuilder();
 		foreach (var c in code)
-		{
 			if (char.IsUpper(c) && text.Length > 0)
 			{
 				text.Append(' ');
@@ -56,7 +56,6 @@ public static class CommandReporting
 			{
 				text.Append(text.Length == 0 ? char.ToUpperInvariant(c) : c);
 			}
-		}
 
 		return text.Append('.').ToString();
 	}

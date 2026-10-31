@@ -1,5 +1,5 @@
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Common.Events;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Client;
 
 namespace Basil.Application.Anticheat.Objects.Events;
