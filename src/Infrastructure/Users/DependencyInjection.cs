@@ -1,7 +1,9 @@
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Storage;
 using Basil.Infrastructure.Users.Persistence;
-using Basil.Infrastructure.Users.Runtime;
+using Basil.Infrastructure.Users.Storage;
+using Basil.Infrastructure.Users.Workers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Users;

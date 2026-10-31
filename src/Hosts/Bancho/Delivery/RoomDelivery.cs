@@ -1,8 +1,9 @@
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Multiplayer.Runtime.Events;
-using Basil.Application.Multiplayer.Runtime.Rooms;
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Wire.Packets;
 using Mediator;

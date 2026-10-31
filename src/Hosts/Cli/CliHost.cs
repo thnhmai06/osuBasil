@@ -1,6 +1,8 @@
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Users.Users;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard;
 using Basil.Host.Cli.Dashboard.Data;

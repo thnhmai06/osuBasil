@@ -137,7 +137,7 @@ namespace Basil.Infrastructure.Auth.Migrations
                     b.ToTable("sessions", (string)null);
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Common.Postgres.WriteTicketRow", b =>
+            modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")

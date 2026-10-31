@@ -4,8 +4,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Http;
 using Microsoft.Extensions.Hosting;
 

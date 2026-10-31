@@ -4,7 +4,7 @@ using Basil.Application.Common.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Users.Persistence;

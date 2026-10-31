@@ -1,6 +1,7 @@
 using Basil.Application.Common.Events;
 using Basil.Application.Scores.Capabilities;
-using Basil.Application.Scores.Runtime;
+using Basil.Application.Scores.Objects;
+using Basil.Application.Scores.Objects.Events;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Scores;

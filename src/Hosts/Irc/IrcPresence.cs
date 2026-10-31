@@ -1,4 +1,4 @@
-using Basil.Application.Chat.Runtime;
+using Basil.Application.Chat.Objects;
 using Basil.Domain.Users;
 
 namespace Basil.Host.Irc;

@@ -1,6 +1,6 @@
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Servers.Runtime;
-using Basil.Application.Users.Users;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Diagnostics;

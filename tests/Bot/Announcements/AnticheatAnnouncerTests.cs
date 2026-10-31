@@ -1,5 +1,7 @@
-using Basil.Application.Anticheat.Runtime;
-using Basil.Application.Chat.Runtime;
+using Basil.Application.Anticheat.Objects.Events;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Chat.Registry;
 using Basil.Bot.Announcements;
 using Basil.Bot.Tests.Support;
 using Basil.Domain.Client;

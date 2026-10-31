@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Basil.Application.Multiplayer.Runtime;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc.Support;
 using Basil.Host.Lifetime;

@@ -1,10 +1,12 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;

@@ -4,8 +4,8 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Memory;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Registry;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;

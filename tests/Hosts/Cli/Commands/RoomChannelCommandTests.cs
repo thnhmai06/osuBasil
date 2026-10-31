@@ -1,5 +1,5 @@
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Multiplayer.Runtime;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 

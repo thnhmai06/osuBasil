@@ -1,5 +1,7 @@
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Registry;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 using Mediator;

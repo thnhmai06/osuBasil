@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;

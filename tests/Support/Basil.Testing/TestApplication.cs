@@ -8,16 +8,22 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Bot;
 using Basil.Host;
-using Basil.Application.Anticheat.Runtime;
-using Basil.Application.Beatmaps.Runtime;
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Users.Connections;
+using Basil.Application.Anticheat.Objects.Events;
+using Basil.Application.Beatmaps.Objects;
+using Basil.Application.Beatmaps.Objects.Events;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Common.Events;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Multiplayer.Runtime.Events;
-using Basil.Application.Scores.Runtime;
-using Basil.Application.Servers.Runtime;
-using Basil.Application.Users.Users;
+using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
@@ -347,6 +353,7 @@ public sealed class TestApplication : IDisposable
 			         type is { IsInterface: true, ContainsGenericParameters: false } &&
 			         type.Namespace is not null &&
 			         (type.Namespace.EndsWith(".Persistence", StringComparison.Ordinal) ||
+			          type.Namespace.EndsWith(".Storage", StringComparison.Ordinal) ||
 			          type.Namespace.EndsWith(".Capabilities", StringComparison.Ordinal)) &&
 			         !inMemoryPortTypes.Contains(type)))
 			services.AddSingleton(port, _ => Substitute.For([port], []));

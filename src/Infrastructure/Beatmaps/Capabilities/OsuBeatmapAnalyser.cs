@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;

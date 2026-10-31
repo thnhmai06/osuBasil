@@ -1,6 +1,5 @@
 using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Common;
-using Basil.Infrastructure.Common.Files;
+using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Testing.Persistence;

@@ -1,5 +1,5 @@
-using Basil.Application.Users.Connections;
-using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;

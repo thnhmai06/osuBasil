@@ -1,18 +1,20 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using Basil.Application.Anticheat.Runtime;
+using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Scores.Runtime;
-using Basil.Application.Servers.Runtime;
-using Basil.Application.Users.Connections;
+using Basil.Application.Scores.Storage;
+using Basil.Application.Scores.Objects;
+using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
@@ -126,7 +128,7 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> SubmitAsync(HttpContext context, UserRegistry registry, ScoreSubmitter submitter,
-		AnticheatReporter anticheat, IBeatmapRepository beatmaps, WebAuthentication auth, CancellationToken ct)
+		IAnticheatReporter anticheat, IBeatmapRepository beatmaps, WebAuthentication auth, CancellationToken ct)
 	{
 		if (!context.Request.HasFormContentType) return Text("error: no");
 		var form = await context.Request.ReadFormAsync(ct);
@@ -207,7 +209,7 @@ internal static class OsuWebRoutes
 		return result.IsOk ? Text(reference?.ToString() ?? string.Empty) : Text(string.Empty, result.Outcome == ServerOutcome.DimensionsTooLarge ? 413 : 400);
 	}
 
-	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth, AnticheatReporter anticheat,
+	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth, IAnticheatReporter anticheat,
 		CancellationToken ct)
 	{
 		var query = context.Request.Query;

@@ -1,9 +1,11 @@
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Multiplayer.Runtime.Events;
-using Basil.Application.Multiplayer.Runtime.Rooms;
-using Basil.Application.Servers.Runtime;
-using Basil.Application.Users.Users;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Bot.Replies;
 using Basil.Domain.Common;
 using Basil.Domain.Multiplayer;

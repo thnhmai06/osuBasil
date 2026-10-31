@@ -1,7 +1,8 @@
 using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Http;

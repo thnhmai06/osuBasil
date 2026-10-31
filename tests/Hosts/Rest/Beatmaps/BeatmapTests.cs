@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.DependencyInjection;

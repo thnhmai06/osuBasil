@@ -1,6 +1,7 @@
 using Basil.Testing.Persistence;
 using System.IO.Compression;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Beatmaps.Capabilities;

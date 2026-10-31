@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Users.Users;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 
 namespace Basil.Host.Cli.Commands;

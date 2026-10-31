@@ -38,7 +38,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
   rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
-  channels, `Beatmapset`, and the root `Server`) in the Runtime folder of its module (`Basil.Application.<Module>`). It owns its state,
+  channels, `Beatmapset`, and the root `Server`) in the Objects folder of its module (`Basil.Application.<Module>`). It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
   `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
@@ -51,8 +51,8 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   call. **Anything whose actions
   depend on permissions or privileges is scoped; only a system that needs no check is not** (the server's own work:
   Runtime handlers, startup, the bot's announcements, public reads).
-  Services keep only application logic that needs no live object (account checks, beatmapset indexing, score
-  validation and recording); coordination between objects belongs to the object that is acted on
+  Internal capability helpers keep only application logic that needs no live object (account checks, beatmapset
+  indexing, score validation and recording); coordination between objects belongs to the object that is acted on
   (`UserRegistry` for logins and connections, `Lobby` for what happens across rooms, `ScoreSubmitter` for a
   game client's score, `AnticheatReporter` for its anticheat flags, `Beatmapsets` for imports). Five
   anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
@@ -63,26 +63,32 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
-* **Persistence holds the ports; runtime objects and registries live in Runtime.** The Persistence folder of a module holds
-  the persistent ports (repositories, byte storages) and query records; Application.Common holds shared paging and
-  search syntax. Runtime objects (`Room`, `RoomSlot`, `User`,
-  connections and channels), registries (`UserRegistry`, `GeneralChannelRegistry`) and their scoped
-  behaviour live in the module's Runtime folder, as public classes; in the Users module the online user and its registry are in `Users/`, and
-  its connections with their context are in `Connections/`. Persistence
-  never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
-  consequences belong to the object that owns the state.
-* **Services have no public contract.** A service is an `internal` class of a module's Capabilities folder that its Runtime folder calls
-  directly; there is no `IXService` and no registry contract. A service never sees a live object (`Room`, `User`,
-  `Connection`), never publishes an event (events and `IEventPublisher<T>` belong to Runtime, so the service returns
-  what happened and the object publishes it) and holds no running state. Runtime objects reach it through
-  `InternalsVisibleTo`; plain data that both Services and Runtime use in public signatures (login, registration and
-  score submission inputs, import and scan results) lives in the Persistence folder. Callers reach permission-dependent
-  behaviour through `ScopeTo(connection)` and the server's own work through labelled system operations.
+* **Each folder of a module owns one kind of type.** The full map is in `AGENTS.md`. **Persistence/** holds the
+  persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Common
+  holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their
+  contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
+  RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
+  views live in **Capabilities/**; the event handlers in **Handlers/**; the background runs in **Workers/**. In the
+  Users module the online user and its context are in `Objects/`, its connections in `Objects/Connections/`, and its
+  registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
+  timer. A state change and its consequences belong to the object that owns the state.
+* **A service the system provides has a contract; the logic behind a capability does not.** What the module offers as
+  a service to the hosts and to other modules lives in **Services/** as a contract and its implementation
+  (`IAnticheatReporter`); a helper that only serves one layer is not a service and stays with what implements it.
+  Internal capability helpers never receive live objects or publish events. A system-facing service normally returns
+  its result without publishing; `IAnticheatReporter` is the explicit exception because reporting a live game's flags
+  is the system operation and it is the single producer of anticheat events. Object-free logic such as account checks,
+  beatmapset indexing and score validation stays `internal` in the folder of the capability or object it serves;
+  objects reach it through `InternalsVisibleTo`.
+  Plain data that both layers use in public signatures (login, registration and score submission inputs, import and
+  scan results) lives in the Persistence folder. Callers reach permission-dependent behaviour through
+  `ScopeTo(connection)` and the server's own work through labelled system operations.
 * **Object or service?** One question decides it: does the operation have a caller whose rights it must
   check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
   has no caller (the server's own work, a handler's reaction, startup) or that coordinates several objects
   (login, import, score submission) is the behaviour of the object that owns the identity, the collection or the
-  actor, and it calls a service only for the part that needs no live object.
+  actor, and it calls internal capability logic only for the part that needs no live object. A service in Services/
+  is the explicit system-facing operation described above, not a replacement for that object behaviour.
 * **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
   event publisher, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
   `ChannelContext`, `ConnectionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
@@ -118,12 +124,12 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 * **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
-* **Registries belong with runtime objects.** A registry holds live runtime objects, so it is a public class of
-  a module's Runtime folder (`UserRegistry`, `GeneralChannelRegistry`) that also owns the operations on what it holds
-  (`UserRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
-  Persistent repositories, storage ports, query records and paging belong to the module's Persistence folder. Other
-  capability ports describe what lies outside the process: files, network, external computation and the clock
-  (`TimeProvider`).
+* **Registries live in their own folder.** A registry holds live runtime objects, so it is a public class of
+  a module's Registry folder (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`) that also owns the operations on what
+  it holds (`UserRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
+  Persistent repositories, query records and paging belong to the module's Persistence folder, file-storage ports to
+  its Storage folder. Other capability ports describe what lies outside the process: files, network, external
+  computation and the clock (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
   write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
   beatmapset), directly through the repository, after the host has checked the caller's permission. Services are only for actions; a service
@@ -198,15 +204,19 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
   (this supersedes the older rule "Application does not consume events"). The base event,
-  `IEventPublisher<T>` and `EventQueue` live in Application.Common; feature categories and handlers live in Runtime. An object or the
+  `IEventPublisher<T>` and `EventQueue` live in Application.Common; the feature event records live in the Objects
+  folder of their module (`Objects/Events/`) and its handlers in its Handlers folder. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
-  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, `MatchRecorder` in the Runtime folders of their modules;
-  `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). The shared queue (`EventQueue`) is run by
-  `EventDispatcher` in Infrastructure.Common and delivers the events one at a time in the order they were published,
+  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, `MatchRecorder` in the Handlers folders of their
+  modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). The shared queue (`EventQueue`) is run by
+  `EventDispatcher` in Infrastructure.Common's Workers folder and delivers the events one at a time in the order they
+  were published,
   across all event types; a failing handler is logged and the others still run. The mediator resolves handlers at
-  first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and Services
-  never publish (a service returns what happened and the object publishes it). One operation publishes one event
+  first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and internal
+  capability helpers never publish; a system-facing service publishes only when it is the explicitly declared single
+  source of that system event (currently, `IAnticheatReporter`). Other services return what happened and the owning
+  object publishes it. One operation publishes one event
   carrying its whole consequence. Events are `sealed record`s in a category tree (`Event` <- `RoomEvent` <-
   `RoomSlotEvent` <- `RoomSlotTeamChanged`), but a handler serves one concrete type. A handler only reacts to an
   event by calling the owning object's operation; event -> client-notification routing belongs to the hosts.
@@ -219,7 +229,8 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   path that grants the same authority applies the same gate (`ScopedRoom` and `ChannelRules.InRoom` agree on
   `RoomManageAny` and `RoomJoin`).
 * **Naming: Domain record `XRecord` (with `XData`), the Application object `X`, the object that holds the live
-  ones `XRegistry`; a service is an internal `XService` with no contract.** There is no `*Session`
+  ones `XRegistry`; an internal capability helper is an internal `XService` with no contract, while a system-facing
+  service has a public `IXService` contract and an implementation in Services/.** There is no `*Session`
   suffix: the Application object is the thing itself, and Domain only stores records. No suffixes such as
   "Definition". `GeneralChannelRecord` → `GeneralChannel` → `GeneralChannelRegistry` (it holds only general
   channels); `UserRecord` → `User` → `UserRegistry`. The osu! terms win for matches: `MatchRecord` → `Room` →

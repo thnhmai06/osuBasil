@@ -1,5 +1,6 @@
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Bot.Commands.Mp;

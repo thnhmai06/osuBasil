@@ -116,13 +116,13 @@ A player is in at most one room. A room's own check cannot see another room's se
 
 ## Related code
 
-* [`Room.cs`](../../src/Application/Multiplayer/Runtime/Rooms/Room.cs): live room and `ScopeTo`
-* [`ScopedRoom.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoom.cs): caller, role and room-permission scope
-* [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
-* [`Lobby.cs`](../../src/Application/Multiplayer/Runtime/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Runtime/Rooms/Room.cs): system-owned room operations
+* [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): live room and `ScopeTo`
+* [`ScopedRoom.cs`](../../src/Application/Multiplayer/Objects/Rooms/ScopedRoom.cs): caller, role and room-permission scope
+* [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Objects/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Objects/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Objects/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Objects/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Objects/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
+* [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
 * [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs): room rights
-* [`RoomCountdown.cs`](../../src/Application/Multiplayer/Runtime/Rooms/RoomCountdown.cs): countdown state and marks
-* [`Lobby.cs`](../../src/Application/Multiplayer/Runtime/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Multiplayer/Runtime/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
+* [`RoomCountdown.cs`](../../src/Application/Multiplayer/Objects/Rooms/RoomCountdown.cs): countdown state and marks
+* [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Multiplayer/Capabilities/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 
 ## See also
 

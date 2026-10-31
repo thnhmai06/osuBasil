@@ -1,4 +1,5 @@
-using Basil.Application.Chat.Runtime;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
 using Mediator;
 
 namespace Basil.Host.Cli.Dashboard.Data;

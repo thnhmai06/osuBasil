@@ -237,11 +237,11 @@ closes the socket.
 
 ## Related code
 
-* [`Connection.cs`](../../src/Application/Users/Connections/Connection.cs): connection kinds
-* [`UserRegistry.cs`](../../src/Application/Users/Users/UserRegistry.cs): `LoginWithTokenAsync`, idle sweep
-* [`ScopedUserSessions.cs`](../../src/Application/Users/Users/ScopedUserSessions.cs): issuing an IRC key
-* [`Channel.cs`](../../src/Application/Chat/Runtime/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Chat/Runtime/ScopedChannel.cs): membership, posting, recipients
-* [`RoomChannel.cs`](../../src/Application/Chat/Runtime/RoomChannel.cs): room channel access
+* [`Connection.cs`](../../src/Application/Users/Objects/Connections/Connection.cs): connection kinds
+* [`UserRegistry.cs`](../../src/Application/Users/Registry/UserRegistry.cs): `LoginWithTokenAsync`, idle sweep
+* [`ScopedUserSessions.cs`](../../src/Application/Users/Capabilities/ScopedUserSessions.cs): issuing an IRC key
+* [`Channel.cs`](../../src/Application/Chat/Objects/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Chat/Capabilities/ScopedChannel.cs): membership, posting, recipients
+* [`RoomChannel.cs`](../../src/Application/Chat/Objects/RoomChannel.cs): room channel access
 * [`IrcMessage.cs`](../../src/Protocol/Irc/IrcMessage.cs), [`IrcTag.cs`](../../src/Protocol/Irc/IrcTag.cs), [`IrcNumericReply.cs`](../../src/Protocol/Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../src/Protocol/Irc/IrcUserPrefix.cs): wire format
 * [`src/Hosts/Irc`](../../src/Hosts/Irc): listener, session, commands and delivery
 

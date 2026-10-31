@@ -1,6 +1,8 @@
-using Basil.Application.Users.Connections;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;

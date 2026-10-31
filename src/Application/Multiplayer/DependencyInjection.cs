@@ -1,10 +1,10 @@
 using Basil.Application.Common.Events;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Multiplayer.Runtime.Events;
-using Basil.Application.Multiplayer.Runtime.Rooms;
-using Basil.Application.Scores.Runtime;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Scores.Objects;
 using Basil.Application.Users.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 

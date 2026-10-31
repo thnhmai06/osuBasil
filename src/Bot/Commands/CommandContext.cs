@@ -1,4 +1,4 @@
-using Basil.Application.Users.Connections;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Bot.Replies;
 using Basil.Domain.Users;
 

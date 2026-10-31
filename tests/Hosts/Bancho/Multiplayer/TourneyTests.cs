@@ -1,6 +1,8 @@
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Basil.Testing.Clients;

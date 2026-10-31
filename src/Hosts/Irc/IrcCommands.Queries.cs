@@ -1,5 +1,5 @@
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Users.Connections;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
@@ -66,7 +66,7 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplEndOfWho, mask, "End of /WHO list.");
 	}
 
-	private static void WhoReply(IrcSession session, string channel, Application.Users.Users.User user, string prefix)
+	private static void WhoReply(IrcSession session, string channel, Application.Users.Objects.User user, string prefix)
 	{
 		var nick = IrcView.Nick(user.Record);
 		session.Numeric(IrcNumericReply.RplWhoReply, channel, nick, session.Domain, session.ServerName, nick,
@@ -107,7 +107,7 @@ internal sealed partial class IrcCommands
 	private void Ison(IrcSession session, IrcMessage message)
 	{
 		var online = message.Parameters.SelectMany(parameter => parameter.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-			.Select(FindUser).OfType<Application.Users.Users.User>().Select(user => IrcView.Nick(user.Record));
+			.Select(FindUser).OfType<Application.Users.Objects.User>().Select(user => IrcView.Nick(user.Record));
 		session.Numeric(IrcNumericReply.RplIson, string.Join(' ', online));
 	}
 
@@ -119,7 +119,7 @@ internal sealed partial class IrcCommands
 			return;
 		}
 
-		var replies = message.Parameters.Take(5).Select(FindUser).OfType<Application.Users.Users.User>()
+		var replies = message.Parameters.Take(5).Select(FindUser).OfType<Application.Users.Objects.User>()
 			.Select(user => $"{IrcView.Nick(user.Record)}={(user.AwayMessage is null ? '+' : '-')}{IrcView.Nick(user.Record)}@{session.Domain}");
 		session.Numeric(IrcNumericReply.RplUserHost, string.Join(' ', replies));
 	}

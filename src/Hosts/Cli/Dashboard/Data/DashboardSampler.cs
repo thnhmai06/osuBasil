@@ -1,8 +1,10 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Users.Users;
+using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Host.Shared;
 using Basil.Host.Shared.Diagnostics;

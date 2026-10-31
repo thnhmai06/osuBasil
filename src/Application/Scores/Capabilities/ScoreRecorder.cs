@@ -4,6 +4,7 @@ using System.Text;
 using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Client;
 using Basil.Domain.Common;

@@ -1,6 +1,7 @@
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Servers.Runtime;
-using Basil.Application.Users.Connections;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Bot.Commands;
 using Basil.Bot.Replies;
 using Basil.Domain.Chat;

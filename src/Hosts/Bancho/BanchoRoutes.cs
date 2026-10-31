@@ -1,6 +1,5 @@
-using Basil.Application.Users.Connections;
 using Basil.Domain.Auth;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Registry;
 using Basil.Host.Bancho.Login;
 using Basil.Host.Bancho.Packets;
 using Basil.Host.Bancho.Support;

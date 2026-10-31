@@ -1,5 +1,5 @@
-using Basil.Application.Users.Connections;
-using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Tests.Support;
 using Basil.Domain.Beatmaps;
