@@ -1,85 +1,87 @@
 <Solution>
 	<Folder Name="/Sources/">
-		<Project Path="src/Domain/Basil.Domain.csproj"/>
-		<Project Path="src/Bot/Basil.Bot.csproj"/>
+		<Project Path="src/Domain/Basil.Domain.csproj" />
+		<Project Path="src/Bot/Basil.Bot.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Application/">
-		<Project Path="src/Application/Anticheat/Basil.Application.Anticheat.csproj"/>
-		<Project Path="src/Application/Auth/Basil.Application.Auth.csproj"/>
-		<Project Path="src/Application/Beatmaps/Basil.Application.Beatmaps.csproj"/>
-		<Project Path="src/Application/Chat/Basil.Application.Chat.csproj"/>
-		<Project Path="src/Application/Common/Basil.Application.Common.csproj"/>
-		<Project Path="src/Application/Content/Basil.Application.Content.csproj"/>
-		<Project Path="src/Application/Multiplayer/Basil.Application.Multiplayer.csproj"/>
-		<Project Path="src/Application/Scores/Basil.Application.Scores.csproj"/>
-		<Project Path="src/Application/Servers/Basil.Application.Servers.csproj"/>
-		<Project Path="src/Application/Users/Basil.Application.Users.csproj"/>
+		<Project Path="src/Application/Anticheat/Basil.Application.Anticheat.csproj" />
+		<Project Path="src/Application/Auth/Basil.Application.Auth.csproj" />
+		<Project Path="src/Application/Beatmaps/Basil.Application.Beatmaps.csproj" />
+		<Project Path="src/Application/Chat/Basil.Application.Chat.csproj" />
+		<Project Path="src/Application/Common/Basil.Application.Common.csproj" />
+		<Project Path="src/Application/Content/Basil.Application.Content.csproj" />
+		<Project Path="src/Application/Multiplayer/Basil.Application.Multiplayer.csproj" />
+		<Project Path="src/Application/Scores/Basil.Application.Scores.csproj" />
+		<Project Path="src/Application/Servers/Basil.Application.Servers.csproj" />
+		<Project Path="src/Application/Users/Basil.Application.Users.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Infrastructure/">
-		<Project Path="src/Infrastructure/Auth/Basil.Infrastructure.Auth.csproj"/>
-		<Project Path="src/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.csproj"/>
-		<Project Path="src/Infrastructure/Chat/Basil.Infrastructure.Chat.csproj"/>
-		<Project Path="src/Infrastructure/Common/Basil.Infrastructure.Common.csproj"/>
-		<Project Path="src/Infrastructure/Content/Basil.Infrastructure.Content.csproj"/>
-		<Project Path="src/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.csproj"/>
-		<Project Path="src/Infrastructure/Scores/Basil.Infrastructure.Scores.csproj"/>
-		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj"/>
+		<Project Path="src/Infrastructure/Auth/Basil.Infrastructure.Auth.csproj" />
+		<Project Path="src/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.csproj" />
+		<Project Path="src/Infrastructure/Chat/Basil.Infrastructure.Chat.csproj" />
+		<Project Path="src/Infrastructure/Common/Basil.Infrastructure.Common.csproj" />
+		<Project Path="src/Infrastructure/Content/Basil.Infrastructure.Content.csproj" />
+		<Project Path="src/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.csproj" />
+		<Project Path="src/Infrastructure/Scores/Basil.Infrastructure.Scores.csproj" />
+		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Hosts/">
-		<Project Path="src/Hosts/Host/Basil.Host.csproj"/>
-		<Project Path="src/Hosts/Bancho/Basil.Host.Bancho.csproj"/>
-		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
-		<Project Path="src/Hosts/Rest/Basil.Host.Rest.csproj"/>
-		<Project Path="src/Hosts/Cli/Basil.Host.Cli.csproj"/>
-		<Project Path="src/Hosts/Shared/Basil.Host.Shared.csproj"/>
+		<Project Path="src/Hosts/Host/Basil.Host.csproj" />
+		<Project Path="src/Hosts/Bancho/Basil.Host.Bancho.csproj" />
+		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj" />
+		<Project Path="src/Hosts/Rest/Basil.Host.Rest.csproj" />
+		<Project Path="src/Hosts/Cli/Basil.Host.Cli.csproj" />
+		<Project Path="src/Hosts/Shared/Basil.Host.Shared.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
-		<Project Path="src/Protocol/Bancho/Basil.Protocol.Bancho.csproj"/>
-		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj"/>
+		<Project Path="src/Protocol/Bancho/Basil.Protocol.Bancho.csproj" />
+		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj" />
 	</Folder>
 	<Folder Name="/Tests/">
-		<Project Path="tests/Architecture/Basil.ArchitectureTests.csproj"/>
-		<Project Path="tests/Hosts/Host/Basil.Host.Tests.csproj"/>
-		<Project Path="tests/Hosts/Bancho/Basil.Host.Bancho.Tests.csproj"/>
-		<Project Path="tests/Hosts/Irc/Basil.Host.Irc.Tests.csproj"/>
-		<Project Path="tests/Hosts/Rest/Basil.Host.Rest.Tests.csproj"/>
-		<Project Path="tests/Hosts/Shared/Basil.Host.Shared.Tests.csproj"/>
-		<Project Path="tests/Hosts/Cli/Basil.Host.Cli.Tests.csproj"/>
+		<Project Path="tests/Architecture/Basil.ArchitectureTests.csproj" />
 	</Folder>
 	<Folder Name="/Tests/Support/">
-		<Project Path="tests/Support/Basil.Testing.Persistence/Basil.Testing.Persistence.csproj"/>
-		<Project Path="tests/Support/Basil.Testing/Basil.Testing.csproj"/>
-		<Project Path="tests/Support/Basil.Testing.Clients/Basil.Testing.Clients.csproj"/>
+		<Project Path="tests/Support/Basil.Testing.Persistence/Basil.Testing.Persistence.csproj" />
+		<Project Path="tests/Support/Basil.Testing/Basil.Testing.csproj" />
+		<Project Path="tests/Support/Basil.Testing.Clients/Basil.Testing.Clients.csproj" />
 	</Folder>
 	<Folder Name="/Tests/Application/">
-		<Project Path="tests/Application/Anticheat/Basil.Application.Anticheat.Tests.csproj"/>
-		<Project Path="tests/Application/Beatmaps/Basil.Application.Beatmaps.Tests.csproj"/>
-		<Project Path="tests/Application/Chat/Basil.Application.Chat.Tests.csproj"/>
-		<Project Path="tests/Application/Common/Basil.Application.Common.Tests.csproj"/>
-		<Project Path="tests/Application/Content/Basil.Application.Content.Tests.csproj"/>
-		<Project Path="tests/Application/Multiplayer/Basil.Application.Multiplayer.Tests.csproj"/>
-		<Project Path="tests/Application/Scores/Basil.Application.Scores.Tests.csproj"/>
-		<Project Path="tests/Application/Servers/Basil.Application.Servers.Tests.csproj"/>
-		<Project Path="tests/Application/Users/Basil.Application.Users.Tests.csproj"/>
+		<Project Path="tests/Application/Anticheat/Basil.Application.Anticheat.Tests.csproj" />
+		<Project Path="tests/Application/Beatmaps/Basil.Application.Beatmaps.Tests.csproj" />
+		<Project Path="tests/Application/Chat/Basil.Application.Chat.Tests.csproj" />
+		<Project Path="tests/Application/Common/Basil.Application.Common.Tests.csproj" />
+		<Project Path="tests/Application/Content/Basil.Application.Content.Tests.csproj" />
+		<Project Path="tests/Application/Multiplayer/Basil.Application.Multiplayer.Tests.csproj" />
+		<Project Path="tests/Application/Scores/Basil.Application.Scores.Tests.csproj" />
+		<Project Path="tests/Application/Servers/Basil.Application.Servers.Tests.csproj" />
+		<Project Path="tests/Application/Users/Basil.Application.Users.Tests.csproj" />
+	</Folder>
+	<Folder Name="/Tests/Hosts/">
+		<Project Path="tests/Hosts/Bancho/Basil.Host.Bancho.Tests.csproj" />
+		<Project Path="tests/Hosts/Cli/Basil.Host.Cli.Tests.csproj" />
+		<Project Path="tests/Hosts/Host/Basil.Host.Tests.csproj" />
+		<Project Path="tests/Hosts/Irc/Basil.Host.Irc.Tests.csproj" />
+		<Project Path="tests/Hosts/Rest/Basil.Host.Rest.Tests.csproj" />
+		<Project Path="tests/Hosts/Shared/Basil.Host.Shared.Tests.csproj" />
 	</Folder>
 	<Folder Name="/Tests/Infrastructure/">
-		<Project Path="tests/Infrastructure/Auth/Basil.Infrastructure.Auth.Tests.csproj"/>
-		<Project Path="tests/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.Tests.csproj"/>
-		<Project Path="tests/Infrastructure/Chat/Basil.Infrastructure.Chat.Tests.csproj"/>
-		<Project Path="tests/Infrastructure/Common/Basil.Infrastructure.Common.Tests.csproj"/>
-		<Project Path="tests/Infrastructure/Content/Basil.Infrastructure.Content.Tests.csproj"/>
-		<Project Path="tests/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.Tests.csproj"/>
-		<Project Path="tests/Infrastructure/Scores/Basil.Infrastructure.Scores.Tests.csproj"/>
-		<Project Path="tests/Infrastructure/Users/Basil.Infrastructure.Users.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Auth/Basil.Infrastructure.Auth.Tests.csproj" />
+		<Project Path="tests/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.Tests.csproj" />
+		<Project Path="tests/Infrastructure/Chat/Basil.Infrastructure.Chat.Tests.csproj" />
+		<Project Path="tests/Infrastructure/Common/Basil.Infrastructure.Common.Tests.csproj" />
+		<Project Path="tests/Infrastructure/Content/Basil.Infrastructure.Content.Tests.csproj" />
+		<Project Path="tests/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.Tests.csproj" />
+		<Project Path="tests/Infrastructure/Scores/Basil.Infrastructure.Scores.Tests.csproj" />
+		<Project Path="tests/Infrastructure/Users/Basil.Infrastructure.Users.Tests.csproj" />
 	</Folder>
 	<Folder Name="/Tests/Bot/">
-		<Project Path="tests/Bot/Basil.Bot.Tests.csproj"/>
+		<Project Path="tests/Bot/Basil.Bot.Tests.csproj" />
 	</Folder>
 	<Folder Name="/Tests/Domain/">
-		<Project Path="tests/Domain/Basil.Domain.Tests.csproj"/>
+		<Project Path="tests/Domain/Basil.Domain.Tests.csproj" />
 	</Folder>
 	<Folder Name="/Tests/Protocol/">
-		<Project Path="tests/Protocol/Bancho/Basil.Protocol.Bancho.Tests.csproj"/>
-		<Project Path="tests/Protocol/Irc/Basil.Protocol.Irc.Tests.csproj"/>
+		<Project Path="tests/Protocol/Bancho/Basil.Protocol.Bancho.Tests.csproj" />
+		<Project Path="tests/Protocol/Irc/Basil.Protocol.Irc.Tests.csproj" />
 	</Folder>
 </Solution>
