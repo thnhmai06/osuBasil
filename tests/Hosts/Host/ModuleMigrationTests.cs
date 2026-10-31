@@ -30,10 +30,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		foreach (var (module, ownedTables) in Modules)
 		{
 			var moduleAssembly = module == "Common" ? assembly : Assembly.Load($"Basil.Infrastructure.{module}");
-			var contextName = module == "Common"
-				? "Basil.Infrastructure.Common.CommonDbContext"
-				: $"Basil.Infrastructure.{module}.Persistence.{module}DbContext";
-			var context = moduleAssembly.GetType(contextName);
+			var context = moduleAssembly.GetTypes().SingleOrDefault(type => type.Name == $"{module}DbContext");
 			Assert.NotNull(context);
 
 			var migrations = moduleAssembly.GetTypes()
