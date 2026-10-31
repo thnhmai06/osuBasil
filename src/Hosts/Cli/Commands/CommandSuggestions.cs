@@ -79,7 +79,6 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		var inOptions = false;
 		var expectValue = false;
 		foreach (var (start, length, text) in words)
-		{
 			if (expectValue)
 			{
 				tokens.Add(new Token(start, length, TokenKind.OptionValue));
@@ -98,14 +97,18 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 			else
 			{
 				var candidates = catalog.Starting([.. positional, text]).ToList();
-				var kind = candidates.Count == 0 ? TokenKind.Unknown
-					: candidates.Any(command => PatternWord(command, positional.Count) is { } word && CommandDef.IsParameter(word) && !Literal(candidates, positional.Count, text))
+				var kind = candidates.Count == 0
+					? TokenKind.Unknown
+					: candidates.Any(command =>
+						PatternWord(command, positional.Count) is { } word && CommandDef.IsParameter(word) &&
+						!Literal(candidates, positional.Count, text))
 						? TokenKind.Value
-						: positional.Count == 0 ? TokenKind.Command : TokenKind.Subcommand;
+						: positional.Count == 0
+							? TokenKind.Command
+							: TokenKind.Subcommand;
 				tokens.Add(new Token(start, length, kind));
 				positional.Add(text);
 			}
-		}
 
 		return tokens;
 	}
@@ -141,7 +144,8 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 			if (CommandDef.IsParameter(word))
 			{
 				var resource = positional.Count > 0 ? positional[^1] : string.Empty;
-				foreach (var id in source.Ids(resource).Where(id => id.StartsWith(partial, StringComparison.OrdinalIgnoreCase)))
+				foreach (var id in source.Ids(resource)
+					         .Where(id => id.StartsWith(partial, StringComparison.OrdinalIgnoreCase)))
 					result.Add(id);
 			}
 			else if (word.StartsWith(partial, StringComparison.OrdinalIgnoreCase))
@@ -151,10 +155,14 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		}
 	}
 
-	private static void AddOptionSuggestions(List<string> result, CommandDef exact, List<string> typedOptions, string partial)
+	private static void AddOptionSuggestions(List<string> result, CommandDef exact, List<string> typedOptions,
+		string partial)
 	{
-		var given = typedOptions.Where(CommandCatalog.IsOption).Select(option => option.TrimStart('-')).ToHashSet(StringComparer.OrdinalIgnoreCase);
-		result.AddRange(exact.Options.Where(option => !given.Contains(option.Name) && $"--{option.Name}".StartsWith(partial, StringComparison.OrdinalIgnoreCase))
+		var given = typedOptions.Where(CommandCatalog.IsOption).Select(option => option.TrimStart('-'))
+			.ToHashSet(StringComparer.OrdinalIgnoreCase);
+		result.AddRange(exact.Options
+			.Where(option => !given.Contains(option.Name) &&
+			                 $"--{option.Name}".StartsWith(partial, StringComparison.OrdinalIgnoreCase))
 			.Select(option => $"--{option.Name}"));
 	}
 
@@ -163,8 +171,10 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 	/// <returns>The description, or an empty string when no command fits.</returns>
 	public string Describe(string line)
 	{
-		var positional = Words(line).Select(word => word.Text).TakeWhile(word => !CommandCatalog.IsOption(word)).ToList();
-		var command = catalog.All.FirstOrDefault(c => Fits(c, positional)) ?? catalog.Starting(positional).FirstOrDefault();
+		var positional = Words(line).Select(word => word.Text).TakeWhile(word => !CommandCatalog.IsOption(word))
+			.ToList();
+		var command = catalog.All.FirstOrDefault(c => Fits(c, positional)) ??
+		              catalog.Starting(positional).FirstOrDefault();
 		return command is null || positional.Count == 0 ? string.Empty : $"{command.Pattern}  {command.Summary}";
 	}
 
@@ -185,18 +195,17 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		if (pattern.Length != words.Count) return false;
 
 		for (var i = 0; i < pattern.Length; i++)
-		{
 			if (CommandDef.IsParameter(pattern[i]))
 			{
 				var type = CommandDef.ParameterOf(pattern[i]).Type;
-				if (type == "int" && !int.TryParse(words[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out _)) return false;
+				if (type == "int" && !int.TryParse(words[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+					return false;
 				if (type == "guid" && !Guid.TryParse(words[i], out _)) return false;
 			}
 			else if (!pattern[i].Equals(words[i], StringComparison.OrdinalIgnoreCase))
 			{
 				return false;
 			}
-		}
 
 		return true;
 	}

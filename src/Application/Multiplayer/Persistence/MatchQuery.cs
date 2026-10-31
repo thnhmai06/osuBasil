@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Users;
 

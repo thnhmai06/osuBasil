@@ -12,7 +12,8 @@ namespace Basil.Bot.Tests.Commands;
 /// </summary>
 public sealed class ChannelCommandsTests
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
+	private static readonly UserPermissions
+		Manager = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
 
 	[Fact]
 	public async Task Create_ByAManager_OpensTheChannelWithTheOptionsGiven()
@@ -41,7 +42,11 @@ public sealed class ChannelCommandsTests
 		var (succeeded, said) = await bot.TypeAsync(typist, null, "channel create #nope");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
+		Assert.Equal(
+			[
+				bot.Text(ChannelReplies.MissingPermissions,
+					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+			],
 			said.Here);
 		Assert.Null(bot.App.Channels.Find("#nope"));
 	}
@@ -105,7 +110,11 @@ public sealed class ChannelCommandsTests
 		var (succeeded, said) = await bot.TypeAsync(player, null, "channel set #locked topic=changed");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
+		Assert.Equal(
+			[
+				bot.Text(ChannelReplies.MissingPermissions,
+					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+			],
 			said.Here);
 		Assert.Equal("keep", bot.App.Channels.Find("#locked")!.Topic);
 	}
@@ -121,7 +130,11 @@ public sealed class ChannelCommandsTests
 		var (_, exists) = await bot.TypeAsync(player, null, "channel set #secret topic=changed");
 		var (_, missing) = await bot.TypeAsync(player, null, "channel set #nothere topic=changed");
 
-		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
+		Assert.Equal(
+			[
+				bot.Text(ChannelReplies.MissingPermissions,
+					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+			],
 			exists.Here);
 		Assert.Equal(exists.Here, missing.Here);
 	}
@@ -176,7 +189,11 @@ public sealed class ChannelCommandsTests
 		var (succeeded, said) = await bot.TypeAsync(player, null, "channel delete #kept");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
+		Assert.Equal(
+			[
+				bot.Text(ChannelReplies.MissingPermissions,
+					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+			],
 			said.Here);
 		Assert.NotNull(bot.App.Channels.Find("#kept"));
 	}
@@ -192,7 +209,11 @@ public sealed class ChannelCommandsTests
 		var (_, exists) = await bot.TypeAsync(player, null, "channel delete #secret2");
 		var (_, missing) = await bot.TypeAsync(player, null, "channel delete #nothere2");
 
-		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
+		Assert.Equal(
+			[
+				bot.Text(ChannelReplies.MissingPermissions,
+					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+			],
 			exists.Here);
 		Assert.Equal(exists.Here, missing.Here);
 	}
@@ -221,8 +242,10 @@ public sealed class ChannelCommandsTests
 		var (succeeded, said) = await bot.TypeAsync(player, null, "channel list");
 
 		Assert.True(succeeded);
-		Assert.Equal([bot.Text(ChannelReplies.ListEntry,
-			new { name = "#alpha", read = 0, write = 0, autoJoin = false, visible = true, topic = "first" })], said.Here);
+		Assert.Equal([
+			bot.Text(ChannelReplies.ListEntry,
+				new { name = "#alpha", read = 0, write = 0, autoJoin = false, visible = true, topic = "first" })
+		], said.Here);
 	}
 
 	[Fact]

@@ -7,7 +7,10 @@ namespace Basil.Host.Cli.Commands;
 /// <param name="Command">The command.</param>
 /// <param name="Words">The values of the parameter words, by name.</param>
 /// <param name="Options">The options that were given, by name.</param>
-public sealed record ParsedCommand(CommandDef Command, Dictionary<string, string> Words, Dictionary<string, string> Options);
+public sealed record ParsedCommand(
+	CommandDef Command,
+	Dictionary<string, string> Words,
+	Dictionary<string, string> Options);
 
 /// <summary>Why a command line could not be understood.</summary>
 /// <param name="Message">What is wrong.</param>
@@ -80,7 +83,8 @@ public sealed class CommandCatalog
 	/// <summary>Tells whether a word is an option and not a value.</summary>
 	public static bool IsOption(string word)
 	{
-		return word.Length > 1 && word[0] == '-' && !double.TryParse(word, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
+		return word.Length > 1 && word[0] == '-' &&
+		       !double.TryParse(word, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
 	}
 
 	/// <summary>Finds the commands whose words start with the given words.</summary>
@@ -102,7 +106,8 @@ public sealed class CommandCatalog
 			.Where(entry => entry.Score > 0).OrderByDescending(entry => entry.Score).FirstOrDefault().Command;
 		if (best is null)
 		{
-			var candidates = All.Where(command => command.Words[0].Equals(words[0], StringComparison.OrdinalIgnoreCase)).ToList();
+			var candidates = All.Where(command => command.Words[0].Equals(words[0], StringComparison.OrdinalIgnoreCase))
+				.ToList();
 			return (null, new ParseFailure(candidates.Count == 0
 				? $"Unknown command: {words[0]}. Type help for the list."
 				: $"Unknown command: {string.Join(' ', words)}. Type help {words[0]} for its commands.", candidates));
@@ -131,7 +136,8 @@ public sealed class CommandCatalog
 			var option = best.Options.FirstOrDefault(o => o.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
 			                                              (o.Alias is not null && !token.StartsWith("--") &&
 			                                               o.Alias.Equals(name, StringComparison.Ordinal)));
-			if (option is null && !best.OpenOptions) return (null, new ParseFailure($"Unknown option: {token}.", [best]));
+			if (option is null && !best.OpenOptions)
+				return (null, new ParseFailure($"Unknown option: {token}.", [best]));
 
 			var key = option?.Name ?? name;
 			if (value is null)
@@ -169,7 +175,6 @@ public sealed class CommandCatalog
 
 		var literals = 0;
 		for (var i = 0; i < words.Count; i++)
-		{
 			if (CommandDef.IsParameter(pattern[i]))
 			{
 				var type = CommandDef.ParameterOf(pattern[i]).Type;
@@ -181,9 +186,14 @@ public sealed class CommandCatalog
 				};
 				if (!fits) return 0;
 			}
-			else if (pattern[i].Equals(words[i], StringComparison.OrdinalIgnoreCase)) literals++;
-			else return 0;
-		}
+			else if (pattern[i].Equals(words[i], StringComparison.OrdinalIgnoreCase))
+			{
+				literals++;
+			}
+			else
+			{
+				return 0;
+			}
 
 		return literals + (exact ? 1 : 0) + (words.Count == 0 ? 0 : 0);
 	}

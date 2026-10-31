@@ -8,10 +8,10 @@ namespace Basil.Infrastructure.Common.Persistence;
 /// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 public sealed class Database : IAsyncDisposable
 {
-	private readonly NpgsqlDataSource _asynchronousSource;
-	private readonly NpgsqlDataSource _synchronousSource;
 	private readonly ConcurrentDictionary<Type, object> _asynchronousOptions = new();
+	private readonly NpgsqlDataSource _asynchronousSource;
 	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
+	private readonly NpgsqlDataSource _synchronousSource;
 
 	/// <summary>Creates the database connections used for confirmed and unconfirmed writes.</summary>
 	/// <param name="options">The database connection settings.</param>

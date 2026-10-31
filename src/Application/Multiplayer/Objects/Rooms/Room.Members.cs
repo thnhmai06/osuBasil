@@ -1,9 +1,7 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -153,10 +151,7 @@ public sealed partial class Room
 			}
 
 			Emit(new RoomPlayerBanned(this, by, player, vacated, evicted, Authority.Host, progress));
-			if (evicted is not null)
-			{
-				ReportIfEmpty();
-			}
+			if (evicted is not null) ReportIfEmpty();
 
 			return RoomOutcome.Ok;
 		}

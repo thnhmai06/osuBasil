@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Chat.Objects;
+using Basil.Application.Multiplayer.Objects.Rooms;
 
 namespace Basil.Application.Chat.Registry;
 
@@ -25,7 +25,8 @@ public sealed class RoomChannels
 	{
 		if (room.IsClosed) return Closed(room);
 
-		var channel = _channels.GetOrAdd(room, static (current, context) => new RoomChannel(current, context), _context);
+		var channel =
+			_channels.GetOrAdd(room, static (current, context) => new RoomChannel(current, context), _context);
 		if (!room.IsClosed) return channel;
 
 		// The room closed after the check, and its close event may already have been handled: do not keep a channel

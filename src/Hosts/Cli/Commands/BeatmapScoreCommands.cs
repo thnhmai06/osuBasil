@@ -1,12 +1,12 @@
-using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects;
-using Basil.Application.Common;
+using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common.Common;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Views;
 
@@ -19,8 +19,10 @@ internal static class BeatmapScoreCommands
 	{
 		yield return new CommandDef
 		{
-			Pattern = "beatmapsets list", Route = "GET /v1/beatmapsets", Offline = true, Summary = "Searches beatmapsets.",
-			Options = [new("query", "The beatmap search syntax."), .. CommandHelpers.Paging], Run = ListSetsAsync
+			Pattern = "beatmapsets list", Route = "GET /v1/beatmapsets", Offline = true,
+			Summary = "Searches beatmapsets.",
+			Options = [new OptionDef("query", "The beatmap search syntax."), .. CommandHelpers.Paging],
+			Run = ListSetsAsync
 		};
 		yield return new CommandDef
 		{
@@ -31,7 +33,7 @@ internal static class BeatmapScoreCommands
 		{
 			Pattern = "beatmapsets create", Route = "POST /v1/beatmapsets", Offline = true,
 			Summary = "Imports a beatmapset from an .osz archive.",
-			Options = [new("file", "The path of the .osz archive.", OptionKind.Path, true)], Run = UploadAsync
+			Options = [new OptionDef("file", "The path of the .osz archive.", OptionKind.Path, true)], Run = UploadAsync
 		};
 		yield return new CommandDef
 		{
@@ -39,8 +41,9 @@ internal static class BeatmapScoreCommands
 			Summary = "Changes the status, visibility or lock of a beatmapset.",
 			Options =
 			[
-				new("status", "ranked, approved, qualified, loved, pending, wip or graveyard."),
-				new("visible", "Whether the set is shown.", OptionKind.Bool), new("locked", "Whether the set is write-locked.", OptionKind.Bool)
+				new OptionDef("status", "ranked, approved, qualified, loved, pending, wip or graveyard."),
+				new OptionDef("visible", "Whether the set is shown.", OptionKind.Bool),
+				new OptionDef("locked", "Whether the set is write-locked.", OptionKind.Bool)
 			],
 			Run = PatchSetAsync
 		};
@@ -63,12 +66,17 @@ internal static class BeatmapScoreCommands
 		yield return new CommandDef
 		{
 			Pattern = "scores list", Route = "GET /v1/scores", Offline = true, Summary = "Lists scores, newest first.",
-			Options = [new("beatmap", "A beatmap id.", OptionKind.Int), new("user", "A user id.", OptionKind.Int), .. CommandHelpers.Paging],
+			Options =
+			[
+				new OptionDef("beatmap", "A beatmap id.", OptionKind.Int),
+				new OptionDef("user", "A user id.", OptionKind.Int), .. CommandHelpers.Paging
+			],
 			Run = ListScoresAsync
 		};
 		yield return new CommandDef
 		{
-			Pattern = "scores <id:int>", Route = "GET /v1/scores/{id}", Offline = true, Summary = "Shows a score.", Run = ShowScoreAsync
+			Pattern = "scores <id:int>", Route = "GET /v1/scores/{id}", Offline = true, Summary = "Shows a score.",
+			Run = ShowScoreAsync
 		};
 	}
 
@@ -76,7 +84,8 @@ internal static class BeatmapScoreCommands
 	{
 		var page = call.Page();
 		var found = await call.Get<IBeatmapsetRepository>().ListAsync(
-			BeatmapQuery.Parse(call.Text("query") ?? string.Empty).LimitTo(UserPermissionsGroups.All), page, call.CancellationToken);
+			BeatmapQuery.Parse(call.Text("query") ?? string.Empty).LimitTo(UserPermissionsGroups.All), page,
+			call.CancellationToken);
 		call.PrintPage(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.Total), page);
 		return ExitCodes.Success;
 	}
@@ -87,14 +96,16 @@ internal static class BeatmapScoreCommands
 			return call.NotFound("beatmapset");
 
 		var list = await call.Get<IBeatmapRepository>().ListAsync(set, call.CancellationToken);
-		call.Formatter.Print(call.Output, new SetDetailView(SetView.Of(set), [.. list.OrderBy(b => b.Id).Select(b => BeatmapView.Of(b, false))]));
+		call.Formatter.Print(call.Output,
+			new SetDetailView(SetView.Of(set), [.. list.OrderBy(b => b.Id).Select(b => BeatmapView.Of(b, false))]));
 		return ExitCodes.Success;
 	}
 
 	private static async Task<int> UploadAsync(CommandCall call)
 	{
 		await using var stream = File.OpenRead(call.Required("file"));
-		var (result, import) = await call.Get<Server>().ScopeTo(await call.ByAsync()).Beatmapsets.UploadAsync(stream, call.CancellationToken);
+		var (result, import) = await call.Get<Server>().ScopeTo(await call.ByAsync()).Beatmapsets
+			.UploadAsync(stream, call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		switch (import!.Failure)
@@ -139,8 +150,10 @@ internal static class BeatmapScoreCommands
 	{
 		var ct = call.CancellationToken;
 		if (status is { } s && await scoped.SetStatusAsync(s, ct) is { IsOk: false } a) return call.Refuse(a);
-		if (call.Bool("visible") is { } v && await scoped.SetVisibleAsync(v, ct) is { IsOk: false } b) return call.Refuse(b);
-		if (call.Bool("locked") is { } l && await scoped.SetLockedAsync(l, ct) is { IsOk: false } c) return call.Refuse(c);
+		if (call.Bool("visible") is { } v && await scoped.SetVisibleAsync(v, ct) is { IsOk: false } b)
+			return call.Refuse(b);
+		if (call.Bool("locked") is { } l && await scoped.SetLockedAsync(l, ct) is { IsOk: false } c)
+			return call.Refuse(c);
 		return null;
 	}
 
@@ -155,7 +168,8 @@ internal static class BeatmapScoreCommands
 	{
 		return await call.Get<IBeatmapsetRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } set
 			? call.NotFound("beatmapset")
-			: call.Report(await call.Get<Beatmapsets>().Of(set).ScopeTo(await call.ByAsync()).DeleteAsync(call.CancellationToken),
+			: call.Report(
+				await call.Get<Beatmapsets>().Of(set).ScopeTo(await call.ByAsync()).DeleteAsync(call.CancellationToken),
 				"Beatmapset deleted.");
 	}
 
@@ -172,10 +186,11 @@ internal static class BeatmapScoreCommands
 	{
 		var page = call.Page();
 		var ct = call.CancellationToken;
-		Basil.Domain.Common.Md5? hash = null;
+		Md5? hash = null;
 		if (call.Int("beatmap") is { } beatmapId)
 		{
-			if (await call.Get<IBeatmapRepository>().GetAsync(beatmapId, ct) is not { } map) return call.NotFound("beatmap");
+			if (await call.Get<IBeatmapRepository>().GetAsync(beatmapId, ct) is not { } map)
+				return call.NotFound("beatmap");
 			hash = map.Hash;
 		}
 

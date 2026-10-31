@@ -40,7 +40,8 @@ public sealed partial class RouteCoverageTests(CliFixture fixture)
 		foreach (var (method, operation) in item!.AsObject())
 		{
 			// A live stream (SSE) is watched in the dashboard, not read as one answer.
-			var stream = operation!["responses"]?.AsObject().Any(r => r.Value?["content"]?["text/event-stream"] is not null) == true;
+			var stream = operation!["responses"]?.AsObject()
+				.Any(r => r.Value?["content"]?["text/event-stream"] is not null) == true;
 			if (withStreams || !stream) routes.Add($"{method.ToUpperInvariant()} {path}");
 		}
 
@@ -53,7 +54,8 @@ public sealed partial class RouteCoverageTests(CliFixture fixture)
 		var covered = CommandCatalogFactory.Create().All.SelectMany(command => command.AllRoutes)
 			.Select(route => CatchAll().Replace(route, "{$1}")).ToHashSet();
 
-		var missing = (await RoutesAsync()).Where(route => !Excluded.ContainsKey(route) && !covered.Contains(route)).ToList();
+		var missing = (await RoutesAsync()).Where(route => !Excluded.ContainsKey(route) && !covered.Contains(route))
+			.ToList();
 
 		Assert.True(missing.Count == 0, "Routes without a command: " + string.Join(", ", missing));
 	}
@@ -77,6 +79,7 @@ public sealed partial class RouteCoverageTests(CliFixture fixture)
 
 		var unknown = documented.Where(route => !routes.Contains(route)).ToList();
 
-		Assert.True(unknown.Count == 0, "Commands that name a route that does not exist: " + string.Join(", ", unknown));
+		Assert.True(unknown.Count == 0,
+			"Commands that name a route that does not exist: " + string.Join(", ", unknown));
 	}
 }

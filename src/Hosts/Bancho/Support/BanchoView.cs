@@ -1,8 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Protocol.Bancho.Models.Multiplayer;
@@ -62,7 +61,8 @@ internal static class BanchoView
 	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
 	{
 		var status = user.Bancho?.Status ?? PlayerStatus.Idle;
-		writer.UserStats(user.Record.Id, (int)status.Activity, status.Text, status.BeatmapHash?.ToString() ?? string.Empty,
+		writer.UserStats(user.Record.Id, (int)status.Activity, status.Text,
+			status.BeatmapHash?.ToString() ?? string.Empty,
 			(int)status.GameMods, (int)status.GameMode, status.BeatmapId ?? 0, stats.RankedScore,
 			UserStats.Accuracy, stats.PlayCount, stats.TotalScore, stats.Rank, UserStats.Pp);
 	}
@@ -72,11 +72,14 @@ internal static class BanchoView
 	/// <returns>The match packet model.</returns>
 	public static RoomPacket Match(Room room)
 	{
-		var slots = room.Slots.Select(slot => new RoomSlotPacket(SlotStatus(slot), slot.Team is { } team ? (int)team : 0,
+		var slots = room.Slots.Select(slot => new RoomSlotPacket(SlotStatus(slot),
+			slot.Team is { } team ? (int)team : 0,
 			slot.Mods is { } mods ? (int)mods : 0, slot.Player?.Record.Id)).ToList();
 		var beatmap = room.Settings.Beatmap;
-		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods, room.Settings.Name,
-			room.Settings.Password, beatmap?.Name ?? string.Empty, beatmap?.Id ?? 0, beatmap?.Hash.ToString() ?? string.Empty,
+		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods,
+			room.Settings.Name,
+			room.Settings.Password, beatmap?.Name ?? string.Empty, beatmap?.Id ?? 0,
+			beatmap?.Hash.ToString() ?? string.Empty,
 			slots, room.Authority.Host?.Record.Id ?? RoomPacket.NoHostId, (int)room.Settings.MatchSettings.Mode,
 			(int)room.Settings.MatchSettings.WinCondition, (int)room.Settings.MatchSettings.TeamType,
 			room.Settings.MatchSettings.Freemods, room.Settings.MatchSettings.Seed);

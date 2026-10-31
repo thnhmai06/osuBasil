@@ -1,6 +1,6 @@
+using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Objects.Events;
 using Mediator;
-using Basil.Application.Multiplayer.Registry;
 
 namespace Basil.Application.Multiplayer.Handlers;
 

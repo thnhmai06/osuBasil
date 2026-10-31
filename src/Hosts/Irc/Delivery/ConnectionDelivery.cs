@@ -1,7 +1,4 @@
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 using Mediator;
@@ -23,8 +20,8 @@ internal sealed class ConnectionClosedDelivery(IrcClients clients, IrcPresence p
 		var quit = new IrcMessage("QUIT", IrcView.Mask(connection.Record, options.Value.Domain).ToString(),
 			IrcReplies.Closing(notification.Reason));
 		foreach (var session in clients.All.Where(session => session.Connection is { } other &&
-		                                                      !ReferenceEquals(other.User, connection.User) &&
-		                                                      channels.Any(channel => channel.Members.Contains(other))))
+		                                                     !ReferenceEquals(other.User, connection.User) &&
+		                                                     channels.Any(channel => channel.Members.Contains(other))))
 			session.Relay(quit, null, session.Now);
 		return ValueTask.CompletedTask;
 	}

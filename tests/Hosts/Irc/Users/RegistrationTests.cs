@@ -179,7 +179,8 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		await second.SendAsync("NICK RegTwice");
 		await second.SendAsync("USER x 0 * :x");
 
-		Assert.Equal("ERROR :Closing Link: basil.test (This key is already connected.)", await second.ExpectAsync("ERROR"));
+		Assert.Equal("ERROR :Closing Link: basil.test (This key is already connected.)",
+			await second.ExpectAsync("ERROR"));
 		await first.BarrierAsync();
 	}
 
@@ -235,7 +236,8 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 			await second.SendAsync("NICK RegLimited");
 			await second.SendAsync("USER x 0 * :x");
 
-			Assert.Equal(":irc.basil.test 464 * :Too many failed login attempts. Try again later.", await second.ExpectAsync("464"));
+			Assert.Equal(":irc.basil.test 464 * :Too many failed login attempts. Try again later.",
+				await second.ExpectAsync("464"));
 		}
 		finally
 		{

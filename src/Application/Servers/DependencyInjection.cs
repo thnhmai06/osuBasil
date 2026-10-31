@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Objects;
-using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;

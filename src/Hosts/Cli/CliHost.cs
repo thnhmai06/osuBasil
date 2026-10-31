@@ -1,7 +1,5 @@
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard;
@@ -20,7 +18,10 @@ namespace Basil.Host.Cli;
 /// <summary>Registers the console of the server: the commands, the control socket, the dashboard and the Ctrl+C rules.</summary>
 public static class CliHost
 {
-	/// <summary>Adds what the event handlers of the console need, so a container that handles events is complete without the rest of it.</summary>
+	/// <summary>
+	///     Adds what the event handlers of the console need, so a container that handles events is complete without the
+	///     rest of it.
+	/// </summary>
 	/// <param name="services">The service collection.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddCliFeeds(this IServiceCollection services)
@@ -35,7 +36,8 @@ public static class CliHost
 	/// <param name="socketPath">Finds the path of the control socket once the options are bound.</param>
 	/// <param name="configurationDirectory">The folder where the dashboard saves its theme.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
-	public static IServiceCollection AddCli(this IServiceCollection services, CliMode mode, Func<IServiceProvider, string> socketPath,
+	public static IServiceCollection AddCli(this IServiceCollection services, CliMode mode,
+		Func<IServiceProvider, string> socketPath,
 		string configurationDirectory)
 	{
 		services.TryAddSingleton(TimeProvider.System);
@@ -59,7 +61,8 @@ public static class CliHost
 		services.AddSingleton<DashboardRenderer>();
 		services.AddSingleton(new ThemeStore(configurationDirectory));
 		services.AddSingleton<IThemeControl>(provider => provider.GetRequiredService<ThemeStore>());
-		services.AddSingleton(provider => new ControlServer(provider.GetRequiredService<CommandRunner>(), socketPath(provider),
+		services.AddSingleton(provider => new ControlServer(provider.GetRequiredService<CommandRunner>(),
+			socketPath(provider),
 			provider.GetRequiredService<ILogger<ControlServer>>()));
 		services.AddHostedService(provider => provider.GetRequiredService<ControlServer>());
 		services.AddHostedService<ShutdownTicker>();
@@ -79,7 +82,8 @@ public static class CliHost
 public sealed record CliModeSetting(CliMode Mode);
 
 /// <summary>Lists the ids that exist, so the command box can complete them.</summary>
-internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, GeneralChannelRegistry channels) : ISuggestionSource
+internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, GeneralChannelRegistry channels)
+	: ISuggestionSource
 {
 	public IEnumerable<string> Ids(string resource)
 	{
@@ -113,8 +117,12 @@ internal sealed class ShutdownTicker(ShutdownController controller, TimeProvider
 ///     Shows the server in the terminal: the dashboard in the full and no-console modes, and the messages of the Ctrl+C
 ///     rules as plain log lines in the no-gui mode.
 /// </summary>
-internal sealed class DisplayService(CliModeSetting setting, IServiceProvider services, ShutdownController shutdown,
-	ILogger<DisplayService> logger, IHostApplicationLifetime lifetime) : IHostedService
+internal sealed class DisplayService(
+	CliModeSetting setting,
+	IServiceProvider services,
+	ShutdownController shutdown,
+	ILogger<DisplayService> logger,
+	IHostApplicationLifetime lifetime) : IHostedService
 {
 	private readonly CancellationTokenSource _stopped = new();
 	private Thread? _thread;

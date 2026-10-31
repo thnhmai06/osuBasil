@@ -1,10 +1,7 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 
@@ -155,12 +152,10 @@ internal sealed partial class IrcCommands
 		}
 
 		foreach (var name in message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries))
-		{
 			if (Resolve(name) is not { } channel)
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
 			else if (channel.ScopeTo(by).Part().Outcome == ChannelOutcome.NotMember)
 				session.Numeric(IrcNumericReply.ErrNotOnChannel, name, IrcReplies.NotOnChannel);
-		}
 	}
 
 	private void Away(IrcSession session, Connection by, IrcMessage message)
@@ -170,11 +165,13 @@ internal sealed partial class IrcCommands
 		session.Numeric(text is null ? IrcNumericReply.RplUnaway : IrcNumericReply.RplNowAway,
 			text is null ? "You are no longer marked as being away" : "You have been marked as being away");
 
-		var line = new IrcMessage("AWAY", IrcView.Mask(by.Record, Options.Domain).ToString(), text is null ? [] : [text]) { ForceTrailing = true };
+		var line = new IrcMessage("AWAY", IrcView.Mask(by.Record, Options.Domain).ToString(),
+			text is null ? [] : [text]) { ForceTrailing = true };
 		var mine = presence.Of(by.Record);
-		foreach (var other in clients.All.Where(other => other.Has("away-notify") && other.Connection is { } connection &&
-		                                                  !ReferenceEquals(connection.User, by.User) &&
-		                                                  mine.Any(channel => channel.Members.Contains(connection))))
+		foreach (var other in clients.All.Where(other =>
+			         other.Has("away-notify") && other.Connection is { } connection &&
+			         !ReferenceEquals(connection.User, by.User) &&
+			         mine.Any(channel => channel.Members.Contains(connection))))
 			other.Deliver(line);
 	}
 

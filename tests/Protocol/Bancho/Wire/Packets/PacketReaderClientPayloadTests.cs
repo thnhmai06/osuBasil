@@ -1,4 +1,3 @@
-using Basil.Protocol.Bancho.Models.Beatmaps;
 using Basil.Protocol.Bancho.Models.Multiplayer;
 using Basil.Protocol.Bancho.Models.Presence;
 using Basil.Protocol.Bancho.Wire.Packets;

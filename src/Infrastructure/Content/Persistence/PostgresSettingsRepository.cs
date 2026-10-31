@@ -2,9 +2,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +16,25 @@ internal sealed class PostgresSettingsRepository(
 	ILogger<PostgresSettingsRepository> logger)
 	: ISettingsRepository, IResident
 {
+	private static readonly JsonSerializerOptions Json = new()
+	{
+		Converters = { new JsonStringEnumConverter(), new ContentReferenceConverter() }
+	};
+
+	private static readonly Category[] Categories =
+	[
+		Of("general", settings => settings.General, (settings, value) => settings with { General = value }),
+		Of("locks", settings => settings.Locks, (settings, value) => settings with { Locks = value }),
+		Of("sessions", settings => settings.Sessions, (settings, value) => settings with { Sessions = value }),
+		Of("rate_limits", settings => settings.RateLimits, (settings, value) => settings with { RateLimits = value }),
+		Of("uploads", settings => settings.Uploads, (settings, value) => settings with { Uploads = value }),
+		Of("beatmaps", settings => settings.Beatmaps, (settings, value) => settings with { Beatmaps = value }),
+		Of("multiplayer", settings => settings.Multiplayer, (settings, value) => settings with { Multiplayer = value }),
+		Of("bot", settings => settings.Bot, (settings, value) => settings with { Bot = value }),
+		Of("cors", settings => settings.Cors, (settings, value) => settings with { Cors = value }),
+		Of("menu_icon", settings => settings.MenuIcon, (settings, value) => settings with { MenuIcon = value })
+	];
+
 	private readonly ResidentWrites<int> _writes = new();
 	private ServerSettings? _settings;
 
@@ -76,10 +94,6 @@ internal sealed class PostgresSettingsRepository(
 		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name, token);
 	}
 
-	/// <summary>One nested category of the settings, stored as one JSON row.</summary>
-	private sealed record Category(string Name, Func<ServerSettings, string> Write,
-		Func<ServerSettings, string, ServerSettings> Read);
-
 	private static Category Of<T>(string name, Func<ServerSettings, T> get, Func<ServerSettings, T, ServerSettings> set)
 		where T : notnull
 	{
@@ -88,24 +102,11 @@ internal sealed class PostgresSettingsRepository(
 			                                  throw new JsonException("The category is null.")));
 	}
 
-	private static readonly JsonSerializerOptions Json = new()
-	{
-		Converters = { new JsonStringEnumConverter(), new ContentReferenceConverter() }
-	};
-
-	private static readonly Category[] Categories =
-	[
-		Of("general", settings => settings.General, (settings, value) => settings with { General = value }),
-		Of("locks", settings => settings.Locks, (settings, value) => settings with { Locks = value }),
-		Of("sessions", settings => settings.Sessions, (settings, value) => settings with { Sessions = value }),
-		Of("rate_limits", settings => settings.RateLimits, (settings, value) => settings with { RateLimits = value }),
-		Of("uploads", settings => settings.Uploads, (settings, value) => settings with { Uploads = value }),
-		Of("beatmaps", settings => settings.Beatmaps, (settings, value) => settings with { Beatmaps = value }),
-		Of("multiplayer", settings => settings.Multiplayer, (settings, value) => settings with { Multiplayer = value }),
-		Of("bot", settings => settings.Bot, (settings, value) => settings with { Bot = value }),
-		Of("cors", settings => settings.Cors, (settings, value) => settings with { Cors = value }),
-		Of("menu_icon", settings => settings.MenuIcon, (settings, value) => settings with { MenuIcon = value })
-	];
+	/// <summary>One nested category of the settings, stored as one JSON row.</summary>
+	private sealed record Category(
+		string Name,
+		Func<ServerSettings, string> Write,
+		Func<ServerSettings, string, ServerSettings> Read);
 
 	private sealed class ContentReferenceConverter : JsonConverter<ContentReference>
 	{

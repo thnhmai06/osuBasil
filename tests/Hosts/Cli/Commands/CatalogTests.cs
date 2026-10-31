@@ -9,7 +9,8 @@ public sealed class CatalogTests
 
 	[Theory]
 	[InlineData("users list", new[] { "users", "list" })]
-	[InlineData("users create --username \"two words\" --password x", new[] { "users", "create", "--username", "two words", "--password", "x" })]
+	[InlineData("users create --username \"two words\" --password x",
+		new[] { "users", "create", "--username", "two words", "--password", "x" })]
 	[InlineData("  a   b  ", new[] { "a", "b" })]
 	[InlineData("say \"a \\\"quoted\\\" word\"", new[] { "say", "a \"quoted\" word" })]
 	public void Split_follows_the_quoting_rules(string line, string[] expected)
@@ -121,7 +122,8 @@ public sealed class CatalogTests
 	[Fact]
 	public void Every_flag_option_that_the_api_names_is_in_camel_case()
 	{
-		Assert.All(Catalog.All.SelectMany(command => command.Options), option => Assert.True(char.IsLower(option.Name[0]), option.Name));
+		Assert.All(Catalog.All.SelectMany(command => command.Options),
+			option => Assert.True(char.IsLower(option.Name[0]), option.Name));
 	}
 
 	[Theory]

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Basil.Domain;
 using NetArchTest.Rules;
 using TestResult = NetArchTest.Rules.TestResult;
@@ -80,7 +81,7 @@ public class LayeringTests
 		var publicTypes = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Where(type => type is { IsPublic: true, IsNested: false } &&
 			               type.Namespace is not null &&
-			               System.Text.RegularExpressions.Regex.IsMatch(type.Namespace, Capabilities))
+			               Regex.IsMatch(type.Namespace, Capabilities))
 			.ToList();
 		var exchanged = new HashSet<Type>();
 		var pending = new Stack<Type>(publicTypes.Where(type => type.IsInterface)
@@ -115,7 +116,7 @@ public class LayeringTests
 				                                            && type.Name != "Scoped")
 			.ToList();
 		var misplaced = scopedTypes.Where(type => type.Namespace is null ||
-		                                          !System.Text.RegularExpressions.Regex.IsMatch(type.Namespace,
+		                                          !Regex.IsMatch(type.Namespace,
 			                                          Capabilities))
 			.Select(type => type.FullName).ToList();
 
@@ -284,7 +285,7 @@ public class LayeringTests
 			.Where(type => type is { IsPublic: true, IsNested: false } &&
 			               !type.Name.StartsWith("Scoped", StringComparison.Ordinal) &&
 			               type.Namespace is not null &&
-			               System.Text.RegularExpressions.Regex.IsMatch(type.Namespace, Capabilities))
+			               Regex.IsMatch(type.Namespace, Capabilities))
 			.Select(type => type.FullName!)
 			.ToArray();
 	}

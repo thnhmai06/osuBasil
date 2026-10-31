@@ -9,8 +9,8 @@ namespace Basil.Application.Users.Objects;
 /// <summary>Owns the live connections of one online account.</summary>
 public sealed class UserSessions
 {
-	private readonly User _user;
 	private readonly ConcurrentDictionary<SessionType, ConcurrentSet<Connection>> _connections = new();
+	private readonly User _user;
 
 	/// <summary>Creates the live connection state for an account.</summary>
 	/// <param name="user">The account whose connections are held.</param>

@@ -1,8 +1,7 @@
+using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Auth;
-using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Users.Capabilities;
 
 namespace Basil.Application.Users.Objects;
 

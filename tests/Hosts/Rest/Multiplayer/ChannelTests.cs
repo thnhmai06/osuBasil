@@ -6,7 +6,8 @@ namespace Basil.Host.Rest.Tests.Multiplayer;
 [Collection("REST host")]
 public sealed class ChannelTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
+	private static readonly UserPermissions
+		Manager = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
 
 	[Fact]
 	public async Task List_WithoutAToken_Answers401()
@@ -26,7 +27,8 @@ public sealed class ChannelTests(RestHostFixture fixture)
 		using (manager)
 		using (plain)
 		{
-			var (created, _) = await manager.CallAsync(HttpMethod.Post, "/v1/channels", new { name = "#rest1", topic = "hi" });
+			var (created, _) =
+				await manager.CallAsync(HttpMethod.Post, "/v1/channels", new { name = "#rest1", topic = "hi" });
 			var (denied, envelope) = await plain.CallAsync(HttpMethod.Post, "/v1/channels", new { name = "#rest2" });
 
 			Assert.Equal(201, created);
@@ -71,7 +73,8 @@ public sealed class ChannelTests(RestHostFixture fixture)
 		{
 			await manager.CallAsync(HttpMethod.Post, "/v1/channels", new { name = "#resthid", visible = false });
 
-			var (patched, envelope) = await manager.CallAsync(HttpMethod.Patch, "/v1/channels/%23resthid", new { topic = "new" });
+			var (patched, envelope) =
+				await manager.CallAsync(HttpMethod.Patch, "/v1/channels/%23resthid", new { topic = "new" });
 			var (_, forManager) = await manager.CallAsync(HttpMethod.Get, "/v1/channels");
 			var (_, forPlain) = await plain.CallAsync(HttpMethod.Get, "/v1/channels");
 
@@ -108,8 +111,10 @@ public sealed class ChannelTests(RestHostFixture fixture)
 		{
 			await manager.CallAsync(HttpMethod.Post, "/v1/channels", new { name = "#restpatchhid", visible = false });
 
-			var (exists, hidden) = await plain.CallAsync(HttpMethod.Patch, "/v1/channels/%23restpatchhid", new { topic = "x" });
-			var (missing, ghost) = await plain.CallAsync(HttpMethod.Patch, "/v1/channels/%23restpatchghost", new { topic = "x" });
+			var (exists, hidden) =
+				await plain.CallAsync(HttpMethod.Patch, "/v1/channels/%23restpatchhid", new { topic = "x" });
+			var (missing, ghost) =
+				await plain.CallAsync(HttpMethod.Patch, "/v1/channels/%23restpatchghost", new { topic = "x" });
 
 			Assert.Equal(403, exists);
 			Assert.Equal(exists, missing);

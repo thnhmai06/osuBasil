@@ -39,7 +39,8 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 			Assert.Equal("snapshot", snapshot!.Value.Event);
 			Assert.True((bool)JsonNode.Parse(snapshot.Value.Data)!["locked"]!);
 
-			var (renamed, _) = await rest.CallAsync(HttpMethod.Post, $"/v1/rooms/{roomId}/name", new { name = "renamed" });
+			var (renamed, _) =
+				await rest.CallAsync(HttpMethod.Post, $"/v1/rooms/{roomId}/name", new { name = "renamed" });
 			var bundle = await reader.NextAsync(Host);
 			var (closed, _) = await rest.CallAsync(HttpMethod.Post, $"/v1/rooms/{roomId}/close");
 			var closedEvent = await reader.NextAsync(Host);

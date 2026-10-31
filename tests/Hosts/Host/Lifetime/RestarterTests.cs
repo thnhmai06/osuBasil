@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Basil.Host.Cli.Shutdown;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Host.Tests.Lifetime;
@@ -12,7 +13,8 @@ public sealed class RestarterTests
 	{
 		var clock = new FakeTimeProvider();
 
-		Assert.True(await Restarter.WaitForPortsAsync(() => true, clock, TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+		Assert.True(await Restarter.WaitForPortsAsync(() => true, clock, TimeSpan.FromSeconds(10),
+			TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -21,7 +23,8 @@ public sealed class RestarterTests
 		var clock = new FakeTimeProvider();
 		var checks = 0;
 
-		var waiting = Restarter.WaitForPortsAsync(() => ++checks > 3, clock, TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+		var waiting = Restarter.WaitForPortsAsync(() => ++checks > 3, clock, TimeSpan.FromSeconds(10),
+			TestContext.Current.CancellationToken);
 		while (!waiting.IsCompleted) clock.Advance(TimeSpan.FromMilliseconds(250));
 
 		Assert.True(await waiting);
@@ -32,7 +35,8 @@ public sealed class RestarterTests
 	{
 		var clock = new FakeTimeProvider();
 
-		var waiting = Restarter.WaitForPortsAsync(() => false, clock, TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+		var waiting = Restarter.WaitForPortsAsync(() => false, clock, TimeSpan.FromSeconds(10),
+			TestContext.Current.CancellationToken);
 		while (!waiting.IsCompleted) clock.Advance(TimeSpan.FromMilliseconds(250));
 
 		Assert.False(await waiting);
@@ -60,6 +64,6 @@ public sealed class RestarterTests
 	[Fact]
 	public void TheRestartExitCodeIs75()
 	{
-		Assert.Equal(75, Basil.Host.Cli.Shutdown.ProcessExitCodes.Restart);
+		Assert.Equal(75, ProcessExitCodes.Restart);
 	}
 }

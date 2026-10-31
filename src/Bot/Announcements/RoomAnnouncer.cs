@@ -1,10 +1,8 @@
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Bot.Replies;
 using Basil.Domain.Common;
@@ -33,10 +31,9 @@ internal sealed class RoomAnnouncer(
 		INotificationHandler<RoomCountdownCancelled>,
 		INotificationHandler<RoomPlayerJoined>
 {
-	private readonly ConcurrentSet<Room> _closingRooms = [];
-
 	// Rounds announced as ended; only those are announced as decided, so a round nobody completed stays silent.
 	private readonly ConcurrentSet<Round> _awaitingScores = [];
+	private readonly ConcurrentSet<Room> _closingRooms = [];
 
 	/// <inheritdoc />
 	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken cancellationToken)

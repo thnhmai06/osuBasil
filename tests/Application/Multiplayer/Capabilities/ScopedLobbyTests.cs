@@ -1,11 +1,10 @@
+using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Common;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Auth;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -305,7 +304,7 @@ public sealed class ScopedLobbyTests
 		Assert.True(room.IsClosed);
 	}
 
-	private static Task<(Room? Room, Common.Common.Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
+	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
 		string name = "test room", bool isTournament = false, string password = "")
 	{
 		return app.Lobby.ScopeTo(by).OpenRoomAsync(name, password, isTournament, false,
@@ -372,7 +371,8 @@ public sealed class ScopedLobbyTests
 		await app.Provider.GetRequiredService<IMatchEventRepository>().RecordAsync(
 			new MatchEvent(room.Match, MatchEventType.PlayerJoined, app.Clock.GetUtcNow(), null, player.Record),
 			TestContext.Current.CancellationToken);
-		Assert.True(await app.Provider.GetRequiredService<IMatchRepository>().IsVisibleToAsync(room.Match, player.Record,
+		Assert.True(await app.Provider.GetRequiredService<IMatchRepository>().IsVisibleToAsync(room.Match,
+			player.Record,
 			TestContext.Current.CancellationToken), "precondition: the stored history shows the player");
 
 		Assert.False(await app.Lobby.ScopeTo(player).CanViewAsync(room.Match, TestContext.Current.CancellationToken));

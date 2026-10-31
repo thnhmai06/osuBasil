@@ -10,7 +10,10 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 {
 	private BasilHost Host => fixture.Host;
 
-	private static int MatchIdOf(ServerPacket joinSuccess) => BitConverter.ToUInt16(joinSuccess.Payload, 0);
+	private static int MatchIdOf(ServerPacket joinSuccess)
+	{
+		return BitConverter.ToUInt16(joinSuccess.Payload, 0);
+	}
 
 	/// <summary>An account that has an osu! client seated as host of a new room and an IRC client of its own.</summary>
 	private async Task<(OsuClient Osu, IrcClient Irc, int RoomId)> CreatorWithIrcAsync(string name)
@@ -18,7 +21,8 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 		var osu = await Host.NewClientAsync(name);
 		await osu.LoginAsync();
 		var key = await Host.CreateIrcKeyAsync(name);
-		await osu.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("room of " + name, "pw")));
+		await osu.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.CreateMatch, ClientPacketWriter.Match("room of " + name, "pw")));
 		var id = MatchIdOf((await osu.WaitForAsync(OsuClient.In.MatchJoinSuccess))!);
 		var irc = await IrcClient.ConnectAsync(Host);
 		await irc.RegisterAsync(name, key);
@@ -47,7 +51,8 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 
 		await outsider.SendAsync($"JOIN #mp_{id}");
 
-		Assert.Equal($":irc.basil.test 473 RmOutsider #mp_{id} :Cannot join channel", await outsider.ExpectAsync("473"));
+		Assert.Equal($":irc.basil.test 473 RmOutsider #mp_{id} :Cannot join channel",
+			await outsider.ExpectAsync("473"));
 	}
 
 	[Fact]
@@ -97,7 +102,8 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 		using var __ = irc;
 		using var player = await Host.NewClientAsync("RmPlayer");
 		await player.LoginAsync();
-		await player.SendAsync(writer => writer.Packet(OsuClient.Out.JoinMatch, ClientPacketWriter.JoinMatch(id, "pw")));
+		await player.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.JoinMatch, ClientPacketWriter.JoinMatch(id, "pw")));
 		Assert.NotNull(await player.WaitForAsync(OsuClient.In.MatchJoinSuccess));
 		await irc.SendAsync($"JOIN #mp_{id}");
 		await irc.ExpectFromAsync("366", "#mp_");
@@ -122,7 +128,8 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 		await irc.SendAsync("LIST");
 		var rows = new List<string>();
 		string line;
-		while (IrcClient.CommandOf(line = await irc.ReadLineAsync() ?? throw new InvalidOperationException()) != "323") rows.Add(line);
+		while (IrcClient.CommandOf(line = await irc.ReadLineAsync() ?? throw new InvalidOperationException()) !=
+		       "323") rows.Add(line);
 
 		Assert.Contains(rows, row => row.Contains($" #mp_{id} "));
 		Assert.DoesNotContain(rows, row => row.Contains($" #mp_{otherId} "));
@@ -149,7 +156,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 		using var _ = osu;
 		using var outsider = await Host.SignInAsync("RmOutsiderCmd");
 
-		await outsider.SendAsync($"PRIVMSG BasilBot :!mp name Hijack");
+		await outsider.SendAsync("PRIVMSG BasilBot :!mp name Hijack");
 
 		var reply = await outsider.ExpectAsync("PRIVMSG");
 		Assert.StartsWith(":BasilBot!BasilBot@basil.test PRIVMSG RmOutsiderCmd :", reply);

@@ -4,7 +4,10 @@ using Basil.Testing;
 
 namespace Basil.Application.Chat.Tests.Registry;
 
-/// <summary>Which channels a connection may see in a listing: the ones it may read, hiding the hidden for those who cannot manage.</summary>
+/// <summary>
+///     Which channels a connection may see in a listing: the ones it may read, hiding the hidden for those who cannot
+///     manage.
+/// </summary>
 public sealed class GeneralChannelRegistryTests
 {
 	private static async Task OpenAsync(TestApplication app, string name, UserPrivileges read = UserPrivileges.None,
@@ -16,7 +19,8 @@ public sealed class GeneralChannelRegistryTests
 		{
 			Name = name, Value = new GeneralChannelData { ReadPrivileges = read, Visible = visible }
 		};
-		Assert.True((await app.Server.ScopeTo(admin).Channels.CreateAsync(record, TestContext.Current.CancellationToken)).IsOk);
+		Assert.True(
+			(await app.Server.ScopeTo(admin).Channels.CreateAsync(record, TestContext.Current.CancellationToken)).IsOk);
 	}
 
 	[Fact]
@@ -51,7 +55,7 @@ public sealed class GeneralChannelRegistryTests
 	public async Task VisibleTo_ManagerStillCannotSeeAChannelItMayNotRead()
 	{
 		using var app = new TestApplication();
-		await OpenAsync(app, "#staff2", UserPrivileges.Moderator, visible: false);
+		await OpenAsync(app, "#staff2", UserPrivileges.Moderator, false);
 		var manager = await RoomFixture.PlayerAsync(app, "Manager2",
 			UserPermissionsGroups.Default | UserPermissions.ChatManageChannels);
 

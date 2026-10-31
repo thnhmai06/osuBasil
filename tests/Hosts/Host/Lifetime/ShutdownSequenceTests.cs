@@ -28,7 +28,8 @@ public sealed class ShutdownSequenceTests
 	[Fact]
 	public async Task TheStepsRunInTheOrderTheyAreGiven()
 	{
-		var results = await Sequence.RunAsync([Quick("first"), Quick("second"), Quick("third")], TestContext.Current.CancellationToken);
+		var results = await Sequence.RunAsync([Quick("first"), Quick("second"), Quick("third")],
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(["first", "second", "third"], _log);
 		Assert.All(results, result => Assert.Equal(ShutdownStepOutcome.Completed, result.Outcome));
@@ -64,7 +65,8 @@ public sealed class ShutdownSequenceTests
 		var results = await running;
 
 		Assert.Equal(["after"], _log);
-		Assert.Equal([ShutdownStepOutcome.TimedOut, ShutdownStepOutcome.Completed], results.Select(result => result.Outcome));
+		Assert.Equal([ShutdownStepOutcome.TimedOut, ShutdownStepOutcome.Completed],
+			results.Select(result => result.Outcome));
 	}
 
 	[Fact]
@@ -104,7 +106,8 @@ public sealed class ShutdownSequenceTests
 		var results = await Sequence.RunAsync([failing, Quick("after")], TestContext.Current.CancellationToken);
 
 		Assert.Equal(["after"], _log);
-		Assert.Equal([ShutdownStepOutcome.Failed, ShutdownStepOutcome.Completed], results.Select(result => result.Outcome));
+		Assert.Equal([ShutdownStepOutcome.Failed, ShutdownStepOutcome.Completed],
+			results.Select(result => result.Outcome));
 	}
 
 	[Fact]
@@ -124,7 +127,8 @@ public sealed class ShutdownSequenceTests
 	[Fact]
 	public async Task EachResultSaysHowLongTheStepTookOnTheClock()
 	{
-		var step = new ShutdownStep("waits", Limit, async token => await Task.Delay(TimeSpan.FromSeconds(3), _clock, token));
+		var step = new ShutdownStep("waits", Limit,
+			async token => await Task.Delay(TimeSpan.FromSeconds(3), _clock, token));
 
 		var running = Sequence.RunAsync([step], TestContext.Current.CancellationToken);
 		_clock.Advance(TimeSpan.FromSeconds(3));

@@ -5,14 +5,6 @@ namespace Basil.Host.Cli.Tests.Commands;
 /// <summary>What the command box offers and how it colours a typed line.</summary>
 public sealed class SuggestionTests
 {
-	private sealed class Source : ISuggestionSource
-	{
-		public IEnumerable<string> Ids(string resource)
-		{
-			return resource switch { "users" => ["1", "12", "30"], "rooms" => ["5"], "channels" => ["#osu", "#lobby"], _ => [] };
-		}
-	}
-
 	private static readonly CommandSuggestions Suggestions = new(CommandCatalogFactory.Create(), new Source());
 
 	[Fact]
@@ -71,7 +63,8 @@ public sealed class SuggestionTests
 		const string line = "users 5 set --away hello";
 		var kinds = Suggestions.Highlight(line).Select(token => token.Kind).ToArray();
 
-		Assert.Equal([TokenKind.Command, TokenKind.Value, TokenKind.Subcommand, TokenKind.Option, TokenKind.OptionValue], kinds);
+		Assert.Equal(
+			[TokenKind.Command, TokenKind.Value, TokenKind.Subcommand, TokenKind.Option, TokenKind.OptionValue], kinds);
 	}
 
 	[Fact]
@@ -87,5 +80,16 @@ public sealed class SuggestionTests
 	public void A_word_no_command_accepts_is_unknown()
 	{
 		Assert.Equal(TokenKind.Unknown, Suggestions.Highlight("nonsense")[0].Kind);
+	}
+
+	private sealed class Source : ISuggestionSource
+	{
+		public IEnumerable<string> Ids(string resource)
+		{
+			return resource switch
+			{
+				"users" => ["1", "12", "30"], "rooms" => ["5"], "channels" => ["#osu", "#lobby"], _ => []
+			};
+		}
 	}
 }

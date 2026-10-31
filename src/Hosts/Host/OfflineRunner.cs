@@ -2,7 +2,8 @@ namespace Basil.Host;
 
 /// <summary>
 ///     The commands that run against the storage without starting the server, such as creating the first administrator.
-///     They start only the storage (the database is migrated, the stored data loaded), never recover the running state, and
+///     They start only the storage (the database is migrated, the stored data loaded), never recover the running state,
+///     and
 ///     wait for every write to be stored before they end. The commands themselves are the console commands.
 /// </summary>
 public static class OfflineRunner

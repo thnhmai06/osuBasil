@@ -4,17 +4,20 @@ namespace Basil.Host.Cli.Dashboard.Data;
 /// <param name="capacity">How many samples are kept.</param>
 public sealed class Series(int capacity)
 {
-	private readonly double[] _values = new double[capacity];
 	private readonly Lock _gate = new();
-	private int _next;
+	private readonly double[] _values = new double[capacity];
 	private int _count;
+	private int _next;
 
 	/// <summary>Gets how many samples are kept.</summary>
 	public int Count
 	{
 		get
 		{
-			lock (_gate) return _count;
+			lock (_gate)
+			{
+				return _count;
+			}
 		}
 	}
 
@@ -23,7 +26,10 @@ public sealed class Series(int capacity)
 	{
 		get
 		{
-			lock (_gate) return _count == 0 ? 0 : _values[(_next - 1 + capacity) % capacity];
+			lock (_gate)
+			{
+				return _count == 0 ? 0 : _values[(_next - 1 + capacity) % capacity];
+			}
 		}
 	}
 

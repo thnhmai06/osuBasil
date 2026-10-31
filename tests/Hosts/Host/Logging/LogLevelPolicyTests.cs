@@ -14,7 +14,8 @@ public sealed class LogLevelPolicyTests
 		var services = new ServiceCollection();
 		var options = services.AddOptions<LoggingOptions>();
 		if (change is not null) options.Configure(change);
-		return new LogLevelPolicy(services.BuildServiceProvider().GetRequiredService<IOptionsMonitor<LoggingOptions>>());
+		return new LogLevelPolicy(services.BuildServiceProvider()
+			.GetRequiredService<IOptionsMonitor<LoggingOptions>>());
 	}
 
 	[Fact]

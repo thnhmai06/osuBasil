@@ -9,7 +9,8 @@ namespace Basil.Host.Rest.Tests.Content;
 [Collection("REST host")]
 public sealed class ContentTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Settings = UserPermissionsGroups.Default | UserPermissions.ServerManageSettings;
+	private static readonly UserPermissions Settings =
+		UserPermissionsGroups.Default | UserPermissions.ServerManageSettings;
 
 	[Fact]
 	public async Task Settings_WithoutPermission_Answer403WithTheMissingMask_AndWithoutAToken401()
@@ -40,7 +41,11 @@ public sealed class ContentTests(RestHostFixture fixture)
 			var (unknown, _) = await client.CallAsync(HttpMethod.Get, "/v1/settings/nothing");
 
 			Assert.Equal(200, all);
-			foreach (var name in new[] { "general", "locks", "sessions", "rateLimits", "uploads", "beatmaps", "multiplayer", "bot", "cors" })
+			foreach (var name in new[]
+			         {
+				         "general", "locks", "sessions", "rateLimits", "uploads", "beatmaps", "multiplayer", "bot",
+				         "cors"
+			         })
 				Assert.NotNull(envelope!["data"]![name]);
 			Assert.Equal(200, one);
 			Assert.NotNull(rate!["data"]!["login"]);
@@ -54,10 +59,13 @@ public sealed class ContentTests(RestHostFixture fixture)
 		var (client, _) = await fixture.SignInAsync("SetWriter", Settings);
 		using (client)
 		{
-			var (patched, envelope) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/bot", new { commandPrefix = "?" });
+			var (patched, envelope) =
+				await client.CallAsync(HttpMethod.Patch, "/v1/settings/bot", new { commandPrefix = "?" });
 			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>().GetAsync();
-			var (invalid, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions", new { idleWindow = "00:00:00" });
-			var (restored, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/bot", new { commandPrefix = "!" });
+			var (invalid, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
+				new { idleWindow = "00:00:00" });
+			var (restored, _) =
+				await client.CallAsync(HttpMethod.Patch, "/v1/settings/bot", new { commandPrefix = "!" });
 
 			Assert.Equal(200, patched);
 			Assert.Equal("?", (string)envelope!["data"]!["commandPrefix"]!);
@@ -73,7 +81,8 @@ public sealed class ContentTests(RestHostFixture fixture)
 		var (client, _) = await fixture.SignInAsync("SetLocks", Settings);
 		using (client)
 		{
-			var (patched, envelope) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/locks", new { profiles = true });
+			var (patched, envelope) =
+				await client.CallAsync(HttpMethod.Patch, "/v1/settings/locks", new { profiles = true });
 			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>().GetAsync();
 			await client.CallAsync(HttpMethod.Patch, "/v1/settings/locks", new { profiles = false });
 
@@ -88,15 +97,18 @@ public sealed class ContentTests(RestHostFixture fixture)
 	public async Task Announce_NeedsThePermission_AValidBody_AndKnownRecipients()
 	{
 		var (plain, _) = await fixture.SignInAsync("AnnPlain");
-		var (staff, _) = await fixture.SignInAsync("AnnStaff", UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var (staff, _) = await fixture.SignInAsync("AnnStaff",
+			UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
 		using (plain)
 		using (staff)
 		{
 			var (denied, _) = await plain.CallAsync(HttpMethod.Post, "/v1/announce", new { text = "hi" });
 			var (all, envelope) = await staff.CallAsync(HttpMethod.Post, "/v1/announce", new { text = "hi" });
 			var (empty, _) = await staff.CallAsync(HttpMethod.Post, "/v1/announce", new { text = " " });
-			var (unknown, _) = await staff.CallAsync(HttpMethod.Post, "/v1/announce", new { text = "hi", to = new[] { 999999 } });
-			var (some, _) = await staff.CallAsync(HttpMethod.Post, "/v1/announce", new { text = "hi", to = new[] { 1 } });
+			var (unknown, _) = await staff.CallAsync(HttpMethod.Post, "/v1/announce",
+				new { text = "hi", to = new[] { 999999 } });
+			var (some, _) =
+				await staff.CallAsync(HttpMethod.Post, "/v1/announce", new { text = "hi", to = new[] { 1 } });
 
 			Assert.Equal(403, denied);
 			Assert.Equal(200, all);
@@ -114,7 +126,8 @@ public sealed class ContentTests(RestHostFixture fixture)
 			.SaveAsync(new MemoryStream([1, 2, 3]), "png");
 		var id = Path.GetFileName(reference.Value);
 		var (plain, _) = await fixture.SignInAsync("ShotPlain");
-		var (moderator, _) = await fixture.SignInAsync("ShotMod", UserPermissionsGroups.Default | UserPermissions.ScreenshotManage);
+		var (moderator, _) =
+			await fixture.SignInAsync("ShotMod", UserPermissionsGroups.Default | UserPermissions.ScreenshotManage);
 		using (plain)
 		using (moderator)
 		{

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Beatmaps.Capabilities;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
@@ -42,7 +41,8 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 	/// <param name="settings">The source of the mirror endpoints in effect for each request.</param>
 	/// <param name="logger">The logger failures are reported to.</param>
 	/// <param name="http">The client the requests are sent through.</param>
-	internal HttpBeatmapsetMirror(IBeatmapMirrorSettings settings, ILogger<HttpBeatmapsetMirror> logger, HttpClient http)
+	internal HttpBeatmapsetMirror(IBeatmapMirrorSettings settings, ILogger<HttpBeatmapsetMirror> logger,
+		HttpClient http)
 	{
 		_settings = settings;
 		_logger = logger;
@@ -73,15 +73,6 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 		}
 	}
 
-	private static string SearchUrl(Uri endpoint, string? text, GameMode? mode, PageRequest page)
-	{
-		var separator = endpoint.ToString().Contains('?') ? '&' : '?';
-		var url = $"{endpoint}{separator}amount={page.Limit}&offset={page.Offset}";
-		if (!string.IsNullOrEmpty(text)) url += $"&query={Uri.EscapeDataString(text)}";
-		if (mode is not null) url += $"&mode={(int)mode}";
-		return url;
-	}
-
 	/// <inheritdoc />
 	public async Task<Uri?> GetDownloadAddressAsync(int beatmapsetId, bool withVideo,
 		CancellationToken cancellationToken = default)
@@ -91,6 +82,15 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 
 		var baseAddress = endpoint.ToString().TrimEnd('/');
 		return new Uri($"{baseAddress}/{beatmapsetId}?n={(withVideo ? 0 : 1)}");
+	}
+
+	private static string SearchUrl(Uri endpoint, string? text, GameMode? mode, PageRequest page)
+	{
+		var separator = endpoint.ToString().Contains('?') ? '&' : '?';
+		var url = $"{endpoint}{separator}amount={page.Limit}&offset={page.Offset}";
+		if (!string.IsNullOrEmpty(text)) url += $"&query={Uri.EscapeDataString(text)}";
+		if (mode is not null) url += $"&mode={(int)mode}";
+		return url;
 	}
 
 	/// <summary>Maps the wire set to the contract model.</summary>
@@ -143,10 +143,10 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 	// Filled by the JSON serializer: the properties stay settable (init) although the IDE suggests get-only.
 	private sealed class RawSet
 	{
-		public string Artist { get; init; } = "";
-		public string Title { get; init; } = "";
-		public string Creator { get; init; } = "";
-		public string LastUpdate { get; init; } = "";
+		public string Artist { get; } = "";
+		public string Title { get; } = "";
+		public string Creator { get; } = "";
+		public string LastUpdate { get; } = "";
 		public int SetId { get; init; }
 		public JsonElement HasVideo { get; init; }
 		public List<RawBeatmap>? ChildrenBeatmaps { get; init; }
@@ -155,7 +155,7 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 	private sealed class RawBeatmap
 	{
 		public int BeatmapId { get; init; }
-		public string DiffName { get; init; } = "";
+		public string DiffName { get; } = "";
 		public double DifficultyRating { get; init; }
 		public int Mode { get; init; }
 	}

@@ -1,11 +1,10 @@
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
 using Basil.Host.Shared;
 using Basil.Host.Shared.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,7 +47,8 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 	private static double RequestsPerSecond(JsonObject json)
 	{
 		return json["http"] is JsonObject hosts
-			? hosts.Sum(host => host.Value is JsonObject window && window["requestsPerSecond"] is { } value ? (double)value : 0)
+			? hosts.Sum(host =>
+				host.Value is JsonObject window && window["requestsPerSecond"] is { } value ? (double)value : 0)
 			: 0;
 	}
 
@@ -63,12 +63,13 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 	{
 		return
 		[
-			.. registry.Online.Values.Where(user => user.Bot is null).OrderBy(user => user.Record.Id).Select(user => new UserRow(
-				user.Record.Id, user.Record.Value.Name,
-				string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
-				user.Bancho?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
-				now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
-				(ulong)user.EffectivePermissions(now)))
+			.. registry.Online.Values.Where(user => user.Bot is null).OrderBy(user => user.Record.Id).Select(user =>
+				new UserRow(
+					user.Record.Id, user.Record.Value.Name,
+					string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
+					user.Bancho?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
+					now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
+					(ulong)user.EffectivePermissions(now)))
 		];
 	}
 
@@ -80,20 +81,24 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 				room.Slots.Count(slot => slot.Player is not null), room.Slots.Count(slot => !slot.Locked),
 				room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
 				room.Authority.Host?.Record.Value.Name ?? "-",
-				[.. room.Slots.Select(slot => new SlotRow(slot.Index, slot.Player?.Record.Value.Name ?? "-",
-					slot.Locked ? "locked" : slot.Status?.ToString() ?? "open"))]))
+				[
+					.. room.Slots.Select(slot => new SlotRow(slot.Index, slot.Player?.Record.Value.Name ?? "-",
+						slot.Locked ? "locked" : slot.Status?.ToString() ?? "open"))
+				]))
 		];
 	}
 
 	private static string RoomOf(Lobby lobby, User user)
 	{
-		var room = lobby.Rooms.Values.FirstOrDefault(r => r.Slots.Any(slot => slot.Player is not null && ReferenceEquals(slot.Player.User, user)));
+		var room = lobby.Rooms.Values.FirstOrDefault(r =>
+			r.Slots.Any(slot => slot.Player is not null && ReferenceEquals(slot.Player.User, user)));
 		return room is null ? "-" : $"#{room.Id}";
 	}
 
 	private static double Number(JsonObject json, string category, string name)
 	{
-		return json[category] is JsonObject section && section[name] is JsonValue value && value.TryGetValue<double>(out var number)
+		return json[category] is JsonObject section && section[name] is JsonValue value &&
+		       value.TryGetValue<double>(out var number)
 			? number
 			: 0;
 	}
@@ -110,14 +115,17 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 				break;
 			default:
 				lines.Add((prefix, node is JsonValue scalar && scalar.TryGetValue<double>(out var number)
-					? Math.Round(number, 2).ToString(System.Globalization.CultureInfo.InvariantCulture)
+					? Math.Round(number, 2).ToString(CultureInfo.InvariantCulture)
 					: node?.ToJsonString().Trim('"') ?? "-"));
 				break;
 		}
 	}
 }
 
-/// <summary>Reads the busy part of each core of the machine; only Linux publishes it (<c>/proc/stat</c>), elsewhere there is no list.</summary>
+/// <summary>
+///     Reads the busy part of each core of the machine; only Linux publishes it (<c>/proc/stat</c>), elsewhere there
+///     is no list.
+/// </summary>
 public sealed class CoreUsage
 {
 	private (long Busy, long Total)[] _last = [];
@@ -129,10 +137,12 @@ public sealed class CoreUsage
 
 		try
 		{
-			var current = File.ReadLines("/proc/stat").Where(line => line.StartsWith("cpu", StringComparison.Ordinal) && line.Length > 3 && char.IsDigit(line[3]))
+			var current = File.ReadLines("/proc/stat").Where(line =>
+					line.StartsWith("cpu", StringComparison.Ordinal) && line.Length > 3 && char.IsDigit(line[3]))
 				.Select(line =>
 				{
-					var fields = line.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(long.Parse).ToArray();
+					var fields = line.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(long.Parse)
+						.ToArray();
 					var total = fields.Sum();
 					var idle = fields[3] + (fields.Length > 4 ? fields[4] : 0);
 					return (Busy: total - idle, Total: total);

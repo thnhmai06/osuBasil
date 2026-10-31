@@ -3,7 +3,12 @@ using Basil.Domain.Chat;
 namespace Basil.Host.Shared.Views;
 
 /// <summary>A general channel as the API shows it; the privileges are bitmasks.</summary>
-public sealed record ChannelView(string Name, string Topic, byte ReadPrivileges, byte WritePrivileges, bool AutoJoin,
+public sealed record ChannelView(
+	string Name,
+	string Topic,
+	byte ReadPrivileges,
+	byte WritePrivileges,
+	bool AutoJoin,
 	bool Visible)
 {
 	/// <summary>Describes a general channel.</summary>

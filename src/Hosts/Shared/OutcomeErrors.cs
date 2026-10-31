@@ -1,11 +1,9 @@
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
-using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Objects.Connections;
 
 namespace Basil.Host.Shared;
 
@@ -59,7 +57,7 @@ public static class OutcomeErrors
 	{
 		var name = outcome.ToString();
 		var code = char.ToLowerInvariant(name[0]) + name[1..];
-		ErrorKind kind = outcome switch
+		var kind = outcome switch
 		{
 			UserOutcome user => user switch
 			{

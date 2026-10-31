@@ -1,7 +1,6 @@
+using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Beatmaps.Objects;
-using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Testing;
 using static Basil.Testing.BeatmapsetWorld;
 

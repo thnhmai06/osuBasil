@@ -1,6 +1,5 @@
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Bancho.Support;
@@ -31,7 +30,11 @@ public sealed class LoginRulesTests(BanchoHostFixture fixture)
 
 		// The notification names why a refused login was refused (a failure has been seen only on a busy CI host).
 		var notice = string.Join(" | ", firstReply.Where(packet => packet.Id == 24)
-			.Select(packet => { var position = 0; return packet.ReadString(ref position); }));
+			.Select(packet =>
+			{
+				var position = 0;
+				return packet.ReadString(ref position);
+			}));
 		Assert.True(first == -7, $"First login answered {first} (notice: '{notice}'), expected -7.");
 		Assert.True(client.LoginCode > 0);
 	}
@@ -42,7 +45,8 @@ public sealed class LoginRulesTests(BanchoHostFixture fixture)
 		var record = await Host.CreateUserAsync("RestrictedOne");
 		await Host.Services.GetRequiredService<IRestrictionRepository>().CreateAsync(new RestrictionData
 		{
-			User = record, Permissions = RestrictionData.Restricted, StartsAt = Host.Time.GetUtcNow().AddDays(-1), EndsAt = null
+			User = record, Permissions = RestrictionData.Restricted, StartsAt = Host.Time.GetUtcNow().AddDays(-1),
+			EndsAt = null
 		});
 		using var client = OsuClient.Create(Host, "RestrictedOne", "password");
 
@@ -56,21 +60,24 @@ public sealed class LoginRulesTests(BanchoHostFixture fixture)
 	public async Task Login_AfterTooManyWrongPasswords_IsRefusedEvenWithTheRightOne()
 	{
 		using var client = await Host.NewClientAsync("LockedOut");
-		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
-		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", forwardedFor: "203.0.113.7");
+		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login
+			.MaxAttempts;
+		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", "203.0.113.7");
 
 		var packets = await client.LoginAsync(forwardedFor: "203.0.113.7");
 
 		Assert.Equal(-1, client.LoginCode);
-		Assert.Equal(BanchoReplies.TooManyAttempts, packets.First(packet => packet.Id == OsuClient.In.Notification).Strings(1)[0]);
+		Assert.Equal(BanchoReplies.TooManyAttempts,
+			packets.First(packet => packet.Id == OsuClient.In.Notification).Strings(1)[0]);
 	}
 
 	[Fact]
 	public async Task Login_FromAnotherAddress_IsNotAffectedByTheLockout()
 	{
 		using var client = await Host.NewClientAsync("OtherAddress");
-		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
-		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", forwardedFor: "203.0.113.8");
+		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login
+			.MaxAttempts;
+		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", "203.0.113.8");
 
 		await client.LoginAsync(forwardedFor: "203.0.113.9");
 
@@ -84,7 +91,10 @@ public sealed class LoginRulesTests(BanchoHostFixture fixture)
 		var original = await settings.GetAsync();
 		await settings.CreateOrUpdateAsync(original with
 		{
-			RateLimits = original.RateLimits with { Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 1 } }
+			RateLimits = original.RateLimits with
+			{
+				Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 1 }
+			}
 		});
 		try
 		{
@@ -101,7 +111,10 @@ public sealed class LoginRulesTests(BanchoHostFixture fixture)
 		{
 			await settings.CreateOrUpdateAsync(original with
 			{
-				RateLimits = original.RateLimits with { Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 10_000 } }
+				RateLimits = original.RateLimits with
+				{
+					Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 10_000 }
+				}
 			});
 		}
 	}

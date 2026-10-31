@@ -1,6 +1,5 @@
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Users;
-using Basil.Testing.Clients;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,22 +8,27 @@ namespace Basil.Host.Rest.Tests;
 /// <summary>One server and one PostgreSQL container for the REST host tests, which use different usernames.</summary>
 public sealed class RestHostFixture : IAsyncLifetime
 {
-	private readonly PersistenceFixture _database = new();
+	/// <summary>Staff: manages users and restrictions.</summary>
+	public static readonly UserPermissions StaffPermissions = UserPermissionsGroups.Default |
+	                                                          UserPermissions.UserManage |
+	                                                          UserPermissions.UserManageRestrict;
 
 	public BasilHost Host { get; private set; } = null!;
 
 	/// <summary>Gets the database server, for tests that start a server of their own.</summary>
-	public PersistenceFixture Database => _database;
-
-	/// <summary>Staff: manages users and restrictions.</summary>
-	public static readonly UserPermissions StaffPermissions = UserPermissionsGroups.Default |
-	                                                          UserPermissions.UserManage | UserPermissions.UserManageRestrict;
+	public PersistenceFixture Database { get; } = new();
 
 	public async ValueTask InitializeAsync()
 	{
-		await _database.InitializeAsync();
-		Host = await BasilHost.StartAsync(_database);
+		await Database.InitializeAsync();
+		Host = await BasilHost.StartAsync(Database);
 		await RaiseLimitsAsync(Host);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		await Host.DisposeAsync();
+		await Database.DisposeAsync();
 	}
 
 	/// <summary>Lifts the request limits, which all test clients share through the loopback address.</summary>
@@ -55,12 +59,6 @@ public sealed class RestHostFixture : IAsyncLifetime
 		var client = new RestClient(Host.Url, Host.Domain);
 		await client.LoginAsync(name);
 		return (client, user.Id);
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		await Host.DisposeAsync();
-		await _database.DisposeAsync();
 	}
 }
 

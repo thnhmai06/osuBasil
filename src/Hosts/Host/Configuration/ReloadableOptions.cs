@@ -24,7 +24,10 @@ public sealed class LoggingOptions
 	public int QueueCapacity { get; set; } = 10_000;
 }
 
-/// <summary>OpenTelemetry settings; nothing is exported unless an endpoint is set and a signal is switched on. A change applies after a restart.</summary>
+/// <summary>
+///     OpenTelemetry settings; nothing is exported unless an endpoint is set and a signal is switched on. A change
+///     applies after a restart.
+/// </summary>
 public sealed class TelemetryOptions
 {
 	/// <summary>Gets the OTLP endpoint.</summary>

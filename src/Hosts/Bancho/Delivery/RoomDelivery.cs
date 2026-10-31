@@ -1,8 +1,7 @@
-using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Wire.Packets;
@@ -56,9 +55,11 @@ internal sealed class RoomSlotTeamDelivery(RoomAudience audience) : RoomRefreshD
 
 internal sealed class RoomSlotModsDelivery(RoomAudience audience) : RoomRefreshDelivery<RoomSlotModsChanged>(audience);
 
-internal sealed class RoomSlotStatusDelivery(RoomAudience audience) : RoomRefreshDelivery<RoomSlotStatusChanged>(audience);
+internal sealed class RoomSlotStatusDelivery(RoomAudience audience)
+	: RoomRefreshDelivery<RoomSlotStatusChanged>(audience);
 
-internal sealed class RoomSlotsArrangedDelivery(RoomAudience audience) : RoomRefreshDelivery<RoomSlotsArranged>(audience);
+internal sealed class RoomSlotsArrangedDelivery(RoomAudience audience)
+	: RoomRefreshDelivery<RoomSlotsArranged>(audience);
 
 internal sealed class RoomPlayerMovedDelivery(RoomAudience audience) : RoomRefreshDelivery<RoomPlayerMoved>(audience);
 
@@ -76,7 +77,8 @@ internal sealed class RoomHostDelivery(RoomAudience audience, Outbox outbox) : I
 }
 
 /// <summary>Seats a client on the match screen and refreshes everyone.</summary>
-internal sealed class RoomPlayerJoinedDelivery(RoomAudience audience, Outbox outbox) : INotificationHandler<RoomPlayerJoined>
+internal sealed class RoomPlayerJoinedDelivery(RoomAudience audience, Outbox outbox)
+	: INotificationHandler<RoomPlayerJoined>
 {
 	public ValueTask Handle(RoomPlayerJoined notification, CancellationToken cancellationToken)
 	{
@@ -88,7 +90,8 @@ internal sealed class RoomPlayerJoinedDelivery(RoomAudience audience, Outbox out
 }
 
 /// <summary>Sends a kicked client off the match screen and refreshes everyone.</summary>
-internal sealed class RoomPlayerKickedDelivery(RoomAudience audience, Outbox outbox) : INotificationHandler<RoomPlayerKicked>
+internal sealed class RoomPlayerKickedDelivery(RoomAudience audience, Outbox outbox)
+	: INotificationHandler<RoomPlayerKicked>
 {
 	public ValueTask Handle(RoomPlayerKicked notification, CancellationToken cancellationToken)
 	{
@@ -99,22 +102,26 @@ internal sealed class RoomPlayerKickedDelivery(RoomAudience audience, Outbox out
 }
 
 /// <summary>Sends a banned client off the match screen and refreshes everyone.</summary>
-internal sealed class RoomPlayerBannedDelivery(RoomAudience audience, Outbox outbox) : INotificationHandler<RoomPlayerBanned>
+internal sealed class RoomPlayerBannedDelivery(RoomAudience audience, Outbox outbox)
+	: INotificationHandler<RoomPlayerBanned>
 {
 	public ValueTask Handle(RoomPlayerBanned notification, CancellationToken cancellationToken)
 	{
-		if (notification.Evicted is { } evicted) outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
+		if (notification.Evicted is { } evicted)
+			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;
 	}
 }
 
 /// <summary>Sends an evicted client off the match screen when its slot is locked.</summary>
-internal sealed class RoomSlotLockDelivery(RoomAudience audience, Outbox outbox) : INotificationHandler<RoomSlotLockChanged>
+internal sealed class RoomSlotLockDelivery(RoomAudience audience, Outbox outbox)
+	: INotificationHandler<RoomSlotLockChanged>
 {
 	public ValueTask Handle(RoomSlotLockChanged notification, CancellationToken cancellationToken)
 	{
-		if (notification.Evicted is { } evicted) outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
+		if (notification.Evicted is { } evicted)
+			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;
 	}

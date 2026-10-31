@@ -1,9 +1,8 @@
 using System.Collections.Concurrent;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

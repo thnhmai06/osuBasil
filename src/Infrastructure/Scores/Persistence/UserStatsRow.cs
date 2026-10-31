@@ -20,6 +20,7 @@ internal sealed class UserStatsRowConfiguration : IEntityTypeConfiguration<UserS
 	{
 		builder.ToTable("user_stats");
 		builder.HasKey(row => new { row.UserId, row.Mode });
-		builder.HasOne(ContextModel.UsersTable, (string?)null).WithMany().HasForeignKey("UserId").OnDelete(DeleteBehavior.NoAction);
+		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")
+			.OnDelete(DeleteBehavior.NoAction);
 	}
 }

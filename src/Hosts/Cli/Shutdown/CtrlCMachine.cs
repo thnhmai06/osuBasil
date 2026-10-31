@@ -18,7 +18,10 @@ public enum CtrlCAction : byte
 	/// <summary>Start the graceful shutdown and show its progress.</summary>
 	BeginShutdown,
 
-	/// <summary>Show <c>Shutdown is taking longer than expected. Press Ctrl+C again to force shutdown (data loss may occur).</c></summary>
+	/// <summary>
+	///     Show
+	///     <c>Shutdown is taking longer than expected. Press Ctrl+C again to force shutdown (data loss may occur).</c>
+	/// </summary>
 	WarnSlow,
 
 	/// <summary>End the process now, skipping the remaining steps.</summary>

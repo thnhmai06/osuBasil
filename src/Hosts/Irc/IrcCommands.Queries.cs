@@ -1,4 +1,5 @@
 using Basil.Application.Chat.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
@@ -26,7 +27,8 @@ internal sealed partial class IrcCommands
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
 			: [.. VisibleChannels(by, session.Now).Select(channel => channel.Name)];
 		foreach (var name in names)
-			if (Resolve(name) is { } channel && (channel.Members.Contains(by) || VisibleChannels(by, session.Now).Contains(channel)))
+			if (Resolve(name) is { } channel &&
+			    (channel.Members.Contains(by) || VisibleChannels(by, session.Now).Contains(channel)))
 				IrcChannels.SendNames(session, channel);
 			else
 				session.Numeric(IrcNumericReply.RplEndOfNames, name, "End of /NAMES list.");
@@ -39,7 +41,8 @@ internal sealed partial class IrcCommands
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
 			: null;
 		foreach (var channel in VisibleChannels(by, session.Now)
-			         .Where(channel => filter is null || filter.Contains(channel.Name, StringComparer.OrdinalIgnoreCase)))
+			         .Where(channel =>
+				         filter is null || filter.Contains(channel.Name, StringComparer.OrdinalIgnoreCase)))
 			session.Numeric(IrcNumericReply.RplList, channel.Name, IrcView.UserCount(channel).ToString(),
 				channel.Topic.ReplaceLineEndings(" "));
 		session.Numeric(IrcNumericReply.RplListEnd, "End of /LIST");
@@ -66,7 +69,7 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplEndOfWho, mask, "End of /WHO list.");
 	}
 
-	private static void WhoReply(IrcSession session, string channel, Application.Users.Objects.User user, string prefix)
+	private static void WhoReply(IrcSession session, string channel, User user, string prefix)
 	{
 		var nick = IrcView.Nick(user.Record);
 		session.Numeric(IrcNumericReply.RplWhoReply, channel, nick, session.Domain, session.ServerName, nick,
@@ -97,17 +100,20 @@ internal sealed partial class IrcCommands
 		var now = session.Now;
 		var visible = VisibleChannels(by, now).ToHashSet();
 		var channels = general.All.Values
-			.Where(channel => visible.Contains(channel) && channel.Members.Any(member => ReferenceEquals(member.User, user)))
-			.Select(channel => IrcView.Prefix(channel, channel.Members.First(member => ReferenceEquals(member.User, user)),
-				                  now, false) + channel.Name).ToList();
+			.Where(channel =>
+				visible.Contains(channel) && channel.Members.Any(member => ReferenceEquals(member.User, user)))
+			.Select(channel => IrcView.Prefix(channel,
+				channel.Members.First(member => ReferenceEquals(member.User, user)),
+				now, false) + channel.Name).ToList();
 		if (channels.Count > 0) session.Numeric(IrcNumericReply.RplWhoIsChannels, shown, string.Join(' ', channels));
 		session.Numeric(IrcNumericReply.RplEndOfWhoIs, shown, "End of /WHOIS list.");
 	}
 
 	private void Ison(IrcSession session, IrcMessage message)
 	{
-		var online = message.Parameters.SelectMany(parameter => parameter.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-			.Select(FindUser).OfType<Application.Users.Objects.User>().Select(user => IrcView.Nick(user.Record));
+		var online = message.Parameters
+			.SelectMany(parameter => parameter.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+			.Select(FindUser).OfType<User>().Select(user => IrcView.Nick(user.Record));
 		session.Numeric(IrcNumericReply.RplIson, string.Join(' ', online));
 	}
 
@@ -119,8 +125,9 @@ internal sealed partial class IrcCommands
 			return;
 		}
 
-		var replies = message.Parameters.Take(5).Select(FindUser).OfType<Application.Users.Objects.User>()
-			.Select(user => $"{IrcView.Nick(user.Record)}={(user.AwayMessage is null ? '+' : '-')}{IrcView.Nick(user.Record)}@{session.Domain}");
+		var replies = message.Parameters.Take(5).Select(FindUser).OfType<User>()
+			.Select(user =>
+				$"{IrcView.Nick(user.Record)}={(user.AwayMessage is null ? '+' : '-')}{IrcView.Nick(user.Record)}@{session.Domain}");
 		session.Numeric(IrcNumericReply.RplUserHost, string.Join(' ', replies));
 	}
 }

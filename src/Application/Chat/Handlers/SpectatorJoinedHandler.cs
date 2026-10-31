@@ -1,13 +1,14 @@
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
-using Mediator;
 using Basil.Application.Chat.Registry;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Events;
+using Mediator;
 
 namespace Basil.Application.Chat.Handlers;
 
-/// <summary>Brings a joined spectator and, for the first spectating connection, the spectated client into the client's spectator channel.</summary>
+/// <summary>
+///     Brings a joined spectator and, for the first spectating connection, the spectated client into the client's
+///     spectator channel.
+/// </summary>
 internal sealed class SpectatorJoinedHandler(SpectatorChannels channels) : INotificationHandler<UserSpectatorJoined>
 {
 	/// <inheritdoc />

@@ -15,15 +15,23 @@ public sealed class IrcClient : IDisposable
 
 	private readonly List<string> _received = [];
 	private readonly TcpClient _tcp = new();
+	private int _barriers;
 	private StreamReader? _reader;
 	private StreamWriter? _writer;
-	private int _barriers;
 
 	/// <summary>Gets every line received so far, in order.</summary>
 	public IReadOnlyList<string> Received => _received;
 
 	/// <summary>Gets the server name seen in the lines (<c>irc.</c> plus the domain).</summary>
 	public string Server { get; private set; } = string.Empty;
+
+	/// <summary>Gets the received lines as text, for failure messages.</summary>
+	public string Transcript => string.Join('\n', _received);
+
+	public void Dispose()
+	{
+		_tcp.Dispose();
+	}
 
 	/// <summary>Connects to the IRC port of a running server.</summary>
 	/// <param name="host">The server.</param>
@@ -84,7 +92,8 @@ public sealed class IrcClient : IDisposable
 		while (true)
 		{
 			var line = await ReadLineAsync() ??
-			           throw new InvalidOperationException($"The server closed the connection. Received:\n{Transcript}");
+			           throw new InvalidOperationException(
+				           $"The server closed the connection. Received:\n{Transcript}");
 			if (match(line)) return line;
 		}
 	}
@@ -160,7 +169,8 @@ public sealed class IrcClient : IDisposable
 		await SendAsync("CAP LS 302");
 		await ReadUntilAsync(line => line.Contains(" LS ", StringComparison.Ordinal));
 		await SendAsync($"CAP REQ :sasl {caps}".TrimEnd());
-		await ReadUntilAsync(line => line.Contains(" ACK ", StringComparison.Ordinal) || line.Contains(" NAK ", StringComparison.Ordinal));
+		await ReadUntilAsync(line =>
+			line.Contains(" ACK ", StringComparison.Ordinal) || line.Contains(" NAK ", StringComparison.Ordinal));
 		await SendAsync("AUTHENTICATE PLAIN");
 		await ReadUntilAsync(line => line == "AUTHENTICATE +");
 		var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes($"\0{account}\0{key}"));
@@ -176,13 +186,5 @@ public sealed class IrcClient : IDisposable
 	public void Clear()
 	{
 		_received.Clear();
-	}
-
-	/// <summary>Gets the received lines as text, for failure messages.</summary>
-	public string Transcript => string.Join('\n', _received);
-
-	public void Dispose()
-	{
-		_tcp.Dispose();
 	}
 }

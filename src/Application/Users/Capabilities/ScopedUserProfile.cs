@@ -1,5 +1,5 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
@@ -11,7 +11,10 @@ public sealed class ScopedUserProfile(ScopedUser scoped)
 {
 	/// <summary>Sets or clears the away message other users see.</summary>
 	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>
-	/// <returns><see langword="true" /> if this connection belongs to this user (or is the operator's) and the message was set.</returns>
+	/// <returns>
+	///     <see langword="true" /> if this connection belongs to this user (or is the operator's) and the message was
+	///     set.
+	/// </returns>
 	public bool SetAway(string? message)
 	{
 		if (!ReferenceEquals(scoped.By.User, scoped.User) && scoped.By is not OperatorConnection) return false;
@@ -127,7 +130,7 @@ public sealed class ScopedUserProfile(ScopedUser scoped)
 	// BasilBot's metadata changes like any user's; only its permissions, password and sessions are fixed.
 	private async Task<Result<UserOutcome>?> GuardAsync(CancellationToken cancellationToken)
 	{
-		if (await scoped.IsLockedAsync(Basil.Application.Content.Persistence.Locks.Profiles, UserPermissions.UserManage,
+		if (await scoped.IsLockedAsync(Locks.Profiles, UserPermissions.UserManage,
 			    cancellationToken))
 			return UserOutcome.Locked;
 		if (scoped.IsSelf) return null;

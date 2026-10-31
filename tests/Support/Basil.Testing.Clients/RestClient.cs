@@ -8,10 +8,16 @@ namespace Basil.Testing.Clients;
 /// <summary>A client of the HTTP API: Bearer or anonymous, never following redirects.</summary>
 public sealed class RestClient(Uri address, string domain, string? bearer = null) : IDisposable
 {
-	private readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = false }) { BaseAddress = address };
+	private readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = false })
+		{ BaseAddress = address };
 
 	/// <summary>Gets or sets the Bearer token the client sends.</summary>
 	public string? Bearer { get; set; } = bearer;
+
+	public void Dispose()
+	{
+		_http.Dispose();
+	}
 
 	/// <summary>Sends a request to the <c>api.</c> host.</summary>
 	/// <param name="method">The HTTP method.</param>
@@ -24,7 +30,8 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		using var request = new HttpRequestMessage(method, path);
 		request.Headers.Host = $"api.{domain}";
 		if (Bearer is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Bearer);
-		if (body is not null) request.Content = JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web));
+		if (body is not null)
+			request.Content = JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web));
 		return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 	}
 
@@ -83,7 +90,8 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		if (Bearer is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Bearer);
 		if (lastEventId is not null) request.Headers.TryAddWithoutValidation("Last-Event-ID", lastEventId);
 		var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-		return (response, response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType == "text/event-stream"
+		return (response, response.IsSuccessStatusCode &&
+		                  response.Content.Headers.ContentType?.MediaType == "text/event-stream"
 			? new SseReader(await response.Content.ReadAsStreamAsync(cancellationToken))
 			: null);
 	}
@@ -105,8 +113,6 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		Bearer = (string)envelope!["data"]!["token"]!;
 		return (int)envelope["data"]!["userId"]!;
 	}
-
-	public void Dispose() => _http.Dispose();
 }
 
 /// <summary>Reads Server-Sent Events from a response stream, in order.</summary>

@@ -9,8 +9,10 @@ public sealed class ChatTests(BanchoHostFixture fixture)
 {
 	private BasilHost Host => fixture.Host;
 
-	private static IEnumerable<ServerPacket> Messages(OsuClient client) =>
-		client.Received.Where(packet => packet.Id == OsuClient.In.SendMessage);
+	private static IEnumerable<ServerPacket> Messages(OsuClient client)
+	{
+		return client.Received.Where(packet => packet.Id == OsuClient.In.SendMessage);
+	}
 
 	[Fact]
 	public async Task ChannelMessage_ReachesTheOtherMember_AndNotTheSender()

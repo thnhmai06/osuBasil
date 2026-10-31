@@ -1,6 +1,5 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
@@ -12,29 +11,25 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Management of the general channels; chat itself is not part of this API.</summary>
 internal static class ChannelRoutes
 {
-	/// <summary>A new general channel.</summary>
-	public sealed record CreateChannelRequest(string? Name, string? Topic, byte? ReadPrivileges, byte? WritePrivileges,
-		bool? AutoJoin, bool? Visible);
-
-	/// <summary>The fields of a channel that can change; absent fields stay as they are.</summary>
-	public sealed record PatchChannelRequest(string? Topic, byte? ReadPrivileges, byte? WritePrivileges, bool? AutoJoin,
-		bool? Visible);
-
 	public static void MapChannels(this RouteGroupBuilder v1)
 	{
 		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
 		channels.MapGet("/", List).WithSummary("List the general channels the caller may see.")
-			.WithDescription("Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
+			.WithDescription(
+				"Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
 		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.");
 		channels.MapPatch("/{name}", PatchAsync).WithSummary("Change a general channel.")
-			.WithDescription("A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
+			.WithDescription(
+				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
 		channels.MapDelete("/{name}", DeleteAsync).WithSummary("Delete a general channel.")
-			.WithDescription("A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
+			.WithDescription(
+				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
 	}
 
 	private static IResult List(HttpContext context, GeneralChannelRegistry registry)
 	{
-		return Api.Ok(registry.VisibleTo(context.Connection()).OrderBy(c => c.Name).Select(c => ChannelView.Of(c.Record)).ToList());
+		return Api.Ok(registry.VisibleTo(context.Connection()).OrderBy(c => c.Name)
+			.Select(c => ChannelView.Of(c.Record)).ToList());
 	}
 
 	private static async Task<IResult> CreateAsync(HttpContext context, CreateChannelRequest request, Server server)
@@ -93,4 +88,21 @@ internal static class ChannelRoutes
 			? found.Refusal()
 			: (await channel.ScopeTo(context.Connection()).General!.DeleteAsync(context.RequestAborted)).Answer();
 	}
+
+	/// <summary>A new general channel.</summary>
+	public sealed record CreateChannelRequest(
+		string? Name,
+		string? Topic,
+		byte? ReadPrivileges,
+		byte? WritePrivileges,
+		bool? AutoJoin,
+		bool? Visible);
+
+	/// <summary>The fields of a channel that can change; absent fields stay as they are.</summary>
+	public sealed record PatchChannelRequest(
+		string? Topic,
+		byte? ReadPrivileges,
+		byte? WritePrivileges,
+		bool? AutoJoin,
+		bool? Visible);
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using Basil.Testing.Clients;
 
 namespace Basil.Host.Bancho.Tests.Users;
@@ -63,7 +64,7 @@ public sealed class PresenceTests(BanchoHostFixture fixture)
 		await owner.SendAsync(writer => writer.Int(OsuClient.Out.FriendAdd, friend.LoginCode));
 		var (status, text) = await owner.GetFriendsAsync();
 
-		Assert.Equal(System.Net.HttpStatusCode.OK, status);
+		Assert.Equal(HttpStatusCode.OK, status);
 		Assert.Equal(friend.LoginCode.ToString(), text);
 	}
 
@@ -76,6 +77,6 @@ public sealed class PresenceTests(BanchoHostFixture fixture)
 
 		var (status, _) = await wrong.GetFriendsAsync();
 
-		Assert.Equal(System.Net.HttpStatusCode.Unauthorized, status);
+		Assert.Equal(HttpStatusCode.Unauthorized, status);
 	}
 }

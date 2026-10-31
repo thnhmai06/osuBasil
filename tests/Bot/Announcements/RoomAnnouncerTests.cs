@@ -1,10 +1,8 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Multiplayer.Capabilities;
-using Basil.Application.Multiplayer.Objects;
 using Basil.Bot.Announcements;
 using Basil.Bot.Tests.Support;
 using Basil.Testing;

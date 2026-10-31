@@ -5,6 +5,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Views;
 
@@ -25,13 +26,16 @@ internal static class ChannelRoomCommands
 	{
 		yield return new CommandDef
 		{
-			Pattern = "channels list", Route = "GET /v1/channels", Offline = true, Summary = "Lists the general channels.",
+			Pattern = "channels list", Route = "GET /v1/channels", Offline = true,
+			Summary = "Lists the general channels.",
 			Run = ListChannelsAsync
 		};
 		yield return new CommandDef
 		{
-			Pattern = "channels create", Route = "POST /v1/channels", Offline = true, Summary = "Creates a general channel.",
-			Options = [new("name", "The name, starting with #.", Required: true), .. ChannelFields], Run = CreateChannelAsync
+			Pattern = "channels create", Route = "POST /v1/channels", Offline = true,
+			Summary = "Creates a general channel.",
+			Options = [new OptionDef("name", "The name, starting with #.", Required: true), .. ChannelFields],
+			Run = CreateChannelAsync
 		};
 		yield return new CommandDef
 		{
@@ -46,7 +50,8 @@ internal static class ChannelRoomCommands
 
 		yield return new CommandDef
 		{
-			Pattern = "rooms list", Route = "GET /v1/rooms", Summary = "Lists the open rooms.", Options = CommandHelpers.Paging,
+			Pattern = "rooms list", Route = "GET /v1/rooms", Summary = "Lists the open rooms.",
+			Options = CommandHelpers.Paging,
 			Run = ListRoomsAsync
 		};
 		yield return new CommandDef
@@ -54,21 +59,24 @@ internal static class ChannelRoomCommands
 			Pattern = "rooms create", Route = "POST /v1/rooms", Summary = "Opens a tournament room.",
 			Options =
 			[
-				new("name", "The name of the room.", Required: true), new("password", "The password.", Secret: true),
-				new("private", "Make the room private.", OptionKind.Bool)
+				new OptionDef("name", "The name of the room.", Required: true),
+				new OptionDef("password", "The password.", Secret: true),
+				new OptionDef("private", "Make the room private.", OptionKind.Bool)
 			],
 			Run = CreateRoomAsync
 		};
 		yield return new CommandDef
 		{
-			Pattern = "rooms <id:int>", Route = "GET /v1/rooms/{id}", Summary = "Shows a room with its slots.", Run = ShowRoomAsync
+			Pattern = "rooms <id:int>", Route = "GET /v1/rooms/{id}", Summary = "Shows a room with its slots.",
+			Run = ShowRoomAsync
 		};
 		foreach (var command in RoomCommands.All)
 		{
 			var room = command;
 			yield return new CommandDef
 			{
-				Pattern = $"rooms <id:int> {room.Name}", Route = $"POST /v1/rooms/{{id}}/{room.Name}", Summary = room.Summary,
+				Pattern = $"rooms <id:int> {room.Name}", Route = $"POST /v1/rooms/{{id}}/{room.Name}",
+				Summary = room.Summary,
 				Options = OptionsOf(room.Body), Run = call => RunRoomAsync(call, room)
 			};
 		}
@@ -76,7 +84,8 @@ internal static class ChannelRoomCommands
 		yield return new CommandDef
 		{
 			Pattern = "matches list", Route = "GET /v1/matches", Offline = true, Summary = "Lists matches.",
-			Options = [new("query", "Filters with ended: and private:."), .. CommandHelpers.Paging], Run = ListMatchesAsync
+			Options = [new OptionDef("query", "Filters with ended: and private:."), .. CommandHelpers.Paging],
+			Run = ListMatchesAsync
 		};
 		yield return new CommandDef
 		{
@@ -90,18 +99,22 @@ internal static class ChannelRoomCommands
 	{
 		if (body is null) return [];
 
-		return [.. body.GetConstructors()[0].GetParameters().Select(parameter =>
-		{
-			var type = Nullable.GetUnderlyingType(parameter.ParameterType) ?? parameter.ParameterType;
-			var kind = type == typeof(bool) ? OptionKind.Bool
-				: type == typeof(int) ? OptionKind.Int
-				: type.IsArray ? OptionKind.List
-				: OptionKind.Text;
-			return new OptionDef(ViewFormatter.Camel(parameter.Name!), $"The {parameter.Name} of the command.", kind,
-				!parameter.HasDefaultValue && Nullable.GetUnderlyingType(parameter.ParameterType) is null &&
-				!parameter.ParameterType.IsClass && !parameter.ParameterType.IsArray,
-				Secret: parameter.Name!.Equals("password", StringComparison.OrdinalIgnoreCase));
-		})];
+		return
+		[
+			.. body.GetConstructors()[0].GetParameters().Select(parameter =>
+			{
+				var type = Nullable.GetUnderlyingType(parameter.ParameterType) ?? parameter.ParameterType;
+				var kind = type == typeof(bool) ? OptionKind.Bool
+					: type == typeof(int) ? OptionKind.Int
+					: type.IsArray ? OptionKind.List
+					: OptionKind.Text;
+				return new OptionDef(ViewFormatter.Camel(parameter.Name!), $"The {parameter.Name} of the command.",
+					kind,
+					!parameter.HasDefaultValue && Nullable.GetUnderlyingType(parameter.ParameterType) is null &&
+					!parameter.ParameterType.IsClass && !parameter.ParameterType.IsArray,
+					Secret: parameter.Name!.Equals("password", StringComparison.OrdinalIgnoreCase));
+			})
+		];
 	}
 
 	/// <summary>Builds the request body of a room command from the options.</summary>
@@ -114,14 +127,17 @@ internal static class ChannelRoomCommands
 		{
 			var name = ViewFormatter.Camel(parameter.Name!);
 			var type = Nullable.GetUnderlyingType(parameter.ParameterType) ?? parameter.ParameterType;
-			if (!call.Has(name)) return parameter.ParameterType.IsValueType && Nullable.GetUnderlyingType(parameter.ParameterType) is null
-				? throw CommandException.Invalid($"--{name} is required.")
-				: null;
+			if (!call.Has(name))
+				return parameter.ParameterType.IsValueType &&
+				       Nullable.GetUnderlyingType(parameter.ParameterType) is null
+					? throw CommandException.Invalid($"--{name} is required.")
+					: null;
 			return type == typeof(int) ? call.Int(name)
 				: type == typeof(bool) ? call.Bool(name)
 				: type == typeof(string) ? call.Text(name)
 				: type == typeof(string[]) ? call.List(name)
-				: type.IsEnum ? Enum.TryParse(type, call.Text(name), true, out var value) && Enum.IsDefined(type, value!)
+				: type.IsEnum ? Enum.TryParse(type, call.Text(name), true, out var value) &&
+				                Enum.IsDefined(type, value!)
 					? value
 					: throw CommandException.Invalid($"--{name} is not a valid {type.Name}.")
 				: throw new InvalidOperationException($"No reader for {type.Name}.");
@@ -132,7 +148,8 @@ internal static class ChannelRoomCommands
 	private static Task<int> ListChannelsAsync(CommandCall call)
 	{
 		var registry = call.Get<GeneralChannelRegistry>();
-		var views = registry.All.Values.OrderBy(channel => channel.Name).Select(channel => (object)ChannelView.Of(channel.Record)).ToList();
+		var views = registry.All.Values.OrderBy(channel => channel.Name)
+			.Select(channel => (object)ChannelView.Of(channel.Record)).ToList();
 		call.Formatter.PrintTable(call.Output, views);
 		return Task.FromResult(ExitCodes.Success);
 	}
@@ -142,8 +159,12 @@ internal static class ChannelRoomCommands
 		return new GeneralChannelData
 		{
 			Topic = call.Text("topic") ?? current?.Topic ?? string.Empty,
-			ReadPrivileges = call.Mask("readPrivileges") is { } read ? (UserPrivileges)read : current?.ReadPrivileges ?? 0,
-			WritePrivileges = call.Mask("writePrivileges") is { } write ? (UserPrivileges)write : current?.WritePrivileges ?? 0,
+			ReadPrivileges = call.Mask("readPrivileges") is { } read
+				? (UserPrivileges)read
+				: current?.ReadPrivileges ?? 0,
+			WritePrivileges = call.Mask("writePrivileges") is { } write
+				? (UserPrivileges)write
+				: current?.WritePrivileges ?? 0,
 			AutoJoin = call.Bool("autoJoin") ?? current?.AutoJoin ?? false,
 			Visible = call.Bool("visible") ?? current?.Visible ?? true
 		};
@@ -152,17 +173,20 @@ internal static class ChannelRoomCommands
 	private static async Task<int> CreateChannelAsync(CommandCall call)
 	{
 		var record = new GeneralChannelRecord { Name = call.Required("name"), Value = DataOf(call) };
-		var result = await call.Get<Server>().ScopeTo(await call.ByAsync()).Channels.CreateAsync(record, call.CancellationToken);
+		var result = await call.Get<Server>().ScopeTo(await call.ByAsync()).Channels
+			.CreateAsync(record, call.CancellationToken);
 		return call.Report(result, $"Created channel {record.Name}.");
 	}
 
 	private static async Task<int> SetChannelAsync(CommandCall call)
 	{
-		if (call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel) return call.NotFound("channel");
+		if (call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel)
+			return call.NotFound("channel");
 
 		var scoped = channel.ScopeTo(await call.ByAsync()).General!;
 		var result = await scoped.ConfigureAsync(new GeneralChannelChange(call.Text("topic"),
-			(UserPrivileges?)call.Mask("readPrivileges"), (UserPrivileges?)call.Mask("writePrivileges"), call.Bool("autoJoin"),
+			(UserPrivileges?)call.Mask("readPrivileges"), (UserPrivileges?)call.Mask("writePrivileges"),
+			call.Bool("autoJoin"),
 			call.Bool("visible")), call.CancellationToken);
 		return call.Report(result, "Updated.");
 	}
@@ -171,7 +195,8 @@ internal static class ChannelRoomCommands
 	{
 		return call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel
 			? call.NotFound("channel")
-			: call.Report(await channel.ScopeTo(await call.ByAsync()).General!.DeleteAsync(call.CancellationToken), "Channel deleted.");
+			: call.Report(await channel.ScopeTo(await call.ByAsync()).General!.DeleteAsync(call.CancellationToken),
+				"Channel deleted.");
 	}
 
 	private static Task<int> ListRoomsAsync(CommandCall call)
@@ -234,9 +259,9 @@ internal static class ChannelRoomCommands
 		foreach (var entry in entries)
 			call.Output.Line(entry switch
 			{
-				Basil.Domain.Multiplayer.Round round =>
+				Round round =>
 					$"{call.Formatter.Time(entry.Timestamp)}  round {round.Index}{(round.Aborted ? " (aborted)" : "")}",
-				Basil.Domain.Multiplayer.MatchEvent matchEvent =>
+				MatchEvent matchEvent =>
 					$"{call.Formatter.Time(entry.Timestamp)}  {matchEvent.Type}{(matchEvent.Actor is null ? "" : $" by {matchEvent.Actor.Value.Name}")}",
 				_ => entry.ToString() ?? string.Empty
 			});

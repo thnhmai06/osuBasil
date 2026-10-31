@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Tests.Support;
 using Basil.Testing.Clients;
@@ -10,8 +11,10 @@ public sealed class ChatTests(IrcHostFixture fixture)
 {
 	private BasilHost Host => fixture.Host;
 
-	private static IEnumerable<ServerPacket> Messages(OsuClient client) =>
-		client.Received.Where(packet => packet.Id == OsuClient.In.SendMessage);
+	private static IEnumerable<ServerPacket> Messages(OsuClient client)
+	{
+		return client.Received.Where(packet => packet.Id == OsuClient.In.SendMessage);
+	}
 
 	[Fact]
 	public async Task IrcChannelMessage_ReachesTheOsuClient()
@@ -49,7 +52,8 @@ public sealed class ChatTests(IrcHostFixture fixture)
 
 		await sender.SendAsync("PRIVMSG #osu :to the others");
 
-		Assert.Equal(":ChSender!ChSender@basil.test PRIVMSG #osu :to the others", await listener.ExpectAsync("PRIVMSG"));
+		Assert.Equal(":ChSender!ChSender@basil.test PRIVMSG #osu :to the others",
+			await listener.ExpectAsync("PRIVMSG"));
 		var seen = await sender.BarrierAsync();
 		Assert.DoesNotContain(seen, line => IrcClient.CommandOf(line) == "PRIVMSG");
 	}
@@ -114,8 +118,10 @@ public sealed class ChatTests(IrcHostFixture fixture)
 
 		await friend.SendAsync("PRIVMSG ChTwoDevices :to both");
 
-		Assert.Equal(":ChDevFriend!ChDevFriend@basil.test PRIVMSG ChTwoDevices :to both", await first.ExpectAsync("PRIVMSG"));
-		Assert.Equal(":ChDevFriend!ChDevFriend@basil.test PRIVMSG ChTwoDevices :to both", await second.ExpectAsync("PRIVMSG"));
+		Assert.Equal(":ChDevFriend!ChDevFriend@basil.test PRIVMSG ChTwoDevices :to both",
+			await first.ExpectAsync("PRIVMSG"));
+		Assert.Equal(":ChDevFriend!ChDevFriend@basil.test PRIVMSG ChTwoDevices :to both",
+			await second.ExpectAsync("PRIVMSG"));
 	}
 
 	[Fact]
@@ -294,7 +300,8 @@ public sealed class ChatTests(IrcHostFixture fixture)
 		using var irc = await Host.SignInAsync("ChAwayAsker");
 		using var away = await Host.SignInAsync("ChAwayUser");
 		await away.SendAsync("AWAY :gone fishing");
-		Assert.Equal(":irc.basil.test 306 ChAwayUser :You have been marked as being away", await away.ExpectAsync("306"));
+		Assert.Equal(":irc.basil.test 306 ChAwayUser :You have been marked as being away",
+			await away.ExpectAsync("306"));
 
 		await irc.SendAsync("PRIVMSG ChAwayUser :are you there");
 
@@ -310,13 +317,14 @@ public sealed class ChatTests(IrcHostFixture fixture)
 
 		await irc.SendAsync("AWAY");
 
-		Assert.Equal(":irc.basil.test 305 ChBack :You are no longer marked as being away", await irc.ExpectAsync("305"));
+		Assert.Equal(":irc.basil.test 305 ChBack :You are no longer marked as being away",
+			await irc.ExpectAsync("305"));
 	}
 
 	[Fact]
 	public async Task Silenced_UserCannotChat_Gets404()
 	{
-		using var irc = await Host.SignInAsync("ChMute", permissions: Basil.Domain.Users.UserPermissions.None);
+		using var irc = await Host.SignInAsync("ChMute", permissions: UserPermissions.None);
 		await irc.SendAsync("PRIVMSG #osu :can I?");
 
 		Assert.StartsWith(":irc.basil.test 404 ChMute #osu :", await irc.ExpectAsync("404"));
@@ -366,7 +374,8 @@ public sealed class ChatTests(IrcHostFixture fixture)
 
 		await sender.SendAsync("@+draft/reply=abc PRIVMSG #osu :with a tag");
 
-		Assert.Equal(":ChCtagSender!ChCtagSender@basil.test PRIVMSG #osu :with a tag", await listener.ExpectAsync("PRIVMSG"));
+		Assert.Equal(":ChCtagSender!ChCtagSender@basil.test PRIVMSG #osu :with a tag",
+			await listener.ExpectAsync("PRIVMSG"));
 	}
 
 	[Fact]

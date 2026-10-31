@@ -86,15 +86,18 @@ public static class OutputExtensions
 	}
 
 	/// <summary>Writes labelled values with the labels padded to one column.</summary>
-	public static void Fields(this ICommandOutput output, IReadOnlyList<(string Label, string Value)> fields, string indent = "")
+	public static void Fields(this ICommandOutput output, IReadOnlyList<(string Label, string Value)> fields,
+		string indent = "")
 	{
 		var width = fields.Count == 0 ? 0 : fields.Max(field => field.Label.Length);
 		foreach (var (label, value) in fields)
-			output.Write(new OutputLine(OutputKind.Field, $"{indent}{(label + ":").PadRight(width + 1)} {value}".TrimEnd()));
+			output.Write(new OutputLine(OutputKind.Field,
+				$"{indent}{(label + ":").PadRight(width + 1)} {value}".TrimEnd()));
 	}
 
 	/// <summary>Writes a table with a header row, each column as wide as its widest cell.</summary>
-	public static void Table(this ICommandOutput output, IReadOnlyList<string> header, IReadOnlyList<IReadOnlyList<string>> rows,
+	public static void Table(this ICommandOutput output, IReadOnlyList<string> header,
+		IReadOnlyList<IReadOnlyList<string>> rows,
 		string indent = "")
 	{
 		var widths = header.Select((title, index) => Math.Max(title.Length,

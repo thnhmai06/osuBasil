@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -333,7 +332,8 @@ public sealed class DatabaseWriter(
 		}
 	}
 
-	private void ReportEnvironmentFailure(Root root, Exception exception, TimeSpan delay, ref DateTimeOffset? firstFailure)
+	private void ReportEnvironmentFailure(Root root, Exception exception, TimeSpan delay,
+		ref DateTimeOffset? firstFailure)
 	{
 		firstFailure ??= timeProvider.GetUtcNow();
 		var elapsed = timeProvider.GetUtcNow() - firstFailure.Value;
@@ -354,7 +354,7 @@ public sealed class DatabaseWriter(
 	private async Task RunSnapshotAsync(PendingTransaction pendingTransaction)
 	{
 		var command = pendingTransaction.Command!;
-		await using var context = command.CreateContext(database, confirmed: false);
+		await using var context = command.CreateContext(database, false);
 		await command.RunAsync(context, _abandon.Token);
 	}
 
@@ -365,7 +365,7 @@ public sealed class DatabaseWriter(
 		try
 		{
 			var command = pendingTransaction.Command!;
-			await using var context = command.CreateContext(database, confirmed: true);
+			await using var context = command.CreateContext(database, true);
 			await using var transaction = await context.Database.BeginTransactionAsync(_abandon.Token);
 
 			// The ticket commits with the write, so it tells afterwards whether the write was stored.
@@ -390,7 +390,7 @@ public sealed class DatabaseWriter(
 		while (true)
 			try
 			{
-				await using var context = command.CreateContext(database, confirmed: true);
+				await using var context = command.CreateContext(database, true);
 				return await command.Tickets(context).AnyAsync(row => row.Id == ticket, _abandon.Token);
 			}
 			catch (Exception exception) when (exception.IsEnvironmentException())

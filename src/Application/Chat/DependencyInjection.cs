@@ -1,6 +1,6 @@
-using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common.Events;
 using Basil.Application.Users.Persistence;

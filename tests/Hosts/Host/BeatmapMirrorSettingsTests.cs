@@ -1,6 +1,5 @@
-using Basil.Application.Content.Persistence;
 using Basil.Application.Beatmaps.Capabilities;
-using Basil.Host;
+using Basil.Application.Content.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 

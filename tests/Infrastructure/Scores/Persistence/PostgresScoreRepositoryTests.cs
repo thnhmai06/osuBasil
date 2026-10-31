@@ -1,4 +1,3 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;

@@ -1,7 +1,6 @@
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
@@ -24,10 +23,10 @@ internal static class SpectateRoutes
 		users.MapGet("/{id:int}/spectate", SpectateAsync).RequireToken().Sse()
 			.WithSummary("Watch a player who is online in game.")
 			.WithDescription("""
-				The response is streamed using Server-Sent Events. Opening it spectates the player as an osu! client would: the player sees a spectator, and the spectating permission, blocks and restrictions apply. The stream only watches; it joins no chat channel.
+			                 The response is streamed using Server-Sent Events. Opening it spectates the player as an osu! client would: the player sees a spectator, and the spectating permission, blocks and restrictions apply. The stream only watches; it joins no chat channel.
 
-				The first event is the snapshot with the player's profile and in-game status. After that a bundle arrives every second with the frames, score updates and status changes since the previous one. Data is up to about one second old.
-				""");
+			                 The first event is the snapshot with the player's profile and in-game status. After that a bundle arrives every second with the frames, score updates and status changes since the previous one. Data is up to about one second old.
+			                 """);
 	}
 
 	private static async Task<IResult> SpectateAsync(HttpContext context, int id, IUserRepository users,
@@ -45,7 +44,10 @@ internal static class SpectateRoutes
 
 		var result = await context.StreamAsync(KeyOf(id), _ => Task.FromResult<(object, string?)>((new
 		{
-			user = new { id = record.Id, name = record.Value.Name, country = record.Value.Country.ToAcronym().ToLowerInvariant() },
+			user = new
+			{
+				id = record.Id, name = record.Value.Name, country = record.Value.Country.ToAcronym().ToLowerInvariant()
+			},
 			status = StatusOf(host.Status)
 		}, null)), () => host.ScopeTo(connection).StopSpectating());
 		if (result is not SseResult) host.ScopeTo(connection).StopSpectating();
@@ -56,7 +58,8 @@ internal static class SpectateRoutes
 	{
 		return new
 		{
-			activity = status.Activity, text = status.Text, beatmapId = status.BeatmapId, mods = status.GameMods.ToString(),
+			activity = status.Activity, text = status.Text, beatmapId = status.BeatmapId,
+			mods = status.GameMods.ToString(),
 			mode = status.GameMode
 		};
 	}

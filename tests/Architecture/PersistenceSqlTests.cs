@@ -14,7 +14,8 @@ public sealed class PersistenceSqlTests
 	{
 		var source = Path.Combine(FindRepositoryRoot(), "src");
 		var projects = Directory.EnumerateDirectories(Path.Combine(source, "Infrastructure"));
-		var offenders = projects.SelectMany(project => Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories))
+		var offenders = projects
+			.SelectMany(project => Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories))
 			.Where(path => !IsGenerated(path))
 			.SelectMany(path =>
 				ForbiddenIn(File.ReadAllText(path)).Select(token => $"{Path.GetFileName(path)}: {token}"))

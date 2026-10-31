@@ -64,7 +64,8 @@ public sealed class RoomTests(RestHostFixture fixture)
 
 			var (name, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/name", new { name = "Renamed" });
 			var (size, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/size", new { size = 8 });
-			var (priv, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/private", new { @private = true });
+			var (priv, _) =
+				await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/private", new { @private = true });
 			var (locked, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/lock");
 			var (_, view) = await client.CallAsync(HttpMethod.Get, $"/v1/rooms/{room}");
 
@@ -138,7 +139,8 @@ public sealed class RoomTests(RestHostFixture fixture)
 		{
 			var room = await OpenAsync(client, "Kick");
 
-			var (status, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/kick", new { user = target.Id });
+			var (status, _) =
+				await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/kick", new { user = target.Id });
 
 			Assert.Equal(409, status);
 		}
@@ -154,9 +156,11 @@ public sealed class RoomTests(RestHostFixture fixture)
 			var room = await OpenAsync(client, "Timer");
 
 			var (bad, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/timer", new { seconds = 100000 });
-			var (added, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/addref", new { user = referee.Id });
+			var (added, _) =
+				await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/addref", new { user = referee.Id });
 			var (_, view) = await client.CallAsync(HttpMethod.Get, $"/v1/rooms/{room}");
-			var (removed, _) = await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/removeref", new { user = referee.Id });
+			var (removed, _) =
+				await client.CallAsync(HttpMethod.Post, $"/v1/rooms/{room}/removeref", new { user = referee.Id });
 
 			Assert.Equal(422, bad);
 			Assert.Equal(200, added);

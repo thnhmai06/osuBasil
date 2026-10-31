@@ -1,6 +1,5 @@
 using System.Globalization;
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
@@ -31,9 +30,9 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 		var row = ToRow(session);
 		return writer.SaveAsync(Root.User(session.User.Id), row.Id,
 			new WriteCommand<AuthDbContext>(async (context, token) =>
-		{
-			await context.ReplaceAsync(row, item => item.Id == row.Id, token);
-		}));
+			{
+				await context.ReplaceAsync(row, item => item.Id == row.Id, token);
+			}));
 	}
 
 	/// <inheritdoc />
@@ -48,8 +47,10 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 			if (types is not null) query = query.Where(row => types.Contains(row.Type));
 			query = filter.State switch
 			{
-				SessionState.Active => query.Where(row => row.EndedAt == null && (row.ExpiresAt == null || row.ExpiresAt > now)),
-				SessionState.Ended => query.Where(row => row.EndedAt != null || (row.ExpiresAt != null && row.ExpiresAt <= now)),
+				SessionState.Active => query.Where(row =>
+					row.EndedAt == null && (row.ExpiresAt == null || row.ExpiresAt > now)),
+				SessionState.Ended => query.Where(row =>
+					row.EndedAt != null || (row.ExpiresAt != null && row.ExpiresAt <= now)),
 				_ => query
 			};
 			var count = await query.CountAsync(cancellationToken);
@@ -69,7 +70,8 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	public async Task<SessionEntry?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
 	{
 		var row = await reader.ReadAsync((AuthDbContext context) => context.Sessions
-			.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken), cancellationToken);
+				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken),
+			cancellationToken);
 		return row is null ? null : ToEntry(row, user);
 	}
 
@@ -79,8 +81,8 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	{
 		var at = now.ToUniversalTime();
 		var row = await reader.ReadAsync((AuthDbContext context) => context.Sessions
-			.FirstOrDefaultAsync(item => item.TokenHash == tokenHash && item.Type == type && item.EndedAt == null &&
-			                             (item.ExpiresAt == null || item.ExpiresAt > at), cancellationToken),
+				.FirstOrDefaultAsync(item => item.TokenHash == tokenHash && item.Type == type && item.EndedAt == null &&
+				                             (item.ExpiresAt == null || item.ExpiresAt > at), cancellationToken),
 			cancellationToken);
 		return row is null
 			? null
@@ -137,7 +139,8 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 		return writer.WriteAsync(Root.Server, async (AuthDbContext context, CancellationToken token) =>
 			await context.Sessions.Where(row => !row.MustReauthenticate &&
 			                                    ((row.EndedAt != null && row.EndedAt < before) ||
-			                                     (row.EndedAt == null && row.ExpiresAt != null && row.ExpiresAt < before)))
+			                                     (row.EndedAt == null && row.ExpiresAt != null &&
+			                                      row.ExpiresAt < before)))
 				.ExecuteDeleteAsync(token), cancellationToken);
 	}
 
@@ -146,10 +149,11 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 		CancellationToken cancellationToken = default)
 	{
 		return await writer.WriteAsync(Root.User(user.Id), async (AuthDbContext context, CancellationToken token) =>
-			await context.Sessions.Where(row => row.UserId == user.Id && row.MustReauthenticate &&
-			                                    row.UninstallHash == device.UninstallHash &&
-			                                    row.DiskSignatureHash == device.DiskSignatureHash)
-				.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.MustReauthenticate, false), token) > 0,
+				await context.Sessions.Where(row => row.UserId == user.Id && row.MustReauthenticate &&
+				                                    row.UninstallHash == device.UninstallHash &&
+				                                    row.DiskSignatureHash == device.DiskSignatureHash)
+					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.MustReauthenticate, false), token) >
+				0,
 			cancellationToken);
 	}
 

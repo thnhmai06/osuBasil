@@ -1,34 +1,34 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Beatmaps.Capabilities;
-using Basil.Application.Auth.Persistence;
-using Basil.Application.Content.Persistence;
-using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Users.Persistence;
-using Basil.Bot;
-using Basil.Host;
 using Basil.Application.Anticheat.Objects.Events;
+using Basil.Application.Auth.Persistence;
+using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Common.Events;
-using Basil.Application.Multiplayer.Capabilities;
-using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Scores.Persistence;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
+using Basil.Bot;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
+using Basil.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
@@ -63,9 +63,9 @@ public sealed class TestApplication : IDisposable
 		new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
 	private readonly InMemoryCredentialRepository _credentials;
-	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemoryModerationLogRepository _moderationLog;
 	private readonly InMemoryRestrictionRepository _restrictions;
+	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemorySettingsRepository _settings;
 
 	private readonly InMemoryUserRepository _users;
@@ -178,6 +178,15 @@ public sealed class TestApplication : IDisposable
 	/// <summary>Gets the login history written by the application.</summary>
 	public IReadOnlyList<SessionEntry> SessionEntries => _sessions.Entries;
 
+	/// <summary>Gets the moderation history written by the application.</summary>
+	public IReadOnlyList<ModerationData> ModerationEntries => _moderationLog.Entries;
+
+	/// <inheritdoc />
+	public void Dispose()
+	{
+		Provider.Dispose();
+	}
+
 	/// <summary>Drops a session from the store while its client stays online, as before its record is written.</summary>
 	/// <param name="id">The session.</param>
 	public void ForgetStoredSession(Guid id)
@@ -191,15 +200,6 @@ public sealed class TestApplication : IDisposable
 	public DateTimeOffset? TokenExpiryOf(Guid id)
 	{
 		return _sessions.ExpiryOf(id);
-	}
-
-	/// <summary>Gets the moderation history written by the application.</summary>
-	public IReadOnlyList<ModerationData> ModerationEntries => _moderationLog.Entries;
-
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		Provider.Dispose();
 	}
 
 	/// <summary>Creates and stores an account and its password.</summary>
@@ -345,9 +345,10 @@ public sealed class TestApplication : IDisposable
 		};
 		var portAssemblies = new[]
 		{
-			typeof(IUserRepository).Assembly, typeof(IBeatmapsetReader).Assembly, typeof(ICredentialRepository).Assembly,
-			typeof(ISettingsRepository).Assembly, typeof(Basil.Application.Scores.Persistence.IScoreRepository).Assembly,
-			typeof(IMatchRepository).Assembly, typeof(Basil.Application.Chat.Persistence.IChannelRepository).Assembly
+			typeof(IUserRepository).Assembly, typeof(IBeatmapsetReader).Assembly,
+			typeof(ICredentialRepository).Assembly,
+			typeof(ISettingsRepository).Assembly, typeof(IScoreRepository).Assembly,
+			typeof(IMatchRepository).Assembly, typeof(IChannelRepository).Assembly
 		}.Distinct();
 		foreach (var port in portAssemblies.SelectMany(assembly => assembly.GetTypes()).Where(type =>
 			         type is { IsInterface: true, ContainsGenericParameters: false } &&

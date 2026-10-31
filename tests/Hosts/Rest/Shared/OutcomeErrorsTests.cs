@@ -2,9 +2,8 @@ using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared;
 using static Basil.Host.Shared.ErrorKind;
@@ -21,36 +20,45 @@ public sealed class OutcomeErrorsTests
 		[UserOutcome.WrongPassword] = WrongPassword, [UserOutcome.InvalidName] = Invalid,
 		[UserOutcome.NameTaken] = Conflict, [UserOutcome.NotFound] = NotFound, [UserOutcome.Locked] = Locked,
 		[UserOutcome.NotSelf] = Forbidden, [UserOutcome.InvalidLabel] = Invalid, [UserOutcome.InvalidCountry] = Invalid,
-		[UserOutcome.InvalidImage] = Invalid, [UserOutcome.DimensionsTooLarge] = Invalid, [UserOutcome.TooLarge] = Invalid
+		[UserOutcome.InvalidImage] = Invalid, [UserOutcome.DimensionsTooLarge] = Invalid,
+		[UserOutcome.TooLarge] = Invalid
 	};
 
 	private static readonly Dictionary<RoomOutcome, ErrorKind> Rooms = new()
 	{
 		[RoomOutcome.RoleDenied] = Forbidden, [RoomOutcome.AlreadySeated] = Conflict, [RoomOutcome.Banned] = Conflict,
-		[RoomOutcome.InAnotherRoom] = Conflict, [RoomOutcome.WrongPassword] = WrongPassword, [RoomOutcome.Full] = Conflict,
+		[RoomOutcome.InAnotherRoom] = Conflict, [RoomOutcome.WrongPassword] = WrongPassword,
+		[RoomOutcome.Full] = Conflict,
 		[RoomOutcome.IsObserver] = Conflict, [RoomOutcome.NotInRoom] = Conflict, [RoomOutcome.IsManager] = Forbidden,
-		[RoomOutcome.NotBanned] = Conflict, [RoomOutcome.TargetOffline] = Conflict, [RoomOutcome.AlreadyInRoom] = Conflict,
+		[RoomOutcome.NotBanned] = Conflict, [RoomOutcome.TargetOffline] = Conflict,
+		[RoomOutcome.AlreadyInRoom] = Conflict,
 		[RoomOutcome.TooManyReferees] = Conflict, [RoomOutcome.AlreadyReferee] = Conflict,
 		[RoomOutcome.NotReferee] = Conflict, [RoomOutcome.IsCreator] = Conflict, [RoomOutcome.IsPlayer] = Conflict,
 		[RoomOutcome.NotObserver] = Conflict, [RoomOutcome.TooManyRooms] = Conflict, [RoomOutcome.NoRoomId] = Conflict,
 		[RoomOutcome.SlotNotOpen] = Conflict, [RoomOutcome.RoomLocked] = Conflict, [RoomOutcome.Locked] = Locked,
 		[RoomOutcome.InProgress] = Conflict, [RoomOutcome.OwnSlot] = Conflict, [RoomOutcome.NoTeams] = Invalid,
-		[RoomOutcome.NotFreemod] = Invalid, [RoomOutcome.SpeedModNotAllowed] = Invalid, [RoomOutcome.InvalidMods] = Invalid,
-		[RoomOutcome.InvalidSettings] = Invalid, [RoomOutcome.NoBeatmap] = Conflict, [RoomOutcome.NotPlaying] = Conflict,
-		[RoomOutcome.NotInProgress] = Conflict, [RoomOutcome.NoCountdown] = Conflict, [RoomOutcome.RoundMismatch] = Conflict,
+		[RoomOutcome.NotFreemod] = Invalid, [RoomOutcome.SpeedModNotAllowed] = Invalid,
+		[RoomOutcome.InvalidMods] = Invalid,
+		[RoomOutcome.InvalidSettings] = Invalid, [RoomOutcome.NoBeatmap] = Conflict,
+		[RoomOutcome.NotPlaying] = Conflict,
+		[RoomOutcome.NotInProgress] = Conflict, [RoomOutcome.NoCountdown] = Conflict,
+		[RoomOutcome.RoundMismatch] = Conflict,
 		[RoomOutcome.RoomClosed] = Gone, [RoomOutcome.Blocked] = Forbidden
 	};
 
 	private static readonly Dictionary<ChannelOutcome, ErrorKind> Channels = new()
 	{
-		[ChannelOutcome.AlreadyMember] = Conflict, [ChannelOutcome.NotMember] = Conflict, [ChannelOutcome.Closed] = Conflict,
+		[ChannelOutcome.AlreadyMember] = Conflict, [ChannelOutcome.NotMember] = Conflict,
+		[ChannelOutcome.Closed] = Conflict,
 		[ChannelOutcome.Empty] = Invalid, [ChannelOutcome.InvalidText] = Invalid, [ChannelOutcome.Blocked] = Forbidden,
-		[ChannelOutcome.TargetSilenced] = Conflict, [ChannelOutcome.AccessDenied] = Forbidden, [ChannelOutcome.NotFound] = NotFound
+		[ChannelOutcome.TargetSilenced] = Conflict, [ChannelOutcome.AccessDenied] = Forbidden,
+		[ChannelOutcome.NotFound] = NotFound
 	};
 
 	private static readonly Dictionary<ServerOutcome, ErrorKind> Servers = new()
 	{
-		[ServerOutcome.NameTaken] = Conflict, [ServerOutcome.TooLarge] = Invalid, [ServerOutcome.InvalidImage] = Invalid,
+		[ServerOutcome.NameTaken] = Conflict, [ServerOutcome.TooLarge] = Invalid,
+		[ServerOutcome.InvalidImage] = Invalid,
 		[ServerOutcome.DimensionsTooLarge] = Invalid, [ServerOutcome.Locked] = Locked
 	};
 

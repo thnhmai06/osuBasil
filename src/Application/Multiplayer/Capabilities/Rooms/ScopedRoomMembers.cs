@@ -1,7 +1,7 @@
 using Basil.Application.Common.Common;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 

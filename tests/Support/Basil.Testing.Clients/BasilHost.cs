@@ -1,20 +1,19 @@
 using System.Net;
 using System.Text;
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Beatmaps.Objects;
+using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common.Common;
+using Basil.Application.Common.Events;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Registry;
+using Basil.Domain.Auth;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Chat;
-using Basil.Application.Users.Persistence;
-using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
 using Basil.Host;
 using Basil.Host.Irc;
 using Basil.Testing.Persistence;
@@ -24,7 +23,6 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
@@ -41,8 +39,8 @@ public sealed class BasilHost : IAsyncDisposable
 
 	private readonly PersistenceFixture _database;
 	private readonly string _databaseName = "basil-host-" + Guid.NewGuid().ToString("N");
-	private readonly string _root = Path.Combine(Path.GetTempPath(), "basil-host-" + Guid.NewGuid().ToString("N"));
 	private readonly Dictionary<string, Guid> _keySessions = [];
+	private readonly string _root = Path.Combine(Path.GetTempPath(), "basil-host-" + Guid.NewGuid().ToString("N"));
 	private WebApplication? _app;
 	private bool _stopped;
 
@@ -62,6 +60,18 @@ public sealed class BasilHost : IAsyncDisposable
 	public int IrcPort => Services.GetRequiredService<IrcState>().Port;
 
 	public IServiceProvider Services => _app!.Services;
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_app is not null)
+		{
+			await StopAsync();
+			await _app.DisposeAsync();
+		}
+
+		await _database.DropDatabaseAsync(_databaseName);
+		if (Directory.Exists(_root)) Directory.Delete(_root, true);
+	}
 
 	/// <summary>Starts a server with an empty database.</summary>
 	public static async Task<BasilHost> StartAsync(PersistenceFixture database)
@@ -91,7 +101,8 @@ public sealed class BasilHost : IAsyncDisposable
 			});
 			builder.WebHost.UseUrls("http://127.0.0.1:0");
 			builder.Logging.ClearProviders();
-			if (Environment.GetEnvironmentVariable("BASIL_TEST_LOG") is not null) builder.Logging.AddSimpleConsole().SetMinimumLevel(LogLevel.Warning);
+			if (Environment.GetEnvironmentVariable("BASIL_TEST_LOG") is not null)
+				builder.Logging.AddSimpleConsole().SetMinimumLevel(LogLevel.Warning);
 			builder.Services.AddSingleton<TimeProvider>(Time);
 		});
 		await _app.StartAsync();
@@ -105,13 +116,14 @@ public sealed class BasilHost : IAsyncDisposable
 				Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 10_000 }
 			}
 		});
-		Url = new Uri(_app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First());
+		Url = new Uri(_app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses
+			.First());
 	}
 
 	/// <summary>Waits until every event published so far has been delivered to its handlers.</summary>
 	public Task DrainEventsAsync()
 	{
-		return Services.GetRequiredService<Basil.Application.Common.Events.EventQueue>().DrainAsync();
+		return Services.GetRequiredService<EventQueue>().DrainAsync();
 	}
 
 	/// <summary>Stores an account with a password.</summary>
@@ -213,17 +225,5 @@ public sealed class BasilHost : IAsyncDisposable
 		}
 
 		await stopping;
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		if (_app is not null)
-		{
-			await StopAsync();
-			await _app.DisposeAsync();
-		}
-
-		await _database.DropDatabaseAsync(_databaseName);
-		if (Directory.Exists(_root)) Directory.Delete(_root, true);
 	}
 }

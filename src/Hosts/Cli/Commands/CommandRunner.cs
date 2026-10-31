@@ -2,12 +2,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>Runs console commands: matches the line, runs the command as the operator and turns problems into an exit code.</summary>
+/// <summary>
+///     Runs console commands: matches the line, runs the command as the operator and turns problems into an exit
+///     code.
+/// </summary>
 /// <param name="catalog">The commands.</param>
 /// <param name="services">The services of the server the commands act on.</param>
 /// <param name="formatter">The formatter of record views.</param>
 /// <param name="logger">Where each command is recorded, with its secrets hidden.</param>
-public sealed class CommandRunner(CommandCatalog catalog, IServiceProvider services, ViewFormatter formatter,
+public sealed class CommandRunner(
+	CommandCatalog catalog,
+	IServiceProvider services,
+	ViewFormatter formatter,
 	ILogger<CommandRunner> logger)
 {
 	/// <summary>Gets the commands this runner knows.</summary>
@@ -44,7 +50,8 @@ public sealed class CommandRunner(CommandCatalog catalog, IServiceProvider servi
 		}
 
 		logger.LogInformation("Console command: {Command}", Redactor.Redact(catalog, args));
-		var call = new CommandCall(services, output, formatter, parsed.Words, parsed.Options, cancellationToken, session);
+		var call = new CommandCall(services, output, formatter, parsed.Words, parsed.Options, cancellationToken,
+			session);
 		try
 		{
 			return await command.Run(call);

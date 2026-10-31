@@ -1,8 +1,5 @@
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Capabilities;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
-using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho.Support;
 
@@ -42,7 +39,8 @@ internal sealed class BanchoShutdown(BanchoState state, UserRegistry registry, O
 	/// <param name="pollWindow">The longest time to wait for the clients to poll.</param>
 	/// <param name="cancellationToken">A token that stops the wait.</param>
 	/// <returns>How many clients had not taken the packet when the wait ended.</returns>
-	public async Task<int> AnnounceAsync(TimeSpan reconnectAfter, TimeSpan pollWindow, CancellationToken cancellationToken)
+	public async Task<int> AnnounceAsync(TimeSpan reconnectAfter, TimeSpan pollWindow,
+		CancellationToken cancellationToken)
 	{
 		StopAccepting();
 		var clients = registry.Online.Values.SelectMany(user => user.Connections)

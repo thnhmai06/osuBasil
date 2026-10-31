@@ -2,7 +2,10 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Host.Shared.Tests;
 
-/// <summary>Failed sign-ins are limited per pair and per address; the attempt is reserved before the credentials are checked.</summary>
+/// <summary>
+///     Failed sign-ins are limited per pair and per address; the attempt is reserved before the credentials are
+///     checked.
+/// </summary>
 public sealed class LoginAttemptGuardTests
 {
 	private const string Ip = "login-fail:1.2.3.4";

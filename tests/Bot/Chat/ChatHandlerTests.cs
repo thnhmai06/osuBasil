@@ -1,7 +1,6 @@
 using System.Text;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Chat.Registry;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;

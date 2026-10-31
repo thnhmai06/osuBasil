@@ -10,12 +10,16 @@ internal sealed class MultiplayerDbContext(DbContextOptions<MultiplayerDbContext
 	public DbSet<RoundRow> Rounds => Set<RoundRow>();
 	public DbSet<MatchEventRow> MatchEvents => Set<MatchEventRow>();
 	public DbSet<RoundScoreRow> RoundScores => Set<RoundScoreRow>();
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	static string IDatabaseContext<MultiplayerDbContext>.HistoryTable => "__ef_migrations_multiplayer";
 
 	static MultiplayerDbContext IDatabaseContext<MultiplayerDbContext>.Create(
-		DbContextOptions<MultiplayerDbContext> options) => new(options);
+		DbContextOptions<MultiplayerDbContext> options)
+	{
+		return new MultiplayerDbContext(options);
+	}
+
+	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

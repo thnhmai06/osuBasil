@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Users;
 
@@ -62,6 +61,18 @@ public sealed record UserQuery(
 		return new UserQuery(keywords, countries, permissions, deleted);
 	}
 
+	/// <summary>Reads a query written in the user search syntax.</summary>
+	/// <param name="s">The search text.</param>
+	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
+	/// <param name="result">The query, or <see langword="null" /> when <paramref name="s" /> is <see langword="null" />.</param>
+	/// <returns><see langword="true" /> unless <paramref name="s" /> is <see langword="null" />; any text reads as a query.</returns>
+	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider,
+		[MaybeNullWhen(false)] out UserQuery result)
+	{
+		result = s is null ? null : Parse(s, provider);
+		return result is not null;
+	}
+
 	private static bool TryParseCountries(string rawValue, out IReadOnlyList<Country> parsedCountries)
 	{
 		parsedCountries = [];
@@ -78,18 +89,6 @@ public sealed record UserQuery(
 
 		parsedCountries = parsed;
 		return true;
-	}
-
-	/// <summary>Reads a query written in the user search syntax.</summary>
-	/// <param name="s">The search text.</param>
-	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
-	/// <param name="result">The query, or <see langword="null" /> when <paramref name="s" /> is <see langword="null" />.</param>
-	/// <returns><see langword="true" /> unless <paramref name="s" /> is <see langword="null" />; any text reads as a query.</returns>
-	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider,
-		[MaybeNullWhen(false)] out UserQuery result)
-	{
-		result = s is null ? null : Parse(s, provider);
-		return result is not null;
 	}
 
 	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>

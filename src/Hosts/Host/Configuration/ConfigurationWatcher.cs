@@ -27,7 +27,10 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 	{
 		get
 		{
-			lock (_gate) return [.. _pending];
+			lock (_gate)
+			{
+				return [.. _pending];
+			}
 		}
 	}
 
@@ -70,7 +73,8 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 				}
 
 				if (_pending.Add(section))
-					logger.LogWarning("The {Section} configuration changed; the change is applied after the server restarts",
+					logger.LogWarning(
+						"The {Section} configuration changed; the change is applied after the server restarts",
 						section);
 			}
 

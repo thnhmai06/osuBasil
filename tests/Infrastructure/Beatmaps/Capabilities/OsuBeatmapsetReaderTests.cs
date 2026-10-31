@@ -1,8 +1,7 @@
-using Basil.Testing.Persistence;
 using System.Text;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Beatmaps.Capabilities;
-using Basil.Infrastructure.Beatmaps.Tests.Support;
+using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Capabilities;
 
@@ -193,7 +192,7 @@ public sealed class OsuBeatmapsetReaderTests
 	[Fact]
 	public async Task ReadAsync_SkipsADifficultyPastTheAllowedSize()
 	{
-		var oversized = new byte[(16 * 1024 * 1024) + 1];
+		var oversized = new byte[16 * 1024 * 1024 + 1];
 		await using var archive = OszArchive.Build(("huge.osu", oversized));
 		var reader = new OsuBeatmapsetReader();
 

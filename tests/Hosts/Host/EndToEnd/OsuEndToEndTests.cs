@@ -12,7 +12,10 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 {
 	private BasilHost Host => fixture.Host;
 
-	private static int MatchIdOf(ServerPacket joinSuccess) => BitConverter.ToUInt16(joinSuccess.Payload, 0);
+	private static int MatchIdOf(ServerPacket joinSuccess)
+	{
+		return BitConverter.ToUInt16(joinSuccess.Payload, 0);
+	}
 
 	[Fact]
 	public async Task Login_JoinRoom_Play_SubmitScore_AndRemoteSignOut_MakesTheNextLoginAskForThePasswordOnce()
@@ -29,7 +32,8 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 				mapName: beatmap.Name)));
 		var created = await player.WaitForAsync(OsuClient.In.MatchJoinSuccess);
 		var matchId = MatchIdOf(created!);
-		await guest.SendAsync(writer => writer.Packet(OsuClient.Out.JoinMatch, ClientPacketWriter.JoinMatch(matchId, "")));
+		await guest.SendAsync(writer =>
+			writer.Packet(OsuClient.Out.JoinMatch, ClientPacketWriter.JoinMatch(matchId, "")));
 		Assert.NotNull(await guest.WaitForAsync(OsuClient.In.MatchJoinSuccess));
 
 		await guest.SendAsync(writer => writer.Packet(OsuClient.Out.MatchReady));

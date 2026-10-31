@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Client;
+using Basil.Domain.Users;
 using Basil.Host.Bancho.Tests.Support;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;
@@ -156,10 +157,10 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var plain = await Host.NewClientAsync("DirectPlain",
-			permissions: Basil.Domain.Users.UserPermissionsGroups.Default & ~Basil.Domain.Users.UserPermissions.BeatmapsetDirect);
+			permissions: UserPermissionsGroups.Default & ~UserPermissions.BeatmapsetDirect);
 		await plain.LoginAsync();
 		using var supporter = await Host.NewClientAsync("DirectSupport",
-			permissions: Basil.Domain.Users.UserPermissionsGroups.Default);
+			permissions: UserPermissionsGroups.Default);
 		await supporter.LoginAsync();
 
 		var (denied, _) = await plain.WebGetAsync($"/d/{map.Beatmapset.Id}", "u", "h");
@@ -172,8 +173,10 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		Assert.StartsWith($"{map.Beatmapset.Id}.osz|", line);
 	}
 
-	private async Task<int> LoginLimitAsync() =>
-		(await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
+	private async Task<int> LoginLimitAsync()
+	{
+		return (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
+	}
 
 	[Fact]
 	public async Task WebEndpoint_CorrectHashBeforeTheLimit_StillSucceeds()
@@ -192,7 +195,8 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 	{
 		using var client = await OnlineAsync("WebRateLocked");
 		using var impostor = OsuClient.Create(Host, "WebRateLocked", "wrong");
-		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++) await impostor.GetFriendsAsync("203.0.113.31");
+		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++)
+			await impostor.GetFriendsAsync("203.0.113.31");
 
 		var (status, _) = await client.GetFriendsAsync("203.0.113.31");
 
@@ -204,7 +208,8 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 	{
 		using var client = await OnlineAsync("WebRateWindow");
 		using var impostor = OsuClient.Create(Host, "WebRateWindow", "wrong");
-		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++) await impostor.GetFriendsAsync("203.0.113.32");
+		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++)
+			await impostor.GetFriendsAsync("203.0.113.32");
 		var window = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.Window;
 
 		// advance in steps shorter than the idle limit, polling so the client stays online
@@ -240,7 +245,8 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		using var victim = await OnlineAsync("WebRateVictim");
 		using var other = await OnlineAsync("WebRateOther");
 		using var impostor = OsuClient.Create(Host, "WebRateVictim", "wrong");
-		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++) await impostor.GetFriendsAsync("203.0.113.33");
+		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++)
+			await impostor.GetFriendsAsync("203.0.113.33");
 
 		var (status, _) = await other.GetFriendsAsync("203.0.113.34");
 

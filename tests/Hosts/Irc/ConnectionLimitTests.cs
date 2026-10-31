@@ -69,7 +69,10 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 		var original = await settings.GetAsync();
 		await settings.CreateOrUpdateAsync(original with
 		{
-			RateLimits = original.RateLimits with { Connections = new ServerSettings.ConnectionLimitSettings { PerIp = perIp } }
+			RateLimits = original.RateLimits with
+			{
+				Connections = new ServerSettings.ConnectionLimitSettings { PerIp = perIp }
+			}
 		});
 		try
 		{

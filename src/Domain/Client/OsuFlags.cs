@@ -160,11 +160,11 @@ public static class OsuFlagsGroups
 {
 	/// <summary>The flags that indicate tampering with the client or its environment.</summary>
 	public const OsuFlags CheatSigns = OsuFlags.SpeedHackDetected | OsuFlags.IncorrectModValue |
-	                                            OsuFlags.MultipleOsuClients | OsuFlags.ChecksumFailure |
-	                                            OsuFlags.FlashlightChecksumIncorrect | OsuFlags.OsuExecutableChecksum |
-	                                            OsuFlags.MissingProcessesInList | OsuFlags.FlashlightImageHack |
-	                                            OsuFlags.SpinnerHack | OsuFlags.TransparentWindow |
-	                                            OsuFlags.FastPress | OsuFlags.RawMouseDiscrepancy |
-	                                            OsuFlags.RawKeyboardDiscrepancy | OsuFlags.HqAssembly |
-	                                            OsuFlags.HqFile | OsuFlags.RegistryEdits;
+	                                   OsuFlags.MultipleOsuClients | OsuFlags.ChecksumFailure |
+	                                   OsuFlags.FlashlightChecksumIncorrect | OsuFlags.OsuExecutableChecksum |
+	                                   OsuFlags.MissingProcessesInList | OsuFlags.FlashlightImageHack |
+	                                   OsuFlags.SpinnerHack | OsuFlags.TransparentWindow |
+	                                   OsuFlags.FastPress | OsuFlags.RawMouseDiscrepancy |
+	                                   OsuFlags.RawKeyboardDiscrepancy | OsuFlags.HqAssembly |
+	                                   OsuFlags.HqFile | OsuFlags.RegistryEdits;
 }

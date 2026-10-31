@@ -24,17 +24,18 @@ public static class ProcessExitCodes
 /// </summary>
 public sealed class ShutdownController : IServerControl
 {
-	private readonly CtrlCMachine _machine;
-	private readonly IHostApplicationLifetime _lifetime;
 	private readonly Action<int> _exit;
+	private readonly IHostApplicationLifetime _lifetime;
 	private readonly ILogger<ShutdownController> _logger;
+	private readonly CtrlCMachine _machine;
 
 	/// <summary>Creates the controller.</summary>
 	/// <param name="machine">The Ctrl+C rules.</param>
 	/// <param name="lifetime">The lifetime of the host, which stops the application.</param>
 	/// <param name="logger">Where the progress is logged.</param>
 	/// <param name="exit">Ends the process at once; the tests replace it.</param>
-	public ShutdownController(CtrlCMachine machine, IHostApplicationLifetime lifetime, ILogger<ShutdownController> logger,
+	public ShutdownController(CtrlCMachine machine, IHostApplicationLifetime lifetime,
+		ILogger<ShutdownController> logger,
 		Action<int>? exit = null)
 	{
 		_machine = machine;
@@ -43,14 +44,21 @@ public sealed class ShutdownController : IServerControl
 		_exit = exit ?? Environment.Exit;
 	}
 
-	/// <summary>Occurs when the display has to show or hide a message.</summary>
-	public event Action<ShutdownMessage>? Message;
-
 	/// <summary>Gets a value that indicates whether the shutdown is a restart.</summary>
 	public bool RestartRequested { get; private set; }
 
 	/// <summary>Gets the exit code of the process.</summary>
 	public int ExitCode => RestartRequested ? ProcessExitCodes.Restart : ProcessExitCodes.Normal;
+
+	/// <inheritdoc />
+	public void RequestShutdown(bool restart)
+	{
+		RestartRequested |= restart;
+		Apply(_machine.Terminate());
+	}
+
+	/// <summary>Occurs when the display has to show or hide a message.</summary>
+	public event Action<ShutdownMessage>? Message;
 
 	/// <summary>Handles a Ctrl+C.</summary>
 	/// <param name="hasTypedText">Whether the command box holds text.</param>
@@ -71,13 +79,6 @@ public sealed class ShutdownController : IServerControl
 		Apply(_machine.Tick());
 	}
 
-	/// <inheritdoc />
-	public void RequestShutdown(bool restart)
-	{
-		RestartRequested |= restart;
-		Apply(_machine.Terminate());
-	}
-
 	/// <summary>Tells the controller that the shutdown finished.</summary>
 	public void Finish()
 	{
@@ -92,7 +93,8 @@ public sealed class ShutdownController : IServerControl
 				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.ClearLine, string.Empty));
 				break;
 			case CtrlCAction.WarnConfirm:
-				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Warning, "Press Ctrl+C again within 3 seconds to shut down the server."));
+				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Warning,
+					"Press Ctrl+C again within 3 seconds to shut down the server."));
 				break;
 			case CtrlCAction.ConfirmExpired:
 				Message?.Invoke(new ShutdownMessage(ShutdownMessageKind.Clear, string.Empty));
@@ -145,6 +147,12 @@ public sealed class CliLifetime(ShutdownController controller) : IHostLifetime, 
 	private readonly List<PosixSignalRegistration> _registrations = [];
 
 	/// <inheritdoc />
+	public void Dispose()
+	{
+		foreach (var registration in _registrations) registration.Dispose();
+	}
+
+	/// <inheritdoc />
 	public Task WaitForStartAsync(CancellationToken cancellationToken)
 	{
 		_registrations.Add(PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
@@ -170,11 +178,5 @@ public sealed class CliLifetime(ShutdownController controller) : IHostLifetime, 
 	{
 		controller.Finish();
 		return Task.CompletedTask;
-	}
-
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		foreach (var registration in _registrations) registration.Dispose();
 	}
 }

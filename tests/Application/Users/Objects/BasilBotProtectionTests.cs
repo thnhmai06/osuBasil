@@ -1,5 +1,4 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Testing;
 

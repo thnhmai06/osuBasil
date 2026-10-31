@@ -1,12 +1,10 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Content.Persistence;
-using Basil.Application.Content.Storage;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Chat.Registry;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Content.Storage;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Persistence;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Replies;
@@ -47,7 +45,8 @@ internal sealed class BotHarness : IDisposable
 		Faqs = App.Provider.GetRequiredService<IFaqStorage>();
 		Targets = new MpTargets();
 		Mp = new MpCommands(App.Lobby, App.Users, Users, Beatmaps, Targets);
-		Chat = new ChatCommands(Users, Faqs, Mp, new ChannelCommands(App.Server, App.Channels), random ?? new FixedRandom(0));
+		Chat = new ChatCommands(Users, Faqs, Mp, new ChannelCommands(App.Server, App.Channels),
+			random ?? new FixedRandom(0));
 	}
 
 	/// <summary>Gets the application the commands run against.</summary>

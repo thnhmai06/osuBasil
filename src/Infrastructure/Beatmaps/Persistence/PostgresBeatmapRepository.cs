@@ -3,13 +3,12 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
-using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
@@ -266,7 +265,8 @@ internal sealed class PostgresBeatmapRepository(
 		return Build(set, item, row, now, toStore.Id);
 	}
 
-	private static BeatmapRecord Build(BeatmapsetRecord set, BeatmapData item, BeatmapRow? row, DateTimeOffset now, int id)
+	private static BeatmapRecord Build(BeatmapsetRecord set, BeatmapData item, BeatmapRow? row, DateTimeOffset now,
+		int id)
 	{
 		return new BeatmapRecord
 		{

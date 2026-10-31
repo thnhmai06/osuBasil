@@ -1,3 +1,4 @@
+using System.Collections;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects;
@@ -43,7 +44,10 @@ public sealed class UserRestrictions : IReadOnlyList<UserRestriction>
 	}
 
 	/// <inheritdoc />
-	System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+	IEnumerator IEnumerable.GetEnumerator()
+	{
+		return GetEnumerator();
+	}
 
 	/// <summary>Adds a restriction that has started to the active restrictions.</summary>
 	/// <param name="restriction">The restriction to add.</param>

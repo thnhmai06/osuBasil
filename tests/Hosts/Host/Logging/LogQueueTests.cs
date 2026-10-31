@@ -7,25 +7,6 @@ namespace Basil.Host.Tests.Logging;
 /// <summary>The queue behind the log writer is bounded: when it is full events are dropped and counted, never waited for.</summary>
 public sealed class LogQueueTests
 {
-	private sealed class BlockedSink : ILogEventSink
-	{
-		private readonly ManualResetEventSlim _release = new();
-		private int _written;
-
-		public int Written => Volatile.Read(ref _written);
-
-		public void Release()
-		{
-			_release.Set();
-		}
-
-		public void Emit(LogEvent logEvent)
-		{
-			_release.Wait();
-			Interlocked.Increment(ref _written);
-		}
-	}
-
 	[Fact]
 	public void AFullQueueDropsTheNewestEventsAndCountsThem()
 	{
@@ -58,5 +39,24 @@ public sealed class LogQueueTests
 
 		Assert.Equal(0, drops.Dropped);
 		Assert.Equal(10, sink.Written);
+	}
+
+	private sealed class BlockedSink : ILogEventSink
+	{
+		private readonly ManualResetEventSlim _release = new();
+		private int _written;
+
+		public int Written => Volatile.Read(ref _written);
+
+		public void Emit(LogEvent logEvent)
+		{
+			_release.Wait();
+			Interlocked.Increment(ref _written);
+		}
+
+		public void Release()
+		{
+			_release.Set();
+		}
 	}
 }

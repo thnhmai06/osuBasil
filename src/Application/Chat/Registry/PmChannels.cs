@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
 using Basil.Application.Chat.Objects;
+using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Chat.Registry;
 
@@ -19,7 +18,10 @@ public sealed class PmChannels
 		_context = context;
 	}
 
-	/// <summary>Gets the private-message channel of an online user, opening it the first time and adding their open connections.</summary>
+	/// <summary>
+	///     Gets the private-message channel of an online user, opening it the first time and adding their open
+	///     connections.
+	/// </summary>
 	/// <param name="owner">The user who receives the messages.</param>
 	/// <returns>The user's channel; for a user who is not online, a channel nobody can write to that is not remembered.</returns>
 	public PmChannel Of(User owner)

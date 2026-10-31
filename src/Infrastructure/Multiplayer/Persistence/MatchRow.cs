@@ -22,7 +22,8 @@ internal sealed class MatchRowConfiguration : IEntityTypeConfiguration<MatchRow>
 		builder.ToTable("matches", table => table.HasCheckConstraint("matches_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).UseIdentityByDefaultColumn();
-		builder.HasOne(ContextModel.UsersTable, (string?)null).WithMany().HasForeignKey("CreatorId").OnDelete(DeleteBehavior.NoAction);
+		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("CreatorId")
+			.OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(row => row.EndedAt);
 	}
 }

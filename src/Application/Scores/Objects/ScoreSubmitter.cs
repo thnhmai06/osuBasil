@@ -1,11 +1,14 @@
-using Basil.Application.Scores.Capabilities;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Common.Events;
+using Basil.Application.Scores.Capabilities;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Users.Objects.Connections;
 
 namespace Basil.Application.Scores.Objects;
 
-/// <summary>Takes the scores that osu! clients submit: validates and stores them, then publishes <see cref="ScoreSubmitted" />.</summary>
+/// <summary>
+///     Takes the scores that osu! clients submit: validates and stores them, then publishes
+///     <see cref="ScoreSubmitted" />.
+/// </summary>
 public sealed class ScoreSubmitter
 {
 	private readonly TimeProvider _clock;

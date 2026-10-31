@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Persistence;
+using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -12,19 +12,15 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>The server settings, announcements and screenshots.</summary>
 internal static class ContentRoutes
 {
-	/// <summary>The body of an announcement; no recipients means everyone.</summary>
-	public sealed record AnnounceRequest(string? Text, int[]? To);
-
-	/// <summary>The answer to an announcement.</summary>
-	public sealed record AnnounceResponse(int Sent);
-
 	public static void MapContent(this RouteGroupBuilder v1)
 	{
 		var settings = v1.MapGroup("/settings").WithTags("Settings").RequireToken();
 		settings.MapGet("/", GetAllAsync).WithSummary("Retrieve every category of the server settings.");
 		settings.MapGet("/{category}", GetCategoryAsync).WithSummary("Retrieve one category of the server settings.");
-		settings.MapPatch("/{category}", PatchCategoryAsync).WithSummary("Change the given fields of one settings category.")
-			.WithDescription("The body holds only the fields to change; nested objects are merged. The change applies at once. Rate limit partitions that already exist keep their old limit until they expire.");
+		settings.MapPatch("/{category}", PatchCategoryAsync)
+			.WithSummary("Change the given fields of one settings category.")
+			.WithDescription(
+				"The body holds only the fields to change; nested objects are merged. The change applies at once. Rate limit partitions that already exist keep their old limit until they expire.");
 
 		v1.MapPost("/announce", AnnounceAsync).RequireToken().WithTags("Announcements")
 			.WithSummary("Send an announcement to some users or to everyone online.")
@@ -64,7 +60,9 @@ internal static class ContentRoutes
 		{
 			var changed = SettingsCategories.Patch(category, current!, patch);
 			var stored = await scoped.UpdateAsync(changed, context.RequestAborted);
-			return stored.IsOk ? Api.Ok(SettingsCategories.Get(category, changed), "Updated successfully") : stored.Refusal();
+			return stored.IsOk
+				? Api.Ok(SettingsCategories.Get(category, changed), "Updated successfully")
+				: stored.Refusal();
 		}
 		catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException
 			                           or FormatException)
@@ -111,10 +109,16 @@ internal static class ContentRoutes
 		var (listed, list) = await screenshots.ListAsync(context.RequestAborted);
 		if (!listed.IsOk) return listed.Refusal();
 
-		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<Domain.Content.ContentReference?>()
+		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<ContentReference?>()
 			.FirstOrDefault();
 		return match is null
 			? Api.NotFound("No such screenshot.")
 			: (await screenshots.DeleteAsync(match.Value, context.RequestAborted)).Answer();
 	}
+
+	/// <summary>The body of an announcement; no recipients means everyone.</summary>
+	public sealed record AnnounceRequest(string? Text, int[]? To);
+
+	/// <summary>The answer to an announcement.</summary>
+	public sealed record AnnounceResponse(int Sent);
 }

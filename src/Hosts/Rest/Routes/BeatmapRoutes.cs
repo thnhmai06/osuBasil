@@ -1,12 +1,10 @@
-using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects;
-using Basil.Application.Common;
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common.Common;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -16,22 +14,20 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Beatmapsets, beatmaps and their files.</summary>
 internal static class BeatmapRoutes
 {
+	private const string OpaqueType = "application/octet-stream";
+
 	/// <summary>The content types each kind of file may be served as; anything else is an opaque download.</summary>
 	private static readonly Dictionary<BeatmapsetFileType, Dictionary<string, string>> AllowedTypes = new()
 	{
-		[BeatmapsetFileType.Background] = new(StringComparer.OrdinalIgnoreCase)
+		[BeatmapsetFileType.Background] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{ [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg", [".png"] = "image/png" },
-		[BeatmapsetFileType.Audio] = new(StringComparer.OrdinalIgnoreCase)
+		[BeatmapsetFileType.Audio] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{ [".mp3"] = "audio/mpeg", [".ogg"] = "audio/ogg", [".wav"] = "audio/wav" },
-		[BeatmapsetFileType.Preview] = new(StringComparer.OrdinalIgnoreCase) { [".mp3"] = "audio/mpeg" },
-		[BeatmapsetFileType.Video] = new(StringComparer.OrdinalIgnoreCase)
+		[BeatmapsetFileType.Preview] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+			{ [".mp3"] = "audio/mpeg" },
+		[BeatmapsetFileType.Video] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{ [".mp4"] = "video/mp4", [".avi"] = "video/x-msvideo", [".flv"] = "video/x-flv", [".webm"] = "video/webm" }
 	};
-
-	private const string OpaqueType = "application/octet-stream";
-
-	/// <summary>The management properties of a set that can change; the content never changes.</summary>
-	public sealed record PatchSetRequest(BeatmapsetStatus? Status, bool? Visible, bool? Locked);
 
 	public static void MapBeatmaps(this RouteGroupBuilder v1)
 	{
@@ -39,18 +35,23 @@ internal static class BeatmapRoutes
 		var maps = v1.MapGroup("/beatmaps").WithTags("Beatmaps");
 
 		sets.MapGet("/", SearchAsync).RequireToken().WithSummary("Search beatmapsets.")
-			.WithDescription("`query` uses the beatmap search syntax. Hidden sets are listed only for those who manage them. Paged with `offset` and `limit`.");
+			.WithDescription(
+				"`query` uses the beatmap search syntax. Hidden sets are listed only for those who manage them. Paged with `offset` and `limit`.");
 		sets.MapGet("/{id:int}", GetSetAsync).WithSummary("Retrieve a beatmapset with its beatmaps.");
 		maps.MapGet("/{id:int}", GetBeatmapAsync).WithSummary("Retrieve a beatmap with its beatmapset.");
 		sets.MapPost("/", UploadAsync).RequireToken().DisableAntiforgery()
 			.WithSummary("Upload a beatmapset as an .osz archive in the `file` field.")
-			.WithDescription("A set that already exists is refused; the content of a set is never replaced. While the beatmapsets area is locked only managers can upload.");
+			.WithDescription(
+				"A set that already exists is refused; the content of a set is never replaced. While the beatmapsets area is locked only managers can upload.");
 		sets.MapDelete("/{id:int}", DeleteAsync).RequireToken().WithSummary("Delete a beatmapset.");
-		sets.MapPatch("/{id:int}", PatchAsync).RequireToken().WithSummary("Change the status, visibility or lock of a beatmapset.")
-			.WithDescription("Changing the status can change how clients submit scores and replays; use a status with a leaderboard (ranked, approved, qualified, loved) so those functions keep working.");
+		sets.MapPatch("/{id:int}", PatchAsync).RequireToken()
+			.WithSummary("Change the status, visibility or lock of a beatmapset.")
+			.WithDescription(
+				"Changing the status can change how clients submit scores and replays; use a status with a leaderboard (ranked, approved, qualified, loved) so those functions keep working.");
 
-		sets.MapGet("/{id:int}/audiopreview", (HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b, IBeatmapsetStorage s) =>
-			SetFileAsync(c, id, r, b, s, BeatmapsetFileType.Preview, m => m.Assets.AudioFile))
+		sets.MapGet("/{id:int}/audiopreview",
+				(HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b, IBeatmapsetStorage s) =>
+					SetFileAsync(c, id, r, b, s, BeatmapsetFileType.Preview, m => m.Assets.AudioFile))
 			.WithSummary("Play the preview clip of a beatmapset.");
 		sets.MapGet("/{id:int}/storyboard", (HttpContext c, int id, IBeatmapsetRepository r, IBeatmapsetStorage s) =>
 			StoryboardAsync(c, id, r, s)).RequireToken().WithSummary("Download the storyboard of a beatmapset.");
@@ -59,8 +60,10 @@ internal static class BeatmapRoutes
 			.WithDescription("`noVideo=1` leaves the video out.");
 		foreach (var (name, token) in new[] { ("audio", true), ("video", true), ("background", false) })
 		{
-			var route = sets.MapGet("/{id:int}/" + name, (HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b) =>
-				RedirectToLowestAsync(c, id, name, r, b)).WithSummary($"Redirect to the {name} of the lowest beatmap of the set.");
+			var route = sets.MapGet("/{id:int}/" + name,
+					(HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b) =>
+						RedirectToLowestAsync(c, id, name, r, b))
+				.WithSummary($"Redirect to the {name} of the lowest beatmap of the set.");
 			if (token) route.RequireToken();
 		}
 
@@ -143,7 +146,8 @@ internal static class BeatmapRoutes
 		if (set is null || !CanView(context, set)) return Api.NotFound("No such beatmapset.");
 
 		var list = await beatmaps.ListAsync(set, context.RequestAborted);
-		return Api.Ok(new SetDetailView(SetView.Of(set), [.. list.Where(b => CanView(context, b)).OrderBy(b => b.Id).Select(b => BeatmapView.Of(b, false))]));
+		return Api.Ok(new SetDetailView(SetView.Of(set),
+			[.. list.Where(b => CanView(context, b)).OrderBy(b => b.Id).Select(b => BeatmapView.Of(b, false))]));
 	}
 
 	private static async Task<IResult> GetBeatmapAsync(HttpContext context, int id, IBeatmapRepository beatmaps)
@@ -168,7 +172,8 @@ internal static class BeatmapRoutes
 
 		return import!.Failure switch
 		{
-			null => Api.Created(new SetDetailView(SetView.Of(import.Set!), [.. import.Beatmaps.Select(b => BeatmapView.Of(b, false))])),
+			null => Api.Created(new SetDetailView(SetView.Of(import.Set!),
+				[.. import.Beatmaps.Select(b => BeatmapView.Of(b, false))])),
 			BeatmapsetImportFailure.AlreadyExists => Api.Error(StatusCodes.Status409Conflict, "alreadyExists",
 				"The beatmapset already exists."),
 			BeatmapsetImportFailure.Locked => Api.Error(StatusCodes.Status409Conflict, "locked",
@@ -197,7 +202,8 @@ internal static class BeatmapRoutes
 		return Api.Ok(SetView.Of(set), "Updated successfully");
 	}
 
-	private static async Task<IResult?> ApplyPatchAsync(ScopedBeatmapset scoped, PatchSetRequest request, CancellationToken ct)
+	private static async Task<IResult?> ApplyPatchAsync(ScopedBeatmapset scoped, PatchSetRequest request,
+		CancellationToken ct)
 	{
 		if (request.Status is { } s && await scoped.SetStatusAsync(s, ct) is { IsOk: false } a) return a.Refusal();
 		if (request.Visible is { } v && await scoped.SetVisibleAsync(v, ct) is { IsOk: false } b) return b.Refusal();
@@ -251,4 +257,7 @@ internal static class BeatmapRoutes
 			? Api.NotFound("The beatmapset has no beatmaps.")
 			: Results.Redirect($"/v1/beatmaps/{lowest.Id}/{name}", false, true);
 	}
+
+	/// <summary>The management properties of a set that can change; the content never changes.</summary>
+	public sealed record PatchSetRequest(BeatmapsetStatus? Status, bool? Visible, bool? Locked);
 }

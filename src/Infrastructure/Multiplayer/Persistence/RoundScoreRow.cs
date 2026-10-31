@@ -19,7 +19,7 @@ internal sealed class RoundScoreRowConfiguration : IEntityTypeConfiguration<Roun
 	{
 		builder.ToTable("round_scores");
 		builder.HasKey(row => row.ScoreId);
-		builder.HasOne(ContextModel.ScoresTable, (string?)null).WithOne().HasForeignKey(typeof(RoundScoreRow), "ScoreId")
+		builder.HasOne(ContextModel.ScoresTable, null).WithOne().HasForeignKey(typeof(RoundScoreRow), "ScoreId")
 			.OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(row => new { row.MatchId, row.RoundNumber });
 	}

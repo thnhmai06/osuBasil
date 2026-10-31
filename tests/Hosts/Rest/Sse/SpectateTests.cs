@@ -16,7 +16,10 @@ public sealed class SpectateTests(RestHostFixture fixture)
 		return (osu, rest, osu.LoginCode);
 	}
 
-	private static string SpectateKey(int id) => "spectate:" + id;
+	private static string SpectateKey(int id)
+	{
+		return "spectate:" + id;
+	}
 
 	[Fact]
 	public async Task Spectate_WithoutAToken_Answers401_AndOfflinePlayerAnswers409()

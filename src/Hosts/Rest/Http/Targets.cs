@@ -1,7 +1,7 @@
-using Basil.Application.Common;
+using System.Text.Json;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 
@@ -43,7 +43,7 @@ public static class Targets
 		{
 			return await context.Request.ReadFromJsonAsync<T>(Api.Json, context.RequestAborted);
 		}
-		catch (System.Text.Json.JsonException)
+		catch (JsonException)
 		{
 			return null;
 		}

@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
+using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
-using Basil.Application.Chat.Objects;
 
 namespace Basil.Application.Chat.Registry;
 
@@ -51,7 +51,8 @@ public sealed class GeneralChannelRegistry
 		{
 			var now = channel.Context.Clock.GetUtcNow();
 			if (!channel.IsClosed && channel.CanRead(by, now) &&
-			    (channel.Record.Value.Visible || by.EffectivePermissions(now).Allows(UserPermissions.ChatManageChannels)))
+			    (channel.Record.Value.Visible ||
+			     by.EffectivePermissions(now).Allows(UserPermissions.ChatManageChannels)))
 				yield return channel;
 		}
 	}

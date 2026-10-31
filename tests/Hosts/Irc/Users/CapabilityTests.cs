@@ -127,7 +127,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 
 		await irc.RegisterWithSaslAsync("SomethingElse", "SaslRename", key);
 
-		Assert.Equal(":SomethingElse NICK SaslRename", (await irc.ReadUntilAsync(line => line.Contains(" NICK "))));
+		Assert.Equal(":SomethingElse NICK SaslRename", await irc.ReadUntilAsync(line => line.Contains(" NICK ")));
 		Assert.StartsWith(":irc.basil.test 001 SaslRename ", await irc.ExpectAsync("001"));
 	}
 

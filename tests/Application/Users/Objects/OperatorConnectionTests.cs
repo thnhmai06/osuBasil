@@ -1,5 +1,5 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -40,7 +40,8 @@ public sealed class OperatorConnectionTests
 		var by = await app.Users.OperateAsync(Token);
 
 		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
-			new UserData { Name = "FirstAdmin", Permissions = UserPermissionsGroups.All }, new(new byte[16]), Token);
+			new UserData { Name = "FirstAdmin", Permissions = UserPermissionsGroups.All }, new Md5(new byte[16]),
+			Token);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(UserPermissionsGroups.All, user!.Value.Permissions);
@@ -120,7 +121,8 @@ public sealed class OperatorRelationshipTests
 		var target = await app.CreateUserAsync("RelTarget2", "password");
 		var by = await app.LoginAsync(other);
 
-		var result = await app.Users.Of(target).ScopeTo(by).Relationships.HeldByAsync(owner, RelationshipType.Friend, true, Token);
+		var result = await app.Users.Of(target).ScopeTo(by).Relationships
+			.HeldByAsync(owner, RelationshipType.Friend, true, Token);
 
 		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
 	}
@@ -132,8 +134,12 @@ public sealed class OperatorRelationshipTests
 		var owner = await app.CreateUserAsync("RelOwner3", "password");
 		var by = await app.Users.OperateAsync(Token);
 
-		Assert.Equal(UserOutcome.Self, (await app.Users.Of(owner).ScopeTo(by).Relationships.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
-		Assert.Equal(UserOutcome.SystemAccount, (await app.Users.Of(by.Record).ScopeTo(by).Relationships.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
+		Assert.Equal(UserOutcome.Self,
+			(await app.Users.Of(owner).ScopeTo(by).Relationships
+				.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
+		Assert.Equal(UserOutcome.SystemAccount,
+			(await app.Users.Of(by.Record).ScopeTo(by).Relationships
+				.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
 	}
 
 	[Fact]

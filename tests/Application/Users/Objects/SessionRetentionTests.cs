@@ -90,9 +90,9 @@ public sealed class SessionRetentionTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Marked", "password");
-		var connection = await app.LoginAsync(user, Basil.Domain.Auth.SessionType.Osu);
+		var connection = await app.LoginAsync(user, SessionType.Osu);
 		await app.Provider.GetRequiredService<ISessionRepository>().EndAsync(user, null, null,
-			[Basil.Domain.Auth.SessionType.Osu], app.Clock.GetUtcNow(), SessionEndReason.Revoked, true, Token);
+			[SessionType.Osu], app.Clock.GetUtcNow(), SessionEndReason.Revoked, true, Token);
 		app.Clock.Advance(DefaultRetention + TimeSpan.FromDays(1));
 
 		var deleted = await app.Users.PurgeEndedSessionsAsync(Token);
@@ -108,7 +108,10 @@ public sealed class SessionRetentionTests
 		var staff = await app.CreateUserAsync("Staff", "password");
 		var target = await app.CreateUserAsync("Target", "password");
 		var log = app.Provider.GetRequiredService<IModerationLogRepository>();
-		await log.AppendAsync(new ModerationData { Action = ModerationAction.Note, By = staff, Target = target, Timestamp = app.Clock.GetUtcNow() }, Token);
+		await log.AppendAsync(
+			new ModerationData
+				{ Action = ModerationAction.Note, By = staff, Target = target, Timestamp = app.Clock.GetUtcNow() },
+			Token);
 		var connection = await app.LoginAsync(target);
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 		app.Clock.Advance(DefaultRetention * 10);

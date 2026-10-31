@@ -3,12 +3,12 @@ using Basil.Application.Common.Events;
 using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Capabilities;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Storage;
 using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
+using Basil.Application.Users.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Users;

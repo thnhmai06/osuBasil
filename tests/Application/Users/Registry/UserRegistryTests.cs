@@ -1,10 +1,8 @@
 using System.Net;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
+using System.Text;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
@@ -110,7 +108,7 @@ public sealed class UserRegistryTests
 		await app.CreateUserAsync("IrcByPassword", "password");
 
 		await Assert.ThrowsAsync<ArgumentException>(() => app.Users.LoginAsync(
-			new LoginAttempt("IrcByPassword", new Md5(System.Text.Encoding.UTF8.GetBytes("password"))),
+			new LoginAttempt("IrcByPassword", new Md5(Encoding.UTF8.GetBytes("password"))),
 			SessionType.Irc, IPAddress.Loopback, null, 0, TestContext.Current.CancellationToken));
 	}
 
@@ -135,7 +133,8 @@ public sealed class UserRegistryTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("KeyStored", "password");
 		var api = await app.LoginAsync(user);
-		var (_, key, _) = await app.Users.Of(user).ScopeTo(api).Sessions.OpenIrcAsync("device", TestContext.Current.CancellationToken);
+		var (_, key, _) = await app.Users.Of(user).ScopeTo(api).Sessions
+			.OpenIrcAsync("device", TestContext.Current.CancellationToken);
 
 		var refused = await app.Users.LoginWithTokenAsync(SessionType.Irc, key!, IPAddress.Loopback, _ => false,
 			TestContext.Current.CancellationToken);

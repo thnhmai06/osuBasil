@@ -6,6 +6,15 @@ namespace Basil.Host.Tests;
 
 public sealed class TrustedProxiesMiddlewareTests
 {
+	private static readonly string[] ForwardingHeaders =
+	[
+		"CF-Connecting-IP",
+		"X-Forwarded-For",
+		"X-Real-IP",
+		"CF-IPCountry",
+		"X-Country-Code"
+	];
+
 	[Fact]
 	public async Task InvokeAsync_UntrustedSocket_RemovesForwardingHeaders()
 	{
@@ -97,15 +106,6 @@ public sealed class TrustedProxiesMiddlewareTests
 
 		Assert.ThrowsAny<FormatException>(() => new TrustedProxiesMiddleware(_ => Task.CompletedTask, options));
 	}
-
-	private static readonly string[] ForwardingHeaders =
-	[
-		"CF-Connecting-IP",
-		"X-Forwarded-For",
-		"X-Real-IP",
-		"CF-IPCountry",
-		"X-Country-Code"
-	];
 
 	private static void SetForwardingHeaders(HttpContext context)
 	{

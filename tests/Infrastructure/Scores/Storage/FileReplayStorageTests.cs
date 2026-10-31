@@ -3,7 +3,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Scores.Persistence;
 using Basil.Infrastructure.Scores.Storage;
 using Basil.Testing.Persistence;
 

@@ -2,13 +2,12 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
@@ -156,7 +155,8 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	{
 		var hash = new Md5("0123456789abcdef0123456789abcdef");
 		var fingerprint = new OsuFingerprint(hash,
-			Md5Of(UninstallId), Md5Of(DiskSignature), new NetworkAdapters { Adapters = "runningunderwine", Hash = hash });
+			Md5Of(UninstallId), Md5Of(DiskSignature),
+			new NetworkAdapters { Adapters = "runningunderwine", Hash = hash });
 		return new OsuClient(new OsuVersion(new DateOnly(2026, 1, 1), null, OsuVersionStream.Stable),
 			fingerprint);
 	}
@@ -184,7 +184,10 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	/// <returns>The submission.</returns>
 	public Submission Genuine(ScoreData score, Md5? storyboard = null)
 	{
-		return new Submission { Score = score, Flags = OsuFlags.Clean, HashByClient = SubmissionChecksum(score, User.Value.Name, storyboard) };
+		return new Submission
+		{
+			Score = score, Flags = OsuFlags.Clean, HashByClient = SubmissionChecksum(score, User.Value.Name, storyboard)
+		};
 	}
 
 	/// <summary>Computes the checksum the osu! client sends for a score (the legacy formula of the osu! server).</summary>

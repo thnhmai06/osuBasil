@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text.Json.Nodes;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Users;
@@ -72,8 +73,10 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		using (plain)
 		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
 		{
-			var (denied, _) = await plain.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{setId}", new { visible = false });
-			var (patched, _) = await manager.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{setId}", new { visible = false });
+			var (denied, _) =
+				await plain.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{setId}", new { visible = false });
+			var (patched, _) =
+				await manager.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{setId}", new { visible = false });
 			var (hiddenForAnon, _) = await anon.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{setId}");
 			var (hiddenForPlain, _) = await plain.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{setId}");
 			var (visibleForManager, _) = await manager.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{setId}");
@@ -94,7 +97,8 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var (manager, _) = await fixture.SignInAsync("BmStatus", Manager);
 		using (manager)
 		{
-			var (patched, _) = await manager.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{setId}", new { status = "loved" });
+			var (patched, _) =
+				await manager.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{setId}", new { status = "loved" });
 			var (_, set) = await manager.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{setId}");
 
 			Assert.Equal(200, patched);
@@ -180,7 +184,8 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/selene-ui-mania.osz");
 		var hidden = beatmaps.OrderBy(b => b.Id).First();
 		var repository = fixture.Host.Services.GetRequiredService<IBeatmapRepository>();
-		var viewer = await fixture.SignInAsync("BmHiddenViewer", UserPermissionsGroups.Default | UserPermissions.BeatmapsetManageViewHidden);
+		var viewer = await fixture.SignInAsync("BmHiddenViewer",
+			UserPermissionsGroups.Default | UserPermissions.BeatmapsetManageViewHidden);
 		hidden.Visible = false;
 		await repository.UpdateAsync(hidden);
 		try
@@ -192,7 +197,8 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 				var (permitted, _) = await viewer.Client.CallAsync(HttpMethod.Get, $"/v1/beatmaps/{hidden.Id}");
 				var (anonymousFile, _) = await anon.CallAsync(HttpMethod.Get, $"/v1/beatmaps/{hidden.Id}/background");
 				var (setForAnon, set) = await anon.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{hidden.Beatmapset.Id}");
-				var (_, setForViewer) = await viewer.Client.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{hidden.Beatmapset.Id}");
+				var (_, setForViewer) =
+					await viewer.Client.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{hidden.Beatmapset.Id}");
 				using var redirect = await anon.GetAsync($"/v1/beatmapsets/{hidden.Beatmapset.Id}/background");
 
 				Assert.Equal(404, anonymous);
@@ -248,7 +254,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		}
 	}
 
-	private async Task<(int Status, System.Text.Json.Nodes.JsonNode? Envelope)> UploadAsync(RestClient client, byte[] archive)
+	private async Task<(int Status, JsonNode? Envelope)> UploadAsync(RestClient client, byte[] archive)
 	{
 		using var form = new MultipartFormDataContent();
 		var file = new ByteArrayContent(archive);
@@ -256,10 +262,11 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		form.Add(file, "file", "set.osz");
 		using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/beatmapsets") { Content = form };
 		request.Headers.Host = $"api.{fixture.Host.Domain}";
-		if (client.Bearer is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", client.Bearer);
+		if (client.Bearer is not null)
+			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", client.Bearer);
 		using var http = new HttpClient { BaseAddress = fixture.Host.Url };
 		using var response = await http.SendAsync(request);
 		var text = await response.Content.ReadAsStringAsync();
-		return ((int)response.StatusCode, text.Length == 0 ? null : System.Text.Json.Nodes.JsonNode.Parse(text));
+		return ((int)response.StatusCode, text.Length == 0 ? null : JsonNode.Parse(text));
 	}
 }

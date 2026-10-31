@@ -1,9 +1,9 @@
-using Basil.Application.Chat.Persistence;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Common.Events;
-using Basil.Domain.Chat;
 using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
+using Basil.Application.Common.Events;
+using Basil.Application.Users.Persistence;
+using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat.Objects;
 

@@ -1,6 +1,6 @@
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Storage;
-using Basil.Infrastructure.Common.Persistence;
 using Microsoft.Extensions.Hosting;
 
 namespace Basil.Infrastructure.Common.Workers;

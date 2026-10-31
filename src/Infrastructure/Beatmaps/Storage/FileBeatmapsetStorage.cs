@@ -378,7 +378,8 @@ internal sealed class FileBeatmapsetStorage(
 		DeletePackedSource(placed, target);
 	}
 
-	private void RestoreAfterFailure(FileBeatmapsetArchive placed, string target, string stagingFolder, string stagedArchive,
+	private void RestoreAfterFailure(FileBeatmapsetArchive placed, string target, string stagingFolder,
+		string stagedArchive,
 		string? aside)
 	{
 		if (aside is not null && Directory.Exists(aside) && !Directory.Exists(target))

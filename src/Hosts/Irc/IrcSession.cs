@@ -16,7 +16,10 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 {
 	private readonly ConcurrentDictionary<string, byte> _caps = new(StringComparer.Ordinal);
 	private readonly Lock _gate = new();
-	private readonly Channel<string> _lines = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+
+	private readonly Channel<string> _lines =
+		Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+
 	private List<Action<IrcSession>>? _held = [];
 
 	/// <summary>Gets the address of the socket; the only address the server uses and never shows.</summary>
@@ -139,7 +142,8 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 	public void Relay(IrcMessage message, UserRecord? account, DateTimeOffset at)
 	{
 		if (Has("server-time"))
-			message = message.WithTag("time", at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture));
+			message = message.WithTag("time",
+				at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture));
 		if (account is not null && Has("account-tag")) message = message.WithTag("account", account.Value.Name);
 		Deliver(message);
 	}

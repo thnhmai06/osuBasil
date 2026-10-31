@@ -1,13 +1,13 @@
-using Basil.Application.Content.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Content.Persistence;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Multiplayer.Objects;
 
 namespace Basil.Application.Multiplayer.Capabilities;
 
@@ -33,7 +33,8 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
 	/// <param name="isPrivate">
 	///     Whether the room is private: hidden from the lobby, with a match history that only its
-	///     participants, its managers and users with <see cref="UserPermissions.RoomManageViewPrivate" /> can view. Joining is not
+	///     participants, its managers and users with <see cref="UserPermissions.RoomManageViewPrivate" /> can view. Joining is
+	///     not
 	///     affected.
 	/// </param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
@@ -173,7 +174,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <returns>The outcome and, when successful, one part of the matches, newest first.</returns>
 	/// <remarks>Requires <see cref="UserPermissions.RoomManageAny" />.</remarks>
 	public async Task<(Result<RoomOutcome> Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
-		Persistence.MatchQuery query, PageRequest page, CancellationToken cancellationToken = default)
+		MatchQuery query, PageRequest page, CancellationToken cancellationToken = default)
 	{
 		if (Require(UserPermissions.RoomManageAny) is { } missing)
 			return (Result<RoomOutcome>.Denied(missing), null);
@@ -187,7 +188,8 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> for a public match, and for a private one when the user holds
-	///     <see cref="UserPermissions.RoomManageViewPrivate" />, took part in the match, or manages it (its creator, or a referee
+	///     <see cref="UserPermissions.RoomManageViewPrivate" />, took part in the match, or manages it (its creator, or a
+	///     referee
 	///     that is still one), or sits in or manages the match's open room. A suspended permission does not count.
 	/// </returns>
 	/// <remarks>

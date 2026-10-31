@@ -1,11 +1,8 @@
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Users.Workers;
-
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 

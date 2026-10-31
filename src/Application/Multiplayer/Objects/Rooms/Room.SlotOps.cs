@@ -1,7 +1,6 @@
-using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
@@ -215,10 +214,7 @@ public sealed partial class Room
 			Emit(new RoomSlotLockChanged(this, slot.Index, locking, evicted, Authority.Host,
 				progress));
 
-			if (evicted is not null)
-			{
-				ReportIfEmpty();
-			}
+			if (evicted is not null) ReportIfEmpty();
 
 			return RoomOutcome.Ok;
 		}

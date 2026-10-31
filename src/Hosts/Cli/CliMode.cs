@@ -25,7 +25,8 @@ public static class CliModes
 	///     <see cref="CliMode.NoGui" /> when it is asked for, or when the terminal is redirected or has no colour;
 	///     otherwise <see cref="CliMode.NoConsole" /> when it is asked for; otherwise <see cref="CliMode.Full" />.
 	/// </returns>
-	public static CliMode Choose(IEnumerable<string> args, bool inputRedirected, bool outputRedirected, bool supportsColour)
+	public static CliMode Choose(IEnumerable<string> args, bool inputRedirected, bool outputRedirected,
+		bool supportsColour)
 	{
 		var flags = args.Select(arg => arg.ToLowerInvariant()).ToHashSet();
 		if (flags.Contains("--nogui") || inputRedirected || outputRedirected || !supportsColour) return CliMode.NoGui;
@@ -37,13 +38,17 @@ public static class CliModes
 	public static bool TerminalSupportsColour()
 	{
 		var term = Environment.GetEnvironmentVariable("TERM");
-		return Environment.GetEnvironmentVariable("NO_COLOR") is null && !string.Equals(term, "dumb", StringComparison.OrdinalIgnoreCase);
+		return Environment.GetEnvironmentVariable("NO_COLOR") is null &&
+		       !string.Equals(term, "dumb", StringComparison.OrdinalIgnoreCase);
 	}
 
 	/// <summary>Removes the display arguments, which the configuration must not read as settings.</summary>
 	public static string[] Strip(IEnumerable<string> args)
 	{
-		return [.. args.Where(arg => !arg.Equals("--nogui", StringComparison.OrdinalIgnoreCase) &&
-		                             !arg.Equals("--noconsole", StringComparison.OrdinalIgnoreCase))];
+		return
+		[
+			.. args.Where(arg => !arg.Equals("--nogui", StringComparison.OrdinalIgnoreCase) &&
+			                     !arg.Equals("--noconsole", StringComparison.OrdinalIgnoreCase))
+		];
 	}
 }

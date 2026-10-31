@@ -5,6 +5,12 @@ namespace Basil.Infrastructure.Common.Persistence;
 /// <summary>The model pieces that every module context shares: its own configurations and the tables it references.</summary>
 public static class ContextModel
 {
+	/// <summary>The name of the entity type that stands for the <c>users</c> table, which the users module owns.</summary>
+	public const string UsersTable = "UsersPrincipal";
+
+	/// <summary>The name of the entity type that stands for the <c>scores</c> table, which the scores module owns.</summary>
+	public const string ScoresTable = "ScoresPrincipal";
+
 	/// <summary>Applies the configurations of the module the context belongs to.</summary>
 	/// <typeparam name="TContext">The context whose configuration is applied.</typeparam>
 	/// <param name="modelBuilder">The model being built.</param>
@@ -14,12 +20,6 @@ public static class ContextModel
 		modelBuilder.ApplyConfigurationsFromAssembly(typeof(TContext).Assembly,
 			type => type.Namespace == typeof(TContext).Namespace);
 	}
-
-	/// <summary>The name of the entity type that stands for the <c>users</c> table, which the users module owns.</summary>
-	public const string UsersTable = "UsersPrincipal";
-
-	/// <summary>The name of the entity type that stands for the <c>scores</c> table, which the scores module owns.</summary>
-	public const string ScoresTable = "ScoresPrincipal";
 
 	/// <summary>Maps the users table, which the users module creates, without migrating it.</summary>
 	/// <param name="modelBuilder">The model being built.</param>

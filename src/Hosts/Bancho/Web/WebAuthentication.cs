@@ -1,7 +1,6 @@
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
@@ -36,7 +35,7 @@ internal sealed class WebAuthentication(
 		CancellationToken cancellationToken)
 	{
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;
-		var normalized = Basil.Domain.Users.UserData.NormalizeName(username);
+		var normalized = UserData.NormalizeName(username);
 		var online = registry.Online.Values.FirstOrDefault(user => user.Record.Value.NormalizedName == normalized);
 		if (online?.Bancho is not { IsOpen: true } client) return null;
 		var rules = (await settings.GetAsync(cancellationToken)).RateLimits.Login;

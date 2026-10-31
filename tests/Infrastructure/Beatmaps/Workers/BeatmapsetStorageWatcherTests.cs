@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Infrastructure.Beatmaps.Workers;
 using Basil.Infrastructure.Beatmaps.Tests.Support;
+using Basil.Infrastructure.Beatmaps.Workers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

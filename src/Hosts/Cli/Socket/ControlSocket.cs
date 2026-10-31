@@ -39,21 +39,23 @@ public static class ControlSocket
 
 	/// <summary>Reads a framed reply: writes the output lines and returns the exit code.</summary>
 	/// <returns>The exit code, or <see langword="null" /> when the reply ended without one.</returns>
-	public static async Task<int?> ReadReplyAsync(StreamReader reader, TextWriter output, CancellationToken cancellationToken)
+	public static async Task<int?> ReadReplyAsync(StreamReader reader, TextWriter output,
+		CancellationToken cancellationToken)
 	{
 		while (await reader.ReadLineAsync(cancellationToken) is { } line)
-		{
-			if (line.StartsWith(OutputPrefix, StringComparison.Ordinal)) await output.WriteLineAsync(line[OutputPrefix.Length..]);
-			else if (line.StartsWith(ExitPrefix, StringComparison.Ordinal) && int.TryParse(line[ExitPrefix.Length..], out var code))
+			if (line.StartsWith(OutputPrefix, StringComparison.Ordinal))
+				await output.WriteLineAsync(line[OutputPrefix.Length..]);
+			else if (line.StartsWith(ExitPrefix, StringComparison.Ordinal) &&
+			         int.TryParse(line[ExitPrefix.Length..], out var code))
 				return code;
-		}
 
 		return null;
 	}
 
 	/// <summary>Connects to a socket.</summary>
 	/// <returns>The connected socket, or <see langword="null" /> when nothing listens there.</returns>
-	public static async Task<System.Net.Sockets.Socket?> TryConnectAsync(string path, CancellationToken cancellationToken)
+	public static async Task<System.Net.Sockets.Socket?> TryConnectAsync(string path,
+		CancellationToken cancellationToken)
 	{
 		if (path.Length > MaxPathLength || !File.Exists(path)) return null;
 
@@ -80,13 +82,21 @@ public static class ControlClient
 	/// <returns>The open connection, or <see langword="null" /> when no server is running.</returns>
 	public static async Task<ControlConnection?> ConnectAsync(string path, CancellationToken cancellationToken)
 	{
-		return await ControlSocket.TryConnectAsync(path, cancellationToken) is { } socket ? new ControlConnection(socket) : null;
+		return await ControlSocket.TryConnectAsync(path, cancellationToken) is { } socket
+			? new ControlConnection(socket)
+			: null;
 	}
 }
 
 /// <summary>An open connection to a running server, which takes one command.</summary>
 public sealed class ControlConnection(System.Net.Sockets.Socket socket) : IDisposable
 {
+	/// <inheritdoc />
+	public void Dispose()
+	{
+		socket.Dispose();
+	}
+
 	/// <summary>Sends a command and writes the reply as it arrives.</summary>
 	/// <param name="args">The words of the command line.</param>
 	/// <param name="output">Where the output goes.</param>
@@ -99,12 +109,6 @@ public sealed class ControlConnection(System.Net.Sockets.Socket socket) : IDispo
 		await stream.WriteAsync(request, cancellationToken);
 		using var reader = new StreamReader(stream, Encoding.UTF8);
 		return await ControlSocket.ReadReplyAsync(reader, output, cancellationToken) ?? ExitCodes.NotRunning;
-	}
-
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		socket.Dispose();
 	}
 }
 
@@ -122,7 +126,8 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 	{
 		if (path.Length > ControlSocket.MaxPathLength)
 		{
-			logger.LogError("The control socket path is longer than {Max} characters, so the server runs without it: {Path}",
+			logger.LogError(
+				"The control socket path is longer than {Max} characters, so the server runs without it: {Path}",
 				ControlSocket.MaxPathLength, path);
 			return;
 		}
@@ -194,7 +199,8 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 			await using var stream = new NetworkStream(socket, false);
 			using var reader = new StreamReader(stream, Encoding.UTF8);
 			var line = await reader.ReadLineAsync(timeout.Token);
-			await using var writer = new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
+			await using var writer = new StreamWriter(stream, new UTF8Encoding(false))
+				{ AutoFlush = true, NewLine = "\n" };
 			var args = line is null ? null : JsonSerializer.Deserialize<string[]>(line);
 			if (args is null or { Length: 0 })
 			{
@@ -206,7 +212,8 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 			var code = await runner.RunAsync(args, output, true, null, stoppingToken);
 			await writer.WriteLineAsync(ControlSocket.FrameExit(code));
 		}
-		catch (Exception exception) when (exception is IOException or SocketException or JsonException or OperationCanceledException)
+		catch (Exception exception) when (exception is IOException or SocketException or JsonException
+			                                  or OperationCanceledException)
 		{
 			logger.LogDebug(exception, "A control connection ended");
 		}

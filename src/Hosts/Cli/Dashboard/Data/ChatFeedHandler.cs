@@ -1,4 +1,3 @@
-using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Mediator;
 
@@ -10,7 +9,8 @@ internal sealed class ChatFeedHandler(ChatFeed feed) : INotificationHandler<Chan
 	public ValueTask Handle(ChannelMessagePosted notification, CancellationToken cancellationToken)
 	{
 		var message = notification.Message;
-		feed.Add(new ChatLine(message.Timestamp, notification.Channel.Name, message.Author.Value.Name, message.Content));
+		feed.Add(new ChatLine(message.Timestamp, notification.Channel.Name, message.Author.Value.Name,
+			message.Content));
 		return ValueTask.CompletedTask;
 	}
 }

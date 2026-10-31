@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 
@@ -30,23 +29,29 @@ public interface IThemeControl
 	bool Set(string name);
 }
 
-/// <summary>The commands that exist only on the console: <c>help</c>, <c>status</c>, <c>shutdown</c>, <c>restart</c> and <c>theme</c>.</summary>
+/// <summary>
+///     The commands that exist only on the console: <c>help</c>, <c>status</c>, <c>shutdown</c>, <c>restart</c> and
+///     <c>theme</c>.
+/// </summary>
 internal static class MetaCommands
 {
 	public static IEnumerable<CommandDef> Create(Func<CommandCatalog> catalog)
 	{
 		yield return new CommandDef
 		{
-			Pattern = "help", Offline = true, NeedsStorage = false, Summary = "Lists the commands.", Run = call => HelpAsync(call, catalog(), [])
+			Pattern = "help", Offline = true, NeedsStorage = false, Summary = "Lists the commands.",
+			Run = call => HelpAsync(call, catalog(), [])
 		};
 		yield return new CommandDef
 		{
-			Pattern = "help <topic>", Offline = true, NeedsStorage = false, Summary = "Shows the syntax, options and API route of a command.",
+			Pattern = "help <topic>", Offline = true, NeedsStorage = false,
+			Summary = "Shows the syntax, options and API route of a command.",
 			Run = call => HelpAsync(call, catalog(), [call.Word("topic")])
 		};
 		yield return new CommandDef
 		{
-			Pattern = "status", Summary = "Shows the version, the uptime, the connections online and the rooms.", Run = StatusAsync
+			Pattern = "status", Summary = "Shows the version, the uptime, the connections online and the rooms.",
+			Run = StatusAsync
 		};
 		foreach (var restart in new[] { false, true })
 		{
@@ -54,14 +59,18 @@ internal static class MetaCommands
 			yield return new CommandDef
 			{
 				Pattern = again ? "restart" : "shutdown",
-				Summary = again ? "Shuts the server down gracefully and asks to be started again." : "Shuts the server down gracefully.",
-				Options = [new("now", "Do not ask for confirmation.", OptionKind.Bool)], Run = call => ShutdownAsync(call, again)
+				Summary = again
+					? "Shuts the server down gracefully and asks to be started again."
+					: "Shuts the server down gracefully.",
+				Options = [new OptionDef("now", "Do not ask for confirmation.", OptionKind.Bool)],
+				Run = call => ShutdownAsync(call, again)
 			};
 		}
 
 		yield return new CommandDef
 		{
-			Pattern = "theme", DashboardOnly = true, Summary = "Lists the colour themes.", Run = call => ThemeAsync(call, null)
+			Pattern = "theme", DashboardOnly = true, Summary = "Lists the colour themes.",
+			Run = call => ThemeAsync(call, null)
 		};
 		yield return new CommandDef
 		{
@@ -84,13 +93,17 @@ internal static class MetaCommands
 		if (topic.Count == 0)
 		{
 			call.Output.Table(["command", "description", "offline"],
-				[.. catalog.All.Select(command => (IReadOnlyList<string>)[command.Pattern, command.Summary, command.Offline ? "yes" : "no"])]);
+			[
+				.. catalog.All.Select(command => (IReadOnlyList<string>)
+					[command.Pattern, command.Summary, command.Offline ? "yes" : "no"])
+			]);
 			return Task.FromResult(ExitCodes.Success);
 		}
 
 		foreach (var command in commands)
 		{
-			var options = string.Concat(command.Options.Select(o => o.Required ? $" --{o.Name} <{o.Kind.ToString().ToLowerInvariant()}>" : $" [--{o.Name}]"));
+			var options = string.Concat(command.Options.Select(o =>
+				o.Required ? $" --{o.Name} <{o.Kind.ToString().ToLowerInvariant()}>" : $" [--{o.Name}]"));
 			call.Output.Line($"{command.Pattern}{options}");
 			call.Output.Line($"  {command.Summary}");
 			if (command.AllRoutes.Any()) call.Output.Line($"  api: {string.Join(", ", command.AllRoutes)}");
@@ -107,7 +120,8 @@ internal static class MetaCommands
 		var lobby = call.Get<Lobby>();
 		var now = call.Get<TimeProvider>().GetUtcNow();
 		using var process = Process.GetCurrentProcess();
-		var online = registry.Online.Values.SelectMany(user => user.Connections).Where(c => c.Type != SessionType.Bot).ToList();
+		var online = registry.Online.Values.SelectMany(user => user.Connections).Where(c => c.Type != SessionType.Bot)
+			.ToList();
 		var fields = new List<(string, string)>
 		{
 			("version", Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown"),

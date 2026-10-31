@@ -1,4 +1,5 @@
 using Basil.Host.Cli.Commands;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Cli.Dashboard.Data;
 
@@ -10,7 +11,14 @@ namespace Basil.Host.Cli.Dashboard.Data;
 /// <param name="Room">The room it is in, or <c>-</c>.</param>
 /// <param name="Idle">How long since the last activity.</param>
 /// <param name="Permissions">The effective permissions.</param>
-public sealed record UserRow(int Id, string Name, string Connections, string Status, string Room, TimeSpan Idle, ulong Permissions);
+public sealed record UserRow(
+	int Id,
+	string Name,
+	string Connections,
+	string Status,
+	string Room,
+	TimeSpan Idle,
+	ulong Permissions);
 
 /// <summary>One slot of the room that is selected.</summary>
 /// <param name="Index">The slot number.</param>
@@ -26,7 +34,14 @@ public sealed record SlotRow(int Index, string Player, string State);
 /// <param name="State">Playing, waiting or locked.</param>
 /// <param name="Host">The host, or <c>-</c>.</param>
 /// <param name="Slots">The slots.</param>
-public sealed record RoomRow(int Id, string Name, int Players, int Size, string State, string Host, IReadOnlyList<SlotRow> Slots);
+public sealed record RoomRow(
+	int Id,
+	string Name,
+	int Players,
+	int Size,
+	string State,
+	string Host,
+	IReadOnlyList<SlotRow> Slots);
 
 /// <summary>The tabs of the dashboard.</summary>
 public enum DashboardTab : byte
@@ -55,6 +70,9 @@ public sealed class DashboardModel
 {
 	/// <summary>How many seconds of history the graphs keep.</summary>
 	public const int HistorySeconds = 15 * 60;
+
+	private readonly List<OutputLine> _output = [];
+	private readonly Lock _outputGate = new();
 
 	/// <summary>Gets the name of the server's version.</summary>
 	public string Version { get; set; } = string.Empty;
@@ -111,7 +129,7 @@ public sealed class DashboardModel
 	public string Filter { get; set; } = string.Empty;
 
 	/// <summary>Gets the lowest level the log tab shows.</summary>
-	public Microsoft.Extensions.Logging.LogLevel MinimumLevel { get; set; } = Microsoft.Extensions.Logging.LogLevel.Information;
+	public LogLevel MinimumLevel { get; set; } = LogLevel.Information;
 
 	/// <summary>Gets a value that indicates whether the log stands still instead of following the newest line.</summary>
 	public bool LogPaused { get; set; }
@@ -119,17 +137,23 @@ public sealed class DashboardModel
 	/// <summary>Gets the lines shown in the log while it is paused.</summary>
 	public IReadOnlyList<LogLine>? LogFrozen { get; set; }
 
-	private readonly List<OutputLine> _output = [];
-	private readonly Lock _outputGate = new();
-
 	/// <summary>Gets the output of the commands typed in the command box.</summary>
 	public IReadOnlyList<OutputLine> Output
 	{
 		get
 		{
-			lock (_outputGate) return [.. _output];
+			lock (_outputGate)
+			{
+				return [.. _output];
+			}
 		}
 	}
+
+	/// <summary>Gets the message of the Ctrl+C state, or an empty string.</summary>
+	public string Notice { get; set; } = string.Empty;
+
+	/// <summary>Gets the last status of the shutdown, or an empty string.</summary>
+	public string ShutdownStatus { get; set; } = string.Empty;
 
 	/// <summary>Adds a line to the output of the command box, keeping the most recent 200.</summary>
 	public void AddOutput(OutputLine line)
@@ -140,10 +164,4 @@ public sealed class DashboardModel
 			if (_output.Count > 200) _output.RemoveAt(0);
 		}
 	}
-
-	/// <summary>Gets the message of the Ctrl+C state, or an empty string.</summary>
-	public string Notice { get; set; } = string.Empty;
-
-	/// <summary>Gets the last status of the shutdown, or an empty string.</summary>
-	public string ShutdownStatus { get; set; } = string.Empty;
 }

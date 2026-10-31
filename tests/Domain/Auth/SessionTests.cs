@@ -1,3 +1,4 @@
+using System.Net;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 
@@ -16,7 +17,7 @@ public sealed class SessionTests
 			Id = Guid.Parse("9e0d20f2-3630-4308-a500-055e9120da77"),
 			User = new UserRecord { Id = 2, Value = new UserData { Name = "session_user" } },
 			Type = SessionType.Osu,
-			Ip = System.Net.IPAddress.Loopback,
+			Ip = IPAddress.Loopback,
 			StartedAt = startedAt
 		};
 

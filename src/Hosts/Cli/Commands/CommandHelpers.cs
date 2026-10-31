@@ -1,9 +1,9 @@
-using Basil.Application.Common;
+using System.Text;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Capabilities;
-using Basil.Application.Users.Objects;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Host.Cli.Commands;
@@ -35,7 +35,7 @@ internal static class CommandHelpers
 	/// <summary>Prints a page of views as a table with its position.</summary>
 	public static void PrintPage<T>(this CommandCall call, Page<T> page, PageRequest request) where T : class
 	{
-		call.Formatter.PrintTable(call.Output, [.. page.Items.Cast<object>()]);
+		call.Formatter.PrintTable(call.Output, [.. page.Items]);
 		call.Output.Line($"{page.Items.Count} of {page.Total} (offset {request.Offset}, limit {request.Limit})");
 	}
 
@@ -55,8 +55,8 @@ internal static class CommandHelpers
 	}
 
 	/// <summary>Hashes a plain password the way the API does.</summary>
-	public static Basil.Domain.Common.Md5 Md5Of(string password)
+	public static Md5 Md5Of(string password)
 	{
-		return new Basil.Domain.Common.Md5(System.Text.Encoding.UTF8.GetBytes(password));
+		return new Md5(Encoding.UTF8.GetBytes(password));
 	}
 }

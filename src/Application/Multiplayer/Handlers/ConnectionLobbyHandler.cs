@@ -1,10 +1,9 @@
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Common.Events;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Mediator;
 using Microsoft.Extensions.Logging;
-using Basil.Application.Multiplayer.Registry;
 
 namespace Basil.Application.Multiplayer.Handlers;
 

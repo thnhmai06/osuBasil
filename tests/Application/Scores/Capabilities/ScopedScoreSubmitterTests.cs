@@ -1,6 +1,6 @@
+using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Scores.Objects;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Common;

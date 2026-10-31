@@ -1,5 +1,4 @@
 using Basil.Application.Content.Persistence;
-using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Users;
@@ -46,7 +45,8 @@ public sealed class SessionTests(RestHostFixture fixture)
 			var (closed, _) = await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions");
 			var (firstStill, _) = await first.CallAsync(HttpMethod.Get, "/v1/auth/session");
 			var (secondGone, _) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
-			var (everything, _) = await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions", new { keepCurrent = false });
+			var (everything, _) = await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions",
+				new { keepCurrent = false });
 			var (firstGone, _) = await first.CallAsync(HttpMethod.Get, "/v1/auth/session");
 
 			Assert.Equal(200, closed);
@@ -67,7 +67,8 @@ public sealed class SessionTests(RestHostFixture fixture)
 		using (staff)
 		{
 			var (_, session) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
-			var (one, _) = await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions/{(string)session!["data"]!["sessionId"]!}");
+			var (one, _) = await first.CallAsync(HttpMethod.Delete,
+				$"/v1/users/{id}/sessions/{(string)session!["data"]!["sessionId"]!}");
 			var (secondGone, _) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
 			var (byStaff, _) = await staff.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions");
 			var (firstGone, _) = await first.CallAsync(HttpMethod.Get, "/v1/auth/session");
@@ -108,7 +109,8 @@ public sealed class SessionTests(RestHostFixture fixture)
 
 			using var again = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 			await again.LoginAsync("SesPwInc", "second");
-			var (byStaff, _) = await staff.CallAsync(HttpMethod.Put, $"/v1/users/{id}/password", new { @new = "third" });
+			var (byStaff, _) =
+				await staff.CallAsync(HttpMethod.Put, $"/v1/users/{id}/password", new { @new = "third" });
 			var (againGone, _) = await again.CallAsync(HttpMethod.Get, "/v1/auth/session");
 
 			Assert.Equal(200, own);
@@ -130,11 +132,14 @@ public sealed class SessionTests(RestHostFixture fixture)
 		await ownerClient.LoginAsync("SesLocked");
 		await staffClient.LoginAsync("SesLockStaff");
 		var settings = host.Services.GetRequiredService<ISettingsRepository>();
-		await settings.CreateOrUpdateAsync((await settings.GetAsync()) with { Locks = Locks.Profiles });
+		await settings.CreateOrUpdateAsync(await settings.GetAsync() with { Locks = Locks.Profiles });
 
-		var (rename, renameBody) = await ownerClient.CallAsync(HttpMethod.Patch, $"/v1/users/{owner.Id}", new { name = "NewName1" });
-		var (password, _) = await ownerClient.CallAsync(HttpMethod.Put, $"/v1/users/{owner.Id}/password", new { current = "password", @new = "x" });
-		var (byStaff, _) = await staffClient.CallAsync(HttpMethod.Patch, $"/v1/users/{owner.Id}", new { name = "NewName2" });
+		var (rename, renameBody) =
+			await ownerClient.CallAsync(HttpMethod.Patch, $"/v1/users/{owner.Id}", new { name = "NewName1" });
+		var (password, _) = await ownerClient.CallAsync(HttpMethod.Put, $"/v1/users/{owner.Id}/password",
+			new { current = "password", @new = "x" });
+		var (byStaff, _) =
+			await staffClient.CallAsync(HttpMethod.Patch, $"/v1/users/{owner.Id}", new { name = "NewName2" });
 
 		Assert.Equal(409, rename);
 		Assert.Equal("locked", (string)renameBody!["errors"]!["code"]!);
@@ -151,7 +156,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("SesRoomLock");
 		var settings = host.Services.GetRequiredService<ISettingsRepository>();
-		await settings.CreateOrUpdateAsync((await settings.GetAsync()) with { Locks = Locks.Rooms });
+		await settings.CreateOrUpdateAsync(await settings.GetAsync() with { Locks = Locks.Rooms });
 
 		var (status, envelope) = await client.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Locked out" });
 

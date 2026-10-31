@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Reflection;
 using System.Runtime;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace Basil.Host.Shared.Diagnostics;
@@ -16,18 +17,18 @@ public sealed class RuntimeSampler : IDisposable
 	private const int RecentExceptions = 20;
 	private static readonly string[] Categories = ["process", "gc", "threadpool", "runtime", "exceptions", "http"];
 	private readonly TimeProvider _clock;
-	private readonly DateTimeOffset _started;
-	private readonly ConcurrentQueue<string> _recent = new();
 	private readonly ConcurrentDictionary<string, HostWindow> _hosts = new();
 	private readonly MeterListener _listener = new();
+	private readonly ConcurrentQueue<string> _recent = new();
+	private readonly DateTimeOffset _started;
 	private readonly object _sync = new();
+	private Dictionary<string, object> _cache = new();
 	private long _exceptions;
-	private long _lastExceptions;
-	private TimeSpan _lastCpu;
 	private long _lastAllocated;
 	private long _lastCompleted;
+	private TimeSpan _lastCpu;
+	private long _lastExceptions;
 	private DateTimeOffset _lastSample;
-	private Dictionary<string, object> _cache = new();
 
 	/// <summary>Starts counting exceptions and request durations.</summary>
 	/// <param name="clock">The clock of the server.</param>
@@ -50,6 +51,16 @@ public sealed class RuntimeSampler : IDisposable
 	/// <summary>Gets the names of the categories this sampler fills.</summary>
 	public static IReadOnlyList<string> Names => Categories;
 
+	/// <summary>Gets or sets how the sample reads the number of log events dropped because the log queue was full.</summary>
+	public Func<long> LogsDropped { get; set; } = () => 0;
+
+	/// <inheritdoc />
+	public void Dispose()
+	{
+		AppDomain.CurrentDomain.FirstChanceException -= OnException;
+		_listener.Dispose();
+	}
+
 	/// <summary>Takes the sample of the second; sampling again within the same second returns the same values.</summary>
 	/// <returns>The value of each category.</returns>
 	public IReadOnlyDictionary<string, object> Sample()
@@ -71,13 +82,15 @@ public sealed class RuntimeSampler : IDisposable
 			{
 				["process"] = new
 				{
-					cpuPercent = Math.Round((cpu - _lastCpu).TotalSeconds / elapsed / Environment.ProcessorCount * 100, 2),
+					cpuPercent = Math.Round((cpu - _lastCpu).TotalSeconds / elapsed / Environment.ProcessorCount * 100,
+						2),
 					workingSetBytes = process.WorkingSet64, privateMemoryBytes = process.PrivateMemorySize64,
 					handles = process.HandleCount, threads = process.Threads.Count
 				},
 				["gc"] = new
 				{
-					heapBytes = gc.HeapSizeBytes, generations = gc.GenerationInfo.ToArray().Select(g => g.SizeAfterBytes),
+					heapBytes = gc.HeapSizeBytes,
+					generations = gc.GenerationInfo.ToArray().Select(g => g.SizeAfterBytes),
 					collections = new[] { GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2) },
 					pauseMilliseconds = GC.GetTotalPauseDuration().TotalMilliseconds,
 					allocatedBytesPerSecond = (long)((allocated - _lastAllocated) / elapsed)
@@ -91,10 +104,14 @@ public sealed class RuntimeSampler : IDisposable
 				{
 					version = RuntimeInformation.FrameworkDescription, os = RuntimeInformation.OSDescription,
 					build = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(),
-					uptimeSeconds = (long)(now - _started).TotalSeconds, cpus = Environment.ProcessorCount, logsDropped = LogsDropped(),
+					uptimeSeconds = (long)(now - _started).TotalSeconds, cpus = Environment.ProcessorCount,
+					logsDropped = LogsDropped(),
 					environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production"
 				},
-				["exceptions"] = new { perSecond = (exceptions - _lastExceptions) / elapsed, total = exceptions, recent = _recent.ToArray() },
+				["exceptions"] = new
+				{
+					perSecond = (exceptions - _lastExceptions) / elapsed, total = exceptions, recent = _recent.ToArray()
+				},
 				["http"] = _hosts.OrderBy(h => h.Key).ToDictionary(h => h.Key, h => h.Value.Snapshot(elapsed))
 			};
 			_lastCpu = cpu;
@@ -105,9 +122,6 @@ public sealed class RuntimeSampler : IDisposable
 			return _cache = result;
 		}
 	}
-
-	/// <summary>Gets or sets how the sample reads the number of log events dropped because the log queue was full.</summary>
-	public Func<long> LogsDropped { get; set; } = () => 0;
 
 	/// <summary>Forgets the counted exceptions and the list of recent ones.</summary>
 	public void ResetExceptions()
@@ -124,14 +138,7 @@ public sealed class RuntimeSampler : IDisposable
 		GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
 	}
 
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		AppDomain.CurrentDomain.FirstChanceException -= OnException;
-		_listener.Dispose();
-	}
-
-	private void OnException(object? sender, System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs args)
+	private void OnException(object? sender, FirstChanceExceptionEventArgs args)
 	{
 		Interlocked.Increment(ref _exceptions);
 		_recent.Enqueue(args.Exception.GetType().Name);
@@ -153,8 +160,8 @@ public sealed class RuntimeSampler : IDisposable
 
 	private sealed class HostWindow
 	{
-		private readonly object _lock = new();
 		private readonly List<double> _durations = [];
+		private readonly object _lock = new();
 		private readonly Dictionary<string, int> _statuses = new();
 
 		public void Add(double milliseconds, string status)

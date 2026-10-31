@@ -1,4 +1,3 @@
-using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Bot.Commands.Mp;
@@ -7,7 +6,11 @@ using Basil.Domain.Users;
 namespace Basil.Bot.Commands;
 
 /// <summary>Dispatches chat commands to their handlers.</summary>
-internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCommands mpCommands, ChannelCommands channelCommands,
+internal sealed class ChatCommands(
+	IUserRepository users,
+	IFaqStorage faqs,
+	MpCommands mpCommands,
+	ChannelCommands channelCommands,
 	Random random)
 {
 	/// <summary>The text that starts a command.</summary>

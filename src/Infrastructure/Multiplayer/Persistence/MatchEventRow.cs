@@ -24,8 +24,10 @@ internal sealed class MatchEventRowConfiguration : IEntityTypeConfiguration<Matc
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).UseIdentityAlwaysColumn();
 		builder.HasOne<MatchRow>().WithMany().HasForeignKey(row => row.MatchId).OnDelete(DeleteBehavior.NoAction);
-		builder.HasOne(ContextModel.UsersTable, (string?)null).WithMany().HasForeignKey("ActorId").OnDelete(DeleteBehavior.NoAction);
-		builder.HasOne(ContextModel.UsersTable, (string?)null).WithMany().HasForeignKey("TargetId").OnDelete(DeleteBehavior.NoAction);
+		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("ActorId")
+			.OnDelete(DeleteBehavior.NoAction);
+		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("TargetId")
+			.OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(row => row.MatchId);
 	}
 }

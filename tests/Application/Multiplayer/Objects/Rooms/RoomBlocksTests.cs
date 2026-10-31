@@ -1,5 +1,5 @@
-using Basil.Application.Users.Persistence;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;

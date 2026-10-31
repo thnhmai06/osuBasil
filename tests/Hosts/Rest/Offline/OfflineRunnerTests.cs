@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Rest.Tests.Offline;
@@ -13,14 +12,17 @@ namespace Basil.Host.Rest.Tests.Offline;
 [Collection("REST host")]
 public sealed class OfflineRunnerTests(RestHostFixture fixture)
 {
-	private static Dictionary<string, string?> Settings(string connection, string root) => new()
+	private static Dictionary<string, string?> Settings(string connection, string root)
 	{
-		["Basil:Database:ConnectionString"] = connection,
-		["Basil:Storage:DataDirectory"] = Path.Combine(root, "Data"),
-		["Basil:Server:Domain"] = BasilHost.DomainName,
-		["Basil:Server:Ports:Irc"] = "0",
-		["Basil:Bot:Replies:Path"] = Path.Combine(root, "Templates", "replies.json")
-	};
+		return new Dictionary<string, string?>
+		{
+			["Basil:Database:ConnectionString"] = connection,
+			["Basil:Storage:DataDirectory"] = Path.Combine(root, "Data"),
+			["Basil:Server:Domain"] = BasilHost.DomainName,
+			["Basil:Server:Ports:Irc"] = "0",
+			["Basil:Bot:Replies:Path"] = Path.Combine(root, "Templates", "replies.json")
+		};
+	}
 
 	[Fact]
 	public async Task UsersCreate_StoresAnAdministrator_WhoCanThenSignInToTheServer_AndATakenNameFails()
@@ -33,8 +35,10 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 			var args = new[] { "users", "create", "--username", "FirstAdmin", "--password", "s3cret", "--admin" };
 
 			var text = new StringWriter();
-			var created = await ShellRunner.RunAsync(args, b => b.Configuration.AddInMemoryCollection(Settings(connection, root)), text);
-			var again = await OfflineRunner.RunAsync(args, b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
+			var created = await ShellRunner.RunAsync(args,
+				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)), text);
+			var again = await OfflineRunner.RunAsync(args,
+				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
 			var missing = await OfflineRunner.RunAsync(["users", "create", "--username", "NoPassword"],
 				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
 
@@ -51,7 +55,8 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 			await app.StartAsync();
 			try
 			{
-				var url = new Uri(app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First());
+				var url = new Uri(app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!
+					.Addresses.First());
 				using var client = new RestClient(url, BasilHost.DomainName);
 				var id = await client.LoginAsync("FirstAdmin", "s3cret");
 				var (status, user) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}");

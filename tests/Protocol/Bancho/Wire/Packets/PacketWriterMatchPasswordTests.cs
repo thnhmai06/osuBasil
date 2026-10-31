@@ -1,3 +1,4 @@
+using System.Text;
 using Basil.Protocol.Bancho.Models.Multiplayer;
 using Basil.Protocol.Bancho.Wire.Packets;
 
@@ -68,7 +69,7 @@ public class PacketWriterMatchPasswordTests
 		// the packets differ only in the packet id (26 UpdateMatch, 27 NewMatch)
 		Assert.Equal(27, BitConverter.ToUInt16(created, 0));
 		Assert.Equal(updated[2..], created[2..]);
-		Assert.DoesNotContain("secret", System.Text.Encoding.UTF8.GetString(created));
+		Assert.DoesNotContain("secret", Encoding.UTF8.GetString(created));
 	}
 
 	[Fact]
@@ -76,7 +77,7 @@ public class PacketWriterMatchPasswordTests
 	{
 		var room = Room() with { Password = "secret" };
 
-		Assert.Equal(Write(writer => writer.NewMatch(room, true)), Write(writer => writer.NewMatch(room)));
-		Assert.Contains("secret", System.Text.Encoding.UTF8.GetString(Write(writer => writer.NewMatch(room))));
+		Assert.Equal(Write(writer => writer.NewMatch(room)), Write(writer => writer.NewMatch(room)));
+		Assert.Contains("secret", Encoding.UTF8.GetString(Write(writer => writer.NewMatch(room))));
 	}
 }

@@ -1,6 +1,6 @@
-using Basil.Infrastructure.Common.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Storage;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Users.Persistence;
 using Basil.Infrastructure.Users.Storage;
 using Basil.Infrastructure.Users.Workers;

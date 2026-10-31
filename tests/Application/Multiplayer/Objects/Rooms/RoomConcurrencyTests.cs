@@ -1,5 +1,4 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Testing;
 

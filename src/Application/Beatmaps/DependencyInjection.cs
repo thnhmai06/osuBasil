@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Capabilities;
-using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common.Events;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,7 +13,7 @@ public static class DependencyInjection
 {
 	/// <summary>Adds the Beatmaps application services and runtime objects.</summary>
 	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services"/>, for chaining.</returns>
+	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBeatmapsApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<DifficultyAnalyser>();

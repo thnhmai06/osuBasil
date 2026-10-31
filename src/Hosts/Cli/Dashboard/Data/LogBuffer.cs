@@ -12,10 +12,10 @@ public sealed record LogLine(DateTimeOffset Time, LogLevel Level, string Categor
 /// <summary>Keeps the most recent log lines for the dashboard; a logging provider, so it sees what every part logs.</summary>
 public sealed class LogBuffer : ILoggerProvider
 {
-	private readonly TimeProvider _clock;
 	private readonly int _capacity;
-	private readonly Queue<LogLine> _lines = new();
+	private readonly TimeProvider _clock;
 	private readonly Lock _gate = new();
+	private readonly Queue<LogLine> _lines = new();
 
 	/// <summary>Creates a buffer.</summary>
 	/// <param name="clock">The clock that stamps the lines.</param>
@@ -24,22 +24,6 @@ public sealed class LogBuffer : ILoggerProvider
 	{
 		_clock = clock;
 		_capacity = capacity;
-	}
-
-	/// <summary>Gets the lines, oldest first.</summary>
-	public IReadOnlyList<LogLine> Lines()
-	{
-		lock (_gate) return [.. _lines];
-	}
-
-	/// <summary>Adds a line.</summary>
-	public void Add(LogLine line)
-	{
-		lock (_gate)
-		{
-			_lines.Enqueue(line);
-			while (_lines.Count > _capacity) _lines.Dequeue();
-		}
 	}
 
 	/// <inheritdoc />
@@ -51,6 +35,25 @@ public sealed class LogBuffer : ILoggerProvider
 	/// <inheritdoc />
 	public void Dispose()
 	{
+	}
+
+	/// <summary>Gets the lines, oldest first.</summary>
+	public IReadOnlyList<LogLine> Lines()
+	{
+		lock (_gate)
+		{
+			return [.. _lines];
+		}
+	}
+
+	/// <summary>Adds a line.</summary>
+	public void Add(LogLine line)
+	{
+		lock (_gate)
+		{
+			_lines.Enqueue(line);
+			while (_lines.Count > _capacity) _lines.Dequeue();
+		}
 	}
 
 	private sealed class BufferLogger(LogBuffer buffer, string category, TimeProvider clock) : ILogger
@@ -85,13 +88,16 @@ public sealed record ChatLine(DateTimeOffset Time, string Channel, string Author
 /// <summary>Keeps the most recent chat messages for the chat tab.</summary>
 public sealed class ChatFeed(int capacity = 1000)
 {
-	private readonly Queue<ChatLine> _lines = new();
 	private readonly Lock _gate = new();
+	private readonly Queue<ChatLine> _lines = new();
 
 	/// <summary>Gets the messages, oldest first.</summary>
 	public IReadOnlyList<ChatLine> Lines()
 	{
-		lock (_gate) return [.. _lines];
+		lock (_gate)
+		{
+			return [.. _lines];
+		}
 	}
 
 	/// <summary>Adds a message.</summary>

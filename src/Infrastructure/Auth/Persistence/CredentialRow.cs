@@ -17,6 +17,6 @@ internal sealed class CredentialRowConfiguration : IEntityTypeConfiguration<Cred
 	{
 		builder.ToTable("credentials");
 		builder.HasKey(row => row.UserId);
-		builder.HasOne(ContextModel.UsersTable, (string?)null).WithOne().HasForeignKey(typeof(CredentialRow), "UserId");
+		builder.HasOne(ContextModel.UsersTable, null).WithOne().HasForeignKey(typeof(CredentialRow), "UserId");
 	}
 }

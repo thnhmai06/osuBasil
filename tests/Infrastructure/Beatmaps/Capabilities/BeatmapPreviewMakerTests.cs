@@ -1,10 +1,9 @@
-using Basil.Testing.Persistence;
 using System.Text;
-using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps.Capabilities;
 using Basil.Infrastructure.Beatmaps.Tests.Support;
+using Basil.Testing.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;

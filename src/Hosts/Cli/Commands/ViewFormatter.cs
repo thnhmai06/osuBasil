@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Globalization;
-using System.Reflection;
 using System.Numerics;
+using System.Reflection;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 
@@ -70,14 +70,17 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 	{
 		if (value is null) return "-";
 		if (IsScalar(value)) return Scalar(label, value);
-		if (ScalarItems(value) is { } items) return items.Count == 0 ? "-" : string.Join(", ", items.Select(item => Scalar(label, item)));
+		if (ScalarItems(value) is { } items)
+			return items.Count == 0 ? "-" : string.Join(", ", items.Select(item => Scalar(label, item)));
 		if (IsRef(value)) return Ref(value);
 		return RefItems(value) is { } rows ? rows.Count == 0 ? "-" : string.Join(", ", rows.Select(Ref)) : null;
 	}
 
 	private static List<object>? ScalarItems(object value)
 	{
-		return value is IEnumerable list and not string && Items(list) is { } items && items.All(IsScalar) ? items : null;
+		return value is IEnumerable list and not string && Items(list) is { } items && items.All(IsScalar)
+			? items
+			: null;
 	}
 
 	private static List<object>? RefItems(object value)
@@ -96,7 +99,8 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 
 		var properties = Properties(items[0].GetType()).Where(property => IsCell(property.PropertyType)).ToArray();
 		output.Table([.. properties.Select(property => Camel(property.Name))],
-			[.. items.Select(item => (IReadOnlyList<string>)[.. properties.Select(property => Cell(property, item))])], indent);
+			[.. items.Select(item => (IReadOnlyList<string>)[.. properties.Select(property => Cell(property, item))])],
+			indent);
 	}
 
 	private string Cell(PropertyInfo property, object item)
@@ -113,7 +117,8 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 	private static bool IsCell(Type type)
 	{
 		type = Nullable.GetUnderlyingType(type) ?? type;
-		return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(Guid) || type == typeof(decimal) ||
+		return type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(Guid) ||
+		       type == typeof(decimal) ||
 		       type == typeof(DateTimeOffset) || type == typeof(TimeSpan) || IsRefType(type);
 	}
 

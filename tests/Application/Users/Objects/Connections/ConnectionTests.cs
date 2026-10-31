@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Testing;
 
@@ -125,7 +124,7 @@ public sealed class ConnectionTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("ApiSession", "password");
-		var connection = await app.LoginAsync(user, SessionType.Api);
+		var connection = await app.LoginAsync(user);
 		var session = connection.Session;
 
 		Assert.Equal(SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), session.TokenHash);
