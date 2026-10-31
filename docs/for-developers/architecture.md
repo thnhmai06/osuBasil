@@ -2,405 +2,238 @@
 
 ## Overview
 
-Basil is a single deployable process organized into five projects with a strictly enforced dependency direction:
+Basil is a single deployable process with a strict dependency direction. Domain defines persistent business values;
+Application objects own runtime state and behaviour and call small object-free services for logic that needs no live
+object; Infrastructure implements persistence and other capabilities; the hosts translate client protocols into
+Application operations. Nothing in a transport decides a business rule.
 
 ```text
-Basil.Domain
-     ↑
-Basil.Application ← Basil.Protocol
-     ↑
-Basil.Infrastructure
-     ↑
-Basil.Web
+Basil.Domain                              business values                          -> (nothing)
+Basil.Application.Common                  shared values and event contracts/queue   -> Domain, external packages
+Basil.Infrastructure.Common               database, memory, files, dispatcher       -> Application.Common, Domain
+Basil.Application.<Module>                ports, capabilities and runtime objects   -> Domain, Application.Common,
+                                                                                       the Application projects it uses
+Basil.Infrastructure.<Module>             implementations, DbContext, migrations    -> its own Application,
+                                                                                       Infrastructure.Common
+Basil.Protocol.Bancho / .Irc              wire formats                             -> external libraries only
+Basil.Host.Shared                         client views and outcome-to-error mapping -> Application projects
+Basil.Host.Bancho / .Irc / .Rest / .Cli   transports                               -> Host.Shared, Application, Protocol
+Basil.Host                               composition root, configuration,         -> every project
+                                         logging, shutdown
+Basil.Bot                                BasilBot commands and announcements       -> the Application projects it uses
 ```
 
-More precisely:
-
-```text
-Domain      ← Application ← Infrastructure
-Protocol    ← Application
-Domain      ← Infrastructure
-
-Domain      ← Web
-Protocol    ← Web
-Application ← Web
-Infrastructure ← Web
-```
-
-`Basil.Web` is the composition root. It wires concrete Infrastructure implementations into Application abstractions and hosts the HTTP, Bancho, and IRC entry points.
-
-The dependency direction is enforced by architecture tests and is part of the project's build contract.
-
----
+`Basil.Host` is the only composition root. It calls `AddBasil()` and the one `AddMediator()` so the source generator
+finds every handler, binds configuration, owns logging and shutdown and registers the transports. It contains no
+business object of its own: starting the server, restoring state and creating directories belong to Application and
+Infrastructure.
 
 ## Projects and responsibilities
 
-| Project                | References                                    | Responsibility                                                            |
-| ---------------------- | --------------------------------------------- | ------------------------------------------------------------------------- |
-| `Basil.Domain`         | None                                          | Domain types and pure business calculations                               |
-| `Basil.Protocol`       | None                                          | Bancho wire-format packet encoding and decoding                           |
-| `Basil.Application`    | Domain, Protocol                              | Application services, packet handlers, sessions, and Infrastructure ports |
-| `Basil.Infrastructure` | Application, Domain                           | SQLite, filesystem, and external library implementations                  |
-| `Basil.Web`            | Domain, Protocol, Application, Infrastructure | ASP.NET Core host, routing, transport integration, and composition root   |
-
 ### `Basil.Domain`
 
-The innermost layer.
+Business models that outlive a run of the server (`User`, `Session`, `Room`, `Round`, `Score`, `Beatmap`, chat channel
+models, …), each guarding its own validity. It holds no runtime-only state and no events and references no other Basil
+project.
 
-It contains concepts that do not require any application, transport, or infrastructure dependency:
+### `Basil.Protocol.Bancho` and `Basil.Protocol.Irc`
 
-* enums;
-* records and value types;
-* domain calculations;
-* domain-level rules.
+The wire formats. They turn client bytes into C# models of primitives and back, including the score submission cipher,
+and give no business meaning. They reference no other Basil project, so they can be tested without a server. Only the
+transport that speaks the protocol references it: Bancho references `Protocol.Bancho`, Irc references `Protocol.Irc`,
+and Rest and Cli reference neither.
 
-`Basil.Domain` must not reference another Basil project.
+### Module projects
 
-### `Basil.Protocol`
+A module (Auth, Beatmaps, Chat, Content, Multiplayer, Scores, Servers, Users, Anticheat) owns one slice of the business
+end to end. Splitting by module lets the compiler enforce which module may use which; `tests/Architecture/` fails on an
+edge outside this graph:
 
-Contains the osu! Bancho wire-format implementation.
+```text
+Auth        -> Common
+Beatmaps    -> Common
+Content     -> Common
+Users       -> Common, Auth, Content
+Anticheat   -> Users
+Scores      -> Users, Beatmaps
+Multiplayer -> Users, Beatmaps, Content, Scores
+Chat        -> Users, Multiplayer
+Servers     -> every module above
+```
 
-It is independent of the application and infrastructure layers so packet serialization can be tested without starting the server.
+`Basil.Application.<Module>` holds `Objects/` (live objects, their parts, contexts, outcome enums and event records),
+`Registry/` (what keeps live objects in RAM), `Capabilities/` (the `Scoped*` views, ports whose implementation needs
+external libraries, public; and the object-free logic behind them, internal), `Services/` (a service the system
+provides: a contract and its implementation), `Persistence/` (repository ports and query records), `Storage/`
+(file-storage ports), `Handlers/` (event handlers) and `Workers/` (background runs). Behaviour belongs to the object
+that owns the state. Internal capability helpers stay object-free; a system-facing Service has a contract and may
+receive a live object or publish its event only when that is the declared system operation, as with
+`IAnticheatReporter`.
+`Basil.Infrastructure.<Module>` implements its own Application project's ports with PostgreSQL, files, rulesets,
+ImageSharp and background work, in the folder that matches the port (`Persistence/`, `Storage/`, `Capabilities/`,
+`Registry/`, `Workers/`). A module Infrastructure project never references another module; foreign keys between
+the module databases decide migration order.
 
-`Basil.Protocol` must not reference another Basil project.
+Handlers stay `internal`; a module grants `InternalsVisibleTo("Basil.Host")` (the generated Mediator code names them)
+and its own test project, nothing else.
 
-### `Basil.Application`
+### Common projects
 
-Contains the server's application logic.
+`Basil.Application.Common` owns `Result<T>`, `Scoped<T>`, paging and search syntax, and the shared event contract,
+publisher and queue. `Basil.Infrastructure.Common` owns the shared database and file implementations, the common
+migration and the event dispatcher.
 
-It includes:
+### Transports
 
-* Bancho packet handlers;
-* application services;
-* session management;
-* multiplayer logic;
-* authentication;
-* chat dispatch;
-* interfaces representing Infrastructure capabilities.
+| Project | Speaks | Notes |
+|---|---|---|
+| `Basil.Host.Bancho` | osu! stable: Bancho packets, polling, legacy web endpoints | owns the `c.`/`osu.` routing |
+| `Basil.Host.Irc` | IRC on plain TCP | contract in [`irc.md`](irc.md) |
+| `Basil.Host.Rest` | HTTP API on `api.`, plus images on `a.`/`assets.` | envelope, SSE, diagnostics, OpenAPI |
+| `Basil.Host.Cli` | the terminal dashboard and its command box | three display modes, control socket |
 
-Application code may depend on `Basil.Domain` and `Basil.Protocol`, but never directly on `Basil.Infrastructure` or `Basil.Web`.
+Every transport references `Basil.Host.Shared` and never another transport. `Basil.Host.Shared` holds the view records
+both Rest and Cli return and the table that turns an Application outcome into an API error code. A transport takes the
+actor from the connection that opened the request or socket and works through scopes (`x.ScopeTo(connection)`); it
+holds no duplicated permission or state rule. The tests in `tests/Architecture/HostGraphTests.cs` enforce these edges,
+with a positive control for each rule.
 
-When application code needs persistence, filesystem access, or another external capability, define or use an abstraction in `Basil.Application`.
+### Configuration
 
-### `Basil.Infrastructure`
-
-Contains concrete implementations of Application-layer abstractions.
-
-Examples include:
-
-* SQLite persistence;
-* Dapper repositories;
-* filesystem storage;
-* beatmap storage;
-* other external-library integrations.
-
-Infrastructure may depend on Application abstractions and Domain types, but Application must never depend on Infrastructure.
-
-### `Basil.Web`
-
-The outer host and composition root.
-
-It contains:
-
-* ASP.NET Core application startup;
-* host and subdomain routing;
-* Bancho HTTP transport;
-* tournament API routes;
-* IRC gateway integration;
-* dependency-injection registration;
-* configuration and host-level concerns.
-
-Concrete Infrastructure services are wired to Application interfaces here.
-
----
+Configuration is bound only in `Basil.Host`. A transport receives `IOptions<T>` of an options type it owns. Policy that
+can change at runtime lives in the database (`ServerSettings`, owned by Content.Application) and is read on each use;
+deployment settings live in `Configurations/appsettings*.json`. See [`configuration.md`](../for-technicians/configuration.md).
 
 ## Dependency rule
 
-The dependency direction is architectural, not merely a style preference.
+* Domain and the protocols reference nothing.
+* Application.Common references Domain; Infrastructure.Common references Application.Common and Domain.
+* Every module Application project references Domain, Application.Common and the Application projects of the modules it
+  uses; a module Infrastructure project references its own Application project and Infrastructure.Common, never
+  another module.
+* Transports reference `Basil.Host.Shared`, their own Application projects and their Protocol project. Only
+  `Basil.Host` references the transports.
+* Application never creates a database connection, file stream or Infrastructure type. It declares a port; the outer
+  project implements it.
 
-The allowed direction is:
+## Object scopes
 
-```text
-Web
- ├── Application
- │    ├── Domain
- │    └── Protocol
- ├── Infrastructure
- │    ├── Application
- │    └── Domain
- ├── Protocol
- └── Domain
-```
+Runtime state has owners: a room owns its slots and rounds; Chat keeps a room channel per open room, a private-message
+channel per online user and a spectator channel per watched game client. Keeping behaviour with that state prevents a
+central service from becoming a procedural actor that must know every rule.
 
-The following dependencies are prohibited:
-
-```text
-Domain      → Application / Infrastructure / Web
-Protocol    → Application / Infrastructure / Web
-Application → Infrastructure / Web
-Infrastructure → Web
-```
-
-Do not bypass an Application abstraction simply because a concrete Infrastructure implementation is convenient.
-
-For example, Application code must not directly create:
+The caller first gets the runtime object, then creates a short-lived view for its connection:
 
 ```text
-SqlConnection
-FileStream
-Basil.Infrastructure repositories
+channel.ScopeTo(by).Join();
+room.ScopeTo(by).Members.JoinAsync(password);
 ```
 
-Instead, the required capability belongs behind an Application-layer abstraction and is implemented by Infrastructure.
+The scope captures the caller's effective permissions and role on that object; it must not be kept for later work. It
+checks authority and restrictions, preserves the object's invariants, mutates its state and emits events. Parts are
+reached through the owner (`room.ScopeTo(by).Slots`, `.Rounds`, `.Settings`), never through a service that takes the
+room as a parameter, and no operation accepts a caller's permission mask as plumbing through lower layers.
 
----
+System work with no caller (startup, public reads, event handlers, BasilBot announcements) calls the object directly.
+Actions with authority use a scope, including commands typed in chat: the command uses the typist's connection while
+BasilBot only sends the reply.
 
-## Architecture tests
+## Events
 
-The dependency rule is enforced by:
+Events form a category tree so a consumer can subscribe to a whole category:
 
 ```text
-tests/Basil.ArchitectureTests
+Event
+├── UserEvent         connections, restrictions, permissions, notifications, spectator frames
+├── ChannelEvent      channel lifecycle, membership, messages
+├── LobbyEvent        room opened, closed, closing announced
+├── RoomEvent         settings, slots, membership, authority, rounds
+├── BeatmapsetEvent   imported, deleted
+├── ScoreEvent        submitted
+└── AnticheatEvent    player flagged
 ```
 
-The tests use NetArchTest to verify project and namespace dependencies.
+Events carry identities as references and changeable values as values captured when the event was emitted, never a
+live slot. One shared queue (`EventQueue`, Application.Common), run by `EventDispatcher` in Infrastructure.Common,
+delivers every event in order to its handlers. Application publishes events and handles those of its own module;
+Infrastructure only ships them; a transport reacts to events by delivering them to its clients.
 
-These tests run as part of CI. A new project reference that violates the dependency direction should therefore be treated as an architectural change, not as a normal implementation detail.
-
-When adding a dependency, verify that it belongs in the layer being modified before changing the project references.
-
----
-
-## Source layout
-
-Basil is primarily organized by **feature**, rather than by technical type.
-
-Namespaces follow the directory structure. A namespace therefore gives a reliable indication of where its implementation lives.
-
-Important Application directories include:
-
-| Directory       | Responsibility                                              |
-| --------------- | ----------------------------------------------------------- |
-| `Packets/`      | Bancho client packet types and handlers, grouped by feature |
-| `Abstractions/` | Interfaces implemented by Infrastructure                    |
-| `Sessions/`     | In-memory runtime state and session registries              |
-| `Services/`     | Application/business logic grouped by feature               |
-
-Examples of packet feature groups include:
-
-```text
-Packets/
-├── Users/
-├── Channels/
-├── Spectating/
-└── Multiplayer/
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant H as Host (transport)
+    participant A as Application object
+    participant I as Infrastructure handler
+    C->>H: packet / IRC line / HTTP request
+    H->>A: resolve object and scope it to the authenticated connection
+    H->>A: call scoped operation
+    A-->>H: typed result
+    A-->>I: event
+    I->>A: follow-up operations on other objects
+    I-->>H: notifications for clients
+    H-->>C: packets / IRC lines / responses
 ```
 
-Runtime state is kept separate from persistent state:
+## Sessions and connections
 
-```text
-Sessions/
-├── UserSession
-├── GameSession
-├── IrcSession
-├── ChannelSession
-└── MatchSession
-```
+A session is the persisted record of a sign-in (`ConnectionType`: Osu, Tourney, Irc, Api, Bot); a connection is the
+live socket or request in memory. A session stays valid while its connection is idle or closed; the connection leaves
+memory after the idle window (300 seconds) and the next request verifies the token against the database and opens a new
+connection. Api tokens and IRC keys are stored as hashes; osu! signs in every time. BasilBot has a `Bot` session and
+connection that no client can present.
 
-Persistent state is handled through Infrastructure repositories and storage implementations rather than being placed inside these session objects.
+## Live updates
 
----
-
-## Sessions
-
-Sessions represent runtime state and are not persisted.
-
-The important distinction is between the different types of client session:
-
-* [`UserSession`](../../src/Basil.Application/Sessions/UserSession.cs): base session state.
-* [`GameSession`](../../src/Basil.Application/Sessions/GameSession.cs): an osu! game-client session.
-* [`IrcSession`](../../src/Basil.Application/Sessions/IrcSession.cs): an IRC session.
-* [`ChannelSession`](../../src/Basil.Application/Sessions/Channels/ChannelSession.cs): channel membership/runtime state.
-* [`MatchSession`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs): multiplayer match state.
-
-Do not introduce transport-specific state into a generic session when the state only exists for one transport.
-
-In particular, IRC and game-client sessions have different lifecycles and should remain separate types.
-
-See [`irc.md`](irc.md) for the dual-session model.
-
----
-
-## Feature boundaries
-
-When implementing a feature, keep its responsibilities in the appropriate layer.
-
-A typical request path looks like:
-
-```text
-Transport
-   ↓
-Web / Protocol
-   ↓
-Application service or handler
-   ↓
-Application abstraction
-   ↓
-Infrastructure implementation
-   ↓
-External system
-```
-
-For example, a Bancho packet should not directly perform a SQL query:
-
-```text
-Packet handler
-    ✗
-    └── SqlConnection
-```
-
-Instead:
-
-```text
-Packet handler
-    ↓
-Application service
-    ↓
-Repository abstraction
-    ↓
-Infrastructure repository
-    ↓
-SQLite
-```
-
-This keeps transport handling independent from persistence.
-
----
+Every live HTTP route is under `Basil.Host.Rest` and uses the same hub. A stream belongs to a root (a player, a room, a
+match, the server); the root collects events and once a second the hub bundles them, serializes the bundle once and
+hands the same bytes to every stream of that root. The first event is always a snapshot. Data is therefore up to about
+one second old. See [`sse.md`](sse.md).
 
 ## Adding features
 
-### Adding a Bancho packet
+* **A Bancho packet or IRC command:** decode in the transport, call the Application operation of the acted-on object,
+  translate the typed result. Add a missing rule to the object, not to the transport.
+* **A reaction:** register a handler for the event category in the owning module's Handlers folder or in `Basil.Bot`,
+  then call the owning object's operation.
+* **Persisted state:** add a port in the module's Application `Persistence/`, implement it in the module's
+  Infrastructure project and register it. Keep SQL out of Application.
+* **An HTTP endpoint:** add a route in `Basil.Host.Rest`, delegate to Application and let the generated OpenAPI describe
+  the contract. Do not write a second hand-written API reference.
 
-Add the packet to the appropriate feature directory under:
+## Invariants
 
-```text
-Basil.Application/Packets/
-```
+* Dependencies point down; the tests in `tests/Architecture/` enforce the module and host graphs.
+* Domain and protocols remain dependency-free.
+* Runtime objects are separate from persisted state; Domain holds no runtime state or events.
+* The acted-on object stores the relation and emits the event.
+* Permission-dependent room operations use `room.ScopeTo(by)`; a read-modify-write transition is one synchronous method
+  of `Room` holding the room lock across the complete transition.
+* Privilege checks require every bit of the requirement, and use effective permissions.
+* A shared channel is named `#name`; a private-message channel carries its owner's name without `#`.
+* User-visible reply strings are centralized in the production type that owns them.
+* Performance points are not part of gameplay.
 
-Then register it through the Application dependency-injection setup.
+## Related code
 
-Composition-root tests verify that packet registrations are complete.
-
-See [`bancho.md`](bancho.md) for packet dispatch.
-
-### Adding persisted state
-
-Prefer an existing Application abstraction when the required capability already exists.
-
-For new persistence capabilities:
-
-1. define the required interface under `Basil.Application/Abstractions/`;
-2. implement it in Infrastructure;
-3. register the implementation in the composition root;
-4. keep database-specific code out of Application.
-
-Repository implementations belong under:
-
-```text
-Basil.Infrastructure/Persistence/Repositories/
-```
-
-### Adding an HTTP endpoint
-
-Add the route to the appropriate host group:
-
-```text
-Basil.Web/Routing/Bancho/
-Basil.Web/Routing/Api/
-Basil.Web/Routing/Assets/
-```
-
-Keep HTTP-specific concerns in Web and delegate application behaviour to Application services.
-
-For the `api.` host, update the OpenAPI contract as part of the route implementation rather than maintaining a separate handwritten endpoint specification.
-
-See [`response-envelope.md`](response-envelope.md) and the client-facing [`api.md`](../for-client/api/overview.md).
-
-For an image-serving route, see [`assets.md`](assets.md) — `assets.<domain>` handles those through ImageSharp.Web rather than hand-written `Results.File` calls.
-
-### Adding an IRC command
-
-IRC commands are dispatched by:
-
-```text
-TcpIrcConnection.HandleRegisteredCommandAsync
-```
-
-The command should delegate to existing Application services where possible.
-
-Do not move application/business rules into the IRC transport layer simply because the command originates there.
-
-See [`irc.md`](irc.md).
-
-### Adding chat routing logic
-
-Chat routing belongs in:
-
-```text
-ChatDispatchService.SendPrivmsgAsync
-```
-
-Keep transport-specific encoding and connection handling outside the chat application logic.
-
-See [`chat.md`](chat.md).
-
-### Adding a new chat transport
-
-Implement:
-
-```text
-IIrcConnection
-```
-
-The transport receives an [`IrcMessage`](../../src/Basil.Protocol/Irc/IrcMessage.cs) and is responsible for encoding it into its own wire representation.
-
-Do not make [`ChatDispatchService`](../../src/Basil.Application/Services/Chat/ChatDispatchService.cs) aware of transport-specific protocols.
-
----
-
-## Cross-cutting invariants
-
-Several architectural rules are important enough to treat as implementation constraints:
-
-* **Dependency direction is enforced by tests.**
-* **Application does not reference Infrastructure.**
-* **Domain and Protocol remain dependency-free.**
-* **Runtime sessions are separate from persisted state.**
-* **IRC and game-client sessions are separate types.**
-* **Multiplayer read-modify-broadcast operations hold [`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs).**
-* **Privilege is named `Privilege`, never `Priv`.**
-* **User-visible reply strings are centralized rather than duplicated.**
-* **PP calculation is deliberately not part of Basil's gameplay logic.**
-
-See [`working-scopes.md`](working-scopes.md) for features that are intentionally outside Basil's scope.
-
----
+* `src/Application/Common/`, `src/Infrastructure/Common/` — shared values, events, storage, dispatcher.
+* `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module ports, objects and implementations.
+* `src/Hosts/Host/` — composition root, configuration, logging, lifetime, restart.
+* `src/Hosts/Shared/` — views and the outcome-to-error table shared by Rest and Cli.
+* `src/Hosts/{Bancho,Irc,Rest,Cli}/` — the transports.
+* `src/Bot/` — BasilBot commands, announcements and reply catalogue.
 
 ## Where to go from here
 
-| Topic                       | Documentation                                                                      |
-| --------------------------- | ---------------------------------------------------------------------------------- |
-| Bancho packet dispatch      | [`bancho.md`](bancho.md)                                                           |
-| Authentication and login    | [`../for-client/bancho/authentication.md`](../for-client/bancho/authentication.md) |
-| Multiplayer and match state | [`multiplayer.md`](multiplayer.md)                                                 |
-| HTTP live updates           | [`sse.md`](sse.md)                                                                 |
-| API response envelope       | [`response-envelope.md`](response-envelope.md)                                     |
-| Database and persistence    | [`database.md`](database.md)                                                       |
-| Beatmap ingestion           | [`beatmap-ingestion.md`](beatmap-ingestion.md)                                     |
-| Chat                        | [`chat.md`](chat.md)                                                               |
-| IRC architecture            | [`irc.md`](irc.md)                                                                 |
-| Logging                     | [`logging.md`](logging.md)                                                         |
-| Privileges                  | [`privileges.md`](privileges.md)                                                   |
-| Development workflow        | [`development.md`](development.md)                                                 |
-| Deployment                  | [`../for-technicians/deployment.md`](../for-technicians/deployment.md)             |
-| Project scope               | [`working-scopes.md`](working-scopes.md)                                           |
+| Topic | Documentation |
+|---|---|
+| Bancho packet dispatch | [`bancho.md`](bancho.md) |
+| Multiplayer and match state | [`multiplayer.md`](multiplayer.md) |
+| Chat, sessions and connections | [`chat.md`](chat.md), [`irc.md`](irc.md) |
+| HTTP live updates | [`sse.md`](sse.md) |
+| API response envelope | [`response-envelope.md`](response-envelope.md) |
+| Database and persistence | [`database.md`](database.md) |
+| Beatmap ingestion | [`beatmap-ingestion.md`](beatmap-ingestion.md) |
+| Logging | [`logging.md`](logging.md) |
+| Testing | [`testing.md`](testing.md) |
+| Configuration | [`../for-technicians/configuration.md`](../for-technicians/configuration.md) |
+| Project scope | [`working-scopes.md`](working-scopes.md) |

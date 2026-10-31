@@ -2,205 +2,91 @@
 
 ## Overview
 
-Basil writes operational logs to the `Logs/` directory next to the executable.
+Basil writes operational log files to `Logs/` next to the executable and shows the same events in the dashboard (or on
+stdout in `--nogui` mode). In Docker, stdout is also available through `docker compose logs`.
 
-Logs are also written to standard output (`stdout`). This is especially useful for Docker deployments, where the same
-logs can be viewed with `docker compose logs`.
-
-The log directory is created automatically when Basil starts.
+The folder is created when the server starts.
 
 ## Log files
 
-The default layout is:
+| Path | Contents |
+|---|---|
+| `Logs/basil-YYYYMMDD.log` | the log written on that day, or the next file of that day after a size roll |
+| `Logs/basil-*.log` | older files kept for the retention period |
 
-| Path                      | Contents                               |
-|---------------------------|----------------------------------------|
-| `Logs/full/basil-*.log`   | All logs from `Information` and above. |
-| `Logs/latest.log`         | Current day's full log.                |
-| `Logs/errors/basil-*.log` | `Error` and `Fatal` logs only.         |
-| `Logs/errors_latest.log`  | Current day's error log.               |
+A file rolls at the next day or at **256 MB**, whichever comes first, so a busy server may produce several files in one
+day. There is no separate error file and no `latest.log` link: search the files of the day.
 
-Logs roll daily and are retained for **30 days**.
-
-`latest.log` and `errors_latest.log` provide stable filenames for monitoring tools and manual troubleshooting without
-needing to know the current date. They are hard-linked to the latest log file.
-
-### Docker
-
-In Docker deployments, logs are also available through the container runtime:
-
-```bash
-docker compose logs -f
-```
-
-The default Compose configuration persists `Logs/` under:
-
-```text
-docker-data/Logs/
-```
-
-If using Docker without a bind mount, logs remain inside the container and will be lost when the container is removed.
+Files are deleted after `Logging:RetentionPeriod` (14 days by default) with no write, checked at startup and every six
+hours.
 
 ## Log levels
 
-The minimum log level is controlled by:
-
-```text
-Basil:Logging:MinimumLevel
-```
-
-in [`appsettings.json`](../../src/Basil.Web/appsettings.json).
-
-Example:
+The minimum level is `Basil:Logging:MinimumLevel` in `Configurations/appsettings.json`:
 
 ```json
 {
 	"Basil": {
 		"Logging": {
-			"MinimumLevel": "Information"
+			"MinimumLevel": "Information",
+			"Overrides": { "Microsoft": "Warning", "Microsoft.Hosting.Lifetime": "Information" }
 		}
 	}
 }
 ```
 
-Supported levels are:
+`Overrides` keys are source prefixes; the longest matching prefix wins. Supported levels are `Verbose`, `Debug`,
+`Information`, `Warning`, `Error` and `Fatal`.
 
-```text
-Verbose
-Debug
-Information
-Warning
-Error
-Fatal
-```
+`Logging` applies **while the server runs**: edit the file, and the new level is used from the next event, on all sinks.
+No restart or rebuild is required.
 
-The default is:
+`Debug` produces significantly more output and is the level to use while investigating packet handling, room changes or
+cache behaviour. Return it to `Information` afterwards.
 
-```text
-Information
-```
+## Reading the log
 
-### Increase logging for troubleshooting
+The log is for lifecycle events, not traffic:
 
-When investigating a problem, temporarily change the level to:
+* start, stop and shutdown phases, with timings and failures;
+* login and logout of each connection type;
+* rooms opened and closed, rounds started and ended;
+* moderation and restrictions, console commands;
+* errors and warnings.
 
-```json
-{
-  "Basil": {
-    "Logging": {
-      "MinimumLevel": "Debug"
-    }
-  }
-}
-```
+Individual packets, IRC lines and API requests are metrics, visible in the dashboard and `/v1/diagnostics`, not in the
+log. An endpoint that answers `500` also appears in the log with its exception; the response itself carries no stack.
 
-Then restart Basil.
+Each message starts with a UTC offset timestamp, a level and the source class, followed by structured values such as the
+user id, room id or connection type. Search for the user id, room id or match id to follow one incident.
 
-`Debug` produces significantly more output and is useful when investigating packet handling, cache behaviour, room
-changes, and other operational problems.
+## Dropped events
 
-After troubleshooting, change the level back to `Information` and restart Basil.
-
-The minimum level affects the normal log output and `Logs/full/`.
-
-`Logs/errors/` always contains `Error` and `Fatal` events regardless of the configured minimum level.
-
-## Collecting logs
-
-When reporting a problem, collect the relevant logs from:
-
-```text
-Logs/full/
-Logs/errors/
-```
-
-For a recent problem, start with:
-
-```text
-Logs/latest.log
-Logs/errors_latest.log
-```
-
-Also collect the corresponding Docker output when Basil is running in Docker:
-
-```bash
-docker compose logs --no-color > basil-docker.log
-```
-
-Avoid sending only the error log. Many problems are explained by earlier `Information` or `Warning` messages in the full
-log.
-
-### What to include in a report
-
-When reporting an operational issue, provide:
-
-* the approximate time the problem occurred;
-* the affected hostname or service;
-* the relevant section of `Logs/latest.log`;
-* `Logs/errors_latest.log`;
-* Docker output, if applicable;
-* the Basil version;
-* any configuration change made immediately before the problem.
-
-Do not include secrets such as the admin key, certificate password, or user passwords.
-
-## Request and connection identifiers
-
-Basil includes identifiers in log messages to help correlate related events.
-
-Depending on the service involved, logs may include:
-
-* `RequestId` identifies an HTTP request;
-* `UserId` identifies the affected user;
-* `PacketType` identifies an osu! protocol packet;
-* `MatchId` identifies a multiplayer match;
-* `ConnectionId` identifies an IRC TCP connection.
-
-When troubleshooting a specific event, searching the log for one of these identifiers can reveal the related operations.
+The file writer runs behind a bounded queue (`Logging:QueueCapacity`, 10 000 by default). If the disk cannot keep up,
+the newest events are dropped rather than blocking the server; the dashboard and diagnostics show how many were lost.
+A non-zero count means the log is incomplete for that period.
 
 ## Troubleshooting
 
-### Basil is running but logs are missing
+### Logs are missing
 
-Check:
+1. The server can create and write `Logs/` next to the executable.
+2. You are looking beside the executable, not in the source tree.
+3. In Docker, `Logs/` is bind-mounted if you need the files after the container is removed.
+4. `docker compose logs -f` shows stdout.
 
-1. Basil has permission to create and write to the `Logs/` directory.
-2. You are checking the directory next to the executable.
-3. For Docker, `Logs/` is correctly bind-mounted if persistent logs are expected.
-4. The container logs with:
+### There is not enough detail
 
-```bash
-docker compose logs -f
-```
+Set `Logging:MinimumLevel` to `Debug` (and, if wanted, an override for one source). The change applies at once.
+Reproduce the problem, collect the files, then restore `Information`.
 
-### There are not enough details in the logs
+### The log is taking too much disk space
 
-Temporarily set:
-
-```text
-Basil:Logging:MinimumLevel=Debug
-```
-
-in `appsettings.json` and restart Basil.
-
-Reproduce the problem, collect the logs, then return the setting to `Information`.
-
-### The error log is empty
-
-`Logs/errors/` only contains `Error` and `Fatal` events.
-
-Check `Logs/latest.log` as well. Problems that do not produce an `Error` or `Fatal` event may still be visible there as
-`Warning` or `Information` messages.
-
-### Logs are taking too much disk space
-
-Basil automatically retains 30 days of daily log files.
-
-If longer-term retention is required, send stdout or the log files to an external log collection system rather than
-relying on Basil's local retention.
+Retention is 14 days, rolled daily or at 256 MB. Lower `Logging:RetentionPeriod` to keep fewer days, or send stdout to
+an external log collector.
 
 ## See also
 
-* [`logging.md`](../for-developers/logging.md): logging internals, categories, and scopes
-* [`configuration.md`](configuration.md): `Basil:Logging:MinimumLevel`
-* [`troubleshooting.md`](troubleshooting.md): operational troubleshooting
+* [`logging.md`](../for-developers/logging.md) — logging internals and lifecycle events
+* [`configuration.md`](configuration.md) — all deployment settings
+* [`troubleshooting.md`](troubleshooting.md) — operational troubleshooting

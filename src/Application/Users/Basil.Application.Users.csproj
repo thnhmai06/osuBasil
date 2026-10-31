@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Application.Users</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Auth\Basil.Application.Auth.csproj"/>
+		<ProjectReference Include="..\Content\Basil.Application.Content.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Host"/>
+		<InternalsVisibleTo Include="Basil.Application.Users.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+	</ItemGroup>
+</Project>

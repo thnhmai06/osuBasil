@@ -1,0 +1,50 @@
+namespace Basil.Protocol.Irc.Tests;
+
+public class IrcNumericReplyTests
+{
+	[Theory]
+	[InlineData(IrcNumericReply.RplWelcome, 1)]
+	[InlineData(IrcNumericReply.RplYourHost, 2)]
+	[InlineData(IrcNumericReply.RplCreated, 3)]
+	[InlineData(IrcNumericReply.RplMyInfo, 4)]
+	[InlineData(IrcNumericReply.RplIsupport, 5)]
+	[InlineData(IrcNumericReply.RplNoTopic, 331)]
+	[InlineData(IrcNumericReply.RplTopic, 332)]
+	[InlineData(IrcNumericReply.RplNamReply, 353)]
+	[InlineData(IrcNumericReply.RplEndOfNames, 366)]
+	[InlineData(IrcNumericReply.RplMotd, 372)]
+	[InlineData(IrcNumericReply.RplMotdStart, 375)]
+	[InlineData(IrcNumericReply.RplEndOfMotd, 376)]
+	[InlineData(IrcNumericReply.ErrNoSuchNick, 401)]
+	[InlineData(IrcNumericReply.ErrNoSuchChannel, 403)]
+	[InlineData(IrcNumericReply.ErrCannotSendToChannel, 404)]
+	[InlineData(IrcNumericReply.ErrUnknownCommand, 421)]
+	[InlineData(IrcNumericReply.ErrNicknameInUse, 433)]
+	[InlineData(IrcNumericReply.ErrNeedMoreParams, 461)]
+	[InlineData(IrcNumericReply.ErrAlreadyRegistered, 462)]
+	[InlineData(IrcNumericReply.ErrPasswdMismatch, 464)]
+	[InlineData(IrcNumericReply.ErrInviteOnlyChan, 473)]
+	[InlineData(IrcNumericReply.ErrChanOPrivsNeeded, 482)]
+	[InlineData(IrcNumericReply.RplUModeIs, 221)]
+	[InlineData(IrcNumericReply.RplUserHost, 302)]
+	[InlineData(IrcNumericReply.RplUnaway, 305)]
+	[InlineData(IrcNumericReply.RplNowAway, 306)]
+	[InlineData(IrcNumericReply.RplWhoIsAccount, 330)]
+	[InlineData(IrcNumericReply.ErrNoRecipient, 411)]
+	[InlineData(IrcNumericReply.ErrNoTextToSend, 412)]
+	[InlineData(IrcNumericReply.ErrInputTooLong, 417)]
+	[InlineData(IrcNumericReply.ErrNoNicknameGiven, 431)]
+	[InlineData(IrcNumericReply.ErrNotOnChannel, 442)]
+	[InlineData(IrcNumericReply.ErrUModeUnknownFlag, 501)]
+	[InlineData(IrcNumericReply.ErrUsersDontMatch, 502)]
+	[InlineData(IrcNumericReply.RplLoggedIn, 900)]
+	[InlineData(IrcNumericReply.RplSaslSuccess, 903)]
+	[InlineData(IrcNumericReply.ErrSaslFail, 904)]
+	[InlineData(IrcNumericReply.ErrSaslAborted, 906)]
+	[InlineData(IrcNumericReply.ErrSaslAlready, 907)]
+	[InlineData(IrcNumericReply.RplSaslMechs, 908)]
+	public void Value_MatchesRfcNumber(IrcNumericReply numericReply, int number)
+	{
+		Assert.Equal(number, (int)numericReply);
+	}
+}

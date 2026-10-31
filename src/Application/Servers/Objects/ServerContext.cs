@@ -1,0 +1,40 @@
+using Basil.Application.Beatmaps.Objects;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Persistence;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Content.Capabilities;
+using Basil.Application.Content.Persistence;
+using Basil.Application.Content.Storage;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Persistence;
+
+namespace Basil.Application.Servers.Objects;
+
+/// <summary>The ports through which the server performs its behaviour.</summary>
+/// <param name="Connections">The runtime dependencies for online users.</param>
+/// <param name="Chat">The runtime dependencies for general channels.</param>
+/// <param name="RoomChannels">The channels of open multiplayer rooms.</param>
+/// <param name="PmChannels">The private-message channels of online users.</param>
+/// <param name="Inspector">Identifies uploaded picture formats and dimensions.</param>
+/// <param name="Screenshots">The stored screenshots.</param>
+/// <param name="Lobby">The open multiplayer rooms.</param>
+/// <param name="Channels">The stored general channels.</param>
+/// <param name="Users">The stored users.</param>
+internal sealed record ServerContext(
+	ConnectionContext Connections,
+	ChannelContext Chat,
+	RoomChannels RoomChannels,
+	PmChannels PmChannels,
+	IScreenshotInspector Inspector,
+	IScreenshotStorage Screenshots,
+	Lobby Lobby,
+	IChannelRepository Channels,
+	IUserRepository Users,
+	Beatmapsets Beatmapsets,
+	ISettingsRepository Settings,
+	IFaqStorage Faqs,
+	IMenuBannerRepository Banners,
+	IMenuBannerStorage BannerImages,
+	IMenuSeasonalsStorage Seasonals,
+	IMenuIconStorage Icon);

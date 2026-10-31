@@ -36,13 +36,13 @@ server, or other external service.
 
 ## Development configuration
 
-Basil uses the same [`appsettings.json`](../../src/Basil.Web/appsettings.json) configuration model in development and production. There is no separate
+Basil uses the same [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json) configuration model in development and production. There is no separate
 development-only configuration file.
 
 The main configuration file is:
 
 ```text
-src/Basil.Web/appsettings.json
+src/Basil.Web/Data/appsettings.json
 ```
 
 For local osu! client testing, set:
@@ -77,6 +77,12 @@ For example, using an IRC client:
 ```
 
 Authenticate using your Basil account password.
+
+### Resetting the development database
+
+The server has not been deployed yet, so each module's `InitialCreate` migration is edited in place instead of adding
+a new migration. A development database that already applied an older `InitialCreate` fails to migrate: drop it
+(and let the server create it again) after pulling a change that touches a migration.
 
 ## Running an osu! client against a development server
 
@@ -131,31 +137,34 @@ configuration applies whether Basil is running from a development checkout or fr
 A local development server normally runs without a reverse proxy.
 
 When `X-Forwarded-For` and `X-Real-IP` are absent, Basil synthesizes them from the connection's remote address. This is
-required because [`Basil.Domain.Login.Geolocation.PhraseIpAddress`](../../src/Basil.Domain/Login/Geolocation.cs) assumes these headers exist, matching the proxy-based
+required because [`Basil.Domain.Client.Geolocation.PhraseIpAddress`](../../src/Domain/Client/Geolocation.cs) assumes these headers exist, matching the proxy-based
 setup used by bancho.py in production.
 
 You generally do not need to configure anything manually for local development.
 
 ## Run tests
 
-Basil has six test projects. Run them individually:
+The test tree mirrors `src/`: one test project per source project, `tests/{Application,Infrastructure}/<Module>`
+for the modules, `tests/Common/`, `tests/Domain/`, `tests/Protocol/`, `tests/Bot/`, `tests/Architecture/` (the project
+graph, the layering and the container check) and `tests/Composition/` (tests that need the whole composition). Run them
+individually or all with `dotnet test`:
 
 ```bash
-dotnet test tests/Basil.Domain.Tests
-dotnet test tests/Basil.Protocol.Tests
-dotnet test tests/Basil.Application.Tests
-dotnet test tests/Basil.ArchitectureTests
-dotnet test tests/Basil.IntegrationTests
-dotnet test tests/Basil.Infrastructure.Tests
+dotnet test tests/Domain
+dotnet test tests/Application/Users
+dotnet test tests/Infrastructure/Users
+dotnet test tests/Architecture
+dotnet test tests/Composition
 ```
 
-`Basil.Infrastructure.Tests` creates a temporary SQLite database for each test class and removes it afterward. It does
-not require Docker or an externally running database.
+The Infrastructure test projects create a temporary PostgreSQL database for each test class and remove it afterward.
+They use the server named by the `BASIL_TEST_POSTGRES` connection string when it is set, otherwise a Testcontainers
+container (Docker).
 
 See [`testing.md`](testing.md) for test-writing conventions.
 
 For repository-specific development workflow recommendations, including how to run `Basil.Infrastructure.Tests`, see [
-`CLAUDE.md`](../../CLAUDE.md).
+`AGENTS.md`](../../AGENTS.md).
 
 ## Build a standalone executable
 

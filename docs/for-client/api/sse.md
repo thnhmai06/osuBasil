@@ -1,236 +1,100 @@
-# Live updates (Server-Sent Events)
+# Live updates (SSE) for clients
 
-## Overview
+Basil pushes one-way state with **Server-Sent Events** (`text/event-stream`). There is no WebSocket endpoint. The
+authoritative generated reference for each route is at `https://api.<domain>/docs/`.
 
-Basil provides live match updates through **Server-Sent Events (SSE)**.
+## Routes
 
-SSE allows tournament overlays, dashboards, browser sources, and other HTTP clients to receive changes as they happen without repeatedly polling the API.
+| Route | Token | Carries |
+|---|---|---|
+| `GET /v1/matches/{id}` | optional | the match report: the match and its entries (rounds and events) in time order |
+| `GET /v1/rooms/{id}/live` | required | the room view: name, settings, slots, host, referees |
+| `GET /v1/users/{id}/spectate` | required | a player's in-game frames, score and status, as an osu! spectator sees them |
+| `GET /v1/diagnostics` | required | server measurements for every category |
+| `GET /v1/diagnostics/{category}` | required | server measurements for one category |
 
-Each live resource has its own `/live` endpoint.
+Only the match report works without a token. A private match is still `404` unless the caller may view it; sending a
+token lets the server apply that rule.
 
----
+## Events
 
-## Live endpoints
+The first event is always `snapshot` with the complete current state:
 
-A live endpoint is identified by its URL.
-
-For resources that have both a normal JSON representation and a live representation, the live endpoint is the same resource path with `/live` appended.
-
-For example:
-
-```text id="u0cq6m"
-GET /matches/{id}
-GET /matches/{id}/live
-
-GET /matches/{id}/settings
-GET /matches/{id}/settings/live
+```text
+event: snapshot
+retry: 3000
+data: {...}
 ```
 
-The client does not need to use the `Accept` header to select SSE.
+After that, a `bundle` arrives about once a second:
 
-The `/live` URL always identifies a live SSE endpoint.
-
----
-
-## Connecting
-
-Open a `GET` request to the desired `/live` endpoint.
-
-For example:
-
-```http id="x4v5l8"
-GET /matches/123/live
+```text
+event: bundle
+id: 12
+retry: 3000
+data: [{...}, {...}]
 ```
 
-The server keeps the response open and sends events as the resource changes.
+`data` is a JSON **array** of everything that changed during that second. Apply the items in order. A second with no
+change sends a comment (`: keep-alive`) instead of an empty bundle. Data is up to about one second old.
 
-The response uses the SSE content type:
+An `id:` is present only when the payloads have one (match entries carry the index of the last entry). It is a
+per-connection position, not a durable sequence: do not persist it or expect the server to replay from it, except for the
+one case below.
 
-```http id="x1z5gc"
-Content-Type: text/event-stream
+`retry: 3000` tells a disconnected client to wait 3 seconds before reconnecting.
+
+## Match reports
+
+The first snapshot contains the match and every entry so far. A match that has ended never changes: its stream sends the
+snapshot and ends. If you reconnect to an ended match with the `Last-Event-ID` of its last entry, the server answers
+`204 No Content`, which stops a browser from reconnecting. Reconnecting without it gives the full report again.
+
+Entries are `round` and `event` objects. A round carries its beatmap, mode, mods, team type, timestamps, verdict and the
+scores received; an event carries its type, time, actor, target and detail.
+
+## Spectate
+
+`GET /v1/users/{id}/spectate` follows a player who is online in game. The player sees a spectator, and the usual
+spectating permission, blocks and restrictions apply. The stream only watches: it joins no chat channel. The first
+snapshot has the player's id, name, country and current status. Bundles then carry:
+
+* `{ "type": "frames", "action": ..., "sequence": ..., "frames": [[button, taiko, x, y, time], ...], "score": {...} }`
+* `{ "type": "status", "status": { "activity", "text", "beatmapId", "mods", "mode" } }`
+
+The stream ends when the player goes offline or stops being spectated. Spectating a player who is not in game answers
+`409` with `targetOffline`.
+
+## Rooms and diagnostics
+
+A room stream re-sends the room when anything visible changes: `{"type":"room","room":{...}}`. When the room closes it
+sends `{"type":"closed"}` and ends. A diagnostics stream sends a new sample every second for the requested category.
+
+## Errors, limits and shutdown
+
+* A failure before the stream starts is a normal JSON envelope: `401` without a token, `404` for an invisible or missing
+  resource, `409` for an offline player, `429` for too many open streams from one user or IP, `503` while the server is
+  shutting down (with `Retry-After: 5`).
+* Every open stream counts toward the server's connection limit for that user or IP.
+* A client that falls behind is disconnected rather than slowing the stream for others; reconnect and take a new
+  snapshot.
+* On shutdown or restart every stream receives one final event and ends:
+
+```text
+event: server
+data: {"state":"shuttingDown"}
 ```
 
----
+`state` is `restarting` when the server comes back. There is nothing to resume; reconnect after the wait in `retry` or
+after the server is back.
 
-## Initial snapshot
+## What is not streamed
 
-The **first event** sent after connecting is a complete snapshot of the current resource.
-
-This allows a client to initialize its local state without making a separate request first.
-
-For example, a client connecting to:
-
-```text id="9r0w4u"
-GET /matches/123/live
-```
-
-receives the current match state as its first event.
-
-A client that connects after a match has already changed still receives a complete snapshot of the current state.
-
----
-
-## Updates
-
-After the initial snapshot, events contain only fields that changed.
-
-Each update is an [RFC 7396 JSON Merge Patch](https://www.rfc-editor.org/rfc/rfc7396) against the state represented by the previous event.
-
-A client should therefore:
-
-1. parse the initial snapshot;
-2. store it as the current state;
-3. apply each subsequent event as a JSON Merge Patch;
-4. treat the resulting object as the new current state.
-
-For example, if the initial state is:
-
-```json id="8bh5v1"
-{
-  "name": "Final",
-  "status": "running",
-  "maxPlayers": 16
-}
-```
-
-and the next event contains:
-
-```json id="l7y8u3"
-{
-  "status": "finished"
-}
-```
-
-the resulting client state becomes:
-
-```json id="yt1f8h"
-{
-  "name": "Final",
-  "status": "finished",
-  "maxPlayers": 16
-}
-```
-
-The patch is calculated independently for each connection.
-
----
-
-## Resources without a snapshot
-
-Some live resources exist only as live streams and do not have a corresponding one-shot JSON resource.
-
-For example:
-
-```text id="at3x4b"
-GET /matches/{id}/live/{slotIndex}
-```
-
-is an SSE-only resource.
-
-Clients should treat these endpoints as streams rather than expecting a normal `GET` representation.
-
----
-
-## Chat stream
-
-Match chat is a special case:
-
-```text id="xqj0bv"
-GET /matches/{id}/chat/live
-```
-
-Chat events represent messages rather than a persistent resource state.
-
-There is no initial snapshot because Basil does not retain match chat history.
-
-A subscriber receives messages sent **after it connects**. Messages sent before the connection are not replayed.
-
-Messages can originate from:
-
-* osu! clients;
-* IRC clients;
-* BasilBot.
-
-The chat live endpoint is also the only live endpoint that requires the admin key.
-
-Send the key using:
-
-```http id="g0m24b"
-Authorization: Bearer <key>
-```
-
-Because the standard browser `EventSource` API cannot set arbitrary request headers, browser clients that need this endpoint should use an alternative SSE implementation that supports custom headers.
-
----
-
-## Errors before the stream starts
-
-A live endpoint can return a normal HTTP error instead of opening an SSE stream.
-
-For example, requesting a live endpoint for a resource that is not currently live returns:
-
-```http id="q6c5v0"
-409 Conflict
-```
-
-The response is a normal JSON response using the standard Basil response envelope.
-
-It is **not** an SSE event.
-
-Likewise, a resource that does not exist returns its normal HTTP error response.
-
-Therefore, clients should check the HTTP response before attempting to parse the response as an SSE stream.
-
----
-
-## Connection lifecycle
-
-A typical connection looks like:
-
-```text id="4w8o2j"
-Client                              Basil
-  |                                   |
-  | GET /matches/123/live             |
-  |---------------------------------->|
-  |                                   |
-  | SSE: full snapshot                |
-  |<----------------------------------|
-  |                                   |
-  |                                   | Match changes
-  |                                   |
-  | SSE: JSON Merge Patch             |
-  |<----------------------------------|
-  |                                   |
-  |                                   | Match changes
-  |                                   |
-  | SSE: JSON Merge Patch             |
-  |<----------------------------------|
-  |                                   |
-  |              ...                  |
-```
-
-The connection remains open while the live resource is active.
-
-Clients should be prepared for the connection to close and should reconnect when appropriate.
-
----
-
-## Client implementation notes
-
-A client consuming a live resource should:
-
-* treat the first event as the complete initial state;
-* apply later events as RFC 7396 JSON Merge Patches;
-* not assume that every event contains all resource fields;
-* handle HTTP errors before starting SSE parsing;
-* reconnect if the SSE connection is unexpectedly closed;
-* avoid making a separate initial `GET` solely to obtain state when the `/live` endpoint already provides the initial snapshot.
-
----
+Chat has no SSE route. The API neither sends nor receives chat, and the server keeps no chat history. Match gameplay is
+streamed only through spectate; the match report carries round and score summaries, not frame data.
 
 ## See also
 
-* [`response-envelope.md`](response-envelope.md): JSON response format for non-SSE endpoints
-* [`overview.md`](overview.md): the `api.<domain>` HTTP surface
-* [`multiplayer.md`](../../for-developers/multiplayer.md): match state exposed by the live endpoints
-* [`sse.md`](../../for-developers/sse.md): server-side SSE implementation
+* [`overview.md`](overview.md) — the API surface and authentication
+* [`response-envelope.md`](response-envelope.md) — the JSON envelope used by errors
+* [`../../for-developers/sse.md`](../../for-developers/sse.md) — the server-side design

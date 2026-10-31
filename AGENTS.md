@@ -1,0 +1,839 @@
+# AGENTS.md
+
+This file provides guidance to coding agents working in this repository. `CLAUDE.md` only imports
+it.
+
+## What this is
+
+Basil is a lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) backend platform specialized for
+multiplayer. The server provides the core capabilities (accounts and sessions, permissions, rooms, chat, scores,
+beatmaps, events); specific features such as tournament tooling and overlays are clients built on top
+of it, each signing in as an ordinary user. The server works the same with or without any of them.
+
+It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, osu-web v1/v2 API compatibility, and other unrelated features are intentionally out of scope. Chat commands, announcements and room countdowns are in scope: they are BasilBot, a feature of the server.
+
+The identity, permissions and restriction rules are in [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md); read
+them before touching users, sessions, permissions, rooms or chat.
+
+Before porting or recreating anything from bancho.py, read:
+
+* [`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md) — authoritative feature scope
+* [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) — system structure and dependency direction
+* [`README.md`](README.md) — project overview
+
+The generated HTTP API and BasilBot command reference is available at `api.<domain>/docs/` on a running instance and on [GitHub Pages](https://thnhmai06.github.io/osuBasil/). Do not create a second hand-written API reference in Markdown.
+
+## Rules
+
+### 1. Think before coding
+
+**Do not assume. Do not hide uncertainty. Surface tradeoffs.**
+
+Before implementing:
+
+* State important assumptions.
+* If multiple interpretations are plausible, identify them.
+* If a simpler solution exists, prefer it and explain the tradeoff.
+* If a requirement is genuinely ambiguous, ask before coding.
+
+Do not silently invent requirements.
+
+### 2. Simplicity first
+
+Implement the smallest solution that satisfies the request.
+
+Do not add:
+
+* speculative features
+* unused abstractions
+* unnecessary configurability
+* future-proofing without a concrete requirement
+* error handling for impossible states
+
+If a solution is significantly more complicated than the problem requires, simplify it.
+
+### 3. Surgical changes
+
+Change only what the task requires.
+
+When modifying existing code:
+
+* preserve existing behavior unless the task changes it
+* match the surrounding style
+* do not refactor unrelated code
+* do not rewrite adjacent comments or formatting
+* do not remove unrelated dead code
+
+Remove imports, variables, methods, or other artifacts only when **your own changes** make them unnecessary.
+
+Every changed line should have a clear connection to the task.
+
+### 4. Goal-driven execution
+
+Define a concrete success criterion before implementing.
+
+Examples:
+
+```text
+"Add validation"
+→ Add tests for invalid input, then make them pass.
+
+"Fix the bug"
+→ Reproduce the bug with a regression test, then make it pass.
+
+"Refactor X"
+→ Verify behavior before and after the refactor.
+```
+
+For multi-step work, use a short plan:
+
+```text
+1. [change] → verify: [check]
+2. [change] → verify: [check]
+3. [change] → verify: [check]
+```
+
+Do not stop at "the code looks right". Verify the result.
+
+### 5. API documentation
+
+Every `.WithSummary` and `.WithDescription` on an `api.` host route describes the **public API contract**, never its implementation.
+
+Apply the Implementation Test:
+
+> If the implementation were replaced while the endpoint's behavior remained identical, would this sentence need to change?
+
+If yes, it is implementation detail and does not belong in the API documentation.
+
+#### Summary
+
+Use one sentence describing what the endpoint does.
+
+```csharp
+.WithSummary("Retrieve a match report.")
+```
+
+Do not describe storage, frameworks, services, or internal mechanisms.
+
+#### Description
+
+Use Markdown paragraphs in this order:
+
+1. what the endpoint provides
+2. important special cases
+3. related or live endpoints
+4. important errors
+
+Do not restate information already represented by the OpenAPI schema, such as the HTTP method, path, ordinary parameter definitions, or declared response type.
+
+Prefer raw strings for multi-paragraph descriptions.
+
+Never document implementation details such as:
+
+* PostgreSQL
+* Redis
+* DI
+* middleware
+* `Channel<T>`
+* background services
+* cache keys
+* internal file paths
+* internal service or type names
+
+The exception is when the mechanism itself is part of the public contract, for example:
+
+```text
+The response is streamed using Server-Sent Events.
+```
+
+### 6. XML documentation
+
+Every `///` comment describes **responsibility and observable behavior**, never implementation.
+
+Apply the same Implementation Test as rule 5.
+
+#### Summary
+
+Use one sentence answering:
+
+> What is this member, and what does it do?
+
+Do not simply restate its name.
+
+#### Remarks
+
+Use remarks only for additional caller-visible behavior that does not fit in the summary.
+
+Never document:
+
+* temporary files
+* locks
+* cache keys
+* dictionaries
+* reflection
+* switch statements
+* framework implementation
+* dependency injection
+* internal collaborators
+
+Do not document historical implementation decisions unless the member exists specifically for backward compatibility.
+
+`<param>` and `<returns>` describe the meaning of the value, not how it is produced.
+
+Use `<see cref>` only when it improves navigation for the reader.
+
+### 7. Markdown documentation
+
+`docs/*.md` explains **why the system exists, how it works, and how its components fit together**.
+
+XML documentation is reference material. Markdown documentation is architecture and guidance.
+
+Follow these rules:
+
+* Explain **Why → What → How**.
+* Keep one major topic per file.
+* Start with an overview before implementation details.
+* Separate public contract from implementation.
+* Put implementation details in a dedicated Design/Implementation section.
+* Include design rationale where useful.
+* Prefer diagrams for multi-step flows.
+* State important system invariants explicitly.
+* Use short illustrative examples.
+* Do not paste large amounts of source code.
+* Link to related documentation instead of duplicating it.
+* Include a `Related code` section when source locations are useful.
+* Do not duplicate the generated HTTP API or BasilBot command reference.
+
+Authoritative topic ownership is defined by [`docs/index.md`](docs/index.md).
+
+If a topic already has an authoritative document, update that document instead of creating a competing description elsewhere.
+
+### 8. Test writing
+
+**Tests pin observable contracts, not implementation details.**
+
+Apply the Implementation Test:
+
+> If the implementation changed but the observable behavior stayed the same, would this test still pass?
+
+If not, the test is probably testing implementation.
+
+Contract examples include:
+
+* bancho packet bytes
+* IRC wire text and numerics
+* HTTP status codes
+* JSON and envelope shapes
+* API error codes
+* user-visible BasilBot replies
+* multiplayer state transitions
+
+Do not normally assert:
+
+* Serilog messages
+* debug output
+* internal diagnostic strings
+* exception messages that never reach a client
+* internal call counts or ordering
+
+See [`docs/for-developers/testing.md`](docs/for-developers/testing.md) for the complete policy.
+
+Important rules:
+
+* one behavior per test
+* one reason for failure
+* deterministic tests
+* no real-time sleeps
+* no uncontrolled randomness
+* no environment-dependent state
+* test through public APIs
+* cover relevant edge cases
+* add a regression test for every reproducible bug fix
+
+User-visible contract strings must be centralized in the production code that owns them. Tests reference those constants rather than duplicating literals.
+
+Tests are what verify the software for the owner, who reads the code only for patterns and architecture. Therefore:
+
+* **Specification first.** An expected value comes from AGENTS.md, the osu! rules, the protocol or bancho.py behaviour,
+  never from running the code under test and pasting its output. A red test means the code is wrong: report it, do not
+  edit the test until it is green.
+* **Blackbox and whitebox.** Derive cases from the contract (equivalence classes, boundaries, decision tables, state
+  transitions) and then from the structure (every branch and guard); coverage is used only to find branches no case
+  reached.
+* **Pin properties of computed values, not the number** (star rating, difficulty, length: valid, finite, monotone under a
+  modifier). Pin the exact value only when the value is itself a contract (wire bytes, accuracy and grade of the
+  ruleset, the score submission checksum) with hand-written input and output pairs, never a copy of the formula.
+* **Layout mirrors the sources.** One test project per source project (`tests/` tree = `src/` tree, `Basil.X.Tests`),
+  folders inside mirror the feature folders; shared fixtures live in `tests/Support/Basil.Testing`; sample content in
+  `tests/Assets`.
+* **A refusal test checks the missing mask** of `Result<TOutcome>`, and every `Require` has a test that goes red when it
+  is removed.
+
+### 9. User-visible reply strings
+
+User-visible chat text is public behavior.
+
+Each chat surface owns its reply constants.
+
+Examples:
+
+* `MpReplies` for `!mp`
+* `IrcReplies` for IRC responses
+
+Do not scatter user-visible strings across handlers.
+
+Changing the wording of a user-visible response is a contract change. Update the named production constant and its tests deliberately.
+
+Internal diagnostics and logs are not subject to this rule.
+
+## Commands
+
+Restore and build:
+
+```bash
+dotnet restore
+dotnet build --configuration Release
+```
+
+Run Basil locally:
+
+```bash
+dotnet run --project src/Hosts/Host
+```
+
+Run every test project listed in `Basil.slnx`, one at a time; never pass the solution to `dotnet test`:
+
+```bash
+dotnet test tests/Domain -c Release --nologo -v q
+dotnet test tests/Application/Users -c Release --nologo -v q
+```
+
+Run one test project (the test tree mirrors `src/`):
+
+```bash
+dotnet test tests/Application/Users
+```
+
+Run a specific test class:
+
+```bash
+dotnet test tests/Application/Users \
+  --filter "FullyQualifiedName~<TestClassName>"
+```
+
+Verify a change with the whole solution in Release, then run the affected test projects one at a time:
+
+```bash
+dotnet build Basil.slnx -c Release --nologo -v q
+dotnet test tests/Application/Users -c Release --no-build --nologo -v q
+```
+
+Projects that need PostgreSQL start a container; set `DOCKER_HOST` when the daemon is not on the default socket, or set
+`BASIL_TEST_POSTGRES` to use an existing server. Never run every project in one `dotnet test` invocation.
+
+A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check, which
+`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of `Basil.Host` and `AddBot()`, builds the provider
+with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event handler is
+registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
+
+See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow.
+
+See [`docs/for-technicians/configuration.md`](docs/for-technicians/configuration.md) for runtime configuration and data directories.
+
+See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docker.
+
+## Architecture
+
+```text
+Basil.Domain                     business model and its own validity          -> (nothing)
+
+Basil.Application.Common         shared application contracts and eventing     -> Domain, Mediator.Abstractions
+Basil.Infrastructure.Common      shared database, memory, files and event     -> Application.Common, Domain
+                                 dispatch infrastructure
+
+Basil.Application.<Module>       the module's ports and objects, in folders by       -> Domain, Application.Common,
+                                 responsibility: Objects/ (live objects, contexts,    the Application projects of the
+                                 outcomes, event records), Registry/ (the objects     modules it uses (below)
+                                 kept in RAM), Capabilities/ (Scoped* views, ports
+                                 to external computation and the object-free logic
+                                 behind them), Services/ (services the system
+                                 provides: a contract and its implementation),
+                                 Persistence/ (repository ports, query records),
+                                 Storage/ (file-storage ports), Handlers/ (event
+                                 handlers), Workers/ (background runs);
+                                 Add<Module>Application()
+Basil.Infrastructure.<Module>    the module's implementations, in folders that        -> its own Application,
+                                 match those ports: Persistence/ (Postgres,           Infrastructure.Common,
+                                 DbContext, rows, migrations), Storage/ (files),      Application.Common
+                                 Capabilities/ (osu! rulesets, FFMpegCore,
+                                 ImageSharp, HTTP), Registry/ (memory primitives),
+                                 Workers/ (sweepers, watchers);
+                                 Add<Module>Infrastructure()
+Basil.Host.Shared               views and outcome-to-error mapping used      -> Application projects
+                                 by the API and the console
+Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
+                                 submission cipher (BouncyCastle)
+Basil.Protocol.Irc               IRC wire format                                -> (nothing)
+Basil.Host.Bancho / .Irc /       transports                                     -> Host.Shared, their Application
+.Rest / .Cli                                                                       projects, their Protocol
+Basil.Host                       entry point, composition root, configuration,  -> everything
+                                 logging, shutdown, LAN advertising
+
+Basil.Bot                        BasilBot: chat commands and their replies,     -> the Application projects of the
+                                 an entry point of the server (not a client)        modules it uses, Application.Common
+```
+
+The layers stay Clean Architecture (Domain, Application, Infrastructure, hosts); inside the Application and Infrastructure layers
+the code is split by module, one project per module and layer (`Basil.Application.<Module>`,
+`Basil.Infrastructure.<Module>`; the solution folders `/Sources/Application/` and `/Sources/Infrastructure/` list them).
+References only point down:
+
+```text
+Auth        -> Common
+Beatmaps    -> Common
+Content     -> Common
+Users       -> Common, Auth, Content        (folders Users/ and Connections/: they reference each other)
+Anticheat   -> Users
+Scores      -> Users, Beatmaps
+Multiplayer -> Users, Beatmaps, Content, Scores
+Chat        -> Users, Multiplayer
+Servers     -> every module above
+```
+
+A module Infrastructure project never references another module; the foreign keys between the module databases
+decide the order in which `AddBasil()` registers the migrations (Common, Users, Auth, Beatmaps, Content, Scores,
+Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
+an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
+
+`Basil.Protocol.Bancho` wraps the communication between the osu! client and the server, as an API wrapper
+wraps a remote API: it turns what the client sends (bancho packets, the delimited strings of the web
+endpoints such as the score submission, the client hash, the client build) into C# models of primitives and
+back, including undoing the client's own encoding (the score submission's Rijndael cipher). It does not
+validate and gives no business meaning; Domain owns meaning and validity, Application the checks. If a wire
+format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IRC. Protocol is not a peer of
+Domain: only the transport hosts reference it, and it may use external libraries for the wire work.
+
+Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
+its short name without `Basil.`: `src/Domain/`,
+`src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Hosts/{Host,Shared,Bancho,Irc,Rest,Cli}/`,
+`src/Protocol/{Bancho,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
+(`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
+`tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `src/Application/Users`;
+shared fixtures are under `tests/Support/`, and the tests that build the whole composition and run several hosts
+under `tests/Architecture/` and `tests/Hosts/`).
+
+Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
+an options type that the project using it owns; Application reads no configuration.
+
+`Application.Common` owns `IActor`, `Result<T>`, `Scoped<T>`, shared query values and event contracts/queue; it depends
+on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
+event dispatcher; it depends on Domain, Application.Common and its external packages.
+
+Inside a module Application project each folder owns one kind of type. **Objects/** holds the live objects and what
+they do: runtime objects, their parts, the contexts they take their collaborators from, the outcome enum of each
+object, and the records of its events (`Objects/Events/`); every coordination between objects lives here, and it
+publishes the events that are left to the handlers. **Registry/** holds what keeps live objects in RAM and hands them
+out (`UserRegistry`, `Lobby`, the channel registries) and owns the operations on what it holds. **Capabilities/**
+holds the `Scoped*` views (the object's behaviour as one connection may do it), the ports to external computation (a
+capability with business meaning whose implementation needs external libraries: beatmapset reader, analyser, assets,
+mirror, screenshot inspector; these interfaces and the data they exchange are the only public types) and the
+application logic that needs no live object (account checks, beatmapset indexing, score validation and recording): it
+takes and returns records and plain results, never creates, receives or publishes an object or an event, and every
+such type is `internal`. **Services/** holds the services the system provides, a contract and its implementation
+(`IAnticheatReporter`); a helper that only serves one layer is not a service and stays with what implements it.
+**Persistence/** holds the repository ports and their query records, **Storage/** the file-storage ports,
+**Handlers/** the event handlers and **Workers/** the background runs.
+Each module's public `Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()`
+registers the implementations of its ports and its migration. Handlers stay `internal`; a module that has them grants
+`InternalsVisibleTo("Basil.Host")` (the generated Mediator code names them) and to its own test project, and
+nothing else is made visible. `Basil.Host` calls `AddBasil()`.
+
+### Hosts
+
+`Basil.Host` is the composition root: the one `AddMediator` call, configuration binding, logging, shutdown/restart and
+host and subdomain routing. It holds no business rule and no recovery logic (those belong to Application and
+Infrastructure). The transports are `Basil.Host.Bancho` (osu! packets, polling and legacy web endpoints),
+`Basil.Host.Irc` (plain TCP), `Basil.Host.Rest` (`api.`, images on `a.`/`assets.`, SSE, diagnostics) and
+`Basil.Host.Cli` (terminal dashboard and command box).
+
+* Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
+  `Protocol.Bancho`. `tests/Architecture/HostGraphTests.cs` enforces this.
+* A transport takes the actor from the connection that opened the request or socket and works through scopes
+  (`x.ScopeTo(connection)`), never through a service, and holds no business, permission or state rule of its own.
+* Configuration is bound in `Basil.Host` only; a transport receives `IOptions<T>` of an options type it owns.
+  BasilBot's reply file is bound there too (`Configurations/Templates/replies.json`, written with the defaults when
+  missing).
+* Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
+* The console is the one entry point that skips rights checks (`OperatorConnection`); a chat command still uses the
+  typist's rights. See [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md).
+
+### Application feature folders
+
+Application is sliced by module first, then by folder of responsibility; namespace = project + folder
+(`Basil.Application.Chat.Objects`). Application.Common owns shared values, paging/search syntax and event
+contracts/queue; Infrastructure.Common owns shared persistence and event delivery.
+
+Every module uses these folders, and creates only the ones it needs:
+
+| Folder | Holds |
+|---|---|
+| `Objects/` | The module's live objects, their parts and contexts, each object's outcome enum, and its event records (`Objects/Events/`) |
+| `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries) |
+| `Capabilities/` | The `Scoped*` views, the ports to external computation, and the object-free logic that implements them |
+| `Services/` | Services the system provides: a contract and its implementation. Only what a module offers as a service belongs here |
+| `Persistence/` | The repository ports, their query records and the data both layers name |
+| `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
+| `Handlers/` | The event handlers of the module, one per concrete event type |
+| `Workers/` | The background runs the module declares (sweepers, watchers) |
+
+Infrastructure mirrors those ports: `Persistence/` for Postgres, `DbContext`, rows and migrations, `Storage/` for the
+file implementations, `Capabilities/` for what needs an external library, `Registry/` for the shared memory
+primitives and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
+
+```text
+Users/         IUserRepository and friends, UserQuery, login inputs    (Persistence)
+               IUserAvatarStorage                                      (Storage)
+               User, UserContext, UserGrants, UserProfile, UserOutcome  (Objects)
+               Connection, ConnectionContext, ConnectionRules,
+               PlayerStatus                                            (Objects/Connections)
+               UserRegistry                                            (Registry)
+               AccountService, CredentialChecks, ScopedUser*,
+               ScopedBanchoConnection                                  (Capabilities)
+               ConnectionHandler, RestrictionHandler                   (Handlers)
+Chat/          IChannelRepository                                      (Persistence)
+               the channel tree, ChannelContext, ChannelOutcome,
+               ChannelEvents                                            (Objects)
+               GeneralChannelRegistry, RoomChannels, PmChannels,
+               SpectatorChannels                                       (Registry)
+               ScopedChannel, ScopedGeneralChannel                     (Capabilities)
+               the room, lobby, connection and spectator handlers      (Handlers)
+Multiplayer/   match, round, event and report repositories             (Persistence)
+               Room and its parts, RoomOutcome, the event records       (Objects)
+               Lobby, LobbyContext                                      (Registry)
+               ScopedLobby and the room's scopes                        (Capabilities)
+               MatchRecorder, ScoreHandler, the lobby handlers          (Handlers)
+Beatmaps/      beatmap and beatmapset repositories, import and scan
+               data                                                     (Persistence)
+               IBeatmapsetStorage                                       (Storage)
+               Beatmapset, Beatmapsets, contexts, outcomes, events      (Objects)
+               ScopedBeatmapset, the reader/analyser/mirror/assets
+               ports, and the importer, scanner and planner             (Capabilities)
+Scores/        score, stats repositories, submission inputs             (Persistence)
+               IReplayStorage                                           (Storage)
+               ScoreSubmitter, IScoreBeatmapAcceptance,
+               ScoreSubmissionOutcome, ScoreEvents                      (Objects)
+               ScopedScoreSubmitter, ScoreRecorder                      (Capabilities)
+Anticheat/     IAnticheatReporter, AnticheatReporter                    (Services)
+               AnticheatEvents                                          (Objects/Events)
+Content/       ISettingsRepository, IMenuBannerRepository,
+               ServerSettings                                           (Persistence)
+               the FAQ, menu, screenshot and seasonals storages          (Storage)
+               IScreenshotInspector                                     (Capabilities)
+Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects)
+               ScopedServer and its parts                               (Capabilities)
+```
+
+Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
+event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
+Infrastructure.Common's `Workers/`. Concrete handlers live in the module's `Handlers/` folder or in the consumer that
+owns them, including `Basil.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
+and announcements are server features: a command is an entry point that uses the typist's scoped objects, and the bot
+only replies. Query **records** (the filter a repository applies, with `Parse` for the search syntax) belong to
+Persistence; routes and handlers that answer queries do not. Server settings changed at runtime (`ServerSettings`,
+owned by Content.Application) exist only while the server runs and are stored through `ISettingsRepository`; they are
+not Domain and not host configuration.
+
+* Common projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
+  `Multiplayer` objects. Anticheat flags,
+  wherever they arrive (score submission, `lastfm.php`), are reported by the host through `IAnticheatReporter.Report`,
+  the single source of anticheat events; BasilBot turns them into chat warnings.
+* `Chat` references `Multiplayer`, and both reference `Users` and `Connections` (`Room.Host`, `Channel.Members`, the online
+  `User`); treat them as one cluster. `Users` and `Connections` reference each other (a user holds its connections, a
+  connection knows its user), so those two form one cluster of their own. Their runtime objects and registries live in Objects;
+  persistent repositories remain in each module's Persistence folder. Objects change their own state through behaviour, with
+  implementation access limited to the owning object and its collaborators. References run from the acted-on
+  object to the actor, never back.
+
+### Domain and Application
+
+The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
+
+* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
+* [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md): permissions, privileges, restrictions, hierarchy, sessions, BasilBot. Before touching users, connections, permissions or the bot.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Common`.
+* [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
+
+### Important invariants
+
+#### Multiplayer concurrency
+
+`Room` is mutable shared state.
+
+Operations that read and then mutate a room are synchronous methods of `Room` that hold the room's own `Lock` across the complete state transition and publish inside it; a closed room answers `RoomClosed`. `ScopedRoom` only checks permissions and calls them.
+
+Do not introduce a second synchronization mechanism for the same state.
+
+Never await under the room lock.
+
+See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) for the complete model.
+
+#### Authority
+
+Referee, host, and creator are separate concepts.
+
+Whoever creates a room is its creator, however it was created (in game, or through the API, directly or
+by a client acting for the user); every room has a creator. Creating a room needs `RoomCreate`. The
+creator is remembered on the match and ranks above referees; it is not added to the referee list. A creator
+who created the room in game is also its first host. When a tournament room is created, a creator whose
+game client is online and not in any room is seated in the new room as host; a creator already in another
+room stays there and does not become host. Managing a room is for the creator and the referees (and
+`RoomManageAny`, which acts with the creator's authority in every room); being the host does not
+grant management rights. A creator or referee whose permissions are all suspended cannot manage. Every room
+operation with a permission rule runs on `room.ScopeTo(by)`, which checks authority, not the transport. BasilBot's `!mp` commands call these operations using the typist's connection.
+
+Do not treat them as interchangeable.
+
+The creator has permanent match authority. Referee membership and host state have different lifecycles.
+
+See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) before changing match permissions or `!mp` authorization.
+
+#### No pp in gameplay
+
+Basil does not use performance points for scoring, leaderboards, or match win conditions.
+
+Locally calculated difficulty/star-rating information is display-only.
+
+Do not introduce pp-dependent gameplay behavior.
+
+#### Stable protocol
+
+Bancho packet layouts are wire contracts.
+
+Changes to packet encoding or decoding must be treated as protocol changes and covered by protocol tests.
+
+#### SSE
+
+Live HTTP streams use dedicated `/live` endpoints.
+
+Do not introduce content negotiation between JSON and SSE on the same route.
+
+See [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
+
+#### API responses
+
+The `api.` host uses a common response envelope for JSON responses.
+
+The generated OpenAPI schema must describe the same contract that the runtime returns.
+
+Do not manually work around the envelope in individual routes without first checking the API middleware and schema transformation rules.
+
+See [`docs/for-client/api/response-envelope.md`](docs/for-client/api/response-envelope.md).
+
+#### User-visible enums
+
+Keep API record properties typed as their actual enum types.
+
+Do not replace enums with `int` or `string` merely to influence serialization.
+
+Serialization behavior belongs to the API contract and is documented separately.
+
+#### Naming
+
+Use `Privilege`, not `Priv`, for new code and public models.
+
+Do not reintroduce the old abbreviation.
+
+## Scope
+
+Basil is a backend platform: it offers capabilities through its protocols and its user-centric HTTP API, with
+BasilBot as a built-in chat entry point. Other features are built on top as clients. It is deliberately smaller
+than bancho.py.
+
+Do not implement a bancho.py feature simply because it exists upstream. Chat commands, announcements and room
+countdowns belong to BasilBot and the room; overlays remain client features.
+
+Before adding:
+
+* a chat command
+* a persistence model
+* an API surface
+* a social feature
+* a scoring feature
+* a compatibility endpoint
+
+check [`docs/for-developers/working-scopes.md`](docs/for-developers/working-scopes.md).
+
+If the requested behavior conflicts with the documented scope, surface that conflict before coding.
+
+## Repository documentation
+
+Use [`docs/index.md`](docs/index.md) to find the authoritative document for a topic.
+
+Important developer documents:
+
+* [`architecture.md`](docs/for-developers/architecture.md) — architecture and dependency direction
+* [`working-scopes.md`](docs/for-developers/working-scopes.md) — feature scope
+* [`testing.md`](docs/for-developers/testing.md) — test policy
+* [`development.md`](docs/for-developers/development.md) — local development
+* [`multiplayer.md`](docs/for-developers/multiplayer.md) — match/session behavior
+* [`sse.md`](docs/for-developers/sse.md) — live HTTP streams
+* [`database.md`](docs/for-developers/database.md) — persistence design
+* [`logging.md`](docs/for-developers/logging.md) — logging design
+* [`docs-guideline.md`](docs/for-developers/docs-guideline.md) — documentation rules
+
+Technician documentation:
+
+* [`configuration.md`](docs/for-technicians/configuration.md) — configuration and data directories
+* [`https.md`](docs/for-technicians/https.md) — TLS requirements
+* [`docker.md`](docs/for-technicians/docker.md) — Docker deployment
+
+Agent documentation:
+
+* [`guidelines.md`](docs/for-agents/guidelines.md) — agent workflow
+* [`domain.md`](docs/for-agents/domain.md) — domain-modeling guidance
+* [`issue-tracker.md`](docs/for-agents/issue-tracker.md) — GitHub Issues workflow
+
+### Notes for the code-principles skill
+
+Principles that came up while restructuring Application and the hosts and are not osuBasil-specific. They are proposals:
+the owner merges them into the skill later, nobody edits the skill silently.
+
+* **Read the IDE's suggestions** (see Code style): async overloads with the token in scope, LINQ where a loop reads as
+  a sentence, return-switch over switch over if, ignore allocation hints and serializer-filled DTO reports.
+* **Internal application logic is object-free; system Services are explicit contracts.** A helper that only implements a
+  capability takes and returns records and plain results, never receives or creates a runtime object and never
+  publishes an event. A service in a module's Services folder is different: it is a public system operation with a
+  contract and implementation. `IAnticheatReporter` is the explicit event-source exception: its purpose is to report
+  a live game's flags, and it is the single producer of anticheat events. Do not infer from this exception that internal
+  helpers belong in Services. Coordination between objects otherwise belongs to the object acted on or its registry
+  (`registry.LoginAsync`, `lobby.ReleaseAsync`, `scoreSubmitter.ScopeTo(connection).SubmitAsync`); a file full of
+  former helpers ending up as `Server.X` is the God Actor in disguise. This supersedes the old rule "one child service per part".
+* **Plain data that two layers both name in public signatures lives in the lower layer** (inputs, failure enums, import
+  results), so the upper layer can expose it while the lower one stays internal.
+* **Flip a reference direction in stages with a temporary internal bridge interface** declared in the upper project:
+  move the logic, keep the call working through the interface, flip the reference, delete the interface.
+* **Break a construction cycle with a deferred port** (`Func<T>`/`Lazy<T>` resolved at first use) rather than by
+  letting one object build another inside its constructor; check the container with a harness that resolves every
+  registration under a timeout, because a cycle shows up as a hang.
+* **Detect the kind of an uploaded file from its content when the extension is unknown or when its size is needed**
+  (ImageSharp header for images, ffprobe for audio); trust a known extension otherwise; no part of an uploaded name
+  becomes a temporary file name. Cap what the input can cost (bytes while reading, pixels per side) before using it.
+* **Give an architecture test a positive control**: after writing a no-dependency rule, assert once that the opposite
+  claim (the project does depend on X) is detected, so a rule that always passes is caught.
+* **Review reads the code, not only the green tests.** A passing suite proves the cases it covers; it does not prove
+  that the code implements the contract, that every branch is reachable, or that a test was not weakened to pass. Read
+  the diff line by line against the contract, the failure modes and the untested paths.
+* **Delegated work is fast and time-boxed.** Give a subagent explicit files, a target state, what it must not change,
+  the command that verifies it and a deadline (about 10 minutes for mechanical work, 20 for design). When the deadline
+  passes, stop and report what was done instead of exploring outside the task.
+* **Working with delegated agents:** stage explicit paths, never the whole tree; a worktree agent cannot use the IDE
+  tools of the main checkout, so the orchestrator runs the container check after merging; two agents at a time at most,
+  and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
+  hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
+
+* **Scoped base class and `Result<TOutcome>`** (2026-10-21, see `docs/for-agents/application-design.md`): one abstract
+  `Scoped<T>` holds the effective permissions snapshot and offers `Require(required)` returning the missing permissions
+  (`null` = met); behaviours return a shared `Result<TOutcome>` with per-object outcome enums starting at `Ok = 1`.
+* **No `ConfigureAwait(false)`** in a server application (owner decision, 2026-10-26: the project rule stands and the
+  skill's "every library await uses it" does not apply here).
+* **Tests for computed values** pin properties (valid, finite, monotone under a modifier), not the exact number, unless
+  the number is a protocol or ruleset contract; expected values come from the specification, never from running the code.
+* **Test projects mirror source projects** one to one (`tests/` tree = `src/` tree, folders inside mirror feature
+  folders); shared fixtures live in one support project.
+* **A persistence layer has no SQL text** (owner decision, 2026-10-22): Entity Framework Core with LINQ and row objects,
+  never Dapper or raw SQL (`FromSql`, `ExecuteSql`, `SqlQuery`, `NpgsqlCommand`); the few schema details EF cannot
+  express (a filtered unique index, check constraints) are written in the model configuration and listed in the
+  review. Rows are separate entity types, never the Domain types; migrations are EF migrations.
+* **A fixed-id system account** (the bot, id 1) is taken over if it exists and created if it does not, by startup code,
+  documented as the one exception to "the server creates no account".
+
+* **Run the real binary before calling a host done** (2026-10-30). Tests that start the server inside the test process
+  never execute `Program`, the exit path or the signal handling: the first run of the real executable found a crash
+  at every stop, a fatal log line from a listener and an image route answering 500. Start it against a real database,
+  create an account with the offline command, and exercise one request per protocol, one refusal, the stop signal and
+  the exit code.
+* **Resolve what the exit path needs before running the host.** The service provider is disposed when the host has
+  stopped; reading a service from it afterwards throws and loses the exit code. Take the object first, run, then use it.
+* **Read the memory-first store in the order that cannot lose a record.** When a list is the database rows plus the
+  writes still queued, snapshot the queued writes before reading the rows: a write that finishes in between is then in
+  one of the two, never in neither.
+* **Validate at the boundary what the consumer will need, and let the consumer survive what slipped through.** A
+  header-only inspection accepts a picture that cannot be decoded; the serving side answers 404, not 500. Probe only the
+  formats the server accepts, so the parsers of the others never see uploaded bytes.
+* **Authorize before you look up.** A command or route that answers "no such X" before it checks the right to manage X
+  tells an unauthorized caller which names exist. Check the right first; the refusal must be identical whether or not
+  the target exists (same status, same missing-permission mask).
+* **Tests that share one running host own their identities.** A limit counted per address or per account is shared
+  with every earlier test that is still closing sockets; give each limit test addresses or accounts nobody else uses.
+* **Read a reply to its last line, and pace every poll.** A long list is split over several lines, so look at all of
+  them. A loop that polls a fixed number of times without a pause ends before an asynchronous queue delivers; use the
+  helper that pauses between polls.
+* **A flake gets its failure message and a root cause, never a longer timeout or a retry.** Quiet test output hides the
+  message: log to a result file (trx) and loop the test until it fails. Most of the flakes of the Host phase were the
+  test reading too early or too little; one was a real race in production code.
+* **Adding a member to an enum means running the exhaustive tables.** Run the whole test project of every area the
+  change touches, not the filtered tests of the feature: a table that lists every outcome only goes red there.
+* **Delegated agents are hands; the orchestrator decides how.** Write the files, the exact change, the cases and the
+  verification into the prompt, pass it as a file, bound it with a timeout and have it write an exit marker (a long
+  prompt passed on the command line hung a run for seven hours). Read the agent's diff, not its summary.
+* **Re-verify a suspected defect in the code before dispatching it.** A handover list is a hypothesis: three of its
+  fifteen items were already handled (the code closed the connection, or the lock had nothing left to block).
+* **Check the license before bumping a dependency to a fixed version.** A security release can change its terms; the
+  version that fixes the advisories may not build without a key, which is the owner's decision, not a build detail.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for [`thnhmai06/osuBasil`](https://github.com/thnhmai06/osuBasil).
+
+See [`docs/for-agents/issue-tracker.md`](docs/for-agents/issue-tracker.md).
+
+### Domain modeling
+
+Domain-modeling work uses:
+
+```text
+CONTEXT.md
+docs/adr/
+```
+
+These files are created lazily by the `/domain-modeling` workflow.
+
+See [`docs/for-agents/domain.md`](docs/for-agents/domain.md).
+
+## Final verification
+
+Before considering a code change complete:
+
+1. Run the smallest relevant tests while iterating.
+2. Run the complete test suite for the final change.
+3. Run a Release build when the change affects production code.
+4. Check architecture tests for cross-layer changes.
+5. Update authoritative documentation when behavior or design changes.
+6. Review the final diff for unrelated changes.
+7. Check every new or changed member in the Application projects against
+   [Domain and Application](#domain-and-application), above all "behaviour belongs to the object that owns it", "the acted-on object owns the interaction" and
+   "Application publishes events; Infrastructure only ships them". This applies to code written by delegated agents too: the orchestrator reviews it
+   against these rules before accepting it. `User.Channels`, `User.Join(Channel)`,
+   sessions emitting events, a handler that waits or serves several event types, and rules or timers on runtime models and
+   registries all got through review once; do not let them back in. Nor should an internal helper that only wraps
+   a repository read, an internal helper that takes, returns or creates a live object or publishes an event (except
+   the explicit `IAnticheatReporter` system service), a contract name that reveals its mechanism, or a reference from a module's Infrastructure project to another module,
+   or any project reference outside the graph of the modules. Since the identity redesign, also
+   reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
+   effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
+   delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
+   to the object that owns it" (God Actor, service-centric procedural design, permission plumbing, exposed mutable
+   state, fake scoping), and a bot message that goes through a rights check or a bot command that runs with the
+   bot's rights instead of the typist's.
+8. Review delegated work for what agents tend to leave behind, besides the rules above: `.ConfigureAwait(false)` in
+   new code, a changed final newline or reflowed lines nobody asked for, a renamed parameter outside the task,
+   stray tabs in XML documentation, a constructor made `internal` on a class the container creates, a member that
+   nothing calls any more, a wait between a rights check and the change it guards, a handler that waits, a
+   `switch` statement rewritten as a nullable-result switch expression plus an `if` to silence a hint, a whole-tree
+   `git add` that sweeps in files nobody asked for, and a
+   consequence that skips offline users or one of several paths. Run parallel agents in separate git worktrees
+   (two at a time at most) and merge their commits yourself.
+
+The goal is not merely to produce compiling code. The goal is a verified change that respects Basil's architecture, scope, contracts, and documentation.

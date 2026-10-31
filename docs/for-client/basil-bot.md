@@ -2,20 +2,41 @@
 
 ## Overview
 
-BasilBot is Basil's in-game chat bot, providing chat commands similar to BanchoBot.
+BasilBot is the server's built-in chat command and announcement surface. It is not an actor but the voice the server speaks with: its
+account is fixed, the server protects it, and nobody can sign in as it or act for it. Permissions mean nothing to it,
+and its privileges only decide how a client shows it. Commands run with the rights of the user who typed them.
 
 Commands include:
 
 * general BasilBot commands;
-* `!mp` commands for multiplayer room management.
+* `!mp` commands for multiplayer room management;
+* `!channel` commands for managing the general channels.
 
-The `!mp` commands can be used for tournament operations such as creating and configuring rooms, managing referees and players, and controlling match timers.
+`!channel list|create|set|delete` does what the HTTP API for channels does, and needs the permission to manage
+channels. Options are written `name=value`: `topic`, `read` and `write` (the privilege masks that may read and write),
+`autojoin` and `visible` (`true` or `false`), for example `!channel create #events topic="Big event" autojoin=true`.
+`list` shows the channels you can see; with the permission it also shows the hidden ones.
+
+The `!mp` commands support tournament operations such as creating and configuring rooms, managing referees and
+players, and controlling room countdowns.
+
+Commands run using the connection of the person who typed them, so they require that person's own rights. BasilBot
+only replies; its messages and server announcements bypass user permission checks. The command handler and
+announcement handlers are implemented in `Basil.Bot` and run in the server for the osu! client and IRC.
+
+Room countdowns belong to the room, not to BasilBot. A countdown that starts a round is cancelled when the round's
+settings change; countdowns stop when the round starts or is aborted or the room closes. BasilBot announces the
+countdown marks.
+
+BasilBot is shown as an online user to both the osu! client and IRC. Operators also have a console in the server
+process (`Basil.Host`): it runs a command as the operator, which is the one entry point that skips permission checks,
+while a chat command always runs with the typist's rights. See [`../for-technicians/console.md`](../for-technicians/console.md).
 
 ---
 
 ## Command reference
 
-The complete command reference is generated from Basil's OpenAPI documentation.
+The complete command reference is generated from the code.
 
 It includes:
 
@@ -23,24 +44,14 @@ It includes:
 * `!mp` subcommands;
 * command arguments;
 * required arguments;
-* command behaviour;
-* exact reply text.
+* command behaviour.
 
-### Running server
+The generated reference is published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/). A running instance
+serves its generated API reference at `https://api.<domain>/docs/`.
 
-Open:
-
-```text
-https://api.<domain>/docs/basil-bot/
-```
-
-### Online documentation
-
-The same documentation is available without a running Basil server:
-
-[BasilBot documentation](https://thnhmai06.github.io/osuBasil/)
-
-The generated reference is the authoritative source for the current command syntax and reply text. This page intentionally does not duplicate the command list.
+The generated reference is the authoritative source for the current command syntax. This page intentionally does not
+duplicate the command list. Reply wording is not part of it: the server operator owns the wording (see
+[Reply text](#reply-text)).
 
 ---
 
@@ -66,11 +77,18 @@ The exact subcommands and argument syntax are defined by the generated BasilBot 
 
 ## Reply text
 
-BasilBot's replies are part of the client-visible command contract.
+BasilBot's replies are part of the client-visible command contract, but their wording belongs to the server operator.
 
-Clients, tournament tooling, and automated integrations should not assume that arbitrary human-readable text represents a stable command result unless that behaviour is explicitly documented.
+Every reply is a text in the operator-editable file `Configurations/Templates/replies.json`, a JSON object that maps a
+reply's key to an
+[ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) string with named placeholders
+such as `{room}`. The file is written with the default wording when it does not exist, is reloaded while the server
+runs, and a missing key keeps its default wording. If an edit leaves the file unreadable, the last good wording stays
+in use; a single text that is invalid is replaced by its default.
 
-For the exact current reply text, use the generated BasilBot reference.
+Because an operator can rewrite any reply, clients, tournament tooling, and automated integrations must not assume that a
+human-readable reply text is a stable command result. Use the HTTP API for machine-readable state. See
+[`../for-technicians/configuration.md`](../for-technicians/configuration.md) for the data directories.
 
 ---
 
