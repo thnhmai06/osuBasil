@@ -67,7 +67,6 @@ internal sealed partial class MpCommands
 	private async Task<bool> InAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
 		if (context.Channel is not null)
 		{
 			await context.Reply(MpReplies.MpInDmOnly, cancellationToken);

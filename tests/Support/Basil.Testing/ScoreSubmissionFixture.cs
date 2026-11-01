@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;

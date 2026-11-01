@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Http;

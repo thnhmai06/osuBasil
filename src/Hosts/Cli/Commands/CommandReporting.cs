@@ -1,5 +1,5 @@
 using System.Text;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Host.Shared;
 
 namespace Basil.Host.Cli.Commands;

@@ -3,7 +3,7 @@ using System.Text;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Common.Events;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Objects;

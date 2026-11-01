@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Application.Beatmaps.Capabilities;
+namespace Basil.Application.Beatmaps.Objects;
 
 /// <summary>One archive read for indexing: the stored beatmapset it belongs to and its records.</summary>
 /// <param name="Archive">The archive, which becomes the beatmapset's own.</param>

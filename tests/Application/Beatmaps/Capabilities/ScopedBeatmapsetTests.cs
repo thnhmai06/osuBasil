@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;

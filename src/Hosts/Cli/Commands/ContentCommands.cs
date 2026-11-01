@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
 using Basil.Application.Servers.Capabilities;
@@ -155,10 +155,10 @@ internal static class ContentCommands
 			Summary = "Deletes a screenshot.", Run = DeleteScreenshotAsync
 		};
 
-		const string DiagnosticsRoute = "POST /v1/diagnostics/{category}/{**action}";
+		const string diagnosticsRoute = "POST /v1/diagnostics/{category}/{**action}";
 		yield return new CommandDef
 		{
-			Pattern = "diagnostics gc collect", Route = DiagnosticsRoute, Summary = "Collects the garbage now.",
+			Pattern = "diagnostics gc collect", Route = diagnosticsRoute, Summary = "Collects the garbage now.",
 			Run = call =>
 			{
 				RuntimeSampler.Collect();
@@ -168,7 +168,7 @@ internal static class ContentCommands
 		};
 		yield return new CommandDef
 		{
-			Pattern = "diagnostics caches clear", Route = DiagnosticsRoute, Offline = true,
+			Pattern = "diagnostics caches clear", Route = diagnosticsRoute, Offline = true,
 			Summary = "Empties the cache of derived files.",
 			Run = call =>
 			{
@@ -181,7 +181,7 @@ internal static class ContentCommands
 		};
 		yield return new CommandDef
 		{
-			Pattern = "diagnostics exceptions reset", Route = DiagnosticsRoute,
+			Pattern = "diagnostics exceptions reset", Route = diagnosticsRoute,
 			Summary = "Forgets the counted exceptions.",
 			Run = call =>
 			{
@@ -201,7 +201,7 @@ internal static class ContentCommands
 	{
 		var now = call.Get<TimeProvider>().GetUtcNow();
 		var banners = await call.Get<IMenuBannerRepository>().ListAsync(call.CancellationToken);
-		call.Formatter.PrintTable(call.Output, [.. banners.Select(banner => (object)BannerView.Of(banner, now))]);
+		call.Formatter.PrintTable(call.Output, [.. banners.Select(object (banner) => BannerView.Of(banner, now))]);
 		return ExitCodes.Success;
 	}
 

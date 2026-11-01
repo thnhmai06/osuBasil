@@ -22,8 +22,8 @@ public class ClientHashTests
 
 	public static TheoryData<string> Rejects()
 	{
-		return new TheoryData<string>
-		{
+		return
+		[
 			// no trailing colon
 			"a:b:c:d:e",
 			// four components
@@ -31,7 +31,7 @@ public class ClientHashTests
 			// six components
 			"a:b:c:d:e:f:",
 			""
-		};
+		];
 	}
 
 	[Theory]

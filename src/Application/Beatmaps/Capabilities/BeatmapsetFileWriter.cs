@@ -23,7 +23,7 @@ internal sealed class BeatmapsetFileWriter(
 		if (stream is null) return;
 
 		var keep = false;
-		List<string> videoFiles = [];
+		List<string> videoFiles;
 		try
 		{
 			var content = await reader.ReadAsync(stream, cancellationToken);

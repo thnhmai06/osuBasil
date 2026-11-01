@@ -17,8 +17,8 @@ public class PacketWriterUserPresenceTests
 	/// </summary>
 	private static byte[] Expected(byte offsetByte, byte privilegeByte)
 	{
-		return new byte[]
-		{
+		return
+		[
 			0x53, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, // id 83 u16 LE, padding, length 20 u32 LE
 			0, 0, 0, 0, // userId 0
 			0x00, // name ""
@@ -28,7 +28,7 @@ public class PacketWriterUserPresenceTests
 			0, 0, 0, 0, // longitude 0.0f
 			0, 0, 0, 0, // latitude 0.0f
 			0, 0, 0, 0 // global rank 0
-		};
+		];
 	}
 
 	private static byte[] Write(int utcOffset, int banchoPrivileges, int mode)

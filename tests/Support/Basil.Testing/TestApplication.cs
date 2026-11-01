@@ -351,8 +351,7 @@ public sealed class TestApplication : IDisposable
 			typeof(IMatchRepository).Assembly, typeof(IChannelRepository).Assembly
 		}.Distinct();
 		foreach (var port in portAssemblies.SelectMany(assembly => assembly.GetTypes()).Where(type =>
-			         type is { IsInterface: true, ContainsGenericParameters: false } &&
-			         type.Namespace is not null &&
+			         type is { IsInterface: true, ContainsGenericParameters: false, Namespace: not null } &&
 			         (type.Namespace.EndsWith(".Persistence", StringComparison.Ordinal) ||
 			          type.Namespace.EndsWith(".Storage", StringComparison.Ordinal) ||
 			          type.Namespace.EndsWith(".Capabilities", StringComparison.Ordinal)) &&

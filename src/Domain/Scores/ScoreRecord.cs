@@ -151,7 +151,7 @@ public sealed record ScoreData(
 
 	private static int? CheckUserId(int? value)
 	{
-		return value is { } id && id < 1
+		return value is { } and < 1
 			? throw new ArgumentOutOfRangeException(nameof(value), value, "User ids start at 1.")
 			: value;
 	}

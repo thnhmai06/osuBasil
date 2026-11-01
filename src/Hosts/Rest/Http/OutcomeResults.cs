@@ -1,4 +1,4 @@
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 
 namespace Basil.Host.Rest.Http;
 

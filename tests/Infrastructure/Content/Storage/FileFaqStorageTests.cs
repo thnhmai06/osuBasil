@@ -202,7 +202,7 @@ public sealed class FileFaqStorageTests : IDisposable
 		var outside = Path.Combine(_data.Root, "secret.txt");
 		await File.WriteAllTextAsync(outside, "Secret", TestContext.Current.CancellationToken);
 
-		await Record.ExceptionAsync(() => _faqs.DeleteAsync("../secret", TestContext.Current.CancellationToken));
+		_ = await Record.ExceptionAsync(() => _faqs.DeleteAsync("../secret", TestContext.Current.CancellationToken));
 
 		Assert.True(File.Exists(outside));
 	}

@@ -61,7 +61,7 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 		foreach (var (label, value) in nested)
 		{
 			output.Line($"{indent}{label}:");
-			if (value is IEnumerable sequence and not string) PrintTable(output, Items(sequence)!, indent + "  ");
+			if (value is IEnumerable sequence and not string) PrintTable(output, Items(sequence), indent + "  ");
 			else Print(output, value, indent + "  ");
 		}
 	}
@@ -144,9 +144,9 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 		return type.IsPrimitive || type.IsEnum || value is string or Guid or decimal or DateTimeOffset or TimeSpan;
 	}
 
-	private static List<object>? Items(IEnumerable sequence)
+	private static List<object> Items(IEnumerable sequence)
 	{
-		return sequence.Cast<object>().ToList();
+		return [.. sequence.Cast<object>()];
 	}
 
 	private static bool IsRefType(Type type)

@@ -1,4 +1,3 @@
-using Basil.Application.Common.Common;
 using Basil.Application.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
@@ -29,7 +28,7 @@ public sealed class ScoreSubmissionTests
 
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
-	private static Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
+	private static Task<(Common.Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{

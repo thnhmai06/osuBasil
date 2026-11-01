@@ -7,7 +7,7 @@ namespace Basil.Host.Cli.Dashboard;
 public sealed class ThemeStore : IThemeControl
 {
 	/// <summary>The scheme used until the operator chooses another.</summary>
-	public static readonly string DefaultScheme = ColorScheme.RootLoopsDark.Name ?? "RootLoopsDark";
+	public static readonly string DefaultScheme = ColorScheme.RootLoopsDark.Name;
 
 	private readonly string _file;
 	private readonly Dictionary<string, ColorScheme> _schemes;
@@ -18,11 +18,10 @@ public sealed class ThemeStore : IThemeControl
 	{
 		_file = Path.Combine(directory, "dashboard-theme.txt");
 		_schemes = ColorScheme.GetPredefinedSchemes().Append(ColorScheme.RootLoopsDark)
-			.Where(scheme => scheme.Name is not null)
-			.GroupBy(scheme => scheme.Name!, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key,
+			.GroupBy(scheme => scheme.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key,
 				group => group.First(), StringComparer.OrdinalIgnoreCase);
 		var saved = TryRead();
-		Current = saved is not null && _schemes.ContainsKey(saved) ? _schemes[saved].Name! : DefaultScheme;
+		Current = saved is not null && _schemes.TryGetValue(saved, out var s) ? s.Name : DefaultScheme;
 		Theme = Theme.FromScheme(_schemes.GetValueOrDefault(Current) ?? ColorScheme.RootLoopsDark);
 	}
 
@@ -40,7 +39,7 @@ public sealed class ThemeStore : IThemeControl
 	{
 		if (!_schemes.TryGetValue(name, out var scheme)) return false;
 
-		Current = scheme.Name!;
+		Current = scheme.Name;
 		Theme = Theme.FromScheme(scheme);
 		try
 		{

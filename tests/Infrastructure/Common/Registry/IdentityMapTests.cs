@@ -62,7 +62,7 @@ public class IdentityMapTests
 		var runs = 0;
 		var gate = new TaskCompletionSource();
 
-		var callers = Enumerable.Range(0, 3).Select(_ => Task.Run(() => map.GetOrAddAsync(1, key =>
+		var callers = Enumerable.Range(0, 3).Select(_ => Task.Run(() => map.GetOrAddAsync(1, _ =>
 		{
 			Interlocked.Increment(ref runs);
 			return gate.Task.ContinueWith<string?>(_ => "stored item");

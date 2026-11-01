@@ -36,8 +36,7 @@ internal sealed class UpdateChecker(IOptionsMonitor<UpdateOptions> options, ILog
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !stoppingToken.IsCancellationRequested)
 		{
-			logger.LogWarning("Skipped checking for updates because the release feed could not be reached: {Reason}",
-				exception.Message);
+			logger.LogWarning(exception, "Skipped checking for updates because the release feed could not be reached:");
 		}
 	}
 }

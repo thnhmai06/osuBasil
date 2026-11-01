@@ -52,7 +52,8 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		}
 
 		foreach (var (name, value) in fields) form.Add(new StringContent(value), name);
-		using var request = new HttpRequestMessage(method, path) { Content = form };
+		using var request = new HttpRequestMessage(method, path);
+		request.Content = form;
 		request.Headers.Host = $"api.{domain}";
 		if (Bearer is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Bearer);
 		using var response = await _http.SendAsync(request);

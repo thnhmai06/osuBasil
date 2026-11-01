@@ -19,7 +19,7 @@ public sealed class DashboardRenderingTests
 		return (model, new DashboardRenderer(model, new ViewFormatter(TimeZoneInfo.Utc)));
 	}
 
-	private static GridSurface Paint(DashboardModel model, DashboardRenderer renderer, int width = 120, int height = 40,
+	private static GridSurface Paint(DashboardRenderer renderer, int width = 120, int height = 40,
 		bool output = false)
 	{
 		var surface = new GridSurface(width, height);
@@ -33,7 +33,7 @@ public sealed class DashboardRenderingTests
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Logs;
 
-		var surface = Paint(model, renderer);
+		var surface = Paint(renderer);
 
 		foreach (var name in new[] { "Overview", "Users", "Rooms", "Metrics", "Logs", "Chat" })
 			Assert.Contains(name, surface.Row(0));
@@ -53,7 +53,7 @@ public sealed class DashboardRenderingTests
 		];
 		model.Selected = 1;
 
-		var surface = Paint(model, renderer);
+		var surface = Paint(renderer);
 
 		Assert.Contains("Users online: 2", surface.Row(1));
 		Assert.Contains("alice", surface.Row(3));
@@ -76,7 +76,7 @@ public sealed class DashboardRenderingTests
 		];
 		model.Filter = "bo";
 
-		var text = Paint(model, renderer).ToString();
+		var text = Paint(renderer).ToString();
 
 		Assert.Contains("bob", text);
 		Assert.DoesNotContain("alice", text);
@@ -94,7 +94,7 @@ public sealed class DashboardRenderingTests
 		];
 		model.Selected = 0;
 
-		var text = Paint(model, renderer).ToString();
+		var text = Paint(renderer).ToString();
 
 		Assert.Contains("first", text);
 		Assert.Contains("second", text);
@@ -112,7 +112,7 @@ public sealed class DashboardRenderingTests
 		model.Log.Add(new LogLine(Moment, LogLevel.Warning, "c", "careful now"));
 		model.Log.Add(new LogLine(Moment, LogLevel.Error, "c", "broken thing"));
 
-		var surface = Paint(model, renderer);
+		var surface = Paint(renderer);
 		var rows = Enumerable.Range(0, 10).Select(surface.Row).ToList();
 
 		Assert.DoesNotContain(rows, row => row.Contains("debug hidden"));
@@ -121,13 +121,13 @@ public sealed class DashboardRenderingTests
 		Assert.Contains("12:30:15 INF started up", string.Join('\n', rows));
 
 		model.Filter = "broken";
-		Assert.DoesNotContain("started up", Paint(model, renderer).ToString());
+		Assert.DoesNotContain("started up", Paint(renderer).ToString());
 
 		model.Filter = string.Empty;
 		model.LogPaused = true;
 		model.LogFrozen = model.Log.Lines();
 		model.Log.Add(new LogLine(Moment, LogLevel.Error, "c", "arrived while paused"));
-		var paused = Paint(model, renderer).ToString();
+		var paused = Paint(renderer).ToString();
 		Assert.DoesNotContain("arrived while paused", paused);
 		Assert.Contains("[paused]", paused);
 	}
@@ -140,10 +140,10 @@ public sealed class DashboardRenderingTests
 		model.Chat.Add(new ChatLine(Moment, "#osu", "alice", "hello there"));
 		model.Chat.Add(new ChatLine(Moment, "#lobby", "bob", "other room"));
 
-		Assert.Contains("12:30:15 #osu <alice> hello there", Paint(model, renderer).ToString());
+		Assert.Contains("12:30:15 #osu <alice> hello there", Paint(renderer).ToString());
 
 		model.Filter = "#lobby";
-		var text = Paint(model, renderer).ToString();
+		var text = Paint(renderer).ToString();
 		Assert.DoesNotContain("hello there", text);
 		Assert.Contains("other room", text);
 	}
@@ -154,8 +154,8 @@ public sealed class DashboardRenderingTests
 		var (model, renderer) = Create();
 		model.AddOutput(new OutputLine(OutputKind.Error, "error: notFound: No such user."));
 
-		Assert.Contains("error: notFound: No such user.", Paint(model, renderer, output: true).ToString());
-		Assert.DoesNotContain("error: notFound", Paint(model, renderer, output: false).ToString());
+		Assert.Contains("error: notFound: No such user.", Paint(renderer, output: true).ToString());
+		Assert.DoesNotContain("error: notFound", Paint(renderer, output: false).ToString());
 	}
 
 	[Fact]
@@ -164,7 +164,7 @@ public sealed class DashboardRenderingTests
 		var (model, renderer) = Create();
 		model.Notice = "Press Ctrl+C again within 3 seconds to shut down the server.";
 
-		Assert.Contains(model.Notice, Paint(model, renderer).Row(1));
+		Assert.Contains(model.Notice, Paint(renderer).Row(1));
 	}
 
 	[Fact]
@@ -173,8 +173,8 @@ public sealed class DashboardRenderingTests
 		var (model, renderer) = Create();
 		for (var i = 0; i < 200; i++) model.Cpu.Add(i % 100);
 
-		var wide = Paint(model, renderer, 140).ToString();
-		var narrow = Paint(model, renderer, 80).ToString();
+		var wide = Paint(renderer, 140).ToString();
+		var narrow = Paint(renderer, 80).ToString();
 
 		Assert.Contains(wide, character => character is >= '⠁' and <= '⣿');
 		Assert.DoesNotContain(narrow, character => character is >= '⠁' and <= '⣿');
@@ -190,7 +190,7 @@ public sealed class DashboardRenderingTests
 		model.Rooms.Add(3);
 		model.Cores = [10, 90];
 
-		var text = Paint(model, renderer, 140).ToString();
+		var text = Paint(renderer, 140).ToString();
 
 		Assert.Contains("users online : 7", text);
 		Assert.Contains("rooms : 3", text);
@@ -206,7 +206,7 @@ public sealed class DashboardRenderingTests
 		model.Tab = DashboardTab.Metrics;
 		model.Diagnostics = [("process.cpuPercent", "12.5"), ("application.rooms", "3")];
 
-		var text = Paint(model, renderer, 140).ToString();
+		var text = Paint(renderer, 140).ToString();
 
 		Assert.Contains("process.cpuPercent", text);
 		Assert.Contains("12.5", text);
@@ -220,8 +220,8 @@ public sealed class DashboardRenderingTests
 		foreach (var tab in Enum.GetValues<DashboardTab>())
 		{
 			model.Tab = tab;
-			Paint(model, renderer, 3, 2);
-			Paint(model, renderer, 1, 1);
+			Paint(renderer, 3, 2);
+			Paint(renderer, 1, 1);
 		}
 	}
 }

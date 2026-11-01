@@ -199,8 +199,9 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 			await using var stream = new NetworkStream(socket, false);
 			using var reader = new StreamReader(stream, Encoding.UTF8);
 			var line = await reader.ReadLineAsync(timeout.Token);
-			await using var writer = new StreamWriter(stream, new UTF8Encoding(false))
-				{ AutoFlush = true, NewLine = "\n" };
+			await using var writer = new StreamWriter(stream, new UTF8Encoding(false));
+			writer.AutoFlush = true;
+			writer.NewLine = "\n";
 			var args = line is null ? null : JsonSerializer.Deserialize<string[]>(line);
 			if (args is null or { Length: 0 })
 			{

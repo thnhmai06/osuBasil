@@ -172,14 +172,14 @@ internal sealed partial class IrcCommands(
 		if (session.RequestedNick is { } asked && !string.Equals(asked, nick, StringComparison.Ordinal))
 			session.Send(new IrcMessage("NICK", asked, nick));
 
-		var server = Options.ServerName;
+		var serverName = Options.ServerName;
 		var mask = IrcView.Mask(connection.Record, Options.Domain);
 		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
 		session.Registered = true;
 		session.Numeric(IrcNumericReply.RplWelcome, $"Welcome to the {IrcReplies.Network} IRC network, {mask}");
-		session.Numeric(IrcNumericReply.RplYourHost, $"Your host is {server}, running version {IrcReplies.Version}");
+		session.Numeric(IrcNumericReply.RplYourHost, $"Your host is {serverName}, running version {IrcReplies.Version}");
 		session.Numeric(IrcNumericReply.RplCreated, $"This server was started {state.StartedAt:u}");
-		session.Numeric(IrcNumericReply.RplMyInfo, server, IrcReplies.Version, "-", "-");
+		session.Numeric(IrcNumericReply.RplMyInfo, serverName, IrcReplies.Version, "-", "-");
 		session.Numeric(IrcNumericReply.RplIsupport, "CASEMAPPING=ascii", "CHANTYPES=#", "PREFIX=(ov)@+",
 			"CHANMODES=,,,", $"NETWORK={IrcReplies.Network}", "NICKLEN=15", "MODES=1", "MAXTARGETS=1", "LINELEN=512",
 			"are supported by this server");

@@ -2,7 +2,7 @@ using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;

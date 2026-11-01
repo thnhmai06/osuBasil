@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Irc.Support;

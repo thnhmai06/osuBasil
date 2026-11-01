@@ -13,7 +13,7 @@ namespace Basil.Host.Bancho.Packets;
 
 internal sealed partial class PacketHandlers
 {
-	private Task HandleRoomAsync(BanchoConnection osu, ClientPacketType type, byte[] payload, PacketReader reader,
+	private Task HandleRoomAsync(BanchoConnection osu, ClientPacketType type, PacketReader reader,
 		CancellationToken cancellationToken)
 	{
 		switch (type)
@@ -151,7 +151,7 @@ internal sealed partial class PacketHandlers
 	{
 		if (room.Slots.Find(osu) is not { } slot || !room.Rounds.InProgress) return;
 		var frame = reader.ReadScoreFrame() with { Id = slot.Index };
-		outbox.Send(room.Slots.Select(other => (Connection?)other.Player).OfType<Connection>()
+		outbox.Send(room.Slots.Select(Connection? (other) => other.Player).OfType<Connection>()
 			.Concat(room.Members.Observers), writer => writer.MatchScoreUpdate(frame));
 	}
 

@@ -27,8 +27,8 @@ public class ClientBuildTests
 	public static TheoryData<string> Rejects()
 	{
 		// "20241399" has month 13: the shape matches but the date is not a date.
-		return new TheoryData<string>
-		{
+		return
+		[
 			"",
 			"xb20240815",
 			"b20240815gamma",
@@ -38,7 +38,7 @@ public class ClientBuildTests
 			"B20240815",
 			"b20240815BETA",
 			"b20240815Tourney"
-		};
+		];
 	}
 
 	public static TheoryData<string, string> CanonicalText()

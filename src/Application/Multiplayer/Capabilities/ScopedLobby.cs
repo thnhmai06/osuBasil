@@ -1,4 +1,4 @@
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;

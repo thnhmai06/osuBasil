@@ -1,4 +1,4 @@
-namespace Basil.Application.Common.Common;
+namespace Basil.Application.Common;
 
 /// <summary>Which part of a listing to return.</summary>
 public sealed record PageRequest

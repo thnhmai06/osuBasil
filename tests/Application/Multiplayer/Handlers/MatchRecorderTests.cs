@@ -22,7 +22,7 @@ public sealed class MatchRecorderTests
 		var recorder = new RecordingRecorder();
 		var setup = await RoomFixture.CreateAsync(app);
 		var opened = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomOpened>(),
-			lobbyEvent => lobbyEvent.Room == setup.Room);
+			lobbyEvent => lobbyEvent.Room.Equals(setup.Room));
 
 		await recorder.Handler.Handle(opened, TestContext.Current.CancellationToken);
 

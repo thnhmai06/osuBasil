@@ -91,6 +91,6 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 		var line = await client.ReadLineAsync();
 
 		Assert.True(line is not null && IrcClient.CommandOf(line) == "PONG",
-			$"The {which} connection was not accepted; the server answered: {line ?? "nothing, it closed the socket"}.");
+			$"The {which} connection was not accepted; the server answered: {line}.");
 	}
 }

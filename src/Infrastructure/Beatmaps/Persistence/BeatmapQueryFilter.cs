@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;

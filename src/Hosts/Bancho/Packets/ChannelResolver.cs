@@ -31,7 +31,7 @@ internal sealed class ChannelResolver(
 					? roomChannels.Of(room)
 					: null;
 			case BanchoView.SpectatorAlias:
-				var host = by is BanchoConnection own && own.Spectators.Count > 0 ? own : registry.FindSpectating(by);
+				var host = by is BanchoConnection { Spectators.Count: > 0 } own ? own : registry.FindSpectating(by);
 				return host is null ? null : spectatorChannels.Of(host);
 		}
 

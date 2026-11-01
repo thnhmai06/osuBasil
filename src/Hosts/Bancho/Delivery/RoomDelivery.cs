@@ -13,9 +13,9 @@ namespace Basil.Host.Bancho.Delivery;
 internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 {
 	/// <summary>Gets the osu! clients in the room: its players and its tournament observers.</summary>
-	public IEnumerable<Connection> Of(Room room)
+	public static IEnumerable<Connection> Of(Room room)
 	{
-		return room.Slots.Select(slot => (Connection?)slot.Player).OfType<Connection>()
+		return room.Slots.Select(Connection? (slot) => slot.Player).OfType<Connection>()
 			.Concat(room.Members.Observers);
 	}
 
@@ -30,7 +30,7 @@ internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 	{
 		if (room.IsClosed) return;
 		var match = BanchoView.Match(room);
-		outbox.Send(room.Slots.Select(slot => (Connection?)slot.Player).OfType<Connection>(),
+		outbox.Send(room.Slots.Select(Connection? (slot) => slot.Player).OfType<Connection>(),
 			writer => writer.UpdateMatch(match));
 		outbox.Send(room.Members.Observers, writer => writer.UpdateMatch(match, false));
 		if (!room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.UpdateMatch(match, false));
@@ -179,7 +179,7 @@ internal sealed class LobbyWatcherDelivery(Lobby lobby, Outbox outbox) : INotifi
 {
 	public ValueTask Handle(LobbyWatcherJoined notification, CancellationToken cancellationToken)
 	{
-		var matches = lobby.Rooms.Values.Where(room => !room.IsClosed && !room.Settings.IsPrivate)
+		var matches = lobby.Rooms.Values.Where(room => room is { IsClosed: false, Settings.IsPrivate: false })
 			.Select(BanchoView.Match).ToList();
 		outbox.Send(notification.Watcher, writer =>
 		{

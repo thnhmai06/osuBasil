@@ -1,4 +1,3 @@
-using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
@@ -304,7 +303,7 @@ public sealed class ScopedLobbyTests
 		Assert.True(room.IsClosed);
 	}
 
-	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
+	private static Task<(Room? Room, Common.Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
 		string name = "test room", bool isTournament = false, string password = "")
 	{
 		return app.Lobby.ScopeTo(by).OpenRoomAsync(name, password, isTournament, false,

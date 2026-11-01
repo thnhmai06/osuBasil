@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;

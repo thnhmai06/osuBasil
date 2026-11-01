@@ -184,7 +184,7 @@ public sealed class FileReplayStorageTests : IDisposable
 		var stream = await _replays.OpenAsync(score ?? Score(), TestContext.Current.CancellationToken);
 		if (stream is null) return string.Empty;
 
-		using (stream)
+		await using (stream)
 		{
 			return await new StreamReader(stream).ReadToEndAsync(TestContext.Current.CancellationToken);
 		}

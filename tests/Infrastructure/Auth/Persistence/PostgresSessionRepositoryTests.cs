@@ -1,7 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
@@ -241,9 +241,9 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await UserAsync();
 		var other = await UserAsync("other_user");
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
-		await RecordTokenAsync(user, SecondId, SessionType.Irc, SHA([2]));
-		await RecordTokenAsync(user, ThirdId, SessionType.Api, SHA([3]));
-		await RecordTokenAsync(other, Guid.Parse("00000000-0000-0000-0000-000000000004"), SessionType.Api, SHA([4]));
+		await RecordTokenAsync(user, SecondId, SessionType.Irc, Sha([2]));
+		await RecordTokenAsync(user, ThirdId, SessionType.Api, Sha([3]));
+		await RecordTokenAsync(other, Guid.Parse("00000000-0000-0000-0000-000000000004"), SessionType.Api, Sha([4]));
 		var cancel = TestContext.Current.CancellationToken;
 
 		await Sessions.EndAsync(user, null, FirstId, [SessionType.Api, SessionType.Irc], Third,
@@ -265,7 +265,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await UserAsync();
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
-		await RecordTokenAsync(user, SecondId, SessionType.Api, SHA([2]));
+		await RecordTokenAsync(user, SecondId, SessionType.Api, Sha([2]));
 		var cancel = TestContext.Current.CancellationToken;
 
 		await Sessions.EndAsync(user, SecondId, null, [SessionType.Api], Third, SessionEndReason.Revoked, false,
@@ -352,7 +352,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
-		await RecordTokenAsync(user, SecondId, SessionType.Irc, SHA([2]));
+		await RecordTokenAsync(user, SecondId, SessionType.Irc, Sha([2]));
 		await RecordAsync(user, First, ThirdId);
 		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Second, SessionEndReason.LoggedOut, false,
 			cancel);
@@ -385,8 +385,8 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
-		await RecordTokenAsync(user, SecondId, SessionType.Irc, SHA([2]));
-		await RecordTokenAsync(user, ThirdId, SessionType.Api, SHA([3]), Second);
+		await RecordTokenAsync(user, SecondId, SessionType.Irc, Sha([2]));
+		await RecordTokenAsync(user, ThirdId, SessionType.Api, Sha([3]), Second);
 		await Sessions.EndAsync(user, SecondId, null, [SessionType.Irc], Second, SessionEndReason.Revoked, false,
 			cancel);
 		var now = Third.AddHours(-1);
@@ -403,7 +403,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		Assert.Equal(2, apiOnly.Total);
 	}
 
-	private static byte[] SHA(byte[] input)
+	private static byte[] Sha(byte[] input)
 	{
 		return SHA256.HashData(input);
 	}

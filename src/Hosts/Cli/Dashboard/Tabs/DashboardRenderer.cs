@@ -75,7 +75,6 @@ public sealed class DashboardRenderer(DashboardModel model, ViewFormatter format
 				OutputKind.Error => Tone.Bad,
 				OutputKind.Ok => Tone.Good,
 				OutputKind.Header => Tone.Accent,
-				OutputKind.Field => Tone.Text,
 				_ => Tone.Text
 			});
 	}
@@ -239,7 +238,7 @@ public sealed class DashboardRenderer(DashboardModel model, ViewFormatter format
 
 	private void PaintLogs(IPaintSurface surface, Area area)
 	{
-		var lines = (model.LogPaused && model.LogFrozen is not null ? model.LogFrozen : model.Log.Lines())
+		var lines = (model is { LogPaused: true, LogFrozen: not null } ? model.LogFrozen : model.Log.Lines())
 			.Where(line => line.Level >= model.MinimumLevel && Matches(model.Filter, line.Message, line.Category))
 			.ToList();
 		surface.Title(area,

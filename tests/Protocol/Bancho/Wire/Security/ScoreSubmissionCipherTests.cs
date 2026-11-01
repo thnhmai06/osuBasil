@@ -35,11 +35,11 @@ public class ScoreSubmissionCipherTests
 	public static TheoryData<string> InvalidKeyLengths()
 	{
 		// twenty-four constant bytes plus the version: 6 characters -> 30 bytes, 9 characters -> 33 bytes.
-		return new TheoryData<string>
-		{
+		return
+		[
 			"abcdef",
 			"abcdefghi"
-		};
+		];
 	}
 
 	public static TheoryData<string, string> MalformedBase64()

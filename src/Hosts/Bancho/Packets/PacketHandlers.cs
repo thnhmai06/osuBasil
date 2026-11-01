@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Persistence;
@@ -81,7 +81,7 @@ internal sealed partial class PacketHandlers(
 			ClientPacketType.CantSpectate => Run(() =>
 				registry.FindSpectating(osu)?.ScopeTo(osu).ReportSpectatingFailed()),
 			ClientPacketType.SpectateFrames => Run(() => ForwardFrames(osu, payload)),
-			_ => HandleRoomAsync(osu, type, payload, reader, cancellationToken)
+			_ => HandleRoomAsync(osu, type, reader, cancellationToken)
 		};
 	}
 

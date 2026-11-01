@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Rest.Http;

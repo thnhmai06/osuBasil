@@ -32,7 +32,7 @@ public sealed class OsuBeatmapsetReaderRealSetsTests
 		Assert.All(content.Difficulties, difficulty => Assert.Equal(GameMode.Standard, difficulty.Mode));
 		Assert.Equal(26, content.Difficulties.Select(difficulty => difficulty.Version).Distinct().Count());
 		Assert.Contains(content.Difficulties,
-			difficulty => difficulty.OnlineId == 2245767 && difficulty.Version == "Agatsu's Insane");
+			difficulty => difficulty is { OnlineId: 2245767, Version: "Agatsu's Insane" });
 		Assert.All(content.Difficulties, difficulty =>
 		{
 			Assert.Equal("audio.mp3", difficulty.Audio?.Name);

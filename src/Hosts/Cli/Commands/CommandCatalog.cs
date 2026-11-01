@@ -195,6 +195,6 @@ public sealed class CommandCatalog
 				return 0;
 			}
 
-		return literals + (exact ? 1 : 0) + (words.Count == 0 ? 0 : 0);
+		return literals + (exact ? 1 : 0) + 0;
 	}
 }

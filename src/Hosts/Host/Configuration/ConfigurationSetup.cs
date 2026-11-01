@@ -42,7 +42,7 @@ public static class ConfigurationSetup
 	{
 		var value = section.Get<T>() ?? Activator.CreateInstance<T>();
 		complete?.Invoke(value);
-		services.AddSingleton<IOptions<T>>(Options.Create(value));
+		services.AddSingleton(Options.Create(value));
 	}
 
 	/// <summary>Gives a path that is relative to the executable the full path it names.</summary>

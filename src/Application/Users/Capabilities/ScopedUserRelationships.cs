@@ -1,4 +1,4 @@
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
@@ -120,7 +120,7 @@ public sealed class ScopedUserRelationships
 		RelationshipType type, CancellationToken cancellationToken)
 	{
 		// The operator reads any account's lists; everyone else reads their own.
-		if (!_scoped.IsSelf && _scoped.By is not OperatorConnection) return (UserOutcome.NotSelf, []);
+		if (_scoped is { IsSelf: false, By: not OperatorConnection }) return (UserOutcome.NotSelf, []);
 
 		var relationships = await _scoped.User.Relationships.ListAsync(type, cancellationToken);
 		return (UserOutcome.Ok, relationships.Select(relationship => relationship.Target).ToList());

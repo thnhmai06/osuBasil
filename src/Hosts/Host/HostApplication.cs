@@ -75,7 +75,7 @@ public static class HostApplication
 			builder.Configuration.GetSection("Basil:Server"));
 		ConfigurationSetup.AddAtStart<StorageOptions>(builder.Services,
 			builder.Configuration.GetSection("Basil:Storage"),
-			storage => storage.DataDirectory = ConfigurationSetup.Resolve(storage.DataDirectory ?? "Data"));
+			storage => storage.DataDirectory = ConfigurationSetup.Resolve(storage.DataDirectory));
 		ConfigurationSetup.AddAtStart<DatabaseOptions>(builder.Services,
 			builder.Configuration.GetSection("Basil:Database"));
 		KestrelSetup.Configure(builder);

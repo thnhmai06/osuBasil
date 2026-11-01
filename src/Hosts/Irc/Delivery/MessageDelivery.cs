@@ -40,7 +40,7 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 	private void EchoToPrivateSender(ChannelMessagePosted notification, string command, string prefix)
 	{
 		var message = notification.Message;
-		if (notification.Channel is PmChannel owner && notification.By is { } by &&
+		if (notification is { Channel: PmChannel owner, By: { } by } &&
 		    !ReferenceEquals(by.User, owner.Owner) &&
 		    clients.Find(by) is { } own && own.Has("echo-message"))
 			Send(own, command, prefix, IrcView.Nick(owner.Owner.Record), message.Content, message.Timestamp,

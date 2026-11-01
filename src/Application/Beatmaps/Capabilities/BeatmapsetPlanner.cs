@@ -1,3 +1,4 @@
+using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;

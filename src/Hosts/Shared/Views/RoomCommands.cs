@@ -1,5 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;

@@ -1,6 +1,6 @@
 using System.Globalization;
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;

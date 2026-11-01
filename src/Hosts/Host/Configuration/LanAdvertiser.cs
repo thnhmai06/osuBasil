@@ -51,7 +51,7 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		}
 		catch (Exception exception)
 		{
-			logger.LogWarning("The domain is not advertised on the network: {Reason}", exception.Message);
+			logger.LogWarning(exception, "The domain is not advertised on the network:");
 		}
 
 		return Task.CompletedTask;

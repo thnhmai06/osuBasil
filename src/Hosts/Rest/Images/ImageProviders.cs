@@ -123,7 +123,7 @@ public sealed partial class BeatmapImageProvider(
 			return null;
 
 		var map = (await beatmaps.ListAsync(set, cancellationToken)).OrderBy(b => b.Id)
-			.FirstOrDefault(b => b.Visible && b.Assets.BackgroundFile is not null);
+			.FirstOrDefault(b => b is { Visible: true, Assets.BackgroundFile: not null });
 		return map is null
 			? null
 			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,
@@ -159,7 +159,7 @@ public sealed partial class BeatmapThumbnailProvider(
 		if (await sets.GetAsync(id, cancellationToken) is not { Visible: true } set) return null;
 
 		var map = (await beatmaps.ListAsync(set, cancellationToken)).OrderBy(b => b.Id)
-			.FirstOrDefault(b => b.Visible && b.Assets.BackgroundFile is not null);
+			.FirstOrDefault(b => b is { Visible: true, Assets.BackgroundFile: not null });
 		return map is null
 			? null
 			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,

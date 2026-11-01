@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Beatmaps.Capabilities;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
 

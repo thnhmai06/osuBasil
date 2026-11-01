@@ -13,6 +13,11 @@ public sealed class ImageTests(RestHostFixture fixture)
 	private static readonly byte[] Png =
 		File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "avatar-default.png"));
 
+	private readonly HttpClient _http = new()
+	{
+		BaseAddress = fixture.Host.Url
+	};
+
 	private RestClient Anonymous()
 	{
 		return new RestClient(fixture.Host.Url, fixture.Host.Domain);
@@ -171,11 +176,11 @@ public sealed class ImageTests(RestHostFixture fixture)
 		var file = new ByteArrayContent(content);
 		file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
 		form.Add(file, "file", "avatar.png");
-		using var request = new HttpRequestMessage(HttpMethod.Put, path) { Content = form };
+		using var request = new HttpRequestMessage(HttpMethod.Put, path);
+		request.Content = form;
 		request.Headers.Host = $"api.{fixture.Host.Domain}";
 		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", client.Bearer);
-		using var http = new HttpClient { BaseAddress = fixture.Host.Url };
-		using var response = await http.SendAsync(request);
+		using var response = await _http.SendAsync(request);
 		return (int)response.StatusCode;
 	}
 }

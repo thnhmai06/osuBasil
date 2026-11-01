@@ -30,9 +30,12 @@ public class LayeringTests
 	private static readonly Assembly BotAssembly = Assembly.Load(Bot);
 
 	private static readonly string[] ModuleRoots =
-		ModuleAssemblies.Modules
-			.SelectMany(module => new[] { $"Basil.Application.{module}", $"Basil.Infrastructure.{module}" })
-			.Concat(["Basil.Application.Common", "Basil.Infrastructure.Common"]).ToArray();
+	[
+		.. ModuleAssemblies.Modules
+			.SelectMany(module => new[] { $"Basil.Application.{module}", $"Basil.Infrastructure.{module}" }),
+
+		"Basil.Application.Common", "Basil.Infrastructure.Common"
+	];
 
 	[Fact]
 	public void Domain_DependsOnNoOtherProjectOrFramework()
@@ -79,8 +82,7 @@ public class LayeringTests
 	public void ApplicationCapabilities_PublicTypesArePortsDataOrScopedCapabilities()
 	{
 		var publicTypes = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
-			.Where(type => type is { IsPublic: true, IsNested: false } &&
-			               type.Namespace is not null &&
+			.Where(type => type is { IsPublic: true, IsNested: false, Namespace: not null } &&
 			               Regex.IsMatch(type.Namespace, Capabilities))
 			.ToList();
 		var exchanged = new HashSet<Type>();
@@ -271,23 +273,25 @@ public class LayeringTests
 
 	private static string[] PersistenceNamespaces()
 	{
-		return ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Persistence").ToArray();
+		return [.. ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Persistence")];
 	}
 
 	private static string[] CapabilityNamespaces()
 	{
-		return ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Capabilities").ToArray();
+		return [.. ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Capabilities")];
 	}
 
 	private static string[] NonScopedCapabilityTypeNames()
 	{
-		return ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
-			.Where(type => type is { IsPublic: true, IsNested: false } &&
-			               !type.Name.StartsWith("Scoped", StringComparison.Ordinal) &&
-			               type.Namespace is not null &&
-			               Regex.IsMatch(type.Namespace, Capabilities))
-			.Select(type => type.FullName!)
-			.ToArray();
+		return
+		[
+			.. ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
+				.Where(type => type is { IsPublic: true, IsNested: false } &&
+				               !type.Name.StartsWith("Scoped", StringComparison.Ordinal) &&
+				               type.Namespace is not null &&
+				               Regex.IsMatch(type.Namespace, Capabilities))
+				.Select(type => type.FullName!)
+		];
 	}
 
 	/// <summary>The folders that hold live objects and the registries that keep them.</summary>
@@ -312,12 +316,12 @@ public class LayeringTests
 
 	private static string[] InfrastructureNamespaces()
 	{
-		return ModuleAssemblies.Modules.Select(module => $"Basil.Infrastructure.{module}").ToArray();
+		return [.. ModuleAssemblies.Modules.Select(module => $"Basil.Infrastructure.{module}")];
 	}
 
 	private static string[] StorageNamespaces()
 	{
-		return ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Storage").ToArray();
+		return [.. ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Storage")];
 	}
 
 	private static string FindRepositoryRoot()

@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Servers.Objects;
 using Basil.Bot.Replies;
 

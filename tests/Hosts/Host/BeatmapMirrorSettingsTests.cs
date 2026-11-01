@@ -27,7 +27,7 @@ public sealed class BeatmapMirrorSettingsTests
 		var services = new ServiceCollection();
 		services.AddSingleton(settings);
 		services.AddBeatmapMirrorSettings();
-		using var provider = services.BuildServiceProvider();
+		await using var provider = services.BuildServiceProvider();
 		var mirrorSettings = provider.GetRequiredService<IBeatmapMirrorSettings>();
 
 		var first = await mirrorSettings.GetAsync(TestContext.Current.CancellationToken);

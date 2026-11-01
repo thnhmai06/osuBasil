@@ -1,5 +1,5 @@
 using System.Net;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 

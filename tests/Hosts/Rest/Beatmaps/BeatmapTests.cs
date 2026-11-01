@@ -14,6 +14,11 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 {
 	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage;
 
+	private readonly HttpClient _http = new()
+	{
+		BaseAddress = fixture.Host.Url
+	};
+
 	private async Task<(int SetId, int BeatmapId)> ImportAsync(string sample)
 	{
 		var beatmaps = await fixture.Host.ImportSampleAsync(sample);
@@ -260,12 +265,12 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var file = new ByteArrayContent(archive);
 		file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
 		form.Add(file, "file", "set.osz");
-		using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/beatmapsets") { Content = form };
+		using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/beatmapsets");
+		request.Content = form;
 		request.Headers.Host = $"api.{fixture.Host.Domain}";
 		if (client.Bearer is not null)
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", client.Bearer);
-		using var http = new HttpClient { BaseAddress = fixture.Host.Url };
-		using var response = await http.SendAsync(request);
+		using var response = await _http.SendAsync(request);
 		var text = await response.Content.ReadAsStringAsync();
 		return ((int)response.StatusCode, text.Length == 0 ? null : JsonNode.Parse(text));
 	}

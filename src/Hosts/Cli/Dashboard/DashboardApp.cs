@@ -251,7 +251,7 @@ public sealed class DashboardApp
 		if (id is null) return;
 
 		var resource = _model.Tab == DashboardTab.Users ? "users" : "rooms";
-		_prompt.Text = _prompt.Text.Length == 0 ? $"{resource} {id} " : $"{_prompt.Text.TrimEnd()} {id} ";
+		_prompt.Text = string.IsNullOrEmpty(_prompt.Text) ? $"{resource} {id} " : $"{_prompt.Text.TrimEnd()} {id} ";
 		_app?.Focus(_prompt);
 	}
 
@@ -282,8 +282,8 @@ public sealed class DashboardApp
 
 	private void OnAccepted()
 	{
-		var line = _prompt!.Text.Trim();
-		_prompt.Text = string.Empty;
+		var line = _prompt?.Text?.Trim() ?? string.Empty;
+		_prompt?.Text = string.Empty;
 		if (line.Length == 0) return;
 
 		if (_confirmation is { } pending)

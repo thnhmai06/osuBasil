@@ -68,9 +68,6 @@ public sealed record UserSpectatorJoined(BanchoConnection Host, Connection Spect
 public sealed record UserSpectatorLeft(BanchoConnection Host, Connection Spectator)
 	: UserSpectatorEvent(Host, Spectator);
 
-/// <summary>A spectator reported that it failed to spectate, usually because it lacks the beatmap.</summary>
-/// <param name="Host">The osu! client being spectated.</param>
-/// <param name="Spectator">The spectator that failed to spectate.</param>
 /// <summary>An osu! client sent the frames of its play to the connections spectating it.</summary>
 /// <param name="Host">The client being spectated.</param>
 /// <param name="Bundle">The frames.</param>

@@ -1,4 +1,4 @@
-namespace Basil.Application.Common.Common;
+namespace Basil.Application.Common;
 
 /// <summary>Reads every item of a paged listing.</summary>
 public static class Paging

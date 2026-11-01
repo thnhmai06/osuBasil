@@ -1,5 +1,5 @@
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;

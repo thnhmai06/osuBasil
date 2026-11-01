@@ -1,5 +1,5 @@
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;

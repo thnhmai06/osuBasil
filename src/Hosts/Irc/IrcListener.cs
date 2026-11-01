@@ -103,9 +103,9 @@ internal sealed class IrcListener(
 		var counted = _perAddress.AddOrUpdate(session.Address, 1, (_, count) => count + 1);
 		var stream = tcp.GetStream();
 		var writer = session.WriteAsync(stream, CancellationToken.None);
-		using var deadline = session.Every(() => CloseIfUnregistered(session), RegistrationDeadline,
+		await using var deadline = session.Every(() => CloseIfUnregistered(session), RegistrationDeadline,
 			Timeout.InfiniteTimeSpan);
-		using var ping = session.Every(() => PingIfRegistered(session), KeepAlive, KeepAlive);
+		await using var ping = session.Every(() => PingIfRegistered(session), KeepAlive, KeepAlive);
 		try
 		{
 			var perIp = (await settings.GetAsync(stoppingToken)).RateLimits.Connections.PerIp;

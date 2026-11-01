@@ -71,7 +71,7 @@ internal sealed class GracefulShutdown(
 	public async Task StoppingAsync(CancellationToken cancellationToken)
 	{
 		var restarting = control.RestartRequested;
-		logger.LogInformation(restarting ? "Restarting the server" : "Shutting down the server");
+		logger.LogInformation("{Msg}", restarting ? "Restarting the server" : "Shutting down the server");
 		Results = await sequence.RunAsync(Steps(restarting), cancellationToken);
 	}
 
@@ -136,7 +136,7 @@ internal sealed class GracefulShutdown(
 			{
 				while (events.Outstanding > 0) await Task.Delay(10, token);
 			}),
-			new ShutdownStep("store the queued writes", _timings.DrainWrites, token => writes.DrainAsync(token)),
+			new ShutdownStep("store the queued writes", _timings.DrainWrites, writes.DrainAsync),
 			new ShutdownStep("write the queued log events", _timings.FlushLogs, async token =>
 			{
 				while (logs.Pending > 0) await Task.Delay(10, token);

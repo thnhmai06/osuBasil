@@ -1,5 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Beatmaps;
 using Microsoft.Extensions.DependencyInjection;

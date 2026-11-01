@@ -5,7 +5,7 @@ using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
@@ -58,7 +58,7 @@ internal static class OsuWebRoutes
 		IBeatmapRepository beatmaps, IScoreRepository scores, IUserRepository users, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player)
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { })
 			return Results.Unauthorized();
 		if (!Md5Text.TryParse(query["c"], out var hash)) return Text("-1|false");
 		if (await beatmaps.GetAsync(hash, ct) is not { } map) return Text("-1|false");

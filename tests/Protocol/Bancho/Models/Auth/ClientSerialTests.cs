@@ -22,11 +22,11 @@ public class ClientSerialTests
 
 	public static TheoryData<string> Rejects()
 	{
-		return new TheoryData<string>
-		{
+		return
+		[
 			"ab",
 			""
-		};
+		];
 	}
 
 	[Theory]

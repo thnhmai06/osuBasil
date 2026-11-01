@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
@@ -111,7 +111,7 @@ internal static class ChannelRoomCommands
 				return new OptionDef(ViewFormatter.Camel(parameter.Name!), $"The {parameter.Name} of the command.",
 					kind,
 					!parameter.HasDefaultValue && Nullable.GetUnderlyingType(parameter.ParameterType) is null &&
-					!parameter.ParameterType.IsClass && !parameter.ParameterType.IsArray,
+					parameter.ParameterType is { IsClass: false, IsArray: false },
 					Secret: parameter.Name!.Equals("password", StringComparison.OrdinalIgnoreCase));
 			})
 		];
@@ -137,7 +137,7 @@ internal static class ChannelRoomCommands
 				: type == typeof(string) ? call.Text(name)
 				: type == typeof(string[]) ? call.List(name)
 				: type.IsEnum ? Enum.TryParse(type, call.Text(name), true, out var value) &&
-				                Enum.IsDefined(type, value!)
+				                Enum.IsDefined(type, value)
 					? value
 					: throw CommandException.Invalid($"--{name} is not a valid {type.Name}.")
 				: throw new InvalidOperationException($"No reader for {type.Name}.");
@@ -149,7 +149,7 @@ internal static class ChannelRoomCommands
 	{
 		var registry = call.Get<GeneralChannelRegistry>();
 		var views = registry.All.Values.OrderBy(channel => channel.Name)
-			.Select(channel => (object)ChannelView.Of(channel.Record)).ToList();
+			.Select(object (channel) => ChannelView.Of(channel.Record)).ToList();
 		call.Formatter.PrintTable(call.Output, views);
 		return Task.FromResult(ExitCodes.Success);
 	}

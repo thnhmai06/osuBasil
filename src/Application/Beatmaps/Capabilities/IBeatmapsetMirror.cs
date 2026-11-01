@@ -1,4 +1,4 @@
-using Basil.Application.Common.Common;
+using Basil.Application.Common;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Beatmaps.Capabilities;
