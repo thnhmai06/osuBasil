@@ -65,19 +65,23 @@ jobs:
 
           $version = $env:TAG -replace '^v', ''
           $source = "publish/$env:RID"
-          $destination = "dist/Basil-$version-$env:RID.zip"
-
           New-Item -ItemType Directory -Force -Path dist | Out-Null
 
-          Compress-Archive `
-            -Path "$source/*" `
-            -DestinationPath $destination
+          if ($env:RID -like 'win-*') {
+            Compress-Archive -Path "$source/*" -DestinationPath "dist/Basil-$version-$env:RID.zip"
+          } else {
+            # A zip drops the executable bit, so Basil.Host would not start after unpacking; tar keeps it.
+            tar -czf "dist/Basil-$version-$env:RID.tar.gz" -C $source .
+            if ($LASTEXITCODE -ne 0) { throw 'tar failed' }
+          }
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          files: dist/Basil-*.zip
+          files: |
+            dist/Basil-*.zip
+            dist/Basil-*.tar.gz
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ github.token }}

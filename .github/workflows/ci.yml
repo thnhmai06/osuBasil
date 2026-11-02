@@ -26,8 +26,15 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      # One project at a time: the projects share Docker and ports, so the solution is never passed to dotnet test.
       - name: Test
-        run: dotnet test --no-build --configuration Release --logger "console;verbosity=minimal"
+        shell: bash
+        run: |
+          status=0
+          for project in $(find tests -name '*.Tests.csproj' -o -name '*ArchitectureTests.csproj' | sort); do
+            dotnet test "$project" --no-build --configuration Release --logger "console;verbosity=minimal" || status=1
+          done
+          exit $status
 
   rest-contract:
     # Checks the HTTP contract of the REST API against a running server with the Postman collection in the repository

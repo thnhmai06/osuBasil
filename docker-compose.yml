@@ -31,4 +31,6 @@ services:
     command: [ "--Basil:Database:ConnectionString=Host=postgres;Port=5432;Database=basil;Username=basil;Password=basil" ]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+    # The graceful shutdown can take up to 75 s (drain, flush queued writes); Docker's default of 10 s would kill it midway.
+    stop_grace_period: 90s
     restart: unless-stopped
