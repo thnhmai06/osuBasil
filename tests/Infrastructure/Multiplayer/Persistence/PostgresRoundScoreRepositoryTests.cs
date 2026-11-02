@@ -5,6 +5,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
@@ -52,6 +53,22 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
 		Assert.Equal(score.Id, Assert.Single(listed).Score.Id);
+	}
+
+	[Fact]
+	public async Task A_round_score_whose_write_was_refused_is_still_listed()
+	{
+		var match = await CreateMatchAsync("refused_round_score_match");
+		var round = await CreateRoundAsync(match, 1);
+		var player = await CreatePlayerAsync("refused_rs");
+		var stored = await CreateScoreAsync(player, 1000, First);
+		var neverStored = new ScoreRecord { Id = stored.Id + 1000, Value = stored.Value };
+
+		await RoundScores.RecordAsync(new RoundScore(neverStored, round, null), TestContext.Current.CancellationToken);
+		await Get<DatabaseWriter>().DrainAsync(TestContext.Current.CancellationToken);
+		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
+
+		Assert.Equal(neverStored.Id, Assert.Single(listed).Score.Id);
 	}
 
 	[Fact]

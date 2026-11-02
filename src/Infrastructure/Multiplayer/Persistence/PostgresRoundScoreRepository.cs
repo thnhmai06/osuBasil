@@ -31,7 +31,12 @@ internal sealed class PostgresRoundScoreRepository(
 		var queued = writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId),
 			new WriteCommand<MultiplayerDbContext>((context, token) =>
 				context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
-		_ = queued.ContinueWith(task => _pending.TryRemove(row.ScoreId, out _), TaskScheduler.Default);
+		// Only the copy this write stored leaves the queue, and only once it is stored: a refused write keeps listing it.
+		_ = queued.ContinueWith(task =>
+		{
+			if (task.IsCompletedSuccessfully)
+				_pending.TryRemove(new KeyValuePair<int, RoundScore>(row.ScoreId, roundScore));
+		}, TaskScheduler.Default);
 		return Task.FromResult(roundScore);
 	}
 
