@@ -29,13 +29,13 @@ public sealed class ScopedChannelRulesTests
 		UserPrivileges write = UserPrivileges.None)
 	{
 		var admin = await app.CreateUserAsync("RulesAdmin", "password", UserPermissionsGroups.All);
-		var by = await app.LoginAsync(admin);
+		var actor = await app.LoginAsync(admin);
 		var record = new GeneralChannelRecord
 		{
 			Name = ChannelName,
 			Value = new GeneralChannelData { ReadPrivileges = read, WritePrivileges = write }
 		};
-		Assert.True((await app.Server.ScopeTo(by).Channels.CreateAsync(record, TestContext.Current.CancellationToken))
+		Assert.True((await app.Server.ScopeTo(actor).Channels.CreateAsync(record, TestContext.Current.CancellationToken))
 			.IsOk);
 		return app.Channels.Find(ChannelName)!;
 	}

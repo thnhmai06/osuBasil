@@ -303,10 +303,10 @@ public sealed class ScopedLobbyTests
 		Assert.True(room.IsClosed);
 	}
 
-	private static Task<(Room? Room, Common.Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
+	private static Task<(Room? Room, Common.Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection actor,
 		string name = "test room", bool isTournament = false, string password = "")
 	{
-		return app.Lobby.ScopeTo(by).OpenRoomAsync(name, password, isTournament, false,
+		return app.Lobby.ScopeTo(actor).OpenRoomAsync(name, password, isTournament, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 	}
 

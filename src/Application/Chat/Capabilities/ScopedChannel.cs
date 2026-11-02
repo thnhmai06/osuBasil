@@ -12,12 +12,12 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="channel">The channel to scope.</param>
-	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedChannel(Channel channel, Connection by) : base(by,
-		by.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
+	/// <param name="actor">The connection acting on the channel.</param>
+	internal ScopedChannel(Channel channel, Connection actor) : base(actor,
+		actor.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
 	{
 		Channel = channel;
-		General = channel is GeneralChannel general ? new ScopedGeneralChannel(general, by) : null;
+		General = channel is GeneralChannel general ? new ScopedGeneralChannel(general, actor) : null;
 	}
 
 	/// <summary>The channel this scope is over.</summary>
@@ -36,14 +36,14 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 	{
 		using var scope = Channel.Enter();
 		if (Channel.IsClosed) return ChannelOutcome.Closed;
-		if (!Channel.CanRead(By, Channel.Context.Clock.GetUtcNow())) return ChannelOutcome.AccessDenied;
-		if (Channel.Members.Contains(By)) return ChannelOutcome.AlreadyMember;
+		if (!Channel.CanRead(Actor, Channel.Context.Clock.GetUtcNow())) return ChannelOutcome.AccessDenied;
+		if (Channel.Members.Contains(Actor)) return ChannelOutcome.AlreadyMember;
 
 		Connection? replaced = null;
-		if (!By.Type.AllowsMany())
+		if (!Actor.Type.AllowsMany())
 		{
 			replaced = Channel.Members.FirstOrDefault(member =>
-				member.Record.Equals(By.Record) && member.Type == By.Type);
+				member.Record.Equals(Actor.Record) && member.Type == Actor.Type);
 			if (replaced is not null)
 			{
 				if (replaced.IsOpen) return ChannelOutcome.AlreadyMember;
@@ -51,8 +51,8 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 			}
 		}
 
-		Channel.MutableMembers.Add(By);
-		Channel.Context.Events.Publish(new ChannelMemberJoined(Channel, By, replaced));
+		Channel.MutableMembers.Add(Actor);
+		Channel.Context.Events.Publish(new ChannelMemberJoined(Channel, Actor, replaced));
 		return ChannelOutcome.Ok;
 	}
 
@@ -62,8 +62,8 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 	public Result<ChannelOutcome> Part()
 	{
 		using var scope = Channel.Enter();
-		if (!Channel.MutableMembers.Remove(By)) return ChannelOutcome.NotMember;
-		Channel.Context.Events.Publish(new ChannelMemberParted(Channel, By, false));
+		if (!Channel.MutableMembers.Remove(Actor)) return ChannelOutcome.NotMember;
+		Channel.Context.Events.Publish(new ChannelMemberParted(Channel, Actor, false));
 		return ChannelOutcome.Ok;
 	}
 
@@ -93,15 +93,15 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 
 		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
 		if (!Message.IsValidContent(text)) return ChannelOutcome.InvalidText;
-		if (Channel is not PmChannel && !Channel.Members.Contains(By)) return ChannelOutcome.NotMember;
+		if (Channel is not PmChannel && !Channel.Members.Contains(Actor)) return ChannelOutcome.NotMember;
 
 		var now = Channel.Context.Clock.GetUtcNow();
-		if (!Channel.CanWrite(By, now)) return ChannelOutcome.AccessDenied;
+		if (!Channel.CanWrite(Actor, now)) return ChannelOutcome.AccessDenied;
 
 		if (Channel is PmChannel pm && await PrivateMessageRefusalAsync(pm, now, cancellationToken) is { } refusal)
 			return refusal;
 
-		Channel.PostMessage(By.Record, text, notice, now, By);
+		Channel.PostMessage(Actor.Record, text, notice, now, Actor);
 		return ChannelOutcome.Ok;
 	}
 
@@ -112,9 +112,9 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 		{
 			var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
 			var blocked = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Block && relationship.Target.Equals(By.Record));
+				relationship.Type == RelationshipType.Block && relationship.Target.Equals(Actor.Record));
 			var friend = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(By.Record));
+				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(Actor.Record));
 			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
 		}
 

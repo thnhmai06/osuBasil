@@ -9,7 +9,7 @@ namespace Basil.Host.Irc;
 
 internal sealed partial class IrcCommands
 {
-	private async Task MessageAsync(IrcSession session, Connection by, IrcMessage message,
+	private async Task MessageAsync(IrcSession session, Connection actor, IrcMessage message,
 		CancellationToken cancellationToken)
 	{
 		var notice = message.Command == "NOTICE";
@@ -47,18 +47,18 @@ internal sealed partial class IrcCommands
 			channel = pmChannels.Of(user);
 		}
 
-		if (!await MayChatAsync(session, by, message.Command, target, cancellationToken)) return;
+		if (!await MayChatAsync(session, actor, message.Command, target, cancellationToken)) return;
 
-		var result = await channel.ScopeTo(by).PostAsync(IrcText.Limit(message.Parameters[1]), notice,
+		var result = await channel.ScopeTo(actor).PostAsync(IrcText.Limit(message.Parameters[1]), notice,
 			cancellationToken);
 		ReplyToPost(session, target, result);
 	}
 
-	private async Task<bool> MayChatAsync(IrcSession session, Connection by, string command, string target,
+	private async Task<bool> MayChatAsync(IrcSession session, Connection actor, string command, string target,
 		CancellationToken cancellationToken)
 	{
 		var limit = (await settings.GetAsync(cancellationToken)).RateLimits.Chat;
-		if (limiter.TryAcquire($"chat:{by.Record.Id}", limit.Count, limit.Window)) return true;
+		if (limiter.TryAcquire($"chat:{actor.Record.Id}", limit.Count, limit.Window)) return true;
 
 		if (session.Has("standard-replies"))
 			session.Send(new IrcMessage("FAIL", session.ServerName, command, IrcReplies.RateLimitedCode, target,
@@ -109,7 +109,7 @@ internal sealed partial class IrcCommands
 		return registry.Online.Values.FirstOrDefault(user => IrcView.IsNick(user.Record, nick));
 	}
 
-	private void Join(IrcSession session, Connection by, IrcMessage message)
+	private void Join(IrcSession session, Connection actor, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -131,7 +131,7 @@ internal sealed partial class IrcCommands
 				continue;
 			}
 
-			switch (channel.ScopeTo(by).Join().Outcome)
+			switch (channel.ScopeTo(actor).Join().Outcome)
 			{
 				case ChannelOutcome.Closed:
 					session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
@@ -143,7 +143,7 @@ internal sealed partial class IrcCommands
 		}
 	}
 
-	private void Part(IrcSession session, Connection by, IrcMessage message)
+	private void Part(IrcSession session, Connection actor, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -154,23 +154,23 @@ internal sealed partial class IrcCommands
 		foreach (var name in message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries))
 			if (Resolve(name) is not { } channel)
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
-			else if (channel.ScopeTo(by).Part().Outcome == ChannelOutcome.NotMember)
+			else if (channel.ScopeTo(actor).Part().Outcome == ChannelOutcome.NotMember)
 				session.Numeric(IrcNumericReply.ErrNotOnChannel, name, IrcReplies.NotOnChannel);
 	}
 
-	private void Away(IrcSession session, Connection by, IrcMessage message)
+	private void Away(IrcSession session, Connection actor, IrcMessage message)
 	{
 		var text = message.Parameters.Count > 0 && message.Parameters[0].Length > 0 ? message.Parameters[0] : null;
-		by.User.ScopeTo(by).Profile.SetAway(text);
+		actor.User.ScopeTo(actor).Profile.SetAway(text);
 		session.Numeric(text is null ? IrcNumericReply.RplUnaway : IrcNumericReply.RplNowAway,
 			text is null ? "You are no longer marked as being away" : "You have been marked as being away");
 
-		var line = new IrcMessage("AWAY", IrcView.Mask(by.Record, Options.Domain).ToString(),
+		var line = new IrcMessage("AWAY", IrcView.Mask(actor.Record, Options.Domain).ToString(),
 			text is null ? [] : [text]) { ForceTrailing = true };
-		var mine = presence.Of(by.Record);
+		var mine = presence.Of(actor.Record);
 		foreach (var other in clients.All.Where(other =>
 			         other.Has("away-notify") && other.Connection is { } connection &&
-			         !ReferenceEquals(connection.User, by.User) &&
+			         !ReferenceEquals(connection.User, actor.User) &&
 			         mine.Any(channel => channel.Members.Contains(connection))))
 			other.Deliver(line);
 	}
@@ -190,7 +190,7 @@ internal sealed partial class IrcCommands
 			session.Numeric(IrcNumericReply.ErrChanOPrivsNeeded, channel, IrcReplies.NoManagement);
 	}
 
-	private void Topic(IrcSession session, Connection by, IrcMessage message)
+	private void Topic(IrcSession session, Connection actor, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -207,13 +207,13 @@ internal sealed partial class IrcCommands
 
 		if (message.Parameters.Count > 1)
 			session.Numeric(IrcNumericReply.ErrChanOPrivsNeeded, channel.Name, IrcReplies.NoManagement);
-		else if (!channel.Members.Contains(by))
+		else if (!channel.Members.Contains(actor))
 			session.Numeric(IrcNumericReply.ErrNotOnChannel, channel.Name, IrcReplies.NotOnChannel);
 		else
 			IrcChannels.SendTopic(session, channel);
 	}
 
-	private void Mode(IrcSession session, Connection by, IrcMessage message)
+	private void Mode(IrcSession session, Connection actor, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -231,7 +231,7 @@ internal sealed partial class IrcCommands
 			else
 				session.Numeric(IrcNumericReply.ErrChanOPrivsNeeded, channel.Name, IrcReplies.NoManagement);
 		}
-		else if (!IrcView.IsNick(by.Record, target))
+		else if (!IrcView.IsNick(actor.Record, target))
 		{
 			session.Numeric(IrcNumericReply.ErrUsersDontMatch, "Cannot change mode for other users");
 		}

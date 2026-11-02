@@ -25,10 +25,10 @@ public sealed partial class Room
 	}
 
 	/// <summary>Changes the room's settings in one step.</summary>
-	/// <param name="by">The connection that changes them.</param>
+	/// <param name="actor">The connection that changes them.</param>
 	/// <param name="change">The settings to change.</param>
 	/// <returns>Ok, InProgress, InvalidSettings, InvalidMods or RoomClosed.</returns>
-	internal Result<RoomOutcome> Configure(Connection by, RoomSettingsChange change)
+	internal Result<RoomOutcome> Configure(Connection actor, RoomSettingsChange change)
 	{
 		lock (_sync)
 		{
@@ -51,7 +51,7 @@ public sealed partial class Room
 			if (change.Mode is { } newMode) ApplyMode(newMode);
 			if (change.Freemods is { } newFreemods && newFreemods != Settings.MatchSettings.Freemods)
 				ApplyFreemods(newFreemods);
-			if (change.Mods is { } newMods) ApplyMods(by, newMods, freemods);
+			if (change.Mods is { } newMods) ApplyMods(actor, newMods, freemods);
 
 			if (change.TeamType is { } teamType) ApplyTeamType(teamType);
 			if (change.WinCondition is { } winCondition) Settings.MatchSettings.WinCondition = winCondition;
@@ -98,11 +98,11 @@ public sealed partial class Room
 	}
 
 	/// <summary>Applies the room's mods; under freemod a seated caller keeps the rest of the mods as their own.</summary>
-	private void ApplyMods(Connection by, GameMods newMods, bool freemods)
+	private void ApplyMods(Connection actor, GameMods newMods, bool freemods)
 	{
 		Settings.MatchSettings.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
 		// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
-		if (freemods && by is BanchoConnection caller && Slots.Find(caller) is { } callerSlot)
+		if (freemods && actor is BanchoConnection caller && Slots.Find(caller) is { } callerSlot)
 			callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
 	}
 

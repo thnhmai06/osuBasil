@@ -13,8 +13,8 @@ public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, BanchoConnect
 {
 	private readonly ScoreSubmitter _submitter;
 
-	internal ScopedScoreSubmitter(ScoreSubmitter submitter, BanchoConnection by, UserPermissions permissions)
-		: base(by, permissions)
+	internal ScopedScoreSubmitter(ScoreSubmitter submitter, BanchoConnection actor, UserPermissions permissions)
+		: base(actor, permissions)
 	{
 		_submitter = submitter;
 	}
@@ -52,16 +52,16 @@ public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, BanchoConnect
 			return (Result<ScoreSubmissionOutcome>.Denied(missing), null);
 
 		var checkedBeatmap = beatmap ??
-		                     (_submitter.Acceptance.AcceptsUnknown(By.Record, client.BeatmapHash)
+		                     (_submitter.Acceptance.AcceptsUnknown(Actor.Record, client.BeatmapHash)
 			                     ? new BeatmapChecksums(client.BeatmapHash, null)
 			                     : null);
 		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, ScoreRejectionReason.UnknownBeatmap);
 
 		var outcome = await _submitter.Recorder.ValidateAndRecordAsync(
-			By.Record, By.Session.Client!, submission, checkedBeatmap, client, replay, cancellationToken);
+			Actor.Record, Actor.Session.Client!, submission, checkedBeatmap, client, replay, cancellationToken);
 		if (outcome.Rejection is { } rejection) return (ScoreSubmissionOutcome.Rejected, rejection);
 
-		_submitter.Events.Publish(new ScoreSubmitted(By.Record, outcome.Score!, outcome.Stats!));
+		_submitter.Events.Publish(new ScoreSubmitted(Actor.Record, outcome.Score!, outcome.Stats!));
 		return (ScoreSubmissionOutcome.Ok, null);
 	}
 }

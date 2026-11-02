@@ -27,7 +27,7 @@ public sealed record ModerationData
 	}
 
 	/// <summary>Gets the user who performed the action.</summary>
-	public required UserRecord By { get; init; }
+	public required UserRecord Actor { get; init; }
 
 	/// <summary>Gets the user the action was aimed at.</summary>
 	public required UserRecord Target { get; init; }

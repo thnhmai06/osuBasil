@@ -95,11 +95,11 @@ public sealed class BanchoConnection : Connection
 	internal ISet<Connection> MutableSpectators => _spectators;
 
 	/// <summary>Scopes this client's behaviour to a connection.</summary>
-	/// <param name="by">The connection acting on this client.</param>
+	/// <param name="actor">The connection acting on this client.</param>
 	/// <returns>A short-lived scope for this client and connection.</returns>
-	public ScopedBanchoConnection ScopeTo(Connection by)
+	public ScopedBanchoConnection ScopeTo(Connection actor)
 	{
-		return new ScopedBanchoConnection(this, by);
+		return new ScopedBanchoConnection(this, actor);
 	}
 
 	/// <summary>Enters the scope in which the client's spectators change one at a time.</summary>

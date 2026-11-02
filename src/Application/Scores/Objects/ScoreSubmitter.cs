@@ -34,10 +34,10 @@ public sealed class ScoreSubmitter
 	internal IScoreBeatmapAcceptance Acceptance { get; }
 
 	/// <summary>Scopes score submission to a game client and its permissions.</summary>
-	/// <param name="by">The game client that submits.</param>
+	/// <param name="actor">The game client that submits.</param>
 	/// <returns>A short-lived scope for the client.</returns>
-	public ScopedScoreSubmitter ScopeTo(BanchoConnection by)
+	public ScopedScoreSubmitter ScopeTo(BanchoConnection actor)
 	{
-		return new ScopedScoreSubmitter(this, by, by.EffectivePermissions(_clock.GetUtcNow()));
+		return new ScopedScoreSubmitter(this, actor, actor.EffectivePermissions(_clock.GetUtcNow()));
 	}
 }

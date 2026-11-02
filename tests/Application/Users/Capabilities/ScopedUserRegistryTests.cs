@@ -13,10 +13,10 @@ public sealed class ScopedUserRegistryTests
 	public async Task CreateAccountAsync_ActorLacksUserManage_NamesTheMissingPermission()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("NoAccountManage", "password");
-		var by = await app.LoginAsync(actor);
+		var actorRecord = await app.CreateUserAsync("NoAccountManage", "password");
+		var actor = await app.LoginAsync(actorRecord);
 
-		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "NewAccount" }, Hash, TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
@@ -28,10 +28,10 @@ public sealed class ScopedUserRegistryTests
 	{
 		using var app = new TestApplication();
 		var permissions = UserPermissionsGroups.Default | UserPermissions.UserManage;
-		var actor = await app.CreateUserAsync("LimitedMod", "password", permissions);
-		var by = await app.LoginAsync(actor);
+		var actorRecord = await app.CreateUserAsync("LimitedMod", "password", permissions);
+		var actor = await app.LoginAsync(actorRecord);
 
-		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "TooMuchPower", Permissions = UserPermissions.ServerManageSettings }, Hash,
 			TestContext.Current.CancellationToken);
 
@@ -43,11 +43,11 @@ public sealed class ScopedUserRegistryTests
 	public async Task CreateAccountAsync_AllowedPermissionsWithinActorsGrant_CreatesAccount()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("AccountManager", "password", UserPermissionsGroups.All);
-		var by = await app.LoginAsync(actor);
+		var actorRecord = await app.CreateUserAsync("AccountManager", "password", UserPermissionsGroups.All);
+		var actor = await app.LoginAsync(actorRecord);
 		var data = new UserData { Name = "CreatedAccount", Permissions = UserPermissions.UserManageNote };
 
-		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(data, Hash,
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(data, Hash,
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
@@ -59,11 +59,11 @@ public sealed class ScopedUserRegistryTests
 	public async Task CreateAccountAsync_DuplicateName_ReturnsNameTaken()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("DupManager", "password", UserPermissionsGroups.All);
+		var actorRecord = await app.CreateUserAsync("DupManager", "password", UserPermissionsGroups.All);
 		await app.CreateUserAsync("AlreadyCreated", "password");
-		var by = await app.LoginAsync(actor);
+		var actor = await app.LoginAsync(actorRecord);
 
-		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "AlreadyCreated" }, Hash, TestContext.Current.CancellationToken);
 
 		Assert.Null(user);

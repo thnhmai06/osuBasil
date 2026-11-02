@@ -45,7 +45,7 @@ public sealed class ScopedRoomRounds
 		if (startsRound) required |= RoomPermissions.RoundsStart;
 
 		return Task.FromResult(_scoped.Require(required) ??
-		                       _scoped.Room.BeginCountdown(_scoped.By.Record, length, startsRound));
+		                       _scoped.Room.BeginCountdown(_scoped.Actor.Record, length, startsRound));
 	}
 
 	/// <summary>Cancels the room's current countdown.</summary>
@@ -75,7 +75,7 @@ public sealed class ScopedRoomRounds
 	/// </remarks>
 	public Task<Result<RoomOutcome>> MarkLoadedAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.MarkLoaded(_scoped.By));
+		return Task.FromResult(_scoped.Room.MarkLoaded(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller wants to skip the intro.</summary>
@@ -87,7 +87,7 @@ public sealed class ScopedRoomRounds
 	/// </remarks>
 	public Task<Result<RoomOutcome>> SkipAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.SkipIntro(_scoped.By));
+		return Task.FromResult(_scoped.Room.SkipIntro(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller failed; the player keeps playing until completion.</summary>
@@ -95,7 +95,7 @@ public sealed class ScopedRoomRounds
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> FailAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.ReportFailed(_scoped.By));
+		return Task.FromResult(_scoped.Room.ReportFailed(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller completed the beatmap.</summary>
@@ -107,6 +107,6 @@ public sealed class ScopedRoomRounds
 	/// </remarks>
 	public Task<Result<RoomOutcome>> CompleteAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.ReportCompleted(_scoped.By));
+		return Task.FromResult(_scoped.Room.ReportCompleted(_scoped.Actor));
 	}
 }

@@ -32,9 +32,9 @@ public sealed class UserRegistryTests
 		var manager = await app.CreateUserAsync("LockManager", "password",
 			UserPermissionsGroups.Default | UserPermissions.UserManage);
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Accounts });
-		var by = await app.LoginAsync(manager);
+		var actor = await app.LoginAsync(manager);
 
-		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "StaffMade" }, new Md5("0123456789abcdef0123456789abcdef"),
 			TestContext.Current.CancellationToken);
 

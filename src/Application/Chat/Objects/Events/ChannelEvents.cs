@@ -46,7 +46,7 @@ public abstract record ChannelMessageEvent(Channel Channel) : ChannelEvent(Chann
 ///     The recipient's away message, sent back to the author's private-message channel, or
 ///     <see langword="null" /> when none was sent.
 /// </param>
-/// <param name="By">
+/// <param name="Actor">
 ///     The connection that posted the message, or <see langword="null" /> for a message the server itself said.
 /// </param>
 public sealed record ChannelMessagePosted(
@@ -54,7 +54,7 @@ public sealed record ChannelMessagePosted(
 	Message Message,
 	bool Truncated,
 	Message? AwayReply,
-	Connection? By = null)
+	Connection? Actor = null)
 	: ChannelMessageEvent(Channel);
 
 /// <summary>A general channel's settings changed.</summary>

@@ -17,9 +17,9 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a lobby scope for a connection.</summary>
 	/// <param name="lobby">The lobby to scope.</param>
-	/// <param name="by">The connection acting on the lobby.</param>
-	internal ScopedLobby(Lobby lobby, Connection by)
-		: base(by, by.EffectivePermissions(lobby.Context.Clock.GetUtcNow()))
+	/// <param name="actor">The connection acting on the lobby.</param>
+	internal ScopedLobby(Lobby lobby, Connection actor)
+		: base(actor, actor.EffectivePermissions(lobby.Context.Clock.GetUtcNow()))
 	{
 		Lobby = lobby;
 	}
@@ -62,13 +62,13 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		MatchSettings? settings = null,
 		CancellationToken cancellationToken = default)
 	{
-		if (!isTournament && By is not BanchoConnection)
+		if (!isTournament && Actor is not BanchoConnection)
 			throw new ArgumentException("A room opened in game needs the creator's osu! client.");
 
 		var now = Lobby.Context.Clock.GetUtcNow();
 		if (await OpenRefusalAsync(isTournament, cancellationToken) is { } refusal) return (null, refusal);
 
-		var creator = By.Record;
+		var creator = Actor.Record;
 		var seat = SeatFor(isTournament, now);
 		if (!isTournament && Lobby.RoomOf(seat!) is not null) return (null, RoomOutcome.AlreadyInRoom);
 
@@ -97,7 +97,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 			return RoomOutcome.Locked;
 
 		var limited = isTournament && Require(UserPermissions.RoomManageCreateUnlimited) is not null;
-		if (limited && Lobby.TooManyRooms(By.Record)) return RoomOutcome.TooManyRooms;
+		if (limited && Lobby.TooManyRooms(Actor.Record)) return RoomOutcome.TooManyRooms;
 
 		return null;
 	}
@@ -106,11 +106,11 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	{
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
 		return isTournament
-			? By.User.Bancho is { IsOpen: true } bancho &&
+			? Actor.User.Bancho is { IsOpen: true } bancho &&
 			  bancho.User.EffectivePermissions(now).Allows(UserPermissions.RoomJoin)
 				? bancho
 				: null
-			: (BanchoConnection)By;
+			: (BanchoConnection)Actor;
 	}
 
 	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
@@ -180,7 +180,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 			return (Result<RoomOutcome>.Denied(missing), null);
 
 		return (RoomOutcome.Ok,
-			await Lobby.Context.Matches.ListAsync(query.LimitTo(Rights, By.Record), page, cancellationToken));
+			await Lobby.Context.Matches.ListAsync(query.LimitTo(Rights, Actor.Record), page, cancellationToken));
 	}
 
 	/// <summary>Tells whether the scoped connection's user may view the data that belongs to a match.</summary>
@@ -212,14 +212,14 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		return !match.Value.IsPrivate
 		       || Require(UserPermissions.RoomManageViewPrivate) is null
 		       || TakesPartInOpenRoom(match)
-		       || await Lobby.Context.Matches.IsVisibleToAsync(match, By.Record, cancellationToken);
+		       || await Lobby.Context.Matches.IsVisibleToAsync(match, Actor.Record, cancellationToken);
 	}
 
 	/// <summary>Tells whether the user manages the match's open room or sits in it, which the stored history may not show yet.</summary>
 	private bool TakesPartInOpenRoom(MatchRecord match)
 	{
 		return OpenRoomOf(match) is { } room
-		       && (room.Authority.IsManagedBy(By.Record) || room.Slots.Find(By.Record) is not null);
+		       && (room.Authority.IsManagedBy(Actor.Record) || room.Slots.Find(Actor.Record) is not null);
 	}
 
 	/// <summary>Finds the open room that runs a match: a room's id is not its match's id.</summary>
@@ -232,8 +232,8 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <exception cref="ArgumentException">The scoped connection is not an osu! client.</exception>
 	public void Watch()
 	{
-		if (By is not BanchoConnection bancho)
-			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(By));
+		if (Actor is not BanchoConnection bancho)
+			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
 
 		if (Lobby.MutableWatchers.Add(bancho)) Lobby.Context.Events.Publish(new LobbyWatcherJoined(bancho));
 	}
@@ -242,8 +242,8 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <exception cref="ArgumentException">The scoped connection is not an osu! client.</exception>
 	public void Unwatch()
 	{
-		if (By is not BanchoConnection bancho)
-			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(By));
+		if (Actor is not BanchoConnection bancho)
+			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
 
 		Lobby.Unwatch(bancho);
 	}

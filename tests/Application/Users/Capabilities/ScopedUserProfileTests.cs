@@ -51,9 +51,9 @@ public sealed class ScopedUserProfileTests
 		var (app, _) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Traveller", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetCountryAsync(Country.Vn, Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(Country.Vn, Token);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(Country.Vn, user.Value.Country);
@@ -65,9 +65,9 @@ public sealed class ScopedUserProfileTests
 		var (app, _) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Nowhere", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetCountryAsync(0, Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(0, Token);
 
 		Assert.Equal(UserOutcome.InvalidCountry, result.Outcome);
 	}
@@ -78,9 +78,9 @@ public sealed class ScopedUserProfileTests
 		var (app, _) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("OldName", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.RenameAsync("NewName", Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("NewName", Token);
 
 		Assert.True(result.IsOk);
 		Assert.Equal("NewName", user.Value.Name);
@@ -93,9 +93,9 @@ public sealed class ScopedUserProfileTests
 		using var _ = app;
 		await app.CreateUserAsync("Taken", "password");
 		var user = await app.CreateUserAsync("Wanter", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.RenameAsync("taken", Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("taken", Token);
 
 		Assert.Equal(UserOutcome.NameTaken, result.Outcome);
 		Assert.Equal("Wanter", user.Value.Name);
@@ -107,9 +107,9 @@ public sealed class ScopedUserProfileTests
 		var (app, _) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Valid", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.RenameAsync("", Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("", Token);
 
 		Assert.Equal(UserOutcome.InvalidName, result.Outcome);
 	}
@@ -120,8 +120,8 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Pictured", "password");
-		var by = await app.LoginAsync(user);
-		var profile = app.Users.Of(user).ScopeTo(by).Profile;
+		var actor = await app.LoginAsync(user);
+		var profile = app.Users.Of(user).ScopeTo(actor).Profile;
 
 		Assert.True((await profile.SetAvatarAsync(new MemoryStream([1, 2, 3]), Token)).IsOk);
 		Assert.Equal([1, 2, 3], avatars.Images[user.Id]);
@@ -135,10 +135,10 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Pictured", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 		var png = await AssetAsync("avatar-default.png");
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetAvatarAsync(new MemoryStream(png), Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetAvatarAsync(new MemoryStream(png), Token);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(png, avatars.Images[user.Id]);
@@ -150,11 +150,11 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Pictured", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 		var jpeg = await AssetAsync("background-1920x1200.jpg");
 		InspectedAs(app, new ScreenshotInfo("jpg", 1920, 1200));
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetAvatarAsync(new MemoryStream(jpeg), Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetAvatarAsync(new MemoryStream(jpeg), Token);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(jpeg, avatars.Images[user.Id]);
@@ -166,8 +166,8 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Pictured", "password");
-		var by = await app.LoginAsync(user);
-		var profile = app.Users.Of(user).ScopeTo(by).Profile;
+		var actor = await app.LoginAsync(user);
+		var profile = app.Users.Of(user).ScopeTo(actor).Profile;
 		var previous = await AssetAsync("avatar-default.png");
 		Assert.True((await profile.SetAvatarAsync(new MemoryStream(previous), Token)).IsOk);
 
@@ -187,10 +187,10 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
 		var user = await app.CreateUserAsync("Pictured", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 		InspectedAs(app, new ScreenshotInfo("png", width, height));
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile
 			.SetAvatarAsync(new MemoryStream(await AssetAsync("avatar-default.png")), Token);
 
 		Assert.Equal(UserOutcome.InvalidImage, result.Outcome);
@@ -205,10 +205,10 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync(uploads: new ServerSettings.UploadSettings { AvatarMaxSide = 8 });
 		using var _ = app;
 		var user = await app.CreateUserAsync("Pictured", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 		InspectedAs(app, new ScreenshotInfo("png", width, height));
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile
 			.SetAvatarAsync(new MemoryStream(await AssetAsync("avatar-default.png")), Token);
 
 		Assert.Equal(UserOutcome.DimensionsTooLarge, result.Outcome);
@@ -221,10 +221,10 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync(uploads: new ServerSettings.UploadSettings { AvatarMaxSize = 64 });
 		using var _ = app;
 		var user = await app.CreateUserAsync("Pictured", "password");
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 		var content = new CountingStream(new byte[256]);
 
-		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetAvatarAsync(content, Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetAvatarAsync(content, Token);
 
 		Assert.Equal(UserOutcome.TooLarge, result.Outcome);
 		Assert.Equal(65, content.BytesRead);
@@ -282,8 +282,8 @@ public sealed class ScopedUserProfileTests
 		var (app, avatars) = await StartAsync(Locks.Profiles);
 		using var _ = app;
 		var user = await app.CreateUserAsync("Frozen", "password");
-		var by = await app.LoginAsync(user);
-		var profile = app.Users.Of(user).ScopeTo(by).Profile;
+		var actor = await app.LoginAsync(user);
+		var profile = app.Users.Of(user).ScopeTo(actor).Profile;
 
 		Assert.Equal(UserOutcome.Locked, (await profile.RenameAsync("Thawed", Token)).Outcome);
 		Assert.Equal(UserOutcome.Locked, (await profile.SetCountryAsync(Country.Au, Token)).Outcome);

@@ -25,11 +25,11 @@ public sealed class Beatmapset
 	internal BeatmapsetContext Context { get; }
 
 	/// <summary>Scopes this beatmapset's behaviour to an actor and its authority.</summary>
-	/// <param name="by">The actor acting on the beatmapset.</param>
+	/// <param name="actor">The actor acting on the beatmapset.</param>
 	/// <returns>A short-lived scope for this beatmapset and actor.</returns>
-	public ScopedBeatmapset ScopeTo(IActor by)
+	public ScopedBeatmapset ScopeTo(IActor actor)
 	{
-		return new ScopedBeatmapset(this, by);
+		return new ScopedBeatmapset(this, actor);
 	}
 
 	/// <summary>Forgets a stored beatmapset, leaving the files of its folder as they are.</summary>

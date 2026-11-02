@@ -27,7 +27,7 @@ public sealed class PostgresModerationLogRepositoryTests(PersistenceFixture cont
 		await Log.AppendAsync(new ModerationData
 		{
 			Action = ModerationAction.Note,
-			By = moderator,
+			Actor = moderator,
 			Target = target,
 			Reason = "A reason.",
 			Timestamp = First
@@ -78,7 +78,7 @@ public sealed class PostgresModerationLogRepositoryTests(PersistenceFixture cont
 		var page = await Log.ListAsync(target, null, new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
 		var entry = Assert.Single(page.Items);
-		Assert.Equal(moderator.Id, entry.Value.By.Id);
+		Assert.Equal(moderator.Id, entry.Value.Actor.Id);
 		Assert.Equal(target.Id, entry.Value.Target.Id);
 		Assert.Equal(ModerationAction.Note, entry.Value.Action);
 	}
@@ -183,7 +183,7 @@ public sealed class PostgresModerationLogRepositoryTests(PersistenceFixture cont
 		await Log.AppendAsync(new ModerationData
 		{
 			Action = ModerationAction.Note,
-			By = moderator,
+			Actor = moderator,
 			Target = target,
 			Timestamp = timestamp
 		}, TestContext.Current.CancellationToken);

@@ -37,9 +37,9 @@ internal interface IRoomLobbyPort
 
 	/// <summary>Closes the room: the lobby evicts its players, ends its round and forgets it.</summary>
 	/// <param name="room">The room to close.</param>
-	/// <param name="by">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
+	/// <param name="actor">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
-	void Close(Room room, UserRecord? by);
+	void Close(Room room, UserRecord? actor);
 
 	/// <summary>Marks that a seating of a player in a room is under way, so no other room seats the same player meanwhile.</summary>
 	/// <param name="player">The player's game connection.</param>

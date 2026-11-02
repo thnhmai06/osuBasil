@@ -23,8 +23,8 @@ public sealed class ScopedServerBeatmapsetsTests
 		var world = new BeatmapsetWorld();
 		var app = world.CreateApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = locks });
-		var by = await app.LoginAsync(await app.CreateUserAsync("Uploader", "password", permissions));
-		return (app, world, app.Server.ScopeTo(by).Beatmapsets);
+		var actor = await app.LoginAsync(await app.CreateUserAsync("Uploader", "password", permissions));
+		return (app, world, app.Server.ScopeTo(actor).Beatmapsets);
 	}
 
 	[Fact]

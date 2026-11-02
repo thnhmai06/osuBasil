@@ -67,7 +67,7 @@ public sealed class ScopedUserRestrictions
 		var log = new ModerationData
 		{
 			Action = ModerationAction.Lift,
-			By = _scoped.By.Record,
+			Actor = _scoped.Actor.Record,
 			Target = _scoped.User.Record,
 			Reason = reason,
 			Timestamp = now
@@ -111,7 +111,7 @@ public sealed class ScopedUserRestrictions
 		await context.ModerationLog.AppendAsync(new ModerationData
 		{
 			Action = ModerationAction.Delete,
-			By = _scoped.By.Record,
+			Actor = _scoped.Actor.Record,
 			Target = _scoped.User.Record,
 			Reason = reason,
 			Timestamp = now
@@ -133,7 +133,7 @@ public sealed class ScopedUserRestrictions
 		var log = new ModerationData
 		{
 			Action = ModerationAction.Restrict,
-			By = _scoped.By.Record,
+			Actor = _scoped.Actor.Record,
 			Target = _scoped.User.Record,
 			Reason = reason,
 			Timestamp = now

@@ -46,7 +46,7 @@ public sealed record RoomPlayerLeft(
 
 /// <summary>A player was removed from the room.</summary>
 /// <param name="Room">The room the player was removed from.</param>
-/// <param name="By">The user who removed the player.</param>
+/// <param name="Actor">The user who removed the player.</param>
 /// <param name="Player">The player who was removed.</param>
 /// <param name="Slot">The number of the slot that was vacated.</param>
 /// <param name="Host">The room's host after the player left.</param>
@@ -56,7 +56,7 @@ public sealed record RoomPlayerLeft(
 /// </param>
 public sealed record RoomPlayerKicked(
 	Room Room,
-	UserRecord By,
+	UserRecord Actor,
 	BanchoConnection Player,
 	int Slot,
 	BanchoConnection? Host,

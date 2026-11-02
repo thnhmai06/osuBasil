@@ -31,9 +31,9 @@ public sealed class ScopedUserCredentialsTests
 		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
 	}
 
-	private static async Task<string> OpenIrcKeyAsync(TestApplication app, Connection by)
+	private static async Task<string> OpenIrcKeyAsync(TestApplication app, Connection actor)
 	{
-		var (result, key, _) = await app.Users.Of(by.Record).ScopeTo(by).Sessions.OpenIrcAsync("client", Token);
+		var (result, key, _) = await app.Users.Of(actor.Record).ScopeTo(actor).Sessions.OpenIrcAsync("client", Token);
 		Assert.True(result.IsOk);
 		return key!;
 	}
@@ -143,7 +143,7 @@ public sealed class ScopedUserCredentialsTests
 		Assert.False(osu.IsOpen);
 		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, key)).Failure);
 		var entry = Assert.Single(app.ModerationEntries, e => e.Action == ModerationAction.ChangePassword);
-		Assert.Equal(admin.Record, entry.By);
+		Assert.Equal(admin.Record, entry.Actor);
 		Assert.Equal(user, entry.Target);
 	}
 

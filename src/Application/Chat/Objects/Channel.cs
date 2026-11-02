@@ -63,11 +63,11 @@ public abstract class Channel
 	internal abstract bool CanWrite(Connection connection, DateTimeOffset now);
 
 	/// <summary>Creates a channel scope for a connection.</summary>
-	/// <param name="by">The connection acting on this channel.</param>
+	/// <param name="actor">The connection acting on this channel.</param>
 	/// <returns>A scope for the channel and connection.</returns>
-	public ScopedChannel ScopeTo(Connection by)
+	public ScopedChannel ScopeTo(Connection actor)
 	{
-		return new ScopedChannel(this, by);
+		return new ScopedChannel(this, actor);
 	}
 
 	/// <summary>
@@ -93,8 +93,8 @@ public abstract class Channel
 	{
 		var author = posted.Message.Author;
 		var members = Members.ToArray();
-		if (posted.By is not { } by ||
-		    by.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(UserPermissions.ChatManageMessageAnyone) ||
+		if (posted.Actor is not { } actor ||
+		    actor.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(UserPermissions.ChatManageMessageAnyone) ||
 		    this is PmChannel)
 			return members;
 
@@ -115,8 +115,8 @@ public abstract class Channel
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
 	/// <param name="now">The time the message was posted.</param>
-	/// <param name="by">The connection that posted the message, or <see langword="null" /> for the server.</param>
-	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Connection? by)
+	/// <param name="actor">The connection that posted the message, or <see langword="null" /> for the server.</param>
+	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Connection? actor)
 	{
 		var truncated = text.Length > MaxMessageLength;
 		var message = new Message
@@ -125,13 +125,13 @@ public abstract class Channel
 		};
 
 		Message? awayReply = null;
-		if (by is not null
+		if (actor is not null
 		    && this is PmChannel { Owner.AwayMessage: { } away } pmChannel
-		    && !ReferenceEquals(by.User, pmChannel.Owner)
+		    && !ReferenceEquals(actor.User, pmChannel.Owner)
 		    && !notice)
 			awayReply = new Message { Author = pmChannel.Owner.Record, Content = away, Timestamp = now };
 
-		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, by));
+		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, actor));
 	}
 
 	/// <summary>Closes this channel and removes every member.</summary>

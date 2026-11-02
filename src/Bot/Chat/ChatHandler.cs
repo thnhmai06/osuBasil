@@ -25,14 +25,14 @@ internal sealed class ChatHandler(
 	/// <inheritdoc />
 	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken cancellationToken)
 	{
-		if (posted.By is not { } by || IsIgnored(posted.Message))
+		if (posted.Actor is not { } actor || IsIgnored(posted.Message))
 			return ValueTask.CompletedTask;
 
 		var privateMessage = posted.Channel is PmChannel pm && pm.Owner.Record.IsBasilBot();
 		if (posted.Channel is PmChannel && !privateMessage) return ValueTask.CompletedTask;
 
-		var context = NewContext(posted, by, privateMessage);
-		worker.Enqueue(by.Record.Id, workerToken => RunCommandAsync(context, posted.Message.Content, workerToken));
+		var context = NewContext(posted, actor, privateMessage);
+		worker.Enqueue(actor.Record.Id, workerToken => RunCommandAsync(context, posted.Message.Content, workerToken));
 		return ValueTask.CompletedTask;
 	}
 
@@ -41,17 +41,17 @@ internal sealed class ChatHandler(
 		return message.IsNotice || message.Author.IsBasilBot();
 	}
 
-	private CommandContext NewContext(ChannelMessagePosted posted, Connection by, bool privateMessage)
+	private CommandContext NewContext(ChannelMessagePosted posted, Connection actor, bool privateMessage)
 	{
 		return new CommandContext(
-			by,
+			actor,
 			privateMessage ? null : posted.Channel.Name,
 			replies,
 			(text, sendToken) => SendSplitAsync(text, (piece, token) => privateMessage
-				? server.WhisperAsync(by.User, piece, cancellationToken: token)
+				? server.WhisperAsync(actor.User, piece, cancellationToken: token)
 				: server.SayAsync(posted.Channel, piece, cancellationToken: token), sendToken),
 			(text, sendToken) =>
-				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.User, piece, cancellationToken: token),
+				SendSplitAsync(text, (piece, token) => server.WhisperAsync(actor.User, piece, cancellationToken: token),
 					sendToken));
 	}
 
@@ -64,7 +64,7 @@ internal sealed class ChatHandler(
 		catch (Exception exception) when
 			(exception is not OperationCanceledException || !workerToken.IsCancellationRequested)
 		{
-			logger.LogError(exception, "Error handling bot command from user {UserId}", context.By.Record.Id);
+			logger.LogError(exception, "Error handling bot command from user {UserId}", context.Actor.Record.Id);
 		}
 	}
 

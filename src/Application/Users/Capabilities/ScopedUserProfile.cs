@@ -17,7 +17,7 @@ public sealed class ScopedUserProfile(ScopedUser scoped)
 	/// </returns>
 	public bool SetAway(string? message)
 	{
-		if (!ReferenceEquals(scoped.By.User, scoped.User) && scoped.By is not OperatorConnection) return false;
+		if (!ReferenceEquals(scoped.Actor.User, scoped.User) && scoped.Actor is not OperatorConnection) return false;
 
 		scoped.User.Profile.SetAway(message);
 		return true;
@@ -28,7 +28,7 @@ public sealed class ScopedUserProfile(ScopedUser scoped)
 	/// <returns><see langword="true" /> if this connection belongs to this user and the setting was set.</returns>
 	public bool SetPmPrivate(bool pmPrivate)
 	{
-		if (!ReferenceEquals(scoped.By.User, scoped.User) && scoped.By is not OperatorConnection) return false;
+		if (!ReferenceEquals(scoped.Actor.User, scoped.User) && scoped.Actor is not OperatorConnection) return false;
 
 		scoped.User.Profile.SetPmPrivate(pmPrivate);
 		return true;

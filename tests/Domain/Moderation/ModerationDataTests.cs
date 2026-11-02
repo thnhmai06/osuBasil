@@ -16,7 +16,7 @@ public class ModerationDataTests
 		Assert.Throws<ArgumentOutOfRangeException>(() => new ModerationData
 		{
 			Action = (ModerationAction)200,
-			By = user,
+			Actor = user,
 			Target = user,
 			Timestamp = Now
 		});
@@ -43,7 +43,7 @@ public class ModerationDataTests
 		return new ModerationData
 		{
 			Action = ModerationAction.Note,
-			By = user,
+			Actor = user,
 			Target = user,
 			Timestamp = Now,
 			Reason = reason

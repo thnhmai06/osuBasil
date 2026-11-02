@@ -589,7 +589,7 @@ game client is online and not in any room is seated in the new room as host; a c
 room stays there and does not become host. Managing a room is for the creator and the referees (and
 `RoomManageAny`, which acts with the creator's authority in every room); being the host does not
 grant management rights. A creator or referee whose permissions are all suspended cannot manage. Every room
-operation with a permission rule runs on `room.ScopeTo(by)`, which checks authority, not the transport. BasilBot's `!mp` commands call these operations using the typist's connection.
+operation with a permission rule runs on `room.ScopeTo(actor)`, which checks authority, not the transport. BasilBot's `!mp` commands call these operations using the typist's connection.
 
 Do not treat them as interchangeable.
 
@@ -820,7 +820,7 @@ Before considering a code change complete:
    a repository read, an internal helper that takes, returns or creates a live object or publishes an event (except
    the explicit `IAnticheatReporter` system service), a contract name that reveals its mechanism, or a reference from a module's Infrastructure project to another module,
    or any project reference outside the graph of the modules. Since the identity redesign, also
-   reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
+   reject: an action without a real `actor`, authority decided by connection kind, a check on granted instead of
    effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
    delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
    to the object that owns it" (God Actor, service-centric procedural design, permission plumbing, exposed mutable

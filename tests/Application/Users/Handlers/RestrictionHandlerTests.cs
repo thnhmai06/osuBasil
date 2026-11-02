@@ -46,8 +46,8 @@ public sealed class RestrictionHandlerTests
 		UserPermissions permissions)
 	{
 		var moderator = await app.CreateUserAsync("Moderator", "password", UserPermissionsGroups.All);
-		var by = await app.LoginAsync(moderator);
-		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(permissions, null,
+		var actor = await app.LoginAsync(moderator);
+		var (result, _) = await app.Users.Of(target).ScopeTo(actor).Restrictions.RestrictAsync(permissions, null,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(result.IsOk);
 		return Assert.Single(app.UserEvents.Events.OfType<UserRestricted>(), @event => @event.User.Equals(target));

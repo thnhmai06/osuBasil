@@ -21,14 +21,14 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 
 	/// <summary>Creates a scoped room for a connection.</summary>
 	/// <param name="room">The room to scope.</param>
-	/// <param name="by">The connection acting on the room.</param>
-	internal ScopedRoom(Room room, Connection by) : this(room, by, Snapshot(room, by))
+	/// <param name="actor">The connection acting on the room.</param>
+	internal ScopedRoom(Room room, Connection actor) : this(room, actor, Snapshot(room, actor))
 	{
 	}
 
-	private ScopedRoom(Room room, Connection by,
+	private ScopedRoom(Room room, Connection actor,
 		(UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
-		: base(by, snapshot.Rights)
+		: base(actor, snapshot.Rights)
 	{
 		Room = room;
 		_global = snapshot.Global;
@@ -65,10 +65,10 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 	/// <summary>Whether the connection may manage every room.</summary>
 	internal bool ManagesAnyRoom { get; }
 
-	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection by)
+	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection actor)
 	{
-		var global = by.EffectivePermissions(room.Context.Clock.GetUtcNow());
-		var roles = ComputeRoles(room, by);
+		var global = actor.EffectivePermissions(room.Context.Clock.GetUtcNow());
+		var roles = ComputeRoles(room, actor);
 
 		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
 		// because whoever manages an area keeps it in the effective permissions. Otherwise a user who may not join
@@ -82,24 +82,24 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 		return (global, roles, rights);
 	}
 
-	private static RoomRoles ComputeRoles(Room room, Connection by)
+	private static RoomRoles ComputeRoles(Room room, Connection actor)
 	{
 		var roles = RoomRoles.None;
 
 		// Player: seated BanchoConnection
-		if (by is BanchoConnection bancho && room.Slots.Find(bancho) is not null)
+		if (actor is BanchoConnection bancho && room.Slots.Find(bancho) is not null)
 			roles |= RoomRoles.Player;
 
 		// Host: reference equals
-		if (ReferenceEquals(by, room.Authority.Host))
+		if (ReferenceEquals(actor, room.Authority.Host))
 			roles |= RoomRoles.Host;
 
 		// Referee: managed by but not creator
-		if (room.Authority.IsManagedBy(by.Record) && !Equals(room.Authority.Creator, by.Record))
+		if (room.Authority.IsManagedBy(actor.Record) && !Equals(room.Authority.Creator, actor.Record))
 			roles |= RoomRoles.Referee;
 
 		// Creator: creator equals
-		if (Equals(room.Authority.Creator, by.Record))
+		if (Equals(room.Authority.Creator, actor.Record))
 			roles |= RoomRoles.Creator;
 
 		return roles;
@@ -137,6 +137,6 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 	/// <remarks>The caller needs <see cref="RoomPermissions.RoomClose" />, checked before the room is entered.</remarks>
 	public Task<Result<RoomOutcome>> CloseAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(Require(RoomPermissions.RoomClose) ?? Room.Close(By.Record));
+		return Task.FromResult(Require(RoomPermissions.RoomClose) ?? Room.Close(Actor.Record));
 	}
 }

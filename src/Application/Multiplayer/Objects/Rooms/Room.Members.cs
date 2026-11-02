@@ -11,37 +11,37 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 public sealed partial class Room
 {
 	/// <summary>Seats a connection that asked to join, after the room's own checks.</summary>
-	/// <param name="by">The connection joining.</param>
+	/// <param name="actor">The connection joining.</param>
 	/// <param name="password">The password the player supplied.</param>
 	/// <param name="joinDenied">The denial for a player who may not join rooms, or <see langword="null" />.</param>
 	/// <param name="managesAnyRoom">Whether the player manages every room, so the password does not apply.</param>
 	/// <returns>
 	///     Ok, AlreadySeated, Banned, a denial, InAnotherRoom, IsObserver, WrongPassword, Full or RoomClosed.
 	/// </returns>
-	internal Result<RoomOutcome> Join(BanchoConnection by, string password, Result<RoomOutcome>? joinDenied,
+	internal Result<RoomOutcome> Join(BanchoConnection actor, string password, Result<RoomOutcome>? joinDenied,
 		bool managesAnyRoom)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
 
-			var stale = Slots.Find(by.Record)?.Player;
-			if (stale is not null && (ReferenceEquals(stale, by) || stale.IsOpen)) return RoomOutcome.AlreadySeated;
+			var stale = Slots.Find(actor.Record)?.Player;
+			if (stale is not null && (ReferenceEquals(stale, actor) || stale.IsOpen)) return RoomOutcome.AlreadySeated;
 
-			if (JoinRefusal(by, password, joinDenied, managesAnyRoom) is { } refusal) return refusal;
+			if (JoinRefusal(actor, password, joinDenied, managesAnyRoom) is { } refusal) return refusal;
 
-			return TakeSeat(by, stale);
+			return TakeSeat(actor, stale);
 		}
 	}
 
-	private Result<RoomOutcome>? JoinRefusal(BanchoConnection by, string password,
+	private Result<RoomOutcome>? JoinRefusal(BanchoConnection actor, string password,
 		Result<RoomOutcome>? joinDenied, bool managesAnyRoom)
 	{
-		if (Members.Banned.Contains(by.Record)) return RoomOutcome.Banned;
+		if (Members.Banned.Contains(actor.Record)) return RoomOutcome.Banned;
 		if (joinDenied is { } denied) return denied;
 
-		if (RoomOf(by) is { } other && !ReferenceEquals(other, this)) return RoomOutcome.InAnotherRoom;
-		if (Members.Observers.Any(observer => observer.Record.Equals(by.Record))) return RoomOutcome.IsObserver;
+		if (RoomOf(actor) is { } other && !ReferenceEquals(other, this)) return RoomOutcome.InAnotherRoom;
+		if (Members.Observers.Any(observer => observer.Record.Equals(actor.Record))) return RoomOutcome.IsObserver;
 		if (WrongPassword(password, managesAnyRoom)) return RoomOutcome.WrongPassword;
 
 		return null;
@@ -75,7 +75,7 @@ public sealed partial class Room
 
 	/// <summary>Checks what a manager's seating of a player needs and takes the player out of the room they sit in now.</summary>
 	/// <param name="player">The player to seat here.</param>
-	/// <param name="by">The manager seating the player.</param>
+	/// <param name="actor">The manager seating the player.</param>
 	/// <returns>
 	///     <see langword="null" /> when the player may be seated; otherwise Banned, InAnotherRoom (the manager has no
 	///     seating rights there), Full or IsObserver.
@@ -84,12 +84,12 @@ public sealed partial class Room
 	///     The player leaves the other room before this one seats them, and the two steps are separate: when this
 	///     method returns, the player is in no room and seating them here is still to do.
 	/// </remarks>
-	internal Result<RoomOutcome>? MakeRoomFor(BanchoConnection player, Connection by)
+	internal Result<RoomOutcome>? MakeRoomFor(BanchoConnection player, Connection actor)
 	{
 		if (Members.Banned.Contains(player.Record)) return RoomOutcome.Banned;
 		if (RoomOf(player) is not { } other || ReferenceEquals(other, this)) return null;
 
-		if (other.ScopeTo(by).Require(RoomPermissions.MembersSeat) is not null) return RoomOutcome.InAnotherRoom;
+		if (other.ScopeTo(actor).Require(RoomPermissions.MembersSeat) is not null) return RoomOutcome.InAnotherRoom;
 		if (!Slots.Any(slot => slot is { Locked: false, Player: null })) return RoomOutcome.Full;
 		if (Members.Observers.Any(observer => observer.Record.Equals(player.Record))) return RoomOutcome.IsObserver;
 
@@ -98,21 +98,21 @@ public sealed partial class Room
 	}
 
 	/// <summary>Removes a seated player on their own request.</summary>
-	/// <param name="by">The player's game connection.</param>
+	/// <param name="actor">The player's game connection.</param>
 	/// <returns>Ok, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> Leave(BanchoConnection by)
+	internal Result<RoomOutcome> Leave(BanchoConnection actor)
 	{
 		lock (_sync)
 		{
-			return IsClosed ? RoomOutcome.RoomClosed : LeaveSeat(by);
+			return IsClosed ? RoomOutcome.RoomClosed : LeaveSeat(actor);
 		}
 	}
 
 	/// <summary>Removes a seated player on a manager's order.</summary>
-	/// <param name="by">The manager.</param>
+	/// <param name="actor">The manager.</param>
 	/// <param name="player">The user to remove.</param>
 	/// <returns>Ok, IsManager, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> Kick(UserRecord by, UserRecord player)
+	internal Result<RoomOutcome> Kick(UserRecord actor, UserRecord player)
 	{
 		lock (_sync)
 		{
@@ -122,17 +122,17 @@ public sealed partial class Room
 
 			var slot = Vacate(seated)!;
 			var progress = AdvanceRound();
-			Emit(new RoomPlayerKicked(this, by, seated, slot.Index, Authority.Host, progress));
+			Emit(new RoomPlayerKicked(this, actor, seated, slot.Index, Authority.Host, progress));
 			ReportIfEmpty();
 			return RoomOutcome.Ok;
 		}
 	}
 
 	/// <summary>Bans a user from the room and removes them if seated.</summary>
-	/// <param name="by">The manager.</param>
+	/// <param name="actor">The manager.</param>
 	/// <param name="player">The user to ban.</param>
 	/// <returns>Ok, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
-	internal Result<RoomOutcome> Ban(UserRecord by, UserRecord player)
+	internal Result<RoomOutcome> Ban(UserRecord actor, UserRecord player)
 	{
 		lock (_sync)
 		{
@@ -150,7 +150,7 @@ public sealed partial class Room
 				progress = AdvanceRound();
 			}
 
-			Emit(new RoomPlayerBanned(this, by, player, vacated, evicted, Authority.Host, progress));
+			Emit(new RoomPlayerBanned(this, actor, player, vacated, evicted, Authority.Host, progress));
 			if (evicted is not null) ReportIfEmpty();
 
 			return RoomOutcome.Ok;
@@ -173,10 +173,10 @@ public sealed partial class Room
 	}
 
 	/// <summary>Invites an online user to the room.</summary>
-	/// <param name="by">The manager inviting.</param>
+	/// <param name="actor">The manager inviting.</param>
 	/// <param name="target">The invited user.</param>
 	/// <returns>Ok, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> Invite(UserRecord by, User target)
+	internal Result<RoomOutcome> Invite(UserRecord actor, User target)
 	{
 		lock (_sync)
 		{
@@ -184,50 +184,50 @@ public sealed partial class Room
 			if (!target.Connections.Any(connection => connection.IsOpen)) return RoomOutcome.TargetOffline;
 			if (Slots.Find(target.Record) is not null) return RoomOutcome.AlreadyInRoom;
 
-			Emit(new RoomPlayerInvited(this, by, target.Record));
+			Emit(new RoomPlayerInvited(this, actor, target.Record));
 			return RoomOutcome.Ok;
 		}
 	}
 
 	/// <summary>Adds a tournament connection as an observer.</summary>
-	/// <param name="by">The tournament connection observing.</param>
+	/// <param name="actor">The tournament connection observing.</param>
 	/// <returns>Ok, IsPlayer or RoomClosed.</returns>
-	internal Result<RoomOutcome> ObserverJoin(TourneyConnection by)
+	internal Result<RoomOutcome> ObserverJoin(TourneyConnection actor)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(by.Record) is not null) return RoomOutcome.IsPlayer;
-			if (!Members.MutableObservers.Add(by)) return RoomOutcome.Ok;
+			if (Slots.Find(actor.Record) is not null) return RoomOutcome.IsPlayer;
+			if (!Members.MutableObservers.Add(actor)) return RoomOutcome.Ok;
 
-			Emit(new RoomObserverJoined(this, by));
+			Emit(new RoomObserverJoined(this, actor));
 			return RoomOutcome.Ok;
 		}
 	}
 
 	/// <summary>Removes a tournament connection from the room's observers.</summary>
-	/// <param name="by">The tournament connection leaving.</param>
+	/// <param name="actor">The tournament connection leaving.</param>
 	/// <returns>Ok, NotObserver or RoomClosed.</returns>
-	internal Result<RoomOutcome> ObserverLeave(TourneyConnection by)
+	internal Result<RoomOutcome> ObserverLeave(TourneyConnection actor)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!Members.MutableObservers.Remove(by)) return RoomOutcome.NotObserver;
+			if (!Members.MutableObservers.Remove(actor)) return RoomOutcome.NotObserver;
 
-			Emit(new RoomObserverLeft(this, by));
+			Emit(new RoomObserverLeft(this, actor));
 			return RoomOutcome.Ok;
 		}
 	}
 
 	/// <summary>Closes the room, evicting its players and ending its round.</summary>
-	/// <param name="by">The user who closes the room, or <see langword="null" /> when the server closes it.</param>
+	/// <param name="actor">The user who closes the room, or <see langword="null" /> when the server closes it.</param>
 	/// <returns>Ok; a room that has closed already returns Ok and does nothing.</returns>
-	internal Result<RoomOutcome> Close(UserRecord? by)
+	internal Result<RoomOutcome> Close(UserRecord? actor)
 	{
 		lock (_sync)
 		{
-			if (!IsClosed) Context.Lobby.Close(this, by);
+			if (!IsClosed) Context.Lobby.Close(this, actor);
 			return RoomOutcome.Ok;
 		}
 	}

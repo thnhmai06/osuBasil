@@ -4,14 +4,14 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 /// <summary>A room countdown, identified by reference, that may start a round when it elapses.</summary>
 /// <remarks>Creates a room countdown.</remarks>
-/// <param name="by">The user who started the countdown.</param>
+/// <param name="actor">The user who started the countdown.</param>
 /// <param name="length">How long the countdown runs.</param>
 /// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
 /// <param name="startedAt">When the countdown started.</param>
-public sealed class RoomCountdown(UserRecord by, TimeSpan length, bool startsRound, DateTimeOffset startedAt)
+public sealed class RoomCountdown(UserRecord actor, TimeSpan length, bool startsRound, DateTimeOffset startedAt)
 {
 	/// <summary>Gets the user who started the countdown.</summary>
-	public UserRecord By { get; } = by;
+	public UserRecord Actor { get; } = actor;
 
 	/// <summary>Gets how long the countdown runs.</summary>
 	public TimeSpan Length { get; } = length;

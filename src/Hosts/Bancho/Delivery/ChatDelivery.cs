@@ -59,8 +59,8 @@ internal sealed class MessageDelivery(Outbox outbox) : INotificationHandler<Chan
 			                    !(recipient.Type is SessionType.Osu && recipient.Record.Equals(author)));
 		outbox.Send(recipients, writer =>
 			writer.SendMessage(author.Value.Name, message.Content, target, author.Id));
-		if (notification is { AwayReply: { } away, By: { } by })
-			outbox.Send(by, writer => writer.SendMessage(away.Author.Value.Name, away.Content,
+		if (notification is { AwayReply: { } away, Actor: { } actor })
+			outbox.Send(actor, writer => writer.SendMessage(away.Author.Value.Name, away.Content,
 				author.Value.Name, away.Author.Id));
 	}
 }

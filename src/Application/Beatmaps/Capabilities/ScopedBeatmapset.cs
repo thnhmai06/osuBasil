@@ -10,9 +10,9 @@ public sealed class ScopedBeatmapset : Scoped<UserPermissions>
 {
 	/// <summary>Creates a scoped beatmapset for an actor.</summary>
 	/// <param name="beatmapset">The beatmapset to scope.</param>
-	/// <param name="by">The actor acting on the beatmapset.</param>
-	internal ScopedBeatmapset(Beatmapset beatmapset, IActor by) : base(by,
-		by.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
+	/// <param name="actor">The actor acting on the beatmapset.</param>
+	internal ScopedBeatmapset(Beatmapset beatmapset, IActor actor) : base(actor,
+		actor.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
 	{
 		Beatmapset = beatmapset;
 	}

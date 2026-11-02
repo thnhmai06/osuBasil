@@ -62,13 +62,13 @@ public sealed class ConnectionChannelHandlerTests
 	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app, string name, bool autoJoin = false)
 	{
 		var admin = await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password", UserPermissionsGroups.All);
-		var by = await app.LoginAsync(admin);
+		var actor = await app.LoginAsync(admin);
 		var record = new GeneralChannelRecord
 		{
 			Name = name,
 			Value = new GeneralChannelData { AutoJoin = autoJoin }
 		};
-		Assert.True((await app.Server.ScopeTo(by).Channels.CreateAsync(record,
+		Assert.True((await app.Server.ScopeTo(actor).Channels.CreateAsync(record,
 			TestContext.Current.CancellationToken)).IsOk);
 		return app.Channels.Find(name)!;
 	}

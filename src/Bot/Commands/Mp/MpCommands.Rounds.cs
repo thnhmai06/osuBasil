@@ -13,7 +13,7 @@ internal sealed partial class MpCommands
 		if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
 			return await StartCountdownAsync(context, room, seconds, true, cancellationToken);
 
-		var outcome = await room.ScopeTo(context.By).Rounds.StartAsync(cancellationToken);
+		var outcome = await room.ScopeTo(context.Actor).Rounds.StartAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -41,8 +41,8 @@ internal sealed partial class MpCommands
 	private static async Task<bool> AbortTimerAsync(CommandContext context, Room room,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
-		var outcome = await room.ScopeTo(by).Rounds.CancelCountdownAsync(cancellationToken);
+		var actor = context.Actor;
+		var outcome = await room.ScopeTo(actor).Rounds.CancelCountdownAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -64,14 +64,14 @@ internal sealed partial class MpCommands
 		bool startsRound,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (seconds < 1 || TimeSpan.FromSeconds(seconds) > ScopedRoomRounds.MaxCountdown)
 		{
 			await context.Reply(MpReplies.CountdownOutOfRange, cancellationToken);
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Rounds.StartCountdownAsync(TimeSpan.FromSeconds(seconds), startsRound,
+		var outcome = await room.ScopeTo(actor).Rounds.StartCountdownAsync(TimeSpan.FromSeconds(seconds), startsRound,
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
@@ -84,7 +84,7 @@ internal sealed partial class MpCommands
 
 	private static async Task<bool> AbortAsync(CommandContext context, Room room, CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.By).Rounds.AbortAsync(cancellationToken);
+		var outcome = await room.ScopeTo(context.Actor).Rounds.AbortAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

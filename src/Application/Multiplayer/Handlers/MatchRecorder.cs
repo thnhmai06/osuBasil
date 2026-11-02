@@ -45,8 +45,8 @@ internal sealed class MatchRecorder(
 		if (@event.AbortedRound is { } abortedRound)
 			await rounds.CreateOrUpdateAsync(abortedRound, cancellationToken);
 		await matches.UpdateAsync(@event.Room.Match, cancellationToken);
-		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.Closed, @event.Timestamp, @event.By,
-			detail: @event.By is null ? "Empty" : null, cancellationToken: cancellationToken);
+		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.Closed, @event.Timestamp, @event.Actor,
+			detail: @event.Actor is null ? "Empty" : null, cancellationToken: cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -60,7 +60,7 @@ internal sealed class MatchRecorder(
 	public async ValueTask Handle(RoomHostChanged @event, CancellationToken cancellationToken)
 	{
 		if (@event.Host is { } host)
-			await RecordMatchEventAsync(@event.Room.Match, MatchEventType.HostGranted, @event.Timestamp, @event.By,
+			await RecordMatchEventAsync(@event.Room.Match, MatchEventType.HostGranted, @event.Timestamp, @event.Actor,
 				host.Record, cancellationToken: cancellationToken);
 	}
 
@@ -68,7 +68,7 @@ internal sealed class MatchRecorder(
 	public async ValueTask Handle(RoomPlayerBanned @event, CancellationToken cancellationToken)
 	{
 		await RecordProgressAsync(@event.RoundProgress, cancellationToken);
-		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.By,
+		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.Actor,
 			@event.Player, "Banned", cancellationToken);
 	}
 
@@ -84,7 +84,7 @@ internal sealed class MatchRecorder(
 	public async ValueTask Handle(RoomPlayerKicked @event, CancellationToken cancellationToken)
 	{
 		await RecordProgressAsync(@event.RoundProgress, cancellationToken);
-		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.By,
+		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.Actor,
 			@event.Player.Record, "Kicked", cancellationToken);
 	}
 
@@ -99,14 +99,14 @@ internal sealed class MatchRecorder(
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRefereeAdded @event, CancellationToken cancellationToken)
 	{
-		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.RefAdded, @event.Timestamp, @event.By,
+		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.RefAdded, @event.Timestamp, @event.Actor,
 			@event.Referee, cancellationToken: cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRefereeRemoved @event, CancellationToken cancellationToken)
 	{
-		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.RefRemoved, @event.Timestamp, @event.By,
+		await RecordMatchEventAsync(@event.Room.Match, MatchEventType.RefRemoved, @event.Timestamp, @event.Actor,
 			@event.Referee, cancellationToken: cancellationToken);
 	}
 

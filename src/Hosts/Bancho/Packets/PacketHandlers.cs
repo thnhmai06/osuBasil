@@ -33,24 +33,24 @@ internal sealed partial class PacketHandlers(
 	TimeProvider clock)
 {
 	/// <summary>Handles one packet from a connection.</summary>
-	/// <param name="by">The connection that sent it.</param>
+	/// <param name="actor">The connection that sent it.</param>
 	/// <param name="packet">The packet.</param>
 	/// <param name="cancellationToken">A token that cancels the handling.</param>
-	public Task HandleAsync(Connection by, ClientPacket packet, CancellationToken cancellationToken)
+	public Task HandleAsync(Connection actor, ClientPacket packet, CancellationToken cancellationToken)
 	{
 		var reader = PacketReader.ForPayload(packet.Payload);
 		return packet.Type switch
 		{
-			ClientPacketType.Logout => Run(() => registry.Close(by, SessionEndReason.LoggedOut)),
-			ClientPacketType.UserStatsRequest => StatsRequestAsync(by, reader.ReadInt32List(), cancellationToken),
-			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(by, reader.ReadInt32List(), cancellationToken),
-			ClientPacketType.UserPresenceRequestAll => PresenceRequestAsync(by,
+			ClientPacketType.Logout => Run(() => registry.Close(actor, SessionEndReason.LoggedOut)),
+			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List(), cancellationToken),
+			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor, reader.ReadInt32List(), cancellationToken),
+			ClientPacketType.UserPresenceRequestAll => PresenceRequestAsync(actor,
 				registry.Online.Keys.Select(user => user.Id).ToList(), cancellationToken),
-			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(by, reader.ReadInt32(), cancellationToken),
-			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(by, reader.ReadInt32(), cancellationToken),
+			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(actor, reader.ReadInt32(), cancellationToken),
+			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(actor, reader.ReadInt32(), cancellationToken),
 			ClientPacketType.TournamentLeaveMatchChannel =>
-				TourneyLeaveAsync(by, reader.ReadInt32(), cancellationToken),
-			_ when by is BanchoConnection osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,
+				TourneyLeaveAsync(actor, reader.ReadInt32(), cancellationToken),
+			_ when actor is BanchoConnection osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,
 				cancellationToken),
 			_ => Task.CompletedTask
 		};
@@ -116,7 +116,7 @@ internal sealed partial class PacketHandlers(
 		await Task.CompletedTask;
 	}
 
-	private async Task StatsRequestAsync(Connection by, IEnumerable<int> ids, CancellationToken cancellationToken)
+	private async Task StatsRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken cancellationToken)
 	{
 		var wanted = new List<User>();
 		foreach (var id in ids)
@@ -127,14 +127,14 @@ internal sealed partial class PacketHandlers(
 		foreach (var user in wanted)
 			stats.Add(await statsRepository.GetAsync(user.Record, user.Bancho?.Status.GameMode ?? GameMode.Standard,
 				cancellationToken));
-		outbox.Send(by, writer =>
+		outbox.Send(actor, writer =>
 		{
 			for (var index = 0; index < wanted.Count; index++)
 				BanchoView.WriteStats(writer, wanted[index], stats[index]);
 		});
 	}
 
-	private async Task PresenceRequestAsync(Connection by, IEnumerable<int> ids, CancellationToken cancellationToken)
+	private async Task PresenceRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken cancellationToken)
 	{
 		var wanted = new List<User>();
 		foreach (var id in ids)
@@ -146,7 +146,7 @@ internal sealed partial class PacketHandlers(
 		foreach (var user in wanted)
 			stats.Add(await statsRepository.GetAsync(user.Record, user.Bancho?.Status.GameMode ?? GameMode.Standard,
 				cancellationToken));
-		outbox.Send(by, writer =>
+		outbox.Send(actor, writer =>
 		{
 			for (var index = 0; index < wanted.Count; index++)
 				BanchoView.WritePresence(writer, wanted[index], stats[index], now);

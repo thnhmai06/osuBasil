@@ -262,10 +262,10 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_OneUserWithChatAnnounce_IsOkAndReachesTheClient()
 	{
 		using var app = new TestApplication();
-		var by = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
 		var (target, client) = await OnlineClientAsync(app, "Target");
 
-		var (result, sent) = app.Server.ScopeTo(by).Notify(Text, target);
+		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, target);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 		Assert.Equal(1, sent);
@@ -276,11 +276,11 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_SeveralUsersWithChatAnnounce_IsOkAndCountsClients()
 	{
 		using var app = new TestApplication();
-		var by = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
 		var (first, _) = await OnlineClientAsync(app, "First");
 		var (second, _) = await OnlineClientAsync(app, "Second");
 
-		var (result, sent) = app.Server.ScopeTo(by).Notify(Text, [first, second]);
+		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first, second]);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 		Assert.Equal(2, sent);
@@ -290,11 +290,11 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotifyAll_WithChatAnnounce_IsOkAndCountsEveryClient()
 	{
 		using var app = new TestApplication();
-		var by = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
 		await OnlineClientAsync(app, "First");
 		await OnlineClientAsync(app, "Second");
 
-		var (result, sent) = app.Server.ScopeTo(by).NotifyAll(Text);
+		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll(Text);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 		Assert.Equal(2, sent);
@@ -304,10 +304,10 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotifyAll_EmptyTextWithChatAnnounce_IsOkAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var by = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
 		await OnlineClientAsync(app, "Target");
 
-		var (result, sent) = app.Server.ScopeTo(by).NotifyAll("");
+		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll("");
 
 		Assert.True(result.IsOk);
 		Assert.Equal(0, sent);
@@ -318,10 +318,10 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_OneUserWithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var by = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
 		var (target, _) = await OnlineClientAsync(app, "Target");
 
-		var (result, sent) = app.Server.ScopeTo(by).Notify(Text, target);
+		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, target);
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
@@ -333,11 +333,11 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_SeveralUsersWithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var by = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
 		var (first, _) = await OnlineClientAsync(app, "First");
 		var (second, _) = await OnlineClientAsync(app, "Second");
 
-		var (result, sent) = app.Server.ScopeTo(by).Notify(Text, [first, second]);
+		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first, second]);
 
 		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
 		Assert.Equal(0, sent);
@@ -348,10 +348,10 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotifyAll_WithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var by = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
 		await OnlineClientAsync(app, "Target");
 
-		var (result, sent) = app.Server.ScopeTo(by).NotifyAll(Text);
+		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll(Text);
 
 		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
 		Assert.Equal(0, sent);
@@ -365,10 +365,10 @@ public sealed class ServerNotifyTests
 		var user = await app.CreateUserAsync("Muted", "password",
 			UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
 		app.AddRestriction(user, UserPermissions.ChatManageAnnounce);
-		var by = await app.LoginAsync(user);
+		var actor = await app.LoginAsync(user);
 		await OnlineClientAsync(app, "Target");
 
-		var (result, sent) = app.Server.ScopeTo(by).NotifyAll(Text);
+		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll(Text);
 
 		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
 		Assert.Equal(0, sent);

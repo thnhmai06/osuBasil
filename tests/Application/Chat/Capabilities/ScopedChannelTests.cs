@@ -21,13 +21,13 @@ public sealed class ScopedChannelTests
 		UserPrivileges write = UserPrivileges.None)
 	{
 		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPermissionsGroups.All);
-		var by = await app.LoginAsync(admin);
+		var actor = await app.LoginAsync(admin);
 		var record = new GeneralChannelRecord
 		{
 			Name = ChannelName,
 			Value = new GeneralChannelData { ReadPrivileges = read, WritePrivileges = write }
 		};
-		var created = await app.Server.ScopeTo(by).Channels.CreateAsync(record, TestContext.Current.CancellationToken);
+		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(record, TestContext.Current.CancellationToken);
 		Assert.True(created.IsOk);
 		return app.Channels.Find(ChannelName)!;
 	}
@@ -175,7 +175,7 @@ public sealed class ScopedChannelTests
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
 		Assert.Equal("hello", posted.Message.Content);
 		Assert.Equal(connection.Record, posted.Message.Author);
-		Assert.Equal(connection, posted.By);
+		Assert.Equal(connection, posted.Actor);
 		Assert.False(posted.Truncated);
 	}
 

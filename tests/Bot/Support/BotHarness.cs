@@ -122,14 +122,14 @@ internal sealed class BotHarness : IDisposable
 	}
 
 	/// <summary>Types a message as a user and collects what the bot says.</summary>
-	/// <param name="by">The connection of the typist.</param>
+	/// <param name="actor">The connection of the typist.</param>
 	/// <param name="channel">The channel it is typed in, or <see langword="null" /> for a private message to the bot.</param>
 	/// <param name="text">The message.</param>
 	/// <returns>Whether a command ran and succeeded, and what was said.</returns>
-	public async Task<(bool Succeeded, Said Said)> TypeAsync(Connection by, string? channel, string text)
+	public async Task<(bool Succeeded, Said Said)> TypeAsync(Connection actor, string? channel, string text)
 	{
 		var said = new Said();
-		var context = new CommandContext(by, channel, Replies,
+		var context = new CommandContext(actor, channel, Replies,
 			(line, _) =>
 			{
 				said.Here.Add(line);
@@ -174,13 +174,13 @@ internal sealed class BotHarness : IDisposable
 	}
 
 	/// <summary>Has a user make a room with <c>!mp make</c> or <c>!mp makeprivate</c>.</summary>
-	/// <param name="by">The connection of the user.</param>
+	/// <param name="actor">The connection of the user.</param>
 	/// <param name="name">The name of the room.</param>
 	/// <param name="isPrivate">Whether to make a private room.</param>
 	/// <returns>The room that was opened.</returns>
-	public async Task<Room> MakeAsync(Connection by, string name, bool isPrivate = false)
+	public async Task<Room> MakeAsync(Connection actor, string name, bool isPrivate = false)
 	{
-		var (succeeded, _) = await TypeAsync(by, "#osu", $"!mp {(isPrivate ? "makeprivate" : "make")} {name}");
+		var (succeeded, _) = await TypeAsync(actor, "#osu", $"!mp {(isPrivate ? "makeprivate" : "make")} {name}");
 		Assert.True(succeeded);
 		return App.Lobby.Rooms.Values.Single(room => room.Settings.Name == name);
 	}

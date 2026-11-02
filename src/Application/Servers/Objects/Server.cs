@@ -22,11 +22,11 @@ public sealed class Server
 	internal ServerContext Context { get; }
 
 	/// <summary>Scopes server operations to the connection that asks for them.</summary>
-	/// <param name="by">The connection acting on the server.</param>
+	/// <param name="actor">The connection acting on the server.</param>
 	/// <returns>The server operations available to that connection.</returns>
-	public ScopedServer ScopeTo(Connection by)
+	public ScopedServer ScopeTo(Connection actor)
 	{
-		return new ScopedServer(this, by);
+		return new ScopedServer(this, actor);
 	}
 
 	/// <summary>

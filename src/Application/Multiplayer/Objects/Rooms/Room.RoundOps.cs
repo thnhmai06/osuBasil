@@ -31,14 +31,14 @@ public sealed partial class Room
 	}
 
 	/// <summary>Starts a countdown, optionally starting a round when it elapses.</summary>
-	/// <param name="by">The user who starts the countdown.</param>
+	/// <param name="actor">The user who starts the countdown.</param>
 	/// <param name="length">How long the countdown runs.</param>
 	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
 	/// <returns>
 	///     Ok, InvalidSettings (shorter than one second or longer than <see cref="MaxCountdown" />), InProgress or
 	///     RoomClosed.
 	/// </returns>
-	internal Result<RoomOutcome> BeginCountdown(UserRecord by, TimeSpan length, bool startsRound)
+	internal Result<RoomOutcome> BeginCountdown(UserRecord actor, TimeSpan length, bool startsRound)
 	{
 		lock (_sync)
 		{
@@ -46,7 +46,7 @@ public sealed partial class Room
 			if (length < TimeSpan.FromSeconds(1) || length > MaxCountdown) return RoomOutcome.InvalidSettings;
 			if (startsRound && Rounds.InProgress) return RoomOutcome.InProgress;
 
-			StartCountdown(by, length, startsRound);
+			StartCountdown(actor, length, startsRound);
 			return RoomOutcome.Ok;
 		}
 	}
@@ -80,18 +80,18 @@ public sealed partial class Room
 	}
 
 	/// <summary>Records that a player finished loading the beatmap.</summary>
-	/// <param name="by">The reporting connection.</param>
+	/// <param name="actor">The reporting connection.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed; reporting again returns Ok and does nothing.</returns>
 	/// <remarks>
 	///     The last player to load emits <see cref="RoomRoundAllLoaded" /> instead of
 	///     <see cref="RoomRoundPlayerLoaded" />.
 	/// </remarks>
-	internal Result<RoomOutcome> MarkLoaded(Connection by)
+	internal Result<RoomOutcome> MarkLoaded(Connection actor)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(by, out var round, out var slot)) return RoomOutcome.NotPlaying;
+			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
 			if (slot.Loaded is true) return RoomOutcome.Ok;
 
 			slot.Loaded = true;
@@ -111,18 +111,18 @@ public sealed partial class Room
 	}
 
 	/// <summary>Records that a player wants to skip the intro.</summary>
-	/// <param name="by">The reporting connection.</param>
+	/// <param name="actor">The reporting connection.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed; asking again returns Ok and does nothing.</returns>
 	/// <remarks>
 	///     The last player to ask emits <see cref="RoomRoundAllSkipped" /> instead of
 	///     <see cref="RoomRoundPlayerSkipped" />.
 	/// </remarks>
-	internal Result<RoomOutcome> SkipIntro(Connection by)
+	internal Result<RoomOutcome> SkipIntro(Connection actor)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(by, out var round, out var slot)) return RoomOutcome.NotPlaying;
+			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
 			if (slot.IntroSkipped is true) return RoomOutcome.Ok;
 
 			slot.IntroSkipped = true;
@@ -142,14 +142,14 @@ public sealed partial class Room
 	}
 
 	/// <summary>Records that a player failed; the player keeps playing until completion.</summary>
-	/// <param name="by">The reporting connection.</param>
+	/// <param name="actor">The reporting connection.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed.</returns>
-	internal Result<RoomOutcome> ReportFailed(Connection by)
+	internal Result<RoomOutcome> ReportFailed(Connection actor)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(by, out var round, out var slot)) return RoomOutcome.NotPlaying;
+			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
 
 			Emit(new RoomRoundPlayerFailed(this, round, slot.Index));
 			return RoomOutcome.Ok;
@@ -157,18 +157,18 @@ public sealed partial class Room
 	}
 
 	/// <summary>Records that a player completed the beatmap.</summary>
-	/// <param name="by">The reporting connection.</param>
+	/// <param name="actor">The reporting connection.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed.</returns>
 	/// <remarks>
 	///     When the last player completes, the round ends and <see cref="RoomRoundCompleted" /> is emitted instead of
 	///     <see cref="RoomRoundPlayerCompleted" />.
 	/// </remarks>
-	internal Result<RoomOutcome> ReportCompleted(Connection by)
+	internal Result<RoomOutcome> ReportCompleted(Connection actor)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(by, out var round, out var slot)) return RoomOutcome.NotPlaying;
+			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
 
 			slot.SetStatus(RoomSlotStatus.Complete);
 			Rounds.Settlement?.Complete(slot.Player!.Record);
@@ -186,10 +186,10 @@ public sealed partial class Room
 		}
 	}
 
-	private bool TryGetPlayingSlot(Connection by, [MaybeNullWhen(false)] out Round round,
+	private bool TryGetPlayingSlot(Connection actor, [MaybeNullWhen(false)] out Round round,
 		[MaybeNullWhen(false)] out RoomSlot slot)
 	{
-		if (by is BanchoConnection connection &&
+		if (actor is BanchoConnection connection &&
 		    Rounds.CurrentRound is { } current &&
 		    Slots.Find(connection) is { Status: RoomSlotStatus.Playing } playing)
 		{

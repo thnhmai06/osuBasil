@@ -19,7 +19,7 @@ internal sealed class PostgresModerationLogRepository(
 	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
 	{
 		var action = (int)entry.Action;
-		var byId = entry.By.Id;
+		var byId = entry.Actor.Id;
 		var targetId = entry.Target.Id;
 		var reason = entry.Reason;
 		var timestamp = entry.Timestamp.ToUniversalTime();
@@ -74,8 +74,8 @@ internal sealed class PostgresModerationLogRepository(
 		var entries = ImmutableList.CreateBuilder<ModerationLog>();
 		foreach (var row in rows)
 		{
-			var by = await users.GetAsync(row.ById, cancellationToken);
-			if (by is null)
+			var actor = await users.GetAsync(row.ById, cancellationToken);
+			if (actor is null)
 				continue;
 
 			var entryTarget = row.TargetId == liveTarget.Id
@@ -90,7 +90,7 @@ internal sealed class PostgresModerationLogRepository(
 				Value = new ModerationData
 				{
 					Action = (ModerationAction)row.Action,
-					By = by,
+					Actor = actor,
 					Target = entryTarget,
 					Reason = row.Reason,
 					Timestamp = row.Timestamp

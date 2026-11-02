@@ -16,12 +16,12 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a scoped account for a connection.</summary>
 	/// <param name="user">The account to scope.</param>
-	/// <param name="by">The connection acting on the account.</param>
-	internal ScopedUser(User user, Connection by) : base(by,
-		by.EffectivePermissions(user.Context.Clock.GetUtcNow()))
+	/// <param name="actor">The connection acting on the account.</param>
+	internal ScopedUser(User user, Connection actor) : base(actor,
+		actor.EffectivePermissions(user.Context.Clock.GetUtcNow()))
 	{
 		User = user;
-		Granted = by.User.Record.Value.Permissions;
+		Granted = actor.User.Record.Value.Permissions;
 		Profile = new ScopedUserProfile(this);
 		Credentials = new ScopedUserCredentials(this);
 		Sessions = new ScopedUserSessions(this);
@@ -55,10 +55,10 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 	public ScopedUserRelationships Relationships { get; }
 
 	/// <summary>Whether the caller is acting on their own account.</summary>
-	internal bool IsSelf => By.Record.Equals(User.Record);
+	internal bool IsSelf => Actor.Record.Equals(User.Record);
 
 	/// <summary>Whether the caller's granted permissions strictly outrank the target's.</summary>
-	internal bool Outranks => By.Outranks(Granted, User.Record.Value.Permissions);
+	internal bool Outranks => Actor.Outranks(Granted, User.Record.Value.Permissions);
 
 	/// <summary>Checks the required permission and account hierarchy.</summary>
 	/// <param name="needed">The permission required.</param>

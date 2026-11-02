@@ -14,11 +14,11 @@ public sealed class ScopedUserTests
 	{
 		using var app = new TestApplication();
 		const UserPermissions permissions = UserPermissionsGroups.All;
-		var actor = await app.CreateUserAsync("EqualActor", "password", permissions);
+		var actorRecord = await app.CreateUserAsync("EqualActor", "password", permissions);
 		var target = await app.CreateUserAsync("EqualTarget", "password", permissions);
-		var by = await app.LoginAsync(actor);
+		var actor = await app.LoginAsync(actorRecord);
 
-		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
+		var (result, _) = await app.Users.Of(target).ScopeTo(actor).Restrictions.RestrictAsync(
 			UserPermissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
@@ -28,10 +28,10 @@ public sealed class ScopedUserTests
 	public async Task RestrictAsync_TargetIsActor_ReturnsNotOutranking()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("SelfRestrict", "password", UserPermissionsGroups.All);
-		var by = await app.LoginAsync(actor);
+		var actorRecord = await app.CreateUserAsync("SelfRestrict", "password", UserPermissionsGroups.All);
+		var actor = await app.LoginAsync(actorRecord);
 
-		var (result, restriction) = await app.Users.Of(actor).ScopeTo(by).Restrictions.RestrictAsync(
+		var (result, restriction) = await app.Users.Of(actorRecord).ScopeTo(actor).Restrictions.RestrictAsync(
 			UserPermissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
@@ -44,11 +44,11 @@ public sealed class ScopedUserTests
 		using var app = new TestApplication();
 		var actorPermissions = UserPermissionsGroups.Default | UserPermissions.UserManage |
 		                       UserPermissions.UserManagePermissions;
-		var actor = await app.CreateUserAsync("PermissionActor", "password", actorPermissions);
+		var actorRecord = await app.CreateUserAsync("PermissionActor", "password", actorPermissions);
 		var target = await app.CreateUserAsync("PermTarget", "password");
-		var by = await app.LoginAsync(actor);
+		var actor = await app.LoginAsync(actorRecord);
 
-		var result = await app.Users.Of(target).ScopeTo(by).Permissions.SetAsync(
+		var result = await app.Users.Of(target).ScopeTo(actor).Permissions.SetAsync(
 			target.Value.Permissions | UserPermissions.ServerManageSettings, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
@@ -60,12 +60,12 @@ public sealed class ScopedUserTests
 	public async Task RestrictAsync_Allowed_PublishesEventAndRecordsModeration()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("Moderator", "password", UserPermissionsGroups.All);
+		var actorRecord = await app.CreateUserAsync("Moderator", "password", UserPermissionsGroups.All);
 		var target = await app.CreateUserAsync("Restricted", "password");
-		var by = await app.LoginAsync(actor);
+		var actor = await app.LoginAsync(actorRecord);
 		var end = app.Clock.GetUtcNow().AddHours(1);
 
-		var (result, restriction) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
+		var (result, restriction) = await app.Users.Of(target).ScopeTo(actor).Restrictions.RestrictAsync(
 			UserPermissions.ChatPost, end, "test reason", TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
@@ -75,7 +75,7 @@ public sealed class ScopedUserTests
 		Assert.Same(restriction, restricted.Restriction);
 		var entry = Assert.Single(app.ModerationEntries);
 		Assert.Equal(ModerationAction.Restrict, entry.Action);
-		Assert.Equal(actor, entry.By);
+		Assert.Equal(actorRecord, entry.Actor);
 		Assert.Equal(target, entry.Target);
 		Assert.Equal("test reason", entry.Reason);
 	}
@@ -84,10 +84,10 @@ public sealed class ScopedUserTests
 	public async Task LiftAsync_Allowed_EndsRestrictionAndPublishesEvent()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("LiftMod", "password", UserPermissionsGroups.All);
+		var actorRecord = await app.CreateUserAsync("LiftMod", "password", UserPermissionsGroups.All);
 		var target = await app.CreateUserAsync("LiftedUser", "password");
-		var by = await app.LoginAsync(actor);
-		var scoped = app.Users.Of(target).ScopeTo(by);
+		var actor = await app.LoginAsync(actorRecord);
+		var scoped = app.Users.Of(target).ScopeTo(actor);
 		var (_, restriction) = await scoped.Restrictions.RestrictAsync(UserPermissions.ChatPost, null,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.NotNull(restriction);
@@ -107,9 +107,9 @@ public sealed class ScopedUserTests
 	public async Task LiftAsync_KeepsTheRestrictionInTheHistory()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("LiftHistory", "password", UserPermissionsGroups.All);
+		var actorRecord = await app.CreateUserAsync("LiftHistory", "password", UserPermissionsGroups.All);
 		var target = await app.CreateUserAsync("LiftHistTarget", "password");
-		var scoped = app.Users.Of(target).ScopeTo(await app.LoginAsync(actor));
+		var scoped = app.Users.Of(target).ScopeTo(await app.LoginAsync(actorRecord));
 		var (_, restriction) = await scoped.Restrictions.RestrictAsync(UserPermissions.ChatPost, null,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True((await scoped.Restrictions.LiftAsync(restriction!,
@@ -159,8 +159,8 @@ public sealed class ScopedUserTests
 		using var app = new TestApplication();
 		var moderator = await app.CreateUserAsync("DeleteRestrict", "password", UserPermissionsGroups.All);
 		var target = await app.CreateUserAsync("DelRestrictTgt", "password");
-		var by = await app.LoginAsync(moderator);
-		var scoped = app.Users.Of(target).ScopeTo(by);
+		var actor = await app.LoginAsync(moderator);
+		var scoped = app.Users.Of(target).ScopeTo(actor);
 		var (_, restriction) = await scoped.Restrictions.RestrictAsync(UserPermissions.ChatPost, null,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.NotNull(restriction);
@@ -183,8 +183,8 @@ public sealed class ScopedUserTests
 		var moderator = await app.CreateUserAsync("RestrictOnly", "password",
 			UserPermissionsGroups.Default | UserPermissions.UserManageRestrict);
 		var target = await app.CreateUserAsync("DeleteTarget", "password");
-		var by = await app.LoginAsync(moderator);
-		var scoped = app.Users.Of(target).ScopeTo(by);
+		var actor = await app.LoginAsync(moderator);
+		var scoped = app.Users.Of(target).ScopeTo(actor);
 		var (_, restriction) = await scoped.Restrictions.RestrictAsync(UserPermissions.ChatPost, null,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.NotNull(restriction);
@@ -220,11 +220,11 @@ public sealed class ScopedUserTests
 	public async Task DeleteAsync_DeletedAccount_StaysDeletedAndClosesConnections()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("DeleteModerator", "password", UserPermissionsGroups.All);
+		var actorRecord = await app.CreateUserAsync("DeleteModerator", "password", UserPermissionsGroups.All);
 		var target = await app.CreateUserAsync("DeleteTarget", "password");
-		var by = await app.LoginAsync(actor);
+		var actor = await app.LoginAsync(actorRecord);
 		var connection = await app.LoginAsync(target);
-		var scoped = app.Users.Of(target).ScopeTo(by);
+		var scoped = app.Users.Of(target).ScopeTo(actor);
 
 		Assert.True((await scoped.DeleteAsync(TestContext.Current.CancellationToken)).IsOk);
 		var deletedAt = target.Value.DeletedAt;

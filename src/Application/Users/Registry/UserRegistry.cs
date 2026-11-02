@@ -91,11 +91,11 @@ public sealed class UserRegistry
 	}
 
 	/// <summary>Scopes account creation to a connection and its authority.</summary>
-	/// <param name="by">The connection acting.</param>
+	/// <param name="actor">The connection acting.</param>
 	/// <returns>A short-lived scope for creating accounts.</returns>
-	public ScopedUserRegistry ScopeTo(Connection by)
+	public ScopedUserRegistry ScopeTo(Connection actor)
 	{
-		return new ScopedUserRegistry(this, by);
+		return new ScopedUserRegistry(this, actor);
 	}
 
 	/// <summary>Authenticates a login attempt and, on success, opens a connection of the requested kind.</summary>

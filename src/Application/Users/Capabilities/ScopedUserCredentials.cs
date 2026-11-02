@@ -62,7 +62,7 @@ public sealed class ScopedUserCredentials(ScopedUser scoped)
 
 	private Guid? SessionToKeep(bool includeCurrent)
 	{
-		return scoped.IsSelf && !includeCurrent && scoped.By is ApiConnection api ? api.Session.Id : null;
+		return scoped.IsSelf && !includeCurrent && scoped.Actor is ApiConnection api ? api.Session.Id : null;
 	}
 
 	private async Task LogChangeAsync(User user, CancellationToken cancellationToken)
@@ -70,7 +70,7 @@ public sealed class ScopedUserCredentials(ScopedUser scoped)
 		await user.Context.ModerationLog.AppendAsync(new ModerationData
 		{
 			Action = ModerationAction.ChangePassword,
-			By = scoped.By.Record,
+			Actor = scoped.Actor.Record,
 			Target = user.Record,
 			Timestamp = user.Context.Clock.GetUtcNow()
 		}, cancellationToken);

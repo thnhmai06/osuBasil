@@ -20,18 +20,18 @@ internal sealed class ChannelResolver(
 	///     The name the client sent; the aliases of the match and spectator channels resolve to the caller's
 	///     own.
 	/// </param>
-	/// <param name="by">The connection that sent it.</param>
+	/// <param name="actor">The connection that sent it.</param>
 	/// <returns>The open channel, or <see langword="null" /> when none matches.</returns>
-	public Channel? Resolve(string name, Connection by)
+	public Channel? Resolve(string name, Connection actor)
 	{
 		switch (name)
 		{
 			case BanchoView.MultiplayerAlias:
-				return by is BanchoConnection player && lobby.RoomOf(player) is { IsClosed: false } room
+				return actor is BanchoConnection player && lobby.RoomOf(player) is { IsClosed: false } room
 					? roomChannels.Of(room)
 					: null;
 			case BanchoView.SpectatorAlias:
-				var host = by is BanchoConnection { Spectators.Count: > 0 } own ? own : registry.FindSpectating(by);
+				var host = actor is BanchoConnection { Spectators.Count: > 0 } own ? own : registry.FindSpectating(actor);
 				return host is null ? null : spectatorChannels.Of(host);
 		}
 

@@ -28,7 +28,7 @@ public sealed class ScopedUserRelationships
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
 		if (target.IsBasilBot()) return UserOutcome.Ok;
 
-		await _scoped.By.User.Relationships.SetAsync(target, RelationshipType.Friend, cancellationToken);
+		await _scoped.Actor.User.Relationships.SetAsync(target, RelationshipType.Friend, cancellationToken);
 		return UserOutcome.Ok;
 	}
 
@@ -42,7 +42,7 @@ public sealed class ScopedUserRelationships
 		var target = _scoped.User.Record;
 		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
 
-		await _scoped.By.User.Relationships.RemoveAsync(target, RelationshipType.Friend, cancellationToken);
+		await _scoped.Actor.User.Relationships.RemoveAsync(target, RelationshipType.Friend, cancellationToken);
 		return UserOutcome.Ok;
 	}
 
@@ -57,7 +57,7 @@ public sealed class ScopedUserRelationships
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
 		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
 
-		await _scoped.By.User.Relationships.SetAsync(target, RelationshipType.Block, cancellationToken);
+		await _scoped.Actor.User.Relationships.SetAsync(target, RelationshipType.Block, cancellationToken);
 		return UserOutcome.Ok;
 	}
 
@@ -71,7 +71,7 @@ public sealed class ScopedUserRelationships
 		var target = _scoped.User.Record;
 		if (target.IsBasilBot()) return UserOutcome.Ok;
 
-		await _scoped.By.User.Relationships.RemoveAsync(target, RelationshipType.Block, cancellationToken);
+		await _scoped.Actor.User.Relationships.RemoveAsync(target, RelationshipType.Block, cancellationToken);
 		return UserOutcome.Ok;
 	}
 
@@ -84,7 +84,7 @@ public sealed class ScopedUserRelationships
 	public async Task<Result<UserOutcome>> HeldByAsync(UserRecord owner, RelationshipType type, bool present,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.By is not OperatorConnection) return UserOutcome.NotSelf;
+		if (_scoped.Actor is not OperatorConnection) return UserOutcome.NotSelf;
 
 		var target = _scoped.User.Record;
 		if (owner.Equals(target)) return UserOutcome.Self;
@@ -120,7 +120,7 @@ public sealed class ScopedUserRelationships
 		RelationshipType type, CancellationToken cancellationToken)
 	{
 		// The operator reads any account's lists; everyone else reads their own.
-		if (_scoped is { IsSelf: false, By: not OperatorConnection }) return (UserOutcome.NotSelf, []);
+		if (_scoped is { IsSelf: false, Actor: not OperatorConnection }) return (UserOutcome.NotSelf, []);
 
 		var relationships = await _scoped.User.Relationships.ListAsync(type, cancellationToken);
 		return (UserOutcome.Ok, relationships.Select(relationship => relationship.Target).ToList());

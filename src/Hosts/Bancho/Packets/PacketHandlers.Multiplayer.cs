@@ -155,24 +155,24 @@ internal sealed partial class PacketHandlers
 			.Concat(room.Members.Observers), writer => writer.MatchScoreUpdate(frame));
 	}
 
-	private async Task TourneyInfoAsync(Connection by, int matchId, CancellationToken cancellationToken)
+	private async Task TourneyInfoAsync(Connection actor, int matchId, CancellationToken cancellationToken)
 	{
-		if (by is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
-		if (!await lobby.ScopeTo(by).CanViewAsync(room.Match, cancellationToken)) return;
+		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
+		if (!await lobby.ScopeTo(actor).CanViewAsync(room.Match, cancellationToken)) return;
 		var match = BanchoView.Match(room);
-		outbox.Send(by, writer => writer.UpdateMatch(match, false));
+		outbox.Send(actor, writer => writer.UpdateMatch(match, false));
 	}
 
-	private async Task TourneyJoinAsync(Connection by, int matchId, CancellationToken cancellationToken)
+	private async Task TourneyJoinAsync(Connection actor, int matchId, CancellationToken cancellationToken)
 	{
-		if (by is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
-		if (!await lobby.ScopeTo(by).CanViewAsync(room.Match, cancellationToken)) return;
-		await room.ScopeTo(by).Members.ObserverJoinAsync(cancellationToken);
+		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
+		if (!await lobby.ScopeTo(actor).CanViewAsync(room.Match, cancellationToken)) return;
+		await room.ScopeTo(actor).Members.ObserverJoinAsync(cancellationToken);
 	}
 
-	private async Task TourneyLeaveAsync(Connection by, int matchId, CancellationToken cancellationToken)
+	private async Task TourneyLeaveAsync(Connection actor, int matchId, CancellationToken cancellationToken)
 	{
-		if (by is TourneyConnection && lobby.Find(matchId) is { } room)
-			await room.ScopeTo(by).Members.ObserverLeaveAsync(cancellationToken);
+		if (actor is TourneyConnection && lobby.Find(matchId) is { } room)
+			await room.ScopeTo(actor).Members.ObserverLeaveAsync(cancellationToken);
 	}
 }

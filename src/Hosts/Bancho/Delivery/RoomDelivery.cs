@@ -144,7 +144,7 @@ internal sealed class RoomInviteDelivery(UserRegistry registry, Outbox outbox) :
 	public ValueTask Handle(RoomPlayerInvited notification, CancellationToken cancellationToken)
 	{
 		if (registry.OpenBanchoClient(notification.Player) is { } target)
-			outbox.Send(target, writer => writer.MatchInvite(notification.By.Id, notification.By.Value.Name,
+			outbox.Send(target, writer => writer.MatchInvite(notification.Actor.Id, notification.Actor.Value.Name,
 				$"Come join my game: {notification.Room.UrlEmbed}", notification.Player.Value.Name));
 
 		return ValueTask.CompletedTask;

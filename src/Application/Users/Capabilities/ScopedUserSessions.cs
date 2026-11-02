@@ -39,7 +39,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 			await scoped.User.Context.ModerationLog.AppendAsync(new ModerationData
 			{
 				Action = ModerationAction.ViewLogins,
-				By = scoped.By.Record,
+				Actor = scoped.Actor.Record,
 				Target = scoped.User.Record,
 				Timestamp = now
 			}, cancellationToken);
@@ -71,7 +71,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 			await scoped.User.Context.ModerationLog.AppendAsync(new ModerationData
 			{
 				Action = ModerationAction.ViewLogins,
-				By = scoped.By.Record,
+				Actor = scoped.Actor.Record,
 				Target = scoped.User.Record,
 				Timestamp = scoped.User.Context.Clock.GetUtcNow()
 			}, cancellationToken);
@@ -117,13 +117,13 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 		if (scoped.User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
 
-		Guid? keep = scoped.IsSelf && keepCurrent && scoped.By is ApiConnection api ? api.Session.Id : null;
+		Guid? keep = scoped.IsSelf && keepCurrent && scoped.Actor is ApiConnection api ? api.Session.Id : null;
 		await Close(null, keep, cancellationToken);
 		if (!scoped.IsSelf)
 			await scoped.User.Context.ModerationLog.AppendAsync(new ModerationData
 			{
 				Action = ModerationAction.CloseSessions,
-				By = scoped.By.Record,
+				Actor = scoped.Actor.Record,
 				Target = scoped.User.Record,
 				Timestamp = scoped.User.Context.Clock.GetUtcNow()
 			}, cancellationToken);
@@ -155,7 +155,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 			Id = Guid.NewGuid(),
 			User = scoped.User.Record,
 			Type = SessionType.Irc,
-			Ip = scoped.By.Session.Ip,
+			Ip = scoped.Actor.Session.Ip,
 			ClientInfo = label,
 			StartedAt = scoped.User.Context.Clock.GetUtcNow(),
 			TokenHash = UserRegistry.HashToken(key)

@@ -26,7 +26,7 @@ public sealed class ScopedRoomSlots
 	/// <remarks>Moving to the caller's own slot returns Ok and does nothing.</remarks>
 	public Task<Result<RoomOutcome>> ChangeAsync(int index, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is BanchoConnection bancho
+		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
 			? _scoped.Room.ChangeSlot(bancho, index)
 			: RoomOutcome.NotInRoom);
 	}
@@ -65,7 +65,7 @@ public sealed class ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> SetReadyAsync(bool ready, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is BanchoConnection bancho
+		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
 			? _scoped.Room.SetReady(bancho, ready)
 			: RoomOutcome.NotInRoom);
 	}
@@ -80,7 +80,7 @@ public sealed class ScopedRoomSlots
 	/// </remarks>
 	public Task<Result<RoomOutcome>> SetHasMapAsync(bool has, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is BanchoConnection bancho
+		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
 			? _scoped.Room.SetHasMap(bancho, has)
 			: RoomOutcome.NotInRoom);
 	}
@@ -90,7 +90,7 @@ public sealed class ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> ToggleTeamAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is BanchoConnection bancho
+		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
 			? _scoped.Room.ToggleTeam(bancho)
 			: RoomOutcome.NotInRoom);
 	}
@@ -113,7 +113,7 @@ public sealed class ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> SetModsAsync(GameMods mods, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is BanchoConnection bancho
+		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
 			? _scoped.Room.SetMods(bancho, mods)
 			: RoomOutcome.NotInRoom);
 	}
@@ -125,6 +125,6 @@ public sealed class ScopedRoomSlots
 	public Task<Result<RoomOutcome>> ToggleLockAsync(int index, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.SlotsLock) ??
-		                       _scoped.Room.ToggleSlotLock(_scoped.By, index));
+		                       _scoped.Room.ToggleSlotLock(_scoped.Actor, index));
 	}
 }

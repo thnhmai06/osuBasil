@@ -18,9 +18,9 @@ public sealed class OperatorConnectionTests
 	{
 		using var app = new TestApplication();
 
-		var by = await app.Users.OperateAsync(Token);
+		var actor = await app.Users.OperateAsync(Token);
 
-		Assert.Equal(BasilBot.Id, by.Record.Id);
+		Assert.Equal(BasilBot.Id, actor.Record.Id);
 	}
 
 	[Fact]
@@ -37,9 +37,9 @@ public sealed class OperatorConnectionTests
 	public async Task Operator_CreatesAnAccountWithEveryPermission()
 	{
 		using var app = new TestApplication();
-		var by = await app.Users.OperateAsync(Token);
+		var actor = await app.Users.OperateAsync(Token);
 
-		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "FirstAdmin", Permissions = UserPermissionsGroups.All }, new Md5(new byte[16]),
 			Token);
 
@@ -52,9 +52,9 @@ public sealed class OperatorConnectionTests
 	{
 		using var app = new TestApplication();
 		var admin = await app.CreateUserAsync("OpTargetAdmin", "password", UserPermissionsGroups.All);
-		var by = await app.Users.OperateAsync(Token);
+		var actor = await app.Users.OperateAsync(Token);
 
-		var result = await app.Users.Of(admin).ScopeTo(by).Permissions.SetAsync(UserPermissions.None, Token);
+		var result = await app.Users.Of(admin).ScopeTo(actor).Permissions.SetAsync(UserPermissions.None, Token);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(UserPermissions.None, admin.Value.Permissions);
@@ -64,10 +64,10 @@ public sealed class OperatorConnectionTests
 	public async Task Operator_CannotActOnBasilBotsRecord()
 	{
 		using var app = new TestApplication();
-		var by = await app.Users.OperateAsync(Token);
-		var bot = by.Record;
+		var actor = await app.Users.OperateAsync(Token);
+		var bot = actor.Record;
 
-		var result = await app.Users.Of(bot).ScopeTo(by).Permissions.SetAsync(UserPermissionsGroups.All, Token);
+		var result = await app.Users.Of(bot).ScopeTo(actor).Permissions.SetAsync(UserPermissionsGroups.All, Token);
 
 		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
 	}
@@ -97,13 +97,13 @@ public sealed class OperatorRelationshipTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("RelOwner", "password");
 		var target = await app.CreateUserAsync("RelTarget", "password");
-		var by = await app.Users.OperateAsync(Token);
-		var scoped = app.Users.Of(target).ScopeTo(by);
+		var actor = await app.Users.OperateAsync(Token);
+		var scoped = app.Users.Of(target).ScopeTo(actor);
 
 		var set = await scoped.Relationships.HeldByAsync(owner, RelationshipType.Friend, true, Token);
-		var (listResult, friends) = await app.Users.Of(owner).ScopeTo(by).Relationships.FriendsAsync(Token);
+		var (listResult, friends) = await app.Users.Of(owner).ScopeTo(actor).Relationships.FriendsAsync(Token);
 		var removed = await scoped.Relationships.HeldByAsync(owner, RelationshipType.Friend, false, Token);
-		var (_, after) = await app.Users.Of(owner).ScopeTo(by).Relationships.FriendsAsync(Token);
+		var (_, after) = await app.Users.Of(owner).ScopeTo(actor).Relationships.FriendsAsync(Token);
 
 		Assert.True(set.IsOk);
 		Assert.True(listResult.IsOk);
@@ -119,9 +119,9 @@ public sealed class OperatorRelationshipTests
 		var owner = await app.CreateUserAsync("RelOwner2", "password");
 		var other = await app.CreateUserAsync("RelOther2", "password", UserPermissionsGroups.All);
 		var target = await app.CreateUserAsync("RelTarget2", "password");
-		var by = await app.LoginAsync(other);
+		var actor = await app.LoginAsync(other);
 
-		var result = await app.Users.Of(target).ScopeTo(by).Relationships
+		var result = await app.Users.Of(target).ScopeTo(actor).Relationships
 			.HeldByAsync(owner, RelationshipType.Friend, true, Token);
 
 		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
@@ -132,13 +132,13 @@ public sealed class OperatorRelationshipTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("RelOwner3", "password");
-		var by = await app.Users.OperateAsync(Token);
+		var actor = await app.Users.OperateAsync(Token);
 
 		Assert.Equal(UserOutcome.Self,
-			(await app.Users.Of(owner).ScopeTo(by).Relationships
+			(await app.Users.Of(owner).ScopeTo(actor).Relationships
 				.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
 		Assert.Equal(UserOutcome.SystemAccount,
-			(await app.Users.Of(by.Record).ScopeTo(by).Relationships
+			(await app.Users.Of(actor.Record).ScopeTo(actor).Relationships
 				.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
 	}
 
@@ -148,10 +148,10 @@ public sealed class OperatorRelationshipTests
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("AwayTarget", "password");
 		var admin = await app.CreateUserAsync("AwayAdmin", "password", UserPermissionsGroups.All);
-		var by = await app.Users.OperateAsync(Token);
+		var actor = await app.Users.OperateAsync(Token);
 		var adminConnection = await app.LoginAsync(admin);
 
-		Assert.True(app.Users.Of(target).ScopeTo(by).Profile.SetAway("back soon"));
+		Assert.True(app.Users.Of(target).ScopeTo(actor).Profile.SetAway("back soon"));
 		Assert.False(app.Users.Of(target).ScopeTo(adminConnection).Profile.SetAway("back soon"));
 	}
 }

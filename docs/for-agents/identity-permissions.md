@@ -38,7 +38,7 @@ touching users, connections, permissions, restrictions or the bot.
   (through the API or `!channel`) needs `ChatManageChannels`; sending an announcement needs `ChatManageAnnounce`.
   Nobody manages a channel with `TOPIC`/`MODE`, and an IRC operator prefix grants nothing.
 * **Moderation history is a log.** Restricting, lifting, deleting a restriction, adding a note, changing permissions and
-  viewing a user's sessions append a `ModerationLog` entry (action, `by`, target, reason, timestamp). The log is for
+  viewing a user's sessions append a `ModerationLog` entry (action, `actor`, target, reason, timestamp). The log is for
   people; it never affects a right.
 * **Hierarchy.** A staff action aimed at another user (restrict, lift, delete, set permissions, set password, revoke
   sessions) requires the actor's **granted** permissions to be a strict superset of the target's. Equals cannot act on
@@ -57,8 +57,8 @@ touching users, connections, permissions, restrictions or the bot.
 * **A name is unique among live accounts.** Deleting an account is a soft, permanent delete: it is never restored and its
   id is never reused. Names are unique case-insensitively and with a space equal to an underscore
   (`UserData.NormalizedName`, plus a partial unique index); a new account may take a deleted account's name.
-* **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`. A room
-  created through the API has the caller as creator. A server announcement is `by` BasilBot.
+* **Identity on every action.** Every action has a real `actor` (a `Connection`); `actor` is never `null`. A room
+  created through the API has the caller as creator. A server announcement is `actor` BasilBot.
 * **There is no delegation.** No account acts for another. An outside tool signs in with its own account and rights.
 * **Accounts come from registration, staff creation or the console.** Nobody is granted permissions for being first;
   a new account gets the defaults and more only by being granted. Anyone without an account may register one unless the

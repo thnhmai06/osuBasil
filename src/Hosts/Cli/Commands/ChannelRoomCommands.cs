@@ -262,7 +262,7 @@ internal static class ChannelRoomCommands
 				Round round =>
 					$"{call.Formatter.Time(entry.Timestamp)}  round {round.Index}{(round.Aborted ? " (aborted)" : "")}",
 				MatchEvent matchEvent =>
-					$"{call.Formatter.Time(entry.Timestamp)}  {matchEvent.Type}{(matchEvent.Actor is null ? "" : $" by {matchEvent.Actor.Value.Name}")}",
+					$"{call.Formatter.Time(entry.Timestamp)}  {matchEvent.Type}{(matchEvent.Actor is null ? "" : $" actor {matchEvent.Actor.Value.Name}")}",
 				_ => entry.ToString() ?? string.Empty
 			});
 		return ExitCodes.Success;

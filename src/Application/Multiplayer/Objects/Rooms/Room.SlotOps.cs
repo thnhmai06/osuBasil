@@ -191,13 +191,13 @@ public sealed partial class Room
 
 	/// <summary>Toggles whether a slot is locked, evicting a player seated in it.</summary>
 	/// <returns>Ok, SlotNotOpen, OwnSlot or RoomClosed.</returns>
-	internal Result<RoomOutcome> ToggleSlotLock(Connection by, int index)
+	internal Result<RoomOutcome> ToggleSlotLock(Connection actor, int index)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
 			if (Slots.At(index) is not { } slot) return RoomOutcome.SlotNotOpen;
-			if (ReferenceEquals(slot.Player, by)) return RoomOutcome.OwnSlot;
+			if (ReferenceEquals(slot.Player, actor)) return RoomOutcome.OwnSlot;
 
 			var locking = !slot.Locked;
 

@@ -19,15 +19,15 @@ namespace Basil.Application.Common;
 /// </typeparam>
 /// <typeparam name="TActor">The kind of actor the scope is for.</typeparam>
 /// <remarks>Creates a scope for an actor with the permissions it holds.</remarks>
-/// <param name="by">The actor acting.</param>
+/// <param name="actor">The actor acting.</param>
 /// <param name="permissions">The permissions the connection holds, as they are when the scope is created.</param>
-public abstract class Scoped<TPermissions, TActor>(TActor by, TPermissions permissions)
+public abstract class Scoped<TPermissions, TActor>(TActor actor, TPermissions permissions)
 	where TPermissions : struct, Enum where TActor : IActor
 {
 	private static readonly bool IsFlagsEnum = typeof(TPermissions).GetCustomAttribute<FlagsAttribute>() is not null;
 
 	/// <summary>Gets the actor this scope is for.</summary>
-	public TActor By { get; } = by;
+	public TActor Actor { get; } = actor;
 
 	/// <summary>Gets the permissions the connection held when the scope was created.</summary>
 	public TPermissions Rights { get; } = permissions;
@@ -53,7 +53,7 @@ public abstract class Scoped<TPermissions, TActor>(TActor by, TPermissions permi
 
 /// <summary>A scope for any actor.</summary>
 /// <typeparam name="TPermissions">The enum of the permissions the scope checks.</typeparam>
-/// <param name="by">The actor acting.</param>
+/// <param name="actor">The actor acting.</param>
 /// <param name="permissions">The permissions the actor holds, as they are when the scope is created.</param>
-public abstract class Scoped<TPermissions>(IActor by, TPermissions permissions)
-	: Scoped<TPermissions, IActor>(by, permissions) where TPermissions : struct, Enum;
+public abstract class Scoped<TPermissions>(IActor actor, TPermissions permissions)
+	: Scoped<TPermissions, IActor>(actor, permissions) where TPermissions : struct, Enum;

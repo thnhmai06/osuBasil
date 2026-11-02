@@ -11,7 +11,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> MoveAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 2 || !int.TryParse(args[^1], out var slot) || slot is < 1 or > MaxSlotIndex)
 		{
 			await context.Reply(MpReplies.MoveUsage, cancellationToken);
@@ -26,7 +26,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Slots.MoveAsync(target, slot, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Slots.MoveAsync(target, slot, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -42,7 +42,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> HostAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.HostUsage, cancellationToken);
@@ -60,7 +60,7 @@ internal sealed partial class MpCommands
 		var host = registry.Online.GetValueOrDefault(target)?.Bancho;
 		var outcome = host is not { IsOpen: true }
 			? RoomOutcome.TargetOffline
-			: await room.ScopeTo(by).Authority.SetHostAsync(host, cancellationToken);
+			: await room.ScopeTo(actor).Authority.SetHostAsync(host, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -74,7 +74,7 @@ internal sealed partial class MpCommands
 	private static async Task<bool> ClearHostAsync(CommandContext context, Room room,
 		CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.By).Authority.SetHostAsync(null, cancellationToken);
+		var outcome = await room.ScopeTo(context.Actor).Authority.SetHostAsync(null, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -90,7 +90,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> InviteAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.InviteUsage, cancellationToken);
@@ -108,7 +108,7 @@ internal sealed partial class MpCommands
 		var targetUser = registry.Online.GetValueOrDefault(target);
 		var outcome = targetUser is null
 			? RoomOutcome.TargetOffline
-			: await room.ScopeTo(by).Members.InviteAsync(targetUser, cancellationToken);
+			: await room.ScopeTo(actor).Members.InviteAsync(targetUser, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -124,7 +124,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> KickAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.KickUsage, cancellationToken);
@@ -139,7 +139,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Members.KickAsync(target, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Members.KickAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -153,7 +153,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> BanAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.BanUsage, cancellationToken);
@@ -168,7 +168,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Members.BanAsync(target, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Members.BanAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -182,7 +182,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> UnbanAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.UnbanUsage, cancellationToken);
@@ -197,7 +197,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Members.UnbanAsync(target, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Members.UnbanAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -213,7 +213,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> SetTeamAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 2)
 		{
 			await context.Reply(MpReplies.TeamUsage, cancellationToken);
@@ -236,7 +236,7 @@ internal sealed partial class MpCommands
 		}
 
 		var team = teamArg == "red" ? GameTeam.Red : GameTeam.Blue;
-		var outcome = await room.ScopeTo(by).Slots.SetTeamAsync(target, team, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Slots.SetTeamAsync(target, team, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

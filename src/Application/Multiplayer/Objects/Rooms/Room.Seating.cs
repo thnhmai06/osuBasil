@@ -67,14 +67,14 @@ public sealed partial class Room
 	}
 
 	/// <summary>Removes a seated player and updates the room's round and empty-room state.</summary>
-	/// <param name="by">The player's game connection.</param>
+	/// <param name="actor">The player's game connection.</param>
 	/// <returns>Ok when the player left, otherwise NotInRoom.</returns>
-	private RoomOutcome LeaveSeat(BanchoConnection by)
+	private RoomOutcome LeaveSeat(BanchoConnection actor)
 	{
-		if (Vacate(by) is not { } slot) return RoomOutcome.NotInRoom;
+		if (Vacate(actor) is not { } slot) return RoomOutcome.NotInRoom;
 
 		var progress = AdvanceRound();
-		Emit(new RoomPlayerLeft(this, by, slot.Index, Authority.Host, progress));
+		Emit(new RoomPlayerLeft(this, actor, slot.Index, Authority.Host, progress));
 		ReportIfEmpty();
 		return RoomOutcome.Ok;
 	}

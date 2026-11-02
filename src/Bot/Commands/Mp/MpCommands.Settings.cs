@@ -94,7 +94,7 @@ internal sealed partial class MpCommands
 	private static async Task<bool> SetLockedAsync(CommandContext context, Room room, bool locked,
 		CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.By).Settings.SetLockedAsync(locked, cancellationToken);
+		var outcome = await room.ScopeTo(context.Actor).Settings.SetLockedAsync(locked, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -110,7 +110,7 @@ internal sealed partial class MpCommands
 	private static async Task<bool> PrivateAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count == 0)
 		{
 			await context.Reply(MpReplies.MatchIsPrivateNow,
@@ -124,7 +124,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(
+		var outcome = await room.ScopeTo(actor).Settings.ConfigureAsync(
 			new RoomSettingsChange(IsPrivate: args[0] == "1"), cancellationToken);
 		if (!outcome.IsOk)
 		{
@@ -148,7 +148,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(new RoomSettingsChange(Size: size),
+		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(new RoomSettingsChange(Size: size),
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
@@ -174,7 +174,7 @@ internal sealed partial class MpCommands
 		var name = string.Join(' ', args);
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(new RoomSettingsChange(name),
+		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(new RoomSettingsChange(name),
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
@@ -189,9 +189,9 @@ internal sealed partial class MpCommands
 	private static async Task<bool> SetPasswordAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		var password = args.Count == 0 ? string.Empty : string.Join(' ', args);
-		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(new RoomSettingsChange(Password: password),
+		var outcome = await room.ScopeTo(actor).Settings.ConfigureAsync(new RoomSettingsChange(Password: password),
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
@@ -217,7 +217,7 @@ internal sealed partial class MpCommands
 
 		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
 			Size: size);
-		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(change, cancellationToken);
+		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(change, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -297,7 +297,7 @@ internal sealed partial class MpCommands
 
 		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name,
 			beatmap.Metadata.Difficulty.Mode, beatmap);
-		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(
+		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(
 			new RoomSettingsChange(Beatmap: reference, Mode: mode ?? beatmap.Metadata.Difficulty.Mode),
 			cancellationToken);
 		if (!outcome.IsOk)
@@ -321,7 +321,7 @@ internal sealed partial class MpCommands
 	private static async Task<bool> SetModsAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.ModsUsage, cancellationToken);
@@ -347,7 +347,7 @@ internal sealed partial class MpCommands
 			mods |= ModsExtensions.FromModString(token);
 		}
 
-		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(
+		var outcome = await room.ScopeTo(actor).Settings.ConfigureAsync(
 			new RoomSettingsChange(Mods: mods, Freemods: freemod), cancellationToken);
 		if (!outcome.IsOk)
 		{

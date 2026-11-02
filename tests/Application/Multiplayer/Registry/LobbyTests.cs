@@ -193,8 +193,8 @@ public sealed class LobbyTests
 	{
 		var moderator = await app.CreateUserAsync("Moderator", "password",
 			UserPermissionsGroups.Default | UserPermissions.UserManageRestrict);
-		var by = await app.LoginAsync(moderator);
-		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
+		var actor = await app.LoginAsync(moderator);
+		var (result, _) = await app.Users.Of(target).ScopeTo(actor).Restrictions.RestrictAsync(
 			UserPermissions.RoomJoin, null, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(result.IsOk);
 	}

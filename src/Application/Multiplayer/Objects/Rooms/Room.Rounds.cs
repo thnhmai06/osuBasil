@@ -9,16 +9,16 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 public sealed partial class Room
 {
 	/// <summary>Starts a countdown in this room, replacing any countdown already running.</summary>
-	/// <param name="by">The user who started the countdown.</param>
+	/// <param name="actor">The user who started the countdown.</param>
 	/// <param name="length">How long the countdown runs.</param>
 	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
 	/// <returns>The countdown that started.</returns>
 	/// <remarks>The caller holds the room's scope.</remarks>
-	internal RoomCountdown StartCountdown(UserRecord by, TimeSpan length, bool startsRound)
+	internal RoomCountdown StartCountdown(UserRecord actor, TimeSpan length, bool startsRound)
 	{
 		CancelCountdown(null);
 
-		var countdown = new RoomCountdown(by, length, startsRound, Context.Clock.GetUtcNow());
+		var countdown = new RoomCountdown(actor, length, startsRound, Context.Clock.GetUtcNow());
 		Rounds.Countdown = countdown;
 		Rounds.CountdownTimers =
 		[

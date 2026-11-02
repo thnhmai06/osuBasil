@@ -9,13 +9,13 @@ internal sealed partial class MpCommands
 	private async Task<bool> MakeAsync(CommandContext context, IReadOnlyList<string> args, bool isPrivate,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		var name = args.Count > 0
 			? string.Join(' ', args)
 			: context.Replies.Text(MpReplies.DefaultRoomName, new { name = context.Sender.Value.Name });
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var (room, outcome) = await lobby.ScopeTo(by).OpenRoomAsync(name, "", true, isPrivate,
+		var (room, outcome) = await lobby.ScopeTo(actor).OpenRoomAsync(name, "", true, isPrivate,
 			cancellationToken: cancellationToken);
 		if (!outcome.IsOk || room is null)
 		{
@@ -35,7 +35,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> JoinAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1 || !int.TryParse(args[0], out var roomId))
 		{
 			await context.Reply(MpReplies.JoinUsage, cancellationToken);
@@ -50,7 +50,7 @@ internal sealed partial class MpCommands
 		}
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : string.Empty;
-		var outcome = await room.ScopeTo(by).Members.JoinAsync(password, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Members.JoinAsync(password, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -103,7 +103,7 @@ internal sealed partial class MpCommands
 
 	private static async Task<bool> CloseAsync(CommandContext context, Room room, CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.By).CloseAsync(cancellationToken);
+		var outcome = await room.ScopeTo(context.Actor).CloseAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

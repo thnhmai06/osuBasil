@@ -178,7 +178,7 @@ internal sealed partial class MpCommands(
 	/// </returns>
 	private Room? ResolveRoom(CommandContext context)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 
 		// (a) Channel takes precedence: if sent in #mp_{id}, use that room
 		if (context.Channel is not null)
@@ -201,7 +201,7 @@ internal sealed partial class MpCommands(
 		}
 
 		// (c) Seated room: where the sender is currently playing
-		var seated = by.User.Bancho is { } client ? lobby.RoomOf(client) : null;
+		var seated = actor.User.Bancho is { } client ? lobby.RoomOf(client) : null;
 		return seated;
 	}
 

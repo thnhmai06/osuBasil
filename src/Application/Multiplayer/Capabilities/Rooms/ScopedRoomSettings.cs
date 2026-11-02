@@ -41,7 +41,7 @@ public sealed class ScopedRoomSettings
 		if (change.IsPrivate is not null) required |= RoomPermissions.SettingsPrivate;
 
 		return Task.FromResult(_scoped.Require(required) ??
-		                       _scoped.Room.Configure(_scoped.By, change));
+		                       _scoped.Room.Configure(_scoped.Actor, change));
 	}
 
 

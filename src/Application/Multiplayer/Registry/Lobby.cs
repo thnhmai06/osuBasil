@@ -77,9 +77,9 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		Emptied(room);
 	}
 
-	void IRoomLobbyPort.Close(Room room, UserRecord? by)
+	void IRoomLobbyPort.Close(Room room, UserRecord? actor)
 	{
-		Close(room, by);
+		Close(room, actor);
 	}
 
 	bool IRoomLobbyPort.TryClaim(BanchoConnection player, Room room)
@@ -189,11 +189,11 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	}
 
 	/// <summary>Creates a lobby scope for a connection.</summary>
-	/// <param name="by">The connection acting on the lobby.</param>
+	/// <param name="actor">The connection acting on the lobby.</param>
 	/// <returns>A short-lived scope for the lobby and connection.</returns>
-	public ScopedLobby ScopeTo(Connection by)
+	public ScopedLobby ScopeTo(Connection actor)
 	{
-		return new ScopedLobby(this, by);
+		return new ScopedLobby(this, actor);
 	}
 
 	/// <summary>Stops a closed connection watching the lobby; no rights are needed because the server itself calls it.</summary>
@@ -232,12 +232,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	/// <summary>Closes a room, ending its match and vacating every slot.</summary>
 	/// <param name="room">The room to close.</param>
-	/// <param name="by">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
+	/// <param name="actor">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
 	/// <remarks>
 	///     The caller holds the room's scope. A round in progress ends as aborted. Closing a closed room does nothing.
 	///     The room's whole consequence is one <see cref="LobbyRoomClosed" /> event.
 	/// </remarks>
-	internal void Close(Room room, UserRecord? by)
+	internal void Close(Room room, UserRecord? actor)
 	{
 		RoomOccupied(room);
 		if (room.IsClosed) return;
@@ -253,7 +253,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		room.Members.MutableObservers.Clear();
 		room.IsClosed = true;
 		Remove(room);
-		Context.Events.Publish(new LobbyRoomClosed(room, by, evicted, aborted));
+		Context.Events.Publish(new LobbyRoomClosed(room, actor, evicted, aborted));
 	}
 
 	private static void RoomOccupied(Room room)
@@ -360,12 +360,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	public async Task RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
-		var by = await Context.UserRepository.GetAsync(BasilBot.Id, cancellationToken) ?? user;
+		var actor = await Context.UserRepository.GetAsync(BasilBot.Id, cancellationToken) ?? user;
 		foreach (var room in Rooms.Values.ToArray())
 		{
 			if (!room.Authority.Referees.Contains(user)) continue;
 
-			room.RemoveReferee(by, user);
+			room.RemoveReferee(actor, user);
 		}
 	}
 

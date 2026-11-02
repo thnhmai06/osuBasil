@@ -28,8 +28,8 @@ public sealed class ScopedRoomMembers
 	/// </returns>
 	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is BanchoConnection by
-			? Claiming(by, () => _scoped.Room.Join(by, password, _scoped.RequireJoin(), _scoped.ManagesAnyRoom))
+		return Task.FromResult(_scoped.Actor is BanchoConnection actor
+			? Claiming(actor, () => _scoped.Room.Join(actor, password, _scoped.RequireJoin(), _scoped.ManagesAnyRoom))
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -58,8 +58,8 @@ public sealed class ScopedRoomMembers
 	/// <returns>Ok, NotInRoom or RoomClosed; leaving again returns NotInRoom.</returns>
 	public Task<Result<RoomOutcome>> LeaveAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is BanchoConnection by
-			? _scoped.Room.Leave(by)
+		return Task.FromResult(_scoped.Actor is BanchoConnection actor
+			? _scoped.Room.Leave(actor)
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -79,7 +79,7 @@ public sealed class ScopedRoomMembers
 		if (!player.User.EffectivePermissions(_scoped.Room.Context.Clock.GetUtcNow()).Allows(UserPermissions.RoomJoin))
 			return Task.FromResult(Result<RoomOutcome>.Denied(UserPermissions.RoomJoin));
 
-		return Task.FromResult(_scoped.Room.MakeRoomFor(player, _scoped.By) ??
+		return Task.FromResult(_scoped.Room.MakeRoomFor(player, _scoped.Actor) ??
 		                       Claiming(player, () => _scoped.Room.SeatPlayer(player)));
 	}
 
@@ -90,7 +90,7 @@ public sealed class ScopedRoomMembers
 	public Task<Result<RoomOutcome>> KickAsync(UserRecord player, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.MembersKick) ??
-		                       _scoped.Room.Kick(_scoped.By.Record, player));
+		                       _scoped.Room.Kick(_scoped.Actor.Record, player));
 	}
 
 	/// <summary>Bans a user from the room and removes them if seated.</summary>
@@ -100,7 +100,7 @@ public sealed class ScopedRoomMembers
 	public Task<Result<RoomOutcome>> BanAsync(UserRecord player, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.MembersBan) ??
-		                       _scoped.Room.Ban(_scoped.By.Record, player));
+		                       _scoped.Room.Ban(_scoped.Actor.Record, player));
 	}
 
 	/// <summary>Lifts a user's ban from the room.</summary>
@@ -122,10 +122,10 @@ public sealed class ScopedRoomMembers
 		if (_scoped.Require(RoomPermissions.MembersInvite) is { } denied) return denied;
 		if (!target.IsOnline) return RoomOutcome.TargetOffline;
 		if (!_scoped.ManagesAnyRoom &&
-		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.By.Record, cancellationToken))
+		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.Actor.Record, cancellationToken))
 			return RoomOutcome.Blocked;
 
-		return _scoped.Room.Invite(_scoped.By.Record, target);
+		return _scoped.Room.Invite(_scoped.Actor.Record, target);
 	}
 
 	/// <summary>Adds the caller's tournament connection as an observer.</summary>
@@ -133,8 +133,8 @@ public sealed class ScopedRoomMembers
 	/// <returns>Ok, IsPlayer or RoomClosed when called by a tournament connection; otherwise NotObserver.</returns>
 	public Task<Result<RoomOutcome>> ObserverJoinAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is TourneyConnection by
-			? _scoped.Room.ObserverJoin(by)
+		return Task.FromResult(_scoped.Actor is TourneyConnection actor
+			? _scoped.Room.ObserverJoin(actor)
 			: RoomOutcome.NotObserver);
 	}
 
@@ -143,8 +143,8 @@ public sealed class ScopedRoomMembers
 	/// <returns>Ok, NotObserver or RoomClosed.</returns>
 	public Task<Result<RoomOutcome>> ObserverLeaveAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.By is TourneyConnection by
-			? _scoped.Room.ObserverLeave(by)
+		return Task.FromResult(_scoped.Actor is TourneyConnection actor
+			? _scoped.Room.ObserverLeave(actor)
 			: RoomOutcome.NotObserver);
 	}
 }

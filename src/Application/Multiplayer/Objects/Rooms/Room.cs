@@ -89,11 +89,11 @@ public sealed partial class Room : IEquatable<Room>
 	}
 
 	/// <summary>Creates a scoped room for a connection, capturing roles and permissions.</summary>
-	/// <param name="by">The connection acting on the room.</param>
+	/// <param name="actor">The connection acting on the room.</param>
 	/// <returns>A scoped room with permissions snapshot.</returns>
-	public ScopedRoom ScopeTo(Connection by)
+	public ScopedRoom ScopeTo(Connection actor)
 	{
-		return new ScopedRoom(this, by);
+		return new ScopedRoom(this, actor);
 	}
 
 	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs at a time.</summary>

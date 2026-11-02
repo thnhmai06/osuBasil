@@ -43,7 +43,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 
 	private async Task<bool> ListAsync(CommandContext context, CancellationToken cancellationToken)
 	{
-		var lines = channels.VisibleTo(context.By).Select(channel => context.Replies.Text(ChannelReplies.ListEntry, new
+		var lines = channels.VisibleTo(context.Actor).Select(channel => context.Replies.Text(ChannelReplies.ListEntry, new
 		{
 			name = channel.Name,
 			read = (byte)channel.Record.Value.ReadPrivileges,
@@ -82,7 +82,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 			return await InvalidAsync(context, cancellationToken);
 		}
 
-		var result = await server.ScopeTo(context.By).Channels.CreateAsync(record, cancellationToken);
+		var result = await server.ScopeTo(context.Actor).Channels.CreateAsync(record, cancellationToken);
 		var (reply, arguments) = ChannelReplies.Of(result, name);
 		await context.Reply(reply, arguments, cancellationToken);
 		return result.IsOk;
@@ -93,7 +93,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 	{
 		if (!TryParse(options, out var change)) return await InvalidAsync(context, cancellationToken);
 
-		var (found, channel) = server.ScopeTo(context.By).Channels.Find(name);
+		var (found, channel) = server.ScopeTo(context.Actor).Channels.Find(name);
 		if (channel is null)
 		{
 			var (refusal, reason) = ChannelReplies.Of(found, name, ChannelReplies.Updated);
@@ -104,7 +104,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 		Result<ChannelOutcome> result;
 		try
 		{
-			result = await channel.ScopeTo(context.By).General!.ConfigureAsync(change, cancellationToken);
+			result = await channel.ScopeTo(context.Actor).General!.ConfigureAsync(change, cancellationToken);
 		}
 		catch (ArgumentException)
 		{
@@ -118,7 +118,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 
 	private async Task<bool> DeleteAsync(CommandContext context, string name, CancellationToken cancellationToken)
 	{
-		var (found, channel) = server.ScopeTo(context.By).Channels.Find(name);
+		var (found, channel) = server.ScopeTo(context.Actor).Channels.Find(name);
 		if (channel is null)
 		{
 			var (refusal, reason) = ChannelReplies.Of(found, name, ChannelReplies.Deleted);
@@ -126,7 +126,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 			return false;
 		}
 
-		var result = await channel.ScopeTo(context.By).General!.DeleteAsync(cancellationToken);
+		var result = await channel.ScopeTo(context.Actor).General!.DeleteAsync(cancellationToken);
 		var (reply, arguments) = ChannelReplies.Of(result, channel.Name, ChannelReplies.Deleted);
 		await context.Reply(reply, arguments, cancellationToken);
 		return result.IsOk;

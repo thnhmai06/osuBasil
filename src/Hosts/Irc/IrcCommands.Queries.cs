@@ -10,37 +10,37 @@ namespace Basil.Host.Irc;
 internal sealed partial class IrcCommands
 {
 	/// <summary>Lists the channels a connection may see: the visible general channels it may read and the rooms it may join.</summary>
-	private IEnumerable<Channel> VisibleChannels(Connection by, DateTimeOffset now)
+	private IEnumerable<Channel> VisibleChannels(Connection actor, DateTimeOffset now)
 	{
-		var permissions = by.EffectivePermissions(now);
-		foreach (var channel in general.VisibleTo(by))
+		var permissions = actor.EffectivePermissions(now);
+		foreach (var channel in general.VisibleTo(actor))
 			yield return channel;
 
 		foreach (var room in lobby.Rooms.Values)
-			if (!room.IsClosed && (room.Involves(by, now) || permissions.Allows(UserPermissions.RoomObserve)))
+			if (!room.IsClosed && (room.Involves(actor, now) || permissions.Allows(UserPermissions.RoomObserve)))
 				yield return roomChannels.Of(room);
 	}
 
-	private void Names(IrcSession session, Connection by, IrcMessage message)
+	private void Names(IrcSession session, Connection actor, IrcMessage message)
 	{
 		var names = message.Parameters.Count > 0
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
-			: [.. VisibleChannels(by, session.Now).Select(channel => channel.Name)];
+			: [.. VisibleChannels(actor, session.Now).Select(channel => channel.Name)];
 		foreach (var name in names)
 			if (Resolve(name) is { } channel &&
-			    (channel.Members.Contains(by) || VisibleChannels(by, session.Now).Contains(channel)))
+			    (channel.Members.Contains(actor) || VisibleChannels(actor, session.Now).Contains(channel)))
 				IrcChannels.SendNames(session, channel);
 			else
 				session.Numeric(IrcNumericReply.RplEndOfNames, name, "End of /NAMES list.");
 	}
 
-	private void List(IrcSession session, Connection by, IrcMessage message)
+	private void List(IrcSession session, Connection actor, IrcMessage message)
 	{
 		session.Numeric(IrcNumericReply.RplListStart, "Channel", "Users  Name");
 		var filter = message.Parameters.Count > 0
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
 			: null;
-		foreach (var channel in VisibleChannels(by, session.Now)
+		foreach (var channel in VisibleChannels(actor, session.Now)
 			         .Where(channel =>
 				         filter is null || filter.Contains(channel.Name, StringComparer.OrdinalIgnoreCase)))
 			session.Numeric(IrcNumericReply.RplList, channel.Name, IrcView.UserCount(channel).ToString(),
@@ -48,14 +48,14 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplListEnd, "End of /LIST");
 	}
 
-	private void Who(IrcSession session, Connection by, IrcMessage message)
+	private void Who(IrcSession session, Connection actor, IrcMessage message)
 	{
 		var mask = message.Parameters.Count > 0 ? message.Parameters[0] : "*";
 		var now = session.Now;
 		if (mask.StartsWith('#'))
 		{
 			if (Resolve(mask) is { } channel &&
-			    (channel.Members.Contains(by) || VisibleChannels(by, now).Contains(channel)))
+			    (channel.Members.Contains(actor) || VisibleChannels(actor, now).Contains(channel)))
 				foreach (var group in channel.Members.GroupBy(member => member.Record)
 					         .OrderBy(group => IrcView.Nick(group.Key), StringComparer.OrdinalIgnoreCase))
 					WhoReply(session, channel.Name, group.First().User,
@@ -76,7 +76,7 @@ internal sealed partial class IrcCommands
 			(user.AwayMessage is null ? "H" : "G") + prefix, $"0 {nick}");
 	}
 
-	private void Whois(IrcSession session, Connection by, IrcMessage message)
+	private void Whois(IrcSession session, Connection actor, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -98,7 +98,7 @@ internal sealed partial class IrcCommands
 		if (user.AwayMessage is { } away) session.Numeric(IrcNumericReply.RplAway, shown, away.ReplaceLineEndings(" "));
 		session.Numeric(IrcNumericReply.RplWhoIsAccount, shown, user.Record.Value.Name, "is logged in as");
 		var now = session.Now;
-		var visible = VisibleChannels(by, now).ToHashSet();
+		var visible = VisibleChannels(actor, now).ToHashSet();
 		var channels = general.All.Values
 			.Where(channel =>
 				visible.Contains(channel) && channel.Members.Any(member => ReferenceEquals(member.User, user)))

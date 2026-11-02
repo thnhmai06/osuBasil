@@ -27,9 +27,9 @@ public sealed class ScopedUserSessionsTests
 
 	/// <summary>Opens an IRC key for a user acting on their own account.</summary>
 	private static async Task<(string Key, SessionEntry Session)> OpenIrcAsync(TestApplication app,
-		Connection by, string label)
+		Connection actor, string label)
 	{
-		var (result, key, session) = await app.Users.Of(by.Record).ScopeTo(by).Sessions.OpenIrcAsync(label, Token);
+		var (result, key, session) = await app.Users.Of(actor.Record).ScopeTo(actor).Sessions.OpenIrcAsync(label, Token);
 		Assert.True(result.IsOk);
 		return (key!, session!);
 	}
@@ -244,7 +244,7 @@ public sealed class ScopedUserSessionsTests
 		Assert.False(api.IsOpen);
 		Assert.False(osu.IsOpen);
 		var entry = Assert.Single(app.ModerationEntries, e => e.Action == ModerationAction.CloseSessions);
-		Assert.Equal(admin.Record, entry.By);
+		Assert.Equal(admin.Record, entry.Actor);
 		Assert.Equal(user, entry.Target);
 		Assert.Equal(LoginFailure.PasswordResetRequired,
 			(await app.AttemptLoginAsync("Target", "password", SessionType.Osu)).Failure);

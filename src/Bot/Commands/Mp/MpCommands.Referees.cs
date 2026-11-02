@@ -9,7 +9,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> AddRefereeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.AddRefUsage, cancellationToken);
@@ -24,7 +24,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Authority.AddRefereeAsync(target, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Authority.AddRefereeAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -38,7 +38,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> RemoveRefereeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
+		var actor = context.Actor;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.RemoveRefUsage, cancellationToken);
@@ -53,7 +53,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(by).Authority.RemoveRefereeAsync(target, cancellationToken);
+		var outcome = await room.ScopeTo(actor).Authority.RemoveRefereeAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

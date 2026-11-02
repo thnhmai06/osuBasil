@@ -11,9 +11,9 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
 	/// <param name="host">The client to scope.</param>
-	/// <param name="by">The connection acting on the client.</param>
-	internal ScopedBanchoConnection(BanchoConnection host, Connection by) : base(by,
-		by.EffectivePermissions(host.Context.Clock.GetUtcNow()))
+	/// <param name="actor">The connection acting on the client.</param>
+	internal ScopedBanchoConnection(BanchoConnection host, Connection actor) : base(actor,
+		actor.EffectivePermissions(host.Context.Clock.GetUtcNow()))
 	{
 		Host = host;
 	}
@@ -36,7 +36,7 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	/// </exception>
 	public async Task<Result<ConnectionOutcome>> SpectateAsync()
 	{
-		if (By is IrcConnection)
+		if (Actor is IrcConnection)
 			throw new ArgumentException("IRC clients cannot spectate.");
 
 		if (Require(UserPermissions.SpectatingWatch) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
@@ -49,14 +49,14 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 		using var scope = Host.EnterSpectators();
 
 		if (SpectatorRefusal() is { } refusal) return refusal;
-		if (Host.Spectators.Contains(By))
+		if (Host.Spectators.Contains(Actor))
 		{
-			Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
+			Host.Context.Events.Publish(new UserSpectatorJoined(Host, Actor));
 			return ConnectionOutcome.Ok;
 		}
 
-		Host.MutableSpectators.Add(By);
-		Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
+		Host.MutableSpectators.Add(Actor);
+		Host.Context.Events.Publish(new UserSpectatorJoined(Host, Actor));
 		return ConnectionOutcome.Ok;
 	}
 
@@ -64,22 +64,22 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	{
 		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
 		return relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
-		                                         relationship.Target.Equals(By.Record)) &&
+		                                         relationship.Target.Equals(Actor.Record)) &&
 		       Require(UserPermissions.RoomObserve) is not null;
 	}
 
 	private void LeavePreviousHost()
 	{
-		var previous = Host.Context.Registry.FindSpectating(By);
-		if (previous is not null && !ReferenceEquals(previous, Host)) previous.ScopeTo(By).StopSpectating();
+		var previous = Host.Context.Registry.FindSpectating(Actor);
+		if (previous is not null && !ReferenceEquals(previous, Host)) previous.ScopeTo(Actor).StopSpectating();
 	}
 
 	private ConnectionOutcome? SpectatorRefusal()
 	{
 		if (!Host.IsOpen) return ConnectionOutcome.TargetOffline;
 		// The connection may have closed during the awaits above; check it again before the spectator is added.
-		if (!By.IsOpen) return ConnectionOutcome.Closed;
-		if (By.Record.Equals(Host.Record)) return ConnectionOutcome.Self;
+		if (!Actor.IsOpen) return ConnectionOutcome.Closed;
+		if (Actor.Record.Equals(Host.Record)) return ConnectionOutcome.Self;
 		return null;
 	}
 
@@ -89,9 +89,9 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	public bool StopSpectating()
 	{
 		using var scope = Host.EnterSpectators();
-		if (!Host.MutableSpectators.Remove(By)) return false;
+		if (!Host.MutableSpectators.Remove(Actor)) return false;
 
-		Host.Context.Events.Publish(new UserSpectatorLeft(Host, By));
+		Host.Context.Events.Publish(new UserSpectatorLeft(Host, Actor));
 		return true;
 	}
 
@@ -99,9 +99,9 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	/// <returns><see langword="true" /> if the connection is spectating this host.</returns>
 	public bool ReportSpectatingFailed()
 	{
-		if (!Host.Spectators.Contains(By)) return false;
+		if (!Host.Spectators.Contains(Actor)) return false;
 
-		Host.Context.Events.Publish(new UserSpectatorFailed(Host, By));
+		Host.Context.Events.Publish(new UserSpectatorFailed(Host, Actor));
 		return true;
 	}
 
@@ -113,7 +113,7 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	/// </returns>
 	public bool PublishFrames(SpectatorBundle bundle)
 	{
-		if (!ReferenceEquals(By, Host) || !Host.IsOpen || !Host.HasApiSpectators) return false;
+		if (!ReferenceEquals(Actor, Host) || !Host.IsOpen || !Host.HasApiSpectators) return false;
 
 		Host.Context.Events.Publish(new UserSpectatorFramesReceived(Host, bundle));
 		return true;
@@ -125,7 +125,7 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	/// <remarks>A different connection, a closed client, or its current status does nothing.</remarks>
 	public bool SetStatus(PlayerStatus status)
 	{
-		if (!ReferenceEquals(By, Host) || !Host.IsOpen || Equals(Host.Status, status)) return false;
+		if (!ReferenceEquals(Actor, Host) || !Host.IsOpen || Equals(Host.Status, status)) return false;
 
 		Host.Status = status;
 		Host.Context.Events.Publish(new UserConnectionStatusChanged(Host, status));

@@ -5,20 +5,20 @@ using Basil.Domain.Users;
 namespace Basil.Bot.Commands;
 
 /// <summary>Who typed a command, where it was typed, and how to answer it.</summary>
-/// <param name="By">The connection of the user who typed the command; commands run on objects scoped to it.</param>
+/// <param name="Actor">The connection of the user who typed the command; commands run on objects scoped to it.</param>
 /// <param name="Channel">The channel it was typed in, or <see langword="null" /> when it was a private message to the bot.</param>
 /// <param name="Replies">Gives the text of the replies the command says.</param>
 /// <param name="Say">Says a text where the command came from (the channel, or the sender's private messages).</param>
 /// <param name="SayPrivately">Says a text in the sender's private messages wherever the command came from.</param>
 internal sealed record CommandContext(
-	Connection By,
+	Connection Actor,
 	string? Channel,
 	IReplies Replies,
 	Func<string, CancellationToken, Task> Say,
 	Func<string, CancellationToken, Task> SayPrivately)
 {
 	/// <summary>Gets the user who typed the command.</summary>
-	public UserRecord Sender => By.Record;
+	public UserRecord Sender => Actor.Record;
 
 	/// <summary>Answers where the command came from.</summary>
 	/// <param name="reply">The reply to say.</param>

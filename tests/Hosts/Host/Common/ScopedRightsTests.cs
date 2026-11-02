@@ -26,8 +26,8 @@ public class ScopedRightsTests
 	public async Task RequireRight_FlagsHoldingEveryRequiredBit_IsMet()
 	{
 		using var app = new TestApplication();
-		var by = await app.LoginAsync(await app.CreateUserAsync("FlagsHolder", "password"));
-		var scope = new FlagsScope(by, SampleBits.Read | SampleBits.Write);
+		var actor = await app.LoginAsync(await app.CreateUserAsync("FlagsHolder", "password"));
+		var scope = new FlagsScope(actor, SampleBits.Read | SampleBits.Write);
 
 		Assert.Null(scope.Need(SampleBits.Read));
 		Assert.Null(scope.Need(SampleBits.Read | SampleBits.Write));
@@ -37,8 +37,8 @@ public class ScopedRightsTests
 	public async Task RequireRight_FlagsMissingABit_NamesOnlyTheMissingBits()
 	{
 		using var app = new TestApplication();
-		var by = await app.LoginAsync(await app.CreateUserAsync("FlagsMissing", "password"));
-		var scope = new FlagsScope(by, SampleBits.Read);
+		var actor = await app.LoginAsync(await app.CreateUserAsync("FlagsMissing", "password"));
+		var scope = new FlagsScope(actor, SampleBits.Read);
 
 		Assert.Equal(SampleBits.Write | SampleBits.Delete,
 			scope.Need(SampleBits.Read | SampleBits.Write | SampleBits.Delete));
@@ -48,8 +48,8 @@ public class ScopedRightsTests
 	public async Task RequireRight_FlagsRequiringNothing_IsMet()
 	{
 		using var app = new TestApplication();
-		var by = await app.LoginAsync(await app.CreateUserAsync("FlagsNothing", "password"));
-		var scope = new FlagsScope(by, SampleBits.None);
+		var actor = await app.LoginAsync(await app.CreateUserAsync("FlagsNothing", "password"));
+		var scope = new FlagsScope(actor, SampleBits.None);
 
 		Assert.Null(scope.Need(SampleBits.None));
 	}
@@ -64,15 +64,15 @@ public class ScopedRightsTests
 		bool met)
 	{
 		using var app = new TestApplication();
-		var by = await app.LoginAsync(await app.CreateUserAsync("LevelHolder", "password"));
-		var scope = new LevelScope(by, held);
+		var actor = await app.LoginAsync(await app.CreateUserAsync("LevelHolder", "password"));
+		var scope = new LevelScope(actor, held);
 
 		var missing = scope.Need(required);
 
 		Assert.Equal(met ? null : required, missing);
 	}
 
-	private sealed class FlagsScope(Connection by, SampleBits held) : Scoped<SampleBits>(by, held)
+	private sealed class FlagsScope(Connection actor, SampleBits held) : Scoped<SampleBits>(actor, held)
 	{
 		public SampleBits? Need(SampleBits required)
 		{
@@ -80,7 +80,7 @@ public class ScopedRightsTests
 		}
 	}
 
-	private sealed class LevelScope(Connection by, SampleLevel held) : Scoped<SampleLevel>(by, held)
+	private sealed class LevelScope(Connection actor, SampleLevel held) : Scoped<SampleLevel>(actor, held)
 	{
 		public SampleLevel? Need(SampleLevel required)
 		{

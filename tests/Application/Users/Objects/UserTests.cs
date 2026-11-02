@@ -43,12 +43,12 @@ public sealed class UserTests
 	public async Task RestrictAsync_OfflineAccount_DoesNotBringItOnline()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("OfflineMod", "password", UserPermissionsGroups.All);
-		var by = await app.LoginAsync(actor);
+		var actorRecord = await app.CreateUserAsync("OfflineMod", "password", UserPermissionsGroups.All);
+		var actor = await app.LoginAsync(actorRecord);
 		var target = await app.CreateUserAsync("OfflineTarget", "password");
 		var offlineUser = app.Users.Of(target);
 
-		var (result, _) = await offlineUser.ScopeTo(by).Restrictions.RestrictAsync(
+		var (result, _) = await offlineUser.ScopeTo(actor).Restrictions.RestrictAsync(
 			UserPermissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);

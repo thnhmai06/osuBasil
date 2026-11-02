@@ -13,9 +13,9 @@ public sealed class ScopedGeneralChannel : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a general-channel scope for a connection.</summary>
 	/// <param name="channel">The general channel to scope.</param>
-	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedGeneralChannel(GeneralChannel channel, Connection by) : base(by,
-		by.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
+	/// <param name="actor">The connection acting on the channel.</param>
+	internal ScopedGeneralChannel(GeneralChannel channel, Connection actor) : base(actor,
+		actor.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
 	{
 		Channel = channel;
 	}

@@ -26,7 +26,7 @@ public sealed class ScopedRoomAuthority
 		CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.RefereesManage) ??
-		                       _scoped.Room.AddReferee(_scoped.By.Record, user));
+		                       _scoped.Room.AddReferee(_scoped.Actor.Record, user));
 	}
 
 	/// <summary>Removes a user from the referees.</summary>
@@ -37,7 +37,7 @@ public sealed class ScopedRoomAuthority
 		CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.RefereesManage) ??
-		                       _scoped.Room.RemoveReferee(_scoped.By.Record, user));
+		                       _scoped.Room.RemoveReferee(_scoped.Actor.Record, user));
 	}
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>
@@ -49,6 +49,6 @@ public sealed class ScopedRoomAuthority
 		CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.HostTransfer) ??
-		                       _scoped.Room.SetHost(_scoped.By.Record, host));
+		                       _scoped.Room.SetHost(_scoped.Actor.Record, host));
 	}
 }

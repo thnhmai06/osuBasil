@@ -40,36 +40,36 @@ public sealed class GeneralChannelRegistry
 	}
 
 	/// <summary>Lists the open channels a connection may see.</summary>
-	/// <param name="by">The connection that asks.</param>
+	/// <param name="actor">The connection that asks.</param>
 	/// <returns>
 	///     The channels the connection may read that are visible; a connection that holds
 	///     <see cref="UserPermissions.ChatManageChannels" /> also sees the hidden ones, so it can manage them.
 	/// </returns>
-	public IEnumerable<GeneralChannel> VisibleTo(Connection by)
+	public IEnumerable<GeneralChannel> VisibleTo(Connection actor)
 	{
 		foreach (var channel in _channels.Values)
 		{
 			var now = channel.Context.Clock.GetUtcNow();
-			if (!channel.IsClosed && channel.CanRead(by, now) &&
+			if (!channel.IsClosed && channel.CanRead(actor, now) &&
 			    (channel.Record.Value.Visible ||
-			     by.EffectivePermissions(now).Allows(UserPermissions.ChatManageChannels)))
+			     actor.EffectivePermissions(now).Allows(UserPermissions.ChatManageChannels)))
 				yield return channel;
 		}
 	}
 
 	/// <summary>Joins a connection to auto-join channels when the server itself calls it; it needs no rights.</summary>
-	/// <param name="by">The connection that opened.</param>
-	public void JoinAutoChannels(Connection by)
+	/// <param name="actor">The connection that opened.</param>
+	public void JoinAutoChannels(Connection actor)
 	{
 		foreach (var channel in All.Values.Where(channel => channel.Record.Value.AutoJoin))
-			channel.ScopeTo(by).Join();
+			channel.ScopeTo(actor).Join();
 	}
 
 	/// <summary>Parts a connection from every open general channel when the server itself calls it; it needs no rights.</summary>
-	/// <param name="by">The connection that closed.</param>
-	public void PartAll(Connection by)
+	/// <param name="actor">The connection that closed.</param>
+	public void PartAll(Connection actor)
 	{
 		foreach (var channel in All.Values)
-			channel.ScopeTo(by).Part();
+			channel.ScopeTo(actor).Part();
 	}
 }

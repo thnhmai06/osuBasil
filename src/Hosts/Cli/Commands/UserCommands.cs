@@ -186,8 +186,8 @@ internal static class UserCommands
 				? country
 				: throw CommandException.Invalid("--country must be a two-letter code.");
 
-		var by = await call.ByAsync();
-		var (record, result) = await call.Get<UserRegistry>().ScopeTo(by)
+		var actor = await call.ByAsync();
+		var (record, result) = await call.Get<UserRegistry>().ScopeTo(actor)
 			.CreateAccountAsync(data, CommandHelpers.Md5Of(call.Required("password")), call.CancellationToken);
 		return result.IsOk
 			? Created(call, record!)

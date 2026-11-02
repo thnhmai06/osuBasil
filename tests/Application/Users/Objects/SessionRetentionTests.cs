@@ -110,7 +110,7 @@ public sealed class SessionRetentionTests
 		var log = app.Provider.GetRequiredService<IModerationLogRepository>();
 		await log.AppendAsync(
 			new ModerationData
-				{ Action = ModerationAction.Note, By = staff, Target = target, Timestamp = app.Clock.GetUtcNow() },
+				{ Action = ModerationAction.Note, Actor = staff, Target = target, Timestamp = app.Clock.GetUtcNow() },
 			Token);
 		var connection = await app.LoginAsync(target);
 		app.Users.Close(connection, SessionEndReason.LoggedOut);

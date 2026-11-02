@@ -85,11 +85,11 @@ public sealed class User
 	public IEnumerable<ApiConnection> Apis => Sessions.Apis;
 
 	/// <summary>Scopes this account's behaviour to a connection and its authority.</summary>
-	/// <param name="by">The connection acting on the account.</param>
+	/// <param name="actor">The connection acting on the account.</param>
 	/// <returns>A short-lived scope for this account and connection.</returns>
-	public ScopedUser ScopeTo(Connection by)
+	public ScopedUser ScopeTo(Connection actor)
 	{
-		return new ScopedUser(this, by);
+		return new ScopedUser(this, actor);
 	}
 
 	/// <summary>Gets the user's permissions that are in effect at a moment.</summary>

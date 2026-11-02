@@ -29,7 +29,7 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 		foreach (var connection in await channel.RecipientsAsync(notification, cancellationToken))
 		{
 			if (clients.Find(connection) is not { } session) continue;
-			if (ReferenceEquals(connection, notification.By) && !session.Has("echo-message")) continue;
+			if (ReferenceEquals(connection, notification.Actor) && !session.Has("echo-message")) continue;
 
 			var target = channel is PmChannel pm ? IrcView.Nick(pm.Owner.Record) : channel.Name;
 			Send(session, command, prefix, target, message.Content, message.Timestamp, message.Author);
@@ -40,16 +40,16 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 	private void EchoToPrivateSender(ChannelMessagePosted notification, string command, string prefix)
 	{
 		var message = notification.Message;
-		if (notification is { Channel: PmChannel owner, By: { } by } &&
-		    !ReferenceEquals(by.User, owner.Owner) &&
-		    clients.Find(by) is { } own && own.Has("echo-message"))
+		if (notification is { Channel: PmChannel owner, Actor: { } actor } &&
+		    !ReferenceEquals(actor.User, owner.Owner) &&
+		    clients.Find(actor) is { } own && own.Has("echo-message"))
 			Send(own, command, prefix, IrcView.Nick(owner.Owner.Record), message.Content, message.Timestamp,
 				message.Author);
 	}
 
 	private void DeliverAwayReply(ChannelMessagePosted notification)
 	{
-		if (notification is { AwayReply: { } away, By: { } awayTo } && clients.Find(awayTo) is { } awaySession)
+		if (notification is { AwayReply: { } away, Actor: { } awayTo } && clients.Find(awayTo) is { } awaySession)
 			foreach (var line in IrcText.Lines(away.Content))
 				awaySession.Deliver(client => client.Numeric(IrcNumericReply.RplAway, IrcView.Nick(away.Author), line));
 	}

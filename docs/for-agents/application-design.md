@@ -5,7 +5,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 
 * **Every `ScopedX` derives from one abstract `Scoped<TRights> where TRights : struct, Enum`.** The base holds the connection
-  (`By`) and `TRights Rights { get; }`, the rights the connection held when `ScopeTo(connection)` created the scope, and
+  (`Actor`) and `TRights Rights { get; }`, the rights the connection held when `ScopeTo(connection)` created the scope, and
   offers `protected TRights? Require(TRights required)`: `null` means the requirement is met, otherwise it returns what
   is missing. A scope lives for one request or command and is then dropped; it is never stored. The comparison follows
   the enum, found by reflection: a `[Flags]` enum is met when every required bit is held (the result is the missing
@@ -157,7 +157,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   (`BanchoConnection.Status`). Rooms, channels and the lobby hold connections, not users' sessions.
   Chat keeps a PM channel per online user; it is opened when the user is first needed and closed when they go offline.
   Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed through
-  `host.ScopeTo(by).SpectateAsync()` (what only an osu! client has lives under `BanchoConnection`:
+  `host.ScopeTo(actor).SpectateAsync()` (what only an osu! client has lives under `BanchoConnection`:
   spectating and its presence status). Chat keeps the client's spectator channel in step by reacting to the
   spectator events (the first spectator brings the host in, the last one out), so membership of that channel is
   eventually consistent with them; the channel never stands for who is spectating.
@@ -174,15 +174,15 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   bans).
 * **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
   only *calls* an action. The relation is stored on the object acted on (`Channel.Members`,
-  `Room.Slots`), and its short-lived scope exposes the operation (`channel.ScopeTo(by).Join()`,
-  `room.ScopeTo(by).Members.JoinAsync(password)`). The event belongs to that object's category
+  `Room.Slots`), and its short-lived scope exposes the operation (`channel.ScopeTo(actor).Join()`,
+  `room.ScopeTo(actor).Members.JoinAsync(password)`). The event belongs to that object's category
   (`ChannelMemberJoined` is a `ChannelEvent`). The
   session does **not** keep a `Channels` set, does **not** have a `Join(Channel)` method, and nothing
   emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
   new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
   on X. Ask "who is acted on?" for every relation, member and event.
-* **Parts are reached through the owning object's scope.** `room.ScopeTo(by)` exposes `.Slots`, `.Rounds`,
-  `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(by)` exposes the user's restrictions,
+* **Parts are reached through the owning object's scope.** `room.ScopeTo(actor)` exposes `.Slots`, `.Rounds`,
+  `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(actor)` exposes the user's restrictions,
   relationships and account operations. Channels, sessions, connections, the lobby, beatmapsets and the server
   follow the same pattern. There are no child service trees for object behaviour; coordination that spans objects
   is a method of the object that is acted on (or of the registry that holds them).
@@ -284,7 +284,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 * **One concept, one name.** Use the same name for the same concept in every model, parameter,
   event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a
   future window is `StartsAt`/`EndsAt`, a stored record's lifecycle is
-  `CreatedAt`/`UpdatedAt`/`DeletedAt`, the caller of an operation is `by`. Do not introduce
+  `CreatedAt`/`UpdatedAt`/`DeletedAt`, the caller of an operation is `actor`. Do not introduce
   `OccurredAt`, `When`, `Since`, `LoginTime` or similar synonyms.
 
 

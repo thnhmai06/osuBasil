@@ -25,7 +25,7 @@ public sealed record LobbyRoomOpened(Room Room, BanchoConnection? Host, DateTime
 
 /// <summary>A room was closed; it emits nothing afterwards.</summary>
 /// <param name="Room">The room that was closed.</param>
-/// <param name="By">
+/// <param name="Actor">
 ///     The user who closed the room, or <see langword="null" /> when the room closed itself because it stayed empty.
 /// </param>
 /// <param name="Evicted">The players who were still seated.</param>
@@ -35,7 +35,7 @@ public sealed record LobbyRoomOpened(Room Room, BanchoConnection? Host, DateTime
 /// </param>
 public sealed record LobbyRoomClosed(
 	Room Room,
-	UserRecord? By,
+	UserRecord? Actor,
 	IReadOnlyList<BanchoConnection> Evicted,
 	Round? AbortedRound)
 	: LobbyEvent;
