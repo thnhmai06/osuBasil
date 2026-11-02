@@ -134,10 +134,10 @@ internal static class OsuWebRoutes
 		IAnticheatReporter anticheat, IBeatmapRepository beatmaps, WebAuthentication auth, ISettingsRepository settings,
 		CancellationToken ct)
 	{
-		if (!context.Request.HasFormContentType) return Text("error: no");
-
 		// A score submission carries a replay, which is far below the screenshot limit.
 		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
+		if (!context.Request.HasFormContentType) return Text("error: no");
+
 		var form = await context.Request.ReadFormAsync(ct);
 		try
 		{
