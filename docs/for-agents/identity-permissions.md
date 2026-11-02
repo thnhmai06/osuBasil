@@ -74,8 +74,8 @@ touching users, connections, permissions, restrictions or the bot.
   point; `BeatmapsetManage`, while the file watcher keeps running) and `Profiles` (a user changing their own username,
   country, avatar or password; `UserManage` may change another account's). A lock covers create, change and delete. It
   is checked in Application, never in a transport, and refuses with a `Locked` outcome.
-* **Sessions and tokens.** A `Session` is the persisted record of a sign-in (`ConnectionType`: Osu, Tourney, Irc, Api,
-  Bot); a `Connection` is the live one. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
+* **Sessions and tokens.** A `SessionRecord` (immutable, with `SessionData` in device, credential and end groups) is the persisted record of a sign-in (`ConnectionType`: Osu, Tourney, Irc, Api,
+  Bot); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the reauthentication mark, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
   token expires after `Sessions.ApiToken.Lifetime` (sliding, one week by default) and is verified against the database
   the first time it is used, then kept in memory while its connection is used. An IRC key belongs to one device, is
   issued by `POST /v1/users/{id}/sessions/irc`, and is the only credential IRC accepts. osu! signs in with username and

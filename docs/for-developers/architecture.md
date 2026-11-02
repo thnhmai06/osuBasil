@@ -32,7 +32,7 @@ Infrastructure.
 
 ### `Basil.Domain`
 
-Business models that outlive a run of the server (`User`, `Session`, `Room`, `Round`, `Score`, `Beatmap`, chat channel
+Business models that outlive a run of the server (`User`, `SessionRecord`, `Room`, `Round`, `Score`, `Beatmap`, chat channel
 models, …), each guarding its own validity. It holds no runtime-only state and no events and references no other Basil
 project.
 
