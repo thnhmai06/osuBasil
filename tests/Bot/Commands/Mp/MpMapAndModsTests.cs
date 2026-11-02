@@ -164,17 +164,15 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithACombinationTheModeDoesNotAllow_SaysTheModsAreInvalidAndKeepsTheModsTheRoomHad()
+	public async Task Mods_WithAConflictingCombination_KeepsEasyAndDropsHardRock()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
-		Assert.True((await bot.TypeAsync(creator, "#osu", "!mp mods HD")).Succeeded);
 
-		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp mods EZ HR");
+		var (succeeded, _) = await bot.TypeAsync(creator, "#osu", "!mp mods EZ HR");
 
-		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.InvalidMods)], said.Here);
-		Assert.Equal(GameMods.Hidden, room.Settings.MatchSettings.Mods);
+		Assert.True(succeeded);
+		Assert.Equal(GameMods.Easy, room.Settings.MatchSettings.Mods);
 	}
 
 	[Theory]

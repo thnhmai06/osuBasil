@@ -298,7 +298,7 @@ internal sealed partial class MpCommands
 		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name,
 			beatmap.Metadata.Difficulty.Mode, beatmap);
 		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: reference, Mode: mode ?? beatmap.Metadata.Difficulty.Mode),
+			new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode)),
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
@@ -314,6 +314,12 @@ internal sealed partial class MpCommands
 				version = beatmap.Metadata.Version
 			}, cancellationToken);
 		return true;
+	}
+
+	/// <summary>Only an osu! beatmap can be played in another mode (a conversion); any other keeps its own mode.</summary>
+	private static GameMode ModeFor(GameMode beatmapMode, GameMode? requested)
+	{
+		return beatmapMode == GameMode.Standard ? requested ?? beatmapMode : beatmapMode;
 	}
 
 	// ── !mp mods ─────────────────────────────────────────────────────────────────────────
@@ -347,6 +353,8 @@ internal sealed partial class MpCommands
 			mods |= ModsExtensions.FromModString(token);
 		}
 
+		// Combinations the current mode does not allow are dropped (HT with DT keeps HT), not refused.
+		mods = mods.RemoveInvalidMods(room.Settings.MatchSettings.Mode);
 		var outcome = await room.ScopeTo(actor).Settings.ConfigureAsync(
 			new RoomSettingsChange(Mods: mods, Freemods: freemod), cancellationToken);
 		if (!outcome.IsOk)
