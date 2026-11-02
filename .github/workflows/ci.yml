@@ -29,14 +29,6 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release --logger "console;verbosity=minimal"
 
-      # Building the solution already regenerates the 5 OpenAPI documents (Microsoft.Extensions.ApiDescription.Server)
-      # into src/Hosts/Host/obj/Basil.Host_{documentName}.json — upload them so deploy-docs doesn't need to rebuild.
-      - name: Upload OpenAPI documents
-        uses: actions/upload-artifact@v4
-        with:
-          name: openapi-documents
-          path: src/Hosts/Host/obj/Basil.Host_*.json
-
   rest-contract:
     # Checks the HTTP contract of the REST API against a running server with the Postman collection in the repository
     # (status, envelope, public/token matrix, redirects, error statuses). It needs no Postman API key.
@@ -84,6 +76,19 @@ jobs:
           cat server.log
           exit 1
 
+      # The server serves its own OpenAPI document; the published documentation is built from this copy, because
+      # generating it at build time would start the application, which needs the database.
+      - name: Save the OpenAPI document
+        run: |
+          mkdir -p openapi
+          curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/openapi/v1.json -o openapi/v1.json
+
+      - name: Upload the OpenAPI document
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-documents
+          path: openapi/v1.json
+
       - name: Install the Postman CLI
         run: curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
 
@@ -97,7 +102,7 @@ jobs:
         run: cat server.log
 
   deploy-docs:
-    needs: build-and-test
+    needs: [build-and-test, rest-contract]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -125,7 +130,7 @@ jobs:
           # docs-site is served from /docs on a running instance, so nest it under docs/
           # and make the site root a redirect there.
           cp -r src/Hosts/Host/docs-site "$SITE/docs"
-          cp openapi/Basil.Host_basilapi.json "$SITE/docs/basil-api/basilapi.json"
+          cp openapi/v1.json "$SITE/docs/basil-api/basilapi.json"
           cat > "$SITE/index.html" <<'EOF'
           <!doctype html>
           <html lang="en">

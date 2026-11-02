@@ -54,7 +54,6 @@ jobs:
           -r ${{ matrix.rid }}
           --self-contained true
           -o publish/${{ matrix.rid }}
-          -p:OpenApiGenerateDocumentsOnBuild=true
 
       - name: Package
         env:
