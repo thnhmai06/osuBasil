@@ -28,7 +28,7 @@ public sealed class UserRegistry
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
 	private readonly AccountService _accounts;
-	private readonly ConcurrentDictionary<Guid, Session> _activity = new();
+	private readonly ConcurrentDictionary<Guid, Connection> _activity = new();
 	private readonly ConnectionContext _connectionContext;
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
@@ -166,20 +166,14 @@ public sealed class UserRegistry
 			cancellationToken);
 	}
 
-	private static Session NewLoginSession(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
+	private static SessionRecord NewLoginSession(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
 		DateTimeOffset now, TimeSpan lifetime, string token)
 	{
-		return new Session
-		{
-			Id = Guid.NewGuid(),
-			User = record,
-			Type = type,
-			Ip = ip,
-			Client = client,
-			StartedAt = now,
-			TokenHash = type is SessionType.Api ? HashToken(token) : null,
-			ExpiresAt = type is SessionType.Api ? now + lifetime : null
-		};
+		var credential = type is SessionType.Api
+			? new SessionCredential(HashToken(token), now + lifetime)
+			: new SessionCredential();
+		return new SessionRecord(Guid.NewGuid(), record, type, now,
+			new SessionData(new SessionDevice(ip, client), credential));
 	}
 
 	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
@@ -230,7 +224,7 @@ public sealed class UserRegistry
 
 		if (accepts?.Invoke(open.Record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
 
-		if (open.Session.ExpiresAt <= now)
+		if (open.ExpiresAt <= now)
 		{
 			Close(open, SessionEndReason.TimedOut);
 			return LoginResult.Fail(LoginFailure.InvalidToken);
@@ -249,20 +243,12 @@ public sealed class UserRegistry
 		return null;
 	}
 
-	private static Session ResumedSession(StoredSession stored, UserRecord record, SessionType type, IPAddress ip,
+	private static SessionRecord ResumedSession(StoredSession stored, UserRecord record, SessionType type, IPAddress ip,
 		string token)
 	{
-		return new Session
-		{
-			Id = stored.Id,
-			User = record,
-			Type = type,
-			Ip = ip,
-			ClientInfo = stored.ClientInfo,
-			StartedAt = stored.StartedAt,
-			TokenHash = HashToken(token),
-			ExpiresAt = stored.ExpiresAt
-		};
+		return new SessionRecord(stored.Id, record, type, stored.StartedAt,
+			new SessionData(new SessionDevice(ip, ClientInfo: stored.ClientInfo),
+				new SessionCredential(HashToken(token), stored.ExpiresAt)));
 	}
 
 	private LoginResult? OpenUnlessRaced(string token, Connection connection,
@@ -280,7 +266,7 @@ public sealed class UserRegistry
 		return null;
 	}
 
-	private Connection NewConnection(Session session, string token, int utcOffset, TimeSpan lifetime)
+	private Connection NewConnection(SessionRecord session, string token, int utcOffset, TimeSpan lifetime)
 	{
 		return session.Type switch
 		{
@@ -359,9 +345,9 @@ public sealed class UserRegistry
 		if (connection.IsOpen)
 		{
 			var now = _context.Clock.GetUtcNow();
-			connection.LastActiveAt = now;
-			if (connection is ApiConnection api) api.Session.ExtendExpiry(now, api.TokenLifetime);
-			if (connection.Session.TokenHash is not null) _activity[connection.Session.Id] = connection.Session;
+			connection.MarkActive(now);
+			if (connection is ApiConnection api) api.ExtendExpiry(now, api.TokenLifetime);
+			if (connection.Session.Value.Credential.TokenHash is not null) _activity[connection.Session.Id] = connection;
 		}
 	}
 
@@ -442,14 +428,7 @@ public sealed class UserRegistry
 	{
 		var bot = await _context.Users.GetAsync(BasilBot.Id, cancellationToken) ??
 		          await EnsureBotAsync(cancellationToken);
-		var login = new Session
-		{
-			Id = Guid.NewGuid(),
-			User = bot,
-			Type = SessionType.Bot,
-			Ip = IPAddress.Loopback,
-			StartedAt = _context.Clock.GetUtcNow()
-		};
+		var login = NewBotSession(bot);
 		return new OperatorConnection(login, NewToken()) { User = Of(bot), IsOpen = true };
 	}
 
@@ -468,14 +447,7 @@ public sealed class UserRegistry
 		var online = _online.GetValueOrDefault(user);
 		if (online?.Bot is { IsOpen: true } connection) return connection;
 
-		var login = new Session
-		{
-			Id = Guid.NewGuid(),
-			User = user,
-			Type = SessionType.Bot,
-			Ip = IPAddress.Loopback,
-			StartedAt = _context.Clock.GetUtcNow()
-		};
+		var login = NewBotSession(user);
 		var bot = new BotConnection(login, NewToken());
 		return Open(bot, []) is null ? bot : null;
 	}
@@ -528,6 +500,12 @@ public sealed class UserRegistry
 		return null;
 	}
 
+	private SessionRecord NewBotSession(UserRecord bot)
+	{
+		return new SessionRecord(Guid.NewGuid(), bot, SessionType.Bot, _context.Clock.GetUtcNow(),
+			new SessionData(new SessionDevice(IPAddress.Loopback), new SessionCredential()));
+	}
+
 	/// <summary>Creates the token of a new connection.</summary>
 	/// <returns>32 random bytes, encoded for use in URLs and headers.</returns>
 	internal static string NewToken()
@@ -552,7 +530,7 @@ public sealed class UserRegistry
 			                              (only is null || connection.Session.Id == only)).ToList())
 		{
 			if (requireReauthentication && connection.Type is SessionType.Osu or SessionType.OsuTourney)
-				connection.Session.RequireReauthentication();
+				connection.RequireReauthentication();
 
 			Close(connection, reason);
 		}
@@ -565,8 +543,8 @@ public sealed class UserRegistry
 	{
 		var batch = new List<SessionActivity>();
 		foreach (var id in _activity.Keys)
-			if (_activity.TryRemove(id, out var session))
-				batch.Add(new SessionActivity(session.Id, session.LastActiveAt, session.ExpiresAt));
+			if (_activity.TryRemove(id, out var connection))
+				batch.Add(new SessionActivity(id, connection.LastActiveAt, connection.ExpiresAt));
 
 		await _context.Sessions.WriteActivityAsync(batch, cancellationToken);
 	}
@@ -625,9 +603,10 @@ public sealed class UserRegistry
 		if (!connection.IsOpen) return;
 
 		// A token or key outlives its connection: only revoking it, or logging out of the API, ends the session.
-		if (connection.Session.TokenHash is null || EndsToken(connection.Type, reason))
-			connection.Session.End(_context.Clock.GetUtcNow(), reason);
-		_ = _context.Sessions.UpdateAsync(connection.Session);
+		if (connection.Session.Value.Credential.TokenHash is null || EndsToken(connection.Type, reason))
+			connection.EndSession(_context.Clock.GetUtcNow(), reason);
+		_ = _context.Sessions.UpdateAsync(connection.Snapshot(), connection.LastActiveAt,
+			connection.MustReauthenticate);
 		_activity.TryRemove(connection.Session.Id, out _);
 		connection.IsOpen = false;
 		Unindex(connection);

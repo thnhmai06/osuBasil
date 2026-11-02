@@ -12,9 +12,9 @@ namespace Basil.Infrastructure.Auth.Persistence;
 internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseReader reader) : ISessionRepository
 {
 	/// <inheritdoc />
-	public Task RecordAsync(Session login, CancellationToken cancellationToken = default)
+	public Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default)
 	{
-		var row = ToRow(login);
+		var row = ToRow(login, login.StartedAt, false);
 
 		return writer.AppendAsync(Root.User(login.User.Id),
 			new WriteCommand<AuthDbContext>(async (context, token) =>
@@ -25,9 +25,9 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(Session session)
+	public Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate)
 	{
-		var row = ToRow(session);
+		var row = ToRow(session, lastActiveAt, mustReauthenticate);
 		return writer.SaveAsync(Root.User(session.User.Id), row.Id,
 			new WriteCommand<AuthDbContext>(async (context, token) =>
 			{
@@ -163,23 +163,24 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 			row.EndedAt, row.EndReason, row.MustReauthenticate);
 	}
 
-	private static SessionRow ToRow(Session session)
+	private static SessionRow ToRow(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate)
 	{
-		var client = session.Client;
+		var (device, credential, end) = session.Value;
+		var client = device.Client;
 		return new SessionRow
 		{
 			Id = session.Id,
 			UserId = session.User.Id,
 			Type = session.Type,
-			Ip = session.Ip,
-			ClientInfo = session.ClientInfo,
+			Ip = device.Ip,
+			ClientInfo = device.ClientInfo,
 			StartedAt = session.StartedAt.ToUniversalTime(),
-			LastActiveAt = session.LastActiveAt.ToUniversalTime(),
-			EndedAt = session.EndedAt?.ToUniversalTime(),
-			EndReason = session.EndReason,
-			TokenHash = session.TokenHash is null ? null : [.. session.TokenHash],
-			ExpiresAt = session.ExpiresAt?.ToUniversalTime(),
-			MustReauthenticate = session.MustReauthenticate,
+			LastActiveAt = lastActiveAt.ToUniversalTime(),
+			EndedAt = end?.At.ToUniversalTime(),
+			EndReason = end?.Reason,
+			TokenHash = credential.TokenHash is null ? null : [.. credential.TokenHash],
+			ExpiresAt = credential.ExpiresAt?.ToUniversalTime(),
+			MustReauthenticate = mustReauthenticate,
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
 			ClientRevision = client?.Version.Revision,
 			ClientStream = client is null ? null : (int?)client.Version.Stream,

@@ -34,15 +34,9 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 
-		await Sessions.RecordAsync(new Session
-		{
-			Id = FirstId,
-			User = user,
-			Type = SessionType.Osu,
-			Ip = IPAddress.Parse("192.0.2.10"),
-			Client = Client(),
-			StartedAt = First
-		}, TestContext.Current.CancellationToken);
+		await Sessions.RecordAsync(new SessionRecord(FirstId, user, SessionType.Osu, First,
+			new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential())),
+			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select id::text, user_id, type, host(ip) as ip, client_info, started_at, last_active_at, ended_at, " +
@@ -80,14 +74,9 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 
-		await Sessions.RecordAsync(new Session
-		{
-			Id = FirstId,
-			User = user,
-			Type = SessionType.Api,
-			Ip = IPAddress.Parse("192.0.2.11"),
-			StartedAt = First
-		}, TestContext.Current.CancellationToken);
+		await Sessions.RecordAsync(new SessionRecord(FirstId, user, SessionType.Api, First,
+			new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.11")), new SessionCredential())),
+			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select client_date, client_revision, client_stream, osu_path_hash, network_adapters, " +
@@ -146,20 +135,14 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "closed_session" }, TestContext.Current.CancellationToken);
-		var session = new Session
-		{
-			Id = FirstId,
-			User = user,
-			Type = SessionType.Api,
-			Ip = IPAddress.Parse("192.0.2.12"),
-			StartedAt = First
-		};
+		var session = new SessionRecord(FirstId, user, SessionType.Api, First,
+			new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.12")), new SessionCredential()));
 		await Sessions.RecordAsync(session, TestContext.Current.CancellationToken);
-		session.MarkActive(Second);
-		session.End(Third, SessionEndReason.Revoked);
-		Assert.Equal(Second, session.LastActiveAt);
-		Assert.Equal(Third, session.EndedAt);
-		await Sessions.UpdateAsync(session);
+		var ended = session with
+		{
+			Value = session.Value with { End = new SessionEnd(Third, SessionEndReason.Revoked) }
+		};
+		await Sessions.UpdateAsync(ended, Second, false);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select last_active_at, ended_at, end_reason from sessions where id = @id",
@@ -181,17 +164,10 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	private Task RecordTokenAsync(UserRecord user, Guid id, SessionType type, byte[]? hash,
 		DateTimeOffset? expiresAt = null)
 	{
-		return Sessions.RecordAsync(new Session
-		{
-			Id = id,
-			User = user,
-			Type = type,
-			Ip = IPAddress.Parse("192.0.2.20"),
-			ClientInfo = "label",
-			StartedAt = First,
-			TokenHash = hash,
-			ExpiresAt = expiresAt
-		}, TestContext.Current.CancellationToken);
+		return Sessions.RecordAsync(new SessionRecord(id, user, type, First,
+			new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.20"), ClientInfo: "label"),
+				new SessionCredential(hash, expiresAt))),
+			TestContext.Current.CancellationToken);
 	}
 
 	[Fact]
@@ -427,15 +403,9 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	/// <param name="timestamp">The moment of the login.</param>
 	private async Task RecordAsync(UserRecord user, DateTimeOffset timestamp, Guid id)
 	{
-		await Sessions.RecordAsync(new Session
-		{
-			Id = id,
-			User = user,
-			Type = SessionType.Osu,
-			Ip = IPAddress.Parse("192.0.2.10"),
-			Client = Client(),
-			StartedAt = timestamp
-		}, TestContext.Current.CancellationToken);
+		await Sessions.RecordAsync(new SessionRecord(id, user, SessionType.Osu, timestamp,
+			new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential())),
+			TestContext.Current.CancellationToken);
 	}
 
 	/// <summary>Waits until the given number of sessions is stored.</summary>

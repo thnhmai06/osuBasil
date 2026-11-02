@@ -150,19 +150,13 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 		if (label.Length is 0 or > MaxLabelLength) return (UserOutcome.InvalidLabel, null, null);
 
 		var key = UserRegistry.NewToken();
-		var session = new Session
-		{
-			Id = Guid.NewGuid(),
-			User = scoped.User.Record,
-			Type = SessionType.Irc,
-			Ip = scoped.Actor.Session.Ip,
-			ClientInfo = label,
-			StartedAt = scoped.User.Context.Clock.GetUtcNow(),
-			TokenHash = UserRegistry.HashToken(key)
-		};
+		var session = new SessionRecord(Guid.NewGuid(), scoped.User.Record, SessionType.Irc,
+			scoped.User.Context.Clock.GetUtcNow(),
+			new SessionData(new SessionDevice(scoped.Actor.Session.Value.Device.Ip, ClientInfo: label),
+				new SessionCredential(UserRegistry.HashToken(key))));
 		await scoped.User.Context.Sessions.RecordAsync(session, cancellationToken);
-		var entry = new SessionEntry(session.Id, session.User, session.Type, session.Ip, session.ClientInfo,
-			session.StartedAt, session.LastActiveAt, null, null, false);
+		var entry = new SessionEntry(session.Id, session.User, session.Type, session.Value.Device.Ip, label,
+			session.StartedAt, session.StartedAt, null, null, false);
 		return (UserOutcome.Ok, key, entry);
 	}
 

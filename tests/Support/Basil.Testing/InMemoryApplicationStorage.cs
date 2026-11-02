@@ -190,21 +190,21 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 
 	public IReadOnlyList<SessionEntry> Entries => _entries;
 
-	public Task RecordAsync(Session login, CancellationToken cancellationToken = default)
+	public Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		_entries.Add(ToEntry(login));
-		_tokens[login.Id] = (login.TokenHash, login.ExpiresAt);
+		_entries.Add(ToEntry(login, login.StartedAt, false));
+		_tokens[login.Id] = (login.Value.Credential.TokenHash, login.Value.Credential.ExpiresAt);
 		return Task.CompletedTask;
 	}
 
-	public Task UpdateAsync(Session session)
+	public Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate)
 	{
 		var index = _entries.FindIndex(entry => entry.Id == session.Id);
 		if (index >= 0)
 		{
-			_entries[index] = ToEntry(session);
-			_tokens[session.Id] = (session.TokenHash, session.ExpiresAt);
+			_entries[index] = ToEntry(session, lastActiveAt, mustReauthenticate);
+			_tokens[session.Id] = (session.Value.Credential.TokenHash, session.Value.Credential.ExpiresAt);
 		}
 
 		return Task.CompletedTask;
@@ -322,10 +322,11 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return entry.EndedAt is null && (ExpiryOf(entry.Id) is not { } expiresAt || expiresAt > now);
 	}
 
-	private static SessionEntry ToEntry(Session session)
+	private static SessionEntry ToEntry(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate)
 	{
-		return new SessionEntry(session.Id, session.User, session.Type, session.Ip, session.ClientInfo,
-			session.StartedAt, session.LastActiveAt, session.EndedAt, session.EndReason, session.MustReauthenticate);
+		return new SessionEntry(session.Id, session.User, session.Type, session.Value.Device.Ip,
+			session.Value.Device.ClientInfo, session.StartedAt, lastActiveAt, session.Value.End?.At,
+			session.Value.End?.Reason, mustReauthenticate);
 	}
 }
 

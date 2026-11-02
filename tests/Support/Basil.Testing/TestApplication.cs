@@ -319,15 +319,9 @@ public sealed class TestApplication : IDisposable
 		if (await _users.GetByNameAsync(username) is not { } record) return LoginResult.Fail(LoginFailure.UnknownUser);
 
 		var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-		await _sessions.RecordAsync(new Session
-		{
-			Id = Guid.NewGuid(),
-			User = record,
-			Type = SessionType.Irc,
-			Ip = IPAddress.Loopback,
-			StartedAt = Clock.GetUtcNow(),
-			TokenHash = SHA256.HashData(Encoding.UTF8.GetBytes(key))
-		});
+		await _sessions.RecordAsync(new SessionRecord(Guid.NewGuid(), record, SessionType.Irc, Clock.GetUtcNow(),
+			new SessionData(new SessionDevice(IPAddress.Loopback),
+				new SessionCredential(SHA256.HashData(Encoding.UTF8.GetBytes(key))))));
 		return await Users.LoginWithTokenAsync(SessionType.Irc, key, IPAddress.Loopback);
 	}
 

@@ -67,7 +67,7 @@ public sealed class ApiTokenTests
 
 		var connection = await app.LoginAsync(user);
 
-		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, connection.Session.ExpiresAt);
+		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, connection.ExpiresAt);
 	}
 
 	[Fact]
@@ -85,7 +85,7 @@ public sealed class ApiTokenTests
 
 		var connection = await app.LoginAsync(user);
 
-		Assert.Equal(app.Clock.GetUtcNow() + TimeSpan.FromHours(2), connection.Session.ExpiresAt);
+		Assert.Equal(app.Clock.GetUtcNow() + TimeSpan.FromHours(2), connection.ExpiresAt);
 	}
 
 	[Fact]
@@ -94,12 +94,12 @@ public sealed class ApiTokenTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Sliding", "password");
 		var connection = await app.LoginAsync(user);
-		var issued = connection.Session.ExpiresAt;
+		var issued = connection.ExpiresAt;
 
 		app.Clock.Advance(TimeSpan.FromDays(3));
 		app.Users.MarkActive(connection);
 
-		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, connection.Session.ExpiresAt);
+		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, connection.ExpiresAt);
 		Assert.Equal(issued, app.TokenExpiryOf(connection.Session.Id));
 
 		await app.Users.FlushActivityAsync(Token);

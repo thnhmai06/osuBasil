@@ -8,13 +8,20 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Objects.Connections;
 
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
-public abstract class Connection(Session login, string token) : IActor
+public abstract class Connection(SessionRecord login, string token) : IActor
 {
+	// UTC ticks, written and read atomically: a connection and the activity flush touch them from different threads.
+	private const long None = long.MinValue;
+	private long _expiresTicks = login.Value.Credential.ExpiresAt?.UtcTicks ?? None;
+	private long _lastActiveTicks = login.StartedAt.UtcTicks;
+	private SessionEnd? _end;
+	private volatile bool _mustReauthenticate;
+
 	/// <summary>Gets the online user this connection belongs to.</summary>
 	public User User { get; internal set; } = null!;
 
-	/// <summary>Gets the login that opened this connection.</summary>
-	public Session Session { get; } = login;
+	/// <summary>Gets the stored session that opened this connection, as it was when the connection opened.</summary>
+	public SessionRecord Session { get; } = login;
 
 	/// <summary>Gets the opaque token that identifies this connection.</summary>
 	public string Token { get; } = token;
@@ -26,10 +33,55 @@ public abstract class Connection(Session login, string token) : IActor
 	public bool IsOpen { get; internal set; }
 
 	/// <summary>Gets when this connection was last active.</summary>
-	public DateTimeOffset LastActiveAt
+	public DateTimeOffset LastActiveAt => new(Interlocked.Read(ref _lastActiveTicks), TimeSpan.Zero);
+
+	/// <summary>Gets when the session's token expires, or <see langword="null" /> for a non-expiring session.</summary>
+	public DateTimeOffset? ExpiresAt =>
+		Interlocked.Read(ref _expiresTicks) is var ticks && ticks != None
+			? new DateTimeOffset(ticks, TimeSpan.Zero)
+			: null;
+
+	/// <summary>Gets whether the osu! device must enter its password again.</summary>
+	public bool MustReauthenticate => _mustReauthenticate;
+
+	/// <summary>Gets how the session ended, or <see langword="null" /> while it remains active.</summary>
+	public SessionEnd? End => Volatile.Read(ref _end);
+
+	/// <summary>Gets the session as it stands now, ready to be stored.</summary>
+	/// <returns>The stored session with its current expiry and end.</returns>
+	internal SessionRecord Snapshot()
 	{
-		get => Session.LastActiveAt;
-		internal set => Session.MarkActive(value);
+		var value = Session.Value;
+		return Session with { Value = value with { Credential = value.Credential with { ExpiresAt = ExpiresAt }, End = End } };
+	}
+
+	/// <summary>Records activity on this connection's session.</summary>
+	/// <param name="at">The time of the activity.</param>
+	internal void MarkActive(DateTimeOffset at)
+	{
+		if (End is null && at >= LastActiveAt) Interlocked.Exchange(ref _lastActiveTicks, at.UtcTicks);
+	}
+
+	/// <summary>Extends the sliding expiry of an API token session.</summary>
+	/// <param name="at">The time of the authenticated activity.</param>
+	/// <param name="lifetime">How long the token remains valid after activity.</param>
+	internal void ExtendExpiry(DateTimeOffset at, TimeSpan lifetime)
+	{
+		if (Type is SessionType.Api && End is null) Interlocked.Exchange(ref _expiresTicks, (at + lifetime).UtcTicks);
+	}
+
+	/// <summary>Ends this connection's session at a moment for a specific reason; an ended session stays ended.</summary>
+	/// <param name="at">The time the session ended.</param>
+	/// <param name="reason">Why the session ended.</param>
+	internal void EndSession(DateTimeOffset at, SessionEndReason reason)
+	{
+		Interlocked.CompareExchange(ref _end, new SessionEnd(at, reason), null);
+	}
+
+	/// <summary>Requires the osu! device to authenticate with its password on the next login.</summary>
+	internal void RequireReauthentication()
+	{
+		_mustReauthenticate = true;
 	}
 
 	/// <summary>Gets the user who owns this connection.</summary>
@@ -62,7 +114,7 @@ public sealed class BanchoConnection : Connection
 	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="context">The runtime dependencies for the connection's behaviour.</param>
-	internal BanchoConnection(Session login, string token, int utcOffset, ConnectionContext context) : base(login,
+	internal BanchoConnection(SessionRecord login, string token, int utcOffset, ConnectionContext context) : base(login,
 		token)
 	{
 		UtcOffset = utcOffset;
@@ -126,7 +178,7 @@ public sealed class TourneyConnection : Connection
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal TourneyConnection(Session login, string token) : base(login, token)
+	internal TourneyConnection(SessionRecord login, string token) : base(login, token)
 	{
 	}
 
@@ -140,7 +192,7 @@ public sealed class IrcConnection : Connection
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal IrcConnection(Session login, string token) : base(login, token)
+	internal IrcConnection(SessionRecord login, string token) : base(login, token)
 	{
 	}
 
@@ -155,7 +207,7 @@ public sealed class ApiConnection : Connection
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="tokenLifetime">How long the token stays valid after each use.</param>
-	internal ApiConnection(Session login, string token, TimeSpan tokenLifetime) : base(login, token)
+	internal ApiConnection(SessionRecord login, string token, TimeSpan tokenLifetime) : base(login, token)
 	{
 		TokenLifetime = tokenLifetime;
 	}
@@ -173,7 +225,7 @@ public sealed class BotConnection : Connection
 	/// <summary>Initializes the server's connection for BasilBot.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal BotConnection(Session login, string token) : base(login, token)
+	internal BotConnection(SessionRecord login, string token) : base(login, token)
 	{
 	}
 
@@ -191,7 +243,7 @@ public sealed class OperatorConnection : Connection
 	/// <summary>Initializes the operator's connection.</summary>
 	/// <param name="login">The login that stands for the console.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal OperatorConnection(Session login, string token) : base(login, token)
+	internal OperatorConnection(SessionRecord login, string token) : base(login, token)
 	{
 	}
 

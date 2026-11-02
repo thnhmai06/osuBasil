@@ -127,12 +127,31 @@ public sealed class ConnectionTests
 		var connection = await app.LoginAsync(user);
 		var session = connection.Session;
 
-		Assert.Equal(SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), session.TokenHash);
-		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), session.ExpiresAt);
+		Assert.Equal(SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), session.Value.Credential.TokenHash);
+		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), connection.ExpiresAt);
 
 		app.Clock.Advance(TimeSpan.FromDays(1));
 		app.Users.MarkActive(connection);
 
-		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), session.ExpiresAt);
+		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), connection.ExpiresAt);
+	}
+
+	[Fact]
+	public async Task EndSession_RecordsEndAndStopsFurtherActivity()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("EndedSession", "password");
+		var connection = await app.LoginAsync(user);
+		var activeAt = app.Clock.GetUtcNow().AddMinutes(5);
+		var endedAt = activeAt.AddMinutes(1);
+
+		connection.MarkActive(activeAt);
+		connection.EndSession(endedAt, SessionEndReason.LoggedOut);
+		connection.EndSession(endedAt.AddMinutes(1), SessionEndReason.Revoked);
+		connection.MarkActive(endedAt.AddMinutes(1));
+
+		Assert.Equal(activeAt, connection.LastActiveAt);
+		Assert.Equal(new SessionEnd(endedAt, SessionEndReason.LoggedOut), connection.End);
+		Assert.Equal(connection.End, connection.Snapshot().Value.End);
 	}
 }

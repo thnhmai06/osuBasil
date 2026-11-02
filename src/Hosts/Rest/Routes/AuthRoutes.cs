@@ -26,8 +26,9 @@ internal static class AuthRoutes
 			.WithSummary("End the current session.");
 		auth.MapGet("/session", (HttpContext context) =>
 			{
-				var session = context.Connection().Session;
-				return Api.Ok(new SessionView(session.Id, session.User.Id, session.StartedAt, session.ExpiresAt));
+				var connection = context.Connection();
+				var session = connection.Session;
+				return Api.Ok(new SessionView(session.Id, session.User.Id, session.StartedAt, connection.ExpiresAt));
 			}).RequireToken()
 			.WithSummary("Retrieve the current session, which names the signed-in user.");
 	}
@@ -60,7 +61,7 @@ internal static class AuthRoutes
 		}
 
 		var session = connection.Session;
-		return Api.Created(new LoginResponse(connection.Token, session.User.Id, session.Id, session.ExpiresAt),
+		return Api.Created(new LoginResponse(connection.Token, session.User.Id, session.Id, connection.ExpiresAt),
 			"Signed in");
 	}
 

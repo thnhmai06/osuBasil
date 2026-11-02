@@ -55,13 +55,15 @@ public sealed record SessionActivity(Guid Id, DateTimeOffset LastActiveAt, DateT
 public interface ISessionRepository
 {
 	/// <summary>Records a new session.</summary>
-	/// <param name="login">The session to record.</param>
+	/// <param name="login">The session to record; it starts with no activity and no reauthentication mark.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task RecordAsync(Session login, CancellationToken cancellationToken = default);
+	Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default);
 
 	/// <summary>Updates the stored state of a session.</summary>
-	/// <param name="session">The session state to store.</param>
-	Task UpdateAsync(Session session);
+	/// <param name="session">The session as it stands now.</param>
+	/// <param name="lastActiveAt">When the session was last used.</param>
+	/// <param name="mustReauthenticate">Whether the osu! device must enter its password again.</param>
+	Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate);
 
 	/// <summary>Lists the sessions of a user, newest first.</summary>
 	/// <param name="user">The user whose sessions to list.</param>
