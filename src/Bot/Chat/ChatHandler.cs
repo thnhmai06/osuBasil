@@ -31,6 +31,10 @@ internal sealed class ChatHandler(
 		var privateMessage = posted.Channel is PmChannel pm && pm.Owner.Record.IsBasilBot();
 		if (posted.Channel is PmChannel && !privateMessage) return ValueTask.CompletedTask;
 
+		// Ordinary channel chatter is not a command; only the commands reach the worker queue.
+		if (!privateMessage && !posted.Message.Content.StartsWith(ChatCommands.CommandPrefix, StringComparison.Ordinal))
+			return ValueTask.CompletedTask;
+
 		var context = NewContext(posted, actor, privateMessage);
 		worker.Enqueue(actor.Record.Id, workerToken => RunCommandAsync(context, posted.Message.Content, workerToken));
 		return ValueTask.CompletedTask;
