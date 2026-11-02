@@ -42,6 +42,38 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
+	public async Task UploadAsync_ArchiveLargerThanTheConfiguredLimit_IsTooLargeAndStoresNothing()
+	{
+		var (app, world, uploads) = await SetupAsync(UserPermissionsGroups.Default, Locks.None);
+		using var _ = app;
+		var bytes = Osz.Build(100, Easy);
+		await app.SetSettingsAsync(new ServerSettings
+			{ Locks = Locks.None, Uploads = new ServerSettings.UploadSettings { OszMaxSize = bytes.Length - 1 } });
+
+		var (result, import) = await uploads.UploadAsync(new MemoryStream(bytes),
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(ServerOutcome.TooLarge, result.Outcome);
+		Assert.Null(import);
+		Assert.Empty(world.Sets.Records);
+	}
+
+	[Fact]
+	public async Task UploadAsync_ArchiveExactlyAtTheConfiguredLimit_StoresTheSet()
+	{
+		var (app, world, uploads) = await SetupAsync(UserPermissionsGroups.Default, Locks.None);
+		using var _ = app;
+		var bytes = Osz.Build(100, Easy);
+		await app.SetSettingsAsync(new ServerSettings
+			{ Locks = Locks.None, Uploads = new ServerSettings.UploadSettings { OszMaxSize = bytes.Length } });
+
+		var (result, _) = await uploads.UploadAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
+
+		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Single(world.Sets.Records);
+	}
+
+	[Fact]
 	public async Task UploadAsync_WithoutTheUploadPermission_NamesIt()
 	{
 		var (app, world, uploads) = await SetupAsync(
