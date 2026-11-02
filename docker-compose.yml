@@ -1,14 +1,34 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: basil
+      POSTGRES_USER: basil
+      POSTGRES_PASSWORD: basil # change it, and change it in the connection string below too
+    volumes:
+      - ./docker-data/Postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U basil -d basil" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   basil:
     build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "443:443" # HTTPS
       - "6667:6667" # IRC no TLS
     volumes:
       - ./docker-data/Data:/app/Data
       - ./docker-data/Logs:/app/Logs
-      - ./src/Basil.Server/Data/appsettings.json:/app/Data/appsettings.json:ro
-      - ./data/certs/basil.local.pfx:/app/Data/basil.local.pfx:ro
+      - ./docker-data/Templates:/app/Configurations/Templates
+      - ./src/Hosts/Host/Configurations/appsettings.json:/app/Configurations/appsettings.json:ro
+    # A command-line setting wins over appsettings.json; the host name is the service name above.
+    command: [ "--Basil:Database:ConnectionString=Host=postgres;Port=5432;Database=basil;Username=basil;Password=basil" ]
     environment:
       ASPNETCORE_ENVIRONMENT: Production
     restart: unless-stopped
