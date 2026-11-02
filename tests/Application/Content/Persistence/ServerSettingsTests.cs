@@ -1,4 +1,5 @@
 using Basil.Application.Content.Persistence;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Content.Tests.Persistence;
 
@@ -23,7 +24,8 @@ public class ServerSettingsTests
 		() => _ = new ServerSettings.UploadSettings { ScreenshotMaxSide = 0 },
 		() => _ = new ServerSettings.UploadSettings { AvatarMaxSize = 0 },
 		() => _ = new ServerSettings.UploadSettings { AvatarMaxSide = 0 },
-		() => _ = new ServerSettings.BotSettings { CommandPrefix = " " }
+		() => _ = new ServerSettings.BotSettings { CommandPrefix = " " },
+		() => _ = new ServerSettings.AccountSettings { DefaultPermissions = (UserPermissions)(1UL << 62) }
 	};
 
 	[Fact]

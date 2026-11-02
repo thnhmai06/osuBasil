@@ -195,6 +195,20 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
+	public async Task A_token_hash_that_another_session_holds_is_refused()
+	{
+		var user = await UserAsync();
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
+		await WaitForSessionsAsync(1);
+
+		await Assert.ThrowsAnyAsync<Exception>(() => RecordTokenAsync(user, SecondId, SessionType.Api, Hash, Third));
+
+		var rows = await StoredRows.WaitForAsync(ConnectionString, "select id::text from sessions", null,
+			rows => rows.Count >= 1, "the first session", TestContext.Current.CancellationToken);
+		Assert.Equal(FirstId.ToString(), Assert.Single(rows).Text("id"));
+	}
+
+	[Fact]
 	public async Task A_token_finds_its_active_unexpired_session_of_its_kind()
 	{
 		var user = await UserAsync();
@@ -326,7 +340,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var device = new DeviceId("4a8a08f09d37b73795649038408b5f33", "f97c5d29941bfb1b2fdab0874906ab82");
 
 		Assert.False(
-			await Sessions.TakeReauthenticationAsync(user, device with { UninstallHash = "different" }, cancel));
+			await Sessions.TakeReauthenticationAsync(user, device with { UninstallHash = "0cc175b9c0f1b6a831c399e269772661" }, cancel));
 		Assert.True(await Sessions.TakeReauthenticationAsync(user, device, cancel));
 		Assert.False(await Sessions.TakeReauthenticationAsync(user, device, cancel));
 	}

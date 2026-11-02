@@ -22,21 +22,37 @@ public sealed class ScopedUserRegistry : Scoped<UserPermissions, Connection>
 		_registry = registry;
 	}
 
+	/// <summary>Creates an account with the permissions in the data.</summary>
+	/// <param name="data">The account data.</param>
+	/// <param name="passwordHash">The MD5 digest of the password.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>See <see cref="CreateAccountAsync(UserData, Md5, UserPermissions?, CancellationToken)" />.</returns>
+	public Task<(UserRecord? User, Result<UserOutcome> Result)> CreateAccountAsync(UserData data,
+		Md5 passwordHash, CancellationToken cancellationToken = default)
+	{
+		return CreateAccountAsync(data, passwordHash, data.Permissions, cancellationToken);
+	}
+
 	/// <summary>Creates an account with permissions the caller may grant.</summary>
 	/// <param name="data">The account data.</param>
 	/// <param name="passwordHash">The MD5 digest of the password.</param>
+	/// <param name="permissions">
+	///     The permissions of the account, or <see langword="null" /> for the default permissions of new accounts.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     The new account when the result is ok; otherwise why none was created. Granting needs
 	///     <see cref="UserPermissions.UserManage" /> and only permissions that are in effect for the caller.
 	/// </returns>
 	public async Task<(UserRecord? User, Result<UserOutcome> Result)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, CancellationToken cancellationToken = default)
+		Md5 passwordHash, UserPermissions? permissions, CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.UserManage | data.Permissions) is { } missing)
+		var granted = permissions ??
+		             (await Actor.User.Context.Settings.GetAsync(cancellationToken)).Accounts.DefaultPermissions;
+		if (Require(UserPermissions.UserManage | granted) is { } missing)
 			return (null, Result<UserOutcome>.Denied(missing));
 
-		var (user, failure) = await _registry.CreateAccountAsync(data, passwordHash, cancellationToken);
+		var (user, failure) = await _registry.CreateAccountAsync(data, passwordHash, granted, cancellationToken);
 		return failure switch
 		{
 			null => (user, UserOutcome.Ok),

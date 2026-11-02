@@ -24,7 +24,7 @@ public sealed class MatchRecorderTests
 		var opened = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomOpened>(),
 			lobbyEvent => lobbyEvent.Room.Equals(setup.Room));
 
-		await recorder.Handler.Handle(opened, TestContext.Current.CancellationToken);
+		await new LobbyRoomOpenedRecorder(recorder.MatchEvents).Handle(opened, TestContext.Current.CancellationToken);
 
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Match == setup.Room.Match &&
@@ -42,7 +42,7 @@ public sealed class MatchRecorderTests
 		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
 		var started = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundStarted>());
 
-		await recorder.Handler.Handle(started, TestContext.Current.CancellationToken);
+		await new RoomRoundStartedRecorder(recorder.Rounds).Handle(started, TestContext.Current.CancellationToken);
 
 		await recorder.Rounds.Received(1).CreateOrUpdateAsync(started.Round, Arg.Any<CancellationToken>());
 	}
@@ -59,7 +59,7 @@ public sealed class MatchRecorderTests
 		var completed = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundCompleted>());
 		Assert.NotNull(completed.Round.EndedAt);
 
-		await recorder.Handler.Handle(completed, TestContext.Current.CancellationToken);
+		await new RoomRoundCompletedRecorder(recorder.Rounds).Handle(completed, TestContext.Current.CancellationToken);
 
 		await recorder.Rounds.Received(1).CreateOrUpdateAsync(completed.Round, Arg.Any<CancellationToken>());
 	}
@@ -73,7 +73,7 @@ public sealed class MatchRecorderTests
 		var joined = app.RoomEvents.Events.OfType<RoomPlayerJoined>()
 			.First(membership => membership.Player == setup.Player);
 
-		await recorder.Handler.Handle(joined, TestContext.Current.CancellationToken);
+		await new RoomPlayerJoinedRecorder(recorder.Rounds, recorder.MatchEvents).Handle(joined, TestContext.Current.CancellationToken);
 
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.PlayerJoined &&
@@ -89,7 +89,7 @@ public sealed class MatchRecorderTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var added = Assert.Single(app.RoomEvents.Events.OfType<RoomRefereeAdded>());
 
-		await recorder.Handler.Handle(added, TestContext.Current.CancellationToken);
+		await new RoomRefereeAddedRecorder(recorder.MatchEvents).Handle(added, TestContext.Current.CancellationToken);
 
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.RefAdded &&
@@ -105,7 +105,7 @@ public sealed class MatchRecorderTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var changed = Assert.Single(app.RoomEvents.Events.OfType<RoomHostChanged>());
 
-		await recorder.Handler.Handle(changed, TestContext.Current.CancellationToken);
+		await new RoomHostChangedRecorder(recorder.MatchEvents).Handle(changed, TestContext.Current.CancellationToken);
 
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.HostGranted &&
@@ -122,7 +122,7 @@ public sealed class MatchRecorderTests
 		await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
 		var closed = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomClosed>());
 
-		await recorder.Handler.Handle(closed, TestContext.Current.CancellationToken);
+		await new LobbyRoomClosedRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(closed, TestContext.Current.CancellationToken);
 
 		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match, Arg.Any<CancellationToken>());
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
@@ -140,7 +140,7 @@ public sealed class MatchRecorderTests
 		var round = StoredRound(setup);
 		var recovered = new LobbyMatchRecovered(setup.Room.Match, [round]);
 
-		await recorder.Handler.Handle(recovered, TestContext.Current.CancellationToken);
+		await new LobbyMatchRecoveredRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(recovered, TestContext.Current.CancellationToken);
 
 		await recorder.Rounds.Received(1).CreateOrUpdateAsync(round, Arg.Any<CancellationToken>());
 		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match, Arg.Any<CancellationToken>());
@@ -158,7 +158,7 @@ public sealed class MatchRecorderTests
 		var round = StoredRound(setup);
 		var roundScore = RoomFixture.Score(1, round);
 
-		await recorder.Handler.Handle(new RoomRoundScoreSubmitted(setup.Room, round, setup.Player.Record, roundScore),
+		await new RoomRoundScoreSubmittedRecorder(recorder.RoundScores).Handle(new RoomRoundScoreSubmitted(setup.Room, round, setup.Player.Record, roundScore),
 			TestContext.Current.CancellationToken);
 
 		await recorder.RoundScores.Received(1).RecordAsync(roundScore, Arg.Any<CancellationToken>());
@@ -172,7 +172,7 @@ public sealed class MatchRecorderTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var round = StoredRound(setup);
 
-		await recorder.Handler.Handle(new RoomRoundDecided(setup.Room, round, null, []),
+		await new RoomRoundDecidedRecorder(recorder.Rounds).Handle(new RoomRoundDecided(setup.Room, round, null, []),
 			TestContext.Current.CancellationToken);
 
 		await recorder.Rounds.Received(1).CreateOrUpdateAsync(round, Arg.Any<CancellationToken>());
@@ -207,15 +207,9 @@ public sealed class MatchRecorderTests
 			TestContext.Current.CancellationToken)).IsOk);
 	}
 
-	/// <summary>The recorder and the storage ports it writes to.</summary>
+	/// <summary>The storage ports the recorders write to.</summary>
 	private sealed class RecordingRecorder
 	{
-		/// <summary>Creates the recorder over the storage ports.</summary>
-		public RecordingRecorder()
-		{
-			Handler = new MatchRecorder(Matches, Rounds, MatchEvents, RoundScores);
-		}
-
 		/// <summary>Gets the port through which matches are stored.</summary>
 		public IMatchRepository Matches { get; } = Substitute.For<IMatchRepository>();
 
@@ -227,8 +221,5 @@ public sealed class MatchRecorderTests
 
 		/// <summary>Gets the port through which the scores of rounds are stored.</summary>
 		public IRoundScoreRepository RoundScores { get; } = Substitute.For<IRoundScoreRepository>();
-
-		/// <summary>Gets the recorder under test.</summary>
-		public MatchRecorder Handler { get; }
 	}
 }

@@ -1,5 +1,6 @@
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
+using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 using Npgsql;
 
@@ -26,6 +27,7 @@ public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container
 		{
 			General = new ServerSettings.GeneralSettings { Motd = "Welcome to the server." },
 			Locks = Locks.Accounts | Locks.Rooms | Locks.Profiles,
+			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost },
 			Sessions = new ServerSettings.SessionSettings
 			{
 				ApiToken = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.FromDays(3) },

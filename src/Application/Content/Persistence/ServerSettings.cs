@@ -1,5 +1,6 @@
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Content.Persistence;
 
@@ -17,6 +18,9 @@ public sealed record ServerSettings
 		get;
 		init => field = value.ThrowIfUndefined();
 	} = Locks.Beatmapsets;
+
+	/// <summary>Gets the settings of new accounts.</summary>
+	public AccountSettings Accounts { get; init; } = new();
 
 	/// <summary>Gets the lifetimes of sessions and tokens.</summary>
 	public SessionSettings Sessions { get; init; } = new();
@@ -78,6 +82,18 @@ public sealed record ServerSettings
 			get;
 			init => field = value?.ThrowIfHasNul();
 		}
+	}
+
+	/// <summary>The settings of new accounts.</summary>
+	public sealed record AccountSettings
+	{
+		/// <summary>Gets the permissions a new account holds when none are asked for.</summary>
+		/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no permission defines.</exception>
+		public UserPermissions DefaultPermissions
+		{
+			get;
+			init => field = value.ThrowIfUndefined();
+		} = UserPermissionsGroups.Default;
 	}
 
 	/// <summary>The lifetimes of sessions and tokens.</summary>

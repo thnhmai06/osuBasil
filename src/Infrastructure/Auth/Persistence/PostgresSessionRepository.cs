@@ -150,8 +150,8 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	{
 		return await writer.WriteAsync(Root.User(user.Id), async (AuthDbContext context, CancellationToken token) =>
 				await context.Sessions.Where(row => row.UserId == user.Id && row.MustReauthenticate &&
-				                                    row.UninstallHash == device.UninstallHash &&
-				                                    row.DiskSignatureHash == device.DiskSignatureHash)
+				                                    row.UninstallHash == device.UninstallHash.HashValue &&
+				                                    row.DiskSignatureHash == device.DiskSignatureHash.HashValue)
 					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.MustReauthenticate, false), token) >
 				0,
 			cancellationToken);

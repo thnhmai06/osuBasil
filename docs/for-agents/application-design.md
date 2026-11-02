@@ -208,7 +208,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   folder of their module (`Objects/Events/`) and its handlers in its Handlers folder. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
-  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, `MatchRecorder` in the Handlers folders of their
+  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
   modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). The shared queue (`EventQueue`) is run by
   `EventDispatcher` in Infrastructure.Common's Workers folder and delivers the events one at a time in the order they
   were published,

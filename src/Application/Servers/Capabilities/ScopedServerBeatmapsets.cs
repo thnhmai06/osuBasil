@@ -26,7 +26,8 @@ public sealed class ScopedServerBeatmapsets
 	///     Uploading needs <see cref="UserPermissions.BeatmapsetUpload" />. While <see cref="Locks.Beatmapsets" /> is
 	///     locked, only a user holding <see cref="UserPermissions.BeatmapsetManage" /> may upload. A beatmapset the server
 	///     already has is never overwritten: the upload is rejected with
-	///     <see cref="BeatmapsetImportFailure.AlreadyExists" />.
+	///     <see cref="BeatmapsetImportFailure.AlreadyExists" />. An archive larger than the upload limit of the
+	///     server settings is refused with <see cref="ServerOutcome.TooLarge" />.
 	/// </remarks>
 	public async Task<(Result<ServerOutcome> Result, BeatmapsetImportResult? Import)> UploadAsync(Stream archive,
 		CancellationToken cancellationToken = default)
@@ -38,6 +39,72 @@ public sealed class ScopedServerBeatmapsets
 		if (_scoped.Needs(UserPermissions.BeatmapsetUpload) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), null);
 
-		return (ServerOutcome.Ok, await context.Beatmapsets.ImportAsync(archive, false, cancellationToken));
+		var limit = (await context.Settings.GetAsync(cancellationToken)).Uploads.OszMaxSize;
+		try
+		{
+			return (ServerOutcome.Ok,
+				await context.Beatmapsets.ImportAsync(new CappedStream(archive, limit), false, cancellationToken));
+		}
+		catch (ArchiveTooLargeException)
+		{
+			return (ServerOutcome.TooLarge, null);
+		}
+	}
+
+	private sealed class ArchiveTooLargeException : Exception;
+
+	/// <summary>Reads another stream and fails once more than a limit of bytes has been read.</summary>
+	private sealed class CappedStream(Stream inner, long limit) : Stream
+	{
+		private long _read;
+
+		public override bool CanRead => true;
+
+		public override bool CanSeek => false;
+
+		public override bool CanWrite => false;
+
+		public override long Length => throw new NotSupportedException();
+
+		public override long Position
+		{
+			get => throw new NotSupportedException();
+			set => throw new NotSupportedException();
+		}
+
+		public override int Read(byte[] buffer, int offset, int count)
+		{
+			return Counted(inner.Read(buffer, offset, count));
+		}
+
+		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+		{
+			return Counted(await inner.ReadAsync(buffer, cancellationToken));
+		}
+
+		private int Counted(int read)
+		{
+			_read += read;
+			return _read > limit ? throw new ArchiveTooLargeException() : read;
+		}
+
+		public override void Flush()
+		{
+		}
+
+		public override long Seek(long offset, SeekOrigin origin)
+		{
+			throw new NotSupportedException();
+		}
+
+		public override void SetLength(long value)
+		{
+			throw new NotSupportedException();
+		}
+
+		public override void Write(byte[] buffer, int offset, int count)
+		{
+			throw new NotSupportedException();
+		}
 	}
 }

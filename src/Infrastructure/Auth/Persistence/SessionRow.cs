@@ -40,7 +40,7 @@ internal sealed class SessionRowConfiguration : IEntityTypeConfiguration<Session
 		builder.Property(row => row.Id).ValueGeneratedNever();
 		builder.Property(row => row.Ip).HasColumnType("inet");
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId");
-		builder.HasIndex(row => row.TokenHash);
+		builder.HasIndex(row => row.TokenHash).IsUnique();
 		builder.HasIndex(row => new { row.UserId, row.StartedAt }).IsDescending(false, true);
 	}
 }

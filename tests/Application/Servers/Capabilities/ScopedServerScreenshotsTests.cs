@@ -1,3 +1,4 @@
+using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Application.Servers.Capabilities;
@@ -12,12 +13,16 @@ namespace Basil.Application.Servers.Tests.Capabilities;
 
 /// <summary>
 ///     Behaviour of screenshot upload and deletion, from the XML contract of <see cref="ScopedServerScreenshots" />: an
-///     upload needs <see cref="UserPermissions.ScreenshotUpload" />, is at most 4 MiB and a PNG or JPEG of at most
-///     8192 by 8192 pixels, told from content; a deletion needs <see cref="UserPermissions.ScreenshotManage" />.
+///     upload needs <see cref="UserPermissions.ScreenshotUpload" />, is at most the configured number of bytes and a PNG or JPEG
+///     of at most the configured pixels per side, told from content; a deletion needs <see cref="UserPermissions.ScreenshotManage" />.
 /// </summary>
 public sealed class ScopedServerScreenshotsTests
 {
 	private static readonly ContentReference Stored = new("screenshots/stored.png");
+
+	// The defaults of ServerSettings.Uploads: 10 MiB and 8192 pixels per side.
+	private const int MaxBytes = 10 * 1024 * 1024;
+	private const int MaxSide = 8192;
 
 	private static MemoryStream Bytes(int length)
 	{
@@ -158,7 +163,7 @@ public sealed class ScopedServerScreenshotsTests
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
 		var screenshots = await f.UploaderAsync();
 
-		var (_, result) = await screenshots.UploadAsync(Bytes(ScopedServerScreenshots.MaxScreenshotBytes),
+		var (_, result) = await screenshots.UploadAsync(Bytes(MaxBytes),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
@@ -179,7 +184,7 @@ public sealed class ScopedServerScreenshotsTests
 
 	[Theory]
 	[InlineData(1, 1)]
-	[InlineData(ScopedServerScreenshots.MaxScreenshotWidth, ScopedServerScreenshots.MaxScreenshotHeight)]
+	[InlineData(MaxSide, MaxSide)]
 	public async Task UploadAsync_PictureAtTheSmallestAndLargestSide_IsAccepted(int width, int height)
 	{
 		using var f = new Fixture();
@@ -203,11 +208,41 @@ public sealed class ScopedServerScreenshotsTests
 		var screenshots = await f.UploaderAsync();
 
 		var (screenshot, result) = await screenshots.UploadAsync(
-			Bytes(ScopedServerScreenshots.MaxScreenshotBytes + 1), TestContext.Current.CancellationToken);
+			Bytes(MaxBytes + 1), TestContext.Current.CancellationToken);
 
 		Assert.Null(screenshot);
 		Assert.Equal(ServerOutcome.TooLarge, result.Outcome);
 		f.AssertNothingStored();
+	}
+
+	[Fact]
+	public async Task UploadAsync_OverTheConfiguredByteLimit_ReturnsTooLargeAndStoresNothing()
+	{
+		using var f = new Fixture();
+		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
+		await f.App.SetSettingsAsync(new ServerSettings
+			{ Uploads = new ServerSettings.UploadSettings { ScreenshotMaxSize = 100 } });
+		var screenshots = await f.UploaderAsync();
+
+		var (_, atLimit) = await screenshots.UploadAsync(Bytes(100), TestContext.Current.CancellationToken);
+		var (_, overLimit) = await screenshots.UploadAsync(Bytes(101), TestContext.Current.CancellationToken);
+
+		Assert.Equal(ServerOutcome.Ok, atLimit.Outcome);
+		Assert.Equal(ServerOutcome.TooLarge, overLimit.Outcome);
+	}
+
+	[Fact]
+	public async Task UploadAsync_OverTheConfiguredSide_ReturnsDimensionsTooLarge()
+	{
+		using var f = new Fixture();
+		f.InspectedAs(new ScreenshotInfo("png", 300, 200));
+		await f.App.SetSettingsAsync(new ServerSettings
+			{ Uploads = new ServerSettings.UploadSettings { ScreenshotMaxSide = 299 } });
+		var screenshots = await f.UploaderAsync();
+
+		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
+
+		Assert.Equal(ServerOutcome.DimensionsTooLarge, result.Outcome);
 	}
 
 	[Fact]
@@ -218,7 +253,7 @@ public sealed class ScopedServerScreenshotsTests
 		var screenshots = await f.UploaderAsync();
 
 		var (_, result) = await screenshots.UploadAsync(
-			Bytes(ScopedServerScreenshots.MaxScreenshotBytes * 2), TestContext.Current.CancellationToken);
+			Bytes(MaxBytes * 2), TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerOutcome.TooLarge, result.Outcome);
 	}
@@ -268,9 +303,9 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Theory]
-	[InlineData(ScopedServerScreenshots.MaxScreenshotWidth + 1, 100)]
-	[InlineData(100, ScopedServerScreenshots.MaxScreenshotHeight + 1)]
-	[InlineData(ScopedServerScreenshots.MaxScreenshotWidth + 1, ScopedServerScreenshots.MaxScreenshotHeight + 1)]
+	[InlineData(MaxSide + 1, 100)]
+	[InlineData(100, MaxSide + 1)]
+	[InlineData(MaxSide + 1, MaxSide + 1)]
 	public async Task UploadAsync_PictureOverThePixelCeilingOnASide_ReturnsDimensionsTooLargeAndStoresNothing(
 		int width, int height)
 	{
@@ -292,7 +327,7 @@ public sealed class ScopedServerScreenshotsTests
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
 		var screenshots = await f.UploaderAsync();
 
-		await screenshots.UploadAsync(Bytes(ScopedServerScreenshots.MaxScreenshotBytes + 1),
+		await screenshots.UploadAsync(Bytes(MaxBytes + 1),
 			TestContext.Current.CancellationToken);
 
 		await f.Inspector.DidNotReceiveWithAnyArgs().InspectAsync(default!);

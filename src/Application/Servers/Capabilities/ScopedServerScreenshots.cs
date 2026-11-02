@@ -8,15 +8,6 @@ namespace Basil.Application.Servers.Capabilities;
 /// <summary>Screenshot operations scoped to one connection.</summary>
 public sealed class ScopedServerScreenshots
 {
-	/// <summary>The largest screenshot accepted, in bytes: 4 MiB.</summary>
-	public const int MaxScreenshotBytes = 4 * 1024 * 1024;
-
-	/// <summary>The largest accepted screenshot width, in pixels.</summary>
-	public const int MaxScreenshotWidth = 8192;
-
-	/// <summary>The largest accepted screenshot height, in pixels.</summary>
-	public const int MaxScreenshotHeight = 8192;
-
 	private readonly ScopedServer _scoped;
 
 	/// <summary>Creates screenshot operations for a server scope.</summary>
@@ -31,10 +22,9 @@ public sealed class ScopedServerScreenshots
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ScreenshotUpload" />. The image may be at most
-	///     <see cref="MaxScreenshotBytes" /> bytes and must be a PNG or JPEG picture of at most
-	///     <see cref="MaxScreenshotWidth" /> by <see cref="MaxScreenshotHeight" /> pixels per side, told from its
-	///     content, never from a name.
+	///     Requires <see cref="UserPermissions.ScreenshotUpload" />. The image may be at most the screenshot size
+	///     limit of the server settings in bytes and must be a PNG or JPEG picture of at most the screenshot side
+	///     limit in pixels per side, told from its content, never from a name.
 	/// </remarks>
 	public async Task<(ContentReference? Screenshot, Result<ServerOutcome> Result)> UploadAsync(Stream content,
 		CancellationToken cancellationToken = default)
@@ -43,25 +33,26 @@ public sealed class ScopedServerScreenshots
 			return (null, Result<ServerOutcome>.Denied(missing));
 
 		var context = _scoped.Server.Context;
+		var limits = (await context.Settings.GetAsync(cancellationToken)).Uploads;
 
 		using var memory = new MemoryStream();
 		var buffer = new byte[81920];
 		while (true)
 		{
-			var allowance = (int)Math.Min(buffer.Length, MaxScreenshotBytes + 1 - memory.Length);
+			var allowance = (int)Math.Min(buffer.Length, limits.ScreenshotMaxSize + 1 - memory.Length);
 			if (allowance == 0) break;
 			var read = await content.ReadAsync(buffer.AsMemory(0, allowance), cancellationToken);
 			if (read == 0) break;
 			memory.Write(buffer, 0, read);
 		}
 
-		if (memory.Length > MaxScreenshotBytes) return (null, ServerOutcome.TooLarge);
+		if (memory.Length > limits.ScreenshotMaxSize) return (null, ServerOutcome.TooLarge);
 
 		memory.Position = 0;
 		var info = await context.Inspector.InspectAsync(memory, cancellationToken);
 		if (info is null || info.Width < 1 || info.Height < 1)
 			return (null, ServerOutcome.InvalidImage);
-		if (info.Width > MaxScreenshotWidth || info.Height > MaxScreenshotHeight)
+		if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
 			return (null, ServerOutcome.DimensionsTooLarge);
 
 		memory.Position = 0;

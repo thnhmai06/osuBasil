@@ -25,6 +25,7 @@ internal sealed class PostgresSettingsRepository(
 	[
 		Of("general", settings => settings.General, (settings, value) => settings with { General = value }),
 		Of("locks", settings => settings.Locks, (settings, value) => settings with { Locks = value }),
+		Of("accounts", settings => settings.Accounts, (settings, value) => settings with { Accounts = value }),
 		Of("sessions", settings => settings.Sessions, (settings, value) => settings with { Sessions = value }),
 		Of("rate_limits", settings => settings.RateLimits, (settings, value) => settings with { RateLimits = value }),
 		Of("uploads", settings => settings.Uploads, (settings, value) => settings with { Uploads = value }),

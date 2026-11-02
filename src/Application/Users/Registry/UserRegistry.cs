@@ -162,7 +162,7 @@ public sealed class UserRegistry
 		CancellationToken cancellationToken)
 	{
 		return client is not null && await _context.Sessions.TakeReauthenticationAsync(record,
-			new DeviceId(client.Fingerprint.UninstallHash.HashValue, client.Fingerprint.DiskSignatureHash.HashValue),
+			new DeviceId(client.Fingerprint.UninstallHash, client.Fingerprint.DiskSignatureHash),
 			cancellationToken);
 	}
 
@@ -331,7 +331,7 @@ public sealed class UserRegistry
 		if (failure is not null) return (null, failure);
 
 		return await _accounts.CreateAsync(new UserData { Name = attempt.Username }, attempt.PasswordHash,
-			cancellationToken);
+			null, cancellationToken);
 	}
 
 	/// <summary>Closes a connection, taking its user offline if it was their last one.</summary>
@@ -648,8 +648,8 @@ public sealed class UserRegistry
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, CancellationToken cancellationToken)
+		Md5 passwordHash, UserPermissions? permissions, CancellationToken cancellationToken)
 	{
-		return _accounts.CreateAsync(data, passwordHash, cancellationToken);
+		return _accounts.CreateAsync(data, passwordHash, permissions, cancellationToken);
 	}
 }
