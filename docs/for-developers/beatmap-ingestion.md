@@ -94,7 +94,7 @@ The ingestion pipeline accepts **beatmapsets**, not individual difficulty files.
 
 * A `.osz` placed in `Beatmapsets/` is automatically detected, kept in place as the beatmapset's permanent storage, analyzed, and synchronized with the database. No restart or manual action is required.
 * A standalone `.osu` file placed directly in `Beatmapsets/` is ignored. Without the containing beatmapset, Basil cannot reliably determine its ownership and does not attempt to infer one.
-* `POST /beatmapsets` on the admin API accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
+* `POST /v1/beatmapsets` accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
 * Star rating, BPM, length, and object counts are calculated once during ingestion and persisted with the beatmap metadata.
 * Reading a beatmap never triggers difficulty recalculation.
 * Ingestion happens regardless of whether Basil is in offline or online mirror mode.
@@ -125,23 +125,7 @@ An individual asset (a `.osu` file, background, audio, video) is extracted from 
 demand and cached — see "Derived media" below, which covers this the same way it covers
 generated thumbnails and previews.
 
-A beatmapset ingested before this decision may still be on disk as an extracted directory:
-
-```text
-Beatmapsets/
-└── {id} Artist - Title/
-    ├── audio.mp3
-    ├── background.jpg
-    ├── video.mp4
-    ├── *.osu
-    └── *.osb
-```
-
-A background migration pass converts each such directory to the canonical `.osz` layout once,
-at startup, without blocking Basil from accepting connections. Every consumer that resolves a
-beatmapset's files — ingestion, downloads, thumbnails, previews, `!mp`/osu!web routes — checks
-for the extracted-directory layout first and falls back to the canonical archive otherwise, so a
-beatmapset is fully functional under either layout for as long as both exist side by side.
+Only the `.osz` layout exists: a directory in `Beatmapsets/` is not a beatmapset and is ignored.
 
 The database mirrors this filesystem state:
 
@@ -161,27 +145,22 @@ Mirror-hosted beatmaps are a separate concern. They do not need to exist in `Bea
 
 ## Ingestion triggers
 
-Basil has three mechanisms for keeping the local beatmap database synchronized with `Beatmapsets/`.
+Basil has two mechanisms (the upload route is the third entry into the same pipeline) for keeping the local beatmap database synchronized with `Beatmapsets/`.
 
 ### Filesystem watcher
 
-`[BeatmapWatcherService](../../src/Infrastructure/Beatmaps/BeatmapWatcherService.cs)` monitors the directory's top level, non-recursively, for a `.osz` archive appearing, changing, or disappearing.
+[`BeatmapsetStorageWatcher`](../../src/Infrastructure/Beatmaps/Workers/BeatmapsetStorageWatcher.cs) monitors the directory's top level, non-recursively, for a `.osz` archive appearing, changing, or disappearing.
 
 When a new `.osz` appears, the watcher schedules it for ingestion. Under normal conditions, the change becomes visible within a few seconds.
 
-The watcher does not watch inside an extracted-directory (legacy layout) beatmapset, and ignores that directory's own top-level appearance, rename, or removal. A directory dropped directly onto disk, or deleted by renaming it aside, is not live-reconciled this way -- it is picked up by startup reconciliation or the migration pass below, or reconciled inline by the admin API route that wrote to it (`PUT`/`DELETE /beatmapsets/{id}`, for a beatmapset still on the legacy layout).
 
 ### Startup reconciliation
 
 The watcher cannot account for changes that happen while Basil is offline.
 
-Therefore, Basil performs a full reconciliation during startup. This discovers beatmapsets that were added, removed, or otherwise changed while the server was not running.
+Therefore, Basil performs a full scan during startup, which finishes before the server serves clients. This discovers beatmapsets that were added, removed, or otherwise changed while the server was not running.
 
-### Migration pass
-
-The background migration pass described above (extracted directory → canonical `.osz`) also reconciles a legacy beatmapset it converts, as a side effect of building its archive.
-
-Every mechanism eventually invokes the same ingestion service. There is no separate implementation for startup discovery, filesystem changes, migration, or admin uploads.
+Every mechanism ends in the same importer and scanner of `Basil.Application.Beatmaps`. There is no separate implementation for startup discovery, filesystem changes, or uploads.
 
 ## Ingestion lifecycle
 
@@ -190,12 +169,12 @@ Every mechanism eventually invokes the same ingestion service. There is no separ
  │
  ├── Beatmapsets/ filesystem
  │       │
- │       └── BeatmapWatcherService
+ │       └── BeatmapsetStorageWatcher
  │
  └── POST /beatmapsets
          │
          ▼
-BeatmapIngestionService
+BeatmapsetImporter / BeatmapsetScanner
          │
          ├── keep archive in place as canonical storage
          │
@@ -223,7 +202,7 @@ server startup
 filesystem reconciliation
       │
       ▼
-BeatmapIngestionService
+BeatmapsetScanner
 ```
 
 Mirror search/download does **not** replace this pipeline. It is an independent source of remote beatmap discovery and acquisition.
@@ -299,12 +278,14 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 ## Related code
 
-* [`Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs`](../../src/Infrastructure/Beatmaps/BeatmapIngestionService.cs): shared local ingestion pipeline
-* [`Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs`](../../src/Infrastructure/Beatmaps/BeatmapWatcherService.cs): filesystem change detection
-* [`Basil.Infrastructure/Beatmaps/BeatmapsetMigrationService.cs`](../../src/Infrastructure/Beatmaps/BeatmapsetMigrationService.cs): one-time background conversion of extracted directories to the canonical `.osz` layout
-* [`Basil.Infrastructure/Beatmaps/BeatmapsetAssetCache.cs`](../../src/Infrastructure/Beatmaps/BeatmapsetAssetCache.cs): on-demand per-asset extraction from the canonical archive
-* [`Basil.Infrastructure/Performance/PpyOsuCalculator.cs`](../../src/Infrastructure/Performance/PpyOsuCalculator.cs): osu! ruleset difficulty calculations
-* [`Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs`](../../src/Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs): beatmap asset and preview routes
+* [`BeatmapsetImporter.cs`](../../src/Application/Beatmaps/Capabilities/BeatmapsetImporter.cs): imports one uploaded `.osz`
+* [`BeatmapsetScanner.cs`](../../src/Application/Beatmaps/Capabilities/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
+* [`BeatmapsetPlanner.cs`](../../src/Application/Beatmaps/Capabilities/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
+* [`BeatmapsetStorageWatcher.cs`](../../src/Infrastructure/Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
+* [`FileBeatmapsetStorage.cs`](../../src/Infrastructure/Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
+* [`OsuBeatmapAnalyser.cs`](../../src/Infrastructure/Beatmaps/Capabilities/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
+* [`BeatmapPreviewMaker.cs`](../../src/Infrastructure/Beatmaps/Capabilities/BeatmapPreviewMaker.cs): audio previews with `ffmpeg`
+* [`BeatmapRoutes.cs`](../../src/Hosts/Rest/Routes/BeatmapRoutes.cs): beatmapset routes of the API host
 
 ## See also
 

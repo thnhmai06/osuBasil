@@ -77,14 +77,15 @@ corresponding tests and documentation.
 The dependency rule is enforced by architecture tests:
 
 ```text
-Domain      → nothing
-Protocol    → nothing
-Application → Domain, Protocol
-Infrastructure → Application
-Web         → Domain, Protocol, Application, Infrastructure
+Domain                  → nothing
+Application.<Module>    → Domain, Application.Common, the modules it uses
+Infrastructure.<Module> → its own Application, Infrastructure.Common
+Protocol.*              → external libraries only
+Host.* (transports)     → Host.Shared, their Application and Protocol projects
+Host                    → everything
 ```
 
-`Basil.ArchitectureTests` enforces these boundaries in CI.
+`tests/Architecture` (`ModuleGraphTests`, `HostGraphTests`) enforces these boundaries in CI. The module graph is in [`AGENTS.md`](../../AGENTS.md).
 
 Do not introduce a dependency that points inward across these boundaries simply because it is convenient.
 
@@ -92,10 +93,10 @@ See [`architecture.md`](../for-developers/architecture.md).
 
 ### Multiplayer mutations
 
-Multiplayer state mutations must hold [`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs).
+Multiplayer state mutations must hold the room's own lock (see [`Room`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs)).
 
-Any handler, command, or route that performs a read-then-mutate operation on match slots must hold the per-match
-semaphore across the complete operation:
+Any handler, command, or route that performs a read-then-mutate operation on match slots is a synchronous method of `Room`
+that holds the room's lock across the complete operation and never awaits under it:
 
 ```text
 read → mutate → broadcast

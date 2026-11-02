@@ -1,6 +1,6 @@
 # Application design rules
 
-Rules for Domain and Application objects, scopes, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Modules/*/Application` or `src/Bot`.
+Rules for Domain and Application objects, scopes, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `src/Bot`.
 
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 

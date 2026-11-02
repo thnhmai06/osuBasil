@@ -730,7 +730,6 @@ the owner merges them into the skill later, nobody edits the skill silently.
   tools of the main checkout, so the orchestrator runs the container check after merging; two agents at a time at most,
   and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
   hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
-
 * **Scoped base class and `Result<TOutcome>`** (2026-10-21, see `docs/for-agents/application-design.md`): one abstract
   `Scoped<T>` holds the effective permissions snapshot and offers `Require(required)` returning the missing permissions
   (`null` = met); behaviours return a shared `Result<TOutcome>` with per-object outcome enums starting at `Ok = 1`.

@@ -31,7 +31,7 @@ rights belong to their respective owners.
 
 Basil is designed around a simple principle: **keep the server self-contained and minimize external dependencies**.
 
-The server can operate entirely offline, keeping gameplay and tournament data under the operator's control without
+The server needs only a PostgreSQL database and can operate entirely offline, keeping gameplay and tournament data under the operator's control without
 requiring third-party online services.
 
 * **Multiplayer-first**: provides the [osu! stable multiplayer](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer)
@@ -46,7 +46,8 @@ requiring third-party online services.
   the same with or without them.
 * **Fine-grained permissions**: every account acts under its own identity and permissions, osu!-style restrictions
   and silences included; the privileges an osu! client sees are derived from them.
-* **Self-contained storage**: stores server data locally using SQLite; no external database server is required.
+* **Memory-first storage**: live state is kept in memory and persisted to [PostgreSQL](https://www.postgresql.org/) in
+  the background; stored files live in a local `Data/` directory.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
   external beatmap mirrors.
 * **User-centric HTTP API**: clients sign in as users and get HTTP and SSE endpoints for rooms, chat, match reports,
@@ -63,13 +64,13 @@ For the complete supported and excluded feature set, see
 | Layer          | Choice                                                                                                                                                                   |
 |----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as self-contained executables and supported in [Docker](https://docker.com)               |
-| Database       | [SQLite](https://www.sqlite.org/), accessed through [Dapper](https://github.com/DapperLib/Dapper) and versioned with [DbUp](https://dbup.readthedocs.io/)                |
-| API            | Build-time [OpenAPI](https://spec.openapis.org/oas/latest.html) generation with interactive documentation powered by [Scalar](https://scalar.com/)                       |
+| Database       | [PostgreSQL](https://www.postgresql.org/), accessed through [Entity Framework Core](https://learn.microsoft.com/ef/core/) (Npgsql) with EF migrations |
+| API            | [OpenAPI](https://spec.openapis.org/oas/latest.html) generation with interactive documentation powered by [Scalar](https://scalar.com/)                       |
 | Star rating    | Official osu! difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu)                                                             |
 | Beatmap assets | Thumbnails processed with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore) |
 | Security       | Passwords hashed with [BCrypt.Net](https://github.com/BcryptNet/bcrypt.net)                                                                                              |
 | Logging        | Structured logging with [Serilog](https://serilog.net/)                                                                                                                  |
-| Testing        | [xUnit](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), and [NetArchTest](https://github.com/BenMorris/NetArchTest)                                  |
+| Testing        | [xUnit v3](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), [NetArchTest](https://github.com/BenMorris/NetArchTest) and [Testcontainers](https://dotnet.testcontainers.org/) for PostgreSQL                                  |
 
 ## 📖 Getting Started
 
