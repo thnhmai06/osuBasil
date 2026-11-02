@@ -102,7 +102,7 @@ When two documents disagree, the authoritative document wins.
 | Topic                                                  | Authoritative document             |
 | ------------------------------------------------------ | ---------------------------------- |
 | Scope decisions: what exists and what was removed      | [`for-developers/working-scopes.md`](for-developers/working-scopes.md) |
-| Configuration surface, admin key, and data directories | [`for-technicians/configuration.md`](for-technicians/configuration.md) |
+| Configuration surface and data directories              | [`for-technicians/configuration.md`](for-technicians/configuration.md) |
 | HTTPS and certificates                                 | [`for-technicians/https.md`](for-technicians/https.md)                 |
 | Console commands, local socket, exit codes            | [`for-technicians/console.md`](for-technicians/console.md)             |
 | Privilege flags and their meanings                     | [`for-developers/privileges.md`](for-developers/privileges.md)         |

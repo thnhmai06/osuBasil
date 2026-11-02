@@ -1,5 +1,13 @@
 # ADR-003 — Match state persistence ordering
 
+> **Superseded by the Host phase (2026-10-30).** The design below describes the earlier SQLite persistence with a
+> round-end outbox. The server now stores through `DatabaseWriter`, which keeps one queue per root (`Root.Match(id)`
+> for a match and what belongs to it) and sends the writes of a root one statement at a time, in order, retrying
+> transient failures before any later write of the same root. The rows of a round therefore reach PostgreSQL in the
+> order the room produced them, without the room waiting for the database. The ordering requirement this record states
+> is kept; the mechanism is not. See [`persistence.md`](../for-agents/persistence.md) and
+> [`database.md`](../for-developers/database.md).
+
 > Status: **Accepted and implemented.** Approved 2026-09-01 (user decision on every open
 > sub-decision below). Implemented the same session: `MatchRoundEndOutbox`
 > (`src/Basil.Application/Backgrounds/MatchRoundEndOutbox.cs`), wired into

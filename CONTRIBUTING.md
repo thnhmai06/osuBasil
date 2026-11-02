@@ -50,11 +50,17 @@ Follow that guide rather than creating an ad-hoc local setup.
 
 ```text
 src/
-    the five production projects
+    Domain/                      business model
+    Application/<Module>/        the module's ports and live objects
+    Infrastructure/<Module>/     the module's implementations
+    Protocol/{Bancho,Irc}/       wire formats
+    Hosts/{Host,Shared,Bancho,Irc,Rest,Cli}/
+                                 the entry point and the transports
+    Bot/                         BasilBot
 
 tests/
-    one test project per source project,
-    plus integration and architecture tests
+    one test project per source project, in the same folders,
+    plus Architecture/ and the shared fixtures in Support/
 
 docs/
     documentation split by audience:
@@ -64,10 +70,8 @@ docs/
     for-agents/
 ```
 
-The five `src/` projects form a layered monolith.
-
-`Basil.Web` sits at the outermost layer, while dependencies point inward toward the domain. The dependency direction is
-enforced by [`tests/Basil.ArchitectureTests`](tests/Basil.ArchitectureTests).
+Basil is a layered monolith split by module. `Basil.Host` sits at the outermost layer, while dependencies point inward
+toward the domain. The dependency direction is enforced by [`tests/Architecture`](tests/Architecture).
 
 See [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) for the responsibilities of each
 project and guidance on where new code belongs.

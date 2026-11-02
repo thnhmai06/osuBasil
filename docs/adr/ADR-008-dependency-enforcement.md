@@ -1,5 +1,11 @@
 # ADR-008 — Dependency rules must be able to see constants
 
+> **Superseded by the Host phase (2026-10-30).** The slice allowlist (`SliceAdjacency`), the IL-based rules and the
+> `AdminKeyDefaults` constants this record discusses no longer exist. The code is split into projects by module and
+> layer, and `tests/Architecture/ModuleGraphTests.cs` and `HostGraphTests.cs` read the **project references** and fail on
+> an edge outside the allowed graph or on a cycle, so a constant that leaves no IL reference cannot hide a dependency.
+> The reasoning below explains why the earlier rule was blind; it is kept as history.
+
 > Status: **Accepted 2026-09-09. Implemented in `ed48716`.**
 
 ## Context

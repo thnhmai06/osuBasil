@@ -53,8 +53,7 @@ The IRC gateway allows real IRC clients and tools such as osu-ahr to connect alo
 
 Chat commands (`!mp`, `!help`, `!roll`, `!where`, `!faq`, and the staff commands) and chat announcements (anticheat
 warnings, round and room notices) are part of the server, provided by BasilBot: a fixed user (id 1) that nobody can
-sign in as or act for, and that is the voice the server speaks with. The command handler and announcers are implemented in `Basil.Bot`; host
-integration is still pending. A command is an entry point like IRC: it runs against objects scoped to the connection
+sign in as or act for, and that is the voice the server speaks with. The command handler and announcers are implemented in `Basil.Bot`, and the hosts hand chat messages to it. A command is an entry point like IRC: it runs against objects scoped to the connection
 of the user who typed it, and the bot only replies. Room countdowns (a delayed start, a plain timer, cancelling it)
 are features of the room; BasilBot announces their marks. See the generated BasilBot reference at
 `api.<domain>/docs/basil-bot/` for the supported command list.

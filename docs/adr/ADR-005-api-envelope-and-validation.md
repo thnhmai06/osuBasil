@@ -1,5 +1,12 @@
 # ADR-005 — API envelope, validation, and JSON pipeline
 
+> **Amended by the Host phase (2026-10-30).** The decisions below were made for a middleware that wrapped every JSON
+> response (`EnvelopeMiddleware`) and a separate `ExceptionLoggingMiddleware`. Those classes are gone. Routes now build
+> the envelope themselves through the `Api` helper, the request pipeline of the `api.` host (`RestPipeline`) maps an
+> unhandled exception to an enveloped `500`, and the OpenAPI document declares the `Envelope` schema once. The
+> guarantees recorded here (one envelope on every response of the `api.` host, a stable error code, one shared set of
+> JSON options) still hold. See [`response-envelope.md`](../for-developers/response-envelope.md).
+
 > Status: **Accepted (retroactive).** Not a decision gate — the perf-investigation plan marks
 > only ADR-001/003/004 `[GATE]`. Written after most of this ADR's scope was implemented, to
 > record the decisions made and the scope still open, per the plan's rule that every rebuild
