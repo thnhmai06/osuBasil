@@ -4,10 +4,12 @@
 
 ## Overview
 
-Basil runs as a single process. There is no separate database or cache service to install or maintain.
+Basil runs as a single process and keeps its records in a PostgreSQL database that you provide. There is no cache
+service to install.
 
-Persistent server data is stored under `Data/` next to the executable. Logs are stored under `Logs/`. Both directories
-are created automatically when Basil starts for the first time.
+Settings and the certificate live in `Configurations/` next to the executable. Stored files (replays, avatars,
+beatmapsets, screenshots) are under `Data/`. Logs are under `Logs/`. These directories are created automatically when
+Basil starts for the first time; the database is created and migrated by Basil itself.
 
 This guide covers a manual deployment where clients connect to Basil over a LAN or the public internet.
 
@@ -18,11 +20,13 @@ This guide covers a manual deployment where clients connect to Basil over a LAN 
 Before deploying Basil, make sure you have:
 
 * A supported operating system and architecture.
+* A PostgreSQL server and an empty database with a role that may create tables in it (the test suite runs against
+  PostgreSQL 16 and 17). One database belongs to one Basil process.
 * `ffmpeg` installed. *(optional)*
 * A hostname or domain that clients can resolve to the server.
 * A TLS certificate covering the Basil hostname and its required subdomains.
 * Permission to bind to the configured HTTPS port.
-* Firewall access for the configured Basil port.
+* Firewall access for the configured Basil ports (HTTPS, and IRC if you use it).
 
 Basil releases are self-contained and include the required .NET runtime. **You do not need to install .NET separately.**
 
@@ -76,16 +80,15 @@ For example:
 
 ```text
 /opt/basil/
-├── Basil.Web
-├── Data/
-│   ├── appsettings.json
-│   └── Localization/
-│       ├── bot.en.json
-│       └── irc.en.json
-└── Logs/
+├── Basil.Host
+└── Configurations/
+    ├── appsettings.json
+    ├── appsettings.schema.json
+    ├── basil.local.pfx
+    └── Templates/
 ```
 
-`Data/`, `Logs/` may be created automatically on first startup, depending on the release.
+`Data/` and `Logs/` are created on first startup.
 
 If you are building Basil yourself instead of using a release, see [`development.md`](../for-developers/development.md).
 
@@ -93,7 +96,8 @@ If you are building Basil yourself instead of using a release, see [`development
 
 ### 2. Configure Basil
 
-Edit [`Data/appsettings.json`](../../src/Basil.Web/Data/appsettings.json) under the Basil executable's `Data/` directory.
+Edit [`Configurations/appsettings.json`](../../src/Hosts/Host/Configurations/appsettings.json) beside the executable.
+Settings can also be given on the command line (`--Basil:Server:Domain=tourney.example`), which wins over the file.
 
 See [`configuration.md`](configuration.md) for the complete configuration reference.
 
@@ -123,30 +127,32 @@ basil.local
 
 Basil derives its required service subdomains from this value.
 
-#### Admin key
+#### Database
 
-A new database has no admin key and therefore starts in **bypass mode**.
-
-Before allowing clients to connect, set an admin key using:
+Set:
 
 ```text
-PUT /settings/adminkey
+Basil:Database:ConnectionString
 ```
 
-**Do not expose a server to untrusted users while it is in bypass mode.**
-
-See [`configuration.md`](configuration.md) for the admin-key procedure.
+to the Npgsql connection string of the PostgreSQL database that belongs to this Basil process. Basil applies its
+migrations when it starts.
 
 #### Optional settings
 
 The following are normally optional:
 
 ```text
-Basil:Bot:Name
-Basil:Bot:CommandPrefix
-Basil:Irc:Name
-Basil:Irc:Port
+Basil:Server:Ports:Https
+Basil:Server:Ports:Irc
+Basil:Server:Bind
+Basil:Server:TrustedProxies
+Basil:Logging:MinimumLevel
 ```
+
+Policy that users feel while the server runs (locks, rate limits, upload limits, session lifetimes, the bot prefix) is
+not in this file: it is stored in the database and changed through the API or the console without a restart. See
+[`configuration.md`](configuration.md).
 
 ---
 
@@ -159,20 +165,21 @@ Configure a TLS certificate covering the Basil domain and all required service s
 Configure:
 
 ```text
-Basil:Server:CertPath
-Basil:Server:CertPassword
+Basil:Server:Certificate:Path
+Basil:Server:Certificate:Password
 ```
 
 when Basil is responsible for TLS termination.
 
-**By default, Basil ships with a TLS certificate for local and LAN development on `Data/`.** No certificate
-configuration is required for a basic deployment.
+**By default, Basil ships with a TLS certificate for local and LAN development in `Configurations/basil.local.pfx`.**
+No certificate configuration is required for a basic LAN deployment.
 
 For a public deployment, replace the bundled certificate with a certificate issued for your server's domain and all
 required subdomains. See [`https.md`](https.md) for certificate requirements and configuration.
 
-If TLS is terminated by a reverse proxy, configure the proxy instead and leave Basil's certificate settings unset as
-appropriate for that deployment.
+If TLS is terminated by a reverse proxy, leave `Certificate:Path` empty so that Basil serves plain HTTP behind the
+proxy, and list the proxy in `Basil:Server:TrustedProxies` so that the client address is taken from its forwarding
+headers.
 
 ---
 
@@ -195,12 +202,25 @@ client-side configuration.
 
 ---
 
-### 5. Start Basil
+### 5. Create the first account
+
+The server never creates an account by itself, and the first administrator is made with the console, which works on
+the storage while the server is stopped:
+
+```bash
+./Basil.Host users create --username admin --password change-me --admin
+```
+
+`--admin` gives the account every permission. The console commands are specified in [`console.md`](console.md).
+
+---
+
+### 6. Start Basil
 
 The HTTPS port is controlled by:
 
 ```text
-Basil:Server:Port
+Basil:Server:Ports:Https
 ```
 
 The default is `443`. **This is the port that osu! client will connect to, so don't change it unless you are sure you
@@ -212,28 +232,29 @@ configuration.
 Start Basil from its executable directory:
 
 ```bash
-./Basil.Web
+./Basil.Host
 ```
+
+The server shows a terminal dashboard. Under a service manager (systemd, Docker) stdin and stdout are redirected and it
+falls back to plain log lines by itself; use `--nogui` to ask for that explicitly. `SIGTERM` starts a graceful shutdown.
+Under systemd or a container runtime, the exit code `75` asks the manager to start the server again (the `restart`
+command), while `0` is a normal stop; see [`console.md`](console.md).
 
 On Windows, run the published executable normally or through the service mechanism used by your deployment environment.
 
-If a firewall is enabled, allow inbound traffic to the configured Basil port.
+If a firewall is enabled, allow inbound traffic to the configured Basil ports.
 
 ---
 
-### 6. Verify the server
+### 7. Verify the server
 
 From the server or another machine that can reach it, run:
 
 ```bash
-curl -k https://osu.<domain>/web/bancho_connect.php
+curl -k https://api.<domain>/v1/users/1
 ```
 
-A healthy server should return HTTP:
-
-```text
-200 OK
-```
+A healthy server should answer HTTP `200 OK` with the account of BasilBot.
 
 If this fails, check:
 
@@ -242,92 +263,75 @@ If this fails, check:
 3. The firewall allows the port.
 4. DNS or hosts entries resolve correctly.
 5. The TLS certificate is valid for the requested hostname.
-6. Basil's startup log for configuration or binding errors.
+6. Basil's startup log for configuration, database or binding errors.
 
 ---
 
-## Create the first account
+## Create more accounts
 
-There are two ways to create the first account.
-
-### Option A: In-game registration
+### In-game registration
 
 1. Configure the osu! client to connect to the Basil server.
 2. Open the login screen.
 3. Select **Register**.
-4. Enter the Basil admin key in the **Email** field.
-5. Choose the username and password.
-6. Complete registration.
+4. Choose the username and password. The email field is not used.
+5. Complete registration.
 
-New accounts are created with these privileges:
+New accounts receive the default permission set. Registration is limited per address and per server by the registration
+rate limit, and while the **accounts** lock is on only account managers can create accounts; see
+[`configuration.md`](configuration.md). See [`getting-started.md`](../for-client/bancho/getting-started.md).
 
-```text
-Unrestricted | Verified | Supporter
-```
+### Console or API
 
-See [`getting-started.md`](../for-client/bancho/getting-started.md).
-
-### Option B: Admin API
-
-Create an account through the `api.<domain>` host:
+An administrator can create an account with the console:
 
 ```bash
-curl -X POST https://api.<domain>/users \
-  -H "Authorization: Bearer <your admin key>" \
+./Basil.Host users create --username Player1 --password hunter2 --country vn
+```
+
+or through the `api.<domain>` host, with the Bearer token of an account that may manage users (sign in with
+`POST /v1/auth/login`):
+
+```bash
+curl -X POST https://api.<domain>/v1/users \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Player1","password":"hunter2","country":"vn","privilege":19}'
+  -d '{"username":"Player1","password":"hunter2","country":"vn"}'
 ```
 
-The request requires:
-
-* `name`
-* `password`
-* `country`: two-letter lowercase country code
-* `privilege`: numeric privilege bitfield
-
-`19` corresponds to:
-
-```text
-Unrestricted | Verified | Supporter
-```
-
-See [`privileges.md`](../for-developers/privileges.md) for the complete privilege reference.
-
-Users are automatically given the `Verified` flag when they complete their first login. Additional privileges can be
-managed through:
-
-```text
-PATCH /users/{userId}
-```
+`username` and `password` are required; `country` is a two-letter code and `permissions` is an optional bitmask
+(default: the default permissions). See [`privileges.md`](../for-developers/privileges.md) for the permission reference.
 
 ---
 
 ## Moving Basil to another machine
 
-Basil's deployment consists of three important categories:
+Basil's deployment consists of these categories:
 
-| Item             | Purpose                                     | Copy during migration?                          |
-|------------------|----------------------------------------------|--------------------------------------------------|
-| Executable files | Basil application                           | If the target machine doesn't have               |
-| `Data/`          | Persistent server state, including `appsettings.json` | If the source state should be migrated |
-| `Logs/`          | Operational history                         | Normally no                                       |
+| Item             | Purpose                                              | Copy during migration?                          |
+|------------------|------------------------------------------------------|-------------------------------------------------|
+| Executable files | Basil application                                    | If the target machine doesn't have them         |
+| `Configurations/`| deployment settings, certificate, templates          | Yes                                             |
+| `Data/`          | stored files: replays, avatars, beatmapsets          | If the source state should be migrated          |
+| PostgreSQL       | all records                                          | Yes (`pg_dump` and restore)                     |
+| `Logs/`          | Operational history                                  | Normally no                                     |
 
 ### Full migration
 
 To move an existing Basil server to another machine:
 
 1. Stop Basil on the source machine.
-2. Copy the complete executable directory to the target.
-3. Make sure `Data/` is included. `Logs/` does not need to be copied.
-4. Verify the configuration on the target, especially:
+2. Dump the database with `pg_dump` and restore it on the target; copy `Configurations/` and `Data/` with the
+   executable. Records and files refer to each other, so take them together. `Logs/` does not need to be copied.
+3. Verify the configuration on the target, especially:
 	* `Basil:Server:Domain`
 	* HTTPS certificate settings
-	* `Basil:Server:Port`
-5. Start Basil on the target.
-6. Verify the server using the connectivity check above.
+	* `Basil:Server:Ports:Https`
+	* `Basil:Database:ConnectionString`
+4. Start Basil on the target.
+5. Verify the server using the connectivity check above.
 
-The `Data/` directory contains the configuration, database, and other persistent state. **Do not omit it if the
-intention is to preserve the existing server.**
+**Do not omit the database or `Data/` if the intention is to preserve the existing server.**
 
 ### Upgrade an existing installation
 
@@ -335,11 +339,11 @@ If the target already contains a Basil installation:
 
 1. Stop Basil.
 2. Replace the application files with the new release.
-3. Keep the existing `Data/` directory (this carries `appsettings.json` too, unless configuration changes are required).
+3. Keep the existing `Configurations/` and `Data/` directories (unless configuration changes are required).
 4. Start Basil.
 5. Check the startup log for errors.
 
-Do **not** replace `Data/` with the empty `Data/` directory from a release archive.
+Do **not** replace `Configurations/` or `Data/` with the ones from a release archive.
 
 Basil performs database migrations automatically when it starts.
 
@@ -347,7 +351,8 @@ Basil performs database migrations automatically when it starts.
 
 ## See also
 
-* [`configuration.md`](configuration.md): configuration, admin key, and persistent data
+* [`configuration.md`](configuration.md): configuration and persistent data
+* [`console.md`](console.md): the console commands, exit codes and shutdown
 * [`https.md`](https.md): TLS certificates and HTTPS
 * [`docker.md`](docker.md): Docker deployment
 * [`getting-started.md`](../for-client/bancho/getting-started.md): configuring an osu! client

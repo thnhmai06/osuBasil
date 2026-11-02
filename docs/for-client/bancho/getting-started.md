@@ -103,23 +103,22 @@ There are two ways to create an account.
 
 1. Launch osu! stable with `-devserver`.
 2. Click **Register** on the login screen.
-3. Enter the Basil server's **admin key** in the **Email** field.
-4. Choose a username and password.
-5. Complete registration.
+3. Choose a username and password. The email field is not used.
+4. Complete registration.
 
-See [`configuration.md`](../../for-technicians/configuration.md) for information about the admin key.
+Registration can be refused while account creation is locked, or when too many accounts were registered from your
+address; ask the server's operator to create the account in that case. See
+[`configuration.md`](../../for-technicians/configuration.md).
 
 ### Admin API
 
-An administrator can also create an account through Basil's admin API.
+An administrator can also create an account through Basil's API, or with the server's console.
 
 See the API documentation available at:
 
 ```text
 https://api.<domain>/docs/
 ```
-
-A newly created account is automatically granted the `Verified` privilege after its first successful login.
 
 ---
 

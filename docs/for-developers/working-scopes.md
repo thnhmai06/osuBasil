@@ -222,7 +222,7 @@ The `api.<domain>` host was introduced with a deliberately narrower API surface:
 * tournament match reports
 * SSE live updates
 * replay and beatmap downloads
-* admin-key-gated management CRUD
+* management CRUD gated by the permissions of the signed-in user
 
 It does **not** attempt to reproduce a general osu-web API, and has no OAuth.
 

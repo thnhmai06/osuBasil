@@ -104,7 +104,6 @@ The token identifies the client's active session.
 Do not confuse the `osu-token` with:
 
 * the account password;
-* the admin key;
 * the `cho-token` response header used when establishing the session.
 
 See [`authentication.md`](authentication.md) for the login flow.

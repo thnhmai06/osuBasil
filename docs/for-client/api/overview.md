@@ -65,22 +65,23 @@ The documentation site contains separate references for:
 
 ## Authentication
 
-Management endpoints require the Basil **admin key**.
+The API is user-centric: a call acts for the signed-in user and may do what that user's permissions allow.
 
-Send the key using:
+Sign in with `POST /v1/auth/login`, giving the username and the plain password. The response carries a token, shown
+only there. Send it with every call that needs it:
 
 ```http
-Authorization: Bearer <key>
+Authorization: Bearer <token>
 ```
 
-The admin key is configured at runtime and is not stored in `appsettings.json`.
+* A call without a token, or with a token that is no longer valid, is answered with `401`.
+* A call that lacks a permission it needs is answered with `403`; the error names the missing permissions.
+* A few routes are public and need no token, for example retrieving an account or an image.
+* `GET /v1/auth/session` tells you which user the token belongs to; `POST /v1/auth/logout` ends the session.
 
-A new Basil installation has no admin key configured and therefore starts in **bypass mode**. In bypass mode, admin-protected endpoints do not require authentication.
-
-> [!IMPORTANT]
-> Do not expose a new Basil installation to untrusted users while it is in bypass mode. Set an admin key before making the server publicly accessible.
-
-For information about setting and managing the admin key, see [`configuration.md`](../../for-technicians/configuration.md).
+There is no shared key and no mode in which the API is open. The server creates no account by itself: the first
+administrator is made with the console (`users create --admin`), see
+[`console.md`](../../for-technicians/console.md). Clients built on Basil sign in as ordinary users.
 
 ---
 
@@ -133,4 +134,4 @@ See [`sse.md`](sse.md) for:
 * [`irc-client.md`](../irc-client.md): connecting an IRC client
 * [`basil-bot.md`](../basil-bot.md): BasilBot chat commands
 * [`multiplayer.md`](../../for-developers/multiplayer.md): match implementation and behaviour
-* [`configuration.md`](../../for-technicians/configuration.md): admin key and server configuration
+* [`configuration.md`](../../for-technicians/configuration.md): server configuration

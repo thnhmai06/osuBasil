@@ -98,11 +98,11 @@ POST /
 osu-token: <session-token>
 ```
 
-The session token is issued by Basil and is not the user's password or admin key.
+The session token is issued by Basil and is not the user's password.
 
 If Basil no longer recognizes the token, the client must reconnect and authenticate again.
 
-This normally happens after the server restarts because active sessions are stored in memory.
+This normally happens after the server restarts, because the connections of osu! clients are held in memory.
 
 ---
 

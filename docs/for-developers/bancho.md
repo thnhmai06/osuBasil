@@ -4,172 +4,105 @@
 
 Basil's Bancho transport receives batches of binary packets through the osu! stable HTTP long-poll endpoint.
 
-The client-facing packet format is documented in [`protocol.md`](../for-client/bancho/protocol.md). This document describes how Basil dispatches those packets to Application-layer handlers.
+The client-facing packet format is documented in [`protocol.md`](../for-client/bancho/protocol.md). This document describes
+how `Basil.Host.Bancho` turns those packets into operations on the Application objects, and how the answers get back to
+the client.
 
-The dispatch pipeline is:
+The pipeline for one request is:
 
 ```text
-HTTP request
+HTTP request on c.<domain> (or ce, c4, c5, c6)
     ↓
-Bancho protocol reader
+no osu-token?  ──── yes ──► BanchoLogin (a login) ──► cho-token header + first reply
+    ↓ no
+open osu!/tourney connection for the token?  ── no ──► RestartServer packet (the client reconnects)
+    ↓ yes
+PacketDispatcher ──► PacketHandlers ──► scoped Application objects
     ↓
-PacketDispatcher
-    ↓
-packet handler
-    ↓
-Application service
-    ↓
-session / repository / broadcast
+Outbox of that connection drained ──► HTTP response
 ```
 
-A packet handler is responsible for interpreting one packet type and delegating application behaviour to the appropriate service.
+The host holds no business rule, permission rule or state of its own. A handler reads the packet, takes the actor from the
+connection that sent it, and calls an operation on a scope of the object acted on (`x.ScopeTo(connection)`).
+
+---
+
+## Why long polling shapes the design
+
+Bancho is a long-poll protocol rather than a request/response API. A client sends the packets it has and receives the
+packets that were waiting for it. Whatever the server wants to tell a client has to be queued until that client's next
+request. Nothing a handler does can assume that a packet it queues for another player is delivered during the current
+HTTP request.
 
 ---
 
 ## PacketDispatcher
 
-[`PacketDispatcher`](../../src/Basil.Application/Packets/PacketDispatcher.cs) processes the request body sequentially.
+`PacketDispatcher` processes the request body sequentially.
 
-For each packet it:
+1. It splits the body into packets (`PacketReader.Split` of `Basil.Protocol.Bancho`). A body that is malformed ends the
+   request quietly; nothing is applied.
+2. It gives each packet to `PacketHandlers`, in order.
+3. If handling a packet throws, the error is logged with the packet type and the user, and the next packet still runs.
 
-1. reads the packet identifier;
-2. reads its payload;
-3. resolves the registered handler;
-4. checks whether the handler is allowed for the caller's privilege state;
-5. invokes the handler when permitted;
-6. otherwise skips the packet.
-
-The dispatcher does not terminate the entire batch because one packet is unknown or unavailable to the current player.
-
-Conceptually:
+An unknown packet type, or a packet the connection may not send, is skipped. The principle is:
 
 ```text
-for each packet:
-    handler = registry[packet.Id]
-
-    if handler does not exist:
-        skip payload
-        continue
-
-    if caller is restricted and handler is not AllowedWhenRestricted:
-        skip payload
-        continue
-
-    handler.HandleAsync(...)
+one bad packet ≠ failed batch
 ```
 
-This makes packet processing independent: one unsupported or disallowed packet cannot prevent later packets in the same request from being processed.
+This does not hide programming errors: the failure is logged at error level. Ordinary refusals are not exceptions; they
+are the outcomes of the Application operations (see below).
 
 ---
 
-## Packet handlers
+## PacketHandlers
 
-Basil uses one handler class per Bancho packet.
+`PacketHandlers` is one class (split into partial files by feature: chat, multiplayer, spectating) whose `HandleAsync` is a
+`switch` on the packet type. It is not one class per packet: a handler is a few lines that read the payload and call one
+operation, so a class each would only add files.
 
-Handlers are grouped by feature under:
+* Packets any osu! or tournament connection may send (logout, stats and presence requests, tournament match info and
+  channel joins) are handled first.
+* Packets of a regular osu! client (`BanchoConnection`: status, friends, away message, channels, messages, lobby, spectating,
+  multiplayer) follow; a tournament client does not send them.
+* The multiplayer packets map onto the room's operations (`room.ScopeTo(connection)` and its parts: members, settings,
+  authority, slots, rounds).
 
-```text
-Basil.Application/Packets/
-```
+### Restricted accounts and permissions
 
-The main groups are:
-
-```text
-Packets/
-├── Users/
-├── Channels/
-├── Spectating/
-└── Multiplayer/
-```
-
-The handler should contain packet-specific orchestration rather than becoming a second Application service.
-
-A typical flow is:
-
-```text
-PacketHandler
-    ↓
-Application service
-    ↓
-runtime state / persistence
-    ↓
-outgoing packet(s)
-```
-
-For example:
-
-```text
-CreateMatchHandler
-    ↓
-MatchMembershipService.CreateAsync
-    ↓
-IMatchRegistry
-    ↓
-MatchSession
-```
-
-When the same operation is needed by another transport, prefer sharing the Application service instead of duplicating the behaviour in the transport handler.
-
----
-
-## Restricted accounts
-
-Every packet handler declares whether it can run for a restricted account through `AllowedWhenRestricted`.
-
-A restricted account can still authenticate and poll the Bancho endpoint, but only handlers explicitly marked as allowed can execute.
-
-For a restricted caller:
-
-```text
-packet
-  ↓
-handler exists?
-  ↓
-AllowedWhenRestricted?
-  ├── yes → execute
-  └── no  → skip payload
-```
-
-The dispatcher performs this check before invoking the handler.
-
-See [`privileges.md`](privileges.md) for the meaning of the restricted privilege state.
+The handlers do not know about restrictions. A restricted account has its **effective** permissions reduced, and the
+Application objects check them: a scoped operation returns a `Result<TOutcome>` whose missing mask says what the caller
+lacks. The handler turns a refusal into the packet the client expects (or ignores it). Permissions are never decided by
+the kind of connection. See [`identity-permissions.md`](../for-agents/identity-permissions.md) and
+[`privileges.md`](privileges.md).
 
 ---
 
 ## Outgoing packets
 
-Handlers do not normally construct the HTTP response directly.
-
-Instead, they enqueue outgoing packets onto the relevant session(s).
-
-For example, an operation may produce packets for:
-
-* the requesting player;
-* another player;
-* every member of a channel;
-* every player in a multiplayer match.
-
-Those packets become available to the affected session's next Bancho poll.
-
-Conceptually:
+Handlers do not construct the HTTP response directly. Packets for a client are queued in the `Outbox`, a per-connection
+queue, and the next request of that connection drains it.
 
 ```text
 Incoming packet
       ↓
-Handler
-      ↓
-Application state mutation
-      ↓
-enqueue outgoing packets
-      ↓
-next poll from recipient
-      ↓
-HTTP response
+Handler ──► scoped Application operation ──► state change, event published
+                                                   ↓
+                              Delivery handler for that event
+                                                   ↓
+                              Outbox.Send(recipients, write)
+                                                   ↓
+                              next poll of each recipient ──► HTTP response
 ```
 
-This is important because Bancho is a long-poll protocol rather than a traditional synchronous request/response API.
-
-A handler should therefore not assume that a packet it queues for another player is delivered during the current HTTP request.
+* Application publishes the event (a user came online, a member joined a channel, a room changed). The `Delivery` handlers of
+  the host (`UserDelivery`, `ChatDelivery`, `RoomDelivery`) are the only consumers that know the packet form; they build the
+  bytes once and queue them for every open osu! client among the recipients.
+* `RoomAudience` says who hears about a room: its players, its tournament observers and, for the lobby view, the clients
+  watching the lobby.
+* Connections that are not osu! clients (API, IRC) are skipped by the `Outbox`; they get the same events through their own
+  transports.
 
 ---
 
@@ -177,139 +110,62 @@ A handler should therefore not assume that a packet it queues for another player
 
 When adding or modifying a handler:
 
-* keep packet parsing and packet-specific orchestration in the handler;
-* delegate reusable business logic to an Application service;
-* use Application abstractions for persistence and external capabilities;
-* enqueue responses through the session infrastructure;
-* respect `AllowedWhenRestricted`;
-* do not directly depend on Infrastructure;
+* keep packet reading and the packet-specific reply in the handler;
+* call an operation on a scope of the object acted on; do not add a rule that belongs to the object;
+* take the actor from the connection of the request, never from the packet;
+* queue answers through the `Outbox` or a `Delivery` handler;
 * do not assume that outgoing packets are delivered immediately;
-* preserve the existing packet ordering requirements.
+* preserve the packet ordering the client relies on.
 
-If the operation changes shared multiplayer state, follow the match locking rules described below.
-
----
-
-## Multiplayer dispatch
-
-Multiplayer is the largest Bancho packet group and is the most important example of the handler/service/session separation.
-
-A typical match-creation flow is:
-
-```text
-CREATE_MATCH packet
-        ↓
-CreateMatchHandler
-        ↓
-MatchMembershipService.CreateAsync
-        ↓
-IMatchRegistry
-        ↓
-MatchSession
-        ↓
-broadcast updated match state
-```
-
-[`IMatchRegistry`](../../src/Basil.Application/Sessions/Multiplayer/IMatchRegistry.cs) manages the available match slots, while [`MatchSession`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs) contains the runtime state for an individual match.
-
-The handler should not implement the entire match lifecycle itself. Match operations belong in the appropriate Application service.
+If the operation changes shared multiplayer state, follow the room rules below.
 
 ---
 
-## MatchSession locking
+## Room concurrency
 
-**Any operation that reads and then mutates shared match state must hold `MatchSession.Lock`.**
+`Room` is mutable shared state, and Basil runs on the thread pool, so two packets for the same room can run at once.
 
-The lock must cover the complete read-modify-broadcast sequence.
-
-For example:
-
-```text
-acquire MatchSession.Lock
-        ↓
-read current slots
-        ↓
-validate operation
-        ↓
-mutate slots
-        ↓
-build updated state
-        ↓
-broadcast updated state
-        ↓
-release MatchSession.Lock
-```
-
-Do not release the lock before the broadcast when the broadcast represents the mutation being protected.
-
-This prevents two concurrent packet handlers from observing and modifying the same match state simultaneously.
-
-### Why the lock is required
-
-Basil runs on the ASP.NET Core thread pool. Two packets for the same match can therefore execute concurrently.
-
-Without the per-match lock, operations such as slot changes can race:
+**An operation that reads and then mutates a room is a synchronous method of `Room` that holds the room's own `Lock`
+across the whole state change and publishes its event inside it.** `ScopedRoom` only checks permissions and calls it. A
+closed room answers `RoomClosed`. Do not introduce a second synchronization mechanism for the same state, and never `await`
+under the room lock.
 
 ```text
 Handler A                    Handler B
     |                            |
-read slots                      |
-    |                         read slots
-modify slot A                    |
-    |                         modify slot B
-write state                      |
-    |                         write state
+ScopedRoom (permission)     ScopedRoom (permission)
+    |                            |
+Room.Operation ── Lock ──┐       |
+    mutate, publish      │       |
+    ── unlock ───────────┘  Room.Operation waits for the lock
 ```
 
-One write can overwrite the other.
-
-`MatchSession.Lock` provides serialization at the match level without globally serializing unrelated matches.
-
-The race is covered by:
-
-```text
-tests/Basil.Application.Tests/Sessions/MatchSessionRaceTests.cs
-```
-
-When adding a new multiplayer mutation, treat this lock as a correctness requirement, not an optional optimization.
+The lock gives serialization per room without serializing unrelated rooms. The race is covered by
+`tests/Application/Multiplayer/Objects/Rooms/RoomConcurrencyTests.cs`. The complete model is in
+[`multiplayer.md`](multiplayer.md); see it before changing room permissions.
 
 ---
 
-## Match state and SSE
+## Room state and SSE
 
-Match state changes can also feed Basil's HTTP SSE layer.
-
-The important ordering is:
-
-```text
-MatchSession.Lock
-      ↓
-mutate match state
-      ↓
-publish updated state
-      ↓
-SSE subscribers receive update
-      ↓
-release lock
-```
-
-The SSE implementation is documented separately in [`sse.md`](sse.md).
-
-The Bancho packet and SSE transports should consume the same underlying match state rather than maintaining independent copies.
+The same room events that feed the Bancho packets also feed the HTTP live streams: both consume the events of the one room
+object rather than keeping copies of its state. The ordering that matters is that a state change publishes its event while
+the room lock is held, so a subscriber never sees an older state after a newer one. The SSE side is documented in
+[`sse.md`](sse.md).
 
 ---
 
 ## Adding a packet
 
-When implementing a new Bancho packet:
-
-1. identify the packet ID and feature;
-2. create the handler under the appropriate `Packets/` directory;
-3. declare the correct `AllowedWhenRestricted` value;
-4. inject the Application services or abstractions required by the operation;
-5. register the handler through the Application dependency-injection setup;
-6. add handler tests covering the packet's behaviour;
-7. add or update protocol tests when the wire contract itself changes.
+1. Find the packet type in `ClientPacketType` and the payload layout in `Basil.Protocol.Bancho` (add the reader or model there
+   when the layout is new, with a protocol test: packet layouts are wire contracts).
+2. Add a case to `PacketHandlers` (in the partial file of its feature) that reads the payload and calls the operation on the
+   scope of the object acted on.
+3. If the operation does not exist yet, add it to that object in Application, with its permission check and its outcome,
+   and a test there.
+4. If clients must hear about the change, publish an Application event and add or extend a `Delivery` handler.
+5. Add a host test in `tests/Hosts/Bancho` that sends the packet from a simulated client and checks what the client
+   receives.
 
 Do not introduce transport-specific persistence or business logic into the handler.
 
@@ -317,37 +173,28 @@ Do not introduce transport-specific persistence or business logic into the handl
 
 ## Failure handling
 
-A packet that cannot be dispatched because it is unknown or disallowed should not prevent the remainder of the request from being processed.
+A packet that cannot be dispatched because it is unknown or not allowed for the connection does not prevent the rest of
+the request from being processed; a malformed body is ignored; a handler that throws is logged and the batch goes on.
+The dispatcher is not a catch-all for expected failures: those are outcomes, not exceptions.
 
-This is especially important because a single HTTP request can contain multiple packets.
-
-The dispatcher therefore follows the principle:
-
-```text
-one bad packet ≠ failed batch
-```
-
-Known handlers should still report or handle genuine application failures according to the existing Application error-handling conventions. Do not turn the dispatcher into a catch-all that silently hides unexpected programming errors.
+A request whose token no longer names an open osu! or tournament connection (after a restart, or when the server closed
+the connection) is answered with the `RestartServer` packet, which makes the client log in again.
 
 ---
 
 ## Related code
 
-| Component                | Location                                                           |
-| ------------------------ | ------------------------------------------------------------------ |
-| Packet dispatcher        | [`Basil.Application/Packets/PacketDispatcher.cs`](../../src/Basil.Application/Packets/PacketDispatcher.cs)                    |
-| Match creation handler   | [`Basil.Application/Packets/Multiplayer/CreateMatchHandler.cs`](../../src/Basil.Application/Packets/Multiplayer/CreateMatchHandler.cs)      |
-| Match membership service | [`Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs) |
-| Match runtime state      | [`Basil.Application/Sessions/Multiplayer/MatchSession.cs`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs)           |
-| Match race tests         | [`tests/Basil.Application.Tests/Sessions/MatchSessionRaceTests.cs`](../../tests/Basil.Application.Tests/Sessions/MatchSessionRaceTests.cs)  |
+| Component                  | Location |
+|----------------------------|----------|
+| Routes, request flow       | [`BanchoRoutes.cs`](../../src/Hosts/Bancho/BanchoRoutes.cs) |
+| Login                      | [`BanchoLogin.cs`](../../src/Hosts/Bancho/Login/BanchoLogin.cs) |
+| Packet dispatcher          | [`PacketDispatcher.cs`](../../src/Hosts/Bancho/Packets/PacketDispatcher.cs) |
+| Packet handlers            | [`PacketHandlers.cs`](../../src/Hosts/Bancho/Packets/PacketHandlers.cs), [`PacketHandlers.Multiplayer.cs`](../../src/Hosts/Bancho/Packets/PacketHandlers.Multiplayer.cs) |
+| Outgoing queue             | [`Outbox.cs`](../../src/Hosts/Bancho/Support/Outbox.cs) |
+| Event delivery             | [`UserDelivery.cs`](../../src/Hosts/Bancho/Delivery/UserDelivery.cs), [`ChatDelivery.cs`](../../src/Hosts/Bancho/Delivery/ChatDelivery.cs), [`RoomDelivery.cs`](../../src/Hosts/Bancho/Delivery/RoomDelivery.cs) |
+| Wire format                | [`src/Protocol/Bancho`](../../src/Protocol/Bancho) |
+| Room runtime state         | [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs) |
+| Room race tests            | [`RoomConcurrencyTests.cs`](../../tests/Application/Multiplayer/Objects/Rooms/RoomConcurrencyTests.cs) |
+| Host tests                 | [`tests/Hosts/Bancho`](../../tests/Hosts/Bancho) |
 
 ---
-
-## See also
-
-* [`../for-client/bancho/protocol.md`](../for-client/bancho/protocol.md): Bancho wire contract
-* [`../for-client/bancho/authentication.md`](../for-client/bancho/authentication.md): session creation and login
-* [`multiplayer.md`](multiplayer.md): multiplayer state and lifecycle
-* [`sse.md`](sse.md): HTTP live updates generated from match state
-* [`chat.md`](chat.md): shared chat and command handling
-* [`privileges.md`](privileges.md): privilege and restriction rules
