@@ -66,4 +66,40 @@ public sealed class RestarterTests
 	{
 		Assert.Equal(75, ProcessExitCodes.Restart);
 	}
+
+	[Theory]
+	[InlineData("true", null, true)]
+	[InlineData(null, "systemd", true)]
+	[InlineData(null, "bash", false)]
+	[InlineData(null, null, false)]
+	public void OnlyAContainerOrASystemdParent_IsAManager(string? container, string? parent, bool expected)
+	{
+		Assert.Equal(expected, Restarter.UnderManager(
+			name => name == "DOTNET_RUNNING_IN_CONTAINER" ? container : null, () => parent));
+	}
+
+	[Fact]
+	public void AnInheritedInvocationId_DoesNotMakeAManager()
+	{
+		Assert.False(Restarter.UnderManager(name => name == "INVOCATION_ID" ? "abc" : null, () => "bash"));
+	}
+
+	[Fact]
+	public void UnderTheDotnetHost_TheProgramStaysTheFirstArgument()
+	{
+		var (file, arguments) = Restarter.RelaunchCommand("/usr/share/dotnet/dotnet",
+			["/srv/Basil.Host.dll", "--x"], ["--x"]);
+
+		Assert.Equal("/usr/share/dotnet/dotnet", file);
+		Assert.Equal(["/srv/Basil.Host.dll", "--x"], arguments);
+	}
+
+	[Fact]
+	public void ANativeExecutable_KeepsOnlyItsArguments()
+	{
+		var (file, arguments) = Restarter.RelaunchCommand("/srv/Basil", ["/srv/Basil", "--x"], ["--x"]);
+
+		Assert.Equal("/srv/Basil", file);
+		Assert.Equal(["--x"], arguments);
+	}
 }
