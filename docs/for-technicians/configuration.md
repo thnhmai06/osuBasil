@@ -11,7 +11,7 @@ Basil separates settings by who owns them and when they may change:
 
 | Plane | Lives in | Changed by | Applies |
 |---|---|---|---|
-| Deployment | `Configurations/appsettings*.json` | the operator, on the machine | at start, or at once for `Logging` and `Updates` |
+| Deployment | `Configurations/appsettings*.json` | the operator, on the machine | at start, or at once for `Logging:LogLevel` and `Basil:Updates` |
 | Policy | `ServerSettings` in the database | the API, the console | at once |
 
 Deployment settings describe this machine: the domain, ports, certificate, database and log files. Policy describes
@@ -36,41 +36,50 @@ Configurations/
 ```
 
 Sources, later winning over earlier: `appsettings.json`, `appsettings.{Environment}.json` (selected by
-`ASPNETCORE_ENVIRONMENT`), command-line arguments. Environment variables do not override an individual setting.
+`ASPNETCORE_ENVIRONMENT`), environment variables (`ConnectionStrings__Write`, `Basil__Server__Domain`: a double
+underscore stands for `:`), command-line arguments (`--Basil:Server:Domain=...`). The file is strict JSON: no comments and
+no trailing commas. `appsettings.schema.json` describes every key.
+
+Relative paths (the certificate, `Storage:Location`, `Logging:File:Location`) are relative to the executable.
 
 ### Available settings
 
-All settings are under `Basil`.
+Kestrel, logging, connection strings and OpenTelemetry use the standard .NET sections; everything Basil-specific is
+under `Basil`.
 
 | Setting | Meaning |
 |---|---|
-| `Server:Domain` | the public domain; every subdomain is derived from it |
-| `Server:Bind` | address Kestrel binds, default `0.0.0.0` |
-| `Server:Ports:Https` | HTTPS port for osu! and the HTTP API, default `443`; `0` picks a free port |
-| `Server:Ports:Irc` | plain TCP port of IRC, default `6667`; `0` picks a free port |
-| `Server:Certificate:Path` | PFX path relative to the executable; empty serves plain HTTP behind a proxy |
-| `Server:Certificate:Password` | PFX password |
-| `Server:LanAdvertise` | answer multicast DNS for the domain and its subdomains, default `true` |
-| `Server:TrustedProxies` | IPs and CIDR ranges whose forwarding headers are trusted; defaults to loopback |
-| `Storage:DataDirectory` | directory that holds stored files, default `Data` |
-| `Database:ConnectionString` | Npgsql connection string |
-| `Database:WriteConnections` | simultaneous writing connections, default `8` |
-| `Logging:MinimumLevel` | lowest level written; default `Information` |
-| `Logging:Overrides` | per-source minimum levels, matched by prefix |
-| `Logging:RetentionPeriod` | how long log files are kept, default 14 days |
-| `Logging:Directory` | log folder, default `Logs` |
+| `Kestrel:Endpoints:<name>:Url` | where the web server listens, default `https://0.0.0.0:443` (osu! connects to 443); an `http://` URL serves plain HTTP behind a proxy; port `0` picks a free port |
+| `Kestrel:Certificates:Default:Path`, `Password` | PFX of the HTTPS endpoints |
+| `Logging:LogLevel` | lowest level written: `Default`, and one entry per source prefix (the longest prefix wins) |
+| `Logging:File:Enabled`, `Location` | write log files, and the folder (default `Logs`) |
+| `Logging:File:Rolling:Interval`, `MaxSize` | a new file starts after this interval (default `Day`) or at this size (default `100MB`) |
+| `Logging:File:Retention:MaxAge`, `MaxFiles`, `MaxSize` | delete log files older than 14 days, beyond the newest 30, or beyond 1 GB in total; `0` or empty switches a limit off |
 | `Logging:QueueCapacity` | events waiting for the writer before the newest are dropped, default 10000 |
-| `Telemetry:OtlpEndpoint`, `Metrics`, `Traces`, `Logs` | OpenTelemetry export; off by default |
-| `Updates:CheckOnStartup`, `Source` | startup update check and its feed |
-| `Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
+| `ConnectionStrings:Write` | Npgsql connection string for storing changes and migrations |
+| `ConnectionStrings:Read` | Npgsql connection string for reads (it may point at a replica); empty uses `Write` |
+| `OpenTelemetry:OtlpEndpoint`, `Metrics`, `Traces`, `Logs` | OpenTelemetry export; off by default |
+| `Basil:Server:Name` | the name the server calls itself (the OpenTelemetry service name), default `Basil` |
+| `Basil:Server:Domain` | the public domain; every subdomain is derived from it |
+| `Basil:Server:TrustedProxies` | IPs and CIDR ranges whose forwarding headers are trusted; defaults to loopback |
+| `Basil:Server:Irc:Port` | plain TCP port of IRC, default `6667`; `0` picks a free port |
+| `Basil:Server:Multicast:Enabled`, `IPv4`, `IPv6`, `Port`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled); only the standard group addresses and port 5353 are supported, and an empty `IPv4` or `IPv6` switches that family off |
+| `Basil:Storage:Location` | directory that holds stored files, default `Data` |
+| `Basil:Database:Enabled` | must be `true`; `false` stops the server at start (running without a database is not supported yet) |
+| `Basil:Database:Read` and `Write`: `Provider`, `PoolSize` | the provider must be `PostgreSQL` (anything else stops the server at start); `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
+| `Basil:Updates:CheckOnStartup`, `Source`, `Channel` | startup update check, its feed, and the release channel (`stable`, or the name of another published channel) |
+| `Basil:Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
+
+Because the shipped file lists both connection strings, override both (`ConnectionStrings__Write` and
+`ConnectionStrings__Read`) or edit the file; a variable for `Write` alone leaves `Read` pointing at the file's value.
 
 ### Applying changes
 
 The server watches the configuration files.
 
-* `Logging` and `Updates` apply while the server runs.
-* `Server`, `Database`, `Storage` and `Telemetry` are read once at start. A change is logged as
-  "applied after the server restarts" and takes effect at the next start.
+* `Logging:LogLevel` and `Basil:Updates` apply while the server runs.
+* `Kestrel`, `ConnectionStrings`, `OpenTelemetry`, `Logging:File`, `Basil:Server`, `Basil:Database` and `Basil:Storage`
+  are read once at start. A change is logged as "applied after the server restarts" and takes effect at the next start.
 
 No rebuild is required.
 
@@ -84,7 +93,37 @@ Basil.Host <command>       run one console command (in the running server, or of
 ```
 
 When stdin or stdout is redirected, the server falls back to `--nogui`. A setting can be overridden per run with
-`--Basil:Server:Ports:Https=8443`.
+`--Kestrel:Endpoints:Https:Url=https://0.0.0.0:8443`.
+
+## Upgrading from v1.0.0-alpha.1
+
+The settings moved to the standard .NET sections. Rename these keys in `Configurations/appsettings.json` (and in any
+environment variable or command-line argument, where `:` is `__` in variables); the old keys are no longer read.
+
+| Old | New |
+|---|---|
+| `Basil:Server:Bind`, `Basil:Server:Ports:Https` | the URL of `Kestrel:Endpoints:Https:Url`, for example `https://0.0.0.0:443` |
+| `Basil:Server:Certificate:Path` | `Kestrel:Certificates:Default:Path` |
+| `Basil:Server:Certificate:Password` | `Kestrel:Certificates:Default:Password` |
+| an empty certificate path (plain HTTP behind a proxy) | an `http://` URL in `Kestrel:Endpoints:Https:Url` and no certificate |
+| `--urls`, `ASPNETCORE_URLS` | `Kestrel:Endpoints:<name>:Url` (it now wins over `--urls` when both are set) |
+| `Basil:Server:Ports:Irc` | `Basil:Server:Irc:Port` |
+| `Basil:Server:LanAdvertise` (default `true`) | `Basil:Server:Multicast:Enabled` (default `false`) |
+| (new) | `Basil:Server:Name`, `Basil:Server:Multicast:IPv4`, `IPv6`, `Port`, `DnsTtl` |
+| `Basil:Storage:DataDirectory` | `Basil:Storage:Location` |
+| `Basil:Database:ConnectionString` | `ConnectionStrings:Write` (and `ConnectionStrings:Read`, which falls back to `Write`) |
+| `Basil:Database:WriteConnections` | `Basil:Database:Write:PoolSize` |
+| (new) | `Basil:Database:Enabled`, `Basil:Database:Read:Provider`, `Read:PoolSize`, `Write:Provider` |
+| `Basil:Logging:MinimumLevel` | `Logging:LogLevel:Default` |
+| `Basil:Logging:Overrides:<source>` | `Logging:LogLevel:<source>` |
+| `Basil:Logging:Directory` | `Logging:File:Location` |
+| `Basil:Logging:RetentionPeriod` | `Logging:File:Retention:MaxAge` (new: `MaxFiles`, `MaxSize`) |
+| a 256 MB size roll | `Logging:File:Rolling:MaxSize` (default `100MB`; new: `Interval`) |
+| `Basil:Logging:QueueCapacity` | `Logging:QueueCapacity` |
+| `Basil:Telemetry:*` | `OpenTelemetry:*` |
+| (new) | `Basil:Updates:Channel` |
+
+Levels are now the .NET names (`Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical`, `None`).
 
 ## Name resolution on a LAN
 
@@ -95,9 +134,9 @@ Every client must resolve the domain and each served subdomain to the server:
 osu.<domain>   b.<domain>   a.<domain>   api.<domain>   assets.<domain>
 ```
 
-With `Server:LanAdvertise`, the server answers multicast DNS for exactly these names. Most operating systems only
+With `Basil:Server:Multicast:Enabled`, the server answers multicast DNS for exactly these names. Most operating systems only
 consult multicast DNS for `.local` names; other domains need a hosts-file entry or real DNS. The `ppy.sh` hosts are
-served for redirected clients but never advertised. Set `LanAdvertise` to `false` to turn the advertisement off.
+served for redirected clients but never advertised. Leave `Multicast:Enabled` at `false` to keep the advertisement off.
 
 For the hosts file, add one line per name on each client and on the server, for example:
 
@@ -140,7 +179,7 @@ Basil creates these beside the executable:
 
 ### Database
 
-Basil stores its records in PostgreSQL, configured by `Database:ConnectionString` and `Database:WriteConnections`. One
+Basil stores its records in PostgreSQL, configured by `ConnectionStrings:Write` and `Read` and by `Basil:Database`. One
 database belongs to one Basil process; nothing else should write to it. Migrations run when the server starts. Back up
 the database with `pg_dump` and `Data/` together, because records and files refer to each other.
 

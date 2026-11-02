@@ -1,5 +1,5 @@
 using Basil.Host.Configuration;
-using Basil.Host.Logging;
+using Basil.Host.Tests.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,15 +27,14 @@ public sealed class ConfigurationWatcherTests
 		_root = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
 			["Basil:Server:Domain"] = "first.test",
-			["Basil:Server:Ports:Irc"] = "6667",
-			["Basil:Logging:MinimumLevel"] = "Information",
+			["Basil:Server:Irc:Port"] = "6667",
+			["Logging:LogLevel:Default"] = "Information",
 			["Basil:Updates:CheckOnStartup"] = "true"
 		}).Build();
 		_file = _root.Providers.OfType<MemoryConfigurationProvider>().Single();
 		var services = new ServiceCollection();
 		ConfigurationSetup.AddAtStart<ServerOptions>(services, _root.GetSection("Basil:Server"));
 		_services = services
-			.Configure<LoggingOptions>(_root.GetSection("Basil:Logging"))
 			.Configure<UpdateOptions>(_root.GetSection("Basil:Updates"))
 			.BuildServiceProvider();
 		_watcher = new ConfigurationWatcher(_root, NullLogger<ConfigurationWatcher>.Instance);
@@ -51,13 +50,16 @@ public sealed class ConfigurationWatcherTests
 	[Fact]
 	public void ALoggingChangeAppliesAtOnce()
 	{
-		var monitor = _services.GetRequiredService<IOptionsMonitor<LoggingOptions>>();
-		var policy = new LogLevelPolicy(monitor);
-		Assert.False(policy.Enabled("Basil.Host.Anything", LogLevel.Debug));
+		var logger = LoggerFactory.Create(logging =>
+		{
+			logging.AddConfiguration(_root.GetSection("Logging"));
+			logging.AddProvider(new AcceptingLoggerProvider());
+		}).CreateLogger("Basil.Host.Anything");
+		Assert.False(logger.IsEnabled(LogLevel.Debug));
 
-		Edit("Basil:Logging:MinimumLevel", "Debug");
+		Edit("Logging:LogLevel:Default", "Debug");
 
-		Assert.True(policy.Enabled("Basil.Host.Anything", LogLevel.Debug));
+		Assert.True(logger.IsEnabled(LogLevel.Debug));
 		Assert.Empty(_watcher.PendingRestart);
 	}
 
@@ -76,18 +78,18 @@ public sealed class ConfigurationWatcherTests
 	[Fact]
 	public void AServerChangeIsNotAppliedBeforeTheNextStartAndIsReportedAsPending()
 	{
-		Edit("Basil:Server:Ports:Irc", "7000");
+		Edit("Basil:Server:Irc:Port", "7000");
 
-		Assert.Equal(6667, _services.GetRequiredService<IOptions<ServerOptions>>().Value.Ports.Irc);
-		Assert.Equal(["Server"], _watcher.PendingRestart);
+		Assert.Equal(6667, _services.GetRequiredService<IOptions<ServerOptions>>().Value.Irc.Port);
+		Assert.Equal(["Basil:Server"], _watcher.PendingRestart);
 	}
 
 	[Fact]
 	public void ChangingAServerValueBackClearsThePendingRestart()
 	{
-		Edit("Basil:Server:Ports:Irc", "7000");
+		Edit("Basil:Server:Irc:Port", "7000");
 
-		Edit("Basil:Server:Ports:Irc", "6667");
+		Edit("Basil:Server:Irc:Port", "6667");
 
 		Assert.Empty(_watcher.PendingRestart);
 	}
@@ -95,8 +97,8 @@ public sealed class ConfigurationWatcherTests
 	[Fact]
 	public void ASectionThatWasAbsentAtStartAndIsAddedLaterWaitsForTheNextStart()
 	{
-		Edit("Basil:Database:ConnectionString", "Host=elsewhere");
+		Edit("ConnectionStrings:Write", "Host=elsewhere");
 
-		Assert.Equal(["Database"], _watcher.PendingRestart);
+		Assert.Equal(["ConnectionStrings"], _watcher.PendingRestart);
 	}
 }

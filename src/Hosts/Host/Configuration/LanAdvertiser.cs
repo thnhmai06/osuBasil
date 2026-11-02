@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using Makaretu.Dns;
 using Microsoft.Extensions.Options;
@@ -25,12 +26,19 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 	public Task StartAsync(CancellationToken cancellationToken)
 	{
 		var server = options.Value;
-		if (!server.LanAdvertise) return Task.CompletedTask;
+		var multicast = server.Multicast;
+		if (!multicast.Enabled) return Task.CompletedTask;
 
+		Validate(multicast);
 		var names = Names(server.Domain);
+		var ttl = TimeSpan.FromSeconds(multicast.DnsTtl);
 		try
 		{
-			_service = new MulticastService();
+			_service = new MulticastService
+			{
+				UseIpv4 = !string.IsNullOrEmpty(multicast.IPv4),
+				UseIpv6 = !string.IsNullOrEmpty(multicast.IPv6)
+			};
 			_service.QueryReceived += (_, query) =>
 			{
 				var response = query.Message.CreateResponse();
@@ -39,10 +47,10 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 				foreach (var address in MulticastService.GetIPAddresses())
 					if (question.Type is DnsType.A or DnsType.ANY &&
 					    address.AddressFamily == AddressFamily.InterNetwork)
-						response.Answers.Add(new ARecord { Name = question.Name, Address = address });
+						response.Answers.Add(new ARecord { Name = question.Name, Address = address, TTL = ttl });
 					else if (question.Type is DnsType.AAAA or DnsType.ANY &&
 					         address.AddressFamily == AddressFamily.InterNetworkV6)
-						response.Answers.Add(new AAAARecord { Name = question.Name, Address = address });
+						response.Answers.Add(new AAAARecord { Name = question.Name, Address = address, TTL = ttl });
 
 				if (response.Answers.Count > 0) _service.SendAnswer(response);
 			};
@@ -61,6 +69,22 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 	{
 		Dispose();
 		return Task.CompletedTask;
+	}
+
+	/// <summary>Refuses a group address or port that the multicast DNS responder cannot use, instead of ignoring it.</summary>
+	internal static void Validate(ServerOptions.MulticastSettings multicast)
+	{
+		if (!string.IsNullOrEmpty(multicast.IPv4) &&
+		    !IPAddress.Parse(multicast.IPv4).Equals(IPAddress.Parse(ServerOptions.MulticastSettings.StandardIPv4)))
+			throw new InvalidOperationException(
+				$"Basil:Server:Multicast:IPv4 must be {ServerOptions.MulticastSettings.StandardIPv4} or empty; other group addresses are not supported.");
+		if (!string.IsNullOrEmpty(multicast.IPv6) &&
+		    !IPAddress.Parse(multicast.IPv6).Equals(IPAddress.Parse(ServerOptions.MulticastSettings.StandardIPv6)))
+			throw new InvalidOperationException(
+				$"Basil:Server:Multicast:IPv6 must be {ServerOptions.MulticastSettings.StandardIPv6} or empty; other group addresses are not supported.");
+		if (multicast.Port != ServerOptions.MulticastSettings.StandardPort)
+			throw new InvalidOperationException(
+				$"Basil:Server:Multicast:Port must be {ServerOptions.MulticastSettings.StandardPort}; other ports are not supported.");
 	}
 
 	internal static HashSet<string> Names(string domain)

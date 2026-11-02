@@ -17,7 +17,7 @@ public sealed class DataPathsTests : IDisposable
 	[Fact]
 	public void A_relative_data_directory_is_resolved_against_the_directory_the_server_runs_from()
 	{
-		var paths = new DataPaths(Options.Create(new StorageOptions { DataDirectory = "Data" }));
+		var paths = new DataPaths(Options.Create(new StorageOptions { Location = "Data" }));
 
 		Assert.Equal(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "Data")), paths.Root);
 	}

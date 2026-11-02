@@ -17,7 +17,7 @@ public class DatabaseReader(Database database)
 		await _readSlots.WaitAsync(cancellationToken);
 		try
 		{
-			await using var context = database.CreateConfirmedContext<TContext>();
+			await using var context = database.CreateReadContext<TContext>();
 			return await query(context);
 		}
 		finally

@@ -10,7 +10,7 @@ internal sealed class CacheCleaner(IOptions<StorageOptions> storage) : ICacheCle
 	/// <inheritdoc />
 	public int Clear()
 	{
-		var directory = Path.Combine(storage.Value.DataDirectory, "Cache");
+		var directory = Path.Combine(storage.Value.Location, "Cache");
 		if (!Directory.Exists(directory)) return 0;
 
 		var deleted = 0;

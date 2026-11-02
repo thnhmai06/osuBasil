@@ -36,8 +36,8 @@ public sealed class StorageComposition : IAsyncDisposable
 		{
 			if (logs is not null) builder.AddProvider(logs);
 		});
-		services.AddSingleton(Options.Create(new StorageOptions { DataDirectory = _root }));
-		services.AddSingleton(Options.Create(new DatabaseOptions { ConnectionString = connectionString }));
+		services.AddSingleton(Options.Create(new StorageOptions { Location = _root }));
+		services.AddSingleton(Options.Create(new DatabaseOptions { WriteConnectionString = connectionString }));
 		_provider = services.BuildServiceProvider();
 	}
 

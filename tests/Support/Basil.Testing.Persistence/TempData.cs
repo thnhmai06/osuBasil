@@ -14,7 +14,7 @@ public sealed class TempData : IDisposable
 	public TempData(bool createDirectories = true)
 	{
 		Root = Path.Combine(Path.GetTempPath(), "basil-test-" + Guid.NewGuid().ToString("N"));
-		Paths = new DataPaths(Options.Create(new StorageOptions { DataDirectory = Root }));
+		Paths = new DataPaths(Options.Create(new StorageOptions { Location = Root }));
 		if (createDirectories) Paths.CreateDirectories();
 	}
 

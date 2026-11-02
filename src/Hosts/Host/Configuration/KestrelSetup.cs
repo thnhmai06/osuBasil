@@ -1,18 +1,17 @@
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
 
 namespace Basil.Host.Configuration;
 
-/// <summary>Makes Kestrel listen where the configuration says.</summary>
+/// <summary>
+///     Applies the server's limits to Kestrel, which listens where its own <c>Kestrel:Endpoints</c> settings say and
+///     uses the certificate of <c>Kestrel:Certificates:Default</c> for its HTTPS endpoints.
+/// </summary>
 public static class KestrelSetup
 {
 	/// <summary>The largest request body in bytes; the routes that accept an uploaded file raise it for themselves.</summary>
 	public const long DefaultMaxRequestBodySize = 1024 * 1024;
 
-	/// <summary>
-	///     Listens on <c>Server.Bind</c> and <c>Server.Ports.Https</c>, with TLS when a certificate is configured and plain
-	///     HTTP otherwise (behind a reverse proxy). Addresses given by <c>--urls</c> or <c>ASPNETCORE_URLS</c> win.
-	/// </summary>
+	/// <summary>Hides the server header and limits the size of request bodies.</summary>
 	/// <param name="builder">The builder.</param>
 	public static void Configure(WebApplicationBuilder builder)
 	{
@@ -21,22 +20,37 @@ public static class KestrelSetup
 			kestrel.AddServerHeader = false;
 			kestrel.Limits.MaxRequestBodySize = DefaultMaxRequestBodySize;
 		});
-		if (!string.IsNullOrEmpty(builder.Configuration[WebHostDefaults.ServerUrlsKey])) return;
-
-		var server = builder.Configuration.GetSection("Basil:Server").Get<ServerOptions>() ?? new ServerOptions();
-		var certificate = Load(server.Certificate);
-		builder.WebHost.ConfigureKestrel(kestrel => kestrel.Listen(IPAddress.Parse(server.Bind), server.Ports.Https,
-			listen =>
-			{
-				if (certificate is not null) listen.UseHttps(certificate);
-			}));
 	}
 
-	private static X509Certificate2? Load(ServerOptions.CertificateOptions options)
+	/// <summary>Tells whether an endpoint of the configuration serves HTTPS.</summary>
+	/// <param name="configuration">The configuration.</param>
+	public static bool UsesHttps(IConfiguration configuration)
 	{
-		if (string.IsNullOrEmpty(options.Path)) return null;
+		return Urls(configuration).Any(url => url.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+	}
 
-		var path = ConfigurationSetup.Resolve(options.Path);
-		return File.Exists(path) ? X509CertificateLoader.LoadPkcs12FromFile(path, options.Password) : null;
+	/// <summary>Gives the TCP addresses and ports the configured endpoints listen on; a port of 0 is left out.</summary>
+	/// <param name="configuration">The configuration.</param>
+	public static IReadOnlyList<IPEndPoint> Bindings(IConfiguration configuration)
+	{
+		var bindings = new List<IPEndPoint>();
+		foreach (var url in Urls(configuration))
+		{
+			var authority = url[(url.IndexOf("://", StringComparison.Ordinal) + 3)..].TrimEnd('/');
+			var colon = authority.LastIndexOf(':');
+			if (colon < 0 || !int.TryParse(authority[(colon + 1)..], out var port) || port == 0) continue;
+
+			var host = authority[..colon].Trim('[', ']');
+			bindings.Add(new IPEndPoint(IPAddress.TryParse(host, out var address) ? address : IPAddress.Any, port));
+		}
+
+		return bindings;
+	}
+
+	private static IEnumerable<string> Urls(IConfiguration configuration)
+	{
+		return configuration.GetSection("Kestrel:Endpoints").GetChildren()
+			.Select(endpoint => endpoint["Url"])
+			.Where(url => !string.IsNullOrEmpty(url) && url.Contains("://", StringComparison.Ordinal))!;
 	}
 }

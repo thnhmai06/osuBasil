@@ -3,26 +3,38 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Logging;
 
-/// <summary>Deletes the log files that nobody has written to for longer than the retention period.</summary>
+/// <summary>Deletes the log files that are too old, too many or too large together.</summary>
 public static class LogRetention
 {
-	/// <summary>Deletes the old log files of a folder.</summary>
+	/// <summary>Deletes the log files of a folder that go beyond the limits, keeping the newest.</summary>
 	/// <param name="directory">The folder of the log files.</param>
-	/// <param name="retention">How long a log file is kept after its last write.</param>
+	/// <param name="maxAge">How long a log file is kept after its last write; zero for no limit.</param>
+	/// <param name="maxFiles">How many log files are kept; zero for no limit.</param>
+	/// <param name="maxBytes">The total size of the kept log files; zero for no limit. The newest file is always kept.</param>
 	/// <param name="now">The current time.</param>
 	/// <returns>How many files were deleted.</returns>
-	public static int Sweep(string directory, TimeSpan retention, DateTimeOffset now)
+	public static int Sweep(string directory, TimeSpan maxAge, int maxFiles, long maxBytes, DateTimeOffset now)
 	{
 		if (!Directory.Exists(directory)) return 0;
 
 		var deleted = 0;
-		foreach (var file in Directory.EnumerateFiles(directory, "*.log"))
+		var kept = 0;
+		long keptBytes = 0;
+		foreach (var file in new DirectoryInfo(directory).EnumerateFiles("*.log").OrderByDescending(file => file.LastWriteTimeUtc))
 		{
-			if (File.GetLastWriteTimeUtc(file) >= now - retention) continue;
+			var excess = (maxAge > TimeSpan.Zero && file.LastWriteTimeUtc < now - maxAge) ||
+			             (maxFiles > 0 && kept >= maxFiles) ||
+			             (maxBytes > 0 && kept > 0 && keptBytes + file.Length > maxBytes);
+			if (!excess)
+			{
+				kept++;
+				keptBytes += file.Length;
+				continue;
+			}
 
 			try
 			{
-				File.Delete(file);
+				file.Delete();
 				deleted++;
 			}
 			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -37,7 +49,7 @@ public static class LogRetention
 
 /// <summary>Runs the log retention when the server starts and then every six hours.</summary>
 internal sealed class LogRetentionJob(
-	IOptionsMonitor<LoggingOptions> options,
+	IOptions<LoggingOptions> options,
 	TimeProvider time,
 	ILogger<LogRetentionJob> logger)
 	: BackgroundService
@@ -49,8 +61,9 @@ internal sealed class LogRetentionJob(
 		{
 			try
 			{
-				var current = options.CurrentValue;
-				var deleted = LogRetention.Sweep(ConfigurationSetup.Resolve(current.Directory), current.RetentionPeriod,
+				var file = options.Value.File;
+				var deleted = LogRetention.Sweep(ConfigurationSetup.Resolve(file.Location), file.Retention.MaxAge,
+					file.Retention.MaxFiles, ByteSize.Parse(file.Retention.MaxSize, "Logging:File:Retention:MaxSize"),
 					time.GetUtcNow());
 				if (deleted > 0) logger.LogInformation("Deleted {FileCount} log files past their retention", deleted);
 			}

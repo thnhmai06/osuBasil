@@ -26,8 +26,9 @@ src/Hosts/Host/Configurations/appsettings.json
 Configure the settings required by the deployment, especially:
 
 * `Basil:Server:Domain`
-* `Basil:Server:Certificate:Path`
-* `Basil:Server:Certificate:Password`
+* `Kestrel:Certificates:Default:Path`
+* `Kestrel:Certificates:Default:Password`
+* `ConnectionStrings:Write` (and `Read`)
 
 See [`configuration.md`](configuration.md) for the complete configuration reference and [`https.md`](https.md) for TLS
 requirements.
@@ -42,11 +43,11 @@ src/Hosts/Host/Configurations/appsettings.json
 
 The image already holds the bundled development TLS certificate (`/app/Configurations/basil.local.pfx`), so the default
 configuration works as it is for a LAN. For a real certificate, mount it as a file and point
-`Basil:Server:Certificate:Path` at it.
+`Kestrel:Certificates:Default:Path` at it.
 
-The database password appears twice: `POSTGRES_PASSWORD` of the `postgres` service and the connection string in the
-`command` of the `basil` service (a command-line setting wins over `appsettings.json`, and environment variables do not
-override individual settings). Change both before the first run.
+The database password appears twice: `POSTGRES_PASSWORD` of the `postgres` service and the connection strings in the
+`command` of the `basil` service (a command-line setting wins over `appsettings.json`, and so does an environment
+variable such as `ConnectionStrings__Write`). Change both before the first run.
 
 ### 2. Start Basil
 
@@ -116,7 +117,7 @@ docker pull thanhmai06/osubasil:<version>
 ```
 
 You need a reachable PostgreSQL database and a `Configurations/` directory on the host. Extract the image's copy of
-`Configurations/` once, then edit its `appsettings.json` (domain, certificate, and the database connection string):
+`Configurations/` once, then edit its `appsettings.json` (domain, certificate, and the database connection strings):
 
 ```bash
 container=$(docker create thanhmai06/osubasil:<version>)
@@ -251,13 +252,13 @@ Docker does not change Basil's TLS requirements.
 If Basil terminates HTTPS itself, the container must have access to the configured certificate file specified by:
 
 ```text
-Basil:Server:Certificate:Path
+Kestrel:Certificates:Default:Path
 ```
 
 and its corresponding:
 
 ```text
-Basil:Server:Certificate:Password
+Kestrel:Certificates:Default:Password
 ```
 
 The certificate file must therefore be accessible from inside the container, normally through a bind mount.
@@ -271,7 +272,7 @@ For example:
 with:
 
 ```text
-Basil:Server:Certificate:Path=/certs/basil.pfx
+Kestrel:Certificates:Default:Path=/certs/basil.pfx
 ```
 
 See [`https.md`](https.md) for certificate requirements and the bundled development certificate.

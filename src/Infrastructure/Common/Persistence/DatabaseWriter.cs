@@ -24,7 +24,7 @@ public sealed class DatabaseWriter(
 	private static readonly TimeSpan LongestRetryDelay = TimeSpan.FromSeconds(5);
 
 	private readonly CancellationTokenSource _abandon = new();
-	private readonly SemaphoreSlim _connections = new(ValidConnections(options.Value.WriteConnections));
+	private readonly SemaphoreSlim _connections = new(ValidConnections(options.Value.WritePoolSize));
 	private readonly ConcurrentDictionary<RootQueue, Task> _drains = new();
 	private readonly ConcurrentDictionary<Root, RootQueue> _queues = new();
 	private readonly CancellationTokenSource _stopping = new();

@@ -14,31 +14,33 @@ The folder is created when the server starts.
 | `Logs/basil-YYYYMMDD.log` | the log written on that day, or the next file of that day after a size roll |
 | `Logs/basil-*.log` | older files kept for the retention period |
 
-A file rolls at the next day or at **256 MB**, whichever comes first, so a busy server may produce several files in one
+A file rolls at the next day or at **100 MB** (`Logging:File:Rolling`), whichever comes first, so a busy server may produce several files in one
 day. There is no separate error file and no `latest.log` link: search the files of the day.
 
-Files are deleted after `Logging:RetentionPeriod` (14 days by default) with no write, checked at startup and every six
-hours.
+Files are deleted when they are older than `Logging:File:Retention:MaxAge` (14 days by default), beyond the newest
+`MaxFiles` (30) or beyond a total of `MaxSize` (1 GB); the newest file is always kept. The check runs at startup and
+every six hours. `Logging:File:Enabled` set to `false` writes no files.
 
 ## Log levels
 
-The minimum level is `Basil:Logging:MinimumLevel` in `Configurations/appsettings.json`:
+The levels are the standard `Logging:LogLevel` settings in `Configurations/appsettings.json`:
 
 ```json
 {
-	"Basil": {
-		"Logging": {
-			"MinimumLevel": "Information",
-			"Overrides": { "Microsoft": "Warning", "Microsoft.Hosting.Lifetime": "Information" }
+	"Logging": {
+		"LogLevel": {
+			"Default": "Information",
+			"Microsoft": "Warning",
+			"Microsoft.Hosting.Lifetime": "Information"
 		}
 	}
 }
 ```
 
-`Overrides` keys are source prefixes; the longest matching prefix wins. Supported levels are `Verbose`, `Debug`,
-`Information`, `Warning`, `Error` and `Fatal`.
+`Default` is the lowest level; the other keys are source prefixes, and the longest matching prefix wins. Supported
+levels are `Trace`, `Debug`, `Information`, `Warning`, `Error`, `Critical` and `None`.
 
-`Logging` applies **while the server runs**: edit the file, and the new level is used from the next event, on all sinks.
+`Logging:LogLevel` applies **while the server runs**: edit the file, and the new level is used from the next event, on all sinks.
 No restart or rebuild is required.
 
 `Debug` produces significantly more output and is the level to use while investigating packet handling, room changes or
@@ -77,12 +79,12 @@ A non-zero count means the log is incomplete for that period.
 
 ### There is not enough detail
 
-Set `Logging:MinimumLevel` to `Debug` (and, if wanted, an override for one source). The change applies at once.
+Set `Logging:LogLevel:Default` to `Debug` (and, if wanted, an override for one source). The change applies at once.
 Reproduce the problem, collect the files, then restore `Information`.
 
 ### The log is taking too much disk space
 
-Retention is 14 days, rolled daily or at 256 MB. Lower `Logging:RetentionPeriod` to keep fewer days, or send stdout to
+Retention is 14 days, 30 files and 1 GB, rolled daily or at 100 MB. Lower `Logging:File:Retention` to keep less, or send stdout to
 an external log collector.
 
 ## See also

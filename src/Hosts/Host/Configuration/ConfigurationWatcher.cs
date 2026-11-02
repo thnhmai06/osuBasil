@@ -12,10 +12,13 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 	: IHostedService, IDisposable
 {
 	/// <summary>The sections that are read when the server starts.</summary>
-	public static readonly IReadOnlyList<string> RestartRequired = ["Server", "Database", "Storage", "Telemetry"];
+	public static readonly IReadOnlyList<string> RestartRequired =
+	[
+		"Kestrel", "ConnectionStrings", "OpenTelemetry", "Logging:File", "Basil:Server", "Basil:Database", "Basil:Storage"
+	];
 
 	/// <summary>The sections that apply as soon as they change.</summary>
-	public static readonly IReadOnlyList<string> Live = ["Logging", "Updates"];
+	public static readonly IReadOnlyList<string> Live = ["Logging:LogLevel", "Basil:Updates"];
 
 	private readonly Dictionary<string, string> _applied = [];
 	private readonly Lock _gate = new();
@@ -91,7 +94,7 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 
 	private string Snapshot(string section)
 	{
-		return string.Join('\n', configuration.GetSection("Basil:" + section).AsEnumerable(true)
+		return string.Join('\n', configuration.GetSection(section).AsEnumerable(true)
 			.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => pair.Key + "=" + pair.Value));
 	}
 }

@@ -30,7 +30,7 @@ specifications that are listed below. Where this page and a specification differ
 ### Endpoint
 
 `irc.<domain>:6667`, plain TCP, **no TLS**, so that existing IRC software works unchanged. There is no IRCv3 `sts` and
-no SASL `EXTERNAL`. The port is `Server:Ports:Irc`.
+no SASL `EXTERNAL`. The port is `Basil:Server:Irc:Port`.
 
 Because the connection is not encrypted, **the IRC key crosses the network in clear text on every connection**. Whoever
 captures it can chat as the key's owner until the key is revoked. Keys are per device, so revoke the one that leaked

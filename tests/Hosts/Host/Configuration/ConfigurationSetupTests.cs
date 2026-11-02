@@ -9,7 +9,7 @@ namespace Basil.Host.Tests.Configuration;
 /// </summary>
 public sealed class ConfigurationSetupTests
 {
-	private const string Key = "Basil__Database__ConnectionString";
+	private const string Key = "ConnectionStrings__Write";
 	private const string FileValue = "Host=file;Username=file";
 	private const string EnvironmentValue = "Host=environment;Username=environment";
 
@@ -22,18 +22,18 @@ public sealed class ConfigurationSetupTests
 		try
 		{
 			Directory.CreateDirectory(ConfigurationSetup.Directory);
-			File.WriteAllText(file, $$"""{ "Basil": { "Database": { "ConnectionString": "{{FileValue}}" } } }""");
+			File.WriteAllText(file, $$"""{ "ConnectionStrings": { "Write": "{{FileValue}}" } }""");
 			Environment.SetEnvironmentVariable(Key, null);
 
 			var withoutEnvironment = WebApplication.CreateBuilder([]);
 			ConfigurationSetup.Add(withoutEnvironment, []);
 			// The control: without the variable the file's value is the one in effect.
-			Assert.Equal(FileValue, withoutEnvironment.Configuration["Basil:Database:ConnectionString"]);
+			Assert.Equal(FileValue, withoutEnvironment.Configuration["ConnectionStrings:Write"]);
 
 			Environment.SetEnvironmentVariable(Key, EnvironmentValue);
 			var withEnvironment = WebApplication.CreateBuilder([]);
 			ConfigurationSetup.Add(withEnvironment, []);
-			Assert.Equal(EnvironmentValue, withEnvironment.Configuration["Basil:Database:ConnectionString"]);
+			Assert.Equal(EnvironmentValue, withEnvironment.Configuration["ConnectionStrings:Write"]);
 		}
 		finally
 		{

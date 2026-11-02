@@ -50,12 +50,13 @@ Configurations/appsettings.{Environment}.json   optional overlay, selected by AS
 ```
 
 A setting can also be overridden for one run on the command line of the server, for example
-`--Basil:Server:Ports:Https=8443`. A console command given on the command line does not take such options; for those,
+`--Kestrel:Endpoints:Https:Url=http://127.0.0.1:8443`. A console command given on the command line does not take such options; for those,
 put the settings in an `appsettings.{Environment}.json` overlay and set `ASPNETCORE_ENVIRONMENT` to its name. Do not
 commit an overlay that holds a local connection string.
 
 The defaults bind port `443` for HTTPS and `6667` for IRC. On a development machine without the privilege to bind `443`,
-pick another port with `--Basil:Server:Ports:Https=8443`; `0` picks a free port. An empty `Server:Certificate:Path`
+pick another port with `--Kestrel:Endpoints:Https:Url=https://0.0.0.0:8443`; port `0` picks a free port. An `http://`
+URL (which needs no certificate)
 serves plain HTTP, which is enough for the API and the image hosts when you address them with a `Host` header.
 
 For local osu! client testing, set the domain:
@@ -75,7 +76,7 @@ Replace `basil.local` with the local domain you intend to use. See
 
 ### IRC
 
-The IRC gateway listens on port `6667` by default (`Basil:Server:Ports:Irc`). For example, using an IRC client:
+The IRC gateway listens on port `6667` by default (`Basil:Server:Irc:Port`). For example, using an IRC client:
 
 ```text
 /server basil.local 6667
@@ -102,7 +103,7 @@ TOKEN=$(curl -s -H "Host: api.basil.local" -H "Content-Type: application/json" \
 curl -s -H "Host: api.basil.local" -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8443/v1/channels
 ```
 
-(This assumes `--Basil:Server:Ports:Https=8443` and an empty certificate path.) The tests start the server inside the
+(This assumes `--Kestrel:Endpoints:Https:Url=http://127.0.0.1:8443`.) The tests start the server inside the
 test process and never run the `Program` entry point, so run the real executable at least once before calling a change
 to the hosts, the shutdown or the configuration done: log in, chat over IRC, send `SIGTERM` and check that the exit code
 is `0`.
@@ -134,8 +135,8 @@ For a different domain, generate an appropriate certificate using the commands i
 [`https.md`](../for-technicians/https.md), then configure:
 
 ```text
-Basil:Server:Certificate:Path
-Basil:Server:Certificate:Password
+Kestrel:Certificates:Default:Path
+Kestrel:Certificates:Default:Password
 ```
 
 > [!IMPORTANT]

@@ -17,14 +17,14 @@ public static class TelemetrySetup
 	/// <returns><see langword="true" /> when something is exported.</returns>
 	public static bool Add(WebApplicationBuilder builder)
 	{
-		var options = builder.Configuration.GetSection("Basil:Telemetry").Get<TelemetryOptions>() ??
+		var options = builder.Configuration.GetSection("OpenTelemetry").Get<TelemetryOptions>() ??
 		              new TelemetryOptions();
-		builder.Services.AddOptions<TelemetryOptions>().Bind(builder.Configuration.GetSection("Basil:Telemetry"));
+		builder.Services.AddOptions<TelemetryOptions>().Bind(builder.Configuration.GetSection("OpenTelemetry"));
 		if (!Uri.TryCreate(options.OtlpEndpoint, UriKind.Absolute, out var endpoint) ||
 		    !(options.Metrics || options.Traces))
 			return false;
 
-		var telemetry = builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddService("basil"));
+		var telemetry = builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddService(builder.Configuration["Basil:Server:Name"] ?? "Basil"));
 		if (options.Metrics)
 			telemetry.WithMetrics(metrics => metrics.AddMeter(BasilMeter.Instance.Name).AddAspNetCoreInstrumentation()
 				.AddRuntimeInstrumentation().AddOtlpExporter(exporter => exporter.Endpoint = endpoint));

@@ -20,7 +20,9 @@ internal sealed class UpdateChecker(IOptionsMonitor<UpdateOptions> options, ILog
 
 		try
 		{
-			var manager = new UpdateManager(update.Source);
+			var manager = new UpdateManager(update.Source, update.Channel == UpdateOptions.StableChannel
+				? null
+				: new Velopack.UpdateOptions { ExplicitChannel = update.Channel });
 			if (!manager.IsInstalled)
 			{
 				logger.LogInformation("Skipped checking for updates because Basil was not installed by the updater");

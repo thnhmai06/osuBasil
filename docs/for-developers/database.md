@@ -104,7 +104,8 @@ flowchart LR
 
 * `DatabaseWriter` keeps one queue per **root**: `Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`. Writes
   of one root are sent in order, one change at a time; a copy not sent yet is replaced by a newer copy of the same
-  identity. At most `Basil:Database:WriteConnections` connections (8 by default) write at once.
+  identity. At most `Basil:Database:Write:PoolSize` connections (8 by default) write at once.
+* Reads run on their own data source built from `ConnectionStrings:Read` (the write connection string when it is empty), so a read replica can serve them; storing changes and migrating use `ConnectionStrings:Write`.
 * A **copy** (`CreateOrUpdateAsync`, `DeleteAsync`) carries the values as they were when queued and returns at once.
 * A **try-operation** runs in a transaction of its own after the earlier writes of its root; its cancellation token
   counts only while it waits for its turn. Its transaction also stores a ticket row (`write_tickets`); a commit whose outcome was lost with the connection is

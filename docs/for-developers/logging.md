@@ -23,18 +23,20 @@ Nothing logs each Bancho packet, IRC line or REST request. Those are counted by 
 
 `src/Hosts/Host/Logging/ServerLogging.cs` configures [Serilog](https://serilog.net/):
 
-* one rolling file, `Logs/basil-*.log`, UTF-8, rolled daily or at 256 MB and limited by `Logging:RetentionPeriod`
-  (swept at startup and every six hours; a file is kept while it was written within the period);
+* one rolling file, `Logs/basil-*.log`, UTF-8, rolled by `Logging:File:Rolling` (interval and size) and limited by `Logging:File:Retention`
+  (age, count and total size; swept at startup and every six hours; the newest file is always kept); `Logging:File:Enabled`
+  switches the file off;
 * a console sink only in `--nogui` mode, plain text without colour;
 * a dashboard log panel, a fixed ring buffer, in the full and `--noconsole` modes;
-* optional OpenTelemetry log export when `Telemetry:Logs` is on and an endpoint is set.
+* optional OpenTelemetry log export when `OpenTelemetry:Logs` is on and an endpoint is set.
 
 Every sink is written by one background thread behind a bounded queue (`Logging:QueueCapacity`, 10 000 by default).
 When the queue is full the newest event is dropped and counted; the count is exposed in diagnostics. Logging therefore
 never blocks the thread that produced the event and never grows without bound.
 
-`Logging:MinimumLevel` sets the lowest level; `Logging:Overrides` raises or lowers it for a source prefix, and the
-longest matching prefix wins. Both are read on every event, so a change to the file applies at once.
+The levels are the standard `Logging:LogLevel` settings: `Default` is the lowest level, and any other key raises or
+lowers it for a source prefix, the longest matching prefix winning. The framework re-reads them when the file changes,
+so a change applies at once.
 
 ## Logging a business event
 
@@ -57,7 +59,7 @@ A background service logs the failure and continues its loop.
 * The log carries lifecycle events, not routine traffic.
 * Every sink is behind the bounded async queue; a full queue drops and counts, never blocks or grows.
 * No log message contains a password, a token, an IRC key or a certificate password.
-* File retention follows `Logging:RetentionPeriod`; the default is 14 days.
+* File retention follows `Logging:File:Retention`; the defaults are 14 days, 30 files and 1 GB.
 * A lifecycle event is logged once, by its handler, not by every entry point.
 
 ## Related code

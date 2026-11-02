@@ -1,5 +1,6 @@
 using System.Net;
 using Basil.Host.Cli.Shutdown;
+using Basil.Host.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host;
@@ -18,9 +19,10 @@ public static class Program
 		if (Restarter.WasRestarted())
 		{
 			var server = app.Services.GetRequiredService<IOptions<ServerOptions>>().Value;
-			var address = IPAddress.Parse(server.Bind);
+			var bindings = KestrelSetup.Bindings(app.Configuration);
 			await Restarter.WaitForPortsAsync(
-				() => Restarter.CanBind(address, server.Ports.Https) && Restarter.CanBind(IPAddress.Any, server.Ports.Irc),
+				() => bindings.All(binding => Restarter.CanBind(binding.Address, binding.Port)) &&
+				      Restarter.CanBind(IPAddress.Any, server.Irc.Port),
 				TimeProvider.System, TimeSpan.FromSeconds(10));
 		}
 

@@ -132,10 +132,12 @@ Basil derives its required service subdomains from this value.
 Set:
 
 ```text
-Basil:Database:ConnectionString
+ConnectionStrings:Write
+ConnectionStrings:Read
 ```
 
-to the Npgsql connection string of the PostgreSQL database that belongs to this Basil process. Basil applies its
+to the Npgsql connection strings of the PostgreSQL database that belongs to this Basil process: `Write` stores changes and
+migrates, `Read` serves reads (it may point at a replica; leave it empty to read from `Write`). Basil applies its
 migrations when it starts.
 
 #### Optional settings
@@ -143,11 +145,10 @@ migrations when it starts.
 The following are normally optional:
 
 ```text
-Basil:Server:Ports:Https
-Basil:Server:Ports:Irc
-Basil:Server:Bind
+Kestrel:Endpoints:Https:Url
+Basil:Server:Irc:Port
 Basil:Server:TrustedProxies
-Basil:Logging:MinimumLevel
+Logging:LogLevel:Default
 ```
 
 Policy that users feel while the server runs (locks, rate limits, upload limits, session lifetimes, the bot prefix) is
@@ -165,8 +166,8 @@ Configure a TLS certificate covering the Basil domain and all required service s
 Configure:
 
 ```text
-Basil:Server:Certificate:Path
-Basil:Server:Certificate:Password
+Kestrel:Certificates:Default:Path
+Kestrel:Certificates:Default:Password
 ```
 
 when Basil is responsible for TLS termination.
@@ -177,7 +178,7 @@ No certificate configuration is required for a basic LAN deployment.
 For a public deployment, replace the bundled certificate with a certificate issued for your server's domain and all
 required subdomains. See [`https.md`](https.md) for certificate requirements and configuration.
 
-If TLS is terminated by a reverse proxy, leave `Certificate:Path` empty so that Basil serves plain HTTP behind the
+If TLS is terminated by a reverse proxy, give the endpoint an `http://` URL and remove the certificate so that Basil serves plain HTTP behind the
 proxy, and list the proxy in `Basil:Server:TrustedProxies` so that the client address is taken from its forwarding
 headers.
 
@@ -217,10 +218,10 @@ the storage while the server is stopped:
 
 ### 6. Start Basil
 
-The HTTPS port is controlled by:
+The HTTPS port is controlled by the URL of:
 
 ```text
-Basil:Server:Ports:Https
+Kestrel:Endpoints:Https:Url
 ```
 
 The default is `443`. **This is the port that osu! client will connect to, so don't change it unless you are sure you
@@ -326,8 +327,8 @@ To move an existing Basil server to another machine:
 3. Verify the configuration on the target, especially:
 	* `Basil:Server:Domain`
 	* HTTPS certificate settings
-	* `Basil:Server:Ports:Https`
-	* `Basil:Database:ConnectionString`
+	* `Kestrel:Endpoints:Https:Url`
+	* `ConnectionStrings:Write`
 4. Start Basil on the target.
 5. Verify the server using the connectivity check above.
 
