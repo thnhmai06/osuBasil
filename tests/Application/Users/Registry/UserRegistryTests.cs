@@ -43,6 +43,36 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
+	public async Task RegisterAsync_DefaultSettings_GrantsThePlayerAndSupporterPermissions()
+	{
+		using var app = new TestApplication();
+
+		var (user, failure) = await app.Users.RegisterAsync(
+			new RegisterAttempt("DefaultMask", new Md5("0123456789abcdef0123456789abcdef")),
+			TestContext.Current.CancellationToken);
+
+		Assert.Null(failure);
+		Assert.Equal(UserPermissionsGroups.Default, user!.Value.Permissions);
+	}
+
+	[Fact]
+	public async Task RegisterAsync_DefaultPermissionsChanged_GrantsExactlyThatMask()
+	{
+		using var app = new TestApplication();
+		await app.SetSettingsAsync(new ServerSettings
+		{
+			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost }
+		});
+
+		var (user, failure) = await app.Users.RegisterAsync(
+			new RegisterAttempt("ChangedMask", new Md5("0123456789abcdef0123456789abcdef")),
+			TestContext.Current.CancellationToken);
+
+		Assert.Null(failure);
+		Assert.Equal(UserPermissions.ChatPost, user!.Value.Permissions);
+	}
+
+	[Fact]
 	public async Task LoginAsync_UnknownName_ReturnsUnknownUser()
 	{
 		using var app = new TestApplication();

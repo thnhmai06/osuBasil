@@ -1,3 +1,4 @@
+using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
@@ -53,6 +54,43 @@ public sealed class ScopedUserRegistryTests
 		Assert.True(result.IsOk);
 		Assert.NotNull(user);
 		Assert.Equal(UserPermissions.UserManageNote, user.Value.Permissions);
+	}
+
+	[Fact]
+	public async Task CreateAccountAsync_NoPermissionsAsked_GrantsTheConfiguredDefault()
+	{
+		using var app = new TestApplication();
+		var actor = await app.LoginAsync(await app.CreateUserAsync("DefaultMgr", "password",
+			UserPermissionsGroups.All));
+		await app.SetSettingsAsync(new ServerSettings
+		{
+			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost }
+		});
+
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
+			new UserData { Name = "ConfigDefault" }, Hash, null, TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsOk);
+		Assert.Equal(UserPermissions.ChatPost, user!.Value.Permissions);
+	}
+
+	[Fact]
+	public async Task CreateAccountAsync_PermissionsAsked_WinOverTheConfiguredDefault()
+	{
+		using var app = new TestApplication();
+		var actor = await app.LoginAsync(await app.CreateUserAsync("ExplicitMgr", "password",
+			UserPermissionsGroups.All));
+		await app.SetSettingsAsync(new ServerSettings
+		{
+			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost }
+		});
+
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
+			new UserData { Name = "ExplicitMask" }, Hash, UserPermissions.UserManageNote,
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsOk);
+		Assert.Equal(UserPermissions.UserManageNote, user!.Value.Permissions);
 	}
 
 	[Fact]

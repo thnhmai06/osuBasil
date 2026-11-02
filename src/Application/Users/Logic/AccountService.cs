@@ -41,11 +41,15 @@ internal sealed class AccountService(
 	/// <summary>Creates an account with the given data and its password.</summary>
 	/// <param name="data">The data of the new account.</param>
 	/// <param name="passwordHash">The password hash of the account.</param>
+	/// <param name="permissions">
+	///     The permissions of the account, or <see langword="null" /> for the default permissions of new accounts.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the creation.</param>
 	/// <returns>The created account, or <see langword="null" /> and the reason when the name is taken.</returns>
 	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
-		CancellationToken cancellationToken)
+		UserPermissions? permissions, CancellationToken cancellationToken)
 	{
+		data.Permissions = permissions ?? (await settings.GetAsync(cancellationToken)).Accounts.DefaultPermissions;
 		UserRecord user;
 		try
 		{
