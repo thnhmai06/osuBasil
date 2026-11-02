@@ -29,6 +29,8 @@ public static class RestHost
 	public static IServiceCollection AddRestApi(this IServiceCollection services)
 	{
 		services.AddBasilOpenApi();
+		// Bad parameters throw instead of answering an empty 400, so that the pipeline answers with the envelope.
+		services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 		services.AddCors();
 		services.AddSingleton<ICorsPolicyProvider, SettingsCorsPolicyProvider>();
 		services.ConfigureHttpJsonOptions(options =>
@@ -53,10 +55,21 @@ public static class RestHost
 				branch.UseEndpoints(endpoints =>
 				{
 					endpoints.MapRest();
-					endpoints.MapFallback(() => Api.NotFound("No such route."));
+					endpoints.MapFallback(NoSuchRoute);
 				});
 			});
 		return app;
+	}
+
+	// A number in the path that does not fit an int makes `{id:int}` fail to match: say so instead of "no such route".
+	private static IResult NoSuchRoute(HttpContext context)
+	{
+		var overflow = context.Request.Path.Value!.Split('/')
+			.Any(segment => segment.TrimStart('-') is { Length: > 0 } digits && digits.All(char.IsAsciiDigit) &&
+			                !int.TryParse(segment, out _));
+		return overflow
+			? Api.Invalid("A number in the path is out of range.")
+			: Api.NotFound("No such route.");
 	}
 
 	private static void MapRest(this IEndpointRouteBuilder app)

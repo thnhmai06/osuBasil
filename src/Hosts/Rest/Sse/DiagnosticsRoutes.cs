@@ -12,6 +12,8 @@ internal static class DiagnosticsRoutes
 {
 	private static readonly string[] Categories = DiagnosticsSample.Categories;
 
+	private static readonly TimeSpan CollectInterval = TimeSpan.FromSeconds(30);
+
 	private static readonly string[] Actions = ["gc/collect", "caches/clear", "exceptions/reset"];
 
 	public static void MapDiagnostics(this RouteGroupBuilder v1)
@@ -30,7 +32,8 @@ internal static class DiagnosticsRoutes
 			                 """);
 		diagnostics.MapPost("/{category}/{**action}", ActionAsync)
 			.WithSummary("Run a maintenance action.")
-			.WithDescription("The actions are `gc/collect`, `caches/clear` and `exceptions/reset`.");
+			.WithDescription(
+				"The actions are `gc/collect`, `caches/clear` and `exceptions/reset`. `gc/collect` can run once every 30 seconds; a request sooner is answered with 429.");
 	}
 
 	private static object Sample(RuntimeSampler runtime, UserRegistry registry, Lobby lobby, SseHub hub,
@@ -59,7 +62,7 @@ internal static class DiagnosticsRoutes
 	}
 
 	private static async Task<IResult> ActionAsync(HttpContext context, string category, string action, Server server,
-		RuntimeSampler runtime, ICacheCleaner? caches)
+		RuntimeSampler runtime, ICacheCleaner? caches, RateLimiter limiter)
 	{
 		var access = server.ScopeTo(context.Connection()).Diagnostics.Access();
 		if (!access.IsOk) return access.Refusal();
@@ -67,6 +70,13 @@ internal static class DiagnosticsRoutes
 		switch ($"{category}/{action}".ToLowerInvariant())
 		{
 			case "gc/collect":
+				if (!limiter.TryAcquire("diagnostics:gc-collect", 1, CollectInterval))
+				{
+					context.Response.Headers.RetryAfter = ((int)CollectInterval.TotalSeconds).ToString();
+					return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited",
+						"Garbage can be collected once every 30 seconds.");
+				}
+
 				RuntimeSampler.Collect();
 				return Api.Done("Garbage collected");
 			case "caches/clear":

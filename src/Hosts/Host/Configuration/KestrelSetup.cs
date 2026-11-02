@@ -6,6 +6,9 @@ namespace Basil.Host.Configuration;
 /// <summary>Makes Kestrel listen where the configuration says.</summary>
 public static class KestrelSetup
 {
+	/// <summary>The largest request body in bytes; the routes that accept an uploaded file raise it for themselves.</summary>
+	public const long DefaultMaxRequestBodySize = 1024 * 1024;
+
 	/// <summary>
 	///     Listens on <c>Server.Bind</c> and <c>Server.Ports.Https</c>, with TLS when a certificate is configured and plain
 	///     HTTP otherwise (behind a reverse proxy). Addresses given by <c>--urls</c> or <c>ASPNETCORE_URLS</c> win.
@@ -13,6 +16,11 @@ public static class KestrelSetup
 	/// <param name="builder">The builder.</param>
 	public static void Configure(WebApplicationBuilder builder)
 	{
+		builder.WebHost.ConfigureKestrel(kestrel =>
+		{
+			kestrel.AddServerHeader = false;
+			kestrel.Limits.MaxRequestBodySize = DefaultMaxRequestBodySize;
+		});
 		if (!string.IsNullOrEmpty(builder.Configuration[WebHostDefaults.ServerUrlsKey])) return;
 
 		var server = builder.Configuration.GetSection("Basil:Server").Get<ServerOptions>() ?? new ServerOptions();

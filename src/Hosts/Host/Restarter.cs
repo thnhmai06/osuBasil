@@ -16,21 +16,64 @@ public static class Restarter
 	/// <summary>Tells whether systemd or a container runtime manages the process and restarts it from its exit code.</summary>
 	public static bool UnderManager()
 	{
-		return Environment.GetEnvironmentVariable("INVOCATION_ID") is not null ||
-		       string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true",
-			       StringComparison.OrdinalIgnoreCase);
+		return UnderManager(Environment.GetEnvironmentVariable, ParentProcessName);
 	}
 
-	/// <summary>Starts the same executable with the same arguments.</summary>
+	/// <summary>Tells whether a container runtime or systemd (as the parent process) manages the process.</summary>
+	/// <param name="environment">Reads an environment variable.</param>
+	/// <param name="parentProcessName">The name of the parent process, or <see langword="null" /> when unknown.</param>
+	public static bool UnderManager(Func<string, string?> environment, Func<string?> parentProcessName)
+	{
+		return string.Equals(environment("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(parentProcessName(), "systemd", StringComparison.Ordinal);
+	}
+
+	/// <summary>Starts the same program with the same arguments.</summary>
 	/// <param name="args">The arguments of this process.</param>
 	public static void Start(string[] args)
 	{
 		if (Environment.ProcessPath is not { } path) return;
 
-		var start = new ProcessStartInfo(path) { UseShellExecute = false };
-		foreach (var arg in args) start.ArgumentList.Add(arg);
+		var (file, arguments) = RelaunchCommand(path, Environment.GetCommandLineArgs(), args);
+		var start = new ProcessStartInfo(file) { UseShellExecute = false };
+		foreach (var arg in arguments) start.ArgumentList.Add(arg);
 		start.Environment[RestartedVariable] = "1";
 		Process.Start(start);
+	}
+
+	/// <summary>Builds the command that runs this program again.</summary>
+	/// <param name="processPath">The executable of this process.</param>
+	/// <param name="commandLine">The command line of this process, starting with the program being run.</param>
+	/// <param name="args">The arguments of this process.</param>
+	/// <returns>
+	///     The file to start and its arguments; when the executable is the <c>dotnet</c> host, the program (the
+	///     <c>.dll</c>) stays the first argument.
+	/// </returns>
+	public static (string File, string[] Arguments) RelaunchCommand(string processPath, string[] commandLine,
+		string[] args)
+	{
+		var host = Path.GetFileNameWithoutExtension(processPath);
+		return string.Equals(host, "dotnet", StringComparison.OrdinalIgnoreCase) && commandLine.Length > 0
+			? (processPath, [commandLine[0], .. args])
+			: (processPath, args);
+	}
+
+	private static string? ParentProcessName()
+	{
+		try
+		{
+			if (!OperatingSystem.IsLinux()) return null;
+
+			// The fields of /proc/self/stat after the parenthesised name: state, then the parent id.
+			var stat = File.ReadAllText("/proc/self/stat");
+			var fields = stat[(stat.LastIndexOf(')') + 2)..].Split(' ');
+			return File.ReadAllText($"/proc/{fields[1]}/comm").Trim();
+		}
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentOutOfRangeException
+			                          or IndexOutOfRangeException)
+		{
+			return null;
+		}
 	}
 
 	/// <summary>Tells whether this process was started by <see cref="Start" />.</summary>

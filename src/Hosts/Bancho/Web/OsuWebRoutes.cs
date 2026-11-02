@@ -12,6 +12,7 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
@@ -19,6 +20,8 @@ using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
+using Basil.Host.Bancho.Packets;
 using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Models.Auth;
 using Basil.Protocol.Bancho.Models.Scores;
@@ -116,7 +119,7 @@ internal static class OsuWebRoutes
 			await JsonSerializer.DeserializeAsync<BeatmapInfoBody>(context.Request.Body, cancellationToken: ct)
 			?? new BeatmapInfoBody();
 		var lines = new List<string>();
-		for (var index = 0; index < request.Filenames.Length; index++)
+		for (var index = 0; index < Math.Min(request.Filenames.Length, PacketHandlers.MaxRequestedFilenames); index++)
 		{
 			var page = await beatmaps.ListAsync(new BeatmapQuery(FileName: request.Filenames[index]),
 				new PageRequest(0, 1), ct);
@@ -128,9 +131,12 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> SubmitAsync(HttpContext context, UserRegistry registry, ScoreSubmitter submitter,
-		IAnticheatReporter anticheat, IBeatmapRepository beatmaps, WebAuthentication auth, CancellationToken ct)
+		IAnticheatReporter anticheat, IBeatmapRepository beatmaps, WebAuthentication auth, ISettingsRepository settings,
+		CancellationToken ct)
 	{
 		if (!context.Request.HasFormContentType) return Text("error: no");
+
+		await UploadLimit.AllowAsync(context, settings);
 		var form = await context.Request.ReadFormAsync(ct);
 		try
 		{
@@ -206,8 +212,9 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, Server server,
-		CancellationToken ct)
+		ISettingsRepository settings, CancellationToken ct)
 	{
+		await UploadLimit.AllowAsync(context, settings);
 		var form = await context.Request.ReadFormAsync(ct);
 		if (await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is not { } player)
 			return Results.Unauthorized();
@@ -240,7 +247,8 @@ internal static class OsuWebRoutes
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
-		var page = await sets.ListAsync(new BeatmapQuery(query["q"]), new PageRequest(0, 100), ct);
+		var page = await sets.ListAsync(new BeatmapQuery(query["q"]).LimitTo(auth.Effective(player)),
+			new PageRequest(0, 100), ct);
 		return Text(string.Join('\n', new[] { page.Items.Count.ToString(CultureInfo.InvariantCulture) }
 			.Concat(page.Items.Select(DirectLine))));
 	}
@@ -252,7 +260,8 @@ internal static class OsuWebRoutes
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
-		if (!int.TryParse(query["s"], out var id) || await sets.GetAsync(id, ct) is not { } set)
+		if (!int.TryParse(query["s"], out var id) || await sets.GetAsync(id, ct) is not { } set ||
+		    !MayView(auth, player, set))
 			return Text(string.Empty);
 		return Text(DirectLine(set));
 	}
@@ -267,11 +276,18 @@ internal static class OsuWebRoutes
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		var withVideo = !setId.EndsWith('n');
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
-		if (await sets.GetAsync(id, ct) is { } set && await storage.OpenArchiveAsync(set, withVideo, ct) is { } archive)
+		var set = await sets.GetAsync(id, ct);
+		if (set is not null && !MayView(auth, player, set)) return Results.NotFound();
+		if (set is not null && await storage.OpenArchiveAsync(set, withVideo, ct) is { } archive)
 			return Results.File(archive, "application/x-osu-beatmap-archive", $"{id}.osz");
 		return await mirror.GetDownloadAddressAsync(id, withVideo, ct) is { } address
 			? Results.Redirect(address.ToString())
 			: Results.NotFound();
+	}
+
+	private static bool MayView(WebAuthentication auth, BanchoConnection player, BeatmapsetRecord set)
+	{
+		return set.Visible || auth.Effective(player).Allows(UserPermissions.BeatmapsetManageViewHidden);
 	}
 
 	private static string DirectLine(BeatmapsetRecord set)

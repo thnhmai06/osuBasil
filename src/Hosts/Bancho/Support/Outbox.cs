@@ -1,14 +1,24 @@
 using System.Collections.Concurrent;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Registry;
+using Basil.Domain.Auth;
 using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho.Support;
 
-/// <summary>Holds the packets waiting for each osu! client until its next poll.</summary>
-internal sealed class Outbox
+/// <summary>
+///     Holds the packets waiting for each osu! client until its next poll; a client that lets more than
+///     <see cref="MaxQueuedPackets" /> writes or <see cref="MaxQueuedBytes" /> bytes pile up is disconnected.
+/// </summary>
+internal sealed class Outbox(UserRegistry registry)
 {
-	private readonly ConcurrentDictionary<Connection, ConcurrentQueue<byte[]>> _queues =
-		new(ReferenceEqualityComparer.Instance);
+	/// <summary>The most writes that may wait for one client.</summary>
+	public const int MaxQueuedPackets = 10_000;
+
+	/// <summary>The most bytes that may wait for one client.</summary>
+	public const long MaxQueuedBytes = 4 * 1024 * 1024;
+
+	private readonly ConcurrentDictionary<Connection, Pending> _queues = new(ReferenceEqualityComparer.Instance);
 
 	/// <summary>Occurs when a connection polls and takes what was queued for it.</summary>
 	public event Action<Connection>? Polled;
@@ -17,7 +27,7 @@ internal sealed class Outbox
 	/// <param name="connection">The connection.</param>
 	public bool HasPending(Connection connection)
 	{
-		return _queues.TryGetValue(connection, out var queue) && !queue.IsEmpty;
+		return _queues.TryGetValue(connection, out var pending) && !pending.Queue.IsEmpty;
 	}
 
 	/// <summary>Builds the packets once and queues them for every open osu! client among the recipients.</summary>
@@ -26,10 +36,23 @@ internal sealed class Outbox
 	public void Send(IEnumerable<Connection> recipients, Action<PacketWriter> write)
 	{
 		byte[]? bytes = null;
+		List<Connection>? tooSlow = null;
 		foreach (var recipient in recipients.Where(Receives))
 		{
 			bytes ??= Build(write);
-			_queues.GetOrAdd(recipient, _ => new ConcurrentQueue<byte[]>()).Enqueue(bytes);
+			var pending = _queues.GetOrAdd(recipient, _ => new Pending());
+			pending.Queue.Enqueue(bytes);
+			if (Interlocked.Add(ref pending.Bytes, bytes.Length) > MaxQueuedBytes ||
+			    pending.Queue.Count > MaxQueuedPackets)
+				(tooSlow ??= []).Add(recipient);
+		}
+
+		// Closed after the loop: the recipients may be a collection that closing a connection changes.
+		if (tooSlow is null) return;
+		foreach (var connection in tooSlow)
+		{
+			_queues.TryRemove(connection, out _);
+			registry.Close(connection, SessionEndReason.ConnectionLost);
 		}
 	}
 
@@ -46,14 +69,19 @@ internal sealed class Outbox
 	/// <returns>The packets, concatenated in the order they were queued.</returns>
 	public byte[] Drain(Connection connection)
 	{
-		if (!_queues.TryGetValue(connection, out var queue))
+		if (!_queues.TryGetValue(connection, out var pending))
 		{
 			Polled?.Invoke(connection);
 			return [];
 		}
 
 		using var stream = new MemoryStream();
-		while (queue.TryDequeue(out var bytes)) stream.Write(bytes);
+		while (pending.Queue.TryDequeue(out var bytes))
+		{
+			stream.Write(bytes);
+			Interlocked.Add(ref pending.Bytes, -bytes.Length);
+		}
+
 		Polled?.Invoke(connection);
 		return stream.ToArray();
 	}
@@ -78,5 +106,11 @@ internal sealed class Outbox
 	private static bool Receives(Connection connection)
 	{
 		return connection is { IsOpen: true } and (BanchoConnection or TourneyConnection);
+	}
+
+	private sealed class Pending
+	{
+		public readonly ConcurrentQueue<byte[]> Queue = new();
+		public long Bytes;
 	}
 }

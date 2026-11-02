@@ -84,6 +84,8 @@ public static class HostApplication
 		app.Services.GetRequiredService<RuntimeSampler>().LogsDropped = () => drops.Dropped;
 		app.UseRequestMetrics();
 		app.UseTrustedProxies();
+		if (!string.IsNullOrEmpty(app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.Certificate.Path))
+			app.UseHsts();
 		app.UseRestImages();
 		app.UseBancho();
 		app.UseRest();

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Sse;
@@ -34,6 +35,10 @@ internal sealed class RestPipeline(RequestDelegate next)
 
 			await next(context);
 		}
+		catch (Exception ex) when (!context.Response.HasStarted && ex is BadHttpRequestException or JsonException)
+		{
+			await RefuseAsync(context, ex);
+		}
 		catch (Exception ex) when (!context.Response.HasStarted && ex is not OperationCanceledException)
 		{
 			await FailAsync(context, logger, ex);
@@ -64,6 +69,15 @@ internal sealed class RestPipeline(RequestDelegate next)
 
 		await TooManyAsync(context, limits.Anonymous.PerIp.Window);
 		return true;
+	}
+
+	private static Task RefuseAsync(HttpContext context, Exception ex)
+	{
+		context.Response.Clear();
+		var status = ex is BadHttpRequestException bad ? bad.StatusCode : StatusCodes.Status400BadRequest;
+		return Api.Error(status, status == StatusCodes.Status413PayloadTooLarge ? "tooLarge" : "invalid",
+				"The request could not be read: a parameter or the body is malformed or out of range.")
+			.ExecuteAsync(context);
 	}
 
 	private static async Task FailAsync(HttpContext context, ILogger<RestPipeline> logger, Exception ex)

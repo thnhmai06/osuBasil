@@ -32,6 +32,12 @@ internal sealed partial class PacketHandlers(
 	RateLimiter limiter,
 	TimeProvider clock)
 {
+	/// <summary>The most ids a stats or presence request is answered for; the rest are ignored.</summary>
+	internal const int MaxRequestedIds = 256;
+
+	/// <summary>The most file names a beatmap info request is answered for; the rest are ignored.</summary>
+	internal const int MaxRequestedFilenames = 100;
+
 	/// <summary>Handles one packet from a connection.</summary>
 	/// <param name="actor">The connection that sent it.</param>
 	/// <param name="packet">The packet.</param>
@@ -42,8 +48,8 @@ internal sealed partial class PacketHandlers(
 		return packet.Type switch
 		{
 			ClientPacketType.Logout => Run(() => registry.Close(actor, SessionEndReason.LoggedOut)),
-			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List(), cancellationToken),
-			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor, reader.ReadInt32List(), cancellationToken),
+			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds), cancellationToken),
+			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds), cancellationToken),
 			ClientPacketType.UserPresenceRequestAll => PresenceRequestAsync(actor,
 				registry.Online.Keys.Select(user => user.Id).ToList(), cancellationToken),
 			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(actor, reader.ReadInt32(), cancellationToken),
@@ -118,10 +124,7 @@ internal sealed partial class PacketHandlers(
 
 	private async Task StatsRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken cancellationToken)
 	{
-		var wanted = new List<User>();
-		foreach (var id in ids)
-			if (registry.Online.FirstOrDefault(pair => pair.Key.Id == id) is { Value: { } online })
-				wanted.Add(online);
+		var wanted = OnlineUsers(ids);
 
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
@@ -136,10 +139,7 @@ internal sealed partial class PacketHandlers(
 
 	private async Task PresenceRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken cancellationToken)
 	{
-		var wanted = new List<User>();
-		foreach (var id in ids)
-			if (registry.Online.FirstOrDefault(pair => pair.Key.Id == id) is { Value: { } online })
-				wanted.Add(online);
+		var wanted = OnlineUsers(ids);
 
 		var now = clock.GetUtcNow();
 		var stats = new List<UserStats>();
@@ -151,6 +151,16 @@ internal sealed partial class PacketHandlers(
 			for (var index = 0; index < wanted.Count; index++)
 				BanchoView.WritePresence(writer, wanted[index], stats[index], now);
 		});
+	}
+
+	// shortcut: one pass over the online users per request; a lookup by id needs an index in the registry.
+	private List<User> OnlineUsers(IEnumerable<int> ids)
+	{
+		var asked = ids.ToList();
+		var wanted = asked.ToHashSet();
+		var online = registry.Online.Where(pair => wanted.Contains(pair.Key.Id))
+			.ToDictionary(pair => pair.Key.Id, pair => pair.Value);
+		return [.. asked.Where(online.ContainsKey).Select(id => online[id])];
 	}
 
 	private async Task FriendAsync(BanchoConnection osu, int id, bool add, CancellationToken cancellationToken)
@@ -170,7 +180,7 @@ internal sealed partial class PacketHandlers(
 		CancellationToken cancellationToken)
 	{
 		var entries = new List<BeatmapInfoReplyEntry>();
-		for (var index = 0; index < request.Filenames.Count; index++)
+		for (var index = 0; index < Math.Min(request.Filenames.Count, MaxRequestedFilenames); index++)
 		{
 			var page = await beatmaps.ListAsync(new BeatmapQuery(
 				FileName: request.Filenames[index]), new PageRequest(0, 1), cancellationToken);

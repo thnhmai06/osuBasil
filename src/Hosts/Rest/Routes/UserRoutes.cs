@@ -24,9 +24,11 @@ internal static class UserRoutes
 		var token = users.MapGroup("").RequireToken();
 
 		users.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve an account.")
-			.WithDescription("Includes the granted and the effective permissions and the restrictions in force.");
+			.WithDescription(
+				"Includes the granted and the effective permissions and the restrictions in force. An account's profile, permissions and restriction history are public.");
 		users.MapGet("/{id:int}/restrictions", RestrictionsAsync)
-			.WithSummary("List the restrictions an account has had, current and past.");
+			.WithSummary("List the restrictions an account has had, current and past.")
+			.WithDescription("An account's profile, permissions and restriction history are public.");
 
 		token.MapSpectate();
 		token.MapGet("/", SearchAsync).WithSummary("Search accounts.")
@@ -108,13 +110,15 @@ internal static class UserRoutes
 		return Api.Ok((await restrictions.ListAsync(record, cancellationToken)).Select(RestrictionView.Of).ToList());
 	}
 
-	private static async Task<IResult> SearchAsync(string? query, int? offset, int? limit, IUserRepository users,
-		UserRegistry registry, TimeProvider clock, CancellationToken cancellationToken)
+	private static async Task<IResult> SearchAsync(HttpContext context, string? query, int? offset, int? limit,
+		IUserRepository users, UserRegistry registry, TimeProvider clock, CancellationToken cancellationToken)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var found = await users.ListAsync(UserQuery.Parse(query ?? string.Empty), page!, cancellationToken);
+		var effective = context.Connection().EffectivePermissions(clock.GetUtcNow());
+		var found = await users.ListAsync(UserQuery.Parse(query ?? string.Empty).LimitTo(effective), page!,
+			cancellationToken);
 		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.Total),
 			page!);
 	}
@@ -197,6 +201,7 @@ internal static class UserRoutes
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form with a file field is required.");
 
+		await UploadLimit.AllowAsync(context, settings);
 		var form = await context.Request.ReadFormAsync(context.RequestAborted);
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
 		if (file.Length > (await settings.GetAsync(context.RequestAborted)).Uploads.AvatarMaxSize)

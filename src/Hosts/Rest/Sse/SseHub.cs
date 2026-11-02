@@ -144,7 +144,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		var state = restarting ? "restarting" : "shuttingDown";
 		var final = Frame("server", null, Encoding.UTF8.GetBytes($"{{\"state\":\"{state}\"}}"));
 		foreach (var root in roots)
-		foreach (var stream in root.Streams.ToArray())
+		foreach (var stream in StreamsOf(root))
 		{
 			stream.Offer(final);
 			stream.Complete();
@@ -190,7 +190,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 
 		if (root is null) return;
 
-		foreach (var stream in root.Streams.ToArray())
+		foreach (var stream in StreamsOf(root))
 			if (connection is null || ReferenceEquals(stream.Connection, connection))
 				stream.Complete();
 	}
@@ -273,6 +273,15 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		return frame;
 	}
 
+	// The streams join and leave under the lock, so they are copied under it too.
+	private SseStream[] StreamsOf(Root root)
+	{
+		lock (_sync)
+		{
+			return [.. root.Streams];
+		}
+	}
+
 	private IResult ShuttingDown()
 	{
 		return Api.Error(StatusCodes.Status503ServiceUnavailable, "shuttingDown", "The server is shutting down.");
@@ -319,7 +328,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 					? KeepAlive
 					: Frame("bundle", events[^1].Id,
 						JsonSerializer.SerializeToUtf8Bytes(events.Select(e => e.Data), Api.Json));
-				foreach (var stream in root.Streams.ToArray())
+				foreach (var stream in StreamsOf(root))
 				{
 					if (stream.Connection is { IsOpen: false })
 					{
