@@ -199,6 +199,42 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
+	public async Task Handle_RoomRefereeRemoved_PartsTheRefereeWhoSitsInNoSlot()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		var channel = app.RoomChannels.Of(setup.Room);
+		Assert.True(channel.ScopeTo(setup.Referee).Join().IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(setup.Referee.Record,
+			TestContext.Current.CancellationToken)).IsOk);
+		var removed = Assert.Single(app.RoomEvents.Events.OfType<RoomRefereeRemoved>());
+
+		await new RoomRefereeRemovedHandler(app.RoomChannels, app.Clock).Handle(removed,
+			TestContext.Current.CancellationToken);
+
+		Assert.DoesNotContain(setup.Referee, channel.Members);
+	}
+
+	[Fact]
+	public async Task Handle_RoomRefereeRemoved_KeepsTheRefereeWhoSitsInASlot()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		var channel = app.RoomChannels.Of(setup.Room);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Player.Record,
+			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True(channel.ScopeTo(setup.Player).Join().IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(setup.Player.Record,
+			TestContext.Current.CancellationToken)).IsOk);
+		var removed = Assert.Single(app.RoomEvents.Events.OfType<RoomRefereeRemoved>());
+
+		await new RoomRefereeRemovedHandler(app.RoomChannels, app.Clock).Handle(removed,
+			TestContext.Current.CancellationToken);
+
+		Assert.Contains(setup.Player, channel.Members);
+	}
+
+	[Fact]
 	public async Task Handle_LobbyConnectionReleased_PartsTheConnectionFromEveryRoomChannel()
 	{
 		using var app = new TestApplication();
