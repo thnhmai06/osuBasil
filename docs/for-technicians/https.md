@@ -44,7 +44,7 @@ trust the certificate or its issuing CA. See
 
 ## IRC
 
-IRC is a separate listener and **does not use TLS**: plain TCP on `Server:Ports:Irc` (default `6667`). It needs no
+IRC is a separate listener and **does not use TLS**: plain TCP on `Basil:Server:Irc:Port` (default `6667`). It needs no
 `irc.<domain>` record, no certificate and no HTTPS configuration; clients connect to the server's address on that port.
 The plain port is deliberate, and it means the IRC key crosses the network readable. See
 [`../for-developers/irc.md`](../for-developers/irc.md).
@@ -76,37 +76,38 @@ password `basil`, so a fresh local installation starts with HTTPS without genera
 In `Configurations/appsettings.json`:
 
 ```text
-Basil:Server:Certificate:Path
-Basil:Server:Certificate:Password
-Basil:Server:Ports:Https
+Kestrel:Endpoints:Https:Url
+Kestrel:Certificates:Default:Path
+Kestrel:Certificates:Default:Password
 ```
 
-For example:
+These are the web server's own settings. For example:
 
 ```json
 {
-	"Basil": {
-		"Server": {
-			"Certificate": {
+	"Kestrel": {
+		"Endpoints": {
+			"Https": { "Url": "https://0.0.0.0:443" }
+		},
+		"Certificates": {
+			"Default": {
 				"Path": "Configurations/basil.local.pfx",
 				"Password": "basil"
-			},
-			"Ports": { "Https": 443 }
+			}
 		}
 	}
 }
 ```
 
-`Path` is relative to the executable unless rooted. `Ports:Https` defaults to `443`; `0` picks a free port, which is
-useful in tests. `Server:Bind` chooses the address (default `0.0.0.0`). You do not need `--urls`; when it is set, it
-wins over these settings.
+`Path` is relative to the executable unless rooted. The URL chooses the address and the port (default `443`); port `0`
+picks a free port, which is useful in tests. An endpoint can have any name, and more than one can be listed.
 
 The server reads these values once at start. **Restart Basil after changing them**; a change is logged as applying after
 the restart. No rebuild is required.
 
-When `Path` is empty the HTTPS port serves plain HTTP, which is the supported setup behind a reverse proxy that
-terminates TLS. When the path is set but the file is missing, the server also starts without TLS; check the startup log
-and the path if clients cannot connect over HTTPS.
+For a reverse proxy that terminates TLS, give the endpoint an `http://` URL (for example `http://127.0.0.1:8080`) and
+remove the certificate; Basil then serves plain HTTP. An `https://` endpoint whose certificate file is missing stops the
+server at start: check the startup log and the path if Basil does not come up.
 
 ### Certificate errors
 
@@ -153,7 +154,7 @@ Import-PfxCertificate `
     -Password $password
 ```
 
-Then point `Basil:Server:Certificate:Path` and `Password` at the PFX and restart Basil.
+Then point `Kestrel:Certificates:Default:Path` and `Password` at the PFX and restart Basil.
 
 ### macOS / Linux
 
@@ -213,9 +214,9 @@ client's IP and country are read as the proxy's. See
 
 ### Basil does not start after changing the certificate
 
-1. `Basil:Server:Certificate:Path` points at the file, relative to the executable or absolute.
+1. `Kestrel:Certificates:Default:Path` points at the file, relative to the executable or absolute.
 2. The process can read the file.
-3. `Basil:Server:Certificate:Password` is correct.
+3. `Kestrel:Certificates:Default:Password` is correct.
 4. The file is a PFX containing the private key.
 5. The startup log names the certificate error.
 
@@ -225,7 +226,7 @@ client's IP and country are read as the proxy's. See
 2. The hostname resolves to this server.
 3. The client trusts the certificate.
 4. It has not expired.
-5. The client connects over HTTPS to `Server:Ports:Https`, normally `443`.
+5. The client connects over HTTPS to the port of `Kestrel:Endpoints:Https:Url`, normally `443`.
 
 For LAN deployments the usual cause is a certificate that is not trusted on the client.
 

@@ -17,7 +17,7 @@ Common causes include:
 * an invalid configuration value;
 * an invalid TLS certificate or certificate password;
 * the configured port is already in use;
-* the PostgreSQL database named by `Basil:Database:ConnectionString` cannot be reached or refuses the role;
+* the PostgreSQL database named by `ConnectionStrings:Write` (or `Read`) cannot be reached or refuses the role;
 * the process does not have permission to access required files or bind to the configured port.
 
 If Basil exits immediately after a configuration change, check the most recent entries of the log file of the day:
@@ -39,8 +39,8 @@ docker compose logs --no-color
 If Basil exits during startup after changing the certificate configuration, check:
 
 ```text
-Basil:Server:Certificate:Path
-Basil:Server:Certificate:Password
+Kestrel:Certificates:Default:Path
+Kestrel:Certificates:Default:Password
 ```
 
 Verify that:
@@ -198,7 +198,7 @@ Check:
 
 * the Basil server's firewall;
 * any network firewall between the client and server;
-* the configured `Basil:Server:Ports:Https`.
+* the port of the configured `Kestrel:Endpoints:Https:Url`.
 
 ### 5. Check that the server answers
 
@@ -221,7 +221,7 @@ Basil IRC uses a separate TCP port.
 The default is:
 
 ```text
-Basil:Server:Ports:Irc = 6667
+Basil:Server:Irc:Port = 6667
 ```
 
 Check:
@@ -380,9 +380,9 @@ Temporarily increase the log level:
 
 ```json
 {
-  "Basil": {
-    "Logging": {
-      "MinimumLevel": "Debug"
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
     }
   }
 }
