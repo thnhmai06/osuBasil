@@ -14,7 +14,7 @@ internal sealed class PostgresRoundScoreRepository(
 	DatabaseWriter writer,
 	IScoreRepository scores) : IRoundScoreRepository
 {
-	private readonly ConcurrentDictionary<int, RoundScore> _pending = new();
+	private readonly ConcurrentDictionary<int, Queued> _pending = new();
 
 	/// <inheritdoc />
 	public Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
@@ -27,7 +27,8 @@ internal sealed class PostgresRoundScoreRepository(
 			RoundNumber = round.Index,
 			Team = roundScore.Team is { } team ? (int)team : null
 		};
-		_pending[row.ScoreId] = roundScore;
+		var queuedCopy = new Queued(roundScore);
+		_pending[row.ScoreId] = queuedCopy;
 		var queued = writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId),
 			new WriteCommand<MultiplayerDbContext>((context, token) =>
 				context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
@@ -35,7 +36,7 @@ internal sealed class PostgresRoundScoreRepository(
 		_ = queued.ContinueWith(task =>
 		{
 			if (task.IsCompletedSuccessfully)
-				_pending.TryRemove(new KeyValuePair<int, RoundScore>(row.ScoreId, roundScore));
+				_pending.TryRemove(new KeyValuePair<int, Queued>(row.ScoreId, queuedCopy));
 		}, TaskScheduler.Default);
 		return Task.FromResult(roundScore);
 	}
@@ -45,7 +46,7 @@ internal sealed class PostgresRoundScoreRepository(
 	{
 		// Taken before the database is read, so a relation whose write finishes during the read is in the snapshot or in
 		// the rows, never in neither.
-		var queued = _pending.Values.Where(pending => pending.Round.Equals(round)).ToList();
+		var queued = _pending.Values.Select(pending => pending.RoundScore).Where(pending => pending.Round.Equals(round)).ToList();
 		var rows = await reader.ReadAsync((MultiplayerDbContext context) => context.RoundScores
 			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)
@@ -59,5 +60,11 @@ internal sealed class PostgresRoundScoreRepository(
 		// A relation whose write is still queued is not in the database yet.
 		result.AddRange(queued.Where(pending => result.All(stored => stored.Score.Id != pending.Score.Id)));
 		return [.. result.OrderBy(roundScore => roundScore.Score.Id)];
+	}
+
+	// A class, so that comparing two copies compares the instances and not the scores they hold.
+	private sealed class Queued(RoundScore roundScore)
+	{
+		public RoundScore RoundScore { get; } = roundScore;
 	}
 }
