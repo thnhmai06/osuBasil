@@ -25,6 +25,10 @@ assets.<domain>
 The names must be Subject Alternative Names. A certificate for only `localhost` or only the main domain is **not
 sufficient**.
 
+A self-signed certificate must also carry `basicConstraints` with `CA:TRUE`. A Linux client's trust store (p11-kit, the
+basis of `update-ca-trust` and the browsers) only places certificate authorities into its trust bundles, so a
+self-signed certificate without it cannot become trusted there.
+
 ### Public deployment
 
 Use a certificate from a trusted certificate authority. A wildcard certificate works when it covers both `<domain>` and
@@ -55,8 +59,9 @@ Basil ships a self-signed certificate for local development and private LAN test
 Configurations/basil.local.pfx
 ```
 
-It covers the required `basil.local` subdomains. The bundled `Configurations/appsettings.json` already points at it with
-the password `your-password`, so a fresh local installation starts with HTTPS without generating anything.
+It covers the required `basil.local` subdomains and declares `basicConstraints` `CA:TRUE`, so Linux clients can trust it
+through their system certificate store. The bundled `Configurations/appsettings.json` already points at it with the
+password `basil`, so a fresh local installation starts with HTTPS without generating anything.
 
 > [!IMPORTANT]
 > **Do not use the bundled certificate for production or a publicly exposed server.**
@@ -84,7 +89,7 @@ For example:
 		"Server": {
 			"Certificate": {
 				"Path": "Configurations/basil.local.pfx",
-				"Password": "your-password"
+				"Password": "basil"
 			},
 			"Ports": { "Https": 443 }
 		}
@@ -121,7 +126,7 @@ Run **PowerShell as Administrator**:
 
 ```powershell
 $domain = "basil.local"
-$password = ConvertTo-SecureString -String "your-password" -Force -AsPlainText
+$password = ConvertTo-SecureString -String "basil" -Force -AsPlainText
 
 $dnsNames = @(
 	$domain, "c.$domain", "ce.$domain", "c4.$domain", "c5.$domain", "c6.$domain",
@@ -154,12 +159,13 @@ Then point `Basil:Server:Certificate:Path` and `Password` at the PFX and restart
 
 ```bash
 domain="basil.local"
-password="your-password"
+password="basil"
 
 openssl req -new -x509 -days 365 -nodes \
   -out basil-cert.pem \
   -keyout basil-key.pem \
   -subj "/CN=$domain" \
+  -addext "basicConstraints=critical,CA:TRUE" \
   -addext "subjectAltName=DNS:$domain,DNS:c.$domain,DNS:ce.$domain,DNS:c4.$domain,DNS:c5.$domain,DNS:c6.$domain,DNS:osu.$domain,DNS:b.$domain,DNS:a.$domain,DNS:api.$domain,DNS:assets.$domain"
 
 openssl pkcs12 -export \
@@ -175,7 +181,13 @@ Trust it on the client:
 # macOS
 security add-trusted-cert -d -r trustRoot -k ~/Library/Keychains/login.keychain basil-cert.pem
 
-# Linux: install basil-cert.pem into the distribution's trusted certificate store.
+# Linux (Debian/Ubuntu)
+sudo cp basil-cert.pem /usr/local/share/ca-certificates/basil.crt
+sudo update-ca-certificates
+
+# Linux (Arch)
+sudo cp basil-cert.pem /etc/ca-certificates/trust-source/anchors/basil.crt
+sudo update-ca-trust extract
 ```
 
 Then configure the PFX in `Configurations/appsettings.json` and restart Basil.

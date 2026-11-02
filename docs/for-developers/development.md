@@ -106,7 +106,7 @@ Data/basil.local.pfx
 with the password:
 
 ```text
-your-password
+basil
 ```
 
 The certificate covers the required `basil.local` subdomains, so the default local configuration can be used without
