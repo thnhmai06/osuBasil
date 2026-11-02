@@ -130,15 +130,12 @@ internal static class UserRoutes
 		if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrEmpty(request.Password))
 			return Api.Invalid("username and password are required.");
 
-		var data = new UserData
-		{
-			Name = request.Username,
-			Permissions = request.Permissions is { } p ? (UserPermissions)p : UserPermissionsGroups.Default
-		};
+		var data = new UserData { Name = request.Username };
+		UserPermissions? permissions = request.Permissions is { } p ? (UserPermissions)p : null;
 		if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
 
 		var (record, result) = await registry.ScopeTo(context.Connection()).CreateAccountAsync(data,
-			new Md5(Encoding.UTF8.GetBytes(request.Password)), context.RequestAborted);
+			new Md5(Encoding.UTF8.GetBytes(request.Password)), permissions, context.RequestAborted);
 		return result.IsOk ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
 

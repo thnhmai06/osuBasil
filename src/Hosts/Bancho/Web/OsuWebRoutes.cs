@@ -136,7 +136,8 @@ internal static class OsuWebRoutes
 	{
 		if (!context.Request.HasFormContentType) return Text("error: no");
 
-		await UploadLimit.AllowAsync(context, settings);
+		// A score submission carries a replay, which is far below the screenshot limit.
+		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
 		var form = await context.Request.ReadFormAsync(ct);
 		try
 		{
@@ -214,7 +215,7 @@ internal static class OsuWebRoutes
 	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, Server server,
 		ISettingsRepository settings, CancellationToken ct)
 	{
-		await UploadLimit.AllowAsync(context, settings);
+		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
 		var form = await context.Request.ReadFormAsync(ct);
 		if (await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is not { } player)
 			return Results.Unauthorized();

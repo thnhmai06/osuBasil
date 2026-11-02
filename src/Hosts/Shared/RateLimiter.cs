@@ -5,7 +5,7 @@ namespace Basil.Host.Shared;
 /// <summary>Counts events per key inside a sliding window; keys whose events all expired are forgotten.</summary>
 public sealed class RateLimiter(TimeProvider clock)
 {
-	/// <summary>The most keys remembered at the same time; beyond it arbitrary keys are forgotten.</summary>
+	/// <summary>The most keys remembered at the same time; beyond it the keys with the fewest recent events are forgotten first.</summary>
 	public const int MaxKeys = 100_000;
 
 	private static readonly TimeSpan PurgeEvery = TimeSpan.FromMinutes(1);
@@ -109,10 +109,21 @@ public sealed class RateLimiter(TimeProvider clock)
 			_events.TryRemove(key, out _);
 		}
 
-		// shortcut: arbitrary keys are dropped beyond the cap (down to 90% of it, so the next flood request does not
-		// purge again), so a flood of new keys cannot grow the table without end.
+		// Beyond the cap the keys with the fewest recent events go first (down to 90% of the cap, so the next flood
+		// request does not purge again): a key that holds a lockout has the most events and is the last to be forgotten.
 		if (_events.Count <= MaxKeys) return;
-		foreach (var key in _events.Keys.Take(_events.Count - MaxKeys / 10 * 9)) _events.TryRemove(key, out _);
+		var weakest = _events
+			.Select(pair =>
+			{
+				lock (pair.Value)
+				{
+					return (pair.Key, Weight: pair.Value.Events.Count);
+				}
+			})
+			.OrderBy(item => item.Weight)
+			.Take(_events.Count - MaxKeys / 10 * 9)
+			.ToList();
+		foreach (var (key, _) in weakest) _events.TryRemove(key, out _);
 	}
 
 	private sealed class Entry

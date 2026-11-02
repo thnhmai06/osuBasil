@@ -173,13 +173,13 @@ internal static class UserCommands
 	{
 		var data = new UserData
 		{
-			Name = call.Required("username"),
-			Permissions = call.Bool("admin") == true
-				? UserPermissionsGroups.All
-				: call.Mask("permissions") is { } mask
-					? (UserPermissions)mask
-					: UserPermissionsGroups.Default
+			Name = call.Required("username")
 		};
+		UserPermissions? permissions = call.Bool("admin") == true
+			? UserPermissionsGroups.All
+			: call.Mask("permissions") is { } mask
+				? (UserPermissions)mask
+				: null;
 		if (call.Text("country") is { } code)
 			data.Country = Enum.TryParse<Country>(code, true, out var country) && code.Length == 2 &&
 			               Enum.IsDefined(country)
@@ -188,7 +188,7 @@ internal static class UserCommands
 
 		var actor = await call.ByAsync();
 		var (record, result) = await call.Get<UserRegistry>().ScopeTo(actor)
-			.CreateAccountAsync(data, CommandHelpers.Md5Of(call.Required("password")), call.CancellationToken);
+			.CreateAccountAsync(data, CommandHelpers.Md5Of(call.Required("password")), permissions, call.CancellationToken);
 		return result.IsOk
 			? Created(call, record!)
 			: call.Refuse(result);

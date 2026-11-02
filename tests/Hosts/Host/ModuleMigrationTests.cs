@@ -52,6 +52,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	[Fact]
 	public async Task Module_migrations_are_applied_in_the_documented_order()
 	{
+		// A module with several migrations has several rows; the order of the modules is what is pinned.
 		var rows = await StoredRows.ReadAsync(ConnectionString, """
 		                                                        SELECT module, transaction_id
 		                                                        FROM (
@@ -68,7 +69,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		                                                        """, null, TestContext.Current.CancellationToken);
 
 		Assert.Equal(["common", "users", "auth", "beatmaps", "content", "scores", "multiplayer", "chat"],
-			rows.Select(row => row.Text("module")));
+			rows.Select(row => row.Text("module")).Distinct());
 	}
 
 	[Fact]

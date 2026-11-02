@@ -27,6 +27,13 @@ Some permissions include the bits of actions they imply. For example, `RoomManag
 
 These manager permissions also determine which area permissions a user keeps while restricted. `UserPermissionsGroups.Default` is the initial permission set for a new account. Basil grants no extra permissions because an account is first or first to connect.
 
+The permissions a new account receives when its creator names none (a registration from the game client, or an API or
+console creation without a mask) are the server setting `accounts.defaultPermissions`; it starts as
+`UserPermissionsGroups.Default`. Changing it needs `ServerManageSettings`, like every setting. The person holding that
+right can already create accounts with any permissions they hold, so the setting adds no route to rights nobody could
+reach; an operator who widens it widens what every unauthenticated registration receives, so keep it to the area
+permissions an ordinary player should have. An explicit mask in the creation request always wins.
+
 ## Privileges are derived roles, and `UserPermissionsGroups` (permission masks, defaults and area managers)
 
 `UserPrivileges` contains the roles understood by osu!: `Player`, `Moderator`, `Supporter`, `Owner`, `Developer` and `Tournament`. It is computed from effective permissions and is neither stored nor configured. A role maps to the permissions it directly represents through `privilege.Permissions`; the role itself authorizes nothing.

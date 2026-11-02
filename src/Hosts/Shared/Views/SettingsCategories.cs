@@ -12,6 +12,7 @@ public static class SettingsCategories
 		Categories = new(StringComparer.OrdinalIgnoreCase)
 		{
 			["general"] = Category(s => s.General, (s, v) => s with { General = v }),
+			["accounts"] = Category(s => s.Accounts, (s, v) => s with { Accounts = v }),
 			["locks"] = Category(s => LocksView.Of(s.Locks), (s, v) => s with { Locks = v.ToLocks() }),
 			["sessions"] = Category(s => s.Sessions, (s, v) => s with { Sessions = v }),
 			["rateLimits"] = Category(s => s.RateLimits, (s, v) => s with { RateLimits = v }),
