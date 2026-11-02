@@ -354,10 +354,10 @@ Basil.Infrastructure.Common      shared database, memory, files and event     ->
 Basil.Application.<Module>       the module's ports and objects, in folders by       -> Domain, Application.Common,
                                  responsibility: Objects/ (live objects, contexts,    the Application projects of the
                                  outcomes, event records), Registry/ (the objects     modules it uses (below)
-                                 kept in RAM), Capabilities/ (Scoped* views, ports
-                                 to external computation and the object-free logic
-                                 behind them), Services/ (services the system
-                                 provides: a contract and its implementation),
+                                 kept in RAM), Capabilities/ (Scoped* views only),
+                                 Ports/ (ports to external computation), Logic/
+                                 (object-free logic), Services/ (services the
+                                 system provides: a contract and its implementation),
                                  Persistence/ (repository ports, query records),
                                  Storage/ (file-storage ports), Handlers/ (event
                                  handlers), Workers/ (background runs);
@@ -365,7 +365,7 @@ Basil.Application.<Module>       the module's ports and objects, in folders by  
 Basil.Infrastructure.<Module>    the module's implementations, in folders that        -> its own Application,
                                  match those ports: Persistence/ (Postgres,           Infrastructure.Common,
                                  DbContext, rows, migrations), Storage/ (files),      Application.Common
-                                 Capabilities/ (osu! rulesets, FFMpegCore,
+                                 Adapters/ (osu! rulesets, FFMpegCore,
                                  ImageSharp, HTTP), Registry/ (memory primitives),
                                  Workers/ (sweepers, watchers);
                                  Add<Module>Infrastructure()
@@ -434,12 +434,12 @@ they do: runtime objects, their parts, the contexts they take their collaborator
 object, and the records of its events (`Objects/Events/`); every coordination between objects lives here, and it
 publishes the events that are left to the handlers. **Registry/** holds what keeps live objects in RAM and hands them
 out (`UserRegistry`, `Lobby`, the channel registries) and owns the operations on what it holds. **Capabilities/**
-holds the `Scoped*` views (the object's behaviour as one connection may do it), the ports to external computation (a
-capability with business meaning whose implementation needs external libraries: beatmapset reader, analyser, assets,
-mirror, screenshot inspector; these interfaces and the data they exchange are the only public types) and the
-application logic that needs no live object (account checks, beatmapset indexing, score validation and recording): it
-takes and returns records and plain results, never creates, receives or publishes an object or an event, and every
-such type is `internal`. **Services/** holds the services the system provides, a contract and its implementation
+holds only the `Scoped*` views (the object's behaviour as one connection may do it). **Ports/** holds the ports to
+external computation (a capability with business meaning whose implementation needs external libraries: beatmapset
+reader, analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
+types). **Logic/** holds the application logic that needs no live object (account checks, beatmapset indexing, score
+validation and recording): it takes and returns records and plain results, never creates, receives or publishes an
+object or an event, and every such type is `internal`. **Services/** holds the services the system provides, a contract and its implementation
 (`IAnticheatReporter`); a helper that only serves one layer is not a service and stays with what implements it.
 **Persistence/** holds the repository ports and their query records, **Storage/** the file-storage ports,
 **Handlers/** the event handlers and **Workers/** the background runs.
@@ -479,7 +479,9 @@ Every module uses these folders, and creates only the ones it needs:
 |---|---|
 | `Objects/` | The module's live objects, their parts and contexts, each object's outcome enum, and its event records (`Objects/Events/`) |
 | `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries) |
-| `Capabilities/` | The `Scoped*` views, the ports to external computation, and the object-free logic that implements them |
+| `Capabilities/` | The `Scoped*` views only |
+| `Ports/` | The ports to external computation and the data they exchange |
+| `Logic/` | The object-free application logic behind the objects and ports |
 | `Services/` | Services the system provides: a contract and its implementation. Only what a module offers as a service belongs here |
 | `Persistence/` | The repository ports, their query records and the data both layers name |
 | `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
@@ -487,7 +489,7 @@ Every module uses these folders, and creates only the ones it needs:
 | `Workers/` | The background runs the module declares (sweepers, watchers) |
 
 Infrastructure mirrors those ports: `Persistence/` for Postgres, `DbContext`, rows and migrations, `Storage/` for the
-file implementations, `Capabilities/` for what needs an external library, `Registry/` for the shared memory
+file implementations, `Adapters/` for what needs an external library, `Registry/` for the shared memory
 primitives and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
 
 ```text
@@ -497,8 +499,8 @@ Users/         IUserRepository and friends, UserQuery, login inputs    (Persiste
                Connection, ConnectionContext, ConnectionRules,
                PlayerStatus                                            (Objects/Connections)
                UserRegistry                                            (Registry)
-               AccountService, CredentialChecks, ScopedUser*,
-               ScopedBanchoConnection                                  (Capabilities)
+               ScopedUser*, ScopedBanchoConnection                      (Capabilities)
+               AccountService, CredentialChecks                        (Logic)
                ConnectionHandler, RestrictionHandler                   (Handlers)
 Chat/          IChannelRepository                                      (Persistence)
                the channel tree, ChannelContext, ChannelOutcome,
@@ -516,19 +518,21 @@ Beatmaps/      beatmap and beatmapset repositories, import and scan
                data                                                     (Persistence)
                IBeatmapsetStorage                                       (Storage)
                Beatmapset, Beatmapsets, contexts, outcomes, events      (Objects)
-               ScopedBeatmapset, the reader/analyser/mirror/assets
-               ports, and the importer, scanner and planner             (Capabilities)
+               ScopedBeatmapset                                         (Capabilities)
+               the reader/analyser/mirror/assets ports                  (Ports)
+               the importer, scanner and planner                        (Logic)
 Scores/        score, stats repositories, submission inputs             (Persistence)
                IReplayStorage                                           (Storage)
                ScoreSubmitter, IScoreBeatmapAcceptance,
-               ScoreSubmissionOutcome, ScoreEvents                      (Objects)
-               ScopedScoreSubmitter, ScoreRecorder                      (Capabilities)
+               ScoreSubmissionOutcome, ScoreOutcome, ScoreEvents        (Objects)
+               ScopedScoreSubmitter                                     (Capabilities)
+               ScoreRecorder                                            (Logic)
 Anticheat/     IAnticheatReporter, AnticheatReporter                    (Services)
                AnticheatEvents                                          (Objects/Events)
 Content/       ISettingsRepository, IMenuBannerRepository,
                ServerSettings                                           (Persistence)
                the FAQ, menu, screenshot and seasonals storages          (Storage)
-               IScreenshotInspector                                     (Capabilities)
+               IScreenshotInspector                                     (Ports)
 Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects)
                ScopedServer and its parts                               (Capabilities)
 ```

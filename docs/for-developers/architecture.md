@@ -62,15 +62,15 @@ Servers     -> every module above
 ```
 
 `Basil.Application.<Module>` holds `Objects/` (live objects, their parts, contexts, outcome enums and event records),
-`Registry/` (what keeps live objects in RAM), `Capabilities/` (the `Scoped*` views, ports whose implementation needs
-external libraries, public; and the object-free logic behind them, internal), `Services/` (a service the system
+`Registry/` (what keeps live objects in RAM), `Capabilities/` (the `Scoped*` views), `Ports/` (ports whose implementation needs
+external libraries, public), `Logic/` (the object-free logic behind them, internal), `Services/` (a service the system
 provides: a contract and its implementation), `Persistence/` (repository ports and query records), `Storage/`
 (file-storage ports), `Handlers/` (event handlers) and `Workers/` (background runs). Behaviour belongs to the object
 that owns the state. Internal capability helpers stay object-free; a system-facing Service has a contract and may
 receive a live object or publish its event only when that is the declared system operation, as with
 `IAnticheatReporter`.
 `Basil.Infrastructure.<Module>` implements its own Application project's ports with PostgreSQL, files, rulesets,
-ImageSharp and background work, in the folder that matches the port (`Persistence/`, `Storage/`, `Capabilities/`,
+ImageSharp and background work, in the folder that matches the port (`Persistence/`, `Storage/`, `Adapters/`,
 `Registry/`, `Workers/`). A module Infrastructure project never references another module; foreign keys between
 the module databases decide migration order.
 

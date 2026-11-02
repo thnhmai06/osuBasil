@@ -1,24 +1,35 @@
 using System.Net;
-using Basil.Host;
 using Basil.Host.Cli.Shutdown;
 using Microsoft.Extensions.Options;
 
-if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
+namespace Basil.Host;
 
-var app = HostApplication.Create(args);
-if (Restarter.WasRestarted())
+/// <summary>The entry point of the server executable.</summary>
+public static class Program
 {
-	var server = app.Services.GetRequiredService<IOptions<ServerOptions>>().Value;
-	var address = IPAddress.Parse(server.Bind);
-	await Restarter.WaitForPortsAsync(
-		() => Restarter.CanBind(address, server.Ports.Https) && Restarter.CanBind(IPAddress.Any, server.Ports.Irc),
-		TimeProvider.System, TimeSpan.FromSeconds(10));
+	/// <summary>Runs the operator shell command named by the arguments, or the server until it stops.</summary>
+	/// <param name="args">The command-line arguments.</param>
+	/// <returns>The process exit code.</returns>
+	public static async Task<int> Main(string[] args)
+	{
+		if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
+
+		var app = HostApplication.Create(args);
+		if (Restarter.WasRestarted())
+		{
+			var server = app.Services.GetRequiredService<IOptions<ServerOptions>>().Value;
+			var address = IPAddress.Parse(server.Bind);
+			await Restarter.WaitForPortsAsync(
+				() => Restarter.CanBind(address, server.Ports.Https) && Restarter.CanBind(IPAddress.Any, server.Ports.Irc),
+				TimeProvider.System, TimeSpan.FromSeconds(10));
+		}
+
+		// Resolved before the run: the services are disposed once the host has stopped.
+		var control = app.Services.GetRequiredService<ShutdownController>();
+		await app.RunAsync();
+		if (control is { RestartRequested: true } && !Restarter.UnderManager())
+			Restarter.Start(args);
+
+		return control.ExitCode;
+	}
 }
-
-// Resolved before the run: the services are disposed once the host has stopped.
-var control = app.Services.GetRequiredService<ShutdownController>();
-await app.RunAsync();
-if (control is { RestartRequested: true } && !Restarter.UnderManager())
-	Restarter.Start(args);
-
-return control.ExitCode;

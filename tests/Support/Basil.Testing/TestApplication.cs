@@ -6,6 +6,7 @@ using Basil.Application.Auth.Persistence;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
+using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
@@ -354,7 +355,7 @@ public sealed class TestApplication : IDisposable
 			         type is { IsInterface: true, ContainsGenericParameters: false, Namespace: not null } &&
 			         (type.Namespace.EndsWith(".Persistence", StringComparison.Ordinal) ||
 			          type.Namespace.EndsWith(".Storage", StringComparison.Ordinal) ||
-			          type.Namespace.EndsWith(".Capabilities", StringComparison.Ordinal)) &&
+			          type.Namespace.EndsWith(".Ports", StringComparison.Ordinal)) &&
 			         !inMemoryPortTypes.Contains(type)))
 			services.AddSingleton(port, _ => Substitute.For([port], []));
 	}

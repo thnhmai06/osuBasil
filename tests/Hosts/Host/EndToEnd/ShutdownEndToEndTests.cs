@@ -101,7 +101,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		Assert.EndsWith(IrcReplies.ShuttingDownNotice, notice);
 		Assert.Contains(IrcReplies.ShuttingDown, error);
 		Assert.Equal("server", final.Event);
-		Assert.Equal("shuttingDown", (string)JsonNode.Parse(final.Data)!["state"]!);
+		Assert.Equal("shuttingDown", (string)JsonNode.Parse(final.Data!)!["state"]!);
 		Assert.All(shutdown.Results, result => Assert.Equal(ShutdownStepOutcome.Completed, result.Outcome));
 		Assert.Empty(host.Services.GetRequiredService<Lobby>().Rooms);
 	}
@@ -154,6 +154,6 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		response.Dispose();
 
 		Assert.Equal("server", final.Event);
-		Assert.Equal("restarting", (string)JsonNode.Parse(final.Data)!["state"]!);
+		Assert.Equal("restarting", (string)JsonNode.Parse(final.Data!)!["state"]!);
 	}
 }

@@ -6,6 +6,7 @@ using System.Text;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Logic;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;

@@ -68,7 +68,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their
   contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
   RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
-  views live in **Capabilities/**; the event handlers in **Handlers/**; the background runs in **Workers/**. In the
+  views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the object-free logic in **Logic/**; the event handlers in **Handlers/**; the background runs in **Workers/**. In the
   Users module the online user and its context are in `Objects/`, its connections in `Objects/Connections/`, and its
   registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
   timer. A state change and its consequences belong to the object that owns the state.
@@ -113,7 +113,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
   point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
-  or resources is a public interface in a module's Capabilities folder (with the data it exchanges) that the module's Infrastructure project implements
+  or resources is a public interface in a module's Ports folder (with the data it exchanges) that the module's Infrastructure project implements
   (`IBeatmapAnalyser`, `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`, `IScreenshotInspector`), even
   when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks,
   OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension

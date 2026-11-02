@@ -21,6 +21,9 @@ public class LayeringTests
 	private const string Bot = "Basil.Bot";
 	private const string Persistence = @"^Basil\.Application\.\w+\.Persistence";
 	private const string Capabilities = @"^Basil\.Application\.\w+\.Capabilities";
+	private const string Ports = @"^Basil\.Application\.\w+\.Ports";
+	private const string Logic = @"^Basil\.Application\.\w+\.Logic";
+	private const string Computation = @"^Basil\.Application\.\w+\.(Capabilities|Ports|Logic)";
 	private const string Objects = @"^Basil\.Application\.\w+\.Objects";
 	private const string Storage = @"^Basil\.Application\.\w+\.Storage";
 	private const string InfrastructureWorkers = @"^Basil\.Infrastructure\.\w+\.Workers";
@@ -72,41 +75,36 @@ public class LayeringTests
 	[Fact]
 	public void ApplicationCapabilities_DoNotSeeHandlersOrWorkers()
 	{
-		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Capabilities)
+		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Computation)
 			.ShouldNot().HaveDependencyOnAny(ReactionNamespaces()).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
 	[Fact]
-	public void ApplicationCapabilities_PublicTypesArePortsDataOrScopedCapabilities()
+	public void ApplicationCapabilities_PublicTypesAreScopedViewsOnly()
 	{
-		var publicTypes = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
+		var others = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Where(type => type is { IsPublic: true, IsNested: false, Namespace: not null } &&
-			               Regex.IsMatch(type.Namespace, Capabilities))
-			.ToList();
-		var exchanged = new HashSet<Type>();
-		var pending = new Stack<Type>(publicTypes.Where(type => type.IsInterface)
-			.SelectMany(port => port.GetMethods())
-			.SelectMany(method => method.GetParameters().Select(parameter => parameter.ParameterType)
-				.Append(method.ReturnType))
-			.SelectMany(Unwrap));
-		while (pending.TryPop(out var type))
-		{
-			if (!exchanged.Add(type)) continue;
-			foreach (var property in type.GetProperties())
-			foreach (var inner in Unwrap(property.PropertyType))
-				pending.Push(inner);
-		}
-
-		// A Scoped capability is the object's behaviour as one connection may do it; it is public by design.
-		var logic = publicTypes.Where(type => !type.IsInterface && !exchanged.Contains(type) &&
-		                                      !type.Name.StartsWith("Scoped", StringComparison.Ordinal))
+			               Regex.IsMatch(type.Namespace, Capabilities) &&
+			               !type.Name.StartsWith("Scoped", StringComparison.Ordinal))
 			.Select(type => type.Name)
 			.ToList();
 
-		Assert.True(logic.Count == 0, "Public logic types that are neither ports, port data nor Scoped capabilities: " +
-		                              string.Join(", ", logic));
+		Assert.True(others.Count == 0, "Public types in Capabilities that are not Scoped views: " +
+		                               string.Join(", ", others));
+	}
+
+	[Fact]
+	public void ApplicationLogic_HasNoPublicTypes()
+	{
+		var publicTypes = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
+			.Where(type => type is { IsPublic: true, IsNested: false, Namespace: not null } &&
+			               Regex.IsMatch(type.Namespace, Logic))
+			.Select(type => type.Name)
+			.ToList();
+
+		Assert.True(publicTypes.Count == 0, "Logic types are internal: " + string.Join(", ", publicTypes));
 	}
 
 	[Fact]
@@ -278,7 +276,11 @@ public class LayeringTests
 
 	private static string[] CapabilityNamespaces()
 	{
-		return [.. ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Capabilities")];
+		return [.. ModuleAssemblies.Modules.SelectMany(module => new[]
+		{
+			$"Basil.Application.{module}.Capabilities", $"Basil.Application.{module}.Ports",
+			$"Basil.Application.{module}.Logic"
+		})];
 	}
 
 	private static string[] NonScopedCapabilityTypeNames()
@@ -289,7 +291,7 @@ public class LayeringTests
 				.Where(type => type is { IsPublic: true, IsNested: false } &&
 				               !type.Name.StartsWith("Scoped", StringComparison.Ordinal) &&
 				               type.Namespace is not null &&
-				               Regex.IsMatch(type.Namespace, Capabilities))
+				               Regex.IsMatch(type.Namespace, Computation))
 				.Select(type => type.FullName!)
 		];
 	}

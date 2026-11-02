@@ -1,7 +1,8 @@
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Infrastructure.Beatmaps.Capabilities;
+using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Infrastructure.Beatmaps.Workers;

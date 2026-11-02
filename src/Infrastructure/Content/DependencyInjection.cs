@@ -1,9 +1,9 @@
-using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Registry;
-using Basil.Infrastructure.Content.Capabilities;
+using Basil.Infrastructure.Content.Adapters;
 using Basil.Infrastructure.Content.Persistence;
 using Basil.Infrastructure.Content.Storage;
 using Microsoft.Extensions.DependencyInjection;
