@@ -1,6 +1,10 @@
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
@@ -12,17 +16,29 @@ namespace Basil.Host.Bancho.Web;
 /// <summary>Authenticates the web requests of an osu! client by its username and password hash.</summary>
 internal sealed class WebAuthentication(
 	UserRegistry registry,
+	IUserRepository users,
 	ICredentialRepository credentials,
 	ISettingsRepository settings,
 	LoginAttemptGuard attempts,
 	TimeProvider clock)
 {
+	// The digest that passed the password check, per connection: later requests skip the slow hash check.
+	private readonly ConditionalWeakTable<BanchoConnection, string> _verified = new();
+
 	/// <summary>Tells whether a client may use osu!direct.</summary>
 	/// <param name="client">The authenticated client.</param>
 	/// <returns><see langword="true" /> when its effective permissions include osu!direct.</returns>
 	public bool MayUseDirect(BanchoConnection client)
 	{
-		return client.User.EffectivePermissions(clock.GetUtcNow()).Allows(UserPermissions.BeatmapsetDirect);
+		return Effective(client).Allows(UserPermissions.BeatmapsetDirect);
+	}
+
+	/// <summary>Gets what a client may do right now.</summary>
+	/// <param name="client">The authenticated client.</param>
+	/// <returns>Its effective permissions.</returns>
+	public UserPermissions Effective(BanchoConnection client)
+	{
+		return client.User.EffectivePermissions(clock.GetUtcNow());
 	}
 
 	/// <summary>Finds the online osu! client a web request speaks for.</summary>
@@ -36,8 +52,9 @@ internal sealed class WebAuthentication(
 	{
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;
 		var normalized = UserData.NormalizeName(username);
-		var online = registry.Online.Values.FirstOrDefault(user => user.Record.Value.NormalizedName == normalized);
-		if (online?.Bancho is not { IsOpen: true } client) return null;
+		if (await users.GetByNameAsync(username, cancellationToken) is not { } record) return null;
+		var online = registry.Of(record);
+		if (online.Bancho is not { IsOpen: true } client) return null;
 		var rules = (await settings.GetAsync(cancellationToken)).RateLimits.Login;
 		var ipKey = $"login-fail:{ClientAddress.Resolve(context)}";
 		var pairKey = $"{ipKey}:{normalized}";
@@ -46,8 +63,12 @@ internal sealed class WebAuthentication(
 
 		try
 		{
+			if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
 			if (await credentials.VerifyAsync(new Credentials(online.Record, new Md5(passwordMd5)), cancellationToken))
+			{
+				_verified.AddOrUpdate(client, passwordMd5.ToLowerInvariant());
 				return client;
+			}
 		}
 		catch (ArgumentException)
 		{
@@ -55,5 +76,11 @@ internal sealed class WebAuthentication(
 
 		attempt.Keep();
 		return null;
+	}
+
+	private static bool SameDigest(string known, string given)
+	{
+		return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(known),
+			Encoding.UTF8.GetBytes(given.ToLowerInvariant()));
 	}
 }

@@ -1,4 +1,5 @@
 using System.Net;
+using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
@@ -173,6 +174,32 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		Assert.StartsWith($"{map.Beatmapset.Id}.osz|", line);
 	}
 
+	[Fact]
+	public async Task Direct_HiddenSet_IsNotSearchedOrDownloaded_ByThoseWhoMayNotViewIt()
+	{
+		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
+		var sets = Host.Services.GetRequiredService<IBeatmapsetRepository>();
+		var set = (await sets.GetAsync(map.Beatmapset.Id))!;
+		set.Visible = false;
+		await sets.UpdateAsync(set);
+		using var supporter = await Host.NewClientAsync("DirectHiddenNo", permissions: UserPermissionsGroups.Default);
+		await supporter.LoginAsync();
+
+		try
+		{
+			var (download, _) = await supporter.WebGetAsync($"/d/{map.Beatmapset.Id}", "u", "h");
+			var (_, line) = await supporter.SearchSetAsync(map.Beatmapset.Id);
+
+			Assert.Equal(HttpStatusCode.NotFound, download);
+			Assert.Equal(string.Empty, line);
+		}
+		finally
+		{
+			set.Visible = true;
+			await sets.UpdateAsync(set);
+		}
+	}
+
 	private async Task<int> LoginLimitAsync()
 	{
 		return (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
@@ -188,6 +215,20 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		var (status, _) = await client.GetFriendsAsync("203.0.113.30");
 
 		Assert.Equal(HttpStatusCode.OK, status);
+	}
+
+	[Fact]
+	public async Task WebEndpoint_AWrongHashAfterTheCorrectOne_IsStillRefused()
+	{
+		using var client = await OnlineAsync("WebRepeat");
+		using var impostor = OsuClient.Create(Host, "WebRepeat", "wrong");
+		await client.GetFriendsAsync("203.0.113.40");
+
+		var (wrong, _) = await impostor.GetFriendsAsync("203.0.113.41");
+		var (again, _) = await client.GetFriendsAsync("203.0.113.40");
+
+		Assert.Equal(HttpStatusCode.Unauthorized, wrong);
+		Assert.Equal(HttpStatusCode.OK, again);
 	}
 
 	[Fact]
