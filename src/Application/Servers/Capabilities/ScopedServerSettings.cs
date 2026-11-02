@@ -31,12 +31,20 @@ public sealed class ScopedServerSettings
 	/// <param name="settings">The new settings.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of storing the settings.</returns>
-	/// <remarks>Requires <see cref="UserPermissions.ServerManageSettings" />.</remarks>
+	/// <remarks>
+	///     Requires <see cref="UserPermissions.ServerManageSettings" />. Changing the permissions that new accounts
+	///     receive also requires every permission of the new set to be in effect for the caller, as granting does.
+	/// </remarks>
 	public async Task<Result<ServerOutcome>> UpdateAsync(ServerSettings settings,
 		CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Needs(UserPermissions.ServerManageSettings) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
+
+		var current = await _scoped.Server.Context.Settings.GetAsync(cancellationToken);
+		if (settings.Accounts.DefaultPermissions != current.Accounts.DefaultPermissions &&
+		    _scoped.Needs(settings.Accounts.DefaultPermissions) is { } ungrantable)
+			return Result<ServerOutcome>.Denied(ungrantable);
 
 		await _scoped.Server.Context.Settings.CreateOrUpdateAsync(settings, cancellationToken);
 		return ServerOutcome.Ok;

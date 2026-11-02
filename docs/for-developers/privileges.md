@@ -29,10 +29,10 @@ These manager permissions also determine which area permissions a user keeps whi
 
 The permissions a new account receives when its creator names none (a registration from the game client, or an API or
 console creation without a mask) are the server setting `accounts.defaultPermissions`; it starts as
-`UserPermissionsGroups.Default`. Changing it needs `ServerManageSettings`, like every setting. The person holding that
-right can already create accounts with any permissions they hold, so the setting adds no route to rights nobody could
-reach; an operator who widens it widens what every unauthenticated registration receives, so keep it to the area
-permissions an ordinary player should have. An explicit mask in the creation request always wins.
+`UserPermissionsGroups.Default`. Changing it needs `ServerManageSettings` like every setting, and, as with any grant,
+the caller must hold every permission of the new set in effect: a settings manager without `UserManage` cannot make
+`UserManage` the default that every unauthenticated registration receives. An explicit mask in the creation request
+always wins. Keep the default to the area permissions an ordinary player should have; the console is not limited.
 
 ## Privileges are derived roles, and `UserPermissionsGroups` (permission masks, defaults and area managers)
 

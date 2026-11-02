@@ -22,17 +22,6 @@ public sealed class ScopedUserRegistry : Scoped<UserPermissions, Connection>
 		_registry = registry;
 	}
 
-	/// <summary>Creates an account with the permissions in the data.</summary>
-	/// <param name="data">The account data.</param>
-	/// <param name="passwordHash">The MD5 digest of the password.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>See <see cref="CreateAccountAsync(UserData, Md5, UserPermissions?, CancellationToken)" />.</returns>
-	public Task<(UserRecord? User, Result<UserOutcome> Result)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, CancellationToken cancellationToken = default)
-	{
-		return CreateAccountAsync(data, passwordHash, data.Permissions, cancellationToken);
-	}
-
 	/// <summary>Creates an account with permissions the caller may grant.</summary>
 	/// <param name="data">The account data.</param>
 	/// <param name="passwordHash">The MD5 digest of the password.</param>

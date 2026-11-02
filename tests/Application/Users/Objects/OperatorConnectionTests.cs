@@ -40,7 +40,7 @@ public sealed class OperatorConnectionTests
 		var actor = await app.Users.OperateAsync(Token);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "FirstAdmin", Permissions = UserPermissionsGroups.All }, new Md5(new byte[16]),
+			new UserData { Name = "FirstAdmin" }, new Md5(new byte[16]), UserPermissionsGroups.All,
 			Token);
 
 		Assert.True(result.IsOk);

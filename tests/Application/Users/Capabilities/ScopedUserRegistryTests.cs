@@ -18,7 +18,7 @@ public sealed class ScopedUserRegistryTests
 		var actor = await app.LoginAsync(actorRecord);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "NewAccount" }, Hash, TestContext.Current.CancellationToken);
+			new UserData { Name = "NewAccount" }, Hash, null, TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
 		Assert.Equal(UserPermissions.UserManage, result.Missing);
@@ -33,7 +33,7 @@ public sealed class ScopedUserRegistryTests
 		var actor = await app.LoginAsync(actorRecord);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "TooMuchPower", Permissions = UserPermissions.ServerManageSettings }, Hash,
+			new UserData { Name = "TooMuchPower" }, Hash, UserPermissions.ServerManageSettings,
 			TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
@@ -48,7 +48,7 @@ public sealed class ScopedUserRegistryTests
 		var actor = await app.LoginAsync(actorRecord);
 		var data = new UserData { Name = "CreatedAccount", Permissions = UserPermissions.UserManageNote };
 
-		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(data, Hash,
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(data, Hash, data.Permissions,
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
@@ -102,7 +102,7 @@ public sealed class ScopedUserRegistryTests
 		var actor = await app.LoginAsync(actorRecord);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "AlreadyCreated" }, Hash, TestContext.Current.CancellationToken);
+			new UserData { Name = "AlreadyCreated" }, Hash, null, TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
 		Assert.Equal(UserOutcome.NameTaken, result.Outcome);

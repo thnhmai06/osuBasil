@@ -35,7 +35,7 @@ public sealed class UserRegistryTests
 		var actor = await app.LoginAsync(manager);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "StaffMade" }, new Md5("0123456789abcdef0123456789abcdef"),
+			new UserData { Name = "StaffMade" }, new Md5("0123456789abcdef0123456789abcdef"), null,
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
