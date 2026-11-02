@@ -340,7 +340,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var device = new DeviceId("4a8a08f09d37b73795649038408b5f33", "f97c5d29941bfb1b2fdab0874906ab82");
 
 		Assert.False(
-			await Sessions.TakeReauthenticationAsync(user, device with { UninstallHash = "different" }, cancel));
+			await Sessions.TakeReauthenticationAsync(user, device with { UninstallHash = "0cc175b9c0f1b6a831c399e269772661" }, cancel));
 		Assert.True(await Sessions.TakeReauthenticationAsync(user, device, cancel));
 		Assert.False(await Sessions.TakeReauthenticationAsync(user, device, cancel));
 	}

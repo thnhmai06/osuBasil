@@ -7,8 +7,10 @@ namespace Basil.Domain.Auth;
 /// <summary>A persistent record of one client session.</summary>
 public sealed class Session
 {
-	private DateTimeOffset? _expiresAt;
-	private DateTimeOffset? _lastActiveAt;
+	// UTC ticks, written and read atomically: a connection and the activity flush touch them from different threads.
+	private const long None = long.MinValue;
+	private long _expiresTicks = None;
+	private long _lastActiveTicks = None;
 
 	/// <summary>Gets the public identifier of this session.</summary>
 	public required Guid Id { get; init; }
@@ -32,7 +34,10 @@ public sealed class Session
 	public required DateTimeOffset StartedAt { get; init; }
 
 	/// <summary>Gets when the session was last active.</summary>
-	public DateTimeOffset LastActiveAt => _lastActiveAt ?? StartedAt;
+	public DateTimeOffset LastActiveAt =>
+		Interlocked.Read(ref _lastActiveTicks) is var ticks && ticks != None
+			? new DateTimeOffset(ticks, TimeSpan.Zero)
+			: StartedAt;
 
 	/// <summary>Gets when the session ended, or <see langword="null" /> while it remains active.</summary>
 	public DateTimeOffset? EndedAt { get; private set; }
@@ -46,8 +51,10 @@ public sealed class Session
 	/// <summary>Gets when the associated token expires, or <see langword="null" /> for a non-expiring session.</summary>
 	public DateTimeOffset? ExpiresAt
 	{
-		get => _expiresAt;
-		init => _expiresAt = value;
+		get => Interlocked.Read(ref _expiresTicks) is var ticks && ticks != None
+			? new DateTimeOffset(ticks, TimeSpan.Zero)
+			: null;
+		init => _expiresTicks = value?.UtcTicks ?? None;
 	}
 
 	/// <summary>Gets whether the osu! device must enter its password again.</summary>
@@ -57,7 +64,7 @@ public sealed class Session
 	/// <param name="at">The time of the activity.</param>
 	public void MarkActive(DateTimeOffset at)
 	{
-		if (EndedAt is null && at >= LastActiveAt) _lastActiveAt = at;
+		if (EndedAt is null && at >= LastActiveAt) Interlocked.Exchange(ref _lastActiveTicks, at.UtcTicks);
 	}
 
 	/// <summary>Extends the sliding expiry of an API token session.</summary>
@@ -65,7 +72,7 @@ public sealed class Session
 	/// <param name="lifetime">How long the token remains valid after activity.</param>
 	public void ExtendExpiry(DateTimeOffset at, TimeSpan lifetime)
 	{
-		if (Type is SessionType.Api && EndedAt is null) _expiresAt = at + lifetime;
+		if (Type is SessionType.Api && EndedAt is null) Interlocked.Exchange(ref _expiresTicks, (at + lifetime).UtcTicks);
 	}
 
 	/// <summary>Ends this session at a moment for a specific reason.</summary>

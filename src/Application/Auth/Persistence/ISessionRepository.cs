@@ -126,8 +126,3 @@ public interface ISessionRepository
 	Task<bool> TakeReauthenticationAsync(UserRecord user, DeviceId device,
 		CancellationToken cancellationToken = default);
 }
-
-/// <summary>The hashes by which an osu! device is recognised.</summary>
-/// <param name="UninstallHash">The uninstall id hash the client reported.</param>
-/// <param name="DiskSignatureHash">The disk signature hash the client reported.</param>
-public sealed record DeviceId(string UninstallHash, string DiskSignatureHash);

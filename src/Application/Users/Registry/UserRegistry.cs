@@ -162,7 +162,7 @@ public sealed class UserRegistry
 		CancellationToken cancellationToken)
 	{
 		return client is not null && await _context.Sessions.TakeReauthenticationAsync(record,
-			new DeviceId(client.Fingerprint.UninstallHash.HashValue, client.Fingerprint.DiskSignatureHash.HashValue),
+			new DeviceId(client.Fingerprint.UninstallHash, client.Fingerprint.DiskSignatureHash),
 			cancellationToken);
 	}
 
