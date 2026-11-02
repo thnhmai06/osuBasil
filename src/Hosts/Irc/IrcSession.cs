@@ -14,11 +14,19 @@ namespace Basil.Host.Irc;
 /// <summary>One IRC socket: what the client negotiated, who it signed in as, and the queue of lines to write to it.</summary>
 internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions options, TimeProvider clock)
 {
+	/// <summary>The most lines that may wait for one client before it is disconnected as too slow.</summary>
+	public const int MaxQueuedLines = 4096;
+
+	/// <summary>The most characters that may wait for one client before it is disconnected as too slow.</summary>
+	public const int MaxQueuedCharacters = 1024 * 1024;
+
 	private readonly ConcurrentDictionary<string, byte> _caps = new(StringComparer.Ordinal);
 	private readonly Lock _gate = new();
 
-	private readonly Channel<string> _lines =
-		Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
+	private readonly Channel<string> _lines = Channel.CreateBounded<string>(
+		new BoundedChannelOptions(MaxQueuedLines) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
+
+	private int _queuedCharacters;
 
 	private List<Action<IrcSession>>? _held = [];
 
@@ -93,7 +101,13 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 	{
 		try
 		{
-			_lines.Writer.TryWrite(message.ToString());
+			var line = message.ToString();
+			if (Interlocked.Add(ref _queuedCharacters, line.Length) <= MaxQueuedCharacters &&
+			    _lines.Writer.TryWrite(line)) return;
+
+			// The client does not read what it is sent: drop it instead of holding its lines without end.
+			_lines.Writer.TryComplete();
+			tcp.Close();
 		}
 		catch (ArgumentException)
 		{
@@ -180,7 +194,11 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 			while (await _lines.Reader.WaitToReadAsync(cancellationToken))
 			{
 				buffer.Clear();
-				while (_lines.Reader.TryRead(out var line)) buffer.Append(line).Append("\r\n");
+				while (_lines.Reader.TryRead(out var line))
+				{
+					Interlocked.Add(ref _queuedCharacters, -line.Length);
+					buffer.Append(line).Append("\r\n");
+				}
 				await stream.WriteAsync(Encoding.UTF8.GetBytes(buffer.ToString()), cancellationToken);
 			}
 		}
