@@ -90,6 +90,7 @@ public sealed class BasilHost : IAsyncDisposable
 			builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 			{
 				["ConnectionStrings:Write"] = connection,
+				["ConnectionStrings:Read"] = "",
 				["Basil:Storage:Location"] = Path.Combine(_root, "Data"),
 				["Basil:Server:Domain"] = DomainName,
 				["Basil:Server:Irc:Port"] = "0",

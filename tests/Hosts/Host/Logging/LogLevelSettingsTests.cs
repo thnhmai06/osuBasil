@@ -10,7 +10,11 @@ public sealed class LogLevelSettingsTests
 	{
 		var configuration = new ConfigurationBuilder().AddInMemoryCollection(
 			levels.ToDictionary(pair => "Logging:LogLevel:" + pair.Key, pair => pair.Value)).Build();
-		return LoggerFactory.Create(logging => logging.AddConfiguration(configuration.GetSection("Logging")))
+		return LoggerFactory.Create(logging =>
+			{
+				logging.AddConfiguration(configuration.GetSection("Logging"));
+				logging.AddProvider(new AcceptingLoggerProvider());
+			})
 			.CreateLogger(category);
 	}
 

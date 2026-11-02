@@ -1,5 +1,5 @@
 using Basil.Host.Configuration;
-using Basil.Host.Logging;
+using Basil.Host.Tests.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,8 +50,11 @@ public sealed class ConfigurationWatcherTests
 	[Fact]
 	public void ALoggingChangeAppliesAtOnce()
 	{
-		var logger = LoggerFactory.Create(logging => logging.AddConfiguration(_root.GetSection("Logging")))
-			.CreateLogger("Basil.Host.Anything");
+		var logger = LoggerFactory.Create(logging =>
+		{
+			logging.AddConfiguration(_root.GetSection("Logging"));
+			logging.AddProvider(new AcceptingLoggerProvider());
+		}).CreateLogger("Basil.Host.Anything");
 		Assert.False(logger.IsEnabled(LogLevel.Debug));
 
 		Edit("Logging:LogLevel:Default", "Debug");

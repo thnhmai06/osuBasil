@@ -3,6 +3,7 @@ using Basil.Host.Cli;
 using Basil.Host.Configuration;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Extensions.Logging;
 using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
@@ -77,10 +78,30 @@ public static class ServerLogging
 		builder.Logging.ClearProviders();
 		builder.Logging.SetMinimumLevel(LogLevel.Trace);
 		builder.Logging.AddSerilog(logger, true);
+		AddLevels(builder);
 		builder.Services.AddSingleton(drops);
 		builder.Services.AddSingleton(Options.Create(options));
 		builder.Services.AddHostedService<LogRetentionJob>();
 		return drops;
+	}
+
+	/// <summary>
+	///     Applies <c>Logging:LogLevel</c> to the logger. Serilog's own rule lets every event through for its provider
+	///     and a rule for a provider beats the generic ones, so the levels are set as rules for that provider; they
+	///     are read again when the configuration changes.
+	/// </summary>
+	private static void AddLevels(WebApplicationBuilder builder)
+	{
+		var levels = builder.Configuration.GetSection("Logging:LogLevel");
+		builder.Services.AddSingleton<IOptionsChangeTokenSource<LoggerFilterOptions>>(
+			new ConfigurationChangeTokenSource<LoggerFilterOptions>(levels));
+		builder.Services.Configure<LoggerFilterOptions>(filter =>
+		{
+			foreach (var entry in levels.GetChildren())
+				if (Enum.TryParse<LogLevel>(entry.Value, true, out var level))
+					filter.Rules.Add(new LoggerFilterRule(typeof(SerilogLoggerProvider).FullName,
+						entry.Key == "Default" ? null : entry.Key, level, null));
+		});
 	}
 
 	/// <summary>

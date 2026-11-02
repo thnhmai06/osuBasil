@@ -17,6 +17,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 		return new Dictionary<string, string?>
 		{
 			["ConnectionStrings:Write"] = connection,
+			["ConnectionStrings:Read"] = "",
 			["Basil:Storage:Location"] = Path.Combine(root, "Data"),
 			["Basil:Server:Domain"] = BasilHost.DomainName,
 			["Basil:Server:Irc:Port"] = "0",
