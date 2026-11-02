@@ -16,10 +16,12 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 	{
 		return new Dictionary<string, string?>
 		{
-			["Basil:Database:ConnectionString"] = connection,
-			["Basil:Storage:DataDirectory"] = Path.Combine(root, "Data"),
+			["ConnectionStrings:Write"] = connection,
+			["Basil:Storage:Location"] = Path.Combine(root, "Data"),
 			["Basil:Server:Domain"] = BasilHost.DomainName,
-			["Basil:Server:Ports:Irc"] = "0",
+			["Basil:Server:Irc:Port"] = "0",
+			["Kestrel:Endpoints:Https:Url"] = "http://127.0.0.1:0",
+			["Kestrel:Certificates:Default:Path"] = "",
 			["Basil:Bot:Replies:Path"] = Path.Combine(root, "Templates", "replies.json")
 		};
 	}
@@ -49,7 +51,6 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 			var app = HostApplication.Create([], builder =>
 			{
 				builder.Configuration.AddInMemoryCollection(Settings(connection, root));
-				builder.WebHost.UseUrls("http://127.0.0.1:0");
 				builder.Logging.ClearProviders();
 			});
 			await app.StartAsync();

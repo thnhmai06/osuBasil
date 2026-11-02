@@ -10,30 +10,41 @@ public sealed class Database : IAsyncDisposable
 {
 	private readonly ConcurrentDictionary<Type, object> _asynchronousOptions = new();
 	private readonly NpgsqlDataSource _asynchronousSource;
+	private readonly ConcurrentDictionary<Type, object> _readOptions = new();
+	private readonly NpgsqlDataSource _readSource;
 	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
 	private readonly NpgsqlDataSource _synchronousSource;
 
-	/// <summary>Creates the database connections used for confirmed and unconfirmed writes.</summary>
+	/// <summary>Creates the database connections used for reads and for confirmed and unconfirmed writes.</summary>
 	/// <param name="options">The database connection settings.</param>
 	public Database(IOptions<DatabaseOptions> options)
 	{
-		var connectionString = options.Value.ConnectionString;
-		_synchronousSource = NpgsqlDataSource.Create(WithServerOptions(connectionString,
-			"-c idle_in_transaction_session_timeout=30s"));
-		_asynchronousSource = NpgsqlDataSource.Create(WithServerOptions(connectionString,
-			"-c synchronous_commit=off"));
+		var settings = options.Value;
+		var write = settings.WriteConnectionString;
+		var read = string.IsNullOrEmpty(settings.ReadConnectionString) ? write : settings.ReadConnectionString;
+		_readSource = NpgsqlDataSource.Create(WithServerOptions(read, "-c idle_in_transaction_session_timeout=30s",
+			settings.ReadPoolSize));
+		_synchronousSource = NpgsqlDataSource.Create(WithServerOptions(write,
+			"-c idle_in_transaction_session_timeout=30s", settings.WritePoolSize));
+		_asynchronousSource = NpgsqlDataSource.Create(WithServerOptions(write, "-c synchronous_commit=off",
+			settings.WritePoolSize));
 	}
 
 	public async ValueTask DisposeAsync()
 	{
+		await _readSource.DisposeAsync();
 		await _synchronousSource.DisposeAsync();
 		await _asynchronousSource.DisposeAsync();
 	}
 
-	/// <summary>
-	///     Makes a context whose commits are confirmed before it returns, for reads and for writes whose outcome the
-	///     caller needs.
-	/// </summary>
+	/// <summary>Makes a context for reading, on the connections meant for reads.</summary>
+	public TContext CreateReadContext<TContext>()
+		where TContext : DbContext, IDatabaseContext<TContext>
+	{
+		return TContext.Create(OptionsFor<TContext>(_readOptions, _readSource));
+	}
+
+	/// <summary>Makes a context whose commits are confirmed before it returns, for writes whose outcome the caller needs.</summary>
 	public TContext CreateConfirmedContext<TContext>()
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
@@ -64,9 +75,10 @@ public sealed class Database : IAsyncDisposable
 			.Options;
 	}
 
-	private static string WithServerOptions(string connectionString, string serverOption)
+	private static string WithServerOptions(string connectionString, string serverOption, int poolSize)
 	{
 		var builder = new NpgsqlConnectionStringBuilder(connectionString);
+		if (poolSize > 0) builder.MaxPoolSize = poolSize;
 		builder.Options = string.IsNullOrEmpty(builder.Options) ? serverOption : $"{builder.Options} {serverOption}";
 		return builder.ConnectionString;
 	}

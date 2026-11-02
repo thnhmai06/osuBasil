@@ -52,7 +52,7 @@ public static class ShellRunner
 		}
 
 		var path = ControlSocket.PathIn(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value
-			.DataDirectory);
+			.Location);
 		using (var running = await ControlClient.ConnectAsync(path, cancellationToken))
 		{
 			if (running is not null) return await ForwardAsync(running, parsed, args, output, input, cancellationToken);

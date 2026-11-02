@@ -89,17 +89,19 @@ public sealed class BasilHost : IAsyncDisposable
 		{
 			builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 			{
-				["Basil:Database:ConnectionString"] = connection,
-				["Basil:Storage:DataDirectory"] = Path.Combine(_root, "Data"),
+				["ConnectionStrings:Write"] = connection,
+				["Basil:Storage:Location"] = Path.Combine(_root, "Data"),
 				["Basil:Server:Domain"] = DomainName,
-				["Basil:Server:Ports:Irc"] = "0",
+				["Basil:Server:Irc:Port"] = "0",
+				// The shipped settings listen with TLS on port 443; a test listens on any free port, without TLS.
+				["Kestrel:Endpoints:Https:Url"] = "http://127.0.0.1:0",
+				["Kestrel:Certificates:Default:Path"] = "",
 				["Basil:Bot:Replies:Path"] = Path.Combine(_root, "Configurations", "Templates", "replies.json"),
-				["Basil:Server:LanAdvertise"] = "false",
+				["Basil:Server:Multicast:Enabled"] = "false",
 				["Basil:Updates:CheckOnStartup"] = "false",
 				["Basil:Server:TrustedProxies:0"] = "127.0.0.1",
 				["Basil:Server:TrustedProxies:1"] = "::1"
 			});
-			builder.WebHost.UseUrls("http://127.0.0.1:0");
 			builder.Logging.ClearProviders();
 			if (Environment.GetEnvironmentVariable("BASIL_TEST_LOG") is not null)
 				builder.Logging.AddSimpleConsole().SetMinimumLevel(LogLevel.Warning);

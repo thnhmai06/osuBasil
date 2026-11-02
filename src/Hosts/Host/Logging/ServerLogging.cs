@@ -1,6 +1,7 @@
 using System.Text;
 using Basil.Host.Cli;
 using Basil.Host.Configuration;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Configuration;
 using Serilog.Core;
@@ -38,13 +39,10 @@ public sealed class LogDrops : IAsyncLogEventSinkMonitor
 
 /// <summary>
 ///     Sets up the server's logging: lifecycle events only, written to a rolling file and, without a dashboard, to
-///     stdout.
+///     stdout. The levels come from the standard <c>Logging:LogLevel</c> settings, which apply at once.
 /// </summary>
 public static class ServerLogging
 {
-	/// <summary>The size at which a log file rolls over before the day ends.</summary>
-	public const long FileSizeLimit = 256L * 1024 * 1024;
-
 	private const string Template =
 		"{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}";
 
@@ -54,18 +52,23 @@ public static class ServerLogging
 	/// <returns>The counter of dropped events.</returns>
 	public static LogDrops Add(WebApplicationBuilder builder, CliMode mode)
 	{
-		var options = builder.Configuration.GetSection("Basil:Logging").Get<LoggingOptions>() ?? new LoggingOptions();
-		var telemetry = builder.Configuration.GetSection("Basil:Telemetry").Get<TelemetryOptions>() ??
+		var options = builder.Configuration.GetSection("Logging").Get<LoggingOptions>() ?? new LoggingOptions();
+		var file = options.File;
+		var rollingBytes = ByteSize.Parse(file.Rolling.MaxSize, "Logging:File:Rolling:MaxSize");
+		ByteSize.Parse(file.Retention.MaxSize, "Logging:File:Retention:MaxSize");
+		var telemetry = builder.Configuration.GetSection("OpenTelemetry").Get<TelemetryOptions>() ??
 		                new TelemetryOptions();
 		var drops = new LogDrops();
-		var directory = ConfigurationSetup.Resolve(options.Directory);
+		var directory = ConfigurationSetup.Resolve(file.Location);
 		var logger = Create(configuration =>
 		{
 			// The file opens at the first event, so a command run from the shell leaves no empty log behind.
-			configuration.Sink(new LazySink(() => new LoggerConfiguration().WriteTo.File(
-				Path.Combine(directory, "basil-.log"),
-				outputTemplate: Template, rollingInterval: RollingInterval.Day, fileSizeLimitBytes: FileSizeLimit,
-				rollOnFileSizeLimit: true, retainedFileCountLimit: null, encoding: Encoding.UTF8).CreateLogger()));
+			if (file.Enabled)
+				configuration.Sink(new LazySink(() => new LoggerConfiguration().WriteTo.File(
+					Path.Combine(directory, "basil-.log"),
+					outputTemplate: Template, rollingInterval: file.Rolling.Interval,
+					fileSizeLimitBytes: rollingBytes > 0 ? rollingBytes : null, rollOnFileSizeLimit: rollingBytes > 0,
+					retainedFileCountLimit: null, encoding: Encoding.UTF8).CreateLogger()));
 			if (mode == CliMode.NoGui) configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None);
 			if (telemetry is { Logs: true, OtlpEndpoint: { Length: > 0 } endpoint })
 				configuration.OpenTelemetry(sink => sink.Endpoint = endpoint);
@@ -75,11 +78,7 @@ public static class ServerLogging
 		builder.Logging.SetMinimumLevel(LogLevel.Trace);
 		builder.Logging.AddSerilog(logger, true);
 		builder.Services.AddSingleton(drops);
-		builder.Services.AddSingleton<LogLevelPolicy>();
-		builder.Services.AddOptions<LoggingOptions>().Bind(builder.Configuration.GetSection("Basil:Logging"));
-		builder.Services.AddOptions<LoggerFilterOptions>().Configure<LogLevelPolicy>((filter, policy) =>
-			filter.Rules.Add(new LoggerFilterRule(null, null, null,
-				(_, category, level) => policy.Enabled(category, level))));
+		builder.Services.AddSingleton(Options.Create(options));
 		builder.Services.AddHostedService<LogRetentionJob>();
 		return drops;
 	}

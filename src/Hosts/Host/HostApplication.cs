@@ -30,13 +30,17 @@ public static class HostApplication
 		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected,
 			CliModes.TerminalSupportsColour());
 		args = CliModes.Strip(args);
-		var builder = WebApplication.CreateBuilder(args);
+		// Relative paths in the settings, such as the certificate of Kestrel, are relative to the executable.
+		var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+		{
+			Args = args, ContentRootPath = AppContext.BaseDirectory
+		});
 		ConfigurationSetup.Add(builder, args);
 		var drops = ServerLogging.Add(builder, mode);
 		TelemetrySetup.Add(builder);
 		builder.Services.AddOptions<IrcOptions>().Configure<IOptions<ServerOptions>>((irc, server) =>
 		{
-			irc.Port = server.Value.Ports.Irc;
+			irc.Port = server.Value.Irc.Port;
 			irc.Domain = server.Value.Domain;
 		});
 		builder.Services.AddOptions<RestOptions>().Configure<IOptions<ServerOptions>>((rest, server) =>
@@ -56,13 +60,13 @@ public static class HostApplication
 		builder.Services.AddOptions<PhysicalFileSystemCacheOptions>()
 			.Configure<IOptions<StorageOptions>>((cache, storage) =>
 			{
-				cache.CacheRootPath = Path.Combine(storage.Value.DataDirectory, "Cache");
+				cache.CacheRootPath = Path.Combine(storage.Value.Location, "Cache");
 				cache.CacheFolder = "imagesharp";
 			});
 		builder.Services.AddSingleton<ICacheCleaner, CacheCleaner>();
 		builder.Services.AddCli(mode,
 			provider => ControlSocket.PathIn(
-				provider.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory),
+				provider.GetRequiredService<IOptions<StorageOptions>>().Value.Location),
 			Path.Combine(AppContext.BaseDirectory, "Configurations"));
 		builder.Services.AddSingleton<ShutdownSequence>();
 		// Registered last, so that it stops first: the other services are told and the rooms closed while they still run.
@@ -75,16 +79,15 @@ public static class HostApplication
 			builder.Configuration.GetSection("Basil:Server"));
 		ConfigurationSetup.AddAtStart<StorageOptions>(builder.Services,
 			builder.Configuration.GetSection("Basil:Storage"),
-			storage => storage.DataDirectory = ConfigurationSetup.Resolve(storage.DataDirectory));
-		ConfigurationSetup.AddAtStart<DatabaseOptions>(builder.Services,
-			builder.Configuration.GetSection("Basil:Database"));
+			storage => storage.Location = ConfigurationSetup.Resolve(storage.Location));
+		builder.Services.AddSingleton(Options.Create(DatabaseSetup.Read(builder.Configuration)));
 		KestrelSetup.Configure(builder);
 
 		var app = builder.Build();
 		app.Services.GetRequiredService<RuntimeSampler>().LogsDropped = () => drops.Dropped;
 		app.UseRequestMetrics();
 		app.UseTrustedProxies();
-		if (!string.IsNullOrEmpty(app.Services.GetRequiredService<IOptions<ServerOptions>>().Value.Certificate.Path))
+		if (KestrelSetup.UsesHttps(app.Configuration))
 			app.UseHsts();
 		app.UseRestImages();
 		app.UseBancho();

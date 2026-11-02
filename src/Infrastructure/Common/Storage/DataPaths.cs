@@ -4,7 +4,7 @@ namespace Basil.Infrastructure.Common.Storage;
 
 /// <summary>Locates every file and directory the server stores.</summary>
 /// <remarks>
-///     A relative <see cref="StorageOptions.DataDirectory" /> is resolved against the directory the server runs from.
+///     A relative <see cref="StorageOptions.Location" /> is resolved against the directory the server runs from.
 ///     The paths are computed without reading or creating anything on disk.
 /// </remarks>
 public sealed class DataPaths
@@ -13,9 +13,9 @@ public sealed class DataPaths
 	/// <param name="options">The storage options naming the data directory.</param>
 	public DataPaths(IOptions<StorageOptions> options)
 	{
-		Root = Path.GetFullPath(Path.IsPathRooted(options.Value.DataDirectory)
-			? options.Value.DataDirectory
-			: Path.Combine(AppContext.BaseDirectory, options.Value.DataDirectory));
+		Root = Path.GetFullPath(Path.IsPathRooted(options.Value.Location)
+			? options.Value.Location
+			: Path.Combine(AppContext.BaseDirectory, options.Value.Location));
 		Beatmapsets = new DataStorage(Root, "Beatmapsets");
 		Replays = new DataStorage(Root, "Replays");
 		Avatars = new DataStorage(Root, "Avatars");

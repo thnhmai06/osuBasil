@@ -16,7 +16,7 @@ namespace Basil.Host.Cli.Tests.Socket;
 public sealed class ControlSocketTests(CliFixture fixture)
 {
 	private string SocketPath =>
-		ControlSocket.PathIn(fixture.Host.Services.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory);
+		ControlSocket.PathIn(fixture.Host.Services.GetRequiredService<IOptions<StorageOptions>>().Value.Location);
 
 	private static string ShortDirectory()
 	{
@@ -172,11 +172,11 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	public async Task The_shell_forwards_to_the_running_server_and_prints_its_output()
 	{
 		var output = new StringWriter();
-		var dataDirectory = fixture.Host.Services.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory;
+		var dataDirectory = fixture.Host.Services.GetRequiredService<IOptions<StorageOptions>>().Value.Location;
 
 		var code = await ShellRunner.RunAsync(["users", "999999"],
 			b => b.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-				{ ["Basil:Storage:DataDirectory"] = dataDirectory }),
+				{ ["Basil:Storage:Location"] = dataDirectory }),
 			output, new StringReader(string.Empty), TestContext.Current.CancellationToken);
 
 		Assert.Equal(1, code);
@@ -201,7 +201,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 				var output = new StringWriter();
 				var code = await ShellRunner.RunAsync(["shutdown"],
 					b => b.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-						{ ["Basil:Storage:DataDirectory"] = directory }),
+						{ ["Basil:Storage:Location"] = directory }),
 					output, new StringReader(answer + Environment.NewLine), TestContext.Current.CancellationToken);
 				return (code, output.ToString());
 			}
@@ -237,7 +237,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 		{
 			var code = await ShellRunner.RunAsync(["restart", "--now"],
 				b => b.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-					{ ["Basil:Storage:DataDirectory"] = directory }),
+					{ ["Basil:Storage:Location"] = directory }),
 				new StringWriter(), new StringReader(string.Empty), TestContext.Current.CancellationToken);
 
 			Assert.Equal(0, code);
@@ -256,7 +256,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 		var directory = ShortDirectory();
 		Action<WebApplicationBuilder> configure = b =>
 			b.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-				{ ["Basil:Storage:DataDirectory"] = directory });
+				{ ["Basil:Storage:Location"] = directory });
 		try
 		{
 			var rooms = new StringWriter();
@@ -289,8 +289,8 @@ public sealed class ControlSocketTests(CliFixture fixture)
 			var code = await ShellRunner.RunAsync(["help", "users"],
 				b => b.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 				{
-					["Basil:Storage:DataDirectory"] = directory,
-					["Basil:Database:ConnectionString"] = "Host=invalid;Timeout=1"
+					["Basil:Storage:Location"] = directory,
+					["ConnectionStrings:Write"] = "Host=invalid;Timeout=1"
 				}),
 				output, new StringReader(string.Empty), TestContext.Current.CancellationToken);
 
@@ -314,10 +314,10 @@ public sealed class ControlSocketTests(CliFixture fixture)
 		{
 			return new Dictionary<string, string?>
 			{
-				["Basil:Database:ConnectionString"] = connection,
-				["Basil:Storage:DataDirectory"] = Path.Combine(root, "Data"),
+				["ConnectionStrings:Write"] = connection,
+				["Basil:Storage:Location"] = Path.Combine(root, "Data"),
 				["Basil:Server:Domain"] = BasilHost.DomainName,
-				["Basil:Server:Ports:Irc"] = "0",
+				["Basil:Server:Irc:Port"] = "0",
 				["Basil:Bot:Replies:Path"] = Path.Combine(root, "Templates", "replies.json")
 			};
 		}

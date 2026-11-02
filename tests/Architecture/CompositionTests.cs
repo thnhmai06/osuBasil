@@ -83,8 +83,8 @@ public sealed class CompositionTests
 
 	private static void AddCommonOptions(IServiceCollection services)
 	{
-		services.AddSingleton(Options.Create(new StorageOptions { DataDirectory = Path.GetTempPath() }));
+		services.AddSingleton(Options.Create(new StorageOptions { Location = Path.GetTempPath() }));
 		services.AddSingleton(
-			Options.Create(new DatabaseOptions { ConnectionString = "Host=localhost;Database=basil" }));
+			Options.Create(new DatabaseOptions { WriteConnectionString = "Host=localhost;Database=basil" }));
 	}
 }
