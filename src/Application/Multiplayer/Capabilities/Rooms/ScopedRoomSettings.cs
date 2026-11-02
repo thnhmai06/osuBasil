@@ -44,7 +44,6 @@ public sealed class ScopedRoomSettings
 		                       _scoped.Room.Configure(_scoped.Actor, change));
 	}
 
-
 	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
 	/// <param name="locked">The lock state to set.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

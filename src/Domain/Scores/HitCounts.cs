@@ -105,7 +105,7 @@ public readonly record struct HitCounts(int Num300, int Num100, int Num50, int N
 				var total = Num300 + Num100 + Num50 + NumMiss;
 				if (total == 0) return 0.0;
 
-				return 100.0 * (Num300 * 300.0 + Num100 * 100.0 + Num50 * 50.0) / (total * 300.0);
+				return 100.0 * ((Num300 * 300.0) + (Num100 * 100.0) + (Num50 * 50.0)) / (total * 300.0);
 			}
 
 			case GameMode.Taiko:
@@ -113,7 +113,7 @@ public readonly record struct HitCounts(int Num300, int Num100, int Num50, int N
 				var total = Num300 + Num100 + NumMiss;
 				if (total == 0) return 0.0;
 
-				return 100.0 * (Num100 * 0.5 + Num300) / total;
+				return 100.0 * ((Num100 * 0.5) + Num300) / total;
 			}
 
 			case GameMode.Catch:
@@ -131,11 +131,11 @@ public readonly record struct HitCounts(int Num300, int Num100, int Num50, int N
 
 				if ((gameMods & GameMods.ScoreV2) != GameMods.NoMod)
 					return 100.0 *
-					       (Num50 * 50.0 + Num100 * 100.0 + NumKatu * 200.0 + Num300 * 300.0 + NumGeki * 305.0) /
+					       ((Num50 * 50.0) + (Num100 * 100.0) + (NumKatu * 200.0) + (Num300 * 300.0) + (NumGeki * 305.0)) /
 					       (total * 305.0);
 
 				return 100.0 *
-					(Num50 * 50.0 + Num100 * 100.0 + NumKatu * 200.0 + (Num300 + NumGeki) * 300.0) / (total * 300.0);
+					((Num50 * 50.0) + (Num100 * 100.0) + (NumKatu * 200.0) + ((Num300 + NumGeki) * 300.0)) / (total * 300.0);
 			}
 
 			default:

@@ -68,7 +68,6 @@ internal sealed class ScoreRecorder(
 		return new ScoreOutcome(null, score, current);
 	}
 
-
 	/// <summary>
 	///     Verifies that the submission is authentic, recomputing the legacy checksum formulas that
 	///     mirror the osu! server and comparing them with the client-sent values.

@@ -121,7 +121,7 @@ public sealed class RateLimiter(TimeProvider clock)
 				}
 			})
 			.OrderBy(item => item.Weight)
-			.Take(_events.Count - MaxKeys / 10 * 9)
+			.Take(_events.Count - (MaxKeys / 10) * 9)
 			.ToList();
 		foreach (var (key, _) in weakest) _events.TryRemove(key, out _);
 	}
