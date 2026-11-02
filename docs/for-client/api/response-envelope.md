@@ -108,6 +108,8 @@ A failed answer also names the failure in `errors`, which is the stable, machine
 
 `errors.code` is a camelCase code such as `notFound`, `locked`, `systemAccount`, `wrongPassword`, `rateLimited` or `invalid`. `errors.missing` is the bitmask of the permissions the caller lacks and is present only for a refusal for lack of permissions. The table that maps outcomes to codes and HTTP statuses is in [ADR-009](../../adr/ADR-009-rest-v1.md).
 
+A parameter or JSON body that cannot be read (a query value that is not a number, a number out of range, malformed JSON) is answered with 400 and `invalid`; a request body above the size limit is 413 and `tooLarge`. A number in the path that does not fit an integer is 422 and `invalid`.
+
 Clients should use the HTTP status code or `code` field to determine whether the request succeeded.
 
 The `message` field is intended for human-readable information and should not normally be used as a stable machine-readable error identifier.

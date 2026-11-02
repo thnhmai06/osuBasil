@@ -113,9 +113,12 @@ internal static class MenuRoutes
 		return file.Length > MaxImageBytes ? (null, Api.Invalid("The image is too large.", "tooLarge")) : (file, null);
 	}
 
-	private static async Task<IResult> AddBannerAsync(HttpContext context, Server server)
+	private static async Task<IResult> AddBannerAsync(HttpContext context, Server server,
+		ISettingsRepository settings)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
+
+		await UploadLimit.AllowAsync(context, settings);
 
 		var form = await context.Request.ReadFormAsync(context.RequestAborted);
 		var (file, error) = await ImageAsync(context, form);
@@ -196,9 +199,12 @@ internal static class MenuRoutes
 				.DeleteSeasonalAsync(reference.Value, context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> SetIconAsync(HttpContext context, Server server)
+	private static async Task<IResult> SetIconAsync(HttpContext context, Server server,
+		ISettingsRepository settings)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
+
+		await UploadLimit.AllowAsync(context, settings);
 
 		var form = await context.Request.ReadFormAsync(context.RequestAborted);
 		Uri? url = null;

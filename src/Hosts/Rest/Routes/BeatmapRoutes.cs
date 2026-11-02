@@ -3,6 +3,7 @@ using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
@@ -158,9 +159,11 @@ internal static class BeatmapRoutes
 			: Api.Ok(BeatmapView.Of(map, true));
 	}
 
-	private static async Task<IResult> UploadAsync(HttpContext context, Server server)
+	private static async Task<IResult> UploadAsync(HttpContext context, Server server, ISettingsRepository settings)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form with a file field is required.");
+
+		await UploadLimit.AllowAsync(context, settings);
 
 		var form = await context.Request.ReadFormAsync(context.RequestAborted);
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");

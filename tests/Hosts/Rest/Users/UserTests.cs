@@ -38,6 +38,25 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Search_ListsADeletedAccountOnlyForThoseWhoMayViewDeletedAccounts()
+	{
+		var (staff, _) = await fixture.SignInAsync("SearchDelStaff", RestHostFixture.StaffPermissions);
+		var (plain, _) = await fixture.SignInAsync("SearchDelPlain");
+		var target = await fixture.Host.CreateUserAsync("SearchDelTarget");
+		using (staff)
+		using (plain)
+		{
+			await staff.CallAsync(HttpMethod.Delete, $"/v1/users/{target.Id}");
+
+			var (_, seenByStaff) = await staff.CallAsync(HttpMethod.Get, "/v1/users?query=SearchDelTarget");
+			var (_, seenByPlain) = await plain.CallAsync(HttpMethod.Get, "/v1/users?query=SearchDelTarget");
+
+			Assert.Contains(seenByStaff!["data"]!.AsArray(), user => (int)user!["id"]! == target.Id);
+			Assert.DoesNotContain(seenByPlain!["data"]!.AsArray(), user => (int)user!["id"]! == target.Id);
+		}
+	}
+
+	[Fact]
 	public async Task Search_WithoutAToken_Answers401()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);

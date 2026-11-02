@@ -84,12 +84,30 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		var (staff, _) = await fixture.SignInAsync("DiagAction", Staff);
 		using (staff)
 		{
+			// Garbage collection is limited to once in 30 seconds on the server's clock; other tests may have used it.
+			fixture.Host.Time.Advance(TimeSpan.FromMinutes(1));
 			var (collect, _) = await staff.CallAsync(HttpMethod.Post, "/v1/diagnostics/gc/collect");
 			var (caches, _) = await staff.CallAsync(HttpMethod.Post, "/v1/diagnostics/caches/clear");
 			var (reset, _) = await staff.CallAsync(HttpMethod.Post, "/v1/diagnostics/exceptions/reset");
 			var (unknown, _) = await staff.CallAsync(HttpMethod.Post, "/v1/diagnostics/gc/explode");
 
 			Assert.Equal([200, 200, 200, 404], [collect, caches, reset, unknown]);
+		}
+	}
+
+	[Fact]
+	public async Task GarbageCollection_AskedTwiceWithinHalfAMinute_IsRefusedTheSecondTime_AndAllowedAfterwards()
+	{
+		var (staff, _) = await fixture.SignInAsync("DiagCollect", Staff);
+		using (staff)
+		{
+			fixture.Host.Time.Advance(TimeSpan.FromMinutes(1));
+			var (first, _) = await staff.CallAsync(HttpMethod.Post, "/v1/diagnostics/gc/collect");
+			var (second, _) = await staff.CallAsync(HttpMethod.Post, "/v1/diagnostics/gc/collect");
+			fixture.Host.Time.Advance(TimeSpan.FromSeconds(31));
+			var (later, _) = await staff.CallAsync(HttpMethod.Post, "/v1/diagnostics/gc/collect");
+
+			Assert.Equal([200, 429, 200], [first, second, later]);
 		}
 	}
 }
