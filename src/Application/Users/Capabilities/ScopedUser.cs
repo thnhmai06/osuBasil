@@ -88,7 +88,7 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 		return Require(needed);
 	}
 
-	/// <summary>Permanently deletes this account.</summary>
+	/// <summary>Deletes this account, keeping it out of sign-in and every listing while its record remains.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of deleting the account.</returns>
 	public async Task<Result<UserOutcome>> DeleteAsync(CancellationToken cancellationToken = default)

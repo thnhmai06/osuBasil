@@ -45,7 +45,8 @@ internal static class UserRoutes
 			                 Signing an osu! client out only makes the device ask for the password again; changing the password
 			                 is what keeps the client out. While the profiles area is locked, only staff can change a password.
 			                 """);
-		token.MapDelete("/{id:int}", DeleteAsync).WithSummary("Delete an account.");
+		token.MapDelete("/{id:int}", DeleteAsync)
+			.WithSummary("Delete an account, keeping its record but ending every session.");
 		token.MapPut("/{id:int}/avatar", PutAvatarAsync).DisableAntiforgery()
 			.WithSummary("Upload the avatar of an account as an image in the `file` field.")
 			.WithDescription("""

@@ -259,6 +259,19 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		}
 	}
 
+	[Fact]
+	public async Task Download_WithNoVideoSetToOne_ReturnsAnArchive()
+	{
+		var (setId, _) = await ImportAsync("Sets/padoru-standard.osz");
+		var (client, _) = await fixture.SignInAsync("BmNoVideo");
+		using (client)
+		{
+			using var response = await client.GetAsync($"/v1/beatmapsets/{setId}/download?noVideo=1");
+
+			Assert.Equal(200, (int)response.StatusCode);
+		}
+	}
+
 	private async Task<(int Status, JsonNode? Envelope)> UploadAsync(RestClient client, byte[] archive)
 	{
 		using var form = new MultipartFormDataContent();

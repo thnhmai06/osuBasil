@@ -25,6 +25,18 @@ public sealed class AuthTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Login_IsNotCached()
+	{
+		await fixture.Host.CreateUserAsync("AuthCache");
+		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
+
+		using var response = await client.SendAsync(HttpMethod.Post, "/v1/auth/login",
+			new { username = "AuthCache", password = "password" });
+
+		Assert.True(response.Headers.CacheControl?.NoStore);
+	}
+
+	[Fact]
 	public async Task Login_WithAWrongPassword_Answers401()
 	{
 		await fixture.Host.CreateUserAsync("AuthBad");

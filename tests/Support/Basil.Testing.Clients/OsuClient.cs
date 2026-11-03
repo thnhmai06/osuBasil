@@ -148,7 +148,8 @@ public sealed class OsuClient : IDisposable
 			await Task.Delay(25);
 		}
 
-		return false;
+		throw new InvalidOperationException(
+			$"The condition still did not hold after {polls} polls ({polls * 25} ms).");
 	}
 
 	public Task<IReadOnlyList<ServerPacket>> LogoutAsync()
