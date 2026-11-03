@@ -90,7 +90,7 @@ public sealed partial class Room
 			if (entry.Player is null) continue;
 
 			slot.Restore(seated[entry.Player]);
-			if (entry.Team is { } team && Settings.MatchSettings.TeamType.IsTeamMode()) slot.Team = team;
+			if (entry.Team is { } team && Settings.Editable.TeamType.IsTeamMode()) slot.Team = team;
 		}
 	}
 
@@ -141,7 +141,7 @@ public sealed partial class Room
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
 			if (Slots.Find(bancho) is not { } slot) return RoomOutcome.NotInRoom;
-			if (!Settings.MatchSettings.TeamType.IsTeamMode()) return RoomOutcome.NoTeams;
+			if (!Settings.Editable.TeamType.IsTeamMode()) return RoomOutcome.NoTeams;
 			if (Slots.Locked) return RoomOutcome.RoomLocked;
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
 
@@ -159,7 +159,7 @@ public sealed partial class Room
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!Settings.MatchSettings.TeamType.IsTeamMode()) return RoomOutcome.NoTeams;
+			if (!Settings.Editable.TeamType.IsTeamMode()) return RoomOutcome.NoTeams;
 			if (Slots.Find(player) is not { Player: not null } slot) return RoomOutcome.NotInRoom;
 			if (slot.Team == team) return RoomOutcome.Ok;
 
@@ -178,9 +178,9 @@ public sealed partial class Room
 			if (IsClosed) return RoomOutcome.RoomClosed;
 			if (Slots.Find(bancho) is not { } slot) return RoomOutcome.NotInRoom;
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
-			if (!Settings.MatchSettings.Freemods) return RoomOutcome.NotFreemod;
+			if (!Settings.Editable.Freemods) return RoomOutcome.NotFreemod;
 			if ((mods & GameModsGroups.SpeedChanging) != GameMods.NoMod) return RoomOutcome.SpeedModNotAllowed;
-			if (!mods.IsValid(Settings.MatchSettings.Mode)) return RoomOutcome.InvalidMods;
+			if (!mods.IsValid(Settings.Editable.Mode)) return RoomOutcome.InvalidMods;
 			if (slot.Mods == mods) return RoomOutcome.Ok;
 
 			slot.Mods = mods;

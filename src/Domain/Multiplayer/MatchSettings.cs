@@ -7,7 +7,7 @@ namespace Basil.Domain.Multiplayer;
 ///     Represents the settings of an osu! multiplayer room: the selected beatmap, game mode,
 ///     mods, team arrangement, and win condition.
 /// </summary>
-public sealed class MatchSettings
+public sealed class MatchSettings : IMatchSettings
 {
 	/// <summary>Gets or sets the game mode the room plays in.</summary>
 	/// <exception cref="ArgumentException">The current <see cref="Mods" /> are not valid in the new mode.</exception>

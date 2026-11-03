@@ -1,3 +1,4 @@
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -13,11 +14,15 @@ public sealed class RoomSettings
 	internal RoomSettings(MatchRecord match, MatchSettings matchSettings)
 	{
 		_match = match;
-		MatchSettings = matchSettings;
+		Editable = matchSettings;
+		MatchSettings = new MatchSettingsView(matchSettings);
 	}
 
-	/// <summary>Gets the stored settings of the room's match.</summary>
-	public MatchSettings MatchSettings { get; }
+	/// <summary>Gets the stored settings of the room's match, which only the room changes.</summary>
+	internal MatchSettings Editable { get; }
+
+	/// <summary>Gets the stored settings of the room's match as a reader sees them.</summary>
+	public IMatchSettings MatchSettings { get; }
 
 	/// <summary>Gets the name broadcast to clients.</summary>
 	public string Name => _match.Value.Name;
@@ -30,4 +35,20 @@ public sealed class RoomSettings
 
 	/// <summary>Gets the currently selected beatmap.</summary>
 	public BeatmapReference? Beatmap { get; internal set; }
+
+	/// <summary>A live, read-only view of the room's settings; it cannot be turned back into the editable settings.</summary>
+	private sealed class MatchSettingsView(MatchSettings settings) : IMatchSettings
+	{
+		public GameMode Mode => settings.Mode;
+
+		public GameMods Mods => settings.Mods;
+
+		public bool Freemods => settings.Freemods;
+
+		public GameTeamType TeamType => settings.TeamType;
+
+		public GameWinCondition WinCondition => settings.WinCondition;
+
+		public int Seed => settings.Seed;
+	}
 }

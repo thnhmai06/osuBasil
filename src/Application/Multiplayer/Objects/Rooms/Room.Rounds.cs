@@ -124,7 +124,7 @@ public sealed partial class Room
 			Index = (Rounds.LastRound?.Index ?? 0) + 1,
 			Match = Match,
 			BeatmapHash = Settings.Beatmap!.Hash,
-			Settings = Settings.MatchSettings.Clone(),
+			Settings = Settings.Editable.Clone(),
 			StartedAt = Context.Clock.GetUtcNow(),
 			EndedAt = null
 		};

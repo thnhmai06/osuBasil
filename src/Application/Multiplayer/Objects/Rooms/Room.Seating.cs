@@ -25,7 +25,7 @@ public sealed partial class Room
 
 		slot.Occupy(player);
 
-		if (Settings.MatchSettings.TeamType.IsTeamMode())
+		if (Settings.Editable.TeamType.IsTeamMode())
 		{
 			var redCount = Slots.Count(s => s.Team == GameTeam.Red);
 			var blueCount = Slots.Count(s => s.Team == GameTeam.Blue);

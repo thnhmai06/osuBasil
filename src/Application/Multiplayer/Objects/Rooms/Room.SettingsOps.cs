@@ -40,8 +40,8 @@ public sealed partial class Room
 
 			if (change == new RoomSettingsChange()) return RoomOutcome.Ok;
 
-			var mode = change.Mode ?? Settings.MatchSettings.Mode;
-			var freemods = change.Freemods ?? Settings.MatchSettings.Freemods;
+			var mode = change.Mode ?? Settings.Editable.Mode;
+			var freemods = change.Freemods ?? Settings.Editable.Freemods;
 			if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomOutcome.InvalidMods;
 
 			if (change.Name is { } name) Match.Value.Name = name;
@@ -49,12 +49,12 @@ public sealed partial class Room
 			if (change.Password is { } password) Settings.Password = password;
 			ApplyBeatmap(change);
 			if (change.Mode is { } newMode) ApplyMode(newMode);
-			if (change.Freemods is { } newFreemods && newFreemods != Settings.MatchSettings.Freemods)
+			if (change.Freemods is { } newFreemods && newFreemods != Settings.Editable.Freemods)
 				ApplyFreemods(newFreemods);
 			if (change.Mods is { } newMods) ApplyMods(actor, newMods, freemods);
 
 			if (change.TeamType is { } teamType) ApplyTeamType(teamType);
-			if (change.WinCondition is { } winCondition) Settings.MatchSettings.WinCondition = winCondition;
+			if (change.WinCondition is { } winCondition) Settings.Editable.WinCondition = winCondition;
 			if (change.Size is { } size) Slots.Resize(size);
 			if (change.IsPrivate is { } isPrivate) Match.Value.IsPrivate = isPrivate;
 
@@ -91,8 +91,8 @@ public sealed partial class Room
 	/// <summary>Changes the mode and drops the mods, of the room and of every seated player, that the mode does not allow.</summary>
 	private void ApplyMode(GameMode newMode)
 	{
-		Settings.MatchSettings.Mods = Settings.MatchSettings.Mods.RemoveInvalidMods(newMode);
-		Settings.MatchSettings.Mode = newMode;
+		Settings.Editable.Mods = Settings.Editable.Mods.RemoveInvalidMods(newMode);
+		Settings.Editable.Mode = newMode;
 		foreach (var slot in Slots.Where(s => s.Mods is not null))
 			slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
 	}
@@ -100,7 +100,7 @@ public sealed partial class Room
 	/// <summary>Applies the room's mods; under freemod a seated caller keeps the rest of the mods as their own.</summary>
 	private void ApplyMods(Connection actor, GameMods newMods, bool freemods)
 	{
-		Settings.MatchSettings.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
+		Settings.Editable.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
 		// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
 		if (freemods && actor is BanchoConnection caller && Slots.Find(caller) is { } callerSlot)
 			callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
@@ -129,17 +129,17 @@ public sealed partial class Room
 			// Players take the room's mods that combine per player; the room keeps only the
 			// speed-changing ones, which must stay the same for everyone.
 			foreach (var slot in seated)
-				slot.Mods = Settings.MatchSettings.Mods & ~GameModsGroups.SpeedChanging;
-			Settings.MatchSettings.Mods &= GameModsGroups.SpeedChanging;
-			Settings.MatchSettings.Freemods = true;
+				slot.Mods = Settings.Editable.Mods & ~GameModsGroups.SpeedChanging;
+			Settings.Editable.Mods &= GameModsGroups.SpeedChanging;
+			Settings.Editable.Freemods = true;
 		}
 		else
 		{
-			Settings.MatchSettings.Freemods = false;
+			Settings.Editable.Freemods = false;
 			// The room keeps its speed-changing mods and takes the host's own mods.
 			var hostMods = (Authority.Host is { } host ? Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
-			Settings.MatchSettings.Mods =
-				(Settings.MatchSettings.Mods & GameModsGroups.SpeedChanging) | hostMods;
+			Settings.Editable.Mods =
+				(Settings.Editable.Mods & GameModsGroups.SpeedChanging) | hostMods;
 			foreach (var slot in seated)
 				slot.Mods = GameMods.NoMod;
 		}
@@ -149,7 +149,7 @@ public sealed partial class Room
 	/// <param name="value">The team arrangement to set.</param>
 	private void ApplyTeamType(GameTeamType value)
 	{
-		Settings.MatchSettings.TeamType = value;
+		Settings.Editable.TeamType = value;
 
 		if (value.IsTeamMode())
 		{
