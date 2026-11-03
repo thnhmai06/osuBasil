@@ -3,8 +3,10 @@
 ## Overview
 
 Basil keeps its records in PostgreSQL, but the database is not where the server works. **Memory is the truth;
-the database keeps a copy of what was done.** Every change is applied to the live object in memory first and its
-copy is queued for the database; no operation waits for the database unless its result comes from the database.
+the database keeps a copy of what was done.** A change to on-demand data is applied to the live object in memory first
+and its copy is queued for the database; resident data is written first, and memory follows once the write is
+committed. No operation waits for the database unless its result comes from the database, or unless it changes
+resident data.
 
 This document explains why the storage works this way, what is stored, and how writes, reads and migrations work.
 Files (beatmapsets, replays, avatars, menu images, screenshots, FAQs) are not in the database; see
@@ -57,7 +59,8 @@ by how much, the ranking of the scores) is stored as JSON in `rounds.result` whe
 ## Invariants
 
 * **Memory first.** Everything asks memory first and reads the database only on a miss, to load into memory. A
-  change is applied to the live instance and its copy is queued.
+  change to on-demand data is applied to the live instance and its copy is queued; resident data is written first
+  and memory follows the commit.
 * **One live instance per identity.** Every `GetAsync`, `GetByYAsync` and `ListAsync` of a repository returns the same
   instance for the same identity while anything holds it or a change of it is not stored yet.
 * **Only a try-operation waits.** An operation whose outcome comes from the database (an identity the store assigns,
@@ -107,6 +110,9 @@ flowchart LR
   identity. At most `Basil:Database:Write:PoolSize` connections (8 by default) write at once.
 * Reads run on their own data source built from `ConnectionStrings:Read` (the write connection string when it is empty), so a read replica can serve them; storing changes and migrating use `ConnectionStrings:Write`.
 * A **copy** (`CreateOrUpdateAsync`, `DeleteAsync`) carries the values as they were when queued and returns at once.
+* A change to **resident data** is written first: `CreateOrUpdateAsync`/`DeleteAsync` return once the database has
+  committed it, and only then does the resident copy follow, so a refused write leaves memory unchanged and reaches
+  the caller (`ResidentWrites`).
 * A **try-operation** runs in a transaction of its own after the earlier writes of its root; its cancellation token
   counts only while it waits for its turn. Its transaction also stores a ticket row (`write_tickets`); a commit whose outcome was lost with the connection is
   settled by asking whether the ticket exists, so the write is neither lost nor run twice. Old tickets are removed.
