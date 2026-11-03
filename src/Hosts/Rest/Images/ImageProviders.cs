@@ -8,7 +8,7 @@ using Basil.Domain.Content;
 
 namespace Basil.Host.Rest.Images;
 
-/// <summary>Avatars on <c>a.&lt;domain&gt;/{userId}</c>; a user without one shows BasilBot's or the default avatar.</summary>
+/// <summary>Avatars on <c>a.&lt;domain&gt;/{userId}</c>; a user without one shows the default avatar.</summary>
 public sealed partial class AvatarProvider(IUserRepository users, IUserAvatarStorage avatars)
 	: StreamImageProvider("a", path => AvatarPath().IsMatch(path.Value ?? ""))
 {
@@ -20,9 +20,7 @@ public sealed partial class AvatarProvider(IUserRepository users, IUserAvatarSto
 		    await avatars.OpenAsync(user, cancellationToken) is { } own)
 			return own;
 
-		return typeof(AvatarProvider).Assembly.GetManifestResourceStream(id == 1
-			? "Avatars.basil.png"
-			: "Avatars.default.png");
+		return typeof(AvatarProvider).Assembly.GetManifestResourceStream("Avatars.default.png");
 	}
 
 	[GeneratedRegex(@"^/(\d+)$")]
