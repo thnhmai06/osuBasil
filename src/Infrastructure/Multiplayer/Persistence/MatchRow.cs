@@ -9,7 +9,7 @@ internal sealed class MatchRow
 {
 	public int Id { get; set; }
 	public string Name { get; set; } = "";
-	public int? CreatorId { get; set; }
+	public int CreatorId { get; set; }
 	public DateTimeOffset StartedAt { get; set; }
 	public DateTimeOffset? EndedAt { get; set; }
 	public bool IsPrivate { get; set; }
@@ -23,7 +23,7 @@ internal sealed class MatchRowConfiguration : IEntityTypeConfiguration<MatchRow>
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).UseIdentityByDefaultColumn();
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("CreatorId")
-			.OnDelete(DeleteBehavior.NoAction);
+			.IsRequired().OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(row => row.EndedAt);
 	}
 }

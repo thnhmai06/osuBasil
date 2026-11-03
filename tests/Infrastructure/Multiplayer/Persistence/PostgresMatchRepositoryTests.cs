@@ -79,22 +79,20 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task Reading_a_stored_match_whose_creator_is_missing_throws()
+	public async Task The_table_refuses_a_match_without_a_creator()
 	{
-		int id;
-		await using (var connection = new NpgsqlConnection(ConnectionString))
-		{
-			await connection.OpenAsync(TestContext.Current.CancellationToken);
-			await using var command = new NpgsqlCommand(
-				"insert into matches (name, creator_id, started_at, is_private) values (@name, null, @started, false) returning id",
-				connection);
-			command.Parameters.AddWithValue("@name", "orphan_match");
-			command.Parameters.AddWithValue("@started", First);
-			id = (int)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken))!;
-		}
+		await using var connection = new NpgsqlConnection(ConnectionString);
+		await connection.OpenAsync(TestContext.Current.CancellationToken);
+		await using var command = new NpgsqlCommand(
+			"insert into matches (name, creator_id, started_at, is_private) values (@name, null, @started, false)",
+			connection);
+		command.Parameters.AddWithValue("@name", "orphan_match");
+		command.Parameters.AddWithValue("@started", First);
 
-		await Assert.ThrowsAsync<InvalidDataException>(async () =>
-			await Matches.GetAsync(id, TestContext.Current.CancellationToken));
+		var refused = await Assert.ThrowsAsync<PostgresException>(async () =>
+			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken));
+
+		Assert.Equal(PostgresErrorCodes.NotNullViolation, refused.SqlState);
 	}
 
 	[Fact]

@@ -19,7 +19,7 @@ public partial class InitialCreate : Migration
 				id = table.Column<int>(type: "integer", nullable: false)
 					.Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
 				name = table.Column<string>(type: "text", nullable: false),
-				creator_id = table.Column<int>(type: "integer", nullable: true),
+				creator_id = table.Column<int>(type: "integer", nullable: false),
 				started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
 				ended_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
 				is_private = table.Column<bool>(type: "boolean", nullable: false)

@@ -79,7 +79,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("CreatorId")
+                    b.Property<int>("CreatorId")
                         .HasColumnType("integer")
                         .HasColumnName("creator_id");
 
@@ -383,7 +383,8 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
                         .WithMany()
                         .HasForeignKey("CreatorId")
                         .OnDelete(DeleteBehavior.NoAction)
-                        .HasConstraintName("fk_matches_users_creator_id");
+                        .HasConstraintName("fk_matches_users_creator_id")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.RoundRow", b =>
