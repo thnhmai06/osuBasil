@@ -13,6 +13,8 @@ public static class Program
 	/// <returns>The process exit code.</returns>
 	public static async Task<int> Main(string[] args)
 	{
+		// Lets the updater run its install and uninstall hooks; it returns at once when Basil was started normally.
+		Velopack.VelopackApp.Build().Run();
 		if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
 
 		var app = HostApplication.Create(args);

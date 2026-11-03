@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Velopack;
+using Velopack.Sources;
 
 namespace Basil.Host.Configuration;
 
@@ -20,7 +21,12 @@ internal sealed class UpdateChecker(IOptionsMonitor<UpdateOptions> options, ILog
 
 		try
 		{
-			var manager = new UpdateManager(update.Source, update.Channel == UpdateOptions.StableChannel
+			// A GitHub repository address is read as a list of releases; any other address is a plain feed folder.
+			IUpdateSource source = Uri.TryCreate(update.Source, UriKind.Absolute, out var address) &&
+			                       address.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+				? new GithubSource(update.Source, null, false)
+				: new SimpleWebSource(update.Source);
+			var manager = new UpdateManager(source, update.Channel == UpdateOptions.StableChannel
 				? null
 				: new Velopack.UpdateOptions { ExplicitChannel = update.Channel });
 			if (!manager.IsInstalled)

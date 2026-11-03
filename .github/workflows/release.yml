@@ -90,6 +90,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      # The updater reads releases from the GitHub release. This runs after the archives are uploaded and may fail
+      # without taking them away.
+      - name: Package for the updater
+        continue-on-error: true
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          RID: ${{ matrix.rid }}
+        shell: bash
+        run: |
+          set -e
+          dotnet tool install -g vpk --version 1.2.0
+          main=Basil.Host
+          case "$RID" in win-*) main=Basil.Host.exe ;; esac
+          vpk pack --packId Basil --packVersion "${TAG#v}" --packDir "publish/$RID" --mainExe "$main" --outputDir dist/velopack
+
+      - name: Upload updater packages
+        continue-on-error: true
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: dist/velopack/*
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
   docker:
     name: Build Docker image
 
