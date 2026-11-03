@@ -81,7 +81,7 @@ For example:
 
 ```text
 /opt/basil/
-├── Basil.Host
+├── Basil
 └── Configurations/
     ├── appsettings.json
     ├── appsettings.schema.json
@@ -97,7 +97,7 @@ If you are building Basil yourself instead of using a release, see [`development
 
 ### 2. Configure Basil
 
-Edit [`Configurations/appsettings.json`](../../src/Hosts/Host/Configurations/appsettings.json) beside the executable.
+Edit [`Configurations/appsettings.json`](../../src/Basil/Configurations/appsettings.json) beside the executable.
 Settings can also be given on the command line (`--Basil:Server:Domain=tourney.example`), which wins over the file.
 
 See [`configuration.md`](configuration.md) for the complete configuration reference.
@@ -210,7 +210,7 @@ The server never creates an account by itself, and the first administrator is ma
 the storage while the server is stopped:
 
 ```bash
-./Basil.Host users create --username admin --password change-me --admin
+./Basil users create --username admin --password change-me --admin
 ```
 
 `--admin` gives the account every permission. The console commands are specified in [`console.md`](console.md).
@@ -234,7 +234,7 @@ configuration.
 Start Basil from its executable directory:
 
 ```bash
-./Basil.Host
+./Basil
 ```
 
 The server shows a terminal dashboard. Under a service manager (systemd, Docker) stdin and stdout are redirected and it
@@ -254,7 +254,7 @@ Wants=network-online.target
 Type=simple
 User=basil
 WorkingDirectory=/opt/basil
-ExecStart=/opt/basil/Basil.Host --nogui
+ExecStart=/opt/basil/Basil --nogui
 Restart=on-failure
 
 [Install]
@@ -307,7 +307,7 @@ rate limit, and while the **accounts** lock is on only account managers can crea
 An administrator can create an account with the console:
 
 ```bash
-./Basil.Host users create --username Player1 --password hunter2 --country vn
+./Basil users create --username Player1 --password hunter2 --country vn
 ```
 
 or through the `api.<domain>` host, with the Bearer token of an account that may manage users (sign in with

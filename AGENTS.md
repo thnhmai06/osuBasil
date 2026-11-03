@@ -298,7 +298,7 @@ dotnet build --configuration Release
 Run Basil locally:
 
 ```bash
-dotnet run --project src/Hosts/Host
+dotnet run --project src/Basil
 ```
 
 Run every test project listed in `Basil.slnx`, one at a time; never pass the solution to `dotnet test`:
@@ -332,7 +332,7 @@ Projects that need PostgreSQL start a container; set `DOCKER_HOST` when the daem
 `BASIL_TEST_POSTGRES` to use an existing server. Never run every project in one `dotnet test` invocation.
 
 A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check, which
-`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of the composition root (`Basil.Host` today, `Basil` after the migration) and `AddBot()`, builds the provider
+`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of the composition root (`Basil`) and `AddBot()`, builds the provider
 with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event handler is
 registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
 
@@ -376,7 +376,7 @@ Basil.Gateway                    (target) admission control: Allow/Deny from    
 Basil.Host.Shared                views and outcome-to-error mapping              -> Application projects
 Basil.Host.Stable / .Irc /       transports: translate the wire to messages and  -> Host.Shared, Protocol, Gateway,
 .Rest / .Cli                     send them through Mediator                         Application projects
-Basil.Host                       (target name Basil) entry point, composition    -> everything
+Basil                            entry point, composition    -> everything
                                  root, "the way to run"
 
 Basil.Bot                        BasilBot, a module at the top of the graph      -> the Application projects of the
@@ -435,7 +435,7 @@ under `tests/Architecture/` and `tests/Hosts/`).
 
 The project that defines an options type binds it (`Add<Module>...(IConfiguration)`) **(target)**; the composition root
 only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
-project, `Basil.Host` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
+project, `Basil` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
 
 `Application.Common` owns `IActor`, `Result<T>`, `ScopedRights`, shared query values and event contracts/queue; it depends
 on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
@@ -467,7 +467,7 @@ the three stores, Objects) is direct dependency injection; a call between peers 
 
 The transports are `Basil.Host.Stable` (osu! packets, polling and legacy web endpoints), `Basil.Host.Irc` (plain TCP),
 `Basil.Host.Rest` (`api.`, images on `a.`/`assets.`, SSE, diagnostics) and `Basil.Host.Cli` (terminal dashboard and
-command box). The composition root is `Basil.Host` today and the project `Basil` after the migration **(target)**: the one
+command box). The composition root is the project `Basil`: the one
 `AddMediator` call, logging, shutdown/restart, host and subdomain routing, and the choice of Kestrel, ports, TLS and the
 database provider. It holds no business rule, no recovery logic and no admission policy. It is "the way to run" the
 system; no host or gateway knows it exists.

@@ -68,7 +68,7 @@ touching users, connections, permissions, restrictions or the bot.
   `Accounts` lock is set. REST has no self-registration: `POST /v1/users` is for `UserManage`. The server creates no
   account by itself; the first administrator is made by the operator with a console command.
 * **The console is the operator's entry point.** It runs in `Basil.Host.Cli`, as the dashboard command box or as
-  `Basil.Host <command>` (target name `Basil`) from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorConnection`:
+  `Basil.Host <command>` from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorConnection`:
   BasilBot's identity with every permission, outranking every account, never registered, so no client can present it. It
   is the **one entry point that skips rights checks**, because whoever sits at the console owns the machine; BasilBot
   itself still has no permissions. `--noconsole` turns the command box off.

@@ -9,8 +9,7 @@ Around that core sit four kinds of project that do not hold business rules: Prot
 wire), Hosts (translate and dispatch), Gateway (admission control) and the Server (the way to run it all).
 
 > **Migration status.** This page describes the target architecture. The code is migrated phase by phase, and parts
-> of the page are marked **(target)** where the code does not match yet. Today `Basil.Host` is still the composition
-> root (it becomes `Basil`), handlers and object-free logic still sit in the Application projects (they move to
+> of the page are marked **(target)** where the code does not match yet. Handlers and object-free logic still sit in the Application projects (they move to
 > Infrastructure), hosts still call `ScopeTo` themselves (they will send Mediator messages), the rate limiter and upload
 > limits still sit in `Basil.Host.Shared` and the hosts (they move to `Basil.Gateway`), persistence still has
 > write-behind pieces (being removed, see [`database.md`](database.md)), and `Application.Diagnostics`,
@@ -43,7 +42,7 @@ Basil.Protocol.Stable / .Irc     the translation language of each wire          
 Basil.Gateway                    (target) admission control                       -> (nothing but the rate-limiting library)
 Basil.Host.Shared                views and outcome-to-error mapping               -> Application projects
 Basil.Host.Stable/.Irc/.Rest/.Cli  transports                                     -> Host.Shared, Protocol, Gateway, Application
-Basil                            (target name; today Basil.Host) composition root -> everything
+Basil                            composition root -> everything
 ```
 
 `tests/Architecture/` reads the project references and fails on an edge outside this graph, on a cycle, and on a host
@@ -170,7 +169,7 @@ restrictions. The host enforces the answer in its protocol. The design is in [`g
 
 ### Server: the way to run it
 
-The project `Basil` **(target name; today `Basil.Host`)** is the composition root: it builds dependency injection, binds
+The project `Basil` is the composition root: it builds dependency injection, binds
 configuration, chooses Kestrel, ports, TLS and the database provider, wires hosts, gateway and modules, owns logging and
 the lifecycle (start, stop, restart) and `Program.cs`. It calls `AddMediator` once so the generated code finds every
 handler. It sees the whole system in order to run it, but means nothing to the hosts or the gateway: none of them knows it
@@ -260,7 +259,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 * `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module contracts, objects and implementations.
 * `src/Protocol/Stable/`, `src/Protocol/Irc/` — the translation language of each wire.
 * `src/Hosts/Shared/`, `src/Hosts/{Stable,Irc,Rest,Cli}/` — views and the transports.
-* `src/Hosts/Host/` — today's composition root.
+* `src/Basil/` — the composition root.
 * `tests/Architecture/` — `ModuleGraphTests`, `HostGraphTests`, `CompositionTests`, `ScopedLifetimeTests`.
 
 ## Where to go from here

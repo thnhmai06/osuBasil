@@ -29,7 +29,7 @@ settings change; countdowns stop when the round starts or is aborted or the room
 countdown marks.
 
 BasilBot is shown as an online user to both the osu! client and IRC. Operators also have a console in the server
-process (`Basil.Host`): it runs a command as the operator, which is the one entry point that skips permission checks,
+process (`Basil`): it runs a command as the operator, which is the one entry point that skips permission checks,
 while a chat command always runs with the typist's rights. See [`../for-technicians/console.md`](../for-technicians/console.md).
 
 ---

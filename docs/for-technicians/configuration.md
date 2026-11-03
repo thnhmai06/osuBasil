@@ -85,10 +85,10 @@ No rebuild is required.
 ### Command line
 
 ```text
-Basil.Host                 start the server
-Basil.Host --noconsole     dashboard without the command box
-Basil.Host --nogui         plain log lines, no dashboard
-Basil.Host <command>       run one console command (in the running server, or offline)
+Basil                 start the server
+Basil --noconsole     dashboard without the command box
+Basil --nogui         plain log lines, no dashboard
+Basil <command>       run one console command (in the running server, or offline)
 ```
 
 When stdin or stdout is redirected, the server falls back to `--nogui`. A setting can be overridden per run with

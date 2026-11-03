@@ -20,7 +20,7 @@ Use Docker Compose when the Basil repository is available on the deployment mach
 Before the first run, edit:
 
 ```text
-src/Hosts/Host/Configurations/appsettings.json
+src/Basil/Configurations/appsettings.json
 ```
 
 Configure the settings required by the deployment, especially:
@@ -36,7 +36,7 @@ requirements.
 The Compose setup bind-mounts this file into the container as read-only:
 
 ```text
-src/Hosts/Host/Configurations/appsettings.json
+src/Basil/Configurations/appsettings.json
         │
         └──► /app/Configurations/appsettings.json
 ```
@@ -78,11 +78,11 @@ The server never creates an account by itself. Create the first administrator wi
 running container:
 
 ```bash
-docker compose exec basil ./Basil.Host users create --username admin --password change-me --admin
+docker compose exec basil ./Basil users create --username admin --password change-me --admin
 ```
 
 The command is forwarded to the running server. See [`console.md`](console.md) for the commands. The same command also
-works against a stopped server, with `docker compose run --rm basil ./Basil.Host users create ...`.
+works against a stopped server, with `docker compose run --rm basil ./Basil users create ...`.
 
 ### 4. Check the logs
 
@@ -152,7 +152,7 @@ the same layout as the normal executable deployment:
 
 ```text
 /app/
-├── Basil.Host
+├── Basil
 ├── Configurations/
 ├── Data/
 └── Logs/

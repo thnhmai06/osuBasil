@@ -83,7 +83,7 @@ Use inline code for technical identifiers, including:
 
 For example:
 
-* [`ServerOptions`](../../src/Hosts/Host/ServerOptions.cs)
+* [`ServerOptions`](../../src/Basil/ServerOptions.cs)
 * `PATCH /v1/settings/{category}`
 * `appsettings.json`
 

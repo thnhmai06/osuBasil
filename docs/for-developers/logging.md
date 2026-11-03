@@ -21,7 +21,7 @@ Nothing logs each osu! (stable) packet, IRC line or REST request. Those are coun
 
 ## How it is built
 
-`src/Hosts/Host/Logging/ServerLogging.cs` configures [Serilog](https://serilog.net/):
+`src/Basil/Logging/ServerLogging.cs` configures [Serilog](https://serilog.net/):
 
 * one rolling file, `Logs/basil-*.log`, UTF-8, rolled by `Logging:File:Rolling` (interval and size) and limited by `Logging:File:Retention`
   (age, count and total size; swept at startup and every six hours; the newest file is always kept); `Logging:File:Enabled`
@@ -64,10 +64,10 @@ A background service logs the failure and continues its loop.
 
 ## Related code
 
-* `src/Hosts/Host/Logging/ServerLogging.cs` — sinks, queue, level policy.
-* `src/Hosts/Host/Logging/LifecycleLog.cs` — the lifecycle event handlers.
-* `src/Hosts/Host/Logging/LogRetention.cs` — retention sweep.
-* `src/Hosts/Host/Logging/TelemetrySetup.cs` — optional OpenTelemetry.
+* `src/Basil/Logging/ServerLogging.cs` — sinks, queue, level policy.
+* `src/Basil/Logging/LifecycleLog.cs` — the lifecycle event handlers.
+* `src/Basil/Logging/LogRetention.cs` — retention sweep.
+* `src/Basil/Logging/TelemetrySetup.cs` — optional OpenTelemetry.
 * `src/Hosts/Cli/Dashboard/` — the log panel buffer.
 
 ## See also

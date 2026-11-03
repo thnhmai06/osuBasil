@@ -19,20 +19,20 @@ Clone the repository, start a PostgreSQL server and point Basil at it:
 git clone https://github.com/thnhmai06/osuBasil.git
 cd osuBasil
 docker run -d --name basil-pg -e POSTGRES_PASSWORD=basil -e POSTGRES_DB=basil -p 5432:5432 postgres:17-alpine
-dotnet run --project src/Hosts/Host -- --nogui
+dotnet run --project src/Basil -- --nogui
 ```
 
 The default connection string in
-[`appsettings.json`](../../src/Hosts/Host/Configurations/appsettings.json) is
+[`appsettings.json`](../../src/Basil/Configurations/appsettings.json) is
 `Host=localhost;Port=5432;Database=basil;Username=basil;Password=basil`; create that role, or override the
 setting as described below. Database migrations run when the server starts.
 
 On the first run Basil creates its `Data/` directory next to the build output
-(`src/Hosts/Host/bin/Debug/net10.0/Data/`). The server never creates an account by itself; make the first
+(`src/Basil/bin/Debug/net10.0/Data/`). The server never creates an account by itself; make the first
 administrator with the console, which runs the command against the storage without starting the server:
 
 ```bash
-dotnet run --project src/Hosts/Host -- users create --username admin --password change-me --admin
+dotnet run --project src/Basil -- users create --username admin --password change-me --admin
 ```
 
 The console commands are specified in [`console.md`](../for-technicians/console.md). Without `--nogui` the server shows
@@ -41,7 +41,7 @@ the terminal dashboard; when stdin or stdout is redirected it falls back to `--n
 ## Development configuration
 
 Basil uses the same configuration model in development and production. There is no separate development-only file.
-The files live in `Configurations/` beside the executable (in a checkout, `src/Hosts/Host/Configurations/` is copied to
+The files live in `Configurations/` beside the executable (in a checkout, `src/Basil/Configurations/` is copied to
 the build output):
 
 ```text
@@ -187,7 +187,7 @@ development workflow.
 You can produce the same kind of self-contained output used by the release pipeline:
 
 ```bash
-dotnet publish src/Hosts/Host \
+dotnet publish src/Basil \
   -c Release \
   -r win-x64 \
   --self-contained true \
@@ -204,7 +204,7 @@ osx-arm64
 
 and any other RID supported by the release matrix.
 
-The resulting executable (`Basil.Host`) is self-contained and does not require the .NET runtime to be installed on the
+The resulting executable (`Basil`) is self-contained and does not require the .NET runtime to be installed on the
 target machine.
 
 `ffmpeg` remains an external runtime dependency for beatmapset audio previews. See

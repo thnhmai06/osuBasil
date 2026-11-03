@@ -120,7 +120,7 @@ The server never creates an account by itself, so a fresh database has no admini
 which works on the storage whether the server is running or not:
 
 ```bash
-./Basil.Host users create --username admin --password change-me --admin
+./Basil users create --username admin --password change-me --admin
 ```
 
 `--admin` gives the account every permission. If an existing administrator lost their password, set a new one with
@@ -302,7 +302,7 @@ Basil reads most deployment configuration when the process starts; only `Logging
 Policy settings (locks, rate limits, upload limits and the like) are stored in the database and apply at once when
 changed through the API or the console.
 
-After changing [`Configurations/appsettings.json`](../../src/Hosts/Host/Configurations/appsettings.json):
+After changing [`Configurations/appsettings.json`](../../src/Basil/Configurations/appsettings.json):
 
 1. Save the file.
 2. Stop Basil.

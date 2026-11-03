@@ -20,11 +20,11 @@ If not, the test is coupled to an implementation detail.
 | Infrastructure | `tests/Infrastructure/<Module>` | repositories and storage against PostgreSQL and temporary files |
 | Protocol | `tests/Protocol/{Stable,Irc}` | wire bytes and text, round-tripped from hand-written pairs |
 | Host | `tests/Hosts/<Transport>` | the real transport in process over real sockets: osu! (stable) packets, IRC lines, REST status/envelope/SSE |
-| End-to-end | `tests/Hosts/Host` | several hosts together through the simulated clients |
+| End-to-end | `tests/Basil` | several hosts together through the simulated clients |
 | Architecture | `tests/Architecture` | project graph, layering, composition and outcomes |
 
 Host test projects run the real server (`BasilHost`) in the test process: Kestrel and IRC on random ports, the real
-`Basil.Host` composition, a `FakeTimeProvider`, temporary data directories and a PostgreSQL database of their own.
+`Basil` composition, a `FakeTimeProvider`, temporary data directories and a PostgreSQL database of their own.
 Clients talk to it over the network exactly as real ones do.
 
 Shared support lives under `tests/Support`:

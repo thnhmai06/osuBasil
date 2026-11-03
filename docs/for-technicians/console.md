@@ -32,7 +32,7 @@ surface: BasilBot's chat commands are separate and keep checking the typist's ri
 A command can be typed in the command box or given on the command line of the executable:
 
 ```text
-Basil.Host users create --username admin --password secret --permissions 1048575
+Basil users create --username admin --password secret --permissions 1048575
 ```
 
 Both use the same parser, print the same output and return the same exit code.
@@ -59,7 +59,7 @@ Both use the same parser, print the same output and return the same exit code.
   The socket has no interactive questions: the confirmation of `shutdown` and `restart` is asked in the calling terminal
   before the request is sent.
 * The command runs on the machine of the server only. Calling from another machine or container is not supported; in
-  Docker use `docker exec <container> Basil.Host <command>`.
+  Docker use `docker exec <container> Basil <command>`.
 
 ### Running offline
 
