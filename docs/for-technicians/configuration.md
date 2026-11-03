@@ -65,8 +65,7 @@ under `Basil`.
 | `Basil:Server:Irc:Port` | plain TCP port of IRC, default `6667`; `0` picks a free port |
 | `Basil:Server:Multicast:Enabled`, `IPv4`, `IPv6`, `Port`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled); only the standard group addresses and port 5353 are supported, and an empty `IPv4` or `IPv6` switches that family off |
 | `Basil:Storage:Location` | directory that holds stored files, default `Data` |
-| `Basil:Database:Enabled` | must be `true`; `false` stops the server at start (running without a database is not supported yet) |
-| `Basil:Database:Read` and `Write`: `Provider`, `PoolSize` | the provider must be `PostgreSQL` (anything else stops the server at start); `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
+| `Basil:Database:Read:PoolSize`, `Write:PoolSize` | the database is always PostgreSQL; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
 | `Basil:Updates:CheckOnStartup`, `Source`, `Channel` | startup update check, its feed, and the release channel (`stable`, or the name of another published channel) |
 | `Basil:Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
 
@@ -113,7 +112,7 @@ environment variable or command-line argument, where `:` is `__` in variables); 
 | `Basil:Storage:DataDirectory` | `Basil:Storage:Location` |
 | `Basil:Database:ConnectionString` | `ConnectionStrings:Write` (and `ConnectionStrings:Read`, which falls back to `Write`) |
 | `Basil:Database:WriteConnections` | `Basil:Database:Write:PoolSize` |
-| (new) | `Basil:Database:Enabled`, `Basil:Database:Read:Provider`, `Read:PoolSize`, `Write:Provider` |
+| (new) | `Basil:Database:Read:PoolSize` |
 | `Basil:Logging:MinimumLevel` | `Logging:LogLevel:Default` |
 | `Basil:Logging:Overrides:<source>` | `Logging:LogLevel:<source>` |
 | `Basil:Logging:Directory` | `Logging:File:Location` |

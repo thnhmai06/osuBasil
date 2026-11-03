@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Host.Tests.Configuration;
 
-/// <summary>The database settings: two connection strings, their pools, and a refusal of what is not supported yet.</summary>
+/// <summary>The database settings: two connection strings and their pools.</summary>
 public sealed class DatabaseSetupTests
 {
 	private static IConfiguration Settings(params (string Key, string Value)[] values)
@@ -47,26 +47,6 @@ public sealed class DatabaseSetupTests
 
 		Assert.Equal(20, options.ReadPoolSize);
 		Assert.Equal(3, options.WritePoolSize);
-	}
-
-	[Fact]
-	public void ADisabledDatabaseStopsTheServerWithAClearError()
-	{
-		var exception = Assert.Throws<InvalidOperationException>(() => DatabaseSetup.Read(Settings(
-			("ConnectionStrings:Write", "Host=primary"), ("Basil:Database:Enabled", "false"))));
-
-		Assert.Contains("Basil:Database:Enabled", exception.Message);
-	}
-
-	[Theory]
-	[InlineData("Basil:Database:Read:Provider")]
-	[InlineData("Basil:Database:Write:Provider")]
-	public void AProviderOtherThanPostgreSqlStopsTheServerWithAClearError(string key)
-	{
-		var exception = Assert.Throws<InvalidOperationException>(() => DatabaseSetup.Read(Settings(
-			("ConnectionStrings:Write", "Host=primary"), (key, "MySQL"))));
-
-		Assert.Contains(key, exception.Message);
 	}
 
 	[Fact]
