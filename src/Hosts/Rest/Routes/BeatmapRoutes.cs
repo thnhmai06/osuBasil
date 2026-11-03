@@ -237,12 +237,14 @@ internal static class BeatmapRoutes
 	}
 
 	private static async Task<IResult> DownloadAsync(HttpContext context, int id, IBeatmapsetRepository sets,
-		IBeatmapsetStorage storage, bool? noVideo)
+		IBeatmapsetStorage storage, string? noVideo)
 	{
 		var set = await sets.GetAsync(id, context.RequestAborted);
 		if (set is null || !CanView(context, set)) return Api.NotFound("No such beatmapset.");
 
-		var archive = await storage.OpenArchiveAsync(set, noVideo != true, context.RequestAborted);
+		var leavesVideoOut = noVideo is not null &&
+		                     (noVideo == "1" || (bool.TryParse(noVideo, out var parsed) && parsed));
+		var archive = await storage.OpenArchiveAsync(set, !leavesVideoOut, context.RequestAborted);
 		return archive is null
 			? Api.NotFound("No such file.")
 			: NoSniff(context, Results.Stream(archive, "application/x-osu-beatmap-archive", $"{set.Id}.osz"));
