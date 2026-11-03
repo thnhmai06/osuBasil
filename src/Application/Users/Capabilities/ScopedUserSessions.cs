@@ -27,7 +27,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	///     A user may read their own sessions. Reading another account's sessions needs
 	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, Page<SessionEntry>? Sessions)> ListAsync(PageRequest page,
+	public async Task<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)> ListAsync(PageRequest page,
 		SessionState state = SessionState.Any, IReadOnlyList<SessionType>? types = null,
 		CancellationToken cancellationToken = default)
 	{
@@ -58,7 +58,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log. A session that
 	///     does not belong to this account is not found.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, SessionEntry? Session)> GetAsync(Guid id,
+	public async Task<(Result<UserOutcome> Result, SessionRecord? Session)> GetAsync(Guid id,
 		CancellationToken cancellationToken = default)
 	{
 		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
@@ -84,8 +84,8 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of closing the session.</returns>
 	/// <remarks>
-	///     A closed session cannot sign in again with what it stored: an API token and an IRC key stop working, and an
-	///     osu! device is asked once for its password. Closing another account's session needs
+	///     A closed session cannot sign in again with what it stored: an API token and an IRC key stop working. An
+	///     osu! client is disconnected but can sign in again with its password. Closing another account's session needs
 	///     <see cref="UserPermissions.UserManage" /> and hierarchy.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> CloseAsync(Guid id, CancellationToken cancellationToken = default)
@@ -139,7 +139,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	///     Only the account's own user may open a key. The key is shown only here; closing the key's session stops it
 	///     working and leaves the account's other IRC clients alone.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, string? Key, SessionEntry? Session)> OpenIrcAsync(string label,
+	public async Task<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)> OpenIrcAsync(string label,
 		CancellationToken cancellationToken = default)
 	{
 		if (scoped.User.Record.IsBasilBot()) return (UserOutcome.SystemAccount, null, null);
@@ -150,20 +150,18 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 		if (label.Length is 0 or > MaxLabelLength) return (UserOutcome.InvalidLabel, null, null);
 
 		var key = UserRegistry.NewToken();
-		var session = new SessionRecord(Guid.NewGuid(), scoped.User.Record, SessionType.Irc,
-			scoped.User.Context.Clock.GetUtcNow(),
+		var now = scoped.User.Context.Clock.GetUtcNow();
+		var session = new SessionRecord(Guid.NewGuid(), scoped.User.Record, SessionType.Irc, now,
 			new SessionData(new SessionDevice(scoped.Actor.Session.Value.Device.Ip, ClientInfo: label),
-				new SessionCredential(UserRegistry.HashToken(key))));
+				new SessionCredential(UserRegistry.HashToken(key)), now));
 		await scoped.User.Context.Sessions.RecordAsync(session, cancellationToken);
-		var entry = new SessionEntry(session.Id, session.User, session.Type, session.Value.Device.Ip, label,
-			session.StartedAt, session.StartedAt, null, null, false);
-		return (UserOutcome.Ok, key, entry);
+		return (UserOutcome.Ok, key, session);
 	}
 
 	/// <summary>Closes sessions of this account for good: its open connections, then every stored session.</summary>
 	private Task Close(Guid? only, Guid? except, CancellationToken cancellationToken)
 	{
-		return CloseCore(scoped.User, only, except, SessionEndReason.Revoked, true, cancellationToken);
+		return CloseCore(scoped.User, only, except, SessionEndReason.Revoked, cancellationToken);
 	}
 
 	/// <summary>Closes sessions of an account.</summary>
@@ -171,13 +169,12 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	/// <param name="only">The one session to close, or <see langword="null" /> for every session.</param>
 	/// <param name="except">A session that stays open, or <see langword="null" /> for none.</param>
 	/// <param name="reason">Why the sessions close.</param>
-	/// <param name="requireReauthentication">Whether the devices of the closed osu! clients must enter their password again.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	internal static async Task CloseCore(User user, Guid? only, Guid? except, SessionEndReason reason,
-		bool requireReauthentication, CancellationToken cancellationToken)
+		CancellationToken cancellationToken)
 	{
-		user.Context.Registry.CloseAll(user.Record, reason, except, requireReauthentication, only);
+		user.Context.Registry.CloseAll(user.Record, reason, except, only);
 		await user.Context.Sessions.EndAsync(user.Record, only, except, ClientTypes,
-			user.Context.Clock.GetUtcNow(), reason, requireReauthentication, cancellationToken);
+			user.Context.Clock.GetUtcNow(), reason, cancellationToken);
 	}
 }

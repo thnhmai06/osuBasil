@@ -14,8 +14,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	private const long None = long.MinValue;
 	private SessionEnd? _end;
 	private long _expiresTicks = login.Value.Credential.ExpiresAt?.UtcTicks ?? None;
-	private long _lastActiveTicks = login.StartedAt.UtcTicks;
-	private volatile bool _mustReauthenticate;
+	private long _lastActiveTicks = login.Value.LastActiveAt.UtcTicks;
 
 	/// <summary>Gets the online user this connection belongs to.</summary>
 	public User User { get; internal set; } = null!;
@@ -41,9 +40,6 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 			? new DateTimeOffset(ticks, TimeSpan.Zero)
 			: null;
 
-	/// <summary>Gets whether the osu! device must enter its password again.</summary>
-	public bool MustReauthenticate => _mustReauthenticate;
-
 	/// <summary>Gets how the session ended, or <see langword="null" /> while it remains active.</summary>
 	public SessionEnd? End => Volatile.Read(ref _end);
 
@@ -57,14 +53,17 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	}
 
 	/// <summary>Gets the session as it stands now, ready to be stored.</summary>
-	/// <returns>The stored session with its current expiry and end.</returns>
+	/// <returns>The stored session with its current expiry, activity and end.</returns>
 	internal SessionRecord Snapshot()
 	{
 		var value = Session.Value;
-		return Session with
-		{
-			Value = value with { Credential = value.Credential with { ExpiresAt = ExpiresAt }, End = End }
-		};
+		return new SessionRecord(Session.Id, Session.User, Session.Type, Session.StartedAt,
+			value with
+			{
+				Credential = value.Credential with { ExpiresAt = ExpiresAt },
+				LastActiveAt = LastActiveAt,
+				End = End
+			});
 	}
 
 	/// <summary>Records activity on this connection's session.</summary>
@@ -88,12 +87,6 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	internal void EndSession(DateTimeOffset at, SessionEndReason reason)
 	{
 		Interlocked.CompareExchange(ref _end, new SessionEnd(at, reason), null);
-	}
-
-	/// <summary>Requires the osu! device to authenticate with its password on the next login.</summary>
-	internal void RequireReauthentication()
-	{
-		_mustReauthenticate = true;
 	}
 
 	/// <summary>Tells whether this connection's authority is above an account's permissions.</summary>

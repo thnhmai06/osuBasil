@@ -53,8 +53,7 @@ public sealed class ScopedUserCredentials(ScopedUser scoped)
 		if (unchanged) return UserOutcome.Ok;
 
 		await ScopedUserSessions.CloseCore(user, null, SessionToKeep(includeCurrent),
-			SessionEndReason.CredentialsChanged,
-			!scoped.IsSelf, cancellationToken);
+			SessionEndReason.CredentialsChanged, cancellationToken);
 		if (!scoped.IsSelf) await LogChangeAsync(user, cancellationToken);
 
 		return UserOutcome.Ok;

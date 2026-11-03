@@ -2,6 +2,8 @@ using System.Globalization;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common;
 using Basil.Domain.Auth;
+using Basil.Domain.Client;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +16,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	/// <inheritdoc />
 	public Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default)
 	{
-		var row = ToRow(login, login.StartedAt, false);
+		var row = ToRow(login);
 
 		return writer.AppendAsync(Root.User(login.User.Id),
 			new WriteCommand<AuthDbContext>(async (context, token) =>
@@ -25,11 +27,10 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate,
-		CancellationToken cancellationToken = default)
+	public Task UpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		var row = ToRow(session, lastActiveAt, mustReauthenticate);
+		var row = ToRow(session);
 		return writer.SaveAsync(Root.User(session.User.Id), row.Id,
 			new WriteCommand<AuthDbContext>(async (context, token) =>
 			{
@@ -38,7 +39,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<Page<SessionEntry>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
+	public async ValueTask<Page<SessionRecord>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
 		var types = filter.Types;
@@ -65,16 +66,16 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 			return (count, rows);
 		}, cancellationToken);
 
-		return new Page<SessionEntry>(rows.Select(row => ToEntry(row, user)).ToList(), total);
+		return new Page<SessionRecord>(rows.Select(row => ToRecord(row, user)).ToList(), total);
 	}
 
 	/// <inheritdoc />
-	public async Task<SessionEntry?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
+	public async Task<SessionRecord?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
 	{
 		var row = await reader.ReadAsync((AuthDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken),
 			cancellationToken);
-		return row is null ? null : ToEntry(row, user);
+		return row is null ? null : ToRecord(row, user);
 	}
 
 	/// <inheritdoc />
@@ -93,8 +94,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 
 	/// <inheritdoc />
 	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types,
-		DateTimeOffset at, SessionEndReason reason, bool requireReauthentication,
-		CancellationToken cancellationToken = default)
+		DateTimeOffset at, SessionEndReason reason, CancellationToken cancellationToken = default)
 	{
 		var end = at.ToUniversalTime();
 		return writer.AppendAsync(Root.User(user.Id), new WriteCommand<AuthDbContext>(async (context, token) =>
@@ -106,11 +106,6 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 			await query.Where(row => row.EndedAt == null).ExecuteUpdateAsync(setters => setters
 				.SetProperty(row => row.EndedAt, end)
 				.SetProperty(row => row.EndReason, reason), token);
-
-			// A device is marked even when its session had ended already: the saved password must stop working there.
-			if (requireReauthentication)
-				await query.Where(row => row.Type == SessionType.Stable || row.Type == SessionType.StableTourney)
-					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.MustReauthenticate, true), token);
 		}));
 	}
 
@@ -139,35 +134,35 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	{
 		var before = cutoff.ToUniversalTime();
 		return writer.WriteAsync(Root.Server, async (AuthDbContext context, CancellationToken token) =>
-			await context.Sessions.Where(row => !row.MustReauthenticate &&
-			                                    ((row.EndedAt != null && row.EndedAt < before) ||
-			                                     (row.EndedAt == null && row.ExpiresAt != null &&
-			                                      row.ExpiresAt < before)))
+			await context.Sessions.Where(row => (row.EndedAt != null && row.EndedAt < before) ||
+			                                    (row.EndedAt == null && row.ExpiresAt != null &&
+			                                     row.ExpiresAt < before))
 				.ExecuteDeleteAsync(token), cancellationToken);
 	}
 
-	/// <inheritdoc />
-	public async Task<bool> TakeReauthenticationAsync(UserRecord user, DeviceId device,
-		CancellationToken cancellationToken = default)
+	private static SessionRecord ToRecord(SessionRow row, UserRecord user)
 	{
-		return await writer.WriteAsync(Root.User(user.Id), async (AuthDbContext context, CancellationToken token) =>
-				await context.Sessions.Where(row => row.UserId == user.Id && row.MustReauthenticate &&
-				                                    row.UninstallHash == device.UninstallHash.HashValue &&
-				                                    row.DiskSignatureHash == device.DiskSignatureHash.HashValue)
-					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.MustReauthenticate, false), token) >
-				0,
-			cancellationToken);
+		var end = row.EndedAt is { } at ? new SessionEnd(at, row.EndReason!.Value) : null;
+		return new SessionRecord(row.Id, user, row.Type, row.StartedAt,
+			new SessionData(new SessionDevice(row.Ip, ToClient(row), row.ClientInfo),
+				new SessionCredential(row.TokenHash, row.ExpiresAt), row.LastActiveAt, end));
 	}
 
-	private static SessionEntry ToEntry(SessionRow row, UserRecord user)
+	private static OsuClient? ToClient(SessionRow row)
 	{
-		return new SessionEntry(row.Id, user, row.Type, row.Ip, row.ClientInfo, row.StartedAt, row.LastActiveAt,
-			row.EndedAt, row.EndReason, row.MustReauthenticate);
+		if (row.ClientDate is null) return null;
+
+		var version = new OsuVersion(DateOnly.ParseExact(row.ClientDate, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+			row.ClientRevision, (OsuVersionStream)row.ClientStream!.Value);
+		var adapters = new NetworkAdapters { Adapters = row.NetworkAdapters!, Hash = new Md5(row.NetworkAdaptersHash!) };
+		return new OsuClient(version,
+			new OsuFingerprint(new Md5(row.OsuPathHash!), new Md5(row.UninstallHash!), new Md5(row.DiskSignatureHash!),
+				adapters));
 	}
 
-	private static SessionRow ToRow(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate)
+	private static SessionRow ToRow(SessionRecord session)
 	{
-		var (device, credential, end) = session.Value;
+		var (device, credential, lastActiveAt, end) = session.Value;
 		var client = device.Client;
 		return new SessionRow
 		{
@@ -182,7 +177,6 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 			EndReason = end?.Reason,
 			TokenHash = credential.TokenHash is null ? null : [.. credential.TokenHash],
 			ExpiresAt = credential.ExpiresAt?.ToUniversalTime(),
-			MustReauthenticate = mustReauthenticate,
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
 			ClientRevision = client?.Version.Revision,
 			ClientStream = client is null ? null : (int?)client.Version.Stream,

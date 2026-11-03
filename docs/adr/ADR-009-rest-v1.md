@@ -83,8 +83,8 @@ Each row has a test.
 - OpenAPI generated from code is the only reference; descriptions follow AGENTS.md rule 5.
 - Postman checks the HTTP contract (status, envelope, schema, public/token matrix, redirects); xUnit checks
   behaviour. A rule is not tested twice.
-- Remote logout of an osu! client only asks the device for its password again; changing the password is the real
-  block. The route descriptions say so.
+- Remote logout of an osu! client only disconnects it, and it can sign in again with its password; changing the
+  password is the real block. The route descriptions say so.
 
 ## Related code
 

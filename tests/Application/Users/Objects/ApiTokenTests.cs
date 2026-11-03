@@ -146,7 +146,7 @@ public sealed class ApiTokenTests
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
 		app.Users.CloseIdle();
 
-		Assert.Null(app.SessionEntries.Single(entry => entry.Id == first.Session.Id).EndedAt);
+		Assert.Null(app.StoredSessions.Single(entry => entry.Id == first.Session.Id).Value.End);
 	}
 
 	[Fact]

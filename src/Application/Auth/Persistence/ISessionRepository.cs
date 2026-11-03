@@ -55,17 +55,14 @@ public sealed record SessionActivity(Guid Id, DateTimeOffset LastActiveAt, DateT
 public interface ISessionRepository
 {
 	/// <summary>Records a new session.</summary>
-	/// <param name="login">The session to record; it starts with no activity and no reauthentication mark.</param>
+	/// <param name="login">The session to record.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default);
 
 	/// <summary>Updates the stored state of a session.</summary>
-	/// <param name="session">The session as it stands now.</param>
-	/// <param name="lastActiveAt">When the session was last used.</param>
-	/// <param name="mustReauthenticate">Whether the osu! device must enter its password again.</param>
+	/// <param name="session">The session as it stands now, with its activity and end.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate,
-		CancellationToken cancellationToken = default);
+	Task UpdateAsync(SessionRecord session, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the sessions of a user, newest first.</summary>
 	/// <param name="user">The user whose sessions to list.</param>
@@ -73,7 +70,7 @@ public interface ISessionRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>One part of the user's sessions, newest first, with how many sessions match in total.</returns>
-	ValueTask<Page<SessionEntry>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
+	ValueTask<Page<SessionRecord>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Gets one session of a user.</summary>
@@ -81,7 +78,7 @@ public interface ISessionRepository
 	/// <param name="id">The session's public identifier.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The session, or <see langword="null" /> when the user has no session with that id.</returns>
-	Task<SessionEntry?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default);
+	Task<SessionRecord?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default);
 
 	/// <summary>Finds the session a token or key opens.</summary>
 	/// <param name="type">The kind of session the token or key is for.</param>
@@ -99,12 +96,9 @@ public interface ISessionRepository
 	/// <param name="types">The kinds of session that end.</param>
 	/// <param name="at">When the sessions end.</param>
 	/// <param name="reason">Why the sessions end.</param>
-	/// <param name="requireReauthentication">
-	///     Whether the devices of the ended osu! and osu!tourney sessions must enter their password again.
-	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types, DateTimeOffset at,
-		SessionEndReason reason, bool requireReauthentication, CancellationToken cancellationToken = default);
+		SessionEndReason reason, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores the latest activity of several sessions at once.</summary>
 	/// <param name="activity">The activity to store.</param>
@@ -116,17 +110,5 @@ public interface ISessionRepository
 	/// <param name="cutoff">The moment before which a session must have ended to be deleted.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many sessions were deleted.</returns>
-	/// <remarks>
-	///     A session that still marks a device as having to enter its password again is kept, so deleting history never
-	///     lets a saved password work again.
-	/// </remarks>
 	Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default);
-
-	/// <summary>Takes the one-time mark that makes an osu! device enter its password again.</summary>
-	/// <param name="user">The user logging in.</param>
-	/// <param name="device">The hashes that identify the device.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> when the device was marked; the mark is cleared so only one login is refused.</returns>
-	Task<bool> TakeReauthenticationAsync(UserRecord user, DeviceId device,
-		CancellationToken cancellationToken = default);
 }

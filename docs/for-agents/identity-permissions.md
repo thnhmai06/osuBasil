@@ -74,16 +74,16 @@ touching users, connections, permissions, restrictions or the bot.
   point; `BeatmapsetManage`, while the file watcher keeps running) and `Profiles` (a user changing their own username,
   country, avatar or password; `UserManage` may change another account's). A lock covers create, change and delete. It
   is checked in Application, never in a transport, and refuses with a `Locked` outcome.
-* **Sessions and tokens.** A `SessionRecord` (immutable, with `SessionData` in device, credential and end groups) is the persisted record of a sign-in (`ConnectionType`: Osu, Tourney, Irc, Api,
-  Bot); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the reauthentication mark, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
+* **Sessions and tokens.** A `SessionRecord` (an identity with `SessionData` in device, credential, activity and end groups) is the persisted record of a sign-in (`ConnectionType`: Osu, Tourney, Irc, Api,
+  Bot); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
   token expires after `Sessions.ApiToken.Lifetime` (sliding, one week by default) and is verified against the database
   the first time it is used, then kept in memory while its connection is used. An IRC key belongs to one device, is
   issued by `POST /v1/users/{id}/sessions/irc`, and is the only credential IRC accepts. osu! signs in with username and
   password every time. A connection that has sent nothing for its transport's idle timeout leaves memory; the session stays valid
   and the next use opens a new connection. Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by
   default).
-* **Logging out is real.** Closing an Api session revokes its token; closing an osu! session also marks the device to
-  enter its password again (the next automatic login is refused once with `-7`); closing an IRC session revokes that
+* **Logging out revokes credentials, not saved passwords.** Closing an Api session revokes its token; closing an osu! session only disconnects the
+  client, which can sign in again with its password; closing an IRC session revokes that
   device's key. Changing a password revokes every other Api token and every IRC key, and closes osu! connections.
   Changing the password only forces a new login: a client that stored the password can sign in again, so a real lockout
   of a stolen device needs a password change by someone else or a restriction.

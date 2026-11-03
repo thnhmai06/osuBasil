@@ -42,8 +42,9 @@ internal static class UserRoutes
 			                 `includeCurrent` the calling session is closed too. Staff change another account's password without
 			                 the current one and every session of that account is closed.
 
-			                 Signing an osu! client out only makes the device ask for the password again; changing the password
-			                 is what keeps the client out. While the profiles area is locked, only staff can change a password.
+			                 Signing an osu! client out only disconnects it, and it can sign in again with its password; changing
+			                 the password is what keeps the client out. While the profiles area is locked, only staff can change a
+			                 password.
 			                 """);
 		token.MapDelete("/{id:int}", DeleteAsync)
 			.WithSummary("Delete an account, keeping its record but ending every session.");
@@ -65,7 +66,7 @@ internal static class UserRoutes
 		token.MapDelete("/{id:int}/sessions/{sid:guid}", CloseSessionAsync)
 			.WithSummary("Close one session of an account.")
 			.WithDescription(
-				"Closing an osu! session only makes the device ask for the password again; change the password to keep the client out.");
+				"Closing an osu! session only disconnects the client, which can sign in again with its password; change the password to keep the client out.");
 		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Close every session of an account.");
 		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).WithSummary("Create an IRC key for one device.")
 			.WithDescription("The key is shown only in this response. Close the key's session to revoke it.");

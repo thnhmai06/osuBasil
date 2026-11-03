@@ -125,9 +125,6 @@ public sealed class UserRegistry
 		if (failure is { } loginFailure) return LoginResult.Fail(loginFailure);
 		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 
-		if (await NeedsReauthenticationAsync(record, client, cancellationToken))
-			return LoginResult.Fail(LoginFailure.PasswordResetRequired);
-
 		var now = _context.Clock.GetUtcNow();
 		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
 		var token = NewToken();
@@ -155,14 +152,6 @@ public sealed class UserRegistry
 		}
 	}
 
-	private async Task<bool> NeedsReauthenticationAsync(UserRecord record, OsuClient? client,
-		CancellationToken cancellationToken)
-	{
-		return client is not null && await _context.Sessions.TakeReauthenticationAsync(record,
-			new DeviceId(client.Fingerprint.UninstallHash, client.Fingerprint.DiskSignatureHash),
-			cancellationToken);
-	}
-
 	private static SessionRecord NewLoginSession(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
 		DateTimeOffset now, TimeSpan lifetime, string token)
 	{
@@ -170,7 +159,7 @@ public sealed class UserRegistry
 			? new SessionCredential(HashToken(token), now + lifetime)
 			: new SessionCredential();
 		return new SessionRecord(Guid.NewGuid(), record, type, now,
-			new SessionData(new SessionDevice(ip, client), credential));
+			new SessionData(new SessionDevice(ip, client), credential, now));
 	}
 
 	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
@@ -245,7 +234,7 @@ public sealed class UserRegistry
 	{
 		return new SessionRecord(stored.Id, record, type, stored.StartedAt,
 			new SessionData(new SessionDevice(ip, ClientInfo: stored.ClientInfo),
-				new SessionCredential(HashToken(token), stored.ExpiresAt)));
+				new SessionCredential(HashToken(token), stored.ExpiresAt), stored.StartedAt));
 	}
 
 	private LoginResult? OpenUnlessRaced(string token, Connection connection,
@@ -493,8 +482,9 @@ public sealed class UserRegistry
 
 	private SessionRecord NewBotSession(UserRecord bot)
 	{
-		return new SessionRecord(Guid.NewGuid(), bot, SessionType.Bot, _context.Clock.GetUtcNow(),
-			new SessionData(new SessionDevice(IPAddress.Loopback), new SessionCredential()));
+		var now = _context.Clock.GetUtcNow();
+		return new SessionRecord(Guid.NewGuid(), bot, SessionType.Bot, now,
+			new SessionData(new SessionDevice(IPAddress.Loopback), new SessionCredential(), now));
 	}
 
 	/// <summary>Creates the token of a new connection.</summary>
@@ -508,10 +498,8 @@ public sealed class UserRegistry
 	/// <param name="user">The user whose connections are closed.</param>
 	/// <param name="reason">Why they are closed.</param>
 	/// <param name="except">A session whose connection stays open, or <see langword="null" /> to keep none.</param>
-	/// <param name="requireReauthentication">Whether the devices of the closed osu! clients must enter their password again.</param>
 	/// <param name="only">The one session to close, or <see langword="null" /> to close every session.</param>
-	internal void CloseAll(UserRecord user, SessionEndReason reason, Guid? except = null,
-		bool requireReauthentication = false, Guid? only = null)
+	internal void CloseAll(UserRecord user, SessionEndReason reason, Guid? except = null, Guid? only = null)
 	{
 		var online = _online.GetValueOrDefault(user);
 		if (online is null) return;
@@ -520,9 +508,6 @@ public sealed class UserRegistry
 			         .Where(connection => connection.IsOpen && connection.Session.Id != except &&
 			                              (only is null || connection.Session.Id == only)).ToList())
 		{
-			if (requireReauthentication && connection.Type is SessionType.Stable or SessionType.StableTourney)
-				connection.RequireReauthentication();
-
 			Close(connection, reason);
 		}
 	}
@@ -596,8 +581,7 @@ public sealed class UserRegistry
 		// A token or key outlives its connection: only revoking it, or logging out of the API, ends the session.
 		if (connection.Session.Value.Credential.TokenHash is null || EndsToken(connection.Type, reason))
 			connection.EndSession(_context.Clock.GetUtcNow(), reason);
-		_ = _context.Sessions.UpdateAsync(connection.Snapshot(), connection.LastActiveAt,
-			connection.MustReauthenticate);
+		_ = _context.Sessions.UpdateAsync(connection.Snapshot());
 		_activity.TryRemove(connection.Session.Id, out _);
 		connection.IsOpen = false;
 		Unindex(connection);

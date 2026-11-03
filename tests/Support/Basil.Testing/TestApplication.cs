@@ -176,7 +176,7 @@ public sealed class TestApplication : IDisposable
 	public RecordingPublisher<AnticheatEvent> AnticheatEvents { get; } = new();
 
 	/// <summary>Gets the login history written by the application.</summary>
-	public IReadOnlyList<SessionEntry> SessionEntries => _sessions.Entries;
+	public IReadOnlyList<SessionRecord> StoredSessions => _sessions.Entries;
 
 	/// <summary>Gets the moderation history written by the application.</summary>
 	public IReadOnlyList<ModerationData> ModerationEntries => _moderationLog.Entries;
@@ -318,9 +318,10 @@ public sealed class TestApplication : IDisposable
 		if (await _users.GetByNameAsync(username) is not { } record) return LoginResult.Fail(LoginFailure.UnknownUser);
 
 		var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-		await _sessions.RecordAsync(new SessionRecord(Guid.NewGuid(), record, SessionType.Irc, Clock.GetUtcNow(),
+		var now = Clock.GetUtcNow();
+		await _sessions.RecordAsync(new SessionRecord(Guid.NewGuid(), record, SessionType.Irc, now,
 			new SessionData(new SessionDevice(IPAddress.Loopback),
-				new SessionCredential(SHA256.HashData(Encoding.UTF8.GetBytes(key))))));
+				new SessionCredential(SHA256.HashData(Encoding.UTF8.GetBytes(key))), now)));
 		return await Users.LoginWithTokenAsync(SessionType.Irc, key, IPAddress.Loopback);
 	}
 

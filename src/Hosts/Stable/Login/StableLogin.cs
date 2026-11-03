@@ -111,7 +111,6 @@ internal sealed class StableLogin(
 	{
 		return failure switch
 		{
-			LoginFailure.PasswordResetRequired => Fail(LoginFailureReason.PasswordReset),
 			LoginFailure.AlreadyOnline => Fail(LoginFailureReason.AuthenticationFailed, StableReplies.AlreadyOnline),
 			LoginFailure.NoTourneyPermission => Fail(LoginFailureReason.AuthenticationFailed,
 				StableReplies.NoTourneyPermission),

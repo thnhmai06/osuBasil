@@ -13,15 +13,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Basil.Infrastructure.Auth.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    [Migration("20261102191200_UniqueSessionTokenHash")]
-    partial class UniqueSessionTokenHash
+    [Migration("20261103154535_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -89,10 +89,6 @@ namespace Basil.Infrastructure.Auth.Migrations
                     b.Property<DateTimeOffset>("LastActiveAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_active_at");
-
-                    b.Property<bool>("MustReauthenticate")
-                        .HasColumnType("boolean")
-                        .HasColumnName("must_reauthenticate");
 
                     b.Property<string>("NetworkAdapters")
                         .HasColumnType("text")

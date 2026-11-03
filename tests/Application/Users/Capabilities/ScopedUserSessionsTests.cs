@@ -13,8 +13,8 @@ namespace Basil.Application.Users.Tests.Capabilities;
 
 /// <summary>
 ///     Closing sessions remotely, from the table of the logout rules: a closed session cannot sign in again with what it
-///     stored, online or offline; an osu! device is asked once for its password; an IRC key closes alone; staff close
-///     everything of an account they outrank and leave a trace.
+///     stored, online or offline; an osu! client is disconnected but signs in again with its password; an IRC key closes
+///     alone; staff close everything of an account they outrank and leave a trace.
 /// </summary>
 public sealed class ScopedUserSessionsTests
 {
@@ -26,7 +26,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	/// <summary>Opens an IRC key for a user acting on their own account.</summary>
-	private static async Task<(string Key, SessionEntry Session)> OpenIrcAsync(TestApplication app,
+	private static async Task<(string Key, SessionRecord Session)> OpenIrcAsync(TestApplication app,
 		Connection actor, string label)
 	{
 		var (result, key, session) =
@@ -71,7 +71,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnOnlineOsuSession_ClosesItAndTheDeviceIsRefusedOnceAtItsNextLogin()
+	public async Task CloseAsync_OfAnOnlineOsuSession_ClosesItAndTheClientSignsInAgainWithItsPassword()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("DeviceUser", "password");
@@ -82,8 +82,6 @@ public sealed class ScopedUserSessionsTests
 
 		Assert.True(result.IsOk);
 		Assert.False(osu.IsOpen);
-		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("DeviceUser", "password", SessionType.Stable)).Failure);
 		Assert.True((await app.AttemptLoginAsync("DeviceUser", "password", SessionType.Stable)).Succeeded);
 	}
 
@@ -100,21 +98,6 @@ public sealed class ScopedUserSessionsTests
 
 		Assert.True(result.IsOk);
 		Assert.False(osu.IsOpen);
-	}
-
-	[Fact]
-	public async Task CloseAsync_OfAnOfflineOsuSession_StillMarksTheDevice()
-	{
-		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("OfflineDevice", "password");
-		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, SessionType.Stable);
-		app.Users.Close(osu, SessionEndReason.ConnectionLost);
-
-		Assert.True((await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token)).IsOk);
-
-		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("OfflineDevice", "password", SessionType.Stable)).Failure);
 	}
 
 	[Fact]
@@ -247,8 +230,6 @@ public sealed class ScopedUserSessionsTests
 		var entry = Assert.Single(app.ModerationEntries, e => e.Action == ModerationAction.CloseSessions);
 		Assert.Equal(admin.Record, entry.Actor);
 		Assert.Equal(user, entry.Target);
-		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("Target", "password", SessionType.Stable)).Failure);
 	}
 
 	[Fact]
@@ -330,7 +311,7 @@ public sealed class ScopedUserSessionsTests
 		var (key, session) = await OpenIrcAsync(app, api, "osu-ahr VPS");
 		var result = await OpenWithTokenAsync(app, SessionType.Irc, key);
 
-		Assert.Equal("osu-ahr VPS", session.ClientInfo);
+		Assert.Equal("osu-ahr VPS", session.Value.Device.ClientInfo);
 		Assert.Equal(SessionType.Irc, session.Type);
 		Assert.True(result.Succeeded);
 		Assert.Equal(session.Id, result.Connection!.Session.Id);

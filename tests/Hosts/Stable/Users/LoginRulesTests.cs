@@ -15,27 +15,17 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Login_AfterTheSessionWasClosedByTheServer_IsAskedForThePasswordOnce()
+	public async Task Login_AfterTheSessionWasClosedByTheServer_SignsInAgainWithTheSavedPassword()
 	{
-		using var client = await Host.NewClientAsync("ReauthUser");
+		using var client = await Host.NewClientAsync("ClosedUser");
 		await client.LoginAsync();
 		var registry = Host.Services.GetRequiredService<UserRegistry>();
 		var connection = registry.Find(client.Token!)!;
 		Host.Time.Advance(TimeSpan.FromSeconds(2));
 		await connection.User.ScopeTo(connection).Sessions.CloseAsync(connection.Session.Id);
 
-		var firstReply = await client.LoginAsync();
-		var first = client.LoginCode;
 		await client.LoginAsync();
 
-		// The notification names why a refused login was refused (a failure has been seen only on a busy CI host).
-		var notice = string.Join(" | ", firstReply.Where(packet => packet.Id == 24)
-			.Select(packet =>
-			{
-				var position = 0;
-				return packet.ReadString(ref position);
-			}));
-		Assert.True(first == -7, $"First login answered {first} (notice: '{notice}'), expected -7.");
 		Assert.True(client.LoginCode > 0);
 	}
 

@@ -18,7 +18,7 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_JoinRoom_Play_SubmitScore_AndRemoteSignOut_MakesTheNextLoginAskForThePasswordOnce()
+	public async Task Login_JoinRoom_Play_SubmitScore_AndRemoteSignOut_LetsTheClientSignInAgainWithItsPassword()
 	{
 		var beatmap = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var player = await Host.NewClientAsync("E2eOsuPlayer");
@@ -53,7 +53,7 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 		Assert.StartsWith("beatmapId:", reply);
 		Assert.Contains("|E2eOsuPlayer|4242|", board);
 
-		// Signing the client out from the API marks the device: the next login asks for the password once.
+		// Signing the client out from the API only disconnects it: the next login with the saved password succeeds.
 		Host.Time.Advance(TimeSpan.FromSeconds(2));
 		using var rest = new RestClient(Host.Url, Host.Domain);
 		var playerId = await rest.LoginAsync("E2eOsuPlayer");
@@ -63,11 +63,8 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 			$"/v1/users/{playerId}/sessions/{(Guid)osuSession!["id"]!}");
 
 		await player.LoginAsync();
-		var refusedOnce = player.LoginCode;
-		await player.LoginAsync();
 
 		Assert.Equal(200, closed);
-		Assert.Equal(-7, refusedOnce);
 		Assert.True(player.LoginCode > 0);
 	}
 }

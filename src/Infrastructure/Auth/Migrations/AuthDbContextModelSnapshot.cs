@@ -18,7 +18,7 @@ namespace Basil.Infrastructure.Auth.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -86,10 +86,6 @@ namespace Basil.Infrastructure.Auth.Migrations
                     b.Property<DateTimeOffset>("LastActiveAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_active_at");
-
-                    b.Property<bool>("MustReauthenticate")
-                        .HasColumnType("boolean")
-                        .HasColumnName("must_reauthenticate");
 
                     b.Property<string>("NetworkAdapters")
                         .HasColumnType("text")

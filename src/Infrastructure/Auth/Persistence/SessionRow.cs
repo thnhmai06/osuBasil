@@ -20,7 +20,6 @@ internal sealed class SessionRow
 	public SessionEndReason? EndReason { get; set; }
 	public byte[]? TokenHash { get; set; }
 	public DateTimeOffset? ExpiresAt { get; set; }
-	public bool MustReauthenticate { get; set; }
 	public string? ClientDate { get; set; }
 	public int? ClientRevision { get; set; }
 	public int? ClientStream { get; set; }

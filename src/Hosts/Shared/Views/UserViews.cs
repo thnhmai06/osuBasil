@@ -59,9 +59,10 @@ public sealed record SessionView(
 	SessionEndReason? EndReason)
 {
 	/// <summary>Describes a session.</summary>
-	public static SessionView Of(SessionEntry s)
+	public static SessionView Of(SessionRecord s)
 	{
-		return new SessionView(s.Id, s.Type, s.Ip.ToString(), s.ClientInfo, s.StartedAt, s.LastActiveAt, s.EndedAt,
-			s.EndReason);
+		var (device, _, lastActiveAt, end) = s.Value;
+		return new SessionView(s.Id, s.Type, device.Ip.ToString(), device.ClientInfo, s.StartedAt, lastActiveAt,
+			end?.At, end?.Reason);
 	}
 }
