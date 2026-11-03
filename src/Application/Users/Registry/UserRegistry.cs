@@ -21,9 +21,6 @@ namespace Basil.Application.Users.Registry;
 /// <summary>The users who are online and the connections through which they act.</summary>
 public sealed class UserRegistry
 {
-	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
-	internal static readonly TimeSpan ReplaceAfterIdle = TimeSpan.FromSeconds(10);
-
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
@@ -457,8 +454,8 @@ public sealed class UserRegistry
 	/// <param name="restrictions">The user's restrictions that have not ended.</param>
 	/// <returns><see langword="null" /> on success; otherwise, why the connection was refused.</returns>
 	/// <remarks>
-	///     A kind that allows one connection per user replaces a connection of the same kind that has been
-	///     idle for at least <see cref="ReplaceAfterIdle" />, and refuses the new one otherwise. An osu!tourney
+	///     A kind that allows one connection per user refuses a new one while the user still has an open
+	///     connection of that kind. An osu!tourney
 	///     connection needs <see cref="UserPermissions.RoomObserve" /> in effect.
 	/// </remarks>
 	internal LoginFailure? Open(Connection connection, IReadOnlyList<UserRestriction> restrictions)
@@ -474,15 +471,8 @@ public sealed class UserRegistry
 
 		var user = _online.GetValueOrDefault(connection.Record);
 
-		if (user is not null && !connection.Type.AllowsMany() &&
-		    user[connection.Type].FirstOrDefault() is { } old)
-		{
-			if (_context.Clock.GetUtcNow() - old.LastActiveAt < ReplaceAfterIdle)
-				return LoginFailure.AlreadyOnline;
-
-			CloseCore(old, SessionEndReason.Replaced);
-			user = _online.GetValueOrDefault(connection.Record);
-		}
+		if (user is not null && !connection.Type.AllowsMany() && user[connection.Type].Any())
+			return LoginFailure.AlreadyOnline;
 
 		var cameOnline = user is null;
 		user ??= Of(connection.Record);

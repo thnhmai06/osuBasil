@@ -185,7 +185,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondBanchoLoginWithinIdleWindow_ReturnsAlreadyOnline()
+	public async Task LoginAsync_SecondBanchoLoginRightAfterTheFirst_ReturnsAlreadyOnline()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("AlreadyOnline", "password");
@@ -198,21 +198,17 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondBanchoLoginAfterIdleWindow_ReplacesConnection()
+	public async Task LoginAsync_SecondBanchoLoginWhileTheFirstIsOpen_ReturnsAlreadyOnlineHoweverLongItHasBeenIdle()
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("ReplaceIdle", "password");
+		var user = await app.CreateUserAsync("StillOpen", "password");
 		var old = await app.LoginAsync(user, SessionType.Osu);
-		app.Clock.Advance(TimeSpan.FromSeconds(10));
+		app.Clock.Advance(TimeSpan.FromSeconds(120));
 
 		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.Osu);
 
-		Assert.True(result.Succeeded);
-		Assert.False(old.IsOpen);
-		Assert.NotSame(old, result.Connection);
-		var closed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events
-			.Last(@event => @event is UserConnectionClosed));
-		Assert.Equal(SessionEndReason.Replaced, closed.Reason);
+		Assert.Equal(LoginFailure.AlreadyOnline, result.Failure);
+		Assert.True(old.IsOpen);
 	}
 
 	[Fact]
