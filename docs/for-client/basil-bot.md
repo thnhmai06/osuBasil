@@ -36,18 +36,12 @@ while a chat command always runs with the typist's rights. See [`../for-technici
 
 ## Command reference
 
-The complete command reference is generated from the code.
+The complete command reference is generated from BasilBot's command catalog: the same catalog makes the answers of
+`!help` and `!mp help`, so the reference, the help and the commands the bot answers cannot drift apart.
 
-It includes:
-
-* available commands;
-* `!mp` subcommands;
-* command arguments;
-* required arguments;
-* command behaviour.
-
-The generated reference is published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/). A running instance
-serves its generated API reference at `https://api.<domain>/docs/`.
+It lists every command with its arguments and what it does. A running instance serves it at
+`https://api.<domain>/guides/bot` (Markdown at `/guides/bot.md`), and it is published on
+[GitHub Pages](https://thnhmai06.github.io/osuBasil/).
 
 The generated reference is the authoritative source for the current command syntax. This page intentionally does not
 duplicate the command list. Reply wording is not part of it: the server operator owns the wording (see
@@ -85,6 +79,9 @@ reply's key to an
 such as `{room}`. The file is written with the default wording when it does not exist, is reloaded while the server
 runs, and a missing key keeps its default wording. If an edit leaves the file unreadable, the last good wording stays
 in use; a single text that is invalid is replaced by its default.
+
+What each command is said to do in `!help` is a reply too (keys such as `bot.helpRoll`, `mp.helpMods`), so the
+operator can reword it; the published reference shows the default wording.
 
 Because an operator can rewrite any reply, clients, tournament tooling, and automated integrations must not assume that a
 human-readable reply text is a stable command result. Use the HTTP API for machine-readable state. See

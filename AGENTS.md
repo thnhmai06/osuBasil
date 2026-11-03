@@ -21,7 +21,7 @@ Before porting or recreating anything from bancho.py, read:
 * [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) — system structure and dependency direction
 * [`README.md`](README.md) — project overview
 
-The generated HTTP API and BasilBot command reference is available at `api.<domain>/docs/` on a running instance and on [GitHub Pages](https://thnhmai06.github.io/osuBasil/). Do not create a second hand-written API reference in Markdown.
+The generated references are served by a running instance on its `api.` host and published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/): the HTTP API at `/docs/v1`, the endpoints the osu! (stable) client calls at `/docs/osu-stable` (both Scalar), and the BasilBot and IRC guides at `/guides`. Each part of the server writes its own reference (BasilBot from its command catalog, the IRC host from its commands, the osu! host from its routes and packet enums). Do not create a second hand-written reference in Markdown.
 
 ## Rules
 
@@ -202,7 +202,7 @@ Follow these rules:
 * Do not paste large amounts of source code.
 * Link to related documentation instead of duplicating it.
 * Include a `Related code` section when source locations are useful.
-* Do not duplicate the generated HTTP API or BasilBot command reference.
+* Do not duplicate the generated references (HTTP API, osu! (stable) client endpoints, BasilBot commands, IRC).
 
 Authoritative topic ownership is defined by [`docs/index.md`](docs/index.md).
 

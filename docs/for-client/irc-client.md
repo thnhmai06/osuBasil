@@ -6,6 +6,8 @@ HexChat, mIRC, Irssi, WeeChat or Textual.
 
 The wire contract (commands, numerics, supported IRCv3 capabilities) is in
 [`../for-developers/irc.md`](../for-developers/irc.md). This page is what a user needs to connect.
+The commands and capabilities the server answers are listed in the generated IRC guide, at `https://api.<domain>/guides/irc`
+on a running instance.
 
 ---
 

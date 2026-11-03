@@ -63,23 +63,26 @@ The authoritative agent instructions remain in [`AGENTS.md`](../AGENTS.md). `for
 
 ## API and command reference
 
-The complete machine-readable HTTP API and BasilBot command reference is generated from the running application.
+The references are generated from the running application, each by the part of the server it describes. A running
+instance serves them on its `api.` host:
 
-For a running instance, it is available at:
+| Reference | Address | Format |
+| --- | --- | --- |
+| HTTP API | `/docs/v1` | Scalar, from `/openapi/v1.json` |
+| Endpoints the osu! (stable) client calls, and its packet ids | `/docs/osu-stable` | Scalar, from `/openapi/osu-stable.json` |
+| BasilBot commands | `/guides/bot` | page; Markdown at `/guides/bot.md` |
+| IRC | `/guides/irc` | page; Markdown at `/guides/irc.md` |
 
-```text
-https://api.<domain>/docs/
-```
-
-A published copy is also available on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
+The same references are published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
 
 These generated references are the source for the detailed:
 
 * HTTP routes
 * request and response schemas
 * status codes
+* the endpoints and packets of the osu! (stable) client
 * BasilBot commands
-* protocol reference exposed through the generated documentation
+* the commands and capabilities of the IRC server
 
 The Markdown documentation does **not** duplicate the generated reference.
 
