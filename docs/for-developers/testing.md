@@ -2,7 +2,7 @@
 
 ## Why
 
-Basil exposes hard contracts: the bancho binary stream, IRC wire text, the HTTP API, multiplayer state transitions and
+Basil exposes hard contracts: the osu-stable binary stream, IRC wire text, the HTTP API, multiplayer state transitions and
 user-visible BasilBot replies. Real osu! clients, IRC clients and tournament tools consume them, so a test must verify
 **observable behaviour**, not how it happens to be implemented.
 
@@ -18,8 +18,8 @@ If not, the test is coupled to an implementation detail.
 | Domain | `tests/Domain` | rules and values, no I/O |
 | Application | `tests/Application/<Module>` | outcomes, `Require`, locks, sessions, restrictions, room state |
 | Infrastructure | `tests/Infrastructure/<Module>` | repositories and storage against PostgreSQL and temporary files |
-| Protocol | `tests/Protocol/{Bancho,Irc}` | wire bytes and text, round-tripped from hand-written pairs |
-| Host | `tests/Hosts/<Transport>` | the real transport in process over real sockets: Bancho packets, IRC lines, REST status/envelope/SSE |
+| Protocol | `tests/Protocol/{OsuStable,Irc}` | wire bytes and text, round-tripped from hand-written pairs |
+| Host | `tests/Hosts/<Transport>` | the real transport in process over real sockets: OsuStable packets, IRC lines, REST status/envelope/SSE |
 | End-to-end | `tests/Hosts/Host` | several hosts together through the simulated clients |
 | Architecture | `tests/Architecture` | project graph, layering, composition and outcomes |
 
@@ -29,7 +29,7 @@ Clients talk to it over the network exactly as real ones do.
 
 Shared support lives under `tests/Support`:
 
-* `Basil.Testing.Clients` — `OsuClient` (Bancho packets and legacy web endpoints), `IrcClient` (CAP, SASL, numerics,
+* `Basil.Testing.Clients` — `OsuClient` (OsuStable packets and legacy web endpoints), `IrcClient` (CAP, SASL, numerics,
   IRCv3 tags), `RestClient` and `SseReader` (Bearer or anonymous, ordered events, cancellation), and `BasilHost`.
 * `Basil.Testing.Persistence` — `PersistenceFixture`, which starts a PostgreSQL container or uses the server named by
   `BASIL_TEST_POSTGRES`, and creates an empty database per test.
@@ -100,7 +100,7 @@ reply's key or rendered pattern, not a copy of the current English sentence.
 `tests/Architecture` enforces what the compiler does not: the module reference graph, layering inside a module, the
 absence of SQL text, the outcome convention and the composition. `HostGraphTests` enforces the host rules: every
 transport references `Basil.Host.Shared`, transports never reference each other, and Rest/Cli never reference
-`Protocol.Bancho`. Each such rule has a positive control — an assertion that the opposite claim is detected — so a
+`Protocol.OsuStable`. Each such rule has a positive control — an assertion that the opposite claim is detected — so a
 rule that always passes is itself caught.
 
 ## REST contract tests (Postman)

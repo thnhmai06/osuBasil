@@ -28,7 +28,7 @@ public sealed class ScopedRoomMembers
 	/// </returns>
 	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is BanchoConnection actor
+		return Task.FromResult(_scoped.Actor is OsuStableConnection actor
 			? Claiming(actor, () => _scoped.Room.Join(actor, password))
 			: RoomOutcome.NotInRoom);
 	}
@@ -37,7 +37,7 @@ public sealed class ScopedRoomMembers
 	/// <param name="player">The player to be seated.</param>
 	/// <param name="seat">The seating.</param>
 	/// <returns>InAnotherRoom when another room is seating the same player right now; otherwise the seating's result.</returns>
-	private Result<RoomOutcome> Claiming(BanchoConnection player, Func<Result<RoomOutcome>> seat)
+	private Result<RoomOutcome> Claiming(OsuStableConnection player, Func<Result<RoomOutcome>> seat)
 	{
 		var room = _scoped.Room;
 		var lobby = room.Context.Lobby;
@@ -58,7 +58,7 @@ public sealed class ScopedRoomMembers
 	/// <returns>Ok, NotInRoom or RoomClosed; leaving again returns NotInRoom.</returns>
 	public Task<Result<RoomOutcome>> LeaveAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is BanchoConnection actor
+		return Task.FromResult(_scoped.Actor is OsuStableConnection actor
 			? _scoped.Room.Leave(actor)
 			: RoomOutcome.NotInRoom);
 	}

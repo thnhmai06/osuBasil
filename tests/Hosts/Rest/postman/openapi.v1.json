@@ -5549,7 +5549,7 @@
 					"Diagnostics"
 				],
 				"summary": "Watch one diagnostics category.",
-				"description": "The categories are process, gc, threadpool, runtime, exceptions, http, application, database, bancho, irc, events and sessions. Streamed like the full diagnostics.",
+				"description": "The categories are process, gc, threadpool, runtime, exceptions, http, application, database, osuStable, irc, events and sessions. Streamed like the full diagnostics.",
 				"parameters": [
 					{
 						"name": "category",

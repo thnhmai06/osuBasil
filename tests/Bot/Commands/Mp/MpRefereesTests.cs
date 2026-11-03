@@ -235,7 +235,7 @@ public sealed class MpRefereesTests
 	}
 
 	/// <summary>Opens a room as "Creator" with <c>!mp make</c>; the creator targets it.</summary>
-	private static async Task<(Room Room, BanchoConnection Creator)> SetUpAsync(BotHarness bot)
+	private static async Task<(Room Room, OsuStableConnection Creator)> SetUpAsync(BotHarness bot)
 	{
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
 		var room = await bot.MakeAsync(creator, "Finals");

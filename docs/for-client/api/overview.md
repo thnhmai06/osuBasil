@@ -128,7 +128,7 @@ See [`sse.md`](sse.md) for:
 
 ## Related resources
 
-* [`getting-started.md`](../bancho/getting-started.md): connecting an osu! client to Basil
+* [`getting-started.md`](../osu-stable/getting-started.md): connecting an osu! client to Basil
 * [`response-envelope.md`](response-envelope.md): JSON response format
 * [`sse.md`](sse.md): live match updates
 * [`irc-client.md`](../irc-client.md): connecting an IRC client

@@ -150,14 +150,14 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 * **A user is one `User`; each place they log in from is a `Connection`.**
   `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
   shared (`AwayMessage`, the active `Restrictions`) plus its connections as child data, keyed by
-  `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Api`), with typed accessors (`Bancho`, `Irc`, `Tourneys`,
+  `ConnectionType` (`OsuStable`, `Tourney`, `Irc`, `Api`), with typed accessors (`OsuStable`, `Irc`, `Tourneys`,
   `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the user registry owns.
-  `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `BanchoConnection`,
+  `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `OsuStableConnection`,
   `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
-  (`BanchoConnection.Status`). Rooms, channels and the lobby hold connections, not users' sessions.
+  (`OsuStableConnection.Status`). Rooms, channels and the lobby hold connections, not users' sessions.
   Chat keeps a PM channel per online user; it is opened when the user is first needed and closed when they go offline.
-  Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed through
-  `host.ScopeTo(actor).SpectateAsync()` (what only an osu! client has lives under `BanchoConnection`:
+  Spectating is a relation on the spectated osu! client (`OsuStableConnection.Spectators`), changed through
+  `host.ScopeTo(actor).SpectateAsync()` (what only an osu! client has lives under `OsuStableConnection`:
   spectating and its presence status). Chat keeps the client's spectator channel in step by reacting to the
   spectator events (the first spectator brings the host in, the last one out), so membership of that channel is
   eventually consistent with them; the channel never stands for who is spectating.
@@ -170,7 +170,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   deliberately (`Room.Beatmap` object, `PlayerStatus` beatmap `Md5?`); never `string` for an MD5.
 * **Relations are references** in `ConcurrentSet<T>`, never `ConcurrentDictionary<T, byte>`.
 * **`User` or a connection?** If the information is gone once the user goes offline, store the
-  connection (`BanchoConnection` as slot occupant or host); otherwise the `User` (creator, referees,
+  connection (`OsuStableConnection` as slot occupant or host); otherwise the `User` (creator, referees,
   bans).
 * **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
   only *calls* an action. The relation is stored on the object acted on (`Channel.Members`,
@@ -248,7 +248,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   `GeneralChannel` (wraps the record), `RoomChannel`, `SpectatorChannel`, `PmChannel`; each names itself
   (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives with the object that manages
   it**: `GeneralChannelRegistry` holds the general channels, `RoomChannels` the channel of each open room, `PmChannels` the PM
-  channel of each online user, `SpectatorChannels` the spectator channel of each watched `BanchoConnection`. Each kind of
+  channel of each online user, `SpectatorChannels` the spectator channel of each watched `OsuStableConnection`. Each kind of
   channel decides who may read and write it. A private message is a post into the recipient's PM channel.
   Access follows osu!: a user may join a channel (including `/join` over IRC) only if an osu! client doing the
   matching in-game action would have access. General channels are created, configured and deleted at runtime through
@@ -277,7 +277,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
   `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
 * **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its `{Enum}Groups`
-  class (`BanchoFlagsGroups.CheatSigns`, `UserPermissionsGroups.Chat`) or of the owning type (`UserRestriction.Silence`),
+  class (`OsuStableFlagsGroups.CheatSigns`, `UserPermissionsGroups.Chat`) or of the owning type (`UserRestriction.Silence`),
   never a combination member of the enum itself; a per-mode factory is a static member of its type
   (`BeatmapObjects.NewFrom(mode)`);
   services use them instead of keeping their own copies.

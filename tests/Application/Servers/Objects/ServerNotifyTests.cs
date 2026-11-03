@@ -22,11 +22,11 @@ public sealed class ServerNotifyTests
 		return [.. app.UserEvents.Events.OfType<UserNotificationSent>()];
 	}
 
-	private static async Task<(UserRecord User, BanchoConnection Client)> OnlineClientAsync(TestApplication app,
+	private static async Task<(UserRecord User, OsuStableConnection Client)> OnlineClientAsync(TestApplication app,
 		string name)
 	{
 		var user = await app.CreateUserAsync(name, "password");
-		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, SessionType.Osu));
+		var client = Assert.IsType<OsuStableConnection>(await app.LoginAsync(user, SessionType.OsuStable));
 		return (user, client);
 	}
 
@@ -110,7 +110,7 @@ public sealed class ServerNotifyTests
 	[Theory]
 	[InlineData(SessionType.Irc)]
 	[InlineData(SessionType.Api)]
-	[InlineData(SessionType.OsuTourney)]
+	[InlineData(SessionType.OsuStableTourney)]
 	public async Task Notify_UserWhoseOnlyConnectionIsNotAnOsuGameClient_SendsNothing(SessionType type)
 	{
 		using var app = new TestApplication();
@@ -209,7 +209,7 @@ public sealed class ServerNotifyTests
 		await app.LoginAsync(await app.CreateUserAsync("Chatter", "password"), SessionType.Irc);
 		await app.LoginAsync(await app.CreateUserAsync("Integrator", "password"));
 		await app.LoginAsync(await app.CreateUserAsync("Referee", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve), SessionType.OsuTourney);
+			UserPermissionsGroups.Default | UserPermissions.RoomObserve), SessionType.OsuStableTourney);
 
 		var sent = app.Server.NotifyAll(Text);
 

@@ -67,7 +67,7 @@ public sealed class User
 	public IEnumerable<Connection> Connections => Sessions.Connections;
 
 	/// <summary>Gets the user's osu! game client connection, if any.</summary>
-	public BanchoConnection? Bancho => Sessions.Osu;
+	public OsuStableConnection? OsuStable => Sessions.Osu;
 
 	/// <summary>Gets one of the user's IRC connections, if any.</summary>
 	public IrcConnection? Irc => Sessions.Irc;

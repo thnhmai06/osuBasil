@@ -16,7 +16,7 @@ diagnostics, not to the log.
 * console commands (with passwords and keys masked);
 * errors and warnings from any component.
 
-Nothing logs each Bancho packet, IRC line or REST request. Those are counted by diagnostics, which the dashboard and
+Nothing logs each OsuStable packet, IRC line or REST request. Those are counted by diagnostics, which the dashboard and
 `/v1/diagnostics` read.
 
 ## How it is built

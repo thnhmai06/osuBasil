@@ -22,7 +22,7 @@ internal sealed class AnticheatReporter : IAnticheatReporter
 	/// <param name="flags">The flags the client reported.</param>
 	/// <returns>The reported flags that are signs of cheating; <see cref="OsuFlags.Clean" /> when there are none.</returns>
 	/// <remarks>One <see cref="AnticheatPlayerFlagged" /> carries the signs and the player when there are any.</remarks>
-	public OsuFlags Report(BanchoConnection player, OsuFlags flags)
+	public OsuFlags Report(OsuStableConnection player, OsuFlags flags)
 	{
 		var signs = flags & OsuFlagsGroups.CheatSigns;
 		if (signs == OsuFlags.Clean) return signs;

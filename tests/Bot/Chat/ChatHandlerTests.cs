@@ -27,7 +27,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	private readonly CommandWorker _worker = new(NullLogger<CommandWorker>.Instance, TimeProvider.System);
 	private BotConnection _botConnection = null!;
 	private GeneralChannel _channel = null!;
-	private BanchoConnection _typist = null!;
+	private OsuStableConnection _typist = null!;
 
 	public ChatHandlerTests()
 	{

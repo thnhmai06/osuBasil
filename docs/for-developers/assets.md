@@ -49,7 +49,7 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
   allowing HTTP Range requests and `206 Partial Content` responses for large downloads.
 
 `b.<domain>` and `a.<domain>` also use ImageSharp.Web for beatmap thumbnails and avatars respectively. Their URLs remain
-unchanged because the real osu! stable client hardcodes these hosts and paths as part of the Bancho protocol. Only the
+unchanged because the real osu! stable client hardcodes these hosts and paths as part of the OsuStable protocol. Only the
 serving mechanism changed.
 
 ### Not covered
@@ -89,7 +89,7 @@ not exist, an icon points to an external URL, or a user has no uploaded avatar.
 The request then falls through to the corresponding minimal-API route on the same host. These routes keep the
 private-resource checks and the mirror fallbacks.
 
-The routes are in `src/Hosts/Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `src/Hosts/Bancho/Web/OsuWebRoutes.cs`.
+The routes are in `src/Hosts/Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `src/Hosts/OsuStable/Web/OsuWebRoutes.cs`.
 
 ### Fixed-size crops without query strings
 

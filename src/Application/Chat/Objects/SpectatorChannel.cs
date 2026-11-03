@@ -5,13 +5,13 @@ namespace Basil.Application.Chat.Objects;
 /// <summary>The chat channel of an osu! client and the users spectating it.</summary>
 public sealed class SpectatorChannel : Channel
 {
-	internal SpectatorChannel(BanchoConnection host, ChannelContext context) : base(context)
+	internal SpectatorChannel(OsuStableConnection host, ChannelContext context) : base(context)
 	{
 		Host = host;
 	}
 
 	/// <summary>Gets the connection being spectated.</summary>
-	public BanchoConnection Host { get; }
+	public OsuStableConnection Host { get; }
 
 	/// <inheritdoc />
 	public override string Name => $"#spec_{Host.Record.Id}";

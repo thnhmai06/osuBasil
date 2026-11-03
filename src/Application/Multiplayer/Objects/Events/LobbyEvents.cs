@@ -21,7 +21,7 @@ public sealed record LobbyMatchRecovered(MatchRecord Match, IReadOnlyList<Round>
 ///     When the room closes if no player joins: set for a tournament room opened with nobody seated,
 ///     otherwise <see langword="null" />.
 /// </param>
-public sealed record LobbyRoomOpened(Room Room, BanchoConnection? Host, DateTimeOffset? ClosesAt) : LobbyEvent;
+public sealed record LobbyRoomOpened(Room Room, OsuStableConnection? Host, DateTimeOffset? ClosesAt) : LobbyEvent;
 
 /// <summary>A room was closed; it emits nothing afterwards.</summary>
 /// <param name="Room">The room that was closed.</param>
@@ -36,7 +36,7 @@ public sealed record LobbyRoomOpened(Room Room, BanchoConnection? Host, DateTime
 public sealed record LobbyRoomClosed(
 	Room Room,
 	UserRecord? Actor,
-	IReadOnlyList<BanchoConnection> Evicted,
+	IReadOnlyList<OsuStableConnection> Evicted,
 	Round? AbortedRound)
 	: LobbyEvent;
 
@@ -51,7 +51,7 @@ public sealed record LobbyConnectionReleased(Connection Connection) : LobbyEvent
 public sealed record LobbyRoomClosingAnnounced(Room Room, DateTimeOffset ClosesAt) : LobbyEvent;
 
 /// <summary>An osu! client started watching the multiplayer lobby.</summary>
-public sealed record LobbyWatcherJoined(BanchoConnection Watcher) : LobbyEvent;
+public sealed record LobbyWatcherJoined(OsuStableConnection Watcher) : LobbyEvent;
 
 /// <summary>An osu! client stopped watching the multiplayer lobby.</summary>
-public sealed record LobbyWatcherLeft(BanchoConnection Watcher) : LobbyEvent;
+public sealed record LobbyWatcherLeft(OsuStableConnection Watcher) : LobbyEvent;

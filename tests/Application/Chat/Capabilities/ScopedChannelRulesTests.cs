@@ -56,10 +56,10 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var user = await app.CreateUserAsync("Reconnects", "password");
-		var first = await app.LoginAsync(user, SessionType.Osu);
+		var first = await app.LoginAsync(user, SessionType.OsuStable);
 		Assert.True(channel.ScopeTo(first).Join().IsOk);
 		app.Users.Close(first, SessionEndReason.ConnectionLost);
-		var second = await app.LoginAsync(user, SessionType.Osu);
+		var second = await app.LoginAsync(user, SessionType.OsuStable);
 
 		var result = channel.ScopeTo(second).Join();
 
@@ -107,7 +107,7 @@ public sealed class ScopedChannelRulesTests
 		var channel = await OpenChannelAsync(app);
 		var user = await app.CreateUserAsync("IrcAndGame", "password");
 		var irc = await app.LoginAsync(user, SessionType.Irc);
-		var game = await app.LoginAsync(user, SessionType.Osu);
+		var game = await app.LoginAsync(user, SessionType.OsuStable);
 		channel.ScopeTo(irc).Join();
 
 		var result = channel.ScopeTo(game).Join();

@@ -18,7 +18,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Hosts\Host\Basil.Host.csproj"/>
-		<ProjectReference Include="..\..\..\src\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\..\src\Protocol\OsuStable\Basil.Protocol.OsuStable.csproj"/>
 		<ProjectReference Include="..\Basil.Testing.Persistence\Basil.Testing.Persistence.csproj"/>
 	</ItemGroup>
 

@@ -64,7 +64,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <summary>Finds the slot occupied by a player connection.</summary>
 	/// <param name="player">The connection to look up.</param>
 	/// <returns>The connection's slot, or <see langword="null" /> when they have none.</returns>
-	public RoomSlot? Find(BanchoConnection player)
+	public RoomSlot? Find(OsuStableConnection player)
 	{
 		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
 	}

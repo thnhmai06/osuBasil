@@ -263,7 +263,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 				EndReason = entry.EndReason ?? (entry.EndedAt is null ? reason : null),
 				MustReauthenticate = entry.MustReauthenticate ||
 				                     (requireReauthentication &&
-				                      entry.Type is SessionType.Osu or SessionType.OsuTourney)
+				                      entry.Type is SessionType.OsuStable or SessionType.OsuStableTourney)
 			};
 		}
 

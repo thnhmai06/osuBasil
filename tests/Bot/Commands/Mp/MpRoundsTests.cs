@@ -241,7 +241,7 @@ public sealed class MpRoundsTests
 	///     Opens a room as "Creator" (seated in slot 1 as host, targeting the room) and seats "Player" with
 	///     <c>!mp join</c>; a beatmap is selected on request through the room, as the creator.
 	/// </summary>
-	private static async Task<(Room Room, BanchoConnection Creator, BanchoConnection Player)> SetUpAsync(BotHarness bot,
+	private static async Task<(Room Room, OsuStableConnection Creator, OsuStableConnection Player)> SetUpAsync(BotHarness bot,
 		bool withBeatmap = false)
 	{
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");

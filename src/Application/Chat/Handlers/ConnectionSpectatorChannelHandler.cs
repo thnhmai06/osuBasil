@@ -12,7 +12,7 @@ internal sealed class ConnectionSpectatorChannelHandler(SpectatorChannels channe
 	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
 	{
-		if (@event.Connection is BanchoConnection host && channels.Remove(host) is { } channel)
+		if (@event.Connection is OsuStableConnection host && channels.Remove(host) is { } channel)
 			channel.Close();
 
 		return ValueTask.CompletedTask;

@@ -11,7 +11,7 @@ public abstract record RoomAuthorityEvent(Room Room) : RoomEvent(Room);
 /// <param name="Room">The room whose host changed.</param>
 /// <param name="Actor">The user who set the host.</param>
 /// <param name="Host">The new host, or <see langword="null" /> when the room has none.</param>
-public sealed record RoomHostChanged(Room Room, UserRecord Actor, BanchoConnection? Host) : RoomAuthorityEvent(Room);
+public sealed record RoomHostChanged(Room Room, UserRecord Actor, OsuStableConnection? Host) : RoomAuthorityEvent(Room);
 
 /// <summary>A player was granted referee authority for the room.</summary>
 /// <param name="Room">The room.</param>

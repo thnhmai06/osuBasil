@@ -490,7 +490,7 @@ public sealed class MpPlayersTests
 	///     Opens a room as "Creator" (seated in slot 1 as host, targeting the room) and seats "Player" in slot 2 with
 	///     <c>!mp join</c>.
 	/// </summary>
-	private static async Task<(Room Room, BanchoConnection Creator, BanchoConnection Player)> SetUpAsync(BotHarness bot)
+	private static async Task<(Room Room, OsuStableConnection Creator, OsuStableConnection Player)> SetUpAsync(BotHarness bot)
 	{
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
 		var room = await bot.MakeAsync(creator, "Finals");
@@ -500,7 +500,7 @@ public sealed class MpPlayersTests
 	}
 
 	/// <summary>Reads everything these commands can change: the host, who is banned, and who sits where in which team.</summary>
-	private static (BanchoConnection? Host, int Banned, string Seats) Snapshot(Room room)
+	private static (OsuStableConnection? Host, int Banned, string Seats) Snapshot(Room room)
 	{
 		var seats = room.Slots.Where(slot => slot.Player is not null)
 			.Select(slot => $"{slot.Index}:{slot.Player!.Record.Id}:{slot.Team}");

@@ -26,8 +26,8 @@ public sealed class ScopedRoomSlots
 	/// <remarks>Moving to the caller's own slot returns Ok and does nothing.</remarks>
 	public Task<Result<RoomOutcome>> ChangeAsync(int index, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
-			? _scoped.Room.ChangeSlot(bancho, index)
+		return Task.FromResult(_scoped.Actor is OsuStableConnection osuStable
+			? _scoped.Room.ChangeSlot(osuStable, index)
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -65,8 +65,8 @@ public sealed class ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> SetReadyAsync(bool ready, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
-			? _scoped.Room.SetReady(bancho, ready)
+		return Task.FromResult(_scoped.Actor is OsuStableConnection osuStable
+			? _scoped.Room.SetReady(osuStable, ready)
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -80,8 +80,8 @@ public sealed class ScopedRoomSlots
 	/// </remarks>
 	public Task<Result<RoomOutcome>> SetHasMapAsync(bool has, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
-			? _scoped.Room.SetHasMap(bancho, has)
+		return Task.FromResult(_scoped.Actor is OsuStableConnection osuStable
+			? _scoped.Room.SetHasMap(osuStable, has)
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -90,8 +90,8 @@ public sealed class ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> ToggleTeamAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
-			? _scoped.Room.ToggleTeam(bancho)
+		return Task.FromResult(_scoped.Actor is OsuStableConnection osuStable
+			? _scoped.Room.ToggleTeam(osuStable)
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -113,8 +113,8 @@ public sealed class ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> SetModsAsync(GameMods mods, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is BanchoConnection bancho
-			? _scoped.Room.SetMods(bancho, mods)
+		return Task.FromResult(_scoped.Actor is OsuStableConnection osuStable
+			? _scoped.Room.SetMods(osuStable, mods)
 			: RoomOutcome.NotInRoom);
 	}
 

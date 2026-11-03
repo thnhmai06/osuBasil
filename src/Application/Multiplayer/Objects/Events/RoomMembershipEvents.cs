@@ -21,9 +21,9 @@ public abstract record RoomMembershipEvent(Room Room) : RoomEvent(Room);
 /// </param>
 public sealed record RoomPlayerJoined(
 	Room Room,
-	BanchoConnection Player,
+	OsuStableConnection Player,
 	int Slot,
-	BanchoConnection? Replaced,
+	OsuStableConnection? Replaced,
 	RoomRoundProgress? RoundProgress)
 	: RoomMembershipEvent(Room);
 
@@ -38,9 +38,9 @@ public sealed record RoomPlayerJoined(
 /// </param>
 public sealed record RoomPlayerLeft(
 	Room Room,
-	BanchoConnection Player,
+	OsuStableConnection Player,
 	int Slot,
-	BanchoConnection? Host,
+	OsuStableConnection? Host,
 	RoomRoundProgress? RoundProgress)
 	: RoomMembershipEvent(Room);
 
@@ -57,9 +57,9 @@ public sealed record RoomPlayerLeft(
 public sealed record RoomPlayerKicked(
 	Room Room,
 	UserRecord Actor,
-	BanchoConnection Player,
+	OsuStableConnection Player,
 	int Slot,
-	BanchoConnection? Host,
+	OsuStableConnection? Host,
 	RoomRoundProgress? RoundProgress)
 	: RoomMembershipEvent(Room);
 
@@ -68,7 +68,7 @@ public sealed record RoomPlayerKicked(
 /// <param name="Player">The player who moved.</param>
 /// <param name="From">The number of the slot they left.</param>
 /// <param name="To">The number of the slot they moved to.</param>
-public sealed record RoomPlayerMoved(Room Room, BanchoConnection Player, int From, int To)
+public sealed record RoomPlayerMoved(Room Room, OsuStableConnection Player, int From, int To)
 	: RoomMembershipEvent(Room);
 
 /// <summary>An osu!tourney client started observing the room.</summary>

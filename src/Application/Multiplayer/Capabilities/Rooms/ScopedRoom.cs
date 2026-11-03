@@ -86,8 +86,8 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 	{
 		var roles = RoomRoles.None;
 
-		// Player: seated BanchoConnection
-		if (actor is BanchoConnection bancho && room.Slots.Find(bancho) is not null)
+		// Player: seated OsuStableConnection
+		if (actor is OsuStableConnection osuStable && room.Slots.Find(osuStable) is not null)
 			roles |= RoomRoles.Player;
 
 		// Host: reference equals

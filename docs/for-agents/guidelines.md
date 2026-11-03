@@ -104,7 +104,7 @@ read → mutate → broadcast
 
 Do not release the lock between these steps.
 
-See [`bancho.md`](../for-developers/bancho.md) and [`multiplayer.md`](../for-developers/multiplayer.md).
+See [`osu-stable.md`](../for-developers/osu-stable.md) and [`multiplayer.md`](../for-developers/multiplayer.md).
 
 ### One source of truth
 

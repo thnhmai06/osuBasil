@@ -97,12 +97,12 @@ public sealed class MpAuthorityTests
 	///     Opens a room with <c>!mp make</c> as its creator and puts a user with a role in it, using only commands,
 	///     then has that user target the room with <c>!mp in</c>.
 	/// </summary>
-	private static async Task<(Room Room, BanchoConnection Actor)> SetUpAsync(BotHarness bot, RoomRole role)
+	private static async Task<(Room Room, OsuStableConnection Actor)> SetUpAsync(BotHarness bot, RoomRole role)
 	{
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
 		var room = await bot.MakeAsync(creator, "Finals");
 
-		BanchoConnection actor;
+		OsuStableConnection actor;
 		switch (role)
 		{
 			case RoomRole.Creator:

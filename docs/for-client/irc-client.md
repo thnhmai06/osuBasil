@@ -53,4 +53,4 @@ If the key is wrong, revoked, or the nickname is not yours, the server answers `
 
 * [`api/overview.md`](api/overview.md): Basil's HTTP API
 * [`basil-bot.md`](basil-bot.md): BasilBot commands
-* [`bancho/authentication.md`](bancho/authentication.md): osu! client authentication
+* [`osu-stable/authentication.md`](osu-stable/authentication.md): osu! client authentication

@@ -189,7 +189,7 @@ public sealed partial class Room
 	private bool TryGetPlayingSlot(Connection actor, [MaybeNullWhen(false)] out Round round,
 		[MaybeNullWhen(false)] out RoomSlot slot)
 	{
-		if (actor is BanchoConnection connection &&
+		if (actor is OsuStableConnection connection &&
 		    Rounds.CurrentRound is { } current &&
 		    Slots.Find(connection) is { Status: RoomSlotStatus.Playing } playing)
 		{

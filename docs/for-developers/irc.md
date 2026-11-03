@@ -6,7 +6,7 @@
 
 Basil's chat is one model shared by every transport. IRC exists so that referees, operators and bots (osu-ahr style
 tools, bouncers, desktop IRC clients) can read chat, run BasilBot commands and referee rooms next to, or instead of,
-the osu! stable client. The osu! client does not use IRC; it receives chat as Bancho packets.
+the osu! stable client. The osu! client does not use IRC; it receives chat as OsuStable packets.
 
 The IRC transport adds no rules of its own. It decodes IRC lines, calls the Application operation of the object being
 acted on with the IRC connection as the actor, and encodes the typed result as IRC lines. Authority is decided by the
@@ -17,7 +17,7 @@ specifications that are listed below. Where this page and a specification differ
 
 ### What
 
-* A user can hold a Bancho connection **and** several IRC connections at the same time. Neither evicts the other.
+* A user can hold a OsuStable connection **and** several IRC connections at the same time. Neither evicts the other.
 * An IRC connection is a full chat participant: it joins channels, sends and receives messages, runs BasilBot commands
   and referees or creates rooms to the extent the user's permissions allow.
 * An IRC connection is never a player: it cannot be seated in a room slot and cannot spectate.
@@ -154,7 +154,7 @@ exist.
 
 * A message goes through `ScopedChannel.PostAsync` for a channel or a nickname; the result is mapped below. IRC does not
   echo a message to its sender unless `echo-message` is on. A message reaches every other member of the channel,
-  including the same user's Bancho client, and an osu! user's message reaches IRC members the same way.
+  including the same user's OsuStable client, and an osu! user's message reaches IRC members the same way.
 * A message longer than 450 characters is cut to 450, as for the osu! client. Chat is limited per account by the
   server's chat rate limit, shared with the osu! client; when it is exceeded the message is dropped and the client
   gets `FAIL PRIVMSG RATE_LIMITED` (with `standard-replies`) or a `NOTICE`.
@@ -176,7 +176,7 @@ exist.
 
 ### Presence
 
-Channel membership in the Application is per connection: a user with a Bancho and an IRC connection has two members in
+Channel membership in the Application is per connection: a user with a OsuStable and an IRC connection has two members in
 `#osu`. Other IRC clients should see the user, not the connection:
 
 ```text
@@ -210,7 +210,7 @@ closes the socket.
 * The host takes the actor from the connection that opened the socket and works through scopes
   (`channel.ScopeTo(connection)`); it holds no chat rule of its own.
 * One handler class per event type delivers chat to IRC (message, join, part, closed channel, configured channel,
-  closed connection), like the Bancho host. Delivery is done by the event dispatcher, not by the command that caused it,
+  closed connection), like the OsuStable host. Delivery is done by the event dispatcher, not by the command that caused it,
   so a command only calls the Application and answers errors. The one exception is `away-notify`: changing the away
   message publishes no event, so the `AWAY` command relays it to the interested clients itself.
 * The IRC host writes each client's lines from one writer queue, so lines of different events never interleave inside a

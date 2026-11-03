@@ -194,7 +194,7 @@ internal sealed partial class MpCommands(
 		}
 
 		// (c) Seated room: where the sender is currently playing
-		var seated = actor.User.Bancho is { } client ? lobby.RoomOf(client) : null;
+		var seated = actor.User.OsuStable is { } client ? lobby.RoomOf(client) : null;
 		return seated;
 	}
 

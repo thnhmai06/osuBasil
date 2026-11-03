@@ -4,23 +4,23 @@ namespace Basil.ArchitectureTests;
 
 /// <summary>
 ///     The project graph of the hosts: every transport shares <c>Basil.Host.Shared</c> and the transports stay
-///     independent of each other; the API and the console also stay independent of the Bancho wire format. A transport
+///     independent of each other; the API and the console also stay independent of the OsuStable wire format. A transport
 ///     that breaks one of these edges is caught here, before the solution compiles against a wrong reference.
 /// </summary>
 public class HostGraphTests
 {
 	private const string Shared = "Basil.Host.Shared";
-	private const string ProtocolBancho = "Basil.Protocol.Bancho";
+	private const string ProtocolOsuStable = "Basil.Protocol.OsuStable";
 
 	private static readonly string[] Transports =
-		["Basil.Host.Bancho", "Basil.Host.Irc", "Basil.Host.Rest", "Basil.Host.Cli"];
+		["Basil.Host.OsuStable", "Basil.Host.Irc", "Basil.Host.Rest", "Basil.Host.Cli"];
 
 	[Fact]
 	public void EveryTransportReferencesTheSharedHostProject()
 	{
 		Assert.Empty(MissingShared(ProjectEdges()));
 		// The control: a synthetic graph without the edge is reported.
-		Assert.NotEmpty(MissingShared([("Basil.Host.Irc", "Basil.Host.Bancho")]));
+		Assert.NotEmpty(MissingShared([("Basil.Host.Irc", "Basil.Host.OsuStable")]));
 	}
 
 	[Fact]
@@ -33,9 +33,9 @@ public class HostGraphTests
 	}
 
 	[Fact]
-	public void RestAndCliDoNotReferenceTheBanchoProtocol()
+	public void RestAndCliDoNotReferenceTheOsuStableProtocol()
 	{
-		var forbidden = ProjectEdges().Where(edge => NeedsBanchoProtocol(edge.From, edge.To))
+		var forbidden = ProjectEdges().Where(edge => NeedsOsuStableProtocol(edge.From, edge.To))
 			.Select(edge => $"{edge.From} -> {edge.To}");
 
 		Assert.Empty(forbidden);
@@ -44,20 +44,20 @@ public class HostGraphTests
 	[Fact]
 	public void TheMeasureSeesAnEdgeItShould()
 	{
-		Assert.Contains(("Basil.Host.Bancho", ProtocolBancho), ProjectEdges());
-		Assert.Contains(("Basil.Host.Bancho", Shared), ProjectEdges());
+		Assert.Contains(("Basil.Host.OsuStable", ProtocolOsuStable), ProjectEdges());
+		Assert.Contains(("Basil.Host.OsuStable", Shared), ProjectEdges());
 	}
 
 	[Fact]
 	public void TheRulesRefuseAnEdgeTheyShould()
 	{
-		Assert.True(ReferEachOther("Basil.Host.Bancho", "Basil.Host.Irc"));
+		Assert.True(ReferEachOther("Basil.Host.OsuStable", "Basil.Host.Irc"));
 		Assert.True(ReferEachOther("Basil.Host.Irc", "Basil.Host.Rest"));
-		Assert.True(NeedsBanchoProtocol("Basil.Host.Rest", ProtocolBancho));
-		Assert.True(NeedsBanchoProtocol("Basil.Host.Cli", ProtocolBancho));
-		Assert.False(NeedsBanchoProtocol("Basil.Host.Bancho", ProtocolBancho));
-		Assert.False(NeedsBanchoProtocol("Basil.Host.Irc", ProtocolBancho));
-		Assert.False(ReferEachOther("Basil.Host.Bancho", Shared));
+		Assert.True(NeedsOsuStableProtocol("Basil.Host.Rest", ProtocolOsuStable));
+		Assert.True(NeedsOsuStableProtocol("Basil.Host.Cli", ProtocolOsuStable));
+		Assert.False(NeedsOsuStableProtocol("Basil.Host.OsuStable", ProtocolOsuStable));
+		Assert.False(NeedsOsuStableProtocol("Basil.Host.Irc", ProtocolOsuStable));
+		Assert.False(ReferEachOther("Basil.Host.OsuStable", Shared));
 	}
 
 	private static IEnumerable<string> MissingShared(IEnumerable<(string From, string To)> edges)
@@ -71,9 +71,9 @@ public class HostGraphTests
 		return Transports.Contains(from) && Transports.Contains(to);
 	}
 
-	private static bool NeedsBanchoProtocol(string from, string to)
+	private static bool NeedsOsuStableProtocol(string from, string to)
 	{
-		return to == ProtocolBancho && from is "Basil.Host.Rest" or "Basil.Host.Cli";
+		return to == ProtocolOsuStable && from is "Basil.Host.Rest" or "Basil.Host.Cli";
 	}
 
 	private static (string From, string To)[] ProjectEdges()

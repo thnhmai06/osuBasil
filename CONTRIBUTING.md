@@ -53,8 +53,8 @@ src/
     Domain/                      business model
     Application/<Module>/        the module's ports and live objects
     Infrastructure/<Module>/     the module's implementations
-    Protocol/{Bancho,Irc}/       wire formats
-    Hosts/{Host,Shared,Bancho,Irc,Rest,Cli}/
+    Protocol/{OsuStable,Irc}/       wire formats
+    Hosts/{Host,Shared,OsuStable,Irc,Rest,Cli}/
                                  the entry point and the transports
     Bot/                         BasilBot
 

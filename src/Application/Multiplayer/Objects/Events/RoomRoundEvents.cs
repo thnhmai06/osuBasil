@@ -23,7 +23,7 @@ public sealed record RoomRoundProgress(Round Round, bool AllLoaded, bool AllSkip
 public sealed record RoomRoundStarted(
 	Room Room,
 	Round Round,
-	IReadOnlyList<BanchoConnection> Players)
+	IReadOnlyList<OsuStableConnection> Players)
 	: RoomRoundEvent(Room, Round);
 
 /// <summary>A round was aborted.</summary>

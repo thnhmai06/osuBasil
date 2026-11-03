@@ -22,7 +22,7 @@ public sealed class RoomSlot
 	public bool Locked { get; internal set; }
 
 	/// <summary>Gets the connection of the player occupying this slot, or <see langword="null" /> when empty.</summary>
-	public BanchoConnection? Player { get; internal set; }
+	public OsuStableConnection? Player { get; internal set; }
 
 	/// <summary>Gets the occupied-state of this slot.</summary>
 	public RoomSlotStatus? Status { get; internal set; }
@@ -45,7 +45,7 @@ public sealed class RoomSlot
 	/// <summary>Seats a player in this slot.</summary>
 	/// <param name="player">The connection to seat.</param>
 	/// <exception cref="InvalidOperationException">The slot is locked or already occupied.</exception>
-	internal void Occupy(BanchoConnection player)
+	internal void Occupy(OsuStableConnection player)
 	{
 		if (Locked) throw new InvalidOperationException("The slot is locked.");
 		if (Player is not null) throw new InvalidOperationException("The slot is already occupied.");
@@ -121,7 +121,7 @@ public sealed class RoomSlot
 /// <param name="IntroSkipped">Whether intro was skipped.</param>
 /// <param name="Loaded">Whether the beatmap was loaded.</param>
 internal readonly record struct RoomSlotState(
-	BanchoConnection Player,
+	OsuStableConnection Player,
 	RoomSlotStatus? Status,
 	GameTeam? Team,
 	GameMods? Mods,

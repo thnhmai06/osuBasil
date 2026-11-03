@@ -81,7 +81,7 @@ public class ModuleGraphTests
 	private static bool IsKnown(string name)
 	{
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
-			       or "Basil.Host" or "Basil.Bot" or "Basil.Protocol.Bancho" or "Basil.Protocol.Irc"
+			       or "Basil.Host" or "Basil.Bot" or "Basil.Protocol.OsuStable" or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                (name == $"Basil.Infrastructure.{module}" &&
 		                                 module is not ("Anticheat" or "Servers")));
@@ -97,7 +97,7 @@ public class ModuleGraphTests
 		if (from == "Basil.Host") return IsModuleProject(to) || to == "Basil.Infrastructure.Common";
 		if (from == "Basil.Bot")
 			return to.StartsWith("Basil.Application.", StringComparison.Ordinal) && IsModuleProject(to);
-		if (from is "Basil.Protocol.Bancho" or "Basil.Protocol.Irc") return false;
+		if (from is "Basil.Protocol.OsuStable" or "Basil.Protocol.Irc") return false;
 
 		var parts = from.Split('.');
 		if (parts.Length != 3) return false;

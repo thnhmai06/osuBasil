@@ -62,7 +62,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		MatchSettings? settings = null,
 		CancellationToken cancellationToken = default)
 	{
-		if (!isTournament && Actor is not BanchoConnection)
+		if (!isTournament && Actor is not OsuStableConnection)
 			throw new ArgumentException("A room opened in game needs the creator's osu! client.");
 
 		var now = Lobby.Context.Clock.GetUtcNow();
@@ -102,15 +102,15 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		return null;
 	}
 
-	private BanchoConnection? SeatFor(bool isTournament, DateTimeOffset now)
+	private OsuStableConnection? SeatFor(bool isTournament, DateTimeOffset now)
 	{
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
 		return isTournament
-			? Actor.User.Bancho is { IsOpen: true } bancho &&
-			  bancho.User.EffectivePermissions(now).Allows(UserPermissions.RoomJoin)
-				? bancho
+			? Actor.User.OsuStable is { IsOpen: true } osuStable &&
+			  osuStable.User.EffectivePermissions(now).Allows(UserPermissions.RoomJoin)
+				? osuStable
 				: null
-			: (BanchoConnection)Actor;
+			: (OsuStableConnection)Actor;
 	}
 
 	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
@@ -135,7 +135,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	}
 
 	private Room Establish(int id, MatchRecord match, MatchSettings? settings, bool isTournament, string password,
-		BanchoConnection? seat)
+		OsuStableConnection? seat)
 	{
 		Room room;
 		using (Lobby.Enter())
@@ -232,19 +232,19 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <exception cref="ArgumentException">The scoped connection is not an osu! client.</exception>
 	public void Watch()
 	{
-		if (Actor is not BanchoConnection bancho)
+		if (Actor is not OsuStableConnection osuStable)
 			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
 
-		if (Lobby.MutableWatchers.Add(bancho)) Lobby.Context.Events.Publish(new LobbyWatcherJoined(bancho));
+		if (Lobby.MutableWatchers.Add(osuStable)) Lobby.Context.Events.Publish(new LobbyWatcherJoined(osuStable));
 	}
 
 	/// <summary>Stops watching the multiplayer lobby; doing it again does nothing.</summary>
 	/// <exception cref="ArgumentException">The scoped connection is not an osu! client.</exception>
 	public void Unwatch()
 	{
-		if (Actor is not BanchoConnection bancho)
+		if (Actor is not OsuStableConnection osuStable)
 			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
 
-		Lobby.Unwatch(bancho);
+		Lobby.Unwatch(osuStable);
 	}
 }

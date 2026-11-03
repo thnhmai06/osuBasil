@@ -56,7 +56,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 
 	private readonly Dictionary<(int UserId, GameMode Mode), UserStats> _stats = [];
 
-	private ScoreSubmissionFixture(TestApplication app, BanchoConnection client, UserRecord user)
+	private ScoreSubmissionFixture(TestApplication app, OsuStableConnection client, UserRecord user)
 	{
 		App = app;
 		Client = client;
@@ -108,7 +108,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	public TestApplication App { get; }
 
 	/// <summary>Gets the game client connection.</summary>
-	public BanchoConnection Client { get; }
+	public OsuStableConnection Client { get; }
 
 	/// <summary>Gets the account of the client.</summary>
 	public UserRecord User { get; }
@@ -143,9 +143,9 @@ public sealed class ScoreSubmissionFixture : IDisposable
 		var app = new TestApplication();
 		var user = await app.CreateUserAsync(name, Password, permissions);
 		var result = await app.Users.LoginAsync(
-			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), SessionType.Osu,
+			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), SessionType.OsuStable,
 			IPAddress.Loopback, LoginClient(), 0);
-		var client = Assert.IsType<BanchoConnection>(result.Connection);
+		var client = Assert.IsType<OsuStableConnection>(result.Connection);
 		return new ScoreSubmissionFixture(app, client, user);
 	}
 

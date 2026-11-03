@@ -41,7 +41,7 @@ Use:
 * **Basil**
 * **osu! stable client**
 * **osu! lazer**
-* **Bancho protocol**
+* **OsuStable protocol**
 * **API**
 * **beatmap**
 * **player**

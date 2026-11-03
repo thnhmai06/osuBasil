@@ -120,7 +120,7 @@
 >    tagged `stream`) increments whenever a publish is dropped for being superseded. Not logged per
 >    occurrence — this is an expected, benign race outcome under load, not a bug — but the counter
 >    lets an operator see whether it is actually happening at any real rate.
-> 4. **Packet broadcast scope**: the bancho `UpdateMatch` packet broadcast (currently synchronous,
+> 4. **Packet broadcast scope**: the osu-stable `UpdateMatch` packet broadcast (currently synchronous,
 >    inside the lock, no DB awaits) gets the same treatment as the SSE snapshots — hoisted outside
 >    the lock and gated by the same per-match sequence, via its own `SequenceGate` (`MatchSession`
 >    gains one for this specifically). Reasoning: the packet broadcast carries the identical
@@ -174,7 +174,7 @@ streams" extension would only compound:
    whether that particular channel's payload actually changed.
 4. **`slots` stream is silent for packet-driven mutations.** `PublishSlotsAsync` (the whole-
    arrangement `SlotsSnapshot` channel behind `/matches/{id}/slots/live`) has exactly one call
-   site, in `MatchControlService.cs:1193` (an HTTP PUT/PATCH path). None of the ~20 bancho packet
+   site, in `MatchControlService.cs:1193` (an HTTP PUT/PATCH path). None of the ~20 osu-stable packet
    handlers that mutate slots (`MatchChangeSlotHandler`, `MatchLockHandler`, `MatchReadyHandler`,
    and so on) call it — only the single per-slot `PublishSlot` inside `EnqueueStateAsync` does.
    A client watching `/slots/live` never sees a client-driven slot change.

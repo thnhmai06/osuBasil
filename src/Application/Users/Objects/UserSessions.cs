@@ -28,7 +28,7 @@ public sealed class UserSessions
 	public IEnumerable<Connection> Connections => _connections.Values.SelectMany(set => set);
 
 	/// <summary>Gets the user's osu! game client connection, if any.</summary>
-	public BanchoConnection? Osu => (BanchoConnection?)this[SessionType.Osu].SingleOrDefault();
+	public OsuStableConnection? Osu => (OsuStableConnection?)this[SessionType.OsuStable].SingleOrDefault();
 
 	/// <summary>Gets one of the user's IRC connections, if any.</summary>
 	public IrcConnection? Irc => Ircs.FirstOrDefault();
@@ -40,7 +40,7 @@ public sealed class UserSessions
 	public BotConnection? Bot => (BotConnection?)this[SessionType.Bot].SingleOrDefault();
 
 	/// <summary>Gets the user's osu!tourney connections.</summary>
-	public IEnumerable<TourneyConnection> Tourneys => this[SessionType.OsuTourney].Cast<TourneyConnection>();
+	public IEnumerable<TourneyConnection> Tourneys => this[SessionType.OsuStableTourney].Cast<TourneyConnection>();
 
 	/// <summary>Adds a connection to the account.</summary>
 	/// <param name="connection">The connection to add.</param>

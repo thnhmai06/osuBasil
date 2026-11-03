@@ -49,7 +49,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 				foreach (var category in new[]
 				         {
 					         "process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database",
-					         "bancho", "irc", "events", "sessions"
+					         "osuStable", "irc", "events", "sessions"
 				         })
 					Assert.NotNull(snapshot[category]);
 				var application = JsonNode.Parse((await oneReader!.ReadAsync())!.Value.Data)!;

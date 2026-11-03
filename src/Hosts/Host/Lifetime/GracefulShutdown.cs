@@ -1,6 +1,6 @@
 using Basil.Application.Common.Events;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Host.Bancho.Support;
+using Basil.Host.OsuStable.Support;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc;
 using Basil.Host.Logging;
@@ -51,7 +51,7 @@ public sealed class ShutdownTimings
 internal sealed class GracefulShutdown(
 	ShutdownSequence sequence,
 	ShutdownController control,
-	BanchoShutdown bancho,
+	OsuStableShutdown osuStable,
 	IrcListener irc,
 	IrcState ircState,
 	SseHub sse,
@@ -115,11 +115,11 @@ internal sealed class GracefulShutdown(
 			{
 				ircState.AcceptingLogins = false;
 				sse.StopAccepting();
-				bancho.StopAccepting();
+				osuStable.StopAccepting();
 				return Task.CompletedTask;
 			}),
 			new ShutdownStep("tell the osu! clients", _timings.AnnounceOsu,
-				async token => await bancho.AnnounceAsync(TimeSpan.Zero, _timings.OsuPollWindow, token)),
+				async token => await osuStable.AnnounceAsync(TimeSpan.Zero, _timings.OsuPollWindow, token)),
 			new ShutdownStep("tell the IRC and HTTP clients", _timings.AnnouncePush, _ =>
 			{
 				irc.Announce(restarting);

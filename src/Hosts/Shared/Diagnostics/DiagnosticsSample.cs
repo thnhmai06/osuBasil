@@ -10,7 +10,7 @@ public static class DiagnosticsSample
 	/// <summary>The names of the categories, in the order the API lists them.</summary>
 	public static readonly string[] Categories =
 	[
-		"process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database", "bancho", "irc",
+		"process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database", "osuStable", "irc",
 		"events", "sessions"
 	];
 
@@ -37,7 +37,7 @@ public static class DiagnosticsSample
 			},
 			["sessions"] =
 				Enum.GetValues<SessionType>().ToDictionary(type => type.ToString().ToLowerInvariant(), Count),
-			["bancho"] = new { osu = Count(SessionType.Osu), tourney = Count(SessionType.OsuTourney) },
+			["osuStable"] = new { osu = Count(SessionType.OsuStable), tourney = Count(SessionType.OsuStableTourney) },
 			["irc"] = new { connections = Count(SessionType.Irc) },
 			["database"] = new { available = false },
 			["events"] = new { available = false }

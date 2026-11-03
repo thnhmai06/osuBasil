@@ -78,7 +78,7 @@ public sealed class RoomChannelHandlerTests
 		var channel = app.RoomChannels.Of(setup.Room);
 		channel.ScopeTo(setup.Player).Join();
 		app.Users.Close(setup.Player, SessionEndReason.ConnectionLost);
-		var replacement = (BanchoConnection)await app.LoginAsync(setup.Player.Record, SessionType.Osu);
+		var replacement = (OsuStableConnection)await app.LoginAsync(setup.Player.Record, SessionType.OsuStable);
 		Assert.True((await setup.Room.ScopeTo(replacement).Members.JoinAsync("",
 			TestContext.Current.CancellationToken)).IsOk);
 		var joined = app.RoomEvents.Events.OfType<RoomPlayerJoined>().Last();
@@ -164,7 +164,7 @@ public sealed class RoomChannelHandlerTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var observerRecord = await app.CreateUserAsync("Observer", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		var observer = (TourneyConnection)await app.LoginAsync(observerRecord, SessionType.OsuTourney);
+		var observer = (TourneyConnection)await app.LoginAsync(observerRecord, SessionType.OsuStableTourney);
 		var channel = app.RoomChannels.Of(setup.Room);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);
@@ -182,7 +182,7 @@ public sealed class RoomChannelHandlerTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var observerRecord = await app.CreateUserAsync("Observer", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		var observer = (TourneyConnection)await app.LoginAsync(observerRecord, SessionType.OsuTourney);
+		var observer = (TourneyConnection)await app.LoginAsync(observerRecord, SessionType.OsuStableTourney);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);
 		var channel = app.RoomChannels.Of(setup.Room);

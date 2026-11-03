@@ -29,8 +29,8 @@ public sealed record RoomSlotLockChanged(
 	Room Room,
 	int Slot,
 	bool Locked,
-	BanchoConnection? Evicted,
-	BanchoConnection? Host,
+	OsuStableConnection? Evicted,
+	OsuStableConnection? Host,
 	RoomRoundProgress? RoundProgress)
 	: RoomSlotEvent(Room, Slot);
 

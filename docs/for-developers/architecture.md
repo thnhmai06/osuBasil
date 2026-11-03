@@ -15,9 +15,9 @@ Basil.Application.<Module>                ports, capabilities and runtime object
                                                                                        the Application projects it uses
 Basil.Infrastructure.<Module>             implementations, DbContext, migrations    -> its own Application,
                                                                                        Infrastructure.Common
-Basil.Protocol.Bancho / .Irc              wire formats                             -> external libraries only
+Basil.Protocol.OsuStable / .Irc              wire formats                             -> external libraries only
 Basil.Host.Shared                         client views and outcome-to-error mapping -> Application projects
-Basil.Host.Bancho / .Irc / .Rest / .Cli   transports                               -> Host.Shared, Application, Protocol
+Basil.Host.OsuStable / .Irc / .Rest / .Cli   transports                               -> Host.Shared, Application, Protocol
 Basil.Host                               composition root, configuration,         -> every project
                                          logging, shutdown
 Basil.Bot                                BasilBot commands and announcements       -> the Application projects it uses
@@ -36,11 +36,11 @@ Business models that outlive a run of the server (`User`, `SessionRecord`, `Room
 models, …), each guarding its own validity. It holds no runtime-only state and no events and references no other Basil
 project.
 
-### `Basil.Protocol.Bancho` and `Basil.Protocol.Irc`
+### `Basil.Protocol.OsuStable` and `Basil.Protocol.Irc`
 
 The wire formats. They turn client bytes into C# models of primitives and back, including the score submission cipher,
 and give no business meaning. They reference no other Basil project, so they can be tested without a server. Only the
-transport that speaks the protocol references it: Bancho references `Protocol.Bancho`, Irc references `Protocol.Irc`,
+transport that speaks the protocol references it: OsuStable references `Protocol.OsuStable`, Irc references `Protocol.Irc`,
 and Rest and Cli reference neither.
 
 ### Module projects
@@ -87,7 +87,7 @@ migration and the event dispatcher.
 
 | Project | Speaks | Notes |
 |---|---|---|
-| `Basil.Host.Bancho` | osu! stable: Bancho packets, polling, legacy web endpoints | owns the `c.`/`osu.` routing |
+| `Basil.Host.OsuStable` | osu! stable: OsuStable packets, polling, legacy web endpoints | owns the `c.`/`osu.` routing |
 | `Basil.Host.Irc` | IRC on plain TCP | contract in [`irc.md`](irc.md) |
 | `Basil.Host.Rest` | HTTP API on `api.`, plus images on `a.`/`assets.` | envelope, SSE, diagnostics, OpenAPI |
 | `Basil.Host.Cli` | the terminal dashboard and its command box | three display modes, control socket |
@@ -191,7 +191,7 @@ one second old. See [`sse.md`](sse.md).
 
 ## Adding features
 
-* **A Bancho packet or IRC command:** decode in the transport, call the Application operation of the acted-on object,
+* **A OsuStable packet or IRC command:** decode in the transport, call the Application operation of the acted-on object,
   translate the typed result. Add a missing rule to the object, not to the transport.
 * **A reaction:** register a handler for the event category in the owning module's Handlers folder or in `Basil.Bot`,
   then call the owning object's operation.
@@ -219,14 +219,14 @@ one second old. See [`sse.md`](sse.md).
 * `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module ports, objects and implementations.
 * `src/Hosts/Host/` — composition root, configuration, logging, lifetime, restart.
 * `src/Hosts/Shared/` — views and the outcome-to-error table shared by Rest and Cli.
-* `src/Hosts/{Bancho,Irc,Rest,Cli}/` — the transports.
+* `src/Hosts/{OsuStable,Irc,Rest,Cli}/` — the transports.
 * `src/Bot/` — BasilBot commands, announcements and reply catalogue.
 
 ## Where to go from here
 
 | Topic | Documentation |
 |---|---|
-| Bancho packet dispatch | [`bancho.md`](bancho.md) |
+| OsuStable packet dispatch | [`osu-stable.md`](osu-stable.md) |
 | Multiplayer and match state | [`multiplayer.md`](multiplayer.md) |
 | Chat, sessions and connections | [`chat.md`](chat.md), [`irc.md`](irc.md) |
 | HTTP live updates | [`sse.md`](sse.md) |

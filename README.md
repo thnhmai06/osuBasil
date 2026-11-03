@@ -82,7 +82,7 @@ For connecting an osu! client or using Basil's HTTP/SSE interfaces:
 
 * Browse the interactive API and BasilBot documentation at `api.<domain>/docs/` on a running instance.
 * Browse the published API documentation on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
-* See [`docs/for-client/bancho/getting-started.md`](docs/for-client/bancho/getting-started.md) for connecting an osu!
+* See [`docs/for-client/osu-stable/getting-started.md`](docs/for-client/osu-stable/getting-started.md) for connecting an osu!
   client.
 
 ### Server operator

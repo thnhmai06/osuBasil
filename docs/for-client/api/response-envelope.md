@@ -226,6 +226,6 @@ See [`sse.md`](sse.md) for the SSE protocol.
 
 * [`overview.md`](overview.md): the `api.` host HTTP surface
 * [`sse.md`](sse.md): live Server-Sent Events
-* [`authentication.md`](../bancho/authentication.md): Bancho authentication
-* [`protocol.md`](../bancho/protocol.md): Bancho binary protocol
+* [`authentication.md`](../osu-stable/authentication.md): OsuStable authentication
+* [`protocol.md`](../osu-stable/protocol.md): OsuStable binary protocol
 * [`response-envelope.md`](../../for-developers/response-envelope.md): server-side envelope implementation

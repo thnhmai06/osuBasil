@@ -4,7 +4,7 @@ Basil's documentation is organized by **audience**. Start with the folder that m
 
 | Audience                                                   | Documentation                                         | Start here                                                   |
 | ---------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
-| Player or tool using the HTTP API, bancho protocol, or SSE | [`for-client/`](for-client/bancho/getting-started.md) | [`getting-started.md`](for-client/bancho/getting-started.md) |
+| Player or tool using the HTTP API, osu-stable protocol, or SSE | [`for-client/`](for-client/osu-stable/getting-started.md) | [`getting-started.md`](for-client/osu-stable/getting-started.md) |
 | Tournament or server operator                              | [`for-technicians/`](for-technicians/deployment.md)   | [`deployment.md`](for-technicians/deployment.md)             |
 | Contributor working on the codebase                        | [`for-developers/`](for-developers/architecture.md)   | [`architecture.md`](for-developers/architecture.md)          |
 | Agent or automated tooling                                 | [`for-agents/`](for-agents/guidelines.md)             | [`guidelines.md`](for-agents/guidelines.md)                  |
@@ -17,12 +17,12 @@ Use this section when interacting with a running Basil instance as a client or e
 
 It covers:
 
-* bancho protocol usage
+* osu-stable protocol usage
 * HTTP API usage
 * SSE
 * client-facing setup and behavior
 
-Start with [`getting-started.md`](for-client/bancho/getting-started.md).
+Start with [`getting-started.md`](for-client/osu-stable/getting-started.md).
 
 ### `for-technicians/`
 
@@ -109,7 +109,7 @@ When two documents disagree, the authoritative document wins.
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
 | Diagnostic API design (samplers, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
-| Bancho protocol (client and server)                     | [`for-developers/bancho.md`](for-developers/bancho.md)                 |
+| OsuStable protocol (client and server)                     | [`for-developers/osu-stable.md`](for-developers/osu-stable.md)                 |
 | IRC protocol                                           | [`for-developers/irc.md`](for-developers/irc.md)                       |
 | Chat channels and their rules                          | [`for-developers/chat.md`](for-developers/chat.md)                     |
 | Beatmap ingestion                                      | [`for-developers/beatmap-ingestion.md`](for-developers/beatmap-ingestion.md) |

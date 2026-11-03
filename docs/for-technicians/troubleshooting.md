@@ -188,7 +188,7 @@ A single missing hostname can prevent the osu! client from connecting correctly.
 
 For LAN deployments, check the client's hosts file.
 
-See [`getting-started.md`](../for-client/bancho/getting-started.md).
+See [`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ### 4. Check port 443
 
@@ -408,4 +408,4 @@ See [`logging.md`](logging.md).
 * [`configuration.md`](configuration.md): configuration and persistent data
 * [`https.md`](https.md): TLS and certificate requirements
 * [`docker.md`](docker.md): Docker deployment
-* [`getting-started.md`](../for-client/bancho/getting-started.md): configuring an osu! client
+* [`getting-started.md`](../for-client/osu-stable/getting-started.md): configuring an osu! client

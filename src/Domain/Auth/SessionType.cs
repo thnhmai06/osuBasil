@@ -3,11 +3,11 @@ namespace Basil.Domain.Auth;
 /// <summary>The kinds of client connections and server-owned connection.</summary>
 public enum SessionType : byte
 {
-	/// <summary>An osu! game client.</summary>
-	Osu = 1 << 0,
+	/// <summary>An osu! (stable) game client.</summary>
+	OsuStable = 1 << 0,
 
-	/// <summary>An osu!tourney spectator client.</summary>
-	OsuTourney = 1 << 1,
+	/// <summary>An osu!tourney (stable) spectator client.</summary>
+	OsuStableTourney = 1 << 1,
 
 	/// <summary>An IRC client.</summary>
 	Irc = 1 << 2,
@@ -25,8 +25,8 @@ public static class SessionTypeExtensions
 	{
 		return type switch
 		{
-			SessionType.Osu => "osu-",
-			SessionType.OsuTourney => "trn-",
+			SessionType.OsuStable => "osu-",
+			SessionType.OsuStableTourney => "trn-",
 			SessionType.Api => "api-",
 			SessionType.Irc => "irc-",
 			SessionType.Bot => "bot-",

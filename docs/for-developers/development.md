@@ -148,7 +148,7 @@ and private LAN testing, but must not be used for a production or publicly expos
 
 Add the required hostnames to your system's hosts file and then launch the osu! client.
 
-The client-side setup is documented in [`getting-started.md`](../for-client/bancho/getting-started.md). The same client
+The client-side setup is documented in [`getting-started.md`](../for-client/osu-stable/getting-started.md). The same client
 configuration applies whether Basil is running from a development checkout or from a deployed release.
 
 ### Client IP handling

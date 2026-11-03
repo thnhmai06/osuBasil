@@ -23,7 +23,7 @@ public sealed class ApiSpectatorTests
 			new SpectatorScore(100, 0, 1, 0, 0, 0, 0, 0, 300, 1, 1, true, 200), 1);
 	}
 
-	private static async Task<(BanchoConnection Host, ApiConnection Watcher)> SetUpAsync(TestApplication app,
+	private static async Task<(OsuStableConnection Host, ApiConnection Watcher)> SetUpAsync(TestApplication app,
 		UserPermissions? watcherPermissions = null)
 	{
 		var host = await RoomFixture.PlayerAsync(app, "Watched");

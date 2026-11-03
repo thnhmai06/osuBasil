@@ -11,12 +11,12 @@ public sealed partial class Room
 {
 	/// <summary>Moves a seated player to another open slot.</summary>
 	/// <returns>Ok, NotInRoom, RoomLocked, InProgress, SlotNotOpen or RoomClosed.</returns>
-	internal Result<RoomOutcome> ChangeSlot(BanchoConnection bancho, int index)
+	internal Result<RoomOutcome> ChangeSlot(OsuStableConnection osuStable, int index)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(bancho) is not { } from) return RoomOutcome.NotInRoom;
+			if (Slots.Find(osuStable) is not { } from) return RoomOutcome.NotInRoom;
 			if (Slots.Locked) return RoomOutcome.RoomLocked;
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
 			if (Slots.At(index) is not { } to) return RoomOutcome.SlotNotOpen;
@@ -24,7 +24,7 @@ public sealed partial class Room
 			if (to.Locked || to.Player is not null) return RoomOutcome.SlotNotOpen;
 
 			from.MoveTo(to);
-			Emit(new RoomPlayerMoved(this, bancho, from.Index, to.Index));
+			Emit(new RoomPlayerMoved(this, osuStable, from.Index, to.Index));
 			return RoomOutcome.Ok;
 		}
 	}
@@ -96,12 +96,12 @@ public sealed partial class Room
 
 	/// <summary>Marks a seated player ready or not ready.</summary>
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed.</returns>
-	internal Result<RoomOutcome> SetReady(BanchoConnection bancho, bool ready)
+	internal Result<RoomOutcome> SetReady(OsuStableConnection osuStable, bool ready)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(bancho) is not { } slot) return RoomOutcome.NotInRoom;
+			if (Slots.Find(osuStable) is not { } slot) return RoomOutcome.NotInRoom;
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
 
 			var status = ready ? RoomSlotStatus.Ready : RoomSlotStatus.NotReady;
@@ -115,12 +115,12 @@ public sealed partial class Room
 
 	/// <summary>Records whether a seated player has the selected beatmap.</summary>
 	/// <returns>Ok, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> SetHasMap(BanchoConnection bancho, bool has)
+	internal Result<RoomOutcome> SetHasMap(OsuStableConnection osuStable, bool has)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(bancho) is not { } slot) return RoomOutcome.NotInRoom;
+			if (Slots.Find(osuStable) is not { } slot) return RoomOutcome.NotInRoom;
 			if (slot.Status is RoomSlotStatus.Playing || (has && slot.Status is not RoomSlotStatus.NoMap))
 				return RoomOutcome.Ok;
 
@@ -135,12 +135,12 @@ public sealed partial class Room
 
 	/// <summary>Switches a seated player to the other team.</summary>
 	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked, InProgress or RoomClosed.</returns>
-	internal Result<RoomOutcome> ToggleTeam(BanchoConnection bancho)
+	internal Result<RoomOutcome> ToggleTeam(OsuStableConnection osuStable)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(bancho) is not { } slot) return RoomOutcome.NotInRoom;
+			if (Slots.Find(osuStable) is not { } slot) return RoomOutcome.NotInRoom;
 			if (!Settings.Editable.TeamType.IsTeamMode()) return RoomOutcome.NoTeams;
 			if (Slots.Locked) return RoomOutcome.RoomLocked;
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
@@ -171,12 +171,12 @@ public sealed partial class Room
 
 	/// <summary>Chooses a seated player's own mods while freemod is on.</summary>
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed.</returns>
-	internal Result<RoomOutcome> SetMods(BanchoConnection bancho, GameMods mods)
+	internal Result<RoomOutcome> SetMods(OsuStableConnection osuStable, GameMods mods)
 	{
 		lock (_sync)
 		{
 			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(bancho) is not { } slot) return RoomOutcome.NotInRoom;
+			if (Slots.Find(osuStable) is not { } slot) return RoomOutcome.NotInRoom;
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
 			if (!Settings.Editable.Freemods) return RoomOutcome.NotFreemod;
 			if ((mods & GameModsGroups.SpeedChanging) != GameMods.NoMod) return RoomOutcome.SpeedModNotAllowed;
@@ -201,7 +201,7 @@ public sealed partial class Room
 
 			var locking = !slot.Locked;
 
-			BanchoConnection? evicted = null;
+			OsuStableConnection? evicted = null;
 			RoomRoundProgress? progress = null;
 			if (locking && slot.Player is { } player)
 			{

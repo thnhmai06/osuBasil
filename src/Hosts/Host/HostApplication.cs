@@ -1,6 +1,6 @@
 using Basil.Bot;
 using Basil.Bot.Replies;
-using Basil.Host.Bancho;
+using Basil.Host.OsuStable;
 using Basil.Host.Cli;
 using Basil.Host.Cli.Socket;
 using Basil.Host.Configuration;
@@ -94,7 +94,7 @@ public static class HostApplication
 				"HTTPS uses the certificate that ships with Basil, whose private key and password are public. " +
 				"Replace it with your own certificate before exposing the server");
 		app.UseRestImages();
-		app.UseBancho();
+		app.UseOsuStable();
 		app.UseRest();
 		return app;
 	}

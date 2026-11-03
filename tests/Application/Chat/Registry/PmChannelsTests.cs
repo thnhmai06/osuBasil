@@ -28,12 +28,12 @@ public sealed class PmChannelsTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("ManyClients", "password");
 		var irc = await app.LoginAsync(record, SessionType.Irc);
-		var bancho = await app.LoginAsync(record, SessionType.Osu);
+		var osuStable = await app.LoginAsync(record, SessionType.OsuStable);
 
 		var channel = app.PmChannels.Of(app.Users.Of(record));
 
 		Assert.Contains(irc, channel.Members);
-		Assert.Contains(bancho, channel.Members);
+		Assert.Contains(osuStable, channel.Members);
 	}
 
 	[Fact]
@@ -42,7 +42,7 @@ public sealed class PmChannelsTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Observer", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		var tourney = await app.LoginAsync(record, SessionType.OsuTourney);
+		var tourney = await app.LoginAsync(record, SessionType.OsuStableTourney);
 
 		var channel = app.PmChannels.Of(app.Users.Of(record));
 

@@ -241,6 +241,6 @@ public sealed class ApiTokenTests
 	{
 		using var app = new TestApplication();
 
-		await Assert.ThrowsAsync<ArgumentException>(() => OpenAsync(app, "token", SessionType.Osu));
+		await Assert.ThrowsAsync<ArgumentException>(() => OpenAsync(app, "token", SessionType.OsuStable));
 	}
 }

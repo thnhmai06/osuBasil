@@ -58,7 +58,7 @@ internal sealed partial class MpCommands
 			: null;
 	}
 
-	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, BanchoConnection player, bool showTeam)
+	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, OsuStableConnection player, bool showTeam)
 	{
 		var tags = new List<string>();
 		if (room.Authority.Host is not null && player == room.Authority.Host)

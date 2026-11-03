@@ -37,7 +37,7 @@ The categories are:
 | `http` | request statistics per host label (`c`, `osu`, `api`, ...) |
 | `application` | users online, open rooms, rounds in progress and open live streams |
 | `sessions` | open connections by type (osu, tourney, irc, api, ...) |
-| `bancho`, `irc` | open connections of that protocol |
+| `osu-stable`, `irc` | open connections of that protocol |
 | `database`, `events` | not measured yet: they answer `available: false` |
 
 ## Why a shared sample

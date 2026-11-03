@@ -121,5 +121,5 @@ The operator console is also **planned**. It is the explicit operator entry poin
 
 * [`multiplayer.md`](multiplayer.md): room authority and `RoomManageAny`
 * [`chat.md`](chat.md): channel access, blocks and `ChatMessageAnyone`
-* [`authentication.md`](../for-client/bancho/authentication.md): client authentication
+* [`authentication.md`](../for-client/osu-stable/authentication.md): client authentication
 * [`working-scopes.md`](working-scopes.md): supported and excluded account features

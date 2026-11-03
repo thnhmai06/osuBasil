@@ -28,7 +28,7 @@ sequence, needlessly bloating and obscuring any string field that contains one.
 1. **Exception → 500 envelope, api. host only.** `ExceptionLoggingMiddleware` — already the
    single insertion point logging every unhandled exception on every host group — now also
    writes a 500 envelope for the `api.` host specifically, provided the response hasn't started
-   writing yet. Every other host group (bancho, osu-web, beatmap-assets, avatar) keeps its
+   writing yet. Every other host group (osu-stable, osu-web, beatmap-assets, avatar) keeps its
    previous bare-response behavior unchanged; none of them carry an envelope contract to uphold.
    The `HasStarted` guard is what makes this safe for the `api.` host's own non-enveloped routes
    too: an SSE `/live` stream that has already flushed an event, or a file download mid-copy,

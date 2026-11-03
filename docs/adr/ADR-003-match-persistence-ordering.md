@@ -54,7 +54,7 @@ lock:
   the critical section. The 3 sites above are the exception.
 - `MatchReportService` and the `GET /matches/{id}/report` read path reconstruct a match's
   results from `Round` and `Score` rows keyed by `RoundId`; a score submission
-  (`ScoreSubmissionService`, HTTP POST, unordered relative to the bancho connection) is linked
+  (`ScoreSubmissionService`, HTTP POST, unordered relative to the osu-stable connection) is linked
   to `MatchSession.CurrentRoundId` at submission time (see `MatchCompleteHandler`'s remarks on
   why `CurrentRoundId` is deliberately left set after the round-end write completes).
 - `MatchEvent` rows (`MatchCreated`, `PlayerJoined`, `HostGranted`, etc.) are the audit trail for

@@ -9,11 +9,11 @@ using Basil.Domain.Users;
 namespace Basil.Application.Scores.Capabilities;
 
 /// <summary>The score submission as one game client may do it.</summary>
-public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, BanchoConnection>
+public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, OsuStableConnection>
 {
 	private readonly ScoreSubmitter _submitter;
 
-	internal ScopedScoreSubmitter(ScoreSubmitter submitter, BanchoConnection actor, UserPermissions permissions)
+	internal ScopedScoreSubmitter(ScoreSubmitter submitter, OsuStableConnection actor, UserPermissions permissions)
 		: base(actor, permissions)
 	{
 		_submitter = submitter;

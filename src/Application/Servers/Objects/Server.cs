@@ -168,8 +168,8 @@ public sealed class Server
 
 		var context = Context.Connections;
 		var recipients = (to is null
-				? context.Registry.OpenBanchoClients()
-				: to.Select(context.Registry.OpenBanchoClient).OfType<BanchoConnection>())
+				? context.Registry.OpenOsuStableClients()
+				: to.Select(context.Registry.OpenOsuStableClient).OfType<OsuStableConnection>())
 			.ToList();
 		if (recipients.Count == 0) return 0;
 

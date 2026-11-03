@@ -20,7 +20,7 @@ public sealed class OsuClient : IDisposable
 	public const string UninstallId = "uninstall-id-1";
 	public const string DiskSignature = "disk-signature-1";
 	private const string BuildDate = "20260101";
-	private readonly string _banchoHost;
+	private readonly string _osuStableHost;
 
 	private readonly HttpClient _http;
 	private readonly string _osuVersion;
@@ -30,7 +30,7 @@ public sealed class OsuClient : IDisposable
 	private OsuClient(Uri address, string password, string name, bool tourney, string domain)
 	{
 		_http = new HttpClient { BaseAddress = address };
-		_banchoHost = $"c.{domain}";
+		_osuStableHost = $"c.{domain}";
 		_webHost = $"osu.{domain}";
 		Name = name;
 		Password = password;
@@ -72,7 +72,7 @@ public sealed class OsuClient : IDisposable
 		var clientHash =
 			$"{Md5Of("osu-path")}:runningunderwine:{Md5Of("adapters")}:{Md5Of(UninstallId)}:{Md5Of(DiskSignature)}:";
 		var body = $"{Name}\n{PasswordMd5(passwordOverride ?? Password)}\n{_osuVersion}|0|1|{clientHash}|0\n";
-		using var request = Bancho(HttpMethod.Post, body);
+		using var request = OsuStable(HttpMethod.Post, body);
 		if (forwardedFor is not null) request.Headers.Add("X-Forwarded-For", forwardedFor);
 		using var response = await _http.SendAsync(request);
 		var packets = ServerPacket.Split(await response.Content.ReadAsByteArrayAsync());
@@ -87,7 +87,7 @@ public sealed class OsuClient : IDisposable
 	{
 		var writer = new ClientPacketWriter();
 		write?.Invoke(writer);
-		using var request = Bancho(HttpMethod.Post, writer.ToArray());
+		using var request = OsuStable(HttpMethod.Post, writer.ToArray());
 		request.Headers.Add("osu-token", Token);
 		using var response = await _http.SendAsync(request);
 		var packets = ServerPacket.Split(await response.Content.ReadAsByteArrayAsync());
@@ -103,7 +103,7 @@ public sealed class OsuClient : IDisposable
 	/// <summary>Sends a request with an arbitrary token (for the unknown-token case).</summary>
 	public async Task<IReadOnlyList<ServerPacket>> SendWithTokenAsync(string token)
 	{
-		using var request = Bancho(HttpMethod.Post, []);
+		using var request = OsuStable(HttpMethod.Post, []);
 		request.Headers.Add("osu-token", token);
 		using var response = await _http.SendAsync(request);
 		return ServerPacket.Split(await response.Content.ReadAsByteArrayAsync());
@@ -301,15 +301,15 @@ public sealed class OsuClient : IDisposable
 		return Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(text)));
 	}
 
-	private HttpRequestMessage Bancho(HttpMethod method, string body)
+	private HttpRequestMessage OsuStable(HttpMethod method, string body)
 	{
-		return Bancho(method, Encoding.UTF8.GetBytes(body));
+		return OsuStable(method, Encoding.UTF8.GetBytes(body));
 	}
 
-	private HttpRequestMessage Bancho(HttpMethod method, byte[] body)
+	private HttpRequestMessage OsuStable(HttpMethod method, byte[] body)
 	{
 		var request = new HttpRequestMessage(method, "/") { Content = new ByteArrayContent(body) };
-		request.Headers.Host = _banchoHost;
+		request.Headers.Host = _osuStableHost;
 		return request;
 	}
 

@@ -60,7 +60,7 @@ entry answers `204`, which stops a browser from reconnecting.
 
 Opening the route spectates the player as an osu! client would: the player sees a spectator, and the spectating
 permission, blocks and restrictions apply. The stream only watches; the Api connection joins no chat channel. Frames and
-score updates are decoded once in the Bancho host and published as Application events; every Api spectator of the player
+score updates are decoded once in the OsuStable host and published as Application events; every Api spectator of the player
 gets the same bundle. The stream ends when the player goes offline or the spectator stops watching.
 
 ### Diagnostics

@@ -37,7 +37,7 @@ public sealed class ScoreSubmitter
 	/// <summary>Scopes score submission to a game client and its permissions.</summary>
 	/// <param name="actor">The game client that submits.</param>
 	/// <returns>A short-lived scope for the client.</returns>
-	public ScopedScoreSubmitter ScopeTo(BanchoConnection actor)
+	public ScopedScoreSubmitter ScopeTo(OsuStableConnection actor)
 	{
 		return new ScopedScoreSubmitter(this, actor, actor.EffectivePermissions(_clock.GetUtcNow()));
 	}

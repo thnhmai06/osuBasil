@@ -11,7 +11,7 @@ internal sealed class PmConnectionOpenedHandler(PmChannels channels) : INotifica
 	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionOpened @event, CancellationToken cancellationToken)
 	{
-		if (@event.Connection.Type is not SessionType.OsuTourney)
+		if (@event.Connection.Type is not SessionType.OsuStableTourney)
 			channels.Of(@event.Connection.User).ScopeTo(@event.Connection).Join();
 
 		return ValueTask.CompletedTask;

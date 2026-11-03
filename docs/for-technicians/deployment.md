@@ -199,7 +199,7 @@ Every machine that connects to Basil must be able to resolve all required servic
   it — add the required entries to the hosts file on each client and on the server itself.
 
 See [Name resolution on a LAN](configuration.md#name-resolution-on-a-lan) for both methods and the
-exact list of names, and [`getting-started.md`](../for-client/bancho/getting-started.md) for the
+exact list of names, and [`getting-started.md`](../for-client/osu-stable/getting-started.md) for the
 client-side configuration.
 
 ---
@@ -300,7 +300,7 @@ If this fails, check:
 
 New accounts receive the default permission set. Registration is limited per address and per server by the registration
 rate limit, and while the **accounts** lock is on only account managers can create accounts; see
-[`configuration.md`](configuration.md). See [`getting-started.md`](../for-client/bancho/getting-started.md).
+[`configuration.md`](configuration.md). See [`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ### Console or API
 
@@ -379,5 +379,5 @@ cleanly: the previous schema cannot be restored without it.
 * [`console.md`](console.md): the console commands, exit codes and shutdown
 * [`https.md`](https.md): TLS certificates and HTTPS
 * [`docker.md`](docker.md): Docker deployment
-* [`getting-started.md`](../for-client/bancho/getting-started.md): configuring an osu! client
+* [`getting-started.md`](../for-client/osu-stable/getting-started.md): configuring an osu! client
 * [`troubleshooting.md`](troubleshooting.md): common deployment problems and fixes

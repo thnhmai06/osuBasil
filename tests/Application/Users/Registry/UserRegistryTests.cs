@@ -185,27 +185,27 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondBanchoLoginRightAfterTheFirst_ReturnsAlreadyOnline()
+	public async Task LoginAsync_SecondOsuStableLoginRightAfterTheFirst_ReturnsAlreadyOnline()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("AlreadyOnline", "password");
-		await app.LoginAsync(user, SessionType.Osu);
+		await app.LoginAsync(user, SessionType.OsuStable);
 		app.Clock.Advance(TimeSpan.FromSeconds(9));
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.Osu);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.OsuStable);
 
 		Assert.Equal(LoginFailure.AlreadyOnline, result.Failure);
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondBanchoLoginWhileTheFirstIsOpen_ReturnsAlreadyOnlineHoweverLongItHasBeenIdle()
+	public async Task LoginAsync_SecondOsuStableLoginWhileTheFirstIsOpen_ReturnsAlreadyOnlineHoweverLongItHasBeenIdle()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("StillOpen", "password");
-		var old = await app.LoginAsync(user, SessionType.Osu);
+		var old = await app.LoginAsync(user, SessionType.OsuStable);
 		app.Clock.Advance(TimeSpan.FromSeconds(120));
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.Osu);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.OsuStable);
 
 		Assert.Equal(LoginFailure.AlreadyOnline, result.Failure);
 		Assert.True(old.IsOpen);
@@ -217,14 +217,14 @@ public sealed class UserRegistryTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoTourney", "password", UserPermissionsGroups.Default);
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.OsuTourney);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.OsuStableTourney);
 
 		Assert.Equal(LoginFailure.NoTourneyPermission, result.Failure);
 	}
 
 	[Theory]
-	[InlineData(SessionType.Osu)]
-	[InlineData(SessionType.OsuTourney)]
+	[InlineData(SessionType.OsuStable)]
+	[InlineData(SessionType.OsuStableTourney)]
 	public async Task LoginAsync_OsuKindWithoutClient_ThrowsArgumentNullException(SessionType type)
 	{
 		using var app = new TestApplication();

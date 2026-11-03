@@ -38,7 +38,7 @@ Use a certificate from a trusted certificate authority. A wildcard certificate w
 
 A self-signed certificate is fine on a private network, but it must still carry every SAN above, and every client must
 trust the certificate or its issuing CA. See
-[`getting-started.md`](../for-client/bancho/getting-started.md).
+[`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ---
 
@@ -239,5 +239,5 @@ For LAN deployments the usual cause is a certificate that is not trusted on the 
 * [`configuration.md`](configuration.md) — deployment settings and data directories
 * [`deployment.md`](deployment.md) — complete deployment procedure
 * [`docker.md`](docker.md) — Docker deployment and certificate mounts
-* [`../for-client/bancho/getting-started.md`](../for-client/bancho/getting-started.md) — client setup and trusting a LAN certificate
+* [`../for-client/osu-stable/getting-started.md`](../for-client/osu-stable/getting-started.md) — client setup and trusting a LAN certificate
 * [`troubleshooting.md`](troubleshooting.md) — general deployment troubleshooting

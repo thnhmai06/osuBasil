@@ -75,15 +75,15 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("DeviceUser", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, SessionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.OsuStable);
 
 		var result = await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token);
 
 		Assert.True(result.IsOk);
 		Assert.False(osu.IsOpen);
 		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("DeviceUser", "password", SessionType.Osu)).Failure);
-		Assert.True((await app.AttemptLoginAsync("DeviceUser", "password", SessionType.Osu)).Succeeded);
+			(await app.AttemptLoginAsync("DeviceUser", "password", SessionType.OsuStable)).Failure);
+		Assert.True((await app.AttemptLoginAsync("DeviceUser", "password", SessionType.OsuStable)).Succeeded);
 	}
 
 	[Fact]
@@ -92,7 +92,7 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("UnstoredUser", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, SessionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.OsuStable);
 		app.ForgetStoredSession(osu.Session.Id);
 
 		var result = await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token);
@@ -107,13 +107,13 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("OfflineDevice", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, SessionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.OsuStable);
 		app.Users.Close(osu, SessionEndReason.ConnectionLost);
 
 		Assert.True((await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token)).IsOk);
 
 		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("OfflineDevice", "password", SessionType.Osu)).Failure);
+			(await app.AttemptLoginAsync("OfflineDevice", "password", SessionType.OsuStable)).Failure);
 	}
 
 	[Fact]
@@ -200,7 +200,7 @@ public sealed class ScopedUserSessionsTests
 		var user = await app.CreateUserAsync("AllOut", "password");
 		var current = await app.LoginAsync(user);
 		var otherApi = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, SessionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.OsuStable);
 		var (ircKey, _) = await OpenIrcAsync(app, current, "bot");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(true, Token);
@@ -236,7 +236,7 @@ public sealed class ScopedUserSessionsTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
 		var user = await app.CreateUserAsync("Target", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, SessionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.OsuStable);
 
 		var result = await app.Users.Of(user).ScopeTo(admin).Sessions.CloseAllAsync(true, Token);
 
@@ -247,7 +247,7 @@ public sealed class ScopedUserSessionsTests
 		Assert.Equal(admin.Record, entry.Actor);
 		Assert.Equal(user, entry.Target);
 		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("Target", "password", SessionType.Osu)).Failure);
+			(await app.AttemptLoginAsync("Target", "password", SessionType.OsuStable)).Failure);
 	}
 
 	[Fact]
@@ -284,13 +284,13 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Lister", "password", UserPermissions.None);
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, SessionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.OsuStable);
 		app.Users.Close(osu, SessionEndReason.ConnectionLost);
 		var scoped = app.Users.Of(user).ScopeTo(api).Sessions;
 
 		var (_, active) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Active, null, Token);
 		var (_, ended) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Ended, null, Token);
-		var (_, osuOnly) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Any, [SessionType.Osu], Token);
+		var (_, osuOnly) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Any, [SessionType.OsuStable], Token);
 
 		Assert.Equal(api.Session.Id, Assert.Single(active!.Items).Id);
 		Assert.Equal(osu.Session.Id, Assert.Single(ended!.Items).Id);

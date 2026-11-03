@@ -13,7 +13,7 @@ touching users, connections, permissions, restrictions or the bot.
   `Allows(A) || Allows(B)` for a pair where one contains the other. Do not add a permission that is merely a
   consequence of another (playing and submitting scores are one: `ScoreSubmit`).
 * **Privileges are roles, permissions are rights.** `UserPrivileges` is the flags enum osu! knows (Player, Moderator,
-  Supporter, Owner, Developer, Tournament; the values are stable storage values, and the wire bits are mapped explicitly in `Host.Bancho`). `privilege.Permissions` lists the permissions that
+  Supporter, Owner, Developer, Tournament; the values are stable storage values, and the wire bits are mapped explicitly in `Host.OsuStable`). `privilege.Permissions` lists the permissions that
   belong directly to that role. A user has a role bit when their effective permissions hold at least one of those. A
   requirement written in privileges (a channel's `ReadPrivileges`/`WritePrivileges`) is met when every bit asked for is
   present. Privileges are derived, never stored or configured, and grant nothing.

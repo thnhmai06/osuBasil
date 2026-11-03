@@ -16,7 +16,7 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Events;
-using Basil.Host.Bancho;
+using Basil.Host.OsuStable;
 using Basil.Host.Cli;
 using Basil.Host.Irc;
 using Basil.Host.Rest;
@@ -104,7 +104,7 @@ public static class DependencyInjection
 	internal static IServiceCollection AddEvents(this IServiceCollection services)
 	{
 		services.AddCommonApplication();
-		services.AddBanchoHost();
+		services.AddOsuStableHost();
 		services.AddIrcHost();
 		services.AddRestHost();
 		services.AddCliFeeds();

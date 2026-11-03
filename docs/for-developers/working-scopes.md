@@ -130,7 +130,7 @@ The following features are deliberately not part of Basil's supported surface.
 | osu-web API v1/v2 compatibility and OAuth                                        | ❌ Out of scope | Basil's own user-centric API serves the clients built on it; reproducing osu-web's API or OAuth has no concrete requirement.                                   |
 | `!clan` and moderation/clan commands                                             | ❌ Out of scope | These belonged to the removed command surface and are outside the project's current purpose.                                                                  |
 | Discord audit webhook                                                            | ❌ Out of scope | No current requirement exists for this integration.                                                                                                           |
-| Datadog / bancho metrics such as `bancho.online_players` and `bancho.login_time` | ❌ Out of scope | Basil does not use the corresponding Datadog integration.                                                                                                     |
+| Datadog / osu-stable metrics such as `osu-stable.online_players` and `osu-stable.login_time` | ❌ Out of scope | Basil does not use the corresponding Datadog integration.                                                                                                     |
 | `/matches` and `/online` debug HTML pages                                        | ❌ Out of scope | These pages are administrative/debug views that are not consumed by the game client.                                                                          |
 | pp calculation                                                                   | ❌ Out of scope | Performance points are deliberately absent. Star rating is display-only and follows ppy's osu!lazer ruleset rather than being used as a Basil scoring engine. |
 
@@ -144,7 +144,7 @@ features.
 | `osu-screenshot.php`    | ⚠️ Pending | Still returns HTTP 400 with `not available`; screenshots are stored by `IScreenshotStorage` once the host is migrated. |
 | `osu-getfavourites.php` | ⚠️ Stub | Returns an empty favourite list.                                                                |
 | `osu-addfavourite.php`  | ⚠️ Stub | No favourite functionality is implemented.                                                      |
-| `osu-rate.php`          | ⚠️ Stub | Returns `not ranked`, matching the expected real-bancho response for the unsupported operation. |
+| `osu-rate.php`          | ⚠️ Stub | Returns `not ranked`, matching the expected real-osu-stable response for the unsupported operation. |
 | `osu-comment.php`       | ⚠️ Stub | Returns an empty result.                                                                        |
 
 A compatibility stub should remain intentionally small. Do not gradually turn a stub into an implicit feature without
@@ -229,7 +229,7 @@ Since the identity redesign the API is user-centric: management is no longer gat
 server, but by the permissions of the signed-in user, so clients built on Basil can do through the API what their
 accounts are allowed to do.
 
-### Automatic Bancho/Basil parity testing
+### Automatic OsuStable/Basil parity testing
 
 **Previous decision**
 
@@ -245,7 +245,7 @@ one-to-one implementation target for large parts of the upstream server.
 Multiplayer and tournament behavior is validated manually using real osu! clients.
 
 For client-facing multiplayer testing, use two real osu! clients and exercise the supported match workflows. See [
-`getting-started.md`](../for-client/bancho/getting-started.md).
+`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ## Adding a feature
 
@@ -267,5 +267,5 @@ implementing a partial version without a defined contract.
 
 * [`architecture.md`](architecture.md): how the in-scope functionality is structured
 * [`chat.md`](chat.md): the command dispatch architecture
-* [`../for-client/bancho/getting-started.md`](../for-client/bancho/getting-started.md): setting up real osu! clients
+* [`../for-client/osu-stable/getting-started.md`](../for-client/osu-stable/getting-started.md): setting up real osu! clients
   for multiplayer testing

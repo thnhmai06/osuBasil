@@ -57,28 +57,28 @@ public sealed class RoomFixture
 	public Room SuspendedRoom { get; private init; } = null!;
 
 	/// <summary>Gets the connection that created the room.</summary>
-	public BanchoConnection Creator { get; private init; } = null!;
+	public OsuStableConnection Creator { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a referee, which is not seated.</summary>
-	public BanchoConnection Referee { get; private init; } = null!;
+	public OsuStableConnection Referee { get; private init; } = null!;
 
 	/// <summary>Gets the connection that is the room's host.</summary>
-	public BanchoConnection Host { get; private init; } = null!;
+	public OsuStableConnection Host { get; private init; } = null!;
 
 	/// <summary>Gets the connection that is seated but is not the host.</summary>
-	public BanchoConnection Player { get; private init; } = null!;
+	public OsuStableConnection Player { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a user who takes no part in the room.</summary>
-	public BanchoConnection Outsider { get; private init; } = null!;
+	public OsuStableConnection Outsider { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a user who may manage every room.</summary>
-	public BanchoConnection Manager { get; private init; } = null!;
+	public OsuStableConnection Manager { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a user who was never granted the right to join rooms.</summary>
-	public BanchoConnection NoRoomJoin { get; private init; } = null!;
+	public OsuStableConnection NoRoomJoin { get; private init; } = null!;
 
 	/// <summary>Gets the connection of the creator whose right to join rooms is suspended.</summary>
-	public BanchoConnection SuspendedCreator { get; private init; } = null!;
+	public OsuStableConnection SuspendedCreator { get; private init; } = null!;
 
 	/// <summary>Creates a score played in a round.</summary>
 	/// <param name="id">The score's id.</param>
@@ -189,7 +189,7 @@ public sealed class RoomFixture
 	/// <summary>Gets the connection that holds a role.</summary>
 	/// <param name="role">The role.</param>
 	/// <returns>The connection.</returns>
-	public BanchoConnection ConnectionFor(RoomRole role)
+	public OsuStableConnection ConnectionFor(RoomRole role)
 	{
 		return role switch
 		{
@@ -218,7 +218,7 @@ public sealed class RoomFixture
 	/// <param name="name">The account name.</param>
 	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
 	/// <returns>The opened connection.</returns>
-	public static async Task<BanchoConnection> PlayerAsync(TestApplication app, string name,
+	public static async Task<OsuStableConnection> PlayerAsync(TestApplication app, string name,
 		UserPermissions? permissions = null)
 	{
 		var user = await app.CreateUserAsync(name, "password", permissions);
@@ -229,8 +229,8 @@ public sealed class RoomFixture
 	/// <param name="app">The application the user belongs to.</param>
 	/// <param name="user">The account to log in.</param>
 	/// <returns>The opened connection.</returns>
-	public static async Task<BanchoConnection> PlayerAsync(TestApplication app, UserRecord user)
+	public static async Task<OsuStableConnection> PlayerAsync(TestApplication app, UserRecord user)
 	{
-		return (BanchoConnection)await app.LoginAsync(user, SessionType.Osu);
+		return (OsuStableConnection)await app.LoginAsync(user, SessionType.OsuStable);
 	}
 }
