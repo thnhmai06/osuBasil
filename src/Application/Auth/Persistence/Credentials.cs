@@ -1,7 +1,7 @@
 ﻿using Basil.Domain.Common;
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Auth;
+namespace Basil.Application.Auth.Persistence;
 
 /// <summary>The stored password of an account.</summary>
 /// <param name="User">The account the password belongs to.</param>
