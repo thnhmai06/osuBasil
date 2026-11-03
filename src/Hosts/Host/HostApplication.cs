@@ -7,7 +7,7 @@ using Basil.Host.Documentation;
 using Basil.Host.Irc;
 using Basil.Host.Lifetime;
 using Basil.Host.Logging;
-using Basil.Host.OsuStable;
+using Basil.Host.Stable;
 using Basil.Host.Rest;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Images;
@@ -96,7 +96,7 @@ public static class HostApplication
 				"HTTPS uses the certificate that ships with Basil, whose private key and password are public. " +
 				"Replace it with your own certificate before exposing the server");
 		app.UseRestImages();
-		app.UseOsuStable();
+		app.UseStable();
 		app.UseRest();
 		return app;
 	}

@@ -27,11 +27,11 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task Close_LoggedOutWithinOneSecondOfOsuStableLogin_LeavesConnectionOpen()
+	public async Task Close_LoggedOutWithinOneSecondOfStableLogin_LeavesConnectionOpen()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("EarlyLogout", "password");
-		var connection = await app.LoginAsync(user, SessionType.OsuStable);
+		var connection = await app.LoginAsync(user, SessionType.Stable);
 
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 
@@ -40,7 +40,7 @@ public sealed class ConnectionTests
 	}
 
 	[Theory]
-	[InlineData(SessionType.OsuStable, 300)]
+	[InlineData(SessionType.Stable, 300)]
 	[InlineData(SessionType.Api, 300)]
 	public async Task CloseIdle_AtTimeoutBoundary_LeavesConnectionOpen(SessionType type, int timeoutSeconds)
 	{
@@ -56,7 +56,7 @@ public sealed class ConnectionTests
 	}
 
 	[Theory]
-	[InlineData(SessionType.OsuStable, 300)]
+	[InlineData(SessionType.Stable, 300)]
 	[InlineData(SessionType.Api, 300)]
 	public async Task CloseIdle_OneSecondPastTimeout_ClosesConnection(SessionType type, int timeoutSeconds)
 	{

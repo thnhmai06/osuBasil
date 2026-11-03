@@ -17,7 +17,7 @@ using Basil.Application.Users;
 using Basil.Application.Users.Objects.Events;
 using Basil.Host.Cli;
 using Basil.Host.Irc;
-using Basil.Host.OsuStable;
+using Basil.Host.Stable;
 using Basil.Host.Rest;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
@@ -103,7 +103,7 @@ public static class DependencyInjection
 	internal static IServiceCollection AddEvents(this IServiceCollection services)
 	{
 		services.AddCommonApplication();
-		services.AddOsuStableHost();
+		services.AddStableHost();
 		services.AddIrcHost();
 		services.AddRestHost();
 		services.AddCliFeeds();

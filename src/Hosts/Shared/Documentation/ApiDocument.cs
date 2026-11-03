@@ -7,5 +7,5 @@ namespace Basil.Host.Shared.Documentation;
 public sealed record ApiDocument(string Name, string Title, string Overview)
 {
 	/// <summary>The name of the reference of the endpoints the osu! (stable) client calls.</summary>
-	public const string OsuStable = "osu-stable";
+	public const string Stable = "osu-stable";
 }

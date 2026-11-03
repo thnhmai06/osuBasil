@@ -57,28 +57,28 @@ public sealed class RoomFixture
 	public Room SuspendedRoom { get; private init; } = null!;
 
 	/// <summary>Gets the connection that created the room.</summary>
-	public OsuStableConnection Creator { get; private init; } = null!;
+	public StableConnection Creator { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a referee, which is not seated.</summary>
-	public OsuStableConnection Referee { get; private init; } = null!;
+	public StableConnection Referee { get; private init; } = null!;
 
 	/// <summary>Gets the connection that is the room's host.</summary>
-	public OsuStableConnection Host { get; private init; } = null!;
+	public StableConnection Host { get; private init; } = null!;
 
 	/// <summary>Gets the connection that is seated but is not the host.</summary>
-	public OsuStableConnection Player { get; private init; } = null!;
+	public StableConnection Player { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a user who takes no part in the room.</summary>
-	public OsuStableConnection Outsider { get; private init; } = null!;
+	public StableConnection Outsider { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a user who may manage every room.</summary>
-	public OsuStableConnection Manager { get; private init; } = null!;
+	public StableConnection Manager { get; private init; } = null!;
 
 	/// <summary>Gets the connection of a user who was never granted the right to join rooms.</summary>
-	public OsuStableConnection NoRoomJoin { get; private init; } = null!;
+	public StableConnection NoRoomJoin { get; private init; } = null!;
 
 	/// <summary>Gets the connection of the creator whose right to join rooms is suspended.</summary>
-	public OsuStableConnection SuspendedCreator { get; private init; } = null!;
+	public StableConnection SuspendedCreator { get; private init; } = null!;
 
 	/// <summary>Creates a score played in a round.</summary>
 	/// <param name="id">The score's id.</param>
@@ -189,7 +189,7 @@ public sealed class RoomFixture
 	/// <summary>Gets the connection that holds a role.</summary>
 	/// <param name="role">The role.</param>
 	/// <returns>The connection.</returns>
-	public OsuStableConnection ConnectionFor(RoomRole role)
+	public StableConnection ConnectionFor(RoomRole role)
 	{
 		return role switch
 		{
@@ -218,7 +218,7 @@ public sealed class RoomFixture
 	/// <param name="name">The account name.</param>
 	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
 	/// <returns>The opened connection.</returns>
-	public static async Task<OsuStableConnection> PlayerAsync(TestApplication app, string name,
+	public static async Task<StableConnection> PlayerAsync(TestApplication app, string name,
 		UserPermissions? permissions = null)
 	{
 		var user = await app.CreateUserAsync(name, "password", permissions);
@@ -229,8 +229,8 @@ public sealed class RoomFixture
 	/// <param name="app">The application the user belongs to.</param>
 	/// <param name="user">The account to log in.</param>
 	/// <returns>The opened connection.</returns>
-	public static async Task<OsuStableConnection> PlayerAsync(TestApplication app, UserRecord user)
+	public static async Task<StableConnection> PlayerAsync(TestApplication app, UserRecord user)
 	{
-		return (OsuStableConnection)await app.LoginAsync(user, SessionType.OsuStable);
+		return (StableConnection)await app.LoginAsync(user, SessionType.Stable);
 	}
 }

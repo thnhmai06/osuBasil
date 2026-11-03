@@ -13,7 +13,7 @@ public static class ConnectionRules
 		/// <remarks>Each IRC client of a user has a key of its own, so several can be connected at once.</remarks>
 		public bool AllowsMany()
 		{
-			return type is SessionType.OsuStableTourney or SessionType.Irc or SessionType.Api;
+			return type is SessionType.StableTourney or SessionType.Irc or SessionType.Api;
 		}
 
 		/// <summary>Gets how long a connection of a kind may send nothing before it is closed.</summary>

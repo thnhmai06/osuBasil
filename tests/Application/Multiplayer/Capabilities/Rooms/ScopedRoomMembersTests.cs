@@ -287,7 +287,7 @@ public sealed class ScopedRoomMembersTests
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
 		var player = await RoomFixture.PlayerAsync(app, user);
 		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
-		var observer = (TourneyConnection)await app.LoginAsync(user, SessionType.OsuStableTourney);
+		var observer = (TourneyConnection)await app.LoginAsync(user, SessionType.StableTourney);
 
 		var result = await room.ScopeTo(observer).Members.ObserverJoinAsync(TestContext.Current.CancellationToken);
 
@@ -333,7 +333,7 @@ public sealed class ScopedRoomMembersTests
 		var user = await app.CreateUserAsync("Watcher", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
 		var player = await RoomFixture.PlayerAsync(app, user);
-		var observer = (TourneyConnection)await app.LoginAsync(user, SessionType.OsuStableTourney);
+		var observer = (TourneyConnection)await app.LoginAsync(user, SessionType.StableTourney);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);
 
@@ -349,7 +349,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Watcher", "password");
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.OsuStableTourney);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.StableTourney);
 
 		Assert.Null(result.Connection);
 		Assert.Equal(LoginFailure.NoTourneyPermission, result.Failure);
@@ -459,6 +459,6 @@ public sealed class ScopedRoomMembersTests
 	{
 		var user = await app.CreateUserAsync(name, "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		return (TourneyConnection)await app.LoginAsync(user, SessionType.OsuStableTourney);
+		return (TourneyConnection)await app.LoginAsync(user, SessionType.StableTourney);
 	}
 }

@@ -24,7 +24,7 @@ public sealed record UserConnectionClosed(Connection Connection, SessionEndReaso
 /// <summary>An osu! client reported a new presence status.</summary>
 /// <param name="Connection">The client connection.</param>
 /// <param name="Status">The new status.</param>
-public sealed record UserConnectionStatusChanged(OsuStableConnection Connection, PlayerStatus Status) : UserEvent;
+public sealed record UserConnectionStatusChanged(StableConnection Connection, PlayerStatus Status) : UserEvent;
 
 /// <summary>Some of a user's permissions were suspended; a silence is one such restriction.</summary>
 /// <param name="User">The restricted user.</param>
@@ -49,29 +49,29 @@ public sealed record UserPermissionsChanged(UserRecord User, UserPermissions Per
 /// <summary>A notification was shown to online users.</summary>
 /// <param name="Recipients">The osu! clients that were sent the notification.</param>
 /// <param name="Text">The text of the notification.</param>
-public sealed record UserNotificationSent(IReadOnlyList<OsuStableConnection> Recipients, string Text) : UserEvent;
+public sealed record UserNotificationSent(IReadOnlyList<StableConnection> Recipients, string Text) : UserEvent;
 
 /// <summary>Something happened between an osu! client and a connection spectating it.</summary>
 /// <param name="Host">The osu! client being spectated.</param>
 /// <param name="Spectator">The spectating connection.</param>
-public abstract record UserSpectatorEvent(OsuStableConnection Host, Connection Spectator) : UserEvent;
+public abstract record UserSpectatorEvent(StableConnection Host, Connection Spectator) : UserEvent;
 
 /// <summary>A connection started spectating an osu! client.</summary>
 /// <param name="Host">The osu! client being spectated.</param>
 /// <param name="Spectator">The connection that started spectating.</param>
-public sealed record UserSpectatorJoined(OsuStableConnection Host, Connection Spectator)
+public sealed record UserSpectatorJoined(StableConnection Host, Connection Spectator)
 	: UserSpectatorEvent(Host, Spectator);
 
 /// <summary>A connection stopped spectating an osu! client.</summary>
 /// <param name="Host">The osu! client that was spectated.</param>
 /// <param name="Spectator">The connection that stopped spectating.</param>
-public sealed record UserSpectatorLeft(OsuStableConnection Host, Connection Spectator)
+public sealed record UserSpectatorLeft(StableConnection Host, Connection Spectator)
 	: UserSpectatorEvent(Host, Spectator);
 
 /// <summary>An osu! client sent the frames of its play to the connections spectating it.</summary>
 /// <param name="Host">The client being spectated.</param>
 /// <param name="Bundle">The frames.</param>
-public sealed record UserSpectatorFramesReceived(OsuStableConnection Host, SpectatorBundle Bundle) : UserEvent;
+public sealed record UserSpectatorFramesReceived(StableConnection Host, SpectatorBundle Bundle) : UserEvent;
 
-public sealed record UserSpectatorFailed(OsuStableConnection Host, Connection Spectator)
+public sealed record UserSpectatorFailed(StableConnection Host, Connection Spectator)
 	: UserSpectatorEvent(Host, Spectator);

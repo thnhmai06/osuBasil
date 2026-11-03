@@ -67,7 +67,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 				new UserRow(
 					user.Record.Id, user.Record.Value.Name,
 					string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
-					user.OsuStable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
+					user.Stable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
 					now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
 					(ulong)user.EffectivePermissions(now)))
 		];

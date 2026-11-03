@@ -19,8 +19,8 @@ internal sealed class ConnectionLobbyHandler(Lobby lobby, ILogger<ConnectionLobb
 		var connection = @event.Connection;
 		await HandlerStep.RunAsync(logger, "release its room", Subject, connection.Record.Id,
 			() => lobby.ReleaseAsync(connection, cancellationToken), cancellationToken);
-		if (connection is OsuStableConnection osuStable)
-			HandlerStep.Run(logger, "leave the lobby", Subject, connection.Record.Id, () => lobby.Unwatch(osuStable),
+		if (connection is StableConnection stable)
+			HandlerStep.Run(logger, "leave the lobby", Subject, connection.Record.Id, () => lobby.Unwatch(stable),
 				cancellationToken);
 	}
 }

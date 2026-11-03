@@ -41,7 +41,7 @@ public sealed partial class Room
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>
 	/// <returns>Ok, NotInRoom or RoomClosed; giving host to the current host does nothing.</returns>
-	internal Result<RoomOutcome> SetHost(UserRecord actor, OsuStableConnection? host)
+	internal Result<RoomOutcome> SetHost(UserRecord actor, StableConnection? host)
 	{
 		lock (_sync)
 		{

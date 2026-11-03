@@ -15,7 +15,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	private const int MaxLabelLength = 64;
 
 	private static readonly SessionType[] ClientTypes =
-		[SessionType.OsuStable, SessionType.OsuStableTourney, SessionType.Irc, SessionType.Api];
+		[SessionType.Stable, SessionType.StableTourney, SessionType.Irc, SessionType.Api];
 
 	/// <summary>Reads the sessions of this account.</summary>
 	/// <param name="page">Which part of the history to return.</param>

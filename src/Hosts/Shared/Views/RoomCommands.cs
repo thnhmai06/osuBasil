@@ -110,7 +110,7 @@ public static class RoomCommands
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Slots.SetTeamAsync(u, b.Team, ct))),
 		Command<UserRequest>("host", "Give the host to a player.", (r, b, s, ct) => WithUser(s, b.User, ct, u =>
 		{
-			var host = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u)?.OsuStable;
+			var host = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u)?.Stable;
 			return host is { IsOpen: true } ? r.Authority.SetHostAsync(host, ct) : Refuse(RoomOutcome.TargetOffline);
 		})),
 		Command<object?>("clearhost", "Remove the host.", (r, _, _, ct) => r.Authority.SetHostAsync(null, ct)),

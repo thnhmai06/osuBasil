@@ -25,7 +25,7 @@ internal interface IRoomLobbyPort
 	/// <summary>Gets the room a connection is seated in, or <see langword="null" />.</summary>
 	/// <param name="player">The player's game connection.</param>
 	/// <returns>The room containing the player, or <see langword="null" />.</returns>
-	Room? RoomOf(OsuStableConnection player);
+	Room? RoomOf(StableConnection player);
 
 	/// <summary>Tells the lobby the room has a player again, which cancels a pending close.</summary>
 	/// <param name="room">The room that is occupied.</param>
@@ -49,10 +49,10 @@ internal interface IRoomLobbyPort
 	///     The caller does not hold a room's scope, and releases the claim with <see cref="Release" /> when the seating
 	///     is over.
 	/// </remarks>
-	bool TryClaim(OsuStableConnection player, Room room);
+	bool TryClaim(StableConnection player, Room room);
 
 	/// <summary>Ends the claim a room made on a player, whatever the seating came to.</summary>
 	/// <param name="player">The player's game connection.</param>
 	/// <param name="room">The room that made the claim.</param>
-	void Release(OsuStableConnection player, Room room);
+	void Release(StableConnection player, Room room);
 }

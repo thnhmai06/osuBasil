@@ -89,7 +89,7 @@ not exist, an icon points to an external URL, or a user has no uploaded avatar.
 The request then falls through to the corresponding minimal-API route on the same host. These routes keep the
 private-resource checks and the mirror fallbacks.
 
-The routes are in `src/Hosts/Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `src/Hosts/OsuStable/Web/OsuWebRoutes.cs`.
+The routes are in `src/Hosts/Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `src/Hosts/Stable/Web/OsuWebRoutes.cs`.
 
 ### Fixed-size crops without query strings
 

@@ -14,7 +14,7 @@ This page describes the application model and its authorization rules. It does n
 |---|---|---|---|
 | General | `GeneralChannel` | `GeneralChannelRegistry` | Connections whose effective privileges satisfy the channel's read requirement |
 | Room | `RoomChannel` | `RoomChannels`, one per open room | Room participants and users allowed to observe the room |
-| Spectator | `SpectatorChannel` | `SpectatorChannels`, one per watched `OsuStableConnection` | The host and its spectators |
+| Spectator | `SpectatorChannel` | `SpectatorChannels`, one per watched `StableConnection` | The host and its spectators |
 | Private message | `PmChannel` | `PmChannels`, one per online user | The recipient's connections, except osu!tourney connections |
 
 General channels use configured names such as `#osu`; room and spectator channels use `#mp_{room id}` and `#spec_{user id}`. A private-message channel uses its owner's name without `#`. The room channel opens and closes with its room. A spectator channel is opened for a watched client when its first spectator joins and closed when that client closes. Chat opens a private-message channel when the online user is first needed and closes it when the user goes offline. The `User` owns the away message and private-message settings shared across its connections.
@@ -111,7 +111,7 @@ BasilBot is online with a permanent `User` and a `BotConnection` that the server
 * [`GeneralChannel.cs`](../../src/Application/Chat/Objects/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Chat/Objects/PmChannel.cs), [`PmChannels.cs`](../../src/Application/Chat/Registry/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
 * [`RoomChannel.cs`](../../src/Application/Chat/Objects/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Chat/Objects/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../src/Application/Chat/Registry/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
 * [`User.cs`](../../src/Application/Users/Objects/User.cs), [`ScopedUser.cs`](../../src/Application/Users/Capabilities/ScopedUser.cs): the user's online state (away message, connections)
-* [`ScopedOsuStableConnection.cs`](../../src/Application/Users/Capabilities/ScopedOsuStableConnection.cs): spectator operations
+* [`ScopedStableConnection.cs`](../../src/Application/Users/Capabilities/ScopedStableConnection.cs): spectator operations
 * [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs), [`RoomCountdown.cs`](../../src/Application/Multiplayer/Objects/Rooms/RoomCountdown.cs): room ownership and countdown
 
 ## See also

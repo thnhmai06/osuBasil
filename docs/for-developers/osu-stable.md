@@ -5,7 +5,7 @@
 Basil's osu! (stable) transport receives batches of binary packets through the osu! stable HTTP long-poll endpoint.
 
 The client-facing packet format is documented in [`protocol.md`](../for-client/osu-stable/protocol.md). This document describes
-how `Basil.Host.OsuStable` turns those packets into operations on the Application objects, and how the answers get back to
+how `Basil.Host.Stable` turns those packets into operations on the Application objects, and how the answers get back to
 the client.
 
 The pipeline for one request is:
@@ -13,7 +13,7 @@ The pipeline for one request is:
 ```text
 HTTP request on c.<domain> (or ce, c4, c5, c6)
     ↓
-no osu-token?  ──── yes ──► OsuStableLogin (a login) ──► cho-token header + first reply
+no osu-token?  ──── yes ──► StableLogin (a login) ──► cho-token header + first reply
     ↓ no
 open osu!/tourney connection for the token?  ── no ──► RestartServer packet (the client reconnects)
     ↓ yes
@@ -40,7 +40,7 @@ HTTP request.
 
 `PacketDispatcher` processes the request body sequentially.
 
-1. It splits the body into packets (`PacketReader.Split` of `Basil.Protocol.OsuStable`). A body that is malformed ends the
+1. It splits the body into packets (`PacketReader.Split` of `Basil.Protocol.Stable`). A body that is malformed ends the
    request quietly; nothing is applied.
 2. It gives each packet to `PacketHandlers`, in order.
 3. If handling a packet throws, the error is logged with the packet type and the user, and the next packet still runs.
@@ -64,7 +64,7 @@ operation, so a class each would only add files.
 
 * Packets any osu! or tournament connection may send (logout, stats and presence requests, tournament match info and
   channel joins) are handled first.
-* Packets of a regular osu! client (`OsuStableConnection`: status, friends, away message, channels, messages, lobby, spectating,
+* Packets of a regular osu! client (`StableConnection`: status, friends, away message, channels, messages, lobby, spectating,
   multiplayer) follow; a tournament client does not send them.
 * The multiplayer packets map onto the room's operations (`room.ScopeTo(connection)` and its parts: members, settings,
   authority, slots, rounds).
@@ -157,14 +157,14 @@ the room lock is held, so a subscriber never sees an older state after a newer o
 
 ## Adding a packet
 
-1. Find the packet type in `ClientPacketType` and the payload layout in `Basil.Protocol.OsuStable` (add the reader or model there
+1. Find the packet type in `ClientPacketType` and the payload layout in `Basil.Protocol.Stable` (add the reader or model there
    when the layout is new, with a protocol test: packet layouts are wire contracts).
 2. Add a case to `PacketHandlers` (in the partial file of its feature) that reads the payload and calls the operation on the
    scope of the object acted on.
 3. If the operation does not exist yet, add it to that object in Application, with its permission check and its outcome,
    and a test there.
 4. If clients must hear about the change, publish an Application event and add or extend a `Delivery` handler.
-5. Add a host test in `tests/Hosts/OsuStable` that sends the packet from a simulated client and checks what the client
+5. Add a host test in `tests/Hosts/Stable` that sends the packet from a simulated client and checks what the client
    receives.
 
 Do not introduce transport-specific persistence or business logic into the handler.
@@ -186,15 +186,15 @@ the connection) is answered with the `RestartServer` packet, which makes the cli
 
 | Component                  | Location |
 |----------------------------|----------|
-| Routes, request flow       | [`OsuStableRoutes.cs`](../../src/Hosts/OsuStable/OsuStableRoutes.cs) |
-| Login                      | [`OsuStableLogin.cs`](../../src/Hosts/OsuStable/Login/OsuStableLogin.cs) |
-| Packet dispatcher          | [`PacketDispatcher.cs`](../../src/Hosts/OsuStable/Packets/PacketDispatcher.cs) |
-| Packet handlers            | [`PacketHandlers.cs`](../../src/Hosts/OsuStable/Packets/PacketHandlers.cs), [`PacketHandlers.Multiplayer.cs`](../../src/Hosts/OsuStable/Packets/PacketHandlers.Multiplayer.cs) |
-| Outgoing queue             | [`Outbox.cs`](../../src/Hosts/OsuStable/Support/Outbox.cs) |
-| Event delivery             | [`UserDelivery.cs`](../../src/Hosts/OsuStable/Delivery/UserDelivery.cs), [`ChatDelivery.cs`](../../src/Hosts/OsuStable/Delivery/ChatDelivery.cs), [`RoomDelivery.cs`](../../src/Hosts/OsuStable/Delivery/RoomDelivery.cs) |
-| Wire format                | [`src/Protocol/OsuStable`](../../src/Protocol/OsuStable) |
+| Routes, request flow       | [`StableRoutes.cs`](../../src/Hosts/Stable/StableRoutes.cs) |
+| Login                      | [`StableLogin.cs`](../../src/Hosts/Stable/Login/StableLogin.cs) |
+| Packet dispatcher          | [`PacketDispatcher.cs`](../../src/Hosts/Stable/Packets/PacketDispatcher.cs) |
+| Packet handlers            | [`PacketHandlers.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.cs), [`PacketHandlers.Multiplayer.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.Multiplayer.cs) |
+| Outgoing queue             | [`Outbox.cs`](../../src/Hosts/Stable/Support/Outbox.cs) |
+| Event delivery             | [`UserDelivery.cs`](../../src/Hosts/Stable/Delivery/UserDelivery.cs), [`ChatDelivery.cs`](../../src/Hosts/Stable/Delivery/ChatDelivery.cs), [`RoomDelivery.cs`](../../src/Hosts/Stable/Delivery/RoomDelivery.cs) |
+| Wire format                | [`src/Protocol/Stable`](../../src/Protocol/Stable) |
 | Room runtime state         | [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs) |
 | Room race tests            | [`RoomConcurrencyTests.cs`](../../tests/Application/Multiplayer/Objects/Rooms/RoomConcurrencyTests.cs) |
-| Host tests                 | [`tests/Hosts/OsuStable`](../../tests/Hosts/OsuStable) |
+| Host tests                 | [`tests/Hosts/Stable`](../../tests/Hosts/Stable) |
 
 ---

@@ -18,7 +18,7 @@ If not, the test is coupled to an implementation detail.
 | Domain | `tests/Domain` | rules and values, no I/O |
 | Application | `tests/Application/<Module>` | outcomes, `Require`, locks, sessions, restrictions, room state |
 | Infrastructure | `tests/Infrastructure/<Module>` | repositories and storage against PostgreSQL and temporary files |
-| Protocol | `tests/Protocol/{OsuStable,Irc}` | wire bytes and text, round-tripped from hand-written pairs |
+| Protocol | `tests/Protocol/{Stable,Irc}` | wire bytes and text, round-tripped from hand-written pairs |
 | Host | `tests/Hosts/<Transport>` | the real transport in process over real sockets: osu! (stable) packets, IRC lines, REST status/envelope/SSE |
 | End-to-end | `tests/Hosts/Host` | several hosts together through the simulated clients |
 | Architecture | `tests/Architecture` | project graph, layering, composition and outcomes |
@@ -100,7 +100,7 @@ reply's key or rendered pattern, not a copy of the current English sentence.
 `tests/Architecture` enforces what the compiler does not: the module reference graph, layering inside a module, the
 absence of SQL text, the outcome convention and the composition. `HostGraphTests` enforces the host rules: every
 transport references `Basil.Host.Shared`, transports never reference each other, and Rest/Cli never reference
-`Protocol.OsuStable`. Each such rule has a positive control — an assertion that the opposite claim is detected — so a
+`Protocol.Stable`. Each such rule has a positive control — an assertion that the opposite claim is detected — so a
 rule that always passes is itself caught.
 
 ## REST contract tests (Postman)

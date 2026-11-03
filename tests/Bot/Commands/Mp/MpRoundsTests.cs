@@ -241,7 +241,7 @@ public sealed class MpRoundsTests
 	///     Opens a room as "Creator" (seated in slot 1 as host, targeting the room) and seats "Player" with
 	///     <c>!mp join</c>; a beatmap is selected on request through the room, as the creator.
 	/// </summary>
-	private static async Task<(Room Room, OsuStableConnection Creator, OsuStableConnection Player)> SetUpAsync(
+	private static async Task<(Room Room, StableConnection Creator, StableConnection Player)> SetUpAsync(
 		BotHarness bot,
 		bool withBeatmap = false)
 	{

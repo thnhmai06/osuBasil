@@ -183,7 +183,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	/// <summary>Runs the joined handler for every spectator of a client, as the event queue would.</summary>
-	private static async Task JoinBothAsync(TestApplication app, SpectatorChannels channels, OsuStableConnection host)
+	private static async Task JoinBothAsync(TestApplication app, SpectatorChannels channels, StableConnection host)
 	{
 		var handler = new SpectatorJoinedHandler(channels);
 		foreach (var @event in app.UserEvents.Events.OfType<UserSpectatorJoined>()

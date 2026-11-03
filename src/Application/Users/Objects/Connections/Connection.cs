@@ -107,7 +107,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 }
 
 /// <summary>A connection from an osu! game client.</summary>
-public sealed class OsuStableConnection : Connection
+public sealed class StableConnection : Connection
 {
 	private readonly Lock _spectating = new();
 	private readonly ConcurrentSet<Connection> _spectators = [];
@@ -117,7 +117,7 @@ public sealed class OsuStableConnection : Connection
 	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="context">The runtime dependencies for the connection's behaviour.</param>
-	internal OsuStableConnection(SessionRecord login, string token, int utcOffset, ConnectionContext context) : base(
+	internal StableConnection(SessionRecord login, string token, int utcOffset, ConnectionContext context) : base(
 		login,
 		token)
 	{
@@ -129,7 +129,7 @@ public sealed class OsuStableConnection : Connection
 	internal ConnectionContext Context { get; }
 
 	/// <inheritdoc />
-	public override SessionType Type => SessionType.OsuStable;
+	public override SessionType Type => SessionType.Stable;
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; }
@@ -153,9 +153,9 @@ public sealed class OsuStableConnection : Connection
 	/// <summary>Scopes this client's behaviour to a connection.</summary>
 	/// <param name="actor">The connection acting on this client.</param>
 	/// <returns>A short-lived scope for this client and connection.</returns>
-	public ScopedOsuStableConnection ScopeTo(Connection actor)
+	public ScopedStableConnection ScopeTo(Connection actor)
 	{
-		return new ScopedOsuStableConnection(this, actor);
+		return new ScopedStableConnection(this, actor);
 	}
 
 	/// <summary>Enters the scope in which the client's spectators change one at a time.</summary>
@@ -187,7 +187,7 @@ public sealed class TourneyConnection : Connection
 	}
 
 	/// <inheritdoc />
-	public override SessionType Type => SessionType.OsuStableTourney;
+	public override SessionType Type => SessionType.StableTourney;
 }
 
 /// <summary>A connection from an IRC client.</summary>

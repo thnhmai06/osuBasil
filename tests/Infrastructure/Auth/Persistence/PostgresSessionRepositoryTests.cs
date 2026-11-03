@@ -34,7 +34,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 
-		await Sessions.RecordAsync(new SessionRecord(FirstId, user, SessionType.OsuStable, First,
+		await Sessions.RecordAsync(new SessionRecord(FirstId, user, SessionType.Stable, First,
 				new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential())),
 			TestContext.Current.CancellationToken);
 
@@ -48,7 +48,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var row = rows[0];
 		Assert.Equal(FirstId.ToString(), row.Text("id"));
 		Assert.Equal(user.Id, row.Number("user_id"));
-		Assert.Equal((int)SessionType.OsuStable, row.Number("type"));
+		Assert.Equal((int)SessionType.Stable, row.Number("type"));
 		Assert.Equal("192.0.2.10", row.Text("ip"));
 		Assert.Null(row["client_info"]);
 		Assert.Equal(First, row.Instant("started_at"));
@@ -108,7 +108,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 
 		Assert.Equal(3, page.Total);
 		Assert.Equal(ThirdId, page.Items[0].Id);
-		Assert.Equal(SessionType.OsuStable, page.Items[0].Type);
+		Assert.Equal(SessionType.Stable, page.Items[0].Type);
 		Assert.Equal(Third, page.Items[0].StartedAt);
 		Assert.Equal(Second, page.Items[1].StartedAt);
 		Assert.Equal(First, page.Items[2].StartedAt);
@@ -283,7 +283,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		await RecordAsync(user, First, FirstId);
 		await RecordTokenAsync(user, SecondId, SessionType.Api, Hash);
 
-		await Sessions.EndAsync(user, null, null, [SessionType.OsuStable, SessionType.Api], Third,
+		await Sessions.EndAsync(user, null, null, [SessionType.Stable, SessionType.Api], Third,
 			SessionEndReason.Revoked, true, cancel);
 
 		var osu = (await Sessions.GetAsync(user, FirstId, cancel))!;
@@ -300,7 +300,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordAsync(user, First, FirstId);
 
-		await Sessions.EndAsync(user, null, null, [SessionType.OsuStable], Third, SessionEndReason.CredentialsChanged,
+		await Sessions.EndAsync(user, null, null, [SessionType.Stable], Third, SessionEndReason.CredentialsChanged,
 			false, cancel);
 
 		Assert.False((await Sessions.GetAsync(user, FirstId, cancel))!.MustReauthenticate);
@@ -312,7 +312,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordAsync(user, First, FirstId);
-		await Sessions.EndAsync(user, null, null, [SessionType.OsuStable], Third, SessionEndReason.Revoked, true,
+		await Sessions.EndAsync(user, null, null, [SessionType.Stable], Third, SessionEndReason.Revoked, true,
 			cancel);
 		var device = new DeviceId("4a8a08f09d37b73795649038408b5f33", "f97c5d29941bfb1b2fdab0874906ab82");
 
@@ -348,7 +348,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		await RecordAsync(user, First, ThirdId);
 		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Second, SessionEndReason.LoggedOut, false,
 			cancel);
-		await Sessions.EndAsync(user, ThirdId, null, [SessionType.OsuStable], Second, SessionEndReason.Revoked, true,
+		await Sessions.EndAsync(user, ThirdId, null, [SessionType.Stable], Second, SessionEndReason.Revoked, true,
 			cancel);
 
 		var deleted = await Sessions.DeleteEndedBeforeAsync(Third, cancel);
@@ -406,7 +406,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	/// <param name="timestamp">The moment of the login.</param>
 	private async Task RecordAsync(UserRecord user, DateTimeOffset timestamp, Guid id)
 	{
-		await Sessions.RecordAsync(new SessionRecord(id, user, SessionType.OsuStable, timestamp,
+		await Sessions.RecordAsync(new SessionRecord(id, user, SessionType.Stable, timestamp,
 				new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential())),
 			TestContext.Current.CancellationToken);
 	}

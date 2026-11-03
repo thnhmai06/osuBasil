@@ -17,10 +17,10 @@ namespace Basil.Bot.Tests.Support;
 /// <param name="Player">A seated player who holds no authority.</param>
 internal sealed record StaffRoom(
 	Room Room,
-	OsuStableConnection Creator,
-	OsuStableConnection Referee,
+	StableConnection Creator,
+	StableConnection Referee,
 	UserRecord OfflineReferee,
-	OsuStableConnection Player)
+	StableConnection Player)
 {
 	/// <summary>Opens a room and the people around it; their names start with the room's name.</summary>
 	/// <param name="bot">The harness the room lives in.</param>

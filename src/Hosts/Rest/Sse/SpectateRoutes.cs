@@ -34,7 +34,7 @@ internal static class SpectateRoutes
 	{
 		if (await users.GetAsync(id, context.RequestAborted) is not { } record) return Api.NotFound("No such user.");
 
-		var host = registry.Of(record).OsuStable;
+		var host = registry.Of(record).Stable;
 		if (host is not { IsOpen: true })
 			return Api.Error(StatusCodes.Status409Conflict, "targetOffline", "The player is not in game.");
 

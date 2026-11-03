@@ -40,12 +40,12 @@ CI và CodeFactor tới xanh.
 - R1: `Restarter.UnderManager()` dùng `Microsoft.Extensions.Hosting.Systemd.SystemdHelpers.IsSystemdService()` (cha là
   systemd) hoặc container; bỏ `INVOCATION_ID`. R2: relaunch bằng `Environment.GetCommandLineArgs()` (giữ dll khi host là
   `dotnet`). Test hồi quy qua seam môi trường/tiến trình.
-- C1: `WebAuthentication` giữ cache trong Host.OsuStable: `ConditionalWeakTable<OsuStableConnection, Md5>` lưu MD5 đã verify
+- C1: `WebAuthentication` giữ cache trong Host.Stable: `ConditionalWeakTable<StableConnection, Md5>` lưu MD5 đã verify
   BCrypt thành công (sống cùng kết nối; đổi mật khẩu đóng session ⇒ kết nối mới ⇒ tự hủy); request sau so sánh
   `CryptographicOperations.FixedTimeEquals`. Không thêm state vào object Application. Tra user theo mẫu sẵn có
   `users.GetByNameAsync(...)` + `registry.Of(record)` (như `PacketHandlers.Chat.cs` `PrivateMessageAsync`), bỏ quét
   `Online.Values`.
-- C2: IRC `Channel.CreateBounded` + OsuStable `Outbox` có trần (số packet/bytes); vượt trần ⇒ đóng kết nối (client chậm).
+- C2: IRC `Channel.CreateBounded` + Stable `Outbox` có trần (số packet/bytes); vượt trần ⇒ đóng kết nối (client chậm).
 - C3: `RateLimiter` dọn key rỗng/hết hạn (quét định kỳ theo `TimeProvider`, giới hạn số key).
 - C4: Kestrel `AddServerHeader=false`, `MaxRequestBodySize` theo `Uploads.OszMaxSize` cho route upload (giới hạn chung
   nhỏ), HSTS khi HTTPS công khai. Không thêm giới hạn kết nối toàn cục (đã có giới hạn theo IP trong settings).
@@ -93,9 +93,9 @@ Sau khi hai track xong: tôi merge, nối phần host của Default permissions 
 `identity-permissions.md`), container check, build + test + push + CI + CodeFactor.
 
 ## Đợt 3 — hai track Sonnet song song + tôi
-**Track C (Sonnet)** — 6.4 enum Domain tách wire: Protocol.OsuStable khai báo enum wire (Mods, Privileges, GameMode,
+**Track C (Sonnet)** — 6.4 enum Domain tách wire: Protocol.Stable khai báo enum wire (Mods, Privileges, GameMode,
 ranked status, slot status, team, team type, win condition, action, login reply, country) + ánh xạ hai chiều có test
-byte-pair; Domain giữ giá trị tường minh ổn định (DB lưu Domain). Quét mọi cast Domain↔Protocol trong `Host.OsuStable`.
+byte-pair; Domain giữ giá trị tường minh ổn định (DB lưu Domain). Quét mọi cast Domain↔Protocol trong `Host.Stable`.
 Kiểm `UserPrivileges.Tournament` trùng bit `mode << 5`. Sửa `identity-permissions.md` ("values stay wire bits").
 **Track D (Sonnet)** — 6.7 appsettings theo `~/Desktop/basil/example_appsettings.json`: Kestrel chuẩn
 (`Endpoints`/`Certificates`), `Basil:Server{Name,Domain,TrustedProxies,Irc.Port,Multicast{…, Enabled=false mặc định}}`,

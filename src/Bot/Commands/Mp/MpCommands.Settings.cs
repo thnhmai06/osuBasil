@@ -58,7 +58,7 @@ internal sealed partial class MpCommands
 			: null;
 	}
 
-	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, OsuStableConnection player,
+	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, StableConnection player,
 		bool showTeam)
 	{
 		var tags = new List<string>();

@@ -27,14 +27,14 @@
 	</Folder>
 	<Folder Name="/Sources/Hosts/">
 		<Project Path="src/Hosts/Host/Basil.Host.csproj"/>
-		<Project Path="src/Hosts/OsuStable/Basil.Host.OsuStable.csproj"/>
+		<Project Path="src/Hosts/Stable/Basil.Host.Stable.csproj"/>
 		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
 		<Project Path="src/Hosts/Rest/Basil.Host.Rest.csproj"/>
 		<Project Path="src/Hosts/Cli/Basil.Host.Cli.csproj"/>
 		<Project Path="src/Hosts/Shared/Basil.Host.Shared.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
-		<Project Path="src/Protocol/OsuStable/Basil.Protocol.OsuStable.csproj"/>
+		<Project Path="src/Protocol/Stable/Basil.Protocol.Stable.csproj"/>
 		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/">
@@ -57,7 +57,7 @@
 		<Project Path="tests/Application/Users/Basil.Application.Users.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Hosts/">
-		<Project Path="tests/Hosts/OsuStable/Basil.Host.OsuStable.Tests.csproj"/>
+		<Project Path="tests/Hosts/Stable/Basil.Host.Stable.Tests.csproj"/>
 		<Project Path="tests/Hosts/Cli/Basil.Host.Cli.Tests.csproj"/>
 		<Project Path="tests/Hosts/Host/Basil.Host.Tests.csproj"/>
 		<Project Path="tests/Hosts/Irc/Basil.Host.Irc.Tests.csproj"/>
@@ -81,7 +81,7 @@
 		<Project Path="tests/Domain/Basil.Domain.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Protocol/">
-		<Project Path="tests/Protocol/OsuStable/Basil.Protocol.OsuStable.Tests.csproj"/>
+		<Project Path="tests/Protocol/Stable/Basil.Protocol.Stable.Tests.csproj"/>
 		<Project Path="tests/Protocol/Irc/Basil.Protocol.Irc.Tests.csproj"/>
 	</Folder>
 </Solution>

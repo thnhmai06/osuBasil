@@ -22,9 +22,9 @@ internal sealed class RestrictionHandler(
 		if (user is null || user.EffectivePermissions(time.GetUtcNow()).Allows(UserPermissions.SpectatingWatch))
 			return ValueTask.CompletedTask;
 
-		if (user.OsuStable is { } osuStable && registry.FindSpectating(osuStable) is { } host)
+		if (user.Stable is { } stable && registry.FindSpectating(stable) is { } host)
 			HandlerStep.Run(logger, "stop spectating", Subject, user.Record.Id,
-				() => host.ScopeTo(osuStable).StopSpectating(), cancellationToken);
+				() => host.ScopeTo(stable).StopSpectating(), cancellationToken);
 
 		foreach (var connection in user.Tourneys)
 			if (registry.FindSpectating(connection) is { } spectated)

@@ -168,8 +168,8 @@ public sealed class Server
 
 		var context = Context.Connections;
 		var recipients = (to is null
-				? context.Registry.OpenOsuStableClients()
-				: to.Select(context.Registry.OpenOsuStableClient).OfType<OsuStableConnection>())
+				? context.Registry.OpenStableClients()
+				: to.Select(context.Registry.OpenStableClient).OfType<StableConnection>())
 			.ToList();
 		if (recipients.Count == 0) return 0;
 

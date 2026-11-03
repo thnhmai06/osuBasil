@@ -15,5 +15,5 @@ public interface IAnticheatReporter
 	///     signs of cheating the server announces them, and whoever warns the room's chat, the referees and the creator
 	///     finds the room itself.
 	/// </remarks>
-	OsuFlags Report(OsuStableConnection player, OsuFlags flags);
+	OsuFlags Report(StableConnection player, OsuFlags flags);
 }

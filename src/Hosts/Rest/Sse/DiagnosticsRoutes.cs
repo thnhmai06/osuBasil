@@ -28,7 +28,7 @@ internal static class DiagnosticsRoutes
 				(HttpContext c, string category, Server server) => StreamAsync(c, server, category)).Sse()
 			.WithSummary("Watch one diagnostics category.")
 			.WithDescription("""
-			                 The categories are process, gc, threadpool, runtime, exceptions, http, application, database, osuStable, irc, events and sessions. Streamed like the full diagnostics.
+			                 The categories are process, gc, threadpool, runtime, exceptions, http, application, database, stable, irc, events and sessions. Streamed like the full diagnostics.
 			                 """);
 		diagnostics.MapPost("/{category}/{**action}", ActionAsync)
 			.WithSummary("Run a maintenance action.")

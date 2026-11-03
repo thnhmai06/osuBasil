@@ -49,16 +49,16 @@ public sealed class UserRegistry
 	/// <summary>Gets the open osu! game client of an online user.</summary>
 	/// <param name="user">The account to look up.</param>
 	/// <returns>The open game client, or <see langword="null" /> when the user has none.</returns>
-	public OsuStableConnection? OpenOsuStableClient(UserRecord user)
+	public StableConnection? OpenStableClient(UserRecord user)
 	{
-		return _online.GetValueOrDefault(user)?.OsuStable is { IsOpen: true } client ? client : null;
+		return _online.GetValueOrDefault(user)?.Stable is { IsOpen: true } client ? client : null;
 	}
 
 	/// <summary>Gets the open osu! game client of every online user.</summary>
 	/// <returns>The open game clients.</returns>
-	public IEnumerable<OsuStableConnection> OpenOsuStableClients()
+	public IEnumerable<StableConnection> OpenStableClients()
 	{
-		return _online.Keys.Select(OpenOsuStableClient).OfType<OsuStableConnection>();
+		return _online.Keys.Select(OpenStableClient).OfType<StableConnection>();
 	}
 
 	/// <summary>Finds the open connection a token identifies.</summary>
@@ -72,11 +72,11 @@ public sealed class UserRegistry
 	/// <summary>Finds the osu! client a connection is spectating.</summary>
 	/// <param name="connection">The connection to look up.</param>
 	/// <returns>The online osu! client being spectated, or <see langword="null" /> when the connection is not spectating.</returns>
-	public OsuStableConnection? FindSpectating(Connection connection)
+	public StableConnection? FindSpectating(Connection connection)
 	{
 		// ponytail: scans every online osu! client; add an index if the online count grows large.
 		return _online.Values
-			.Select(user => user.OsuStable)
+			.Select(user => user.Stable)
 			.FirstOrDefault(host => host is not null && host.Spectators.Contains(connection));
 	}
 
@@ -150,7 +150,7 @@ public sealed class UserRegistry
 				throw new ArgumentException("The bot's connection cannot be requested.", nameof(type));
 			case SessionType.Irc:
 				throw new ArgumentException("An IRC client signs in with a key, not a password.", nameof(type));
-			case SessionType.OsuStable or SessionType.OsuStableTourney when client is null:
+			case SessionType.Stable or SessionType.StableTourney when client is null:
 				throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 		}
 	}
@@ -267,8 +267,8 @@ public sealed class UserRegistry
 	{
 		return session.Type switch
 		{
-			SessionType.OsuStable => new OsuStableConnection(session, token, utcOffset, _connectionContext),
-			SessionType.OsuStableTourney => new TourneyConnection(session, token),
+			SessionType.Stable => new StableConnection(session, token, utcOffset, _connectionContext),
+			SessionType.StableTourney => new TourneyConnection(session, token),
 			SessionType.Irc => new IrcConnection(session, token),
 			_ => new ApiConnection(session, token, lifetime)
 		};
@@ -326,7 +326,7 @@ public sealed class UserRegistry
 	/// </remarks>
 	public void Close(Connection connection, SessionEndReason reason)
 	{
-		if (reason is SessionEndReason.LoggedOut && connection is OsuStableConnection &&
+		if (reason is SessionEndReason.LoggedOut && connection is StableConnection &&
 		    _context.Clock.GetUtcNow() - connection.Session.StartedAt < IgnoreLogoutWithin)
 			return;
 
@@ -465,7 +465,7 @@ public sealed class UserRegistry
 
 		// The online user holds the current record; a login may have read an older one.
 		var record = _online.GetValueOrDefault(connection.Record)?.Record ?? connection.Record;
-		if (connection.Type is SessionType.OsuStableTourney &&
+		if (connection.Type is SessionType.StableTourney &&
 		    !record.Value.Permissions.Effective(restrictions, _context.Clock.GetUtcNow())
 			    .Allows(UserPermissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
@@ -520,7 +520,7 @@ public sealed class UserRegistry
 			         .Where(connection => connection.IsOpen && connection.Session.Id != except &&
 			                              (only is null || connection.Session.Id == only)).ToList())
 		{
-			if (requireReauthentication && connection.Type is SessionType.OsuStable or SessionType.OsuStableTourney)
+			if (requireReauthentication && connection.Type is SessionType.Stable or SessionType.StableTourney)
 				connection.RequireReauthentication();
 
 			Close(connection, reason);
@@ -602,7 +602,7 @@ public sealed class UserRegistry
 		connection.IsOpen = false;
 		Unindex(connection);
 		connection.User.Remove(connection);
-		if (connection is OsuStableConnection client)
+		if (connection is StableConnection client)
 			client.ReleaseSpectators();
 
 		var wentOffline = !connection.User.Connections.Any();

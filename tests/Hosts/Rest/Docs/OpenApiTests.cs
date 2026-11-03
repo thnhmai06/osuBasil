@@ -56,7 +56,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 		}
 	}
 
-	private async Task<JsonNode> OsuStableDocumentAsync()
+	private async Task<JsonNode> StableDocumentAsync()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 		using var response = await client.GetAsync("/openapi/osu-stable.json");
@@ -77,17 +77,17 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	[InlineData("/d/{setId}", "get")]
 	[InlineData("/users", "post")]
 	[InlineData("/", "post")]
-	public async Task OsuStableDocument_ListsTheEndpointsTheClientCalls(string path, string method)
+	public async Task StableDocument_ListsTheEndpointsTheClientCalls(string path, string method)
 	{
-		var paths = (await OsuStableDocumentAsync())["paths"]!.AsObject();
+		var paths = (await StableDocumentAsync())["paths"]!.AsObject();
 
 		Assert.NotNull(paths[path]?[method]);
 	}
 
 	[Fact]
-	public async Task OsuStableDocument_ListsThePacketsByTheirIds_AndEverySummaryIsOneSentence()
+	public async Task StableDocument_ListsThePacketsByTheirIds_AndEverySummaryIsOneSentence()
 	{
-		var document = await OsuStableDocumentAsync();
+		var document = await StableDocumentAsync();
 		var paths = document["paths"]!.AsObject();
 
 		Assert.Contains("| 0 | `ChangeAction` |", (string?)paths["/"]!["post"]!["description"]);
@@ -104,7 +104,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	public async Task TheTwoDocuments_DoNotListEachOthersEndpoints()
 	{
 		var rest = (await DocumentAsync())["paths"]!.AsObject();
-		var osu = (await OsuStableDocumentAsync())["paths"]!.AsObject();
+		var osu = (await StableDocumentAsync())["paths"]!.AsObject();
 
 		Assert.All(rest, path => Assert.StartsWith("/v1/", path.Key));
 		Assert.DoesNotContain(osu, path => path.Key.StartsWith("/v1/", StringComparison.Ordinal));

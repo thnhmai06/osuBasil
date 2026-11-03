@@ -26,12 +26,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>How long before an empty tournament room closes the lobby announces its closing a second time.</summary>
 	internal static readonly TimeSpan EmptyRoomWarningBefore = TimeSpan.FromMinutes(5);
 
-	private readonly Dictionary<OsuStableConnection, Room> _claims = [];
+	private readonly Dictionary<StableConnection, Room> _claims = [];
 
 	private readonly HashSet<int> _reserved = [];
 	private readonly ConcurrentDictionary<int, Room> _rooms = new();
 	private readonly Lock _sync = new();
-	private readonly ConcurrentSet<OsuStableConnection> _watchers = [];
+	private readonly ConcurrentSet<StableConnection> _watchers = [];
 
 	/// <summary>Creates the lobby and its runtime dependencies.</summary>
 	/// <param name="context">The ports through which the lobby performs its behaviour.</param>
@@ -47,12 +47,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	public IReadOnlyDictionary<int, Room> Rooms => _rooms;
 
 	/// <summary>Gets the osu! clients watching the multiplayer lobby.</summary>
-	public IReadOnlySet<OsuStableConnection> Watchers => _watchers;
+	public IReadOnlySet<StableConnection> Watchers => _watchers;
 
 	/// <summary>Gets the osu! clients watching the multiplayer lobby, for changing them.</summary>
-	internal ISet<OsuStableConnection> MutableWatchers => _watchers;
+	internal ISet<StableConnection> MutableWatchers => _watchers;
 
-	Room? IRoomLobbyPort.RoomOf(OsuStableConnection player)
+	Room? IRoomLobbyPort.RoomOf(StableConnection player)
 	{
 		return RoomOf(player);
 	}
@@ -72,12 +72,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		Close(room, actor);
 	}
 
-	bool IRoomLobbyPort.TryClaim(OsuStableConnection player, Room room)
+	bool IRoomLobbyPort.TryClaim(StableConnection player, Room room)
 	{
 		return TryClaim(player, room);
 	}
 
-	void IRoomLobbyPort.Release(OsuStableConnection player, Room room)
+	void IRoomLobbyPort.Release(StableConnection player, Room room)
 	{
 		Release(player, room);
 	}
@@ -101,7 +101,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>Finds the room a player is seated in.</summary>
 	/// <param name="player">The player's game connection.</param>
 	/// <returns>The room containing the player, or <see langword="null" />.</returns>
-	public Room? RoomOf(OsuStableConnection player)
+	public Room? RoomOf(StableConnection player)
 	{
 		// ponytail: scans every room; add a player index if room counts grow large.
 		return _rooms.Values.FirstOrDefault(room => room.Slots.Find(player) is not null);
@@ -130,9 +130,9 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <remarks>
 	///     Seated players are found by <see cref="RoomOf" />; this covers only the moment between a room's check and its
 	///     seating. The caller holds no room's scope, and ends the claim with
-	///     <see cref="Release(OsuStableConnection, Room)" />.
+	///     <see cref="Release(StableConnection, Room)" />.
 	/// </remarks>
-	internal bool TryClaim(OsuStableConnection player, Room room)
+	internal bool TryClaim(StableConnection player, Room room)
 	{
 		using var scope = _sync.EnterScope();
 		return _claims.TryAdd(player, room) || ReferenceEquals(_claims[player], room);
@@ -141,7 +141,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>Ends the claim a room made on a player.</summary>
 	/// <param name="player">The player's game connection.</param>
 	/// <param name="room">The room that made the claim.</param>
-	internal void Release(OsuStableConnection player, Room room)
+	internal void Release(StableConnection player, Room room)
 	{
 		using var scope = _sync.EnterScope();
 		if (_claims.TryGetValue(player, out var claimed) && ReferenceEquals(claimed, room)) _claims.Remove(player);
@@ -190,7 +190,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>Stops a closed connection watching the lobby; no rights are needed because the server itself calls it.</summary>
 	/// <param name="connection">The closed connection that stopped watching.</param>
 	/// <remarks>User-initiated unwatching goes through <see cref="ScopedLobby.Unwatch" />.</remarks>
-	public void Unwatch(OsuStableConnection connection)
+	public void Unwatch(StableConnection connection)
 	{
 		if (MutableWatchers.Remove(connection)) Context.Events.Publish(new LobbyWatcherLeft(connection));
 	}
@@ -302,7 +302,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>Seats an online creator in a room and makes them its host.</summary>
 	/// <param name="room">The room to join.</param>
 	/// <param name="creator">The creator's osu! connection.</param>
-	internal static void SeatCreator(Room room, OsuStableConnection creator)
+	internal static void SeatCreator(Room room, StableConnection creator)
 	{
 		if (room.Seat(creator) is null) return;
 		room.Authority.Host = creator;
@@ -315,7 +315,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	{
 		switch (connection)
 		{
-			case OsuStableConnection player:
+			case StableConnection player:
 			{
 				RoomOf(player)?.Leave(player);
 				break;

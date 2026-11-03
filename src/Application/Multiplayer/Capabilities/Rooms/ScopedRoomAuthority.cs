@@ -45,7 +45,7 @@ public sealed class ScopedRoomAuthority
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>Giving host to the current host does nothing.</remarks>
-	public Task<Result<RoomOutcome>> SetHostAsync(OsuStableConnection? host,
+	public Task<Result<RoomOutcome>> SetHostAsync(StableConnection? host,
 		CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.HostTransfer) ??

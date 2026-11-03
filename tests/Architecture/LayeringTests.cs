@@ -28,7 +28,7 @@ public class LayeringTests
 	private const string Storage = @"^Basil\.Application\.\w+\.Storage";
 	private const string InfrastructureWorkers = @"^Basil\.Infrastructure\.\w+\.Workers";
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
-	private static readonly Assembly ProtocolOsuStable = typeof(Protocol.OsuStable.AssemblyMarker).Assembly;
+	private static readonly Assembly ProtocolStable = typeof(Protocol.Stable.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
 	private static readonly Assembly BotAssembly = Assembly.Load(Bot);
 
@@ -51,11 +51,11 @@ public class LayeringTests
 	}
 
 	[Theory]
-	[InlineData("OsuStable")]
+	[InlineData("Stable")]
 	[InlineData("Irc")]
 	public void Protocol_DependsOnNoOtherProject(string protocol)
 	{
-		var assembly = protocol == "OsuStable" ? ProtocolOsuStable : ProtocolIrc;
+		var assembly = protocol == "Stable" ? ProtocolStable : ProtocolIrc;
 		AssertNoDependency(assembly, ["Basil.Domain", .. ModuleRoots, Host, Bot]);
 	}
 

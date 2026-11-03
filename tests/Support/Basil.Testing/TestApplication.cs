@@ -254,7 +254,7 @@ public sealed class TestApplication : IDisposable
 		return bot;
 	}
 
-	/// <summary>Creates a valid osu! client descriptor for OsuStable and OsuTourney logins.</summary>
+	/// <summary>Creates a valid osu! client descriptor for Stable and OsuTourney logins.</summary>
 	/// <returns>A stable client descriptor with valid fingerprint values.</returns>
 	public static OsuClient CreateClient()
 	{
@@ -276,7 +276,7 @@ public sealed class TestApplication : IDisposable
 	{
 		if (type is SessionType.Irc) return OpenIrcAsync(username);
 
-		var client = type is SessionType.OsuStable or SessionType.OsuStableTourney ? CreateClient() : null;
+		var client = type is SessionType.Stable or SessionType.StableTourney ? CreateClient() : null;
 		return Users.LoginAsync(new LoginAttempt(username, PasswordHash(password)), type, IPAddress.Loopback,
 			client, 0);
 	}

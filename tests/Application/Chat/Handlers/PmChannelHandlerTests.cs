@@ -29,7 +29,7 @@ public sealed class PmChannelHandlerTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("TourneyObserver", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		await app.LoginAsync(record, SessionType.OsuStableTourney);
+		await app.LoginAsync(record, SessionType.StableTourney);
 		var opened = Assert.Single(app.UserEvents.Events.OfType<UserConnectionOpened>());
 
 		await new PmConnectionOpenedHandler(app.PmChannels).Handle(opened, TestContext.Current.CancellationToken);
@@ -43,7 +43,7 @@ public sealed class PmChannelHandlerTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("StillHere", "password");
 		var irc = await app.LoginAsync(record, SessionType.Irc);
-		var osuStable = await app.LoginAsync(record, SessionType.OsuStable);
+		var stable = await app.LoginAsync(record, SessionType.Stable);
 		var owner = app.Users.Of(record);
 		var channel = app.PmChannels.Of(owner);
 		app.Users.Close(irc, SessionEndReason.ConnectionLost);
@@ -53,7 +53,7 @@ public sealed class PmChannelHandlerTests
 		await new PmConnectionClosedHandler(app.PmChannels).Handle(closed, TestContext.Current.CancellationToken);
 
 		Assert.DoesNotContain(irc, channel.Members);
-		Assert.Contains(osuStable, channel.Members);
+		Assert.Contains(stable, channel.Members);
 		Assert.False(channel.IsClosed);
 		Assert.Same(channel, app.PmChannels.Find(owner));
 	}

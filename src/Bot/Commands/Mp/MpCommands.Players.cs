@@ -57,7 +57,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var host = registry.Online.GetValueOrDefault(target)?.OsuStable;
+		var host = registry.Online.GetValueOrDefault(target)?.Stable;
 		var outcome = host is not { IsOpen: true }
 			? RoomOutcome.TargetOffline
 			: await room.ScopeTo(actor).Authority.SetHostAsync(host, cancellationToken);

@@ -102,7 +102,7 @@ public sealed partial class Room
 	{
 		Settings.Editable.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
 		// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
-		if (freemods && actor is OsuStableConnection caller && Slots.Find(caller) is { } callerSlot)
+		if (freemods && actor is StableConnection caller && Slots.Find(caller) is { } callerSlot)
 			callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
 	}
 

@@ -359,7 +359,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APlayerWhoLeftAPrivateOpenRoom_LosesTheViewWhileItStaysOpen()
 	{
 		using var app = new TestApplication();
-		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), SessionType.OsuStable);
+		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), SessionType.Stable);
 		var (room, result) = await OpenAsync(app, creator);
 		Assert.True(result.IsOk);
 		Assert.True((await room!.ScopeTo(creator).Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: true),

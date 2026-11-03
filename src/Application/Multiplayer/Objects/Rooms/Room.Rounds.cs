@@ -67,7 +67,7 @@ public sealed partial class Room
 			if (IsClosed || !ReferenceEquals(Rounds.Countdown, countdown)) return;
 
 			CancelCountdown(null);
-			(Round Round, IReadOnlyList<OsuStableConnection> Players)? started = null;
+			(Round Round, IReadOnlyList<StableConnection> Players)? started = null;
 			var result = RoomOutcome.Ok;
 			if (countdown.StartsRound)
 			{
@@ -117,7 +117,7 @@ public sealed partial class Room
 
 	/// <summary>Begins a round and marks the seated players who have the beatmap as playing.</summary>
 	/// <returns>The new round and the players taking part.</returns>
-	internal (Round Round, IReadOnlyList<OsuStableConnection> Players) BeginRound()
+	internal (Round Round, IReadOnlyList<StableConnection> Players) BeginRound()
 	{
 		var round = new Round
 		{
@@ -132,7 +132,7 @@ public sealed partial class Room
 		Rounds.AllLoadedAnnounced = false;
 		Rounds.AllSkippedAnnounced = false;
 
-		var players = new List<OsuStableConnection>();
+		var players = new List<StableConnection>();
 		foreach (var slot in Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
 		{
 			slot.SetStatus(RoomSlotStatus.Playing);

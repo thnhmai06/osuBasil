@@ -26,8 +26,8 @@ public sealed record RoomPlayerBanned(
 	UserRecord Actor,
 	UserRecord Player,
 	int? Vacated,
-	OsuStableConnection? Evicted,
-	OsuStableConnection? Host,
+	StableConnection? Evicted,
+	StableConnection? Host,
 	RoomRoundProgress? RoundProgress)
 	: RoomAccessEvent(Room);
 

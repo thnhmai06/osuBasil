@@ -348,7 +348,7 @@ public sealed class MpSettingsTests
 	///     the slot number to 2 characters on the right, the status to 10 on the left, the user id to 6 on the right and
 	///     the name to 16 on the left.
 	/// </summary>
-	private static string SlotLine(BotHarness bot, int slot, OsuStableConnection player, bool isHost)
+	private static string SlotLine(BotHarness bot, int slot, StableConnection player, bool isHost)
 	{
 		return bot.Text(MpReplies.SettingsSlot, new
 		{

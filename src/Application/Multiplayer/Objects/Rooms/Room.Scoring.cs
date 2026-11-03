@@ -56,7 +56,7 @@ public sealed partial class Room
 	/// <summary>Starts the settlement of a round with the players who took part in it.</summary>
 	/// <param name="round">The round that started.</param>
 	/// <param name="players">The players taking part.</param>
-	private void BeginSettlement(Round round, IReadOnlyList<OsuStableConnection> players)
+	private void BeginSettlement(Round round, IReadOnlyList<StableConnection> players)
 	{
 		DecideForClosing();
 		Rounds.Settlement?.Close();

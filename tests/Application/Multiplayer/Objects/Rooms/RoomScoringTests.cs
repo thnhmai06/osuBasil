@@ -37,13 +37,13 @@ public sealed class RoomScoringTests
 		return (app, setup);
 	}
 
-	private static async Task CompleteAsync(RoomFixture setup, params OsuStableConnection[] players)
+	private static async Task CompleteAsync(RoomFixture setup, params StableConnection[] players)
 	{
 		foreach (var player in players)
 			Assert.True((await setup.Room.ScopeTo(player).Rounds.CompleteAsync(Token)).IsOk);
 	}
 
-	private static ScoreRecord ScoreOf(int id, OsuStableConnection player, int total = 1000)
+	private static ScoreRecord ScoreOf(int id, StableConnection player, int total = 1000)
 	{
 		return RoomFixture.PlayerScore(id, player.Record, RoomFixture.Beatmap.Hash, total);
 	}

@@ -15,9 +15,9 @@ Basil.Application.<Module>                ports, capabilities and runtime object
                                                                                        the Application projects it uses
 Basil.Infrastructure.<Module>             implementations, DbContext, migrations    -> its own Application,
                                                                                        Infrastructure.Common
-Basil.Protocol.OsuStable / .Irc              wire formats                             -> external libraries only
+Basil.Protocol.Stable / .Irc              wire formats                             -> external libraries only
 Basil.Host.Shared                         client views and outcome-to-error mapping -> Application projects
-Basil.Host.OsuStable / .Irc / .Rest / .Cli   transports                               -> Host.Shared, Application, Protocol
+Basil.Host.Stable / .Irc / .Rest / .Cli   transports                               -> Host.Shared, Application, Protocol
 Basil.Host                               composition root, configuration,         -> every project
                                          logging, shutdown
 Basil.Bot                                BasilBot commands and announcements       -> the Application projects it uses
@@ -36,11 +36,11 @@ Business models that outlive a run of the server (`User`, `SessionRecord`, `Room
 models, …), each guarding its own validity. It holds no runtime-only state and no events and references no other Basil
 project.
 
-### `Basil.Protocol.OsuStable` and `Basil.Protocol.Irc`
+### `Basil.Protocol.Stable` and `Basil.Protocol.Irc`
 
 The wire formats. They turn client bytes into C# models of primitives and back, including the score submission cipher,
 and give no business meaning. They reference no other Basil project, so they can be tested without a server. Only the
-transport that speaks the protocol references it: osu! (stable) references `Protocol.OsuStable`, Irc references `Protocol.Irc`,
+transport that speaks the protocol references it: osu! (stable) references `Protocol.Stable`, Irc references `Protocol.Irc`,
 and Rest and Cli reference neither.
 
 ### Module projects
@@ -87,7 +87,7 @@ migration and the event dispatcher.
 
 | Project | Speaks | Notes |
 |---|---|---|
-| `Basil.Host.OsuStable` | osu! (stable): packets, polling, legacy web endpoints | owns the `c.`/`osu.` routing |
+| `Basil.Host.Stable` | osu! (stable): packets, polling, legacy web endpoints | owns the `c.`/`osu.` routing |
 | `Basil.Host.Irc` | IRC on plain TCP | contract in [`irc.md`](irc.md) |
 | `Basil.Host.Rest` | HTTP API on `api.`, plus images on `a.`/`assets.` | envelope, SSE, diagnostics, OpenAPI |
 | `Basil.Host.Cli` | the terminal dashboard and its command box | three display modes, control socket |
@@ -219,7 +219,7 @@ one second old. See [`sse.md`](sse.md).
 * `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module ports, objects and implementations.
 * `src/Hosts/Host/` — composition root, configuration, logging, lifetime, restart.
 * `src/Hosts/Shared/` — views and the outcome-to-error table shared by Rest and Cli.
-* `src/Hosts/{OsuStable,Irc,Rest,Cli}/` — the transports.
+* `src/Hosts/{Stable,Irc,Rest,Cli}/` — the transports.
 * `src/Bot/` — BasilBot commands, announcements and reply catalogue.
 
 ## Where to go from here

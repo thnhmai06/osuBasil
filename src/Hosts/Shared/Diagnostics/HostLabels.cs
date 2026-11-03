@@ -9,7 +9,7 @@ public static class HostLabels
 	/// <summary>The label of every other host name.</summary>
 	public const string Other = "other";
 
-	/// <summary>The HTTP sub-domains the hosts answer on (the OsuStable, web, API and image hosts).</summary>
+	/// <summary>The HTTP sub-domains the hosts answer on (the Stable, web, API and image hosts).</summary>
 	private static readonly string[] SubDomains = ["api", "a", "b", "osu", "c", "ce", "c4", "c5", "c6", "assets"];
 
 	/// <summary>Gets every label that <see cref="Resolve" /> can return.</summary>

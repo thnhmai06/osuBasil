@@ -109,7 +109,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 
 			// A device is marked even when its session had ended already: the saved password must stop working there.
 			if (requireReauthentication)
-				await query.Where(row => row.Type == SessionType.OsuStable || row.Type == SessionType.OsuStableTourney)
+				await query.Where(row => row.Type == SessionType.Stable || row.Type == SessionType.StableTourney)
 					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.MustReauthenticate, true), token);
 		}));
 	}

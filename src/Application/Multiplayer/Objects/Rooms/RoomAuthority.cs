@@ -29,7 +29,7 @@ public sealed class RoomAuthority
 
 	/// <summary>Gets the connection currently hosting the room.</summary>
 	/// <remarks>The host must be seated in this room.</remarks>
-	public OsuStableConnection? Host { get; internal set; }
+	public StableConnection? Host { get; internal set; }
 
 	/// <summary>Gets the users with referee authority for this room, for changing them.</summary>
 	internal ISet<UserRecord> MutableReferees => _referees;

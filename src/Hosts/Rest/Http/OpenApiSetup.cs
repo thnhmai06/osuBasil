@@ -135,13 +135,13 @@ internal static class OpenApiSetup
 				return Task.CompletedTask;
 			});
 		});
-		services.AddOpenApi(ApiDocument.OsuStable, options =>
+		services.AddOpenApi(ApiDocument.Stable, options =>
 		{
-			options.ShouldInclude = description => description.GroupName == ApiDocument.OsuStable;
+			options.ShouldInclude = description => description.GroupName == ApiDocument.Stable;
 			options.AddDocumentTransformer((document, context, _) =>
 			{
 				var described = context.ApplicationServices.GetServices<ApiDocument>()
-					.FirstOrDefault(candidate => candidate.Name == ApiDocument.OsuStable);
+					.FirstOrDefault(candidate => candidate.Name == ApiDocument.Stable);
 				document.Info = new OpenApiInfo
 				{
 					Title = described?.Title ?? "Basil osu! (stable) client endpoints", Version = "stable",
@@ -160,7 +160,7 @@ internal static class OpenApiSetup
 				options =>
 				{
 					options.WithTitle("Basil API").WithOpenApiRoutePattern("/openapi/{documentName}.json")
-						.AddDocument("v1", "Basil API").AddDocument(ApiDocument.OsuStable, "osu! (stable) client");
+						.AddDocument("v1", "Basil API").AddDocument(ApiDocument.Stable, "osu! (stable) client");
 				})
 			.ExcludeFromDescription();
 	}

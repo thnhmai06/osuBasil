@@ -229,7 +229,7 @@ Since the identity redesign the API is user-centric: management is no longer gat
 server, but by the permissions of the signed-in user, so clients built on Basil can do through the API what their
 accounts are allowed to do.
 
-### Automatic OsuStable/Basil parity testing
+### Automatic Stable/Basil parity testing
 
 **Previous decision**
 

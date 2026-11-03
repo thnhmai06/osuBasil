@@ -13,7 +13,7 @@ public sealed partial class Room
 	/// <returns>The assigned slot, or <see langword="null" /> when no slot is available.</returns>
 	/// <remarks>Seating a player who already has a slot returns that slot. The caller reports the seating.</remarks>
 	/// <exception cref="InvalidOperationException">The user is banned from the room.</exception>
-	internal RoomSlot? Seat(OsuStableConnection player)
+	internal RoomSlot? Seat(StableConnection player)
 	{
 		if (Members.Banned.Contains(player.Record))
 			throw new InvalidOperationException("The user is banned from this room.");
@@ -39,7 +39,7 @@ public sealed partial class Room
 	/// <param name="player">The connection to seat.</param>
 	/// <param name="stale">The closed connection whose seat the player may take.</param>
 	/// <returns>The result of seating the player.</returns>
-	internal RoomOutcome TakeSeat(OsuStableConnection player, OsuStableConnection? stale)
+	internal RoomOutcome TakeSeat(StableConnection player, StableConnection? stale)
 	{
 		if (stale is not null) return ReplaceSeat(player, stale);
 
@@ -60,7 +60,7 @@ public sealed partial class Room
 	{
 		var permissions = connection.User.EffectivePermissions(now);
 
-		return (connection is OsuStableConnection player && Slots.Find(player) is not null)
+		return (connection is StableConnection player && Slots.Find(player) is not null)
 		       || (connection is TourneyConnection observer && Members.Observers.Contains(observer))
 		       || (Authority.IsManagedBy(connection.Record) && permissions.Allows(UserPermissions.RoomJoin))
 		       || permissions.Allows(UserPermissions.RoomManageAny);
@@ -69,7 +69,7 @@ public sealed partial class Room
 	/// <summary>Removes a seated player and updates the room's round and empty-room state.</summary>
 	/// <param name="actor">The player's game connection.</param>
 	/// <returns>Ok when the player left, otherwise NotInRoom.</returns>
-	private RoomOutcome LeaveSeat(OsuStableConnection actor)
+	private RoomOutcome LeaveSeat(StableConnection actor)
 	{
 		if (Vacate(actor) is not { } slot) return RoomOutcome.NotInRoom;
 
@@ -83,7 +83,7 @@ public sealed partial class Room
 	/// <param name="player">The connection to remove.</param>
 	/// <returns>The slot that was vacated, or <see langword="null" /> when the connection was not seated.</returns>
 	/// <remarks>When the host leaves, host passes to the next seated player by slot order.</remarks>
-	internal RoomSlot? Vacate(OsuStableConnection player)
+	internal RoomSlot? Vacate(StableConnection player)
 	{
 		var slot = Slots.Find(player);
 		if (slot is null) return null;
@@ -98,7 +98,7 @@ public sealed partial class Room
 	/// <summary>Finds the room a player is seated in.</summary>
 	/// <param name="player">The player's game connection.</param>
 	/// <returns>The room containing the player, or <see langword="null" />.</returns>
-	internal Room? RoomOf(OsuStableConnection player)
+	internal Room? RoomOf(StableConnection player)
 	{
 		return Context.Lobby.RoomOf(player);
 	}
@@ -115,7 +115,7 @@ public sealed partial class Room
 		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
 	}
 
-	private void PassHostFrom(OsuStableConnection leaving)
+	private void PassHostFrom(StableConnection leaving)
 	{
 		if (!ReferenceEquals(Authority.Host, leaving)) return;
 		Authority.Host = Slots
@@ -127,7 +127,7 @@ public sealed partial class Room
 	/// <param name="player">The connection taking the seat.</param>
 	/// <param name="stale">The closed connection whose seat is replaced.</param>
 	/// <returns>Ok after replacing the seated connection.</returns>
-	private RoomOutcome ReplaceSeat(OsuStableConnection player, OsuStableConnection stale)
+	private RoomOutcome ReplaceSeat(StableConnection player, StableConnection stale)
 	{
 		var slot = Slots.Find(stale)!;
 		var team = slot.Team;

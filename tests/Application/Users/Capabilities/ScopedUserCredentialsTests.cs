@@ -45,7 +45,7 @@ public sealed class ScopedUserCredentialsTests
 		var user = await app.CreateUserAsync("Changer", "old");
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 		var otherApi = await app.LoginAsync(user, SessionType.Api, "old");
-		var osu = await app.LoginAsync(user, SessionType.OsuStable, "old");
+		var osu = await app.LoginAsync(user, SessionType.Stable, "old");
 		var key = await OpenIrcKeyAsync(app, current);
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
@@ -131,7 +131,7 @@ public sealed class ScopedUserCredentialsTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
 		var user = await app.CreateUserAsync("Reset", "old");
 		var api = await app.LoginAsync(user, SessionType.Api, "old");
-		var osu = await app.LoginAsync(user, SessionType.OsuStable, "old");
+		var osu = await app.LoginAsync(user, SessionType.Stable, "old");
 		var key = await OpenIrcKeyAsync(app, api);
 
 		var result = await app.Users.Of(user).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null,

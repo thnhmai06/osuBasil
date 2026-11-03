@@ -371,10 +371,10 @@ Basil.Infrastructure.<Module>    the module's implementations, in folders that  
                                  Add<Module>Infrastructure()
 Basil.Host.Shared               views and outcome-to-error mapping used      -> Application projects
                                  by the API and the console
-Basil.Protocol.OsuStable            osu! client-server wire formats, score         -> external libraries only
+Basil.Protocol.Stable            osu! client-server wire formats, score         -> external libraries only
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
-Basil.Host.OsuStable / .Irc /       transports                                     -> Host.Shared, their Application
+Basil.Host.Stable / .Irc /       transports                                     -> Host.Shared, their Application
 .Rest / .Cli                                                                       projects, their Protocol
 Basil.Host                       entry point, composition root, configuration,  -> everything
                                  logging, shutdown, LAN advertising
@@ -405,7 +405,7 @@ decide the order in which `AddBasil()` registers the migrations (Common, Users, 
 Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
 an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
 
-`Basil.Protocol.OsuStable` wraps the communication between the osu! client and the server, as an API wrapper
+`Basil.Protocol.Stable` wraps the communication between the osu! client and the server, as an API wrapper
 wraps a remote API: it turns what the client sends (osu-stable packets, the delimited strings of the web
 endpoints such as the score submission, the client hash, the client build) into C# models of primitives and
 back, including undoing the client's own encoding (the score submission's Rijndael cipher). It does not
@@ -415,8 +415,8 @@ Domain: only the transport hosts reference it, and it may use external libraries
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`,
-`src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Hosts/{Host,Shared,OsuStable,Irc,Rest,Cli}/`,
-`src/Protocol/{OsuStable,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
+`src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Hosts/{Host,Shared,Stable,Irc,Rest,Cli}/`,
+`src/Protocol/{Stable,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
 `tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `src/Application/Users`;
 shared fixtures are under `tests/Support/`, and the tests that build the whole composition and run several hosts
@@ -452,12 +452,12 @@ nothing else is made visible. `Basil.Host` calls `AddBasil()`.
 
 `Basil.Host` is the composition root: the one `AddMediator` call, configuration binding, logging, shutdown/restart and
 host and subdomain routing. It holds no business rule and no recovery logic (those belong to Application and
-Infrastructure). The transports are `Basil.Host.OsuStable` (osu! packets, polling and legacy web endpoints),
+Infrastructure). The transports are `Basil.Host.Stable` (osu! packets, polling and legacy web endpoints),
 `Basil.Host.Irc` (plain TCP), `Basil.Host.Rest` (`api.`, images on `a.`/`assets.`, SSE, diagnostics) and
 `Basil.Host.Cli` (terminal dashboard and command box).
 
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
-  `Protocol.OsuStable`. `tests/Architecture/HostGraphTests.cs` enforces this.
+  `Protocol.Stable`. `tests/Architecture/HostGraphTests.cs` enforces this.
 * A transport takes the actor from the connection that opened the request or socket and works through scopes
   (`x.ScopeTo(connection)`), never through a service, and holds no business, permission or state rule of its own.
 * Configuration is bound in `Basil.Host` only; a transport receives `IOptions<T>` of an options type it owns.
@@ -499,7 +499,7 @@ Users/         IUserRepository and friends, UserQuery, login inputs    (Persiste
                Connection, ConnectionContext, ConnectionRules,
                PlayerStatus                                            (Objects/Connections)
                UserRegistry                                            (Registry)
-               ScopedUser*, ScopedOsuStableConnection                      (Capabilities)
+               ScopedUser*, ScopedStableConnection                      (Capabilities)
                AccountService, CredentialChecks                        (Logic)
                ConnectionHandler, RestrictionHandler                   (Handlers)
 Chat/          IChannelRepository                                      (Persistence)

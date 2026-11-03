@@ -54,9 +54,9 @@ public sealed class AnticheatReporterTests
 		Assert.Equal(OsuFlags.SpeedHackDetected, flagged.Signs);
 	}
 
-	private static async Task<OsuStableConnection> LoginAsync(TestApplication app)
+	private static async Task<StableConnection> LoginAsync(TestApplication app)
 	{
 		var user = await app.CreateUserAsync("Flagged", "password");
-		return Assert.IsType<OsuStableConnection>(await app.LoginAsync(user, SessionType.OsuStable));
+		return Assert.IsType<StableConnection>(await app.LoginAsync(user, SessionType.Stable));
 	}
 }

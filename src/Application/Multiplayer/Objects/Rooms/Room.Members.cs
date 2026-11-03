@@ -20,7 +20,7 @@ public sealed partial class Room
 	///     What the actor may do is asked of the actor's connection, not handed in: a player who may not join rooms is
 	///     refused, and one who manages every room does not need the password.
 	/// </remarks>
-	internal Result<RoomOutcome> Join(OsuStableConnection actor, string password)
+	internal Result<RoomOutcome> Join(StableConnection actor, string password)
 	{
 		lock (_sync)
 		{
@@ -35,7 +35,7 @@ public sealed partial class Room
 		}
 	}
 
-	private Result<RoomOutcome>? JoinRefusal(OsuStableConnection actor, string password)
+	private Result<RoomOutcome>? JoinRefusal(StableConnection actor, string password)
 	{
 		var rights = actor.EffectivePermissions(Context.Clock.GetUtcNow());
 		if (Members.Banned.Contains(actor.Record)) return RoomOutcome.Banned;
@@ -56,7 +56,7 @@ public sealed partial class Room
 	/// <summary>Removes a seated player on their own request.</summary>
 	/// <param name="actor">The player's game connection.</param>
 	/// <returns>Ok, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> Leave(OsuStableConnection actor)
+	internal Result<RoomOutcome> Leave(StableConnection actor)
 	{
 		lock (_sync)
 		{
@@ -97,7 +97,7 @@ public sealed partial class Room
 			if (!Members.MutableBanned.Add(player)) return RoomOutcome.Ok;
 
 			int? vacated = null;
-			OsuStableConnection? evicted = null;
+			StableConnection? evicted = null;
 			RoomRoundProgress? progress = null;
 			if (Slots.Find(player) is { Player: { } seated })
 			{

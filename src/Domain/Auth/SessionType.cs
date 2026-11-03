@@ -4,10 +4,10 @@ namespace Basil.Domain.Auth;
 public enum SessionType : byte
 {
 	/// <summary>An osu! (stable) game client.</summary>
-	OsuStable = 1 << 0,
+	Stable = 1 << 0,
 
 	/// <summary>An osu!tourney (stable) spectator client.</summary>
-	OsuStableTourney = 1 << 1,
+	StableTourney = 1 << 1,
 
 	/// <summary>An IRC client.</summary>
 	Irc = 1 << 2,
@@ -25,8 +25,8 @@ public static class SessionTypeExtensions
 	{
 		return type switch
 		{
-			SessionType.OsuStable => "osu-",
-			SessionType.OsuStableTourney => "trn-",
+			SessionType.Stable => "osu-",
+			SessionType.StableTourney => "trn-",
 			SessionType.Api => "api-",
 			SessionType.Irc => "irc-",
 			SessionType.Bot => "bot-",

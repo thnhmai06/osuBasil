@@ -90,9 +90,9 @@ public sealed class SessionRetentionTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Marked", "password");
-		var connection = await app.LoginAsync(user, SessionType.OsuStable);
+		var connection = await app.LoginAsync(user, SessionType.Stable);
 		await app.Provider.GetRequiredService<ISessionRepository>().EndAsync(user, null, null,
-			[SessionType.OsuStable], app.Clock.GetUtcNow(), SessionEndReason.Revoked, true, Token);
+			[SessionType.Stable], app.Clock.GetUtcNow(), SessionEndReason.Revoked, true, Token);
 		app.Clock.Advance(DefaultRetention + TimeSpan.FromDays(1));
 
 		var deleted = await app.Users.PurgeEndedSessionsAsync(Token);
