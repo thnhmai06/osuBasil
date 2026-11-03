@@ -57,8 +57,8 @@ internal static class MatchRoutes
 						: null,
 					scores = scores.Select(s => new
 					{
-						userId = s.Score.Value.UserId, team = s.Team, totalScore = s.Score.Value.TotalScore,
-						maxCombo = s.Score.Value.MaxCombo, accuracy = s.Score.Value.Accuracy,
+						userId = s.Score.Value.UserId, team = s.Team, totalScore = s.Score.Value.LastState.TotalScore,
+						maxCombo = s.Score.Value.LastState.MaxCombo, accuracy = s.Score.Value.Accuracy,
 						grade = s.Score.Value.Grade,
 						passed = s.Score.Value.IsPassed, scoreId = s.Score.Id
 					})

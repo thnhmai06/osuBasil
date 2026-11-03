@@ -1,7 +1,7 @@
-using Basil.Protocol.Stable.Models.Auth;
+using Basil.Domain.Client;
+using Basil.Protocol.Stable.Models.Authentication;
 using Basil.Protocol.Stable.Models.Beatmaps;
 using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Models.Replay;
 using Basil.Protocol.Stable.Wire.Binary;
 
 namespace Basil.Protocol.Stable.Wire.Packets;
@@ -703,7 +703,7 @@ public sealed partial class PacketWriter
 	/// <summary>Writes the beatmap-info-reply packet to the stream, describing the beatmaps a client asked about.</summary>
 	/// <param name="maps">The beatmaps to describe; the count is written as a 32-bit integer.</param>
 	/// <exception cref="OverflowException">A value of <paramref name="maps" /> is outside the range of its field.</exception>
-	public void BeatmapInfoReply(IReadOnlyList<BeatmapInfoReplyEntry> maps)
+	public void BeatmapInfoReply(IReadOnlyList<BeatmapInfoResponse> maps)
 	{
 		Wrap(ServerPacketType.BeatmapInfoReply, () =>
 		{

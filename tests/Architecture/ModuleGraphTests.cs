@@ -67,6 +67,9 @@ public class ModuleGraphTests
 		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Application.Users", "Basil.Host"));
 		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Common"));
+		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Common"));
+		Assert.False(IsAllowed("Basil.Protocol.Irc", "Basil.Domain"));
+		Assert.True(IsAllowed("Basil.Protocol.Stable", "Basil.Domain"));
 		Assert.True(IsAllowed("Basil.Application.Multiplayer", "Basil.Application.Scores"));
 	}
 
@@ -90,6 +93,8 @@ public class ModuleGraphTests
 	private static bool IsAllowed(string from, string to)
 	{
 		if (from == "Basil.Domain") return false;
+		if (from == "Basil.Protocol.Irc") return false;
+		if (from == "Basil.Protocol.Stable") return to == "Basil.Domain";
 		if (to == "Basil.Domain") return true;
 		if (from == "Basil.Application.Common") return false;
 		if (from == "Basil.Infrastructure.Common") return to == "Basil.Application.Common";
@@ -97,7 +102,6 @@ public class ModuleGraphTests
 		if (from == "Basil.Host") return IsModuleProject(to) || to == "Basil.Infrastructure.Common";
 		if (from == "Basil.Bot")
 			return to.StartsWith("Basil.Application.", StringComparison.Ordinal) && IsModuleProject(to);
-		if (from is "Basil.Protocol.Stable" or "Basil.Protocol.Irc") return false;
 
 		var parts = from.Split('.');
 		if (parts.Length != 3) return false;

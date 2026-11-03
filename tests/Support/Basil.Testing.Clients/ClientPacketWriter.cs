@@ -85,7 +85,7 @@ public sealed class ClientPacketWriter
 		bytes.AddRange(BitConverter.GetBytes(totalScore));
 		bytes.AddRange(BitConverter.GetBytes((ushort)combo));
 		bytes.AddRange(BitConverter.GetBytes((ushort)combo));
-		bytes.AddRange(new byte[] { 0, 100, 0, 0 }); // perfect, hp, tag byte, score v2
+		bytes.AddRange("\0d\0\0"u8.ToArray()); // perfect, hp, tag byte, score v2
 		return [.. bytes];
 	}
 

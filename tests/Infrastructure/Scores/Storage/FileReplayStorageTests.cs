@@ -195,10 +195,7 @@ public sealed class FileReplayStorageTests : IDisposable
 		return new ScoreRecord
 		{
 			Id = id,
-			Value = new ScoreData(
-				8, new Md5("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod,
-				new HitCounts(100, 10, 2, 1, 3, 0), 51_000, 500, 312, Grade.A, true, false,
-				new DateTimeOffset(2026, 3, 5, 12, 0, 0, TimeSpan.Zero))
+			Value = new ScoreData(8, new Md5("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod, new ScoreState(new HitCounts(100, 10, 2, 1, 3, 0), 51_000, 500, 312, false), Grade.A, true, new DateTimeOffset(2026, 3, 5, 12, 0, 0, TimeSpan.Zero))
 		};
 	}
 

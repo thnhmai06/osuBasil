@@ -184,7 +184,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var genuine = f.Genuine(ScoreSubmissionFixture.PassedScore());
-		var tampered = genuine with { Score = genuine.Score with { TotalScore = 999_999 } };
+		var tampered = genuine with { Score = genuine.Score with { LastState = genuine.Score.LastState with { TotalScore = 999_999 } } };
 
 		var (_, rejection) = await SubmitAsync(f, tampered);
 
@@ -357,7 +357,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var first = ScoreSubmissionFixture.PassedScore();
-		var second = first with { TotalScore = 250 };
+		var second = first with { LastState = first.LastState with { TotalScore = 250 } };
 
 		await SubmitAsync(f, f.Genuine(first));
 		await SubmitAsync(f, f.Genuine(second));

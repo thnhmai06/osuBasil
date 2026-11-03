@@ -11,7 +11,7 @@ namespace Basil.Protocol.Stable.Models.Beatmaps;
 /// <param name="GradeTaiko">The player's best grade on the osu!taiko difficulty.</param>
 /// <param name="GradeMania">The player's best grade on the osu!mania difficulty.</param>
 /// <param name="Checksum">The md5 checksum of the beatmap file.</param>
-public sealed record BeatmapInfoReplyEntry(
+public sealed record BeatmapInfoResponse(
 	short Index,
 	int MapId,
 	int MapSetId,

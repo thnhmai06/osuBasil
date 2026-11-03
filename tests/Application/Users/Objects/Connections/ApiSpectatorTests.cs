@@ -1,3 +1,5 @@
+using System.Drawing;
+using Basil.Domain.Scores;
 using Basil.Application.Users.Handlers;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
@@ -19,8 +21,8 @@ public sealed class ApiSpectatorTests
 
 	private static SpectatorBundle Bundle()
 	{
-		return new SpectatorBundle(SpectatorAction.Standard, [new SpectatorFrame(1, 0, 10, 20, 100)],
-			new SpectatorScore(100, 0, 1, 0, 0, 0, 0, 0, 300, 1, 1, true, 200), 1);
+		return new SpectatorBundle(SpectatorAction.Standard, [new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(10, 20), TimeSpan.FromMilliseconds(100))],
+			new ScoreFrame(Time: TimeSpan.FromMilliseconds(100), Id: 0, State: new ScoreState(new HitCounts(Num300: 1, Num100: 0, Num50: 0, NumGeki: 0, NumKatu: 0, NumMiss: 0), 300, 1, 1, true), Health: 200, TagByte: 0, Sv2Portion: null), 1);
 	}
 
 	private static async Task<(StableConnection Host, ApiConnection Watcher)> SetUpAsync(TestApplication app,

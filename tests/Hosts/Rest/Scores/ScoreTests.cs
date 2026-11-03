@@ -12,10 +12,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 {
 	private async Task<ScoreRecord> StoreAsync(int userId, int totalScore)
 	{
-		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId,
-			null,
-			GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0), totalScore, 100, 100, Grade.S, true,
-			true, new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
+		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId, null, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), totalScore, 100, 100, true), Grade.S, true, new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
 	}
 
 	[Fact]

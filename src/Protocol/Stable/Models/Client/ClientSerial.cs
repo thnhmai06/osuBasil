@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Basil.Protocol.Stable.Models.Auth;
+namespace Basil.Protocol.Stable.Models.Client;
 
 /// <summary>The client's unique ids the osu! client sends with a score, as <c>uninstallId|diskSignature</c>.</summary>
 /// <param name="UninstallId">The uninstall id.</param>

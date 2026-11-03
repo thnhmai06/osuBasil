@@ -50,13 +50,24 @@ public class LayeringTests
 		]);
 	}
 
-	[Theory]
-	[InlineData("Stable")]
-	[InlineData("Irc")]
-	public void Protocol_DependsOnNoOtherProject(string protocol)
+	[Fact]
+	public void ProtocolStable_DependsOnDomainOnly()
 	{
-		var assembly = protocol == "Stable" ? ProtocolStable : ProtocolIrc;
-		AssertNoDependency(assembly, ["Basil.Domain", .. ModuleRoots, Host, Bot]);
+		AssertNoDependency(ProtocolStable, [.. ModuleRoots, Host, Bot]);
+	}
+
+	[Fact]
+	public void ProtocolStable_DoesDependOnDomain_PositiveControl()
+	{
+		var result = Types.InAssembly(ProtocolStable).Should().NotHaveDependencyOnAny("Basil.Domain").GetResult();
+
+		Assert.False(result.IsSuccessful);
+	}
+
+	[Fact]
+	public void ProtocolIrc_DependsOnNoOtherProject()
+	{
+		AssertNoDependency(ProtocolIrc, ["Basil.Domain", .. ModuleRoots, Host, Bot]);
 	}
 
 	[Fact]

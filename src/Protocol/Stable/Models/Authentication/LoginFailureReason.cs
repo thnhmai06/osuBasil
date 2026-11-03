@@ -1,4 +1,4 @@
-namespace Basil.Protocol.Stable.Models.Auth;
+namespace Basil.Protocol.Stable.Models.Authentication;
 
 /// <summary>Specifies why a login attempt was rejected, sent as the user id value of the login reply packet on failure.</summary>
 public enum LoginFailureReason : sbyte

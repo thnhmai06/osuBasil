@@ -13,7 +13,7 @@ using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Host.Stable.Support;
-using Basil.Protocol.Stable.Models.Auth;
+using Basil.Protocol.Stable.Models.Authentication;
 
 namespace Basil.Host.Stable.Login;
 
@@ -42,7 +42,7 @@ internal sealed class StableLogin(
 		var ip = ClientAddress.Resolve(context);
 		if (!state.AcceptingLogins) return Fail(LoginFailureReason.ErrorOccurred, StableReplies.ServerStopping);
 
-		if (!TryParse(body, out var request, out var build, out var client))
+		if (!TryParse(body, out var request, out var client))
 			return Fail(LoginFailureReason.ErrorOccurred);
 
 		var ipKey = $"login-fail:{ip}";
@@ -54,7 +54,7 @@ internal sealed class StableLogin(
 		if (CountOpenConnections(ip) >= rules.Connections.PerIp)
 			return Fail(LoginFailureReason.ErrorOccurred, StableReplies.TooManyConnections);
 
-		var type = build.Stream == ClientStream.Tourney ? SessionType.StableTourney : SessionType.Stable;
+		var type = client.Version.Stream == OsuVersionStream.Tourney ? SessionType.StableTourney : SessionType.Stable;
 		LoginResult result;
 		try
 		{
@@ -77,25 +77,17 @@ internal sealed class StableLogin(
 		return (connection.Token, await WelcomeAsync(connection, cancellationToken));
 	}
 
-	private static bool TryParse(byte[] body, out LoginRequestBody request, out ClientBuild build, out OsuClient client)
+	private static bool TryParse(byte[] body, out LoginRequest request, out OsuClient client)
 	{
 		try
 		{
-			request = LoginRequestBody.Parse(body);
-			build = ClientBuild.Parse(request.OsuVersion);
-			client = new OsuClient(
-				new OsuVersion(build.Date, build.Revision,
-					WireMap.FromWire(build.Stream) ?? throw new ArgumentException("Unknown client stream.")),
-				new OsuFingerprint(new Md5(request.ClientHash.OsuPathHash),
-					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash),
-					new NetworkAdapters
-						{ Adapters = request.ClientHash.Adapters, Hash = new Md5(request.ClientHash.AdaptersHash) }));
+			request = LoginRequest.Parse(body);
+			client = new OsuClient(request.OsuVersion, request.Fingerprint);
 			return true;
 		}
 		catch (Exception ex) when (ex is FormatException or ArgumentException)
 		{
 			request = null!;
-			build = null!;
 			client = null!;
 			return false;
 		}
@@ -124,7 +116,7 @@ internal sealed class StableLogin(
 		var now = clock.GetUtcNow();
 		var effective = user.EffectivePermissions(now);
 		var roles = StableView.Roles(effective);
-		var privileges = (int)WireMap.ToWire(roles);
+		var privileges = (int)roles;
 		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
 		var friends = (await user.ScopeTo(connection).Relationships.FriendsAsync(cancellationToken)).Users;
 		var restricted = (user.Record.Value.Permissions & ~effective) != UserPermissions.None;

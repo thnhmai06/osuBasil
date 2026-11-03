@@ -108,7 +108,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		var page = await Scores.ListAsync(new ScoreQuery(player), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(1000, Assert.Single(page.Items).Value.TotalScore);
+		Assert.Equal(1000, Assert.Single(page.Items).Value.LastState.TotalScore);
 	}
 
 	[Fact]
@@ -122,7 +122,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		var page = await Scores.ListAsync(new ScoreQuery(BeatmapHash: hash), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(1000, Assert.Single(page.Items).Value.TotalScore);
+		Assert.Equal(1000, Assert.Single(page.Items).Value.LastState.TotalScore);
 	}
 
 	[Fact]
@@ -135,7 +135,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		var page = await Scores.ListAsync(new ScoreQuery(Mods: GameMods.Hidden), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(1000, Assert.Single(page.Items).Value.TotalScore);
+		Assert.Equal(1000, Assert.Single(page.Items).Value.LastState.TotalScore);
 	}
 
 	[Fact]
@@ -149,7 +149,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		var page = await Scores.ListAsync(new ScoreQuery(Players: new HashSet<UserRecord> { player }),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(1000, Assert.Single(page.Items).Value.TotalScore);
+		Assert.Equal(1000, Assert.Single(page.Items).Value.LastState.TotalScore);
 	}
 
 	[Fact]
@@ -162,7 +162,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		var page = await Scores.ListAsync(new ScoreQuery(BestPerPlayer: true), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(2000, Assert.Single(page.Items).Value.TotalScore);
+		Assert.Equal(2000, Assert.Single(page.Items).Value.LastState.TotalScore);
 	}
 
 	[Fact]
@@ -202,7 +202,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		var page = await Scores.ListAsync(new ScoreQuery(BeatmapHash: hash), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(new[] { 2000, 1000 }, page.Items.Select(score => score.Value.TotalScore));
+		Assert.Equal(new[] { 2000, 1000 }, page.Items.Select(score => score.Value.LastState.TotalScore));
 	}
 
 	[Fact]

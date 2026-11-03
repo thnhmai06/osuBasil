@@ -1,4 +1,5 @@
 using System.Globalization;
+using Basil.Domain.Client;
 
 namespace Basil.Protocol.Stable.Models.Scores;
 
@@ -14,7 +15,7 @@ namespace Basil.Protocol.Stable.Models.Scores;
 /// <param name="NumMiss">The number of misses.</param>
 /// <param name="TotalScore">The total score.</param>
 /// <param name="MaxCombo">The maximum combo.</param>
-/// <param name="IsFullCombo">Whether the client flagged the play as a full combo.</param>
+/// <param name="Perfect">Whether the client flagged the play as a full combo.</param>
 /// <param name="Grade">The grade name as sent.</param>
 /// <param name="Mods">The mods bitmask.</param>
 /// <param name="IsPassed">Whether the client flagged the play as passed.</param>
@@ -33,13 +34,13 @@ public sealed record ScoreSubmission(
 	int NumMiss,
 	int TotalScore,
 	int MaxCombo,
-	bool IsFullCombo,
+	bool Perfect,
 	string Grade,
 	int Mods,
 	bool IsPassed,
 	int Mode,
 	DateTimeOffset Timestamp,
-	int ClientFlags)
+	OsuFlags ClientFlags)
 {
 	private const int FieldCount = 18;
 
@@ -76,7 +77,7 @@ public sealed record ScoreSubmission(
 			Number(15),
 			DateTimeOffset.ParseExact(fields[16], "yyMMddHHmmss", CultureInfo.InvariantCulture,
 				DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
-			fields[17].Count(c => c == ' ') & ~4);
+			(OsuFlags)(fields[17].Count(c => c == ' ') & ~4));
 
 		int Number(int index)
 		{

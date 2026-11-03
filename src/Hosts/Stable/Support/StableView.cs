@@ -5,7 +5,6 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Models.Wire;
 using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Support;
@@ -43,7 +42,7 @@ internal static class StableView
 	/// <returns>The client's privilege bits for the account's roles.</returns>
 	public static int Privileges(UserPermissions effective)
 	{
-		return (int)WireMap.ToWire(Roles(effective));
+		return (int)Roles(effective);
 	}
 
 	/// <summary>Writes the presence packet of a user.</summary>
@@ -56,7 +55,7 @@ internal static class StableView
 		var client = user.Stable;
 		writer.UserPresence(user.Record.Id, user.Record.Value.Name, client?.UtcOffset ?? 0,
 			(int)user.Record.Value.Country, Privileges(user.EffectivePermissions(now)),
-			(int)WireMap.ToWire(client?.Status.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
+			(int)(client?.Status.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
 	}
 
 	/// <summary>Writes the stats packet of a user.</summary>
@@ -66,9 +65,9 @@ internal static class StableView
 	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
 	{
 		var status = user.Stable?.Status ?? PlayerStatus.Idle;
-		writer.UserStats(user.Record.Id, (int)WireMap.ToWire(status.Activity), status.Text,
+		writer.UserStats(user.Record.Id, (int)status.Activity, status.Text,
 			status.BeatmapHash?.ToString() ?? string.Empty,
-			(int)WireMap.ToWire(status.GameMods), (int)WireMap.ToWire(status.GameMode), status.BeatmapId ?? 0,
+			(int)status.GameMods, (int)status.GameMode, status.BeatmapId ?? 0,
 			stats.RankedScore,
 			UserStats.Accuracy, stats.PlayCount, stats.TotalScore, stats.Rank, UserStats.Pp);
 	}
@@ -80,16 +79,16 @@ internal static class StableView
 	{
 		var slots = room.Slots.Select(slot => new RoomSlotPacket(SlotStatus(slot),
 			(int)WireMap.ToWire(slot.Team),
-			slot.Mods is { } mods ? (int)WireMap.ToWire(mods) : 0, slot.Player?.Record.Id)).ToList();
+			slot.Mods is { } mods ? (int)mods : 0, slot.Player?.Record.Id)).ToList();
 		var beatmap = room.Settings.Beatmap;
-		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)WireMap.ToWire(room.Settings.MatchSettings.Mods),
+		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods,
 			room.Settings.Name,
 			room.Settings.Password, beatmap?.Name ?? string.Empty, beatmap?.Id ?? 0,
 			beatmap?.Hash.ToString() ?? string.Empty,
 			slots, room.Authority.Host?.Record.Id ?? RoomPacket.NoHostId,
-			(int)WireMap.ToWire(room.Settings.MatchSettings.Mode),
-			(int)WireMap.ToWire(room.Settings.MatchSettings.WinCondition),
-			(int)WireMap.ToWire(room.Settings.MatchSettings.TeamType),
+			(int)room.Settings.MatchSettings.Mode,
+			(int)room.Settings.MatchSettings.WinCondition,
+			(int)room.Settings.MatchSettings.TeamType,
 			room.Settings.MatchSettings.Freemods, room.Settings.MatchSettings.Seed);
 	}
 

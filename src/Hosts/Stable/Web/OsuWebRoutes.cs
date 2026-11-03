@@ -22,9 +22,8 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Support;
-using Basil.Protocol.Stable.Models.Auth;
+using Basil.Protocol.Stable.Models.Client;
 using Basil.Protocol.Stable.Models.Scores;
-using Basil.Protocol.Stable.Models.Wire;
 using Basil.Protocol.Stable.Wire.Security;
 
 namespace Basil.Host.Stable.Web;
@@ -122,7 +121,7 @@ internal static class OsuWebRoutes
 		var mode = ParseMode(query["m"]);
 		var rankedType = int.TryParse(query["v"], out var v) ? v : 1;
 		var page = await scores.ListAsync(
-			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? WireMap.FromWire((WireMods)mods) : null,
+			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? WireMap.Mods(mods) : null,
 				BestPerPlayer: true),
 			new PageRequest(0, 50), ct);
 		var rows = new List<string>();
@@ -132,7 +131,7 @@ internal static class OsuWebRoutes
 
 		var lines = new List<string>
 		{
-			$"{(int)WireMap.ToWire(map.Beatmapset.Status)}|false|{map.Id}|{map.Beatmapset.Id}|{rows.Count}|0",
+			$"{(int)map.Beatmapset.Status}|false|{map.Id}|{map.Beatmapset.Id}|{rows.Count}|0",
 			"0", map.Name, "10.0", string.Empty
 		};
 		lines.AddRange(rows);
@@ -141,7 +140,7 @@ internal static class OsuWebRoutes
 
 	private static GameMode ParseMode(string? text)
 	{
-		return int.TryParse(text, out var m) && WireMap.FromWire((WireGameMode)m) is { } mode
+		return int.TryParse(text, out var m) && WireMap.Known<GameMode>(m) is { } mode
 			? mode
 			: GameMode.Standard;
 	}
@@ -150,9 +149,9 @@ internal static class OsuWebRoutes
 		CancellationToken ct)
 	{
 		var name = score.Value.UserId is { } id && await users.GetAsync(id, ct) is { } user ? user.Value.Name : "?";
-		var hits = score.Value.HitCounts;
+		var hits = score.Value.LastState.HitCounts;
 		return string.Create(CultureInfo.InvariantCulture,
-			$"{score.Id}|{name}|{score.Value.TotalScore}|{score.Value.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.IsFullCombo ? 1 : 0)}|{(int)WireMap.ToWire(score.Value.Mods)}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
+			$"{score.Id}|{name}|{score.Value.LastState.TotalScore}|{score.Value.LastState.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.LastState.IsFullCombo ? 1 : 0)}|{(int)score.Value.Mods}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
 	}
 
 	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth,
@@ -180,7 +179,7 @@ internal static class OsuWebRoutes
 				new PageRequest(0, 1), ct);
 			if (page.Items.FirstOrDefault() is { } map)
 				lines.Add(
-					$"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)WireMap.ToWire(map.Beatmapset.Status)}|N|N|N|N|{map.Hash}");
+					$"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)map.Beatmapset.Status}|N|N|N|N|{map.Hash}");
 		}
 
 		return Text(string.Join('\n', lines));
@@ -201,9 +200,8 @@ internal static class OsuWebRoutes
 			if (await auth.AuthenticateAsync(context, data.Username.TrimEnd(), form["pass"], ct) is not { } client)
 				return Text("error: no");
 			var clientHashText = ScoreSubmissionCipher.Decrypt(form["s"].ToString(), iv, version);
-			var hash = ClientHash.Parse(clientHashText);
+			var fingerprint = OsuFingerprintExtensions.Parse(clientHashText);
 			var ids = form["c1"].ToString().Split('|');
-			var fingerprint = Fingerprint(hash);
 			var beatmapHash = new Md5(data.BeatmapHash);
 			var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0],
 				ids.ElementAtOrDefault(1) ?? string.Empty,
@@ -226,23 +224,15 @@ internal static class OsuWebRoutes
 		}
 	}
 
-	private static OsuFingerprint Fingerprint(ClientHash hash)
-	{
-		return new OsuFingerprint(new Md5(hash.OsuPathHash),
-			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash),
-			new NetworkAdapters { Adapters = hash.Adapters, Hash = new Md5(hash.AdaptersHash) });
-	}
-
 	private static Submission ToSubmission(ScoreSubmission data, Md5 beatmapHash)
 	{
-		var score = new ScoreData(null, beatmapHash, WireMap.FromWire((WireGameMode)data.Mode) ?? GameMode.Standard,
-			WireMap.FromWire((WireMods)data.Mods),
-			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
-			data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), ParseGrade(data.Grade),
-			data.IsPassed,
-			data.IsFullCombo, data.Timestamp);
+		var score = new ScoreData(null, beatmapHash, WireMap.Known<GameMode>(data.Mode) ?? GameMode.Standard,
+			WireMap.Mods(data.Mods),
+			new ScoreState(new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
+				data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), data.Perfect),
+			ParseGrade(data.Grade), data.IsPassed, data.Timestamp);
 		return new Submission
-			{ Score = score, Flags = (OsuFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
+			{ Score = score, Flags = data.ClientFlags, HashByClient = new Md5(data.Checksum) };
 	}
 
 	private static Stream? OpenReplay(HttpContext context)
@@ -360,7 +350,7 @@ internal static class OsuWebRoutes
 	{
 		var meta = set.Metadata;
 		return
-			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)WireMap.ToWire(set.Status)}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
+			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)set.Status}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
 	}
 
 	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry,

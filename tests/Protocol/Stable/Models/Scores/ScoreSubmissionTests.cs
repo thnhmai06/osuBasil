@@ -1,3 +1,4 @@
+using Basil.Domain.Client;
 using Basil.Protocol.Stable.Models.Scores;
 
 namespace Basil.Protocol.Stable.Tests.Models.Scores;
@@ -38,7 +39,7 @@ public class ScoreSubmissionTests
 				true, "XH", 16,
 				true, 0,
 				new DateTimeOffset(2026, 4, 19, 8, 11, 2, TimeSpan.Zero),
-				2),
+				(OsuFlags)2),
 			submission);
 	}
 
@@ -80,7 +81,7 @@ public class ScoreSubmissionTests
 		var text =
 			$"md5:lyx:checksum:5:4:3:2:1:0:123456:999:{flagText}:XH:16:True:0:260419081102:3 4 ";
 
-		Assert.Equal(expected, ScoreSubmission.Parse(text).IsFullCombo);
+		Assert.Equal(expected, ScoreSubmission.Parse(text).Perfect);
 	}
 
 	[Theory]
@@ -100,7 +101,7 @@ public class ScoreSubmissionTests
 			"md5:lyx:checksum:5:4:3:2:1:0:123456:999:True:XH:16:True:0:260419081102:"
 			+ "5" + new string(' ', spaceCount);
 
-		Assert.Equal(expectedFlags, ScoreSubmission.Parse(text).ClientFlags);
+		Assert.Equal((OsuFlags)expectedFlags, ScoreSubmission.Parse(text).ClientFlags);
 	}
 
 	[Fact]

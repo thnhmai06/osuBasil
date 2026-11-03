@@ -14,7 +14,6 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Beatmaps;
-using Basil.Protocol.Stable.Models.Wire;
 using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Packets;
@@ -120,10 +119,10 @@ internal sealed partial class PacketHandlers(
 			{
 			}
 
-		if (WireMap.FromWire((WireUserAction)action.Action) is not { } activity ||
-		    WireMap.FromWire((WireGameMode)action.Mode) is not { } mode) return;
+		if (WireMap.Known<UserActivity>(action.Action) is not { } activity ||
+		    WireMap.Known<GameMode>(action.Mode) is not { } mode) return;
 		var status = new PlayerStatus(activity, action.InfoText, hash,
-			action.MapId == 0 ? null : action.MapId, WireMap.FromWire((WireMods)action.Mods), mode);
+			action.MapId == 0 ? null : action.MapId, WireMap.Mods(action.Mods), mode);
 		osu.ScopeTo(osu).SetStatus(status);
 		await Task.CompletedTask;
 	}
@@ -185,14 +184,14 @@ internal sealed partial class PacketHandlers(
 	private async Task BeatmapInfoAsync(StableConnection osu, BeatmapInfoRequest request,
 		CancellationToken cancellationToken)
 	{
-		var entries = new List<BeatmapInfoReplyEntry>();
+		var entries = new List<BeatmapInfoResponse>();
 		for (var index = 0; index < Math.Min(request.Filenames.Count, MaxRequestedFilenames); index++)
 		{
 			var page = await beatmaps.ListAsync(new BeatmapQuery(
 				FileName: request.Filenames[index]), new PageRequest(0, 1), cancellationToken);
 			if (page.Items.FirstOrDefault() is { } map)
-				entries.Add(new BeatmapInfoReplyEntry((short)index, map.Id,
-					map.Beatmapset.Id, 0, (byte)WireMap.ToWire(map.Beatmapset.Status), -1, -1, -1, -1,
+				entries.Add(new BeatmapInfoResponse((short)index, map.Id,
+					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1,
 					map.Hash.ToString()));
 		}
 

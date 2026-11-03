@@ -1,26 +1,27 @@
-using Basil.Protocol.Stable.Models.Auth;
+using Basil.Domain.Client;
+using Basil.Protocol.Stable.Models.Client;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 
 /// <summary>
 ///     Verifies the build-string contract <c>bYYYYMMDD[.revision][stream]</c>: the <c>b</c> prefix is
 ///     optional, the revision is a single digit, the stream suffix (and the whole text) parse
-///     case-insensitively, and <see cref="ClientBuild.ToString" /> returns the canonical lowercase wire text.
+///     case-insensitively, and <see cref="OsuVersionExtensions.ToText" /> returns the canonical lowercase wire text.
 ///     Anything else is rejected.
 /// </summary>
-public class ClientBuildTests
+public class OsuVersionExtensionsTests
 {
 	public static TheoryData<string, string, int?, int> ValidBuilds()
 	{
 		return new TheoryData<string, string, int?, int>
 		{
-			{ "b20240815", "2024-08-15", null, (int)ClientStream.Stable },
-			{ "20240815", "2024-08-15", null, (int)ClientStream.Stable },
-			{ "b20240815.2", "2024-08-15", 2, (int)ClientStream.Stable },
-			{ "b20240815beta", "2024-08-15", null, (int)ClientStream.Beta },
-			{ "b20240815cuttingedge", "2024-08-15", null, (int)ClientStream.CuttingEdge },
-			{ "b20240815dev", "2024-08-15", null, (int)ClientStream.Dev },
-			{ "b20240815tourney", "2024-08-15", null, (int)ClientStream.Tourney }
+			{ "b20240815", "2024-08-15", null, (int)OsuVersionStream.Stable },
+			{ "20240815", "2024-08-15", null, (int)OsuVersionStream.Stable },
+			{ "b20240815.2", "2024-08-15", 2, (int)OsuVersionStream.Stable },
+			{ "b20240815beta", "2024-08-15", null, (int)OsuVersionStream.Beta },
+			{ "b20240815cuttingedge", "2024-08-15", null, (int)OsuVersionStream.CuttingEdge },
+			{ "b20240815dev", "2024-08-15", null, (int)OsuVersionStream.Dev },
+			{ "b20240815tourney", "2024-08-15", null, (int)OsuVersionStream.Tourney }
 		};
 	}
 
@@ -57,13 +58,13 @@ public class ClientBuildTests
 	{
 		return new TheoryData<string, int?, int, string>
 		{
-			{ "2024-08-15", null, (int)ClientStream.Stable, "b20240815" },
-			{ "2024-08-15", 2, (int)ClientStream.Stable, "b20240815.2" },
-			{ "2024-08-15", null, (int)ClientStream.Beta, "b20240815beta" },
-			{ "2024-08-15", null, (int)ClientStream.CuttingEdge, "b20240815cuttingedge" },
-			{ "2024-08-15", null, (int)ClientStream.Dev, "b20240815dev" },
-			{ "2024-08-15", null, (int)ClientStream.Tourney, "b20240815tourney" },
-			{ "2024-08-15", 3, (int)ClientStream.Dev, "b20240815.3dev" }
+			{ "2024-08-15", null, (int)OsuVersionStream.Stable, "b20240815" },
+			{ "2024-08-15", 2, (int)OsuVersionStream.Stable, "b20240815.2" },
+			{ "2024-08-15", null, (int)OsuVersionStream.Beta, "b20240815beta" },
+			{ "2024-08-15", null, (int)OsuVersionStream.CuttingEdge, "b20240815cuttingedge" },
+			{ "2024-08-15", null, (int)OsuVersionStream.Dev, "b20240815dev" },
+			{ "2024-08-15", null, (int)OsuVersionStream.Tourney, "b20240815tourney" },
+			{ "2024-08-15", 3, (int)OsuVersionStream.Dev, "b20240815.3dev" }
 		};
 	}
 
@@ -75,40 +76,40 @@ public class ClientBuildTests
 		int? expectedRevision,
 		int expectedStream)
 	{
-		var build = ClientBuild.Parse(text);
+		var build = OsuVersionExtensions.Parse(text);
 
 		Assert.Equal(DateOnly.ParseExact(expectedDate, "yyyy-MM-dd"), build.Date);
 		Assert.Equal(expectedRevision, build.Revision);
-		Assert.Equal((ClientStream)expectedStream, build.Stream);
+		Assert.Equal((OsuVersionStream)expectedStream, build.Stream);
 	}
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
 	public void TryParse_MalformedBuildText_ReturnsFalse(string text)
 	{
-		Assert.False(ClientBuild.TryParse(text, out _));
+		Assert.False(OsuVersionExtensions.TryParse(text, out _));
 	}
 
 	[Fact]
 	public void TryParse_NullText_ReturnsFalse()
 	{
-		Assert.False(ClientBuild.TryParse(null, out _));
+		Assert.False(OsuVersionExtensions.TryParse(null, out _));
 	}
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
 	public void Parse_MalformedBuildText_ThrowsFormatException(string text)
 	{
-		Assert.Throws<FormatException>(() => ClientBuild.Parse(text));
+		Assert.Throws<FormatException>(() => OsuVersionExtensions.Parse(text));
 	}
 
 	[Theory]
 	[MemberData(nameof(CanonicalText))]
 	public void ToString_ParsedBuild_ReturnsCanonicalLowercaseWireText(string text, string expected)
 	{
-		var build = ClientBuild.Parse(text);
+		var build = OsuVersionExtensions.Parse(text);
 
-		Assert.Equal(expected, build.ToString());
+		Assert.Equal(expected, build.ToText());
 	}
 
 	[Theory]
@@ -119,8 +120,8 @@ public class ClientBuildTests
 		int stream,
 		string expected)
 	{
-		var build = new ClientBuild(DateOnly.ParseExact(date, "yyyy-MM-dd"), revision, (ClientStream)stream);
+		var build = new OsuVersion(DateOnly.ParseExact(date, "yyyy-MM-dd"), revision, (OsuVersionStream)stream);
 
-		Assert.Equal(expected, build.ToString());
+		Assert.Equal(expected, build.ToText());
 	}
 }

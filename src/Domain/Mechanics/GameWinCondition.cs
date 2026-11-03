@@ -52,9 +52,9 @@ public static class GameWinConditionExtensions
 		{
 			return condition switch
 			{
-				GameWinCondition.Score or GameWinCondition.ScoreV2 => score.TotalScore,
+				GameWinCondition.Score or GameWinCondition.ScoreV2 => score.LastState.TotalScore,
 				GameWinCondition.Accuracy => score.Accuracy,
-				GameWinCondition.Combo => score.MaxCombo,
+				GameWinCondition.Combo => score.LastState.MaxCombo,
 				_ => throw new ArgumentOutOfRangeException(nameof(condition), condition, "Unknown win condition.")
 			};
 		}
@@ -85,7 +85,7 @@ public static class GameWinConditionExtensions
 		/// <inheritdoc />
 		public int Compare(ScoreData? x, ScoreData? y)
 		{
-			return Nulls(x, y) ?? x!.TotalScore.CompareTo(y!.TotalScore);
+			return Nulls(x, y) ?? x!.LastState.TotalScore.CompareTo(y!.LastState.TotalScore);
 		}
 	}
 
@@ -135,7 +135,7 @@ public static class GameWinConditionExtensions
 		{
 			if (Nulls(x, y) is { } order) return order;
 
-			var byCombo = x!.MaxCombo.CompareTo(y!.MaxCombo);
+			var byCombo = x!.LastState.MaxCombo.CompareTo(y!.LastState.MaxCombo);
 			return byCombo != 0 ? byCombo : ScoreComparer.Instance.Compare(x, y);
 		}
 	}

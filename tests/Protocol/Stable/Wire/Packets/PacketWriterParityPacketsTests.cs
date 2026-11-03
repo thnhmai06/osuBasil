@@ -58,7 +58,7 @@ public class PacketWriterParityPacketsTests
 	public void BeatmapInfoReply_OneMap_WritesFieldsInOrder()
 	{
 		// i32 count, then i16 index, i32 map id, i32 set id, i32 thread id, u8 status, i8 osu, catch, taiko, mania, string md5
-		var map = new BeatmapInfoReplyEntry(1, 2, 3, 4, 5, 6, 7, 8, -1, "ab");
+		var map = new BeatmapInfoResponse(1, 2, 3, 4, 5, 6, 7, 8, -1, "ab");
 
 		Assert.Equal(
 			Hex("4500001b000000" + "01000000" + "0100" + "02000000" + "03000000" + "04000000" + "05" + "060708ff" +

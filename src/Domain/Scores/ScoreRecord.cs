@@ -54,26 +54,18 @@ public sealed class ScoreRecord : IEquatable<ScoreRecord>
 /// <param name="BeatmapHash">The MD5 checksum of the beatmap played, when known.</param>
 /// <param name="Mode">The game mode the play used.</param>
 /// <param name="Mods">The mods applied to the play.</param>
-/// <param name="HitCounts">The judgment counts of the play.</param>
-/// <param name="TotalScore">The total score achieved.</param>
-/// <param name="MaxCombo">The maximum combo reached.</param>
-/// <param name="CurrentCombo">The combo count at the end of the beatmap.</param>
+/// <param name="LastState">The score at the end of the play: hit counts, total score, combos and whether it was a full combo.</param>
 /// <param name="Grade">The grade earned.</param>
 /// <param name="IsPassed">Whether the play was passed.</param>
-/// <param name="IsFullCombo">Whether the play was a full combo.</param>
 /// <param name="Timestamp">The date and time when the play occurred.</param>
 public sealed record ScoreData(
 	int? UserId,
 	Md5? BeatmapHash,
 	GameMode Mode,
 	GameMods Mods,
-	HitCounts HitCounts,
-	int TotalScore,
-	ushort MaxCombo,
-	ushort CurrentCombo,
+	ScoreState LastState,
 	Grade Grade,
 	bool IsPassed,
-	bool IsFullCombo,
 	DateTimeOffset Timestamp)
 {
 	/// <summary>Gets the user ID of the player, when known.</summary>
@@ -100,19 +92,13 @@ public sealed record ScoreData(
 		init => field = value.ThrowIfUndefined();
 	} = Grade.ThrowIfUndefined();
 
-	/// <summary>Gets the total score achieved.</summary>
+	/// <summary>Gets the score at the end of the play: hit counts, total score and combos.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The total score is negative.</exception>
-	public int TotalScore
+	public ScoreState LastState
 	{
 		get;
 		init => field = Check(value);
-	} = Check(TotalScore);
-
-	/// <summary>Gets the maximum combo reached, as the replay format stores it (unsigned 16-bit).</summary>
-	public ushort MaxCombo { get; init; } = MaxCombo;
-
-	/// <summary>Gets the combo count at the end of the beatmap, as the replay format stores it (unsigned 16-bit).</summary>
-	public ushort CurrentCombo { get; init; } = CurrentCombo;
+	} = Check(LastState);
 
 	/// <summary>
 	///     Gets the checksum the client computed for the submission of this score, which identifies the submission,
@@ -123,19 +109,32 @@ public sealed record ScoreData(
 	/// <summary>
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>
-	public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);
+	public double Accuracy => LastState.HitCounts.CalculateAccuracy(Mode, Mods);
 
-	private static int Check(int value)
+	private static ScoreState Check(ScoreState value)
 	{
-		return value >= 0
+		return value.TotalScore >= 0
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must not be negative.");
+			: throw new ArgumentOutOfRangeException(nameof(value), value.TotalScore, "The total score must not be negative.");
 	}
 
 	private static int? CheckUserId(int? value)
 	{
-		return value is { } and < 1
+		return value is < 1
 			? throw new ArgumentOutOfRangeException(nameof(value), value, "User ids start at 1.")
 			: value;
 	}
 }
+
+/// <summary>The state of a score at one moment of a play: what has been hit, scored and chained so far.</summary>
+/// <param name="HitCounts">The judgment counts so far.</param>
+/// <param name="TotalScore">The total score so far.</param>
+/// <param name="MaxCombo">The maximum combo reached so far, as the replay format stores it (unsigned 16-bit).</param>
+/// <param name="CurrentCombo">The combo running at this moment, as the replay format stores it (unsigned 16-bit).</param>
+/// <param name="IsFullCombo">Whether no combo has been broken so far.</param>
+public readonly record struct ScoreState(
+	HitCounts HitCounts,
+	int TotalScore,
+	ushort MaxCombo,
+	ushort CurrentCombo,
+	bool IsFullCombo);

@@ -371,7 +371,7 @@ Basil.Infrastructure.<Module>    the module's implementations, in folders that  
                                  Add<Module>Infrastructure()
 Basil.Host.Shared               views and outcome-to-error mapping used      -> Application projects
                                  by the API and the console
-Basil.Protocol.Stable            osu! client-server wire formats, score         -> external libraries only
+Basil.Protocol.Stable            osu! client-server wire formats, score         -> Domain, external libraries
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
 Basil.Host.Stable / .Irc /       transports                                     -> Host.Shared, their Application
@@ -408,10 +408,18 @@ an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for 
 `Basil.Protocol.Stable` wraps the communication between the osu! client and the server, as an API wrapper
 wraps a remote API: it turns what the client sends (osu-stable packets, the delimited strings of the web
 endpoints such as the score submission, the client hash, the client build) into C# models of primitives and
-back, including undoing the client's own encoding (the score submission's Rijndael cipher). It does not
-validate and gives no business meaning; Domain owns meaning and validity, Application the checks. If a wire
-format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IRC. Protocol is not a peer of
-Domain: only the transport hosts reference it, and it may use external libraries for the wire work.
+back, including undoing the client's own encoding (the score submission's Rijndael cipher). What the client
+sends and receives is a DTO and belongs to Protocol (`RoomPacket`, `LoginRequestBody`, `ScoreSubmission`; their
+enum-like fields stay primitives). What the messages mean belongs to Domain, and Protocol builds on it: the game
+enums (`GameMode`, `GameMods`, `UserActivity`, `BeatmapsetStatus`, `GameTeamType`, `GameWinCondition`,
+`UserPrivileges`, `OsuVersionStream`) carry the client's numbering, so the host casts a primitive to them and back
+with no table, and the spectated play (`SpectatorFrame`, `SpectatorScore`, `SpectatorAction`) and the client version
+(`OsuVersion`, text in `ClientBuildText`) are Domain values that Protocol reads and writes. Protocol does not
+validate and gives no business meaning: a number the client sends is checked by the host with `WireMap.Known` and
+`WireMap.Mods` before Application sees it. What has no Domain twin (a slot's neutral team, the open/locked/quit slot
+states) stays a Protocol enum, mapped by the host. If a wire format changes, only Protocol changes; a Domain enum
+value is never renumbered for a client. `Basil.Protocol.Irc` wraps IRC the same way and references nothing. Only the
+transport hosts reference Protocol; Application and Infrastructure never do.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`,

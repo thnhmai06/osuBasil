@@ -1,4 +1,4 @@
-namespace Basil.Protocol.Stable.Models.Presence;
+namespace Basil.Protocol.Stable.Models.Users;
 
 /// <summary>Carries the status a client reports in the change-action packet.</summary>
 /// <param name="Action">The numeric action id of the client's status.</param>

@@ -1,4 +1,4 @@
-using Basil.Protocol.Stable.Models.Auth;
+using Basil.Protocol.Stable.Models.Client;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 

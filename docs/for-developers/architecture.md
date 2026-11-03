@@ -15,7 +15,8 @@ Basil.Application.<Module>                ports, capabilities and runtime object
                                                                                        the Application projects it uses
 Basil.Infrastructure.<Module>             implementations, DbContext, migrations    -> its own Application,
                                                                                        Infrastructure.Common
-Basil.Protocol.Stable / .Irc              wire formats                             -> external libraries only
+Basil.Protocol.Stable                     osu! wire formats                        -> Domain, external libraries
+Basil.Protocol.Irc                        IRC wire format                          -> external libraries only
 Basil.Host.Shared                         client views and outcome-to-error mapping -> Application projects
 Basil.Host.Stable / .Irc / .Rest / .Cli   transports                               -> Host.Shared, Application, Protocol
 Basil.Host                               composition root, configuration,         -> every project

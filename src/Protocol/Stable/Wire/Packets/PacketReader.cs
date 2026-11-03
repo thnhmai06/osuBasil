@@ -1,8 +1,10 @@
+using System.Drawing;
+using Basil.Domain.Client;
+using Basil.Domain.Scores;
 using Basil.Protocol.Stable.Models.Beatmaps;
 using Basil.Protocol.Stable.Models.Chat;
 using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Models.Presence;
-using Basil.Protocol.Stable.Models.Replay;
+using Basil.Protocol.Stable.Models.Users;
 using Basil.Protocol.Stable.Wire.Binary;
 
 namespace Basil.Protocol.Stable.Wire.Packets;
@@ -116,34 +118,14 @@ public sealed class PacketReader(Stream stream)
 		var tagByte = _reader.ReadByte();
 		var scoreV2 = _reader.ReadByte() != 0;
 
-		double? comboPortion = null;
-		double? bonusPortion = null;
+		ScoreV2Portion? scoreV2Portion = null;
 		if (scoreV2)
-		{
-			comboPortion = _reader.ReadDouble();
-			bonusPortion = _reader.ReadDouble();
-		}
+			scoreV2Portion = new ScoreV2Portion(_reader.ReadDouble(), _reader.ReadDouble());
 
-		return new ScoreFrame
-		{
-			Time = time,
-			Id = id,
-			Num300 = num300,
-			Num100 = num100,
-			Num50 = num50,
-			NumGeki = numGeki,
-			NumKatu = numKatu,
-			NumMiss = numMiss,
-			TotalScore = totalScore,
-			MaxCombo = maxCombo,
-			CurrentCombo = currentCombo,
-			Perfect = perfect,
-			CurrentHp = currentHp,
-			TagByte = tagByte,
-			ScoreV2 = scoreV2,
-			ComboPortion = comboPortion,
-			BonusPortion = bonusPortion
-		};
+		return new ScoreFrame(Time: TimeSpan.FromMilliseconds(time), Id: id,
+			State: new ScoreState(new HitCounts(num300, num100, num50, numGeki, numKatu, numMiss), totalScore, maxCombo,
+				currentCombo, perfect),
+			Health: currentHp, TagByte: tagByte, Sv2Portion: scoreV2Portion);
 	}
 
 	/// <summary>Reads a single replay frame from the buffer.</summary>
@@ -151,28 +133,27 @@ public sealed class PacketReader(Stream stream)
 	public ReplayFrame ReadReplayFrame()
 	{
 		return new ReplayFrame(
-			(Keys)_reader.ReadByte(),
-			(TaikoByte)_reader.ReadByte(),
-			_reader.ReadSingle(),
-			_reader.ReadSingle(),
-			_reader.ReadInt32());
+			(KeyState)_reader.ReadByte(),
+			(TaikoDrumState)_reader.ReadByte(),
+			new PointF(_reader.ReadSingle(), _reader.ReadSingle()),
+			TimeSpan.FromMilliseconds(_reader.ReadInt32()));
 	}
 
 	/// <summary>Reads a complete replay frame bundle, including its frames, action, score frame, and sequence number.</summary>
-	/// <returns>The replay frame bundle read.</returns>
-	public ReplayFrameBundle ReadReplayFrameBundle()
+	/// <returns>The spectator bundle read.</returns>
+	public SpectatorBundle ReadReplayFrameBundle()
 	{
-		var extra = _reader.ReadInt32();
+		_reader.ReadInt32(); // the leading extra value, which nothing uses
 		var frameCount = _reader.ReadUInt16();
 		var frames = new ReplayFrame[frameCount];
 		for (var i = 0; i < frameCount; i++)
 			frames[i] = ReadReplayFrame();
 
-		var action = (ReplayAction)_reader.ReadByte();
+		var action = (SpectatorAction)_reader.ReadByte();
 		var scoreFrame = ReadScoreFrame();
 		var sequence = _reader.ReadUInt16();
 
-		return new ReplayFrameBundle(frames, scoreFrame, action, extra, sequence);
+		return new SpectatorBundle(action, frames, scoreFrame, sequence);
 	}
 
 	/// <summary>

@@ -12,8 +12,8 @@ public class GameWinConditionTests
 
 	private static ScoreData Make(HitCounts hits, int totalScore, ushort maxCombo, ushort currentCombo)
 	{
-		return new ScoreData(null, null, GameMode.Standard, GameMods.NoMod, hits, totalScore, maxCombo, currentCombo,
-			Grade.S, true, false, DateTimeOffset.UnixEpoch);
+		return new ScoreData(null, null, GameMode.Standard, GameMods.NoMod, new ScoreState(hits, totalScore, maxCombo, currentCombo, false),
+			Grade.S, true, DateTimeOffset.UnixEpoch);
 	}
 
 	[Fact]

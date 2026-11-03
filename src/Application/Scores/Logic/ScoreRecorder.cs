@@ -62,8 +62,8 @@ internal sealed class ScoreRecorder(
 			await replays.SaveAsync(score, replay, cancellationToken);
 
 		// Every passed score counts toward ranked score, whatever status the beatmapset is reported with.
-		var current = await stats.AddPlayAsync(player, submission.Score.Mode, submission.Score.TotalScore,
-			submission.Score.IsPassed ? submission.Score.TotalScore : 0, cancellationToken);
+		var current = await stats.AddPlayAsync(player, submission.Score.Mode, submission.Score.LastState.TotalScore,
+			submission.Score.IsPassed ? submission.Score.LastState.TotalScore : 0, cancellationToken);
 
 		return new ScoreOutcome(null, score, current);
 	}
@@ -111,12 +111,12 @@ internal sealed class ScoreRecorder(
 
 		string ComputeSubmissionMd5()
 		{
-			var hitCounts = submission.Score.HitCounts;
+			var hitCounts = submission.Score.LastState.HitCounts;
 
 			var raw =
 				$"chickenmcnuggets{hitCounts.Num100 + hitCounts.Num300}o15{hitCounts.Num50}{hitCounts.NumGeki}" +
-				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{beatmap.Hash}{submission.Score.MaxCombo}" +
-				$"{submission.Score.IsFullCombo}{playerName}{submission.Score.TotalScore}{submission.Score.Grade.ToString().ToUpperInvariant()}" +
+				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{beatmap.Hash}{submission.Score.LastState.MaxCombo}" +
+				$"{submission.Score.LastState.IsFullCombo}{playerName}{submission.Score.LastState.TotalScore}{submission.Score.Grade.ToString().ToUpperInvariant()}" +
 				$"{(int)submission.Score.Mods}Q{submission.Score.IsPassed}{(int)submission.Score.Mode}" +
 				$"{submittedClient.VersionDate}{submission.Score.Timestamp:yyMMddHHmmss}{submittedClient.ClientHash}{beatmap.StoryboardHash?.ToString() ?? string.Empty}";
 			var hash = MD5.HashData(Encoding.UTF8.GetBytes(raw));

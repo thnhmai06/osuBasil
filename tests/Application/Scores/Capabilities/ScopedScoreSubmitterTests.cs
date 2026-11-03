@@ -22,8 +22,7 @@ public sealed class ScopedScoreSubmitterTests
 
 	private static Submission Submission()
 	{
-		var score = new ScoreData(null, null, GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0),
-			1000, 100, 100, Grade.S, true, false, DateTimeOffset.UnixEpoch);
+		var score = new ScoreData(null, null, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, false), Grade.S, true, DateTimeOffset.UnixEpoch);
 		return new Submission { Score = score, HashByClient = Hash, Flags = OsuFlags.Clean };
 	}
 

@@ -80,7 +80,8 @@ The dependency rule is enforced by architecture tests:
 Domain                  → nothing
 Application.<Module>    → Domain, Application.Common, the modules it uses
 Infrastructure.<Module> → its own Application, Infrastructure.Common
-Protocol.*              → external libraries only
+Protocol.Stable         → Domain, external libraries
+Protocol.Irc            → external libraries only
 Host.* (transports)     → Host.Shared, their Application and Protocol projects
 Host                    → everything
 ```

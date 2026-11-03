@@ -1,4 +1,6 @@
-using Basil.Protocol.Stable.Models.Replay;
+using Basil.Domain.Scores;
+using System.Drawing;
+using Basil.Domain.Client;
 using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
@@ -20,26 +22,7 @@ public class PacketReaderReplayFrameBundleTests
 	private const string V1Hex = "e8030000" + "05" + "0200" + "0300" + "0400" + "0500" + "0600" + "0700"
 	                             + "44332211" + "2c01" + "0b00" + "00" + "8e" + "09" + "00";
 
-	private static ScoreFrame V1Frame => new()
-	{
-		Time = 1000,
-		Id = 5,
-		Num300 = 2,
-		Num100 = 3,
-		Num50 = 4,
-		NumGeki = 5,
-		NumKatu = 6,
-		NumMiss = 7,
-		TotalScore = 287_454_020, // 0x11223344
-		MaxCombo = 300,
-		CurrentCombo = 11,
-		Perfect = false,
-		CurrentHp = 142,
-		TagByte = 9,
-		ScoreV2 = false,
-		ComboPortion = null,
-		BonusPortion = null
-	};
+	private static ScoreFrame V1Frame => new(Time: TimeSpan.FromMilliseconds(1000), Id: 5, State: new ScoreState(new HitCounts(Num300: 2, Num100: 3, Num50: 4, NumGeki: 5, NumKatu: 6, NumMiss: 7), 287_454_020, 300, 11, false), Health: 142, TagByte: 9, Sv2Portion: null);
 
 	/// <summary>
 	///     Builds a SpectateFrames payload per the osu! wire format: extra i32, u16 frame count, then
@@ -56,14 +39,14 @@ public class PacketReaderReplayFrameBundleTests
 
 		for (var i = 0; i < frameCount; i++)
 		{
-			writer.Write((byte)Keys.Left1);
-			writer.Write((byte)TaikoByte.None);
+			writer.Write((byte)KeyState.Left1);
+			writer.Write((byte)TaikoDrumState.None);
 			writer.Write(1.5f); // 0000c03f little-endian
 			writer.Write(-2.5f); // 000020c0 little-endian
 			writer.Write(8 * i);
 		}
 
-		writer.Write((byte)ReplayAction.Standard);
+		writer.Write((byte)SpectatorAction.Standard);
 		writer.Write(Convert.FromHexString(V1Hex));
 		writer.Write((ushort)5);
 		return stream.ToArray();
@@ -83,10 +66,9 @@ public class PacketReaderReplayFrameBundleTests
 		var bundle = new PacketReader(new MemoryStream(Bundle(0))).ReadReplayFrameBundle();
 
 		// asserted per member: the record's frame-array field compares by reference.
-		Assert.Empty(bundle.Frames);
+		Assert.Empty(bundle.ReplayFrames);
 		Assert.Equal(V1Frame, bundle.ScoreFrame);
-		Assert.Equal(ReplayAction.Standard, bundle.Action);
-		Assert.Equal(1, bundle.ExtraByte);
+		Assert.Equal(SpectatorAction.Standard, bundle.Action);
 		Assert.Equal(5, bundle.Sequence);
 	}
 
@@ -97,9 +79,9 @@ public class PacketReaderReplayFrameBundleTests
 
 		Assert.Equal(
 		[
-			new ReplayFrame(Keys.Left1, TaikoByte.None, 1.5f, -2.5f, 0),
-			new ReplayFrame(Keys.Left1, TaikoByte.None, 1.5f, -2.5f, 8)
-		], bundle.Frames);
+			new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f), TimeSpan.FromMilliseconds(0)),
+			new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f), TimeSpan.FromMilliseconds(8))
+		], bundle.ReplayFrames);
 	}
 
 	[Fact]
@@ -107,11 +89,11 @@ public class PacketReaderReplayFrameBundleTests
 	{
 		var bundle = new PacketReader(new MemoryStream(Bundle(65_535))).ReadReplayFrameBundle();
 
-		Assert.Equal(65_535, bundle.Frames.Count);
-		Assert.Equal(new ReplayFrame(Keys.Left1, TaikoByte.None, 1.5f, -2.5f, 0), bundle.Frames.First());
+		Assert.Equal(65_535, bundle.ReplayFrames.Count);
+		Assert.Equal(new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f), TimeSpan.FromMilliseconds(0)), bundle.ReplayFrames.First());
 		Assert.Equal(
-			new ReplayFrame(Keys.Left1, TaikoByte.None, 1.5f, -2.5f, 8 * 65_534),
-			bundle.Frames.Last());
+			new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f), TimeSpan.FromMilliseconds(8 * 65_534)),
+			bundle.ReplayFrames.Last());
 	}
 
 	[Theory]

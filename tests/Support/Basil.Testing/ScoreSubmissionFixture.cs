@@ -174,8 +174,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	/// <returns>The score.</returns>
 	public static ScoreData PassedScore()
 	{
-		return new ScoreData(null, Beatmap, GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0),
-			1000, 100, 100, Grade.S, true, true, PlayedAt);
+		return new ScoreData(null, Beatmap, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, true), Grade.S, true, PlayedAt);
 	}
 
 	/// <summary>Wraps a score in a submission whose checksum is the one a genuine client computes.</summary>
@@ -199,12 +198,12 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	public static Md5 SubmissionChecksum(ScoreData score, string playerName, Md5? storyboard = null,
 		Md5? beatmap = null)
 	{
-		var hits = score.HitCounts;
+		var hits = score.LastState.HitCounts;
 		var timestamp = score.Timestamp.ToString("yyMMddHHmmss", CultureInfo.InvariantCulture);
 		var raw = string.Create(CultureInfo.InvariantCulture,
 			$"chickenmcnuggets{hits.Num100 + hits.Num300}o15{hits.Num50}{hits.NumGeki}smustard{hits.NumKatu}" +
-			$"{hits.NumMiss}uu{beatmap ?? Beatmap}{score.MaxCombo}{(score.IsFullCombo ? "True" : "False")}{playerName}" +
-			$"{score.TotalScore}{score.Grade.ToString().ToUpperInvariant()}{(int)score.Mods}Q" +
+			$"{hits.NumMiss}uu{beatmap ?? Beatmap}{score.LastState.MaxCombo}{(score.LastState.IsFullCombo ? "True" : "False")}{playerName}" +
+			$"{score.LastState.TotalScore}{score.Grade.ToString().ToUpperInvariant()}{(int)score.Mods}Q" +
 			$"{(score.IsPassed ? "True" : "False")}{(int)score.Mode}{VersionDate}{timestamp}{ClientHash}" +
 			$"{storyboard?.ToString() ?? string.Empty}");
 		return new Md5(Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(raw))));

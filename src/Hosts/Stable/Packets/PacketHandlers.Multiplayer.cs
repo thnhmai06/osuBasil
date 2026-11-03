@@ -7,7 +7,6 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Models.Wire;
 using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Packets;
@@ -35,7 +34,7 @@ internal sealed partial class PacketHandlers
 			ClientPacketType.MatchNotReady => scoped.Slots.SetReadyAsync(false, cancellationToken),
 			ClientPacketType.MatchLock => scoped.Slots.ToggleLockAsync(reader.ReadInt32(), cancellationToken),
 			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync(
-				WireMap.FromWire((WireMods)reader.ReadInt32()),
+				WireMap.Mods(reader.ReadInt32()),
 				cancellationToken),
 			ClientPacketType.MatchChangeTeam => scoped.Slots.ToggleTeamAsync(cancellationToken),
 			ClientPacketType.MatchNoBeatmap => scoped.Slots.SetHasMapAsync(false, cancellationToken),
@@ -87,15 +86,15 @@ internal sealed partial class PacketHandlers
 	{
 		var settings = new MatchSettings();
 		if (ModeOf(match) is { } mode) settings.Mode = mode;
-		if (WireMap.FromWire((WireTeamType)match.TeamType) is { } teamType) settings.TeamType = teamType;
-		if (WireMap.FromWire((WireWinCondition)match.WinCondition) is { } winCondition)
+		if (WireMap.Known<GameTeamType>(match.TeamType) is { } teamType) settings.TeamType = teamType;
+		if (WireMap.Known<GameWinCondition>(match.WinCondition) is { } winCondition)
 			settings.WinCondition = winCondition;
 		return settings;
 	}
 
 	private static GameMode? ModeOf(RoomStatePacket match)
 	{
-		return WireMap.FromWire((WireGameMode)match.Mode);
+		return WireMap.Known<GameMode>(match.Mode);
 	}
 
 	private Task<RoomSettingsChange>? BeatmapOf(RoomStatePacket match)
@@ -118,12 +117,12 @@ internal sealed partial class PacketHandlers
 		var change = new RoomSettingsChange(
 			match.Name != room.Settings.Name ? match.Name : null,
 			Mode: ModeOf(match) is { } mode && mode != current.Mode ? mode : null,
-			Mods: WireMap.FromWire((WireMods)match.Mods) is var mods && mods != current.Mods ? mods : null,
+			Mods: WireMap.Mods(match.Mods) is var mods && mods != current.Mods ? mods : null,
 			Freemods: match.FreeMods != current.Freemods ? match.FreeMods : null,
-			TeamType: WireMap.FromWire((WireTeamType)match.TeamType) is { } teamType && teamType != current.TeamType
+			TeamType: WireMap.Known<GameTeamType>(match.TeamType) is { } teamType && teamType != current.TeamType
 				? teamType
 				: null,
-			WinCondition: WireMap.FromWire((WireWinCondition)match.WinCondition) is { } winCondition &&
+			WinCondition: WireMap.Known<GameWinCondition>(match.WinCondition) is { } winCondition &&
 			              winCondition != current.WinCondition
 				? winCondition
 				: null);

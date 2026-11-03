@@ -37,8 +37,8 @@ public class RoundScoreTests
 		return new ScoreRecord
 		{
 			Id = 1,
-			Value = new ScoreData(null, null, GameMode.Standard, GameMods.NoMod, new HitCounts(1, 0, 0, 0, 0, 0), 1, 1,
-				1, Grade.A, true, false, DateTimeOffset.UnixEpoch)
+			Value = new ScoreData(null, null, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(1, 0, 0, 0, 0, 0), 1, 1,
+				1, false), Grade.A, true, DateTimeOffset.UnixEpoch)
 		};
 	}
 

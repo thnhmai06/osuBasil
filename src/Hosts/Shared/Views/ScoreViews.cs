@@ -22,7 +22,7 @@ public sealed record ScoreView(
 	public static ScoreView Of(ScoreRecord score)
 	{
 		var v = score.Value;
-		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods.ToString(), v.TotalScore,
-			v.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.IsFullCombo, v.Timestamp);
+		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods.ToString(), v.LastState.TotalScore,
+			v.LastState.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.LastState.IsFullCombo, v.Timestamp);
 	}
 }

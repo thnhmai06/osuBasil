@@ -89,19 +89,7 @@ public sealed class RoomFixture
 		var score = new ScoreRecord
 		{
 			Id = id,
-			Value = new ScoreData(
-				null,
-				round.BeatmapHash,
-				GameMode.Standard,
-				GameMods.NoMod,
-				new HitCounts(1, 0, 0, 0, 0, 0),
-				1000,
-				10,
-				0,
-				Grade.A,
-				true,
-				false,
-				DateTimeOffset.UnixEpoch)
+			Value = new ScoreData(null, round.BeatmapHash, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(1, 0, 0, 0, 0, 0), 1000, 10, 0, false), Grade.A, true, DateTimeOffset.UnixEpoch)
 		};
 		return new RoundScore(score, round, null);
 	}
@@ -117,19 +105,7 @@ public sealed class RoomFixture
 		return new ScoreRecord
 		{
 			Id = id,
-			Value = new ScoreData(
-				player.Id,
-				beatmap,
-				GameMode.Standard,
-				GameMods.NoMod,
-				new HitCounts(1, 0, 0, 0, 0, 0),
-				totalScore,
-				10,
-				0,
-				Grade.A,
-				true,
-				false,
-				DateTimeOffset.UnixEpoch)
+			Value = new ScoreData(player.Id, beatmap, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(1, 0, 0, 0, 0, 0), totalScore, 10, 0, false), Grade.A, true, DateTimeOffset.UnixEpoch)
 		};
 	}
 

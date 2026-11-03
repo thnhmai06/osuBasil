@@ -36,7 +36,7 @@ public class SessionRecordTests
 	[Fact]
 	public void New_UndefinedType_Throws()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Make(type: (SessionType)0));
+		Assert.Throws<ArgumentOutOfRangeException>(() => Make(type: 0));
 	}
 
 	[Theory]

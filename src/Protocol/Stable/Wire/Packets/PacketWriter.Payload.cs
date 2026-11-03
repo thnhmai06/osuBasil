@@ -1,5 +1,5 @@
-﻿using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Models.Replay;
+using Basil.Domain.Client;
+using Basil.Protocol.Stable.Models.Multiplayer;
 using Basil.Protocol.Stable.Wire.Binary;
 
 namespace Basil.Protocol.Stable.Wire.Packets;
@@ -118,25 +118,25 @@ public partial class PacketWriter
 	/// <param name="frame">The score frame to serialize.</param>
 	private void WriteScoreFramePayload(ScoreFrame frame)
 	{
-		_writer.Write(frame.Time);
+		_writer.Write(checked((int)frame.Time.TotalMilliseconds));
 		_writer.Write(checked((byte)frame.Id));
-		_writer.Write(checked((ushort)frame.Num300));
-		_writer.Write(checked((ushort)frame.Num100));
-		_writer.Write(checked((ushort)frame.Num50));
-		_writer.Write(checked((ushort)frame.NumGeki));
-		_writer.Write(checked((ushort)frame.NumKatu));
-		_writer.Write(checked((ushort)frame.NumMiss));
-		_writer.Write(frame.TotalScore);
-		_writer.Write(checked((ushort)frame.MaxCombo));
-		_writer.Write(checked((ushort)frame.CurrentCombo));
-		_writer.Write(frame.Perfect ? (byte)1 : (byte)0);
-		_writer.Write(checked((byte)frame.CurrentHp));
+		_writer.Write(checked((ushort)frame.State.HitCounts.Num300));
+		_writer.Write(checked((ushort)frame.State.HitCounts.Num100));
+		_writer.Write(checked((ushort)frame.State.HitCounts.Num50));
+		_writer.Write(checked((ushort)frame.State.HitCounts.NumGeki));
+		_writer.Write(checked((ushort)frame.State.HitCounts.NumKatu));
+		_writer.Write(checked((ushort)frame.State.HitCounts.NumMiss));
+		_writer.Write(frame.State.TotalScore);
+		_writer.Write(frame.State.MaxCombo);
+		_writer.Write(frame.State.CurrentCombo);
+		_writer.Write(frame.State.IsFullCombo ? (byte)1 : (byte)0);
+		_writer.Write(checked((byte)frame.Health));
 		_writer.Write(checked((byte)frame.TagByte));
-		_writer.Write(frame.ScoreV2 ? (byte)1 : (byte)0);
+		_writer.Write(frame.Sv2Portion is null ? (byte)0 : (byte)1);
 
-		if (!frame.ScoreV2) return;
+		if (frame.Sv2Portion is not { } portion) return;
 
-		_writer.Write(frame.ComboPortion ?? 0.0);
-		_writer.Write(frame.BonusPortion ?? 0.0);
+		_writer.Write(portion.Combo);
+		_writer.Write(portion.Bonus);
 	}
 }

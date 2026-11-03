@@ -1,4 +1,4 @@
-namespace Basil.Protocol.Stable.Models.Wire;
+namespace Basil.Protocol.Stable.Models.Multiplayer;
 
 /// <summary>The slot team numbers the osu! client uses in a multiplayer match.</summary>
 public enum WireSlotTeam : byte
