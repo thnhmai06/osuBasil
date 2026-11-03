@@ -1,3 +1,4 @@
+using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Tests.Support;
 using Basil.Domain.Users;
@@ -195,6 +196,6 @@ public sealed class MpRoomResolutionTests
 
 		Assert.True(succeeded);
 		Assert.Empty(said.Here);
-		Assert.Equal([bot.Text(MpReplies.HelpText)], said.Privately);
+		Assert.Equal([CommandCatalog.Lines(bot.Replies, "mp")], said.Privately);
 	}
 }

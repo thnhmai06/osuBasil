@@ -4,20 +4,10 @@ namespace Basil.Bot.Commands;
 
 /// <summary>
 ///     The user-visible reply text sent by BasilBot's own chat commands (<c>!where</c>,
-///     <c>!faq</c>, <c>!roll</c>, <c>!help</c>), the single source of truth for that surface.
+///     <c>!faq</c>, <c>!roll</c>), the single source of truth for that surface.
 /// </summary>
 internal static class BotReplies
 {
-	// ── !help ────────────────────────────────────────────────────────────────────────────────
-	/// <summary>The help text listing available commands.</summary>
-	public static readonly Reply HelpText = new("bot.helpText", """
-	                                                            !roll [max] - roll a random number from 0 to max (default 100)
-	                                                            !where <username> - show a user's country
-	                                                            !faq <entry>|list - print a FAQ entry, or list every entry
-	                                                            !mp help - list multiplayer subcommands
-	                                                            !channel list|create|set|delete - manage the general channels (needs permission)
-	                                                            """);
-
 	// ── !where ───────────────────────────────────────────────────────────────────────────────
 	/// <summary>Usage line for <c>!where</c>.</summary>
 	public static readonly Reply WhereUsage = new("bot.whereUsage", "Usage: !where <username>");

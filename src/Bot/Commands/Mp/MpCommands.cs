@@ -62,7 +62,7 @@ internal sealed partial class MpCommands(
 
 		if (subcommand.Equals("help", StringComparison.OrdinalIgnoreCase) || subcommand.Length == 0)
 		{
-			await context.ReplyPrivately(MpReplies.HelpText, cancellationToken);
+			await context.SayPrivately(CommandCatalog.Lines(context.Replies, "mp"), cancellationToken);
 			return true;
 		}
 

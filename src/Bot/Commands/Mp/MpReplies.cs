@@ -342,37 +342,6 @@ internal static class MpReplies
 	/// <summary>Generic fallback reply when no specific outcome mapping exists; <c>{outcome}</c> is the outcome name.</summary>
 	public static readonly Reply GenericFailed = new("mp.genericFailed", "Couldn't do that ({outcome}).", "outcome");
 
-	// ── help text ─────────────────────────────────────────────────────────────────────────
-	/// <summary>The <c>!mp help</c> listing, one subcommand per line.</summary>
-	public static readonly Reply HelpText = new("mp.helpText",
-		"!mp settings - show match id, map, team type, win condition, mods, and slots" + "\n" +
-		"!mp lock - lock the slots, so players cannot change slot or team" + "\n" +
-		"!mp unlock - unlock the room" + "\n" +
-		"!mp private [0|1] - show or set the room's private status (hidden from the lobby and the match lists)" + "\n" +
-		"!mp size <1-16> - set the number of available slots" + "\n" +
-		"!mp move <name/id> <slot 1-16> - move a user to another slot" + "\n" +
-		"!mp host <name/id> - transfer host to another user" + "\n" +
-		"!mp clearhost - clear the current host" + "\n" +
-		"!mp name <text> - rename the match" + "\n" +
-		"!mp password [text] - set the room password; omit to clear it" + "\n" +
-		"!mp invite <name/id> - invite an online user" + "\n" +
-		"!mp addref <name/id> - add a referee (creator only)" + "\n" +
-		"!mp removeref <name/id> - remove a referee (creator only)" + "\n" +
-		"!mp listrefs - list current referees" + "\n" +
-		"!mp banlist - list players banned from this match" + "\n" +
-		"!mp team <name/id> <red|blue> - assign a user's team" + "\n" +
-		"!mp map <beatmap id> [playmode] - change the selected map" + "\n" +
-		"!mp mods <mods>|Freemod|None - set the match mods" + "\n" +
-		"!mp set <teammode 0-3> [scoremode 0-3] [size 1-16] - set team type, win condition, and size at once" + "\n" +
-		"!mp start [seconds] - start now, or after a countdown" + "\n" +
-		"!mp timer [seconds] - start a countdown without auto-starting" + "\n" +
-		"!mp aborttimer - cancel a running countdown" + "\n" +
-		"!mp abort - abort the match in progress" + "\n" +
-		"!mp kick <name/id> - remove a user from the room" + "\n" +
-		"!mp ban <name/id> - kick and block a user from rejoining" + "\n" +
-		"!mp unban <name/id> - allow a banned user to rejoin" + "\n" +
-		"!mp close - close the match immediately");
-
 	// ── outcome replies ───────────────────────────────────────────────────────────────────
 	/// <summary>Reply when the actor may not perform the requested operation in this match.</summary>
 	public static readonly Reply NotAuthorizedInMatch = new("mp.notAuthorizedInMatch",

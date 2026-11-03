@@ -115,7 +115,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	{
 		await PostAsync(_channel, "!help");
 
-		Assert.Equal(Lines(_bot.Text(BotReplies.HelpText)), _bot.WhisperedTo(_typist));
+		Assert.Equal(Lines(CommandCatalog.Lines(_bot.Replies, "")), _bot.WhisperedTo(_typist));
 		Assert.Empty(_bot.SaidIn(_channel));
 	}
 
@@ -133,7 +133,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	{
 		await PostAsync(_bot.App.PmChannels.Of(_botConnection.User), "help");
 
-		Assert.Equal(Lines(_bot.Text(BotReplies.HelpText)), _bot.WhisperedTo(_typist));
+		Assert.Equal(Lines(CommandCatalog.Lines(_bot.Replies, "")), _bot.WhisperedTo(_typist));
 	}
 
 	[Fact]

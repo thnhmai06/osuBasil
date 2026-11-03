@@ -48,7 +48,7 @@ public sealed class ChatCommandsTests
 		var (succeeded, said) = await bot.TypeAsync(typist, null, "help");
 
 		Assert.True(succeeded);
-		Assert.Equal([bot.Text(BotReplies.HelpText)], said.Privately);
+		Assert.Equal([CommandCatalog.Lines(bot.Replies, "")], said.Privately);
 	}
 
 	[Fact]
@@ -61,7 +61,7 @@ public sealed class ChatCommandsTests
 
 		Assert.True(succeeded);
 		Assert.Empty(said.Here);
-		Assert.Equal([bot.Text(BotReplies.HelpText)], said.Privately);
+		Assert.Equal([CommandCatalog.Lines(bot.Replies, "")], said.Privately);
 	}
 
 	[Theory]

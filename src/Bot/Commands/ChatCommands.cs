@@ -122,7 +122,7 @@ internal sealed class ChatCommands(
 
 	private static async Task<bool> HandleHelpAsync(CommandContext context, CancellationToken cancellationToken)
 	{
-		await context.ReplyPrivately(BotReplies.HelpText, cancellationToken);
+		await context.SayPrivately(CommandCatalog.Lines(context.Replies, ""), cancellationToken);
 		return true;
 	}
 

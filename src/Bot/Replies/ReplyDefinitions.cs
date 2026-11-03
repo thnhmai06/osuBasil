@@ -1,4 +1,5 @@
 using System.Reflection;
+using Basil.Bot.Commands;
 
 namespace Basil.Bot.Replies;
 
@@ -11,10 +12,14 @@ internal static class ReplyDefinitions
 	/// <exception cref="InvalidOperationException">Two replies have the same key.</exception>
 	public static IReadOnlyList<Reply> In(Assembly assembly)
 	{
-		var replies = assembly.GetTypes()
+		var fields = assembly.GetTypes()
 			.SelectMany(type => type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
-			.Where(field => field.FieldType == typeof(Reply))
+			.ToList();
+		var replies = fields.Where(field => field.FieldType == typeof(Reply))
 			.Select(field => (Reply)field.GetValue(null)!)
+			.Concat(fields.Where(field => field.FieldType == typeof(IReadOnlyList<CommandHelp>))
+				.SelectMany(field => (IReadOnlyList<CommandHelp>)field.GetValue(null)!)
+				.Select(command => command.Summary))
 			.ToList();
 
 		var duplicate = replies.GroupBy(reply => reply.Key, StringComparer.Ordinal)
