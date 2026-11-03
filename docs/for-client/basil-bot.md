@@ -92,6 +92,6 @@ human-readable reply text is a stable command result. Use the HTTP API for machi
 ## See also
 
 * [`api/overview.md`](api/overview.md): Basil's HTTP API
-* [`osu-stable/protocol.md`](osu-stable/protocol.md): OsuStable protocol used to send and receive chat messages
+* [`osu-stable/protocol.md`](osu-stable/protocol.md): osu! (stable) protocol used to send and receive chat messages
 * [`osu-stable/authentication.md`](osu-stable/authentication.md): authenticating an osu! stable client
 * [`../for-developers/working-scopes.md`](../for-developers/working-scopes.md): commands and features included in Basil's scope

@@ -4,7 +4,7 @@
 
 osu! stable does not use a separate login packet.
 
-Login is performed through a normal HTTP request. The first request to the OsuStable server authenticates the player and creates the player's session.
+Login is performed through a normal HTTP request. The first request to the osu! (stable) server authenticates the player and creates the player's session.
 
 After a successful login, the server returns a session token. The client sends this token with subsequent requests.
 
@@ -18,7 +18,7 @@ Send:
 POST /
 ```
 
-to one of the OsuStable hosts:
+to one of the osu! (stable) hosts:
 
 ```text
 c.<domain>
@@ -68,7 +68,7 @@ A successful login returns:
 cho-token: <session-token>
 ```
 
-The response body contains OsuStable protocol packets that initialize the client session, including:
+The response body contains osu! (stable) protocol packets that initialize the client session, including:
 
 * protocol version;
 * login result;
@@ -77,7 +77,7 @@ The response body contains OsuStable protocol packets that initialize the client
 * online-player presence;
 * online-player statistics.
 
-The client must store the `cho-token` and send it with subsequent OsuStable requests.
+The client must store the `cho-token` and send it with subsequent osu! (stable) requests.
 
 ---
 
@@ -89,7 +89,7 @@ After login, include:
 osu-token: <session-token>
 ```
 
-on every OsuStable request that requires an authenticated session.
+on every osu! (stable) request that requires an authenticated session.
 
 For example:
 
@@ -216,6 +216,6 @@ No session token is issued for a failed login.
 
 ## See also
 
-* [`protocol.md`](protocol.md): OsuStable protocol after authentication
+* [`protocol.md`](protocol.md): osu! (stable) protocol after authentication
 * [`getting-started.md`](getting-started.md): connecting an osu! client to Basil
 * [`privileges.md`](../../for-developers/privileges.md): account privilege flags

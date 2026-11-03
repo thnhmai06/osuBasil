@@ -49,7 +49,7 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
   allowing HTTP Range requests and `206 Partial Content` responses for large downloads.
 
 `b.<domain>` and `a.<domain>` also use ImageSharp.Web for beatmap thumbnails and avatars respectively. Their URLs remain
-unchanged because the real osu! stable client hardcodes these hosts and paths as part of the OsuStable protocol. Only the
+unchanged because the real osu! stable client hardcodes these hosts and paths as part of the osu! (stable) protocol. Only the
 serving mechanism changed.
 
 ### Not covered

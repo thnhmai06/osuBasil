@@ -19,7 +19,7 @@ If not, the test is coupled to an implementation detail.
 | Application | `tests/Application/<Module>` | outcomes, `Require`, locks, sessions, restrictions, room state |
 | Infrastructure | `tests/Infrastructure/<Module>` | repositories and storage against PostgreSQL and temporary files |
 | Protocol | `tests/Protocol/{OsuStable,Irc}` | wire bytes and text, round-tripped from hand-written pairs |
-| Host | `tests/Hosts/<Transport>` | the real transport in process over real sockets: OsuStable packets, IRC lines, REST status/envelope/SSE |
+| Host | `tests/Hosts/<Transport>` | the real transport in process over real sockets: osu! (stable) packets, IRC lines, REST status/envelope/SSE |
 | End-to-end | `tests/Hosts/Host` | several hosts together through the simulated clients |
 | Architecture | `tests/Architecture` | project graph, layering, composition and outcomes |
 
@@ -29,7 +29,7 @@ Clients talk to it over the network exactly as real ones do.
 
 Shared support lives under `tests/Support`:
 
-* `Basil.Testing.Clients` — `OsuClient` (OsuStable packets and legacy web endpoints), `IrcClient` (CAP, SASL, numerics,
+* `Basil.Testing.Clients` — `OsuClient` (osu! (stable) packets and legacy web endpoints), `IrcClient` (CAP, SASL, numerics,
   IRCv3 tags), `RestClient` and `SseReader` (Bearer or anonymous, ordered events, cancellation), and `BasilHost`.
 * `Basil.Testing.Persistence` — `PersistenceFixture`, which starts a PostgreSQL container or uses the server named by
   `BASIL_TEST_POSTGRES`, and creates an empty database per test.

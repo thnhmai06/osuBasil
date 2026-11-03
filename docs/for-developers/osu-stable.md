@@ -1,8 +1,8 @@
-# OsuStable dispatch
+# osu! (stable) dispatch
 
 ## Overview
 
-Basil's OsuStable transport receives batches of binary packets through the osu! stable HTTP long-poll endpoint.
+Basil's osu! (stable) transport receives batches of binary packets through the osu! stable HTTP long-poll endpoint.
 
 The client-facing packet format is documented in [`protocol.md`](../for-client/osu-stable/protocol.md). This document describes
 how `Basil.Host.OsuStable` turns those packets into operations on the Application objects, and how the answers get back to
@@ -29,7 +29,7 @@ connection that sent it, and calls an operation on a scope of the object acted o
 
 ## Why long polling shapes the design
 
-OsuStable is a long-poll protocol rather than a request/response API. A client sends the packets it has and receives the
+osu! (stable) is a long-poll protocol rather than a request/response API. A client sends the packets it has and receives the
 packets that were waiting for it. Whatever the server wants to tell a client has to be queued until that client's next
 request. Nothing a handler does can assume that a packet it queues for another player is delivered during the current
 HTTP request.
@@ -148,7 +148,7 @@ The lock gives serialization per room without serializing unrelated rooms. The r
 
 ## Room state and SSE
 
-The same room events that feed the OsuStable packets also feed the HTTP live streams: both consume the events of the one room
+The same room events that feed the osu! (stable) packets also feed the HTTP live streams: both consume the events of the one room
 object rather than keeping copies of its state. The ordering that matters is that a state change publishes its event while
 the room lock is held, so a subscriber never sees an older state after a newer one. The SSE side is documented in
 [`sse.md`](sse.md).

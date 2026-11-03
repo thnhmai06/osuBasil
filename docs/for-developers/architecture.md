@@ -40,7 +40,7 @@ project.
 
 The wire formats. They turn client bytes into C# models of primitives and back, including the score submission cipher,
 and give no business meaning. They reference no other Basil project, so they can be tested without a server. Only the
-transport that speaks the protocol references it: OsuStable references `Protocol.OsuStable`, Irc references `Protocol.Irc`,
+transport that speaks the protocol references it: osu! (stable) references `Protocol.OsuStable`, Irc references `Protocol.Irc`,
 and Rest and Cli reference neither.
 
 ### Module projects
@@ -87,7 +87,7 @@ migration and the event dispatcher.
 
 | Project | Speaks | Notes |
 |---|---|---|
-| `Basil.Host.OsuStable` | osu! stable: OsuStable packets, polling, legacy web endpoints | owns the `c.`/`osu.` routing |
+| `Basil.Host.OsuStable` | osu! (stable): packets, polling, legacy web endpoints | owns the `c.`/`osu.` routing |
 | `Basil.Host.Irc` | IRC on plain TCP | contract in [`irc.md`](irc.md) |
 | `Basil.Host.Rest` | HTTP API on `api.`, plus images on `a.`/`assets.` | envelope, SSE, diagnostics, OpenAPI |
 | `Basil.Host.Cli` | the terminal dashboard and its command box | three display modes, control socket |
@@ -191,7 +191,7 @@ one second old. See [`sse.md`](sse.md).
 
 ## Adding features
 
-* **A OsuStable packet or IRC command:** decode in the transport, call the Application operation of the acted-on object,
+* **An osu! (stable) packet or IRC command:** decode in the transport, call the Application operation of the acted-on object,
   translate the typed result. Add a missing rule to the object, not to the transport.
 * **A reaction:** register a handler for the event category in the owning module's Handlers folder or in `Basil.Bot`,
   then call the owning object's operation.
@@ -226,7 +226,7 @@ one second old. See [`sse.md`](sse.md).
 
 | Topic | Documentation |
 |---|---|
-| OsuStable packet dispatch | [`osu-stable.md`](osu-stable.md) |
+| osu! (stable) packet dispatch | [`osu-stable.md`](osu-stable.md) |
 | Multiplayer and match state | [`multiplayer.md`](multiplayer.md) |
 | Chat, sessions and connections | [`chat.md`](chat.md), [`irc.md`](irc.md) |
 | HTTP live updates | [`sse.md`](sse.md) |

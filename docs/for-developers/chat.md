@@ -4,7 +4,7 @@
 
 Chat uses one channel model for general, room, spectator and private-message conversations. A `Channel` owns its members and events; the channel's kind and owner determine who may read and write. A connection acts on a channel through a short-lived scope.
 
-The osu! client chats through the OsuStable host (chat is pushed in game packets) and IRC clients through the IRC host. The HTTP API neither sends nor receives chat: it manages general channels and sends announcements. The server stores no chat history on any surface.
+The osu! client chats through the osu! (stable) host (chat is pushed in game packets) and IRC clients through the IRC host. The HTTP API neither sends nor receives chat: it manages general channels and sends announcements. The server stores no chat history on any surface.
 
 This page describes the application model and its authorization rules. It does not document transport routes or packet formats.
 

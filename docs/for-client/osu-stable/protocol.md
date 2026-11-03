@@ -1,8 +1,8 @@
-# OsuStable protocol
+# osu! (stable) protocol
 
 ## Overview
 
-After authentication, osu! stable communicates with Basil through the OsuStable HTTP protocol.
+After authentication, osu! stable communicates with Basil through the osu! (stable) HTTP protocol.
 
 The protocol uses **HTTP long-polling** rather than a persistent TCP connection. The client sends binary packets in HTTP requests and receives binary packets in HTTP responses.
 
@@ -12,7 +12,7 @@ See [`authentication.md`](authentication.md) for how to obtain a session token.
 
 ## Long-polling
 
-osu! stable does not maintain a persistent socket connection to the OsuStable server.
+osu! stable does not maintain a persistent socket connection to the osu! (stable) server.
 
 Instead, the client repeatedly sends:
 
@@ -21,7 +21,7 @@ POST /
 osu-token: <session-token>
 ```
 
-to one of the OsuStable hosts:
+to one of the osu! (stable) hosts:
 
 ```text id="k0sj7m"
 c.<domain>
@@ -43,7 +43,7 @@ An empty response body means that there are currently no packets waiting for the
 
 ## Request format
 
-The request body consists of zero or more OsuStable packets concatenated together.
+The request body consists of zero or more osu! (stable) packets concatenated together.
 
 Each packet has the following structure:
 
@@ -162,4 +162,4 @@ The client repeats the polling cycle for as long as the session remains active.
 * [`getting-started.md`](getting-started.md): connecting osu! stable to Basil
 * [`overview.md`](../api/overview.md): Basil's HTTP API
 * [`sse.md`](../api/sse.md): receiving match updates through Server-Sent Events
-* [`osu-stable.md`](../../for-developers/osu-stable.md): server-side OsuStable packet handling
+* [`osu-stable.md`](../../for-developers/osu-stable.md): server-side osu! (stable) packet handling

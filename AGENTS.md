@@ -611,7 +611,7 @@ Do not introduce pp-dependent gameplay behavior.
 
 #### Stable protocol
 
-OsuStable packet layouts are wire contracts.
+osu! (stable) packet layouts are wire contracts.
 
 Changes to packet encoding or decoding must be treated as protocol changes and covered by protocol tests.
 

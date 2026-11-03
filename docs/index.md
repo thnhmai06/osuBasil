@@ -112,7 +112,7 @@ When two documents disagree, the authoritative document wins.
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
 | Diagnostic API design (samplers, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
-| OsuStable protocol (client and server)                     | [`for-developers/osu-stable.md`](for-developers/osu-stable.md)                 |
+| osu! (stable) protocol (client and server)                     | [`for-developers/osu-stable.md`](for-developers/osu-stable.md)                 |
 | IRC protocol                                           | [`for-developers/irc.md`](for-developers/irc.md)                       |
 | Chat channels and their rules                          | [`for-developers/chat.md`](for-developers/chat.md)                     |
 | Beatmap ingestion                                      | [`for-developers/beatmap-ingestion.md`](for-developers/beatmap-ingestion.md) |
