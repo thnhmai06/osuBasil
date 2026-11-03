@@ -77,6 +77,7 @@ public static class RestHost
 		app.MapGet("/health", () => Api.Ok("healthy")).WithTags("Operations")
 			.WithSummary("Check that the server answers.");
 		app.MapDocs();
+		app.MapGuides();
 		var v1 = app.MapGroup("/v1");
 		v1.MapAuth();
 		v1.MapUsers();

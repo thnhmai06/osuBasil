@@ -36,6 +36,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Markdig"/>
 		<PackageReference Include="Mediator.Abstractions"/>
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
 		<PackageReference Include="Microsoft.OpenApi"/>

@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Documentation;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Host.Irc;
@@ -16,6 +17,7 @@ public static class IrcHost
 		services.AddSingleton<IrcPresence>();
 		services.AddSingleton<IrcState>();
 		services.AddSingleton<IrcCommands>();
+		services.AddSingleton<IDocumentPage, IrcReference>();
 		return services;
 	}
 

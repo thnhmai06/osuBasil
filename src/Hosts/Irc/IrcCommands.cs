@@ -29,7 +29,8 @@ internal sealed partial class IrcCommands(
 	IrcState state,
 	IOptions<IrcOptions> options)
 {
-	private static readonly string[] Offered =
+	/// <summary>The IRCv3 capabilities the server grants.</summary>
+	internal static readonly string[] Capabilities =
 	[
 		"cap-notify", "sasl", "server-time", "message-tags", "account-tag", "account-notify", "away-notify",
 		"extended-join", "multi-prefix", "userhost-in-names", "echo-message", "standard-replies"
@@ -301,7 +302,7 @@ internal sealed partial class IrcCommands(
 		if (!session.Registered) session.Negotiating = true;
 		var v302 = message.Parameters.Count > 1 && int.TryParse(message.Parameters[1], out var version) &&
 		           version >= 302;
-		reply("LS", string.Join(' ', Offered.Select(cap => cap == "sasl" && v302 ? "sasl=PLAIN" : cap)));
+		reply("LS", string.Join(' ', Capabilities.Select(cap => cap == "sasl" && v302 ? "sasl=PLAIN" : cap)));
 	}
 
 	private static void CapReq(IrcSession session, IrcMessage message, Action<string, string> reply)
@@ -310,7 +311,7 @@ internal sealed partial class IrcCommands(
 		var requested = message.Parameters.Count > 1
 			? message.Parameters[1].Split(' ', StringSplitOptions.RemoveEmptyEntries)
 			: [];
-		if (requested.All(cap => Offered.Contains(cap.TrimStart('-'))))
+		if (requested.All(cap => Capabilities.Contains(cap.TrimStart('-'))))
 		{
 			foreach (var cap in requested) session.Set(cap.TrimStart('-'), !cap.StartsWith('-'));
 			reply("ACK", message.Parameters[1]);

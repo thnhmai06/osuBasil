@@ -18,6 +18,8 @@ internal static class OpenApiSetup
 	                                **Paging.** Lists take `offset` (default 0) and `limit` (default 25, at most 100; more is 422).
 
 	                                **Live data.** Routes marked as streams use Server-Sent Events and need no content negotiation; data is up to about one second old.
+
+	                                **Guides.** The chat commands of BasilBot and the IRC server are described at [`/guides`](/guides).
 	                                """;
 
 	public static IServiceCollection AddBasilOpenApi(this IServiceCollection services)
