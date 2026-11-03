@@ -207,7 +207,8 @@ docker run -d --name basil -p 443:443 -p 6667:6667 \
 The existing `Configurations/` and `docker-data/` are reused. Compare the new image's `Configurations/appsettings.json`
 (`docker cp` as above) with yours when a release adds settings.
 
-Basil applies database migrations automatically when the new version starts.
+Basil applies database migrations automatically when the new version starts. Take a `pg_dump` backup before the
+upgrade: migrations cannot be rolled back, so the backup is the only way back to the previous schema.
 
 **Never replace `docker-data/Data/` or the database volume with an empty one during an upgrade.** They hold the stored
 files and every record of the server.
