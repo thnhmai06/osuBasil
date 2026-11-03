@@ -183,7 +183,7 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 		var score = new ScoreData(null, beatmapHash, WireMap.FromWire((WireGameMode)data.Mode) ?? GameMode.Standard,
 			WireMap.FromWire((WireMods)data.Mods),
 			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
-			data.TotalScore, (short)data.MaxCombo, (short)data.MaxCombo, ParseGrade(data.Grade), data.IsPassed,
+			data.TotalScore, checked((short)data.MaxCombo), checked((short)data.MaxCombo), ParseGrade(data.Grade), data.IsPassed,
 			data.IsFullCombo, data.Timestamp);
 		return new Submission
 			{ Score = score, Flags = (OsuFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
