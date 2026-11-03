@@ -24,7 +24,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_OfAUserWithoutOne_IsTheDefault_AndBasilBotsIsItsOwn()
+	public async Task Avatar_OfAUserWithoutOne_IsTheDefault_BasilBotIncluded()
 	{
 		using var client = Anonymous();
 
@@ -34,7 +34,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 		Assert.Equal(200, (int)plain.StatusCode);
 		Assert.Equal("image/png", plain.Content.Headers.ContentType!.MediaType);
 		Assert.Equal(200, (int)bot.StatusCode);
-		Assert.NotEqual(await plain.Content.ReadAsByteArrayAsync(), await bot.Content.ReadAsByteArrayAsync());
+		Assert.Equal(await plain.Content.ReadAsByteArrayAsync(), await bot.Content.ReadAsByteArrayAsync());
 	}
 
 	[Fact]
