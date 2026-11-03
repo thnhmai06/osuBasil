@@ -101,6 +101,8 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 		if (Channel is PmChannel pm && await PrivateMessageRefusalAsync(pm, now, cancellationToken) is { } refusal)
 			return refusal;
 
+		if (Channel.IsClosed) return ChannelOutcome.Closed;
+
 		Channel.PostMessage(Actor.Record, text, notice, now, Actor);
 		return ChannelOutcome.Ok;
 	}
