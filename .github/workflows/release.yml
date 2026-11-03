@@ -52,7 +52,7 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         shell: bash
         run: >
-          dotnet publish src/Hosts/Host
+          dotnet publish src/Basil
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
@@ -74,7 +74,7 @@ jobs:
           if ($env:RID -like 'win-*') {
             Compress-Archive -Path "$source/*" -DestinationPath "dist/Basil-$version-$env:RID.zip"
           } else {
-            # A zip drops the executable bit, so Basil.Host would not start after unpacking; tar keeps it.
+            # A zip drops the executable bit, so Basil would not start after unpacking; tar keeps it.
             tar -czf "dist/Basil-$version-$env:RID.tar.gz" -C $source .
             if ($LASTEXITCODE -ne 0) { throw 'tar failed' }
           }
@@ -101,8 +101,8 @@ jobs:
         run: |
           set -e
           dotnet tool install -g vpk --version 1.2.0
-          main=Basil.Host
-          case "$RID" in win-*) main=Basil.Host.exe ;; esac
+          main=Basil
+          case "$RID" in win-*) main=Basil.exe ;; esac
           vpk pack --packId Basil --packVersion "${TAG#v}" --packDir "publish/$RID" --mainExe "$main" --outputDir dist/velopack
 
       - name: Upload updater packages

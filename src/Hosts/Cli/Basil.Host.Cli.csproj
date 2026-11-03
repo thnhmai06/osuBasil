@@ -26,7 +26,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Host"/>
+		<InternalsVisibleTo Include="Basil"/>
 		<InternalsVisibleTo Include="Basil.Host.Cli.Tests"/>
 	</ItemGroup>
 

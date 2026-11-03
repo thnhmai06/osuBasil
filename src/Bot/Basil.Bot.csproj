@@ -2,7 +2,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil.Bot.Tests"/>
-		<InternalsVisibleTo Include="Basil.Host"/>
+		<InternalsVisibleTo Include="Basil"/>
 	</ItemGroup>
 
 	<ItemGroup>

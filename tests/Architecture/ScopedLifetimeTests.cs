@@ -14,7 +14,7 @@ public class ScopedLifetimeTests
 
 	private static readonly string[] OtherAssemblies =
 	[
-		"Basil.Host", "Basil.Host.Stable", "Basil.Host.Irc", "Basil.Host.Rest", "Basil.Host.Cli", "Basil.Host.Shared",
+		"Basil", "Basil.Host.Stable", "Basil.Host.Irc", "Basil.Host.Rest", "Basil.Host.Cli", "Basil.Host.Shared",
 		"Basil.Bot"
 	];
 

@@ -14,7 +14,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Chat;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Host;
 using Basil.Host.Irc;
 using Basil.Testing.Persistence;
 using Microsoft.AspNetCore.Builder;

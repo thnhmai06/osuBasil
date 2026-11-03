@@ -1,5 +1,4 @@
 using Basil.Bot;
-using Basil.Host;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
 using Mediator;
