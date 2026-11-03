@@ -18,19 +18,3 @@ public enum SessionType : byte
 	/// <summary>The server's own connection for BasilBot; no client is behind it.</summary>
 	Bot = 1 << 4
 }
-
-public static class SessionTypeExtensions
-{
-	public static string Prefix(this SessionType type)
-	{
-		return type switch
-		{
-			SessionType.Stable => "osu-",
-			SessionType.StableTourney => "trn-",
-			SessionType.Api => "api-",
-			SessionType.Irc => "irc-",
-			SessionType.Bot => "bot-",
-			_ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
-		};
-	}
-}
