@@ -23,6 +23,7 @@ public static class OsuStableRoutes
 		services.AddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<OsuStableState>();
 		services.AddSingleton<RestartAnnouncer>();
+		services.AddSingleton(OsuStableDocumentation.Document);
 		services.AddSingleton<OsuStableShutdown>();
 		services.AddSingleton<OsuStableLogin>();
 		services.AddSingleton<ChannelResolver>();
@@ -59,8 +60,11 @@ public static class OsuStableRoutes
 
 	private static void MapOsuStable(this IEndpointRouteBuilder app)
 	{
-		app.MapGet("/", () => "cho");
-		app.MapPost("/", ExchangeAsync);
+		var cho = app.MapGroup("").WithGroupName(OsuStableDocumentation.Group).WithTags("Game server");
+		cho.MapGet("/", () => "cho").WithSummary("Say that the game server of the osu! client is there.");
+		cho.MapPost("/", ExchangeAsync)
+			.WithSummary("Log in, or exchange packets.")
+			.WithDescription(OsuStableDocumentation.ExchangeDescription());
 	}
 
 	private static async Task<IResult> ExchangeAsync(HttpContext context, UserRegistry registry, OsuStableLogin login,

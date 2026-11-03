@@ -37,21 +37,67 @@ internal static class OsuWebRoutes
 	/// <param name="app">The route builder of the <c>osu.</c> host.</param>
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
 	{
-		app.MapGet("/", () => "osu");
-		app.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync);
-		app.MapGet("/web/osu-getfriends.php", GetFriendsAsync);
-		app.MapPost("/web/osu-getbeatmapinfo.php", GetBeatmapInfoAsync);
-		app.MapPost("/web/osu-submit-modular-selector.php", SubmitAsync);
-		app.MapGet("/web/osu-getreplay.php", GetReplayAsync);
-		app.MapPost("/web/osu-screenshot.php", ScreenshotAsync);
-		app.MapGet("/web/lastfm.php", LastFmAsync);
-		app.MapGet("/web/osu-search.php", SearchAsync);
-		app.MapGet("/web/osu-search-set.php", SearchSetAsync);
-		app.MapGet("/d/{setId}", DownloadAsync);
-		app.MapPost("/users", RegisterAsync);
+		var web = app.MapGroup("").WithGroupName(OsuStableDocumentation.Group).WithTags("Web");
+		web.MapGet("/", () => "osu").WithSummary("Say that the web host of the osu! client is there.");
+		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
+			.WithSummary("List the best scores of a beatmap.")
+			.WithDescription("""
+				Query: `us` (username), `ha` (password hash), `c` (beatmap hash), `m` (mode), `v` (leaderboard type), `mods`.
+				The answer is a text: a header line with the ranked status and the beatmap, then one line per score.
+				An unknown beatmap is answered `-1|false`; wrong credentials are answered 401.
+				""");
+		web.MapGet("/web/osu-getfriends.php", GetFriendsAsync)
+			.WithSummary("List the ids of the player's friends.")
+			.WithDescription("Query: `u` (username), `h` (password hash). The answer is one id per line.");
+		web.MapPost("/web/osu-getbeatmapinfo.php", GetBeatmapInfoAsync)
+			.WithSummary("Say which of the listed beatmap files the server knows.")
+			.WithDescription("""
+				Query: `u`, `h`. The JSON body lists the file names; the answer has one line per known file.
+				The number of file names answered is capped.
+				""");
+		web.MapPost("/web/osu-submit-modular-selector.php", SubmitAsync)
+			.WithSummary("Submit a score.")
+			.WithDescription("""
+				A multipart form: the encrypted score (`score`, with `iv` and `osuver`), the encrypted client hash (`s`), `pass`,
+				`c1`, `sbk` and the replay. A score that is accepted is answered with a line of beatmap statistics; anything
+				else (wrong credentials, a score that cannot be read, a refused score) is answered `error: no`.
+				""");
+		web.MapGet("/web/osu-getreplay.php", GetReplayAsync)
+			.WithSummary("Download the replay of a score.")
+			.WithDescription("Query: `u`, `h`, `c` (score id). The answer is the replay file, or 404.");
+		web.MapPost("/web/osu-screenshot.php", ScreenshotAsync)
+			.WithSummary("Upload a screenshot.")
+			.WithDescription("""
+				A multipart form with `u`, `p` and the picture `ss`. The answer is the reference of the stored screenshot;
+				400 is a refused picture and 413 one that is too large.
+				""");
+		web.MapGet("/web/lastfm.php", LastFmAsync)
+			.WithSummary("Receive the client's cheat-detection flags.")
+			.WithDescription("Query: `us`, `ha`, `b` (the flags, written `a` followed by a number).");
+		web.MapGet("/web/osu-search.php", SearchAsync)
+			.WithSummary("Search beatmapsets for osu!direct.")
+			.WithDescription("Query: `u`, `h`, `q` (the search). Needs the right to use osu!direct, otherwise 403.");
+		web.MapGet("/web/osu-search-set.php", SearchSetAsync)
+			.WithSummary("Look up one beatmapset for osu!direct.")
+			.WithDescription("Query: `u`, `h`, `s` (set id). Needs the right to use osu!direct, otherwise 403.");
+		web.MapGet("/d/{setId}", DownloadAsync)
+			.WithSummary("Download a beatmapset archive.")
+			.WithDescription("""
+				Query: `u`, `h`. The id may end with `n` (without video). Answers the archive, or redirects to where it can
+				be downloaded; needs the right to use osu!direct, otherwise 403.
+				""");
+		web.MapPost("/users", RegisterAsync)
+			.WithSummary("Register an account, or only check that the details are acceptable.")
+			.WithDescription("""
+				A form with `user[username]`, `user[user_email]`, `user[password]` and `check` (anything but `0` only checks
+				and is answered `ok`). Refusals are answered with a JSON `form_error`. Checks from one address are limited,
+				then answered 429.
+				""");
 		foreach (var stub in new[]
 			         { "bancho_connect.php", "check-updates.php", "osu-getseasonal.php", "osu-markasread.php" })
-			app.MapGet("/web/" + stub, () => Results.Text(stub == "osu-getseasonal.php" ? "[]" : string.Empty));
+			web.MapGet("/web/" + stub, () => Results.Text(stub == "osu-getseasonal.php" ? "[]" : string.Empty))
+				.WithSummary($"Answer the client's call to {stub} with nothing to say.")
+				.WithDescription("Basil has nothing to offer here; the answer is empty (`[]` for the seasonal backgrounds).");
 	}
 
 	private static IResult Text(string text, int status = 200)

@@ -1,3 +1,4 @@
+using Basil.Host.Shared.Documentation;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 
@@ -134,6 +135,21 @@ internal static class OpenApiSetup
 				return Task.CompletedTask;
 			});
 		});
+		services.AddOpenApi(ApiDocument.OsuStable, options =>
+		{
+			options.ShouldInclude = description => description.GroupName == ApiDocument.OsuStable;
+			options.AddDocumentTransformer((document, context, _) =>
+			{
+				var described = context.ApplicationServices.GetServices<ApiDocument>()
+					.FirstOrDefault(candidate => candidate.Name == ApiDocument.OsuStable);
+				document.Info = new OpenApiInfo
+				{
+					Title = described?.Title ?? "Basil osu! (stable) client endpoints", Version = "stable",
+					Description = described?.Overview
+				};
+				return Task.CompletedTask;
+			});
+		});
 		return services;
 	}
 
@@ -141,7 +157,11 @@ internal static class OpenApiSetup
 	{
 		app.MapOpenApi().ExcludeFromDescription();
 		app.MapScalarApiReference("/docs",
-				options => { options.WithTitle("Basil API").WithOpenApiRoutePattern("/openapi/{documentName}.json"); })
+				options =>
+				{
+					options.WithTitle("Basil API").WithOpenApiRoutePattern("/openapi/{documentName}.json")
+						.AddDocument("v1", "Basil API").AddDocument(ApiDocument.OsuStable, "osu! (stable) client");
+				})
 			.ExcludeFromDescription();
 	}
 }
