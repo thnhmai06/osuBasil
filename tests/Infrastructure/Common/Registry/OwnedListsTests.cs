@@ -106,17 +106,23 @@ public class OwnedListsTests
 	{
 		var lists = new OwnedLists<int, Owner, int>();
 		var commit = new TaskCompletionSource();
+		var applications = 0;
 		// A change is replayed until its write is committed, so it must be idempotent: a load that overlaps the
 		// commit reads the stored item and may still see the change queued.
-		lists.Change(1, null, list => AddOnce(list, 2), commit.Task);
+		lists.Change(1, null, list =>
+		{
+			applications++;
+			return AddOnce(list, 2);
+		}, commit.Task);
 
 		var during = await lists.GetOrLoadAsync(1, new Owner(), () => Loaded(1));
 		commit.SetResult();
-		await Task.Yield();
+		await lists.SettledAsync(1);
 		var after = await lists.GetOrLoadAsync(1, new Owner(), () => Loaded(1, 2));
 
 		Assert.Equal([1, 2], during);
 		Assert.Equal([1, 2], after);
+		Assert.Equal(1, applications);
 	}
 
 	private sealed class Owner;

@@ -19,6 +19,22 @@ public sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOwne
 	private readonly ConditionalWeakTable<TOwner, Holder> _lists = new();
 	private readonly Dictionary<TKey, List<Load>> _loading = new();
 	private readonly Dictionary<TKey, List<Func<ImmutableList<T>, ImmutableList<T>>>> _uncommitted = new();
+	private readonly Dictionary<TKey, TaskCompletionSource> _settled = new();
+
+	/// <summary>Waits until no change of the owner is still waiting for its write to commit.</summary>
+	/// <param name="key">The owner's key.</param>
+	/// <returns>A task that completes once the owner has no queued change left.</returns>
+	internal Task SettledAsync(TKey key)
+	{
+		lock (_gate)
+		{
+			if (!_uncommitted.ContainsKey(key)) return Task.CompletedTask;
+
+			if (!_settled.TryGetValue(key, out var settled))
+				_settled[key] = settled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+			return settled.Task;
+		}
+	}
 
 	/// <summary>Gets an owner's list, loading it when it is not in memory.</summary>
 	/// <param name="key">The owner's key.</param>
@@ -100,6 +116,8 @@ public sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOwne
 				// A load running now may have read before the commit; with the change gone it would miss it.
 				Remove(_uncommitted, key, change);
 				Overlap(key);
+				if (!_uncommitted.ContainsKey(key) && _settled.Remove(key, out var settled))
+					settled.SetResult();
 			}
 		}, TaskScheduler.Default);
 	}
