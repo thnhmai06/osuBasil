@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Immutable;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -8,9 +9,6 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 /// <summary>An osu! multiplayer room's 16 player slots, and whether the room's slots are locked as a whole.</summary>
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {
-	/// <summary>The number of slots every room has.</summary>
-	public const int MaxSlotCount = 16;
-
 	/// <summary>The room these slots belong to.</summary>
 	public readonly Room Room;
 
@@ -19,19 +17,19 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	internal RoomSlots(Room room)
 	{
 		Room = room;
-		_slots = [.. Enumerable.Range(1, MaxSlotCount).Select(index => new RoomSlot(this, index))];
+		_slots = [.. Enumerable.Range(1, RoomRules.MaxPlayers).Select(index => new RoomSlot(this, index))];
 	}
 
 	/// <summary>Gets a value that indicates whether the room's slots are locked as a whole.</summary>
 	/// <remarks>A locked room stops players from changing their own slot or team; referees still can.</remarks>
 	public bool Locked { get; internal set; }
 
-	/// <summary>Gets the number of slots, which is always <see cref="MaxSlotCount" />.</summary>
+	/// <summary>Gets the number of slots, which is always <see cref="RoomRules.MaxPlayers" />.</summary>
 	public int Count => _slots.Length;
 
 	/// <summary>Gets a slot by its number.</summary>
-	/// <param name="index">The slot number, from 1 to <see cref="MaxSlotCount" />.</param>
-	/// <exception cref="ArgumentOutOfRangeException">The number is outside 1 to <see cref="MaxSlotCount" />.</exception>
+	/// <param name="index">The slot number, from 1 to <see cref="RoomRules.MaxPlayers" />.</param>
+	/// <exception cref="ArgumentOutOfRangeException">The number is outside 1 to <see cref="RoomRules.MaxPlayers" />.</exception>
 	public RoomSlot this[int index]
 	{
 		get
@@ -81,7 +79,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	internal void Resize(int size)
 	{
 		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
-		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, MaxSlotCount);
+		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, RoomRules.MaxPlayers);
 
 		// Players may sit in any slot, so the size counts usable slots rather than naming a slot
 		// range: keep (size - players) empty slots open and lock the remaining empty ones.
@@ -93,13 +91,13 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <summary>Gets the slot with a given number, or <see langword="null" /> when the number is outside 1 to 16.</summary>
 	public RoomSlot? At(int index)
 	{
-		return index is >= 1 and <= MaxSlotCount ? _slots[index - 1] : null;
+		return index is >= 1 and <= RoomRules.MaxPlayers ? _slots[index - 1] : null;
 	}
 
 	private static void ThrowIfOutOfRangeIndex(int index)
 	{
-		if (index is < 1 or > MaxSlotCount)
+		if (index is < 1 or > RoomRules.MaxPlayers)
 			throw new ArgumentOutOfRangeException(nameof(index), index,
-				$"Slot index must be between 1 and {MaxSlotCount}.");
+				$"Slot index must be between 1 and {RoomRules.MaxPlayers}.");
 	}
 }

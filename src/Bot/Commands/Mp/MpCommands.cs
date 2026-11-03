@@ -29,12 +29,6 @@ internal sealed partial class MpCommands(
 	/// <summary>The maximum length of a room name as accepted by the osu! client.</summary>
 	private const int MaxRoomNameLength = 50;
 
-	/// <summary>The maximum slot index a player can be moved to.</summary>
-	private const int MaxSlotIndex = 16;
-
-	/// <summary>The maximum number of usable slots in a room.</summary>
-	private const int MaxRoomSize = 16;
-
 	/// <summary>Default <c>!mp timer</c> length in seconds.</summary>
 	private const int DefaultTimerSeconds = 30;
 

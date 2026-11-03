@@ -106,7 +106,7 @@ public sealed class CommandLineTests
 	[Fact]
 	public void Tokenize_AnEscapedBackslash_IsOneBackslash()
 	{
-		Assert.Equal(["path", "a\\b"], CommandLine.Tokenize("path a\\\\b"));
+		Assert.Equal(["path", "a\\b"], CommandLine.Tokenize(@"path a\\b"));
 	}
 
 	[Fact]

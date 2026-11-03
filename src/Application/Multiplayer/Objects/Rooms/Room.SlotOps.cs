@@ -2,6 +2,7 @@ using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -72,7 +73,7 @@ public sealed partial class Room
 		Dictionary<UserRecord, RoomSlotState> seated, List<UserRecord> named)
 	{
 		return !(arrangement.Any(e =>
-			         e.Index is < 1 or > RoomSlots.MaxSlotCount || (e.Player is not null && e.Locked)) ||
+			         e.Index is < 1 or > RoomRules.MaxPlayers || (e.Player is not null && e.Locked)) ||
 		         arrangement.DistinctBy(e => e.Index).Count() != arrangement.Count ||
 		         named.Count != seated.Count || !seated.Keys.ToHashSet().SetEquals(named));
 	}

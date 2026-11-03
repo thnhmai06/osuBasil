@@ -1,6 +1,7 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Bot.Commands.Mp;
 
@@ -12,7 +13,7 @@ internal sealed partial class MpCommands
 		CancellationToken cancellationToken)
 	{
 		var actor = context.Actor;
-		if (args.Count < 2 || !int.TryParse(args[^1], out var slot) || slot is < 1 or > MaxSlotIndex)
+		if (args.Count < 2 || !int.TryParse(args[^1], out var slot) || slot is < 1 or > RoomRules.MaxPlayers)
 		{
 			await context.Reply(MpReplies.MoveUsage, cancellationToken);
 			return false;

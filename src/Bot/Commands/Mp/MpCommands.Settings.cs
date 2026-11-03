@@ -3,6 +3,7 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Bot.Replies;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Bot.Commands.Mp;
 
@@ -143,7 +144,7 @@ internal sealed partial class MpCommands
 	private static async Task<bool> SetSizeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < 1 or > MaxRoomSize)
+		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < 1 or > RoomRules.MaxPlayers)
 		{
 			await context.Reply(MpReplies.SizeUsage, cancellationToken);
 			return false;
@@ -260,7 +261,7 @@ internal sealed partial class MpCommands
 	{
 		size = null;
 		if (args.Count < 3) return true;
-		if (!int.TryParse(args[2], out var parsedSize) || parsedSize is < 1 or > MaxRoomSize) return false;
+		if (!int.TryParse(args[2], out var parsedSize) || parsedSize is < 1 or > RoomRules.MaxPlayers) return false;
 
 		size = parsedSize;
 		return true;
@@ -381,8 +382,15 @@ internal sealed partial class MpCommands
 			parts.Add(replies.Text(MpReplies.EnabledMods, new { mods = enabled.ToString() }));
 		if (disabled != GameMods.NoMod)
 			parts.Add(replies.Text(MpReplies.DisabledMods, new { mods = disabled.ToString() }));
-		if (wasFreemod && !isFreemod) parts.Add(replies.Text(MpReplies.DisabledFreemod));
-		else if (!wasFreemod && isFreemod) parts.Add(replies.Text(MpReplies.EnabledFreemod));
+		switch (wasFreemod)
+		{
+			case true when !isFreemod:
+				parts.Add(replies.Text(MpReplies.DisabledFreemod));
+				break;
+			case false when isFreemod:
+				parts.Add(replies.Text(MpReplies.EnabledFreemod));
+				break;
+		}
 
 		return parts.Count > 0 ? string.Join(", ", parts) : replies.Text(MpReplies.NoModChanges);
 	}

@@ -10,7 +10,7 @@ public static class UnsafeNames
 	public static TheoryData<string> Escaping { get; } =
 	[
 		"", "  ", "..", "../escape.png", "..\\escape.png", "folder/../../escape.png", "/rooted.png",
-		"\\\\server\\share\\x.png"
+		@"\\server\share\x.png"
 	];
 
 	/// <summary>Gets names Windows keeps for devices; no stored file may take one, whatever its extension.</summary>
