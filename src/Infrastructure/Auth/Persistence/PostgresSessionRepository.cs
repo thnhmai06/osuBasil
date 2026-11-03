@@ -25,8 +25,10 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate)
+	public Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate,
+		CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		var row = ToRow(session, lastActiveAt, mustReauthenticate);
 		return writer.SaveAsync(Root.User(session.User.Id), row.Id,
 			new WriteCommand<AuthDbContext>(async (context, token) =>

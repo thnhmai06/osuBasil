@@ -63,7 +63,9 @@ public interface ISessionRepository
 	/// <param name="session">The session as it stands now.</param>
 	/// <param name="lastActiveAt">When the session was last used.</param>
 	/// <param name="mustReauthenticate">Whether the osu! device must enter its password again.</param>
-	Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate);
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the sessions of a user, newest first.</summary>
 	/// <param name="user">The user whose sessions to list.</param>

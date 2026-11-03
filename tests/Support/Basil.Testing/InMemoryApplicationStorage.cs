@@ -198,8 +198,10 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.CompletedTask;
 	}
 
-	public Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate)
+	public Task UpdateAsync(SessionRecord session, DateTimeOffset lastActiveAt, bool mustReauthenticate,
+		CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		var index = _entries.FindIndex(entry => entry.Id == session.Id);
 		if (index >= 0)
 		{
