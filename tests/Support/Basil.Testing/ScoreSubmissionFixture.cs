@@ -80,7 +80,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			.Returns(call => Task.FromResult(call.Arg<RoundScore>()));
 
 		provider.GetRequiredService<IReplayStorage>()
-			.SaveAsync(Arg.Any<ScoreRecord>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+			.SaveAsync(Arg.Any<ScoreRecord>(), Arg.Any<OsuVersion>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
 			.Returns(call =>
 			{
 				using var copy = new MemoryStream();

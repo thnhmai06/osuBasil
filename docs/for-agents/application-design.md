@@ -260,7 +260,9 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   serve stored files under a fixed public path per asset directory (static file provider rooted at each asset
   directory, never at the whole data directory) and only distribute them. Replays are named
   `{ScoreId} {Player} - {Artist} - {Title} [{Version}] ({yyyy-MM-dd}) {Mode}.osr`, as osu! names an exported
-  replay; screenshots get a UUIDv7 name.
+  replay, and hold a complete `.osr` (the header is built when the score is stored, with the client version that
+  played it); `osu-getreplay.php` serves only the LZMA frames inside it and the API serves the whole file;
+  screenshots get a UUIDv7 name.
 * **A channel's name tells its kind.** A channel several users take part in (general, room,
   spectator) is named `#name` (`#osu`, `#lobby`, `#mp_5`, `#spec_7`); a private-message channel is
   named after its owner, without `#`, as an IRC nick is. This is a naming convention each kind of

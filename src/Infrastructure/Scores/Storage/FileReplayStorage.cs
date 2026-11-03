@@ -3,13 +3,16 @@ using System.Globalization;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Users.Persistence;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Storage;
 
 namespace Basil.Infrastructure.Scores.Storage;
 
-/// <summary>Stores the raw .osr bytes of scores' replays, one file per score, named like osu! names an exported replay.</summary>
+/// <summary>Stores the replays of scores as complete .osr files, one per score, named like osu! names an exported replay.</summary>
 internal sealed class FileReplayStorage(
 	DataPaths paths,
 	IUserRepository users,
@@ -22,10 +25,18 @@ internal sealed class FileReplayStorage(
 	private DataStorage Files => paths.Replays;
 
 	/// <inheritdoc />
-	public async Task SaveAsync(ScoreRecord score, Stream content, CancellationToken cancellationToken = default)
+	public async Task SaveAsync(ScoreRecord score, OsuVersion clientVersion, Stream content,
+		CancellationToken cancellationToken = default)
 	{
-		var name = await NameOfAsync(score, cancellationToken);
-		await Files.SaveAsync(name, content, cancellationToken);
+		var user = score.Value.UserId is { } userId ? await users.GetAsync(userId, cancellationToken) : null;
+		var beatmap = score.Value.BeatmapHash is { } hash ? await beatmaps.GetAsync(hash, cancellationToken) : null;
+
+		using var frames = new MemoryStream();
+		await content.CopyToAsync(frames, cancellationToken);
+		var file = ReplayFile.Build(score, user?.Value.Name ?? string.Empty, clientVersion, frames.ToArray());
+
+		var name = NameOf(score, user, beatmap);
+		await Files.SaveAsync(name, new MemoryStream(file), cancellationToken);
 		foreach (var previous in Find(score.Id).Where(previous => previous != name).ToList())
 			Files.Delete(previous);
 	}
@@ -34,6 +45,17 @@ internal sealed class FileReplayStorage(
 	public Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<Stream?>(Find(score.Id).FirstOrDefault() is { } name ? Files.Open(name) : null);
+	}
+
+	/// <inheritdoc />
+	public async Task<Stream?> OpenFramesAsync(ScoreRecord score, CancellationToken cancellationToken = default)
+	{
+		if (await OpenAsync(score, cancellationToken) is not { } file) return null;
+
+		if (ReplayFile.TryFindFrames(file, out var offset, out var length)) return new SliceStream(file, offset, length);
+
+		await file.DisposeAsync();
+		return null;
 	}
 
 	private IEnumerable<string> Find(int id)
@@ -46,10 +68,8 @@ internal sealed class FileReplayStorage(
 			name.StartsWith(prefix, StringComparison.Ordinal));
 	}
 
-	private async Task<string> NameOfAsync(ScoreRecord score, CancellationToken cancellationToken)
+	private static string NameOf(ScoreRecord score, UserRecord? user, BeatmapRecord? beatmap)
 	{
-		var user = score.Value.UserId is { } userId ? await users.GetAsync(userId, cancellationToken) : null;
-		var beatmap = score.Value.BeatmapHash is { } hash ? await beatmaps.GetAsync(hash, cancellationToken) : null;
 		if (user is null || beatmap is null)
 			return $"{score.Id}.osr";
 

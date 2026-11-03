@@ -252,7 +252,7 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null) return Results.Unauthorized();
 		if (!int.TryParse(query["c"], out var id) || await scores.GetAsync(id, ct) is not { } score ||
-		    await replays.OpenAsync(score, ct) is not { } stream)
+		    await replays.OpenFramesAsync(score, ct) is not { } stream)
 			return Results.NotFound();
 
 		return Results.File(stream, "application/x-osu-replay");

@@ -1,5 +1,6 @@
 using System.Text;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
@@ -12,6 +13,7 @@ namespace Basil.Infrastructure.Scores.Tests.Storage;
 public sealed class FileReplayStorageTests : IDisposable
 {
 	private const int ScoreId = 17;
+	private static readonly OsuVersion Version = new(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable);
 	private readonly FakeBeatmapRepository _beatmaps;
 
 	private readonly TempData _data = new();
@@ -35,10 +37,10 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task ReplacedReplay_keeps_only_the_new_name()
 	{
-		await _replays.SaveAsync(Score(), Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
 
 		_users.User = StoredUsers.Renamed;
-		await _replays.SaveAsync(Score(), Bytes("second"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("second"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("second", await TextAsync());
 		Assert.Single(Directory.GetFiles(ReplayDirectory));
@@ -47,11 +49,11 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task FailedSaveAfterRename_keeps_the_previous_replay()
 	{
-		await _replays.SaveAsync(Score(), Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
 
 		_users.User = StoredUsers.Renamed;
 		await Assert.ThrowsAsync<IOException>(() =>
-			_replays.SaveAsync(Score(), new TestStreams.Failing(), TestContext.Current.CancellationToken));
+			_replays.SaveAsync(Score(), Version, new TestStreams.Failing(), TestContext.Current.CancellationToken));
 
 		Assert.Equal("first", await TextAsync());
 		Assert.Single(Directory.GetFiles(ReplayDirectory));
@@ -66,7 +68,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task A_saved_replay_opens_with_the_bytes_it_was_saved_with()
 	{
-		await _replays.SaveAsync(Score(), Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("first", await TextAsync());
 	}
@@ -74,7 +76,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task A_replay_is_named_like_an_osu_replay_export()
 	{
-		await _replays.SaveAsync(Score(), Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(
 			["17 Regular - Camellia - Exit This Earth's Atomosphere [Primordial Nucleosynthesis] (2026-03-05) Osu.osr"],
@@ -88,7 +90,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[InlineData(GameMode.Mania, "OsuMania")]
 	public async Task A_replay_name_ends_with_the_name_osu_gives_the_game_mode(GameMode mode, string modeName)
 	{
-		await _replays.SaveAsync(Score(mode: mode), Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(mode: mode), Version, Bytes("replay"), TestContext.Current.CancellationToken);
 
 		var name = Path.GetFileName(Assert.Single(Directory.GetFiles(ReplayDirectory)));
 		Assert.EndsWith($" {modeName}.osr", name);
@@ -97,11 +99,11 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task A_replay_is_found_by_its_score_id_alone_and_not_by_a_longer_id_that_starts_with_it()
 	{
-		await _replays.SaveAsync(Score(170), Bytes("longer id"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(170), Version, Bytes("longer id"), TestContext.Current.CancellationToken);
 
 		Assert.Null(await _replays.OpenAsync(Score(), TestContext.Current.CancellationToken));
 
-		await _replays.SaveAsync(Score(), Bytes("shorter id"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("shorter id"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("shorter id", await TextAsync());
 		Assert.Equal("longer id", await TextAsync(Score(170)));
@@ -112,7 +114,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	{
 		_users.User = null;
 
-		await _replays.SaveAsync(Score(), Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("replay", await TextAsync());
 	}
@@ -122,7 +124,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	{
 		_beatmaps.Beatmap = null;
 
-		await _replays.SaveAsync(Score(), Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("replay", await TextAsync());
 	}
@@ -132,7 +134,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	{
 		SetBeatmapNames("AC/DC", "What? \"Yes\" <no> | *maybe* : C:\\x");
 
-		await _replays.SaveAsync(Score(), Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
 
 		var name = Path.GetFileName(Assert.Single(Directory.GetFiles(ReplayDirectory)));
 		Assert.DoesNotContain(name, character => "<>:\"/\\|?*".Contains(character));
@@ -147,7 +149,7 @@ public sealed class FileReplayStorageTests : IDisposable
 		// 100 emoji are 400 UTF-8 bytes in surrogate pairs, so the cut falls inside a character unless it is placed.
 		SetBeatmapNames("Camellia", string.Concat(Enumerable.Repeat("\U0001F600", 100)));
 
-		await _replays.SaveAsync(Score(), Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
 
 		var name = Path.GetFileName(Assert.Single(Directory.GetFiles(ReplayDirectory)));
 		Assert.True(Encoding.UTF8.GetByteCount(name) <= 255,
@@ -162,12 +164,67 @@ public sealed class FileReplayStorageTests : IDisposable
 	public async Task A_replay_stored_under_a_shortened_name_is_replaced_by_the_next_save()
 	{
 		SetBeatmapNames("Camellia", new string('x', 400));
-		await _replays.SaveAsync(Score(), Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
 
-		await _replays.SaveAsync(Score(), Bytes("second"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("second"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("second", await TextAsync());
 		Assert.Single(Directory.GetFiles(ReplayDirectory));
+	}
+
+	[Fact]
+	public async Task A_saved_replay_opens_as_a_complete_file_that_records_the_client_version_and_ends_with_the_score_id()
+	{
+		await _replays.SaveAsync(Score(), Version, Bytes("frames"), TestContext.Current.CancellationToken);
+
+		var stream = await _replays.OpenAsync(Score(), TestContext.Current.CancellationToken);
+		Assert.NotNull(stream);
+		using var file = new MemoryStream();
+		await using (stream)
+		{
+			await stream.CopyToAsync(file, TestContext.Current.CancellationToken);
+		}
+
+		var bytes = file.ToArray();
+		Assert.Equal((byte)GameMode.Standard, bytes[0]);
+		Assert.Equal(20260711, BitConverter.ToInt32(bytes, 1));
+		Assert.Equal(ScoreId, BitConverter.ToInt64(bytes, bytes.Length - sizeof(long)));
+	}
+
+	[Fact]
+	public async Task OpenFramesAsync_gives_a_seekable_stream_as_long_as_the_frames()
+	{
+		await _replays.SaveAsync(Score(), Version, Bytes("frames"), TestContext.Current.CancellationToken);
+
+		var stream = await _replays.OpenFramesAsync(Score(), TestContext.Current.CancellationToken);
+
+		Assert.NotNull(stream);
+		await using (stream)
+		{
+			Assert.True(stream.CanSeek);
+			Assert.Equal("frames".Length, stream.Length);
+		}
+	}
+
+	[Fact]
+	public async Task OpenFramesAsync_returns_null_for_a_score_without_replay()
+	{
+		Assert.Null(await _replays.OpenFramesAsync(Score(), TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task OpenFramesAsync_returns_null_for_a_stored_file_that_is_not_a_replay()
+	{
+		Directory.CreateDirectory(ReplayDirectory);
+		await File.WriteAllBytesAsync(Path.Combine(ReplayDirectory, $"{ScoreId}.osr"), Bytes30(),
+			TestContext.Current.CancellationToken);
+
+		Assert.Null(await _replays.OpenFramesAsync(Score(), TestContext.Current.CancellationToken));
+	}
+
+	private static byte[] Bytes30()
+	{
+		return [.. Enumerable.Range(0, 30).Select(i => (byte)i)];
 	}
 
 	private void SetBeatmapNames(string artist, string title)
@@ -178,10 +235,10 @@ public sealed class FileReplayStorageTests : IDisposable
 		_beatmaps.Beatmap = beatmap;
 	}
 
-	/// <summary>The bytes as text, as the storage's open stream delivers them; empty when no replay is stored.</summary>
+	/// <summary>The frames as text, as the storage's frames stream delivers them; empty when no replay is stored.</summary>
 	private async ValueTask<string> TextAsync(ScoreRecord? score = null)
 	{
-		var stream = await _replays.OpenAsync(score ?? Score(), TestContext.Current.CancellationToken);
+		var stream = await _replays.OpenFramesAsync(score ?? Score(), TestContext.Current.CancellationToken);
 		if (stream is null) return string.Empty;
 
 		await using (stream)
