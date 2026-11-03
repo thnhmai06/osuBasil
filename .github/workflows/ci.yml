@@ -92,6 +92,13 @@ jobs:
           mkdir -p openapi
           curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/openapi/v1.json -o openapi/v1.json
 
+      # The collection is built from the checked-in document, so the two must describe the document the server serves.
+      - name: Check the REST contract artifacts are current
+        run: |
+          python3 -c "import json, sys; served = json.load(open('openapi/v1.json')); checked = json.load(open('tests/Hosts/Rest/postman/openapi.v1.json')); sys.exit('tests/Hosts/Rest/postman/openapi.v1.json is stale') if served != checked else None"
+          (cd tests/Hosts/Rest/postman && python3 generate-collection.py)
+          git diff --exit-code -- tests/Hosts/Rest/postman
+
       - name: Upload the OpenAPI document
         uses: actions/upload-artifact@v4
         with:

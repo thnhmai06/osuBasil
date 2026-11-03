@@ -639,7 +639,7 @@
 				"tags": [
 					"Users"
 				],
-				"summary": "Delete an account.",
+				"summary": "Delete an account, keeping its record but ending every session.",
 				"parameters": [
 					{
 						"name": "id",
@@ -735,7 +735,7 @@
 					"Users"
 				],
 				"summary": "Retrieve an account.",
-				"description": "Includes the granted and the effective permissions and the restrictions in force.",
+				"description": "Includes the granted and the effective permissions and the restrictions in force. An account's profile, permissions and restriction history are public.",
 				"parameters": [
 					{
 						"name": "id",
@@ -906,7 +906,7 @@
 					"Users"
 				],
 				"summary": "Upload the avatar of an account as an image in the `file` field.",
-				"description": "While the profiles area is locked only staff can change an avatar. The avatar is shown on the avatar host.",
+				"description": "While the profiles area is locked only staff can change an avatar. The avatar is shown on the avatar host.\n\nThe file must be a PNG or JPEG picture within the configured size and pixel limits. Content that is not\nsuch a picture, or that exceeds a limit, is refused with `422`.",
 				"parameters": [
 					{
 						"name": "id",
@@ -2337,6 +2337,7 @@
 					"Users"
 				],
 				"summary": "List the restrictions an account has had, current and past.",
+				"description": "An account's profile, permissions and restriction history are public.",
 				"parameters": [
 					{
 						"name": "id",
@@ -5630,7 +5631,7 @@
 					"Diagnostics"
 				],
 				"summary": "Run a maintenance action.",
-				"description": "The actions are `gc/collect`, `caches/clear` and `exceptions/reset`.",
+				"description": "The actions are `gc/collect`, `caches/clear` and `exceptions/reset`. `gc/collect` can run once every 30 seconds; a request sooner is answered with 429.",
 				"parameters": [
 					{
 						"name": "category",
@@ -5903,6 +5904,7 @@
 					"Channels"
 				],
 				"summary": "Change a general channel.",
+				"description": "A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.",
 				"parameters": [
 					{
 						"name": "name",
@@ -6006,6 +6008,7 @@
 					"Channels"
 				],
 				"summary": "Delete a general channel.",
+				"description": "A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.",
 				"parameters": [
 					{
 						"name": "name",
@@ -6722,7 +6725,7 @@
 						"name": "noVideo",
 						"in": "query",
 						"schema": {
-							"type": "boolean"
+							"type": "string"
 						}
 					}
 				],
