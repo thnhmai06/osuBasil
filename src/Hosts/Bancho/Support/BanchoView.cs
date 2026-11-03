@@ -34,11 +34,7 @@ internal static class BanchoView
 	/// <returns>The roles that at least one effective permission belongs to; the player role when there is none.</returns>
 	public static UserPrivileges Roles(UserPermissions effective)
 	{
-		var roles = UserPrivileges.None;
-		foreach (var role in Enum.GetValues<UserPrivileges>().Where(role => role != UserPrivileges.None))
-			if ((role.Permissions & effective) != UserPermissions.None)
-				roles |= role;
-
+		var roles = effective.Privileges;
 		return roles == UserPrivileges.None ? UserPrivileges.Player : roles;
 	}
 
