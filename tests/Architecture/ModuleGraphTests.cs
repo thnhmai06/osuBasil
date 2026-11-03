@@ -10,7 +10,7 @@ namespace Basil.ArchitectureTests;
 ///     <c>Users -&gt; Authentication, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
 ///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c> and
 ///     <c>Servers</c> on top of all of them; a module Infrastructure project references only its own Application project
-///     and the Common projects; <c>Host</c> and <c>Bot</c> sit above every module and nothing references them.
+///     and the Common projects; <c>Basil</c> and <c>Bot</c> sit above every module and nothing references them.
 /// </summary>
 public class ModuleGraphTests
 {
@@ -65,7 +65,7 @@ public class ModuleGraphTests
 	{
 		Assert.False(IsAllowed("Basil.Application.Authentication", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
-		Assert.False(IsAllowed("Basil.Application.Users", "Basil.Host"));
+		Assert.False(IsAllowed("Basil.Application.Users", "Basil"));
 		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Common"));
 		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Common"));
 		Assert.False(IsAllowed("Basil.Protocol.Irc", "Basil.Domain"));
@@ -84,7 +84,7 @@ public class ModuleGraphTests
 	private static bool IsKnown(string name)
 	{
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
-			       or "Basil.Host" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
+			       or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                (name == $"Basil.Infrastructure.{module}" &&
 		                                 module is not ("Anticheat" or "Servers")));
@@ -99,7 +99,7 @@ public class ModuleGraphTests
 		if (from == "Basil.Application.Common") return false;
 		if (from == "Basil.Infrastructure.Common") return to == "Basil.Application.Common";
 		if (to == "Basil.Application.Common") return true;
-		if (from == "Basil.Host") return IsModuleProject(to) || to == "Basil.Infrastructure.Common";
+		if (from == "Basil") return IsModuleProject(to) || to == "Basil.Infrastructure.Common";
 		if (from == "Basil.Bot")
 			return to.StartsWith("Basil.Application.", StringComparison.Ordinal) && IsModuleProject(to);
 
@@ -123,9 +123,10 @@ public class ModuleGraphTests
 	{
 		var source = Path.Combine(RepositoryRoot(), "src");
 		var hosts = Path.Combine(source, "Hosts");
+		var compositionRoot = Path.Combine(source, "Basil");
 
 		return Directory.GetFiles(source, "*.csproj", SearchOption.AllDirectories)
-			.Where(project => !IsUnder(project, hosts) &&
+			.Where(project => !IsUnder(project, hosts) && !IsUnder(project, compositionRoot) &&
 			                  !project.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
 			.ToArray();
 	}

@@ -26,7 +26,7 @@ services:
       - ./docker-data/Data:/app/Data
       - ./docker-data/Logs:/app/Logs
       - ./docker-data/Templates:/app/Configurations/Templates
-      - ./src/Hosts/Host/Configurations/appsettings.json:/app/Configurations/appsettings.json:ro
+      - ./src/Basil/Configurations/appsettings.json:/app/Configurations/appsettings.json:ro
     # A command-line setting wins over appsettings.json; the host name is the service name above.
     command:
       - "--ConnectionStrings:Write=Host=postgres;Port=5432;Database=basil;Username=basil;Password=basil"

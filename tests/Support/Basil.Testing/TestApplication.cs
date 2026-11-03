@@ -28,7 +28,6 @@ using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
-using Basil.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;

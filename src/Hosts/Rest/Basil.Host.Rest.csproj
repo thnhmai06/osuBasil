@@ -31,7 +31,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Host"/>
+		<InternalsVisibleTo Include="Basil"/>
 		<InternalsVisibleTo Include="Basil.Host.Rest.Tests"/>
 	</ItemGroup>
 

@@ -70,7 +70,7 @@ docs/
     for-agents/
 ```
 
-Basil is a layered monolith split by module. `Basil.Host` sits at the outermost layer, while dependencies point inward
+Basil is a layered monolith split by module. `Basil` sits at the outermost layer, while dependencies point inward
 toward the domain. The dependency direction is enforced by [`tests/Architecture`](tests/Architecture).
 
 See [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) for the responsibilities of each

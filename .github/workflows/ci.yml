@@ -68,16 +68,16 @@ jobs:
         uses: actions/setup-dotnet@v6
 
       - name: Build the server
-        run: dotnet build src/Hosts/Host --configuration Release
+        run: dotnet build src/Basil --configuration Release
 
       - name: Create the administrator
         run: >-
-          dotnet src/Hosts/Host/bin/Release/net10.0/Basil.Host.dll
+          dotnet src/Basil/bin/Release/net10.0/Basil.dll
           users create --username ciadmin --password ciadmin-pass --admin
 
       - name: Start the server
         run: |
-          nohup dotnet src/Hosts/Host/bin/Release/net10.0/Basil.Host.dll > server.log 2>&1 &
+          nohup dotnet src/Basil/bin/Release/net10.0/Basil.dll > server.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf -H "Host: api.basil.local" http://127.0.0.1:5099/health && exit 0
             sleep 1

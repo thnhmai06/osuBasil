@@ -16,7 +16,9 @@ namespace Basil.ArchitectureTests;
 /// <remarks>The hosts are not covered yet: they are migrated after the tests.</remarks>
 public class LayeringTests
 {
-	private const string Host = "Basil.Host";
+	private static readonly string[] Host =
+		["Basil.Host", "Basil.Configuration", "Basil.Documentation", "Basil.Lifetime", "Basil.Logging"];
+
 	private const string Protocol = "Basil.Protocol";
 	private const string Bot = "Basil.Bot";
 	private const string Persistence = @"^Basil\.Application\.\w+\.Persistence";
@@ -45,7 +47,7 @@ public class LayeringTests
 	{
 		AssertNoDependency(DomainAssembly,
 		[
-			.. ModuleRoots, Host, Protocol, Bot, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore",
+			.. ModuleRoots, .. Host, Protocol, Bot, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore",
 			"Npgsql", "Dapper"
 		]);
 	}
@@ -53,7 +55,7 @@ public class LayeringTests
 	[Fact]
 	public void ProtocolStable_DependsOnDomainOnly()
 	{
-		AssertNoDependency(ProtocolStable, [.. ModuleRoots, Host, Bot]);
+		AssertNoDependency(ProtocolStable, [.. ModuleRoots, .. Host, Bot]);
 	}
 
 	[Fact]
@@ -67,7 +69,7 @@ public class LayeringTests
 	[Fact]
 	public void ProtocolIrc_DependsOnNoOtherProject()
 	{
-		AssertNoDependency(ProtocolIrc, ["Basil.Domain", .. ModuleRoots, Host, Bot]);
+		AssertNoDependency(ProtocolIrc, ["Basil.Domain", .. ModuleRoots, .. Host, Bot]);
 	}
 
 	[Fact]
@@ -77,7 +79,7 @@ public class LayeringTests
 			.ShouldNot().HaveDependencyOnAny(
 			[
 				.. ObjectNamespaces(), .. ReactionNamespaces(), .. CapabilityNamespaces(), Storage,
-				.. InfrastructureNamespaces(), Host, Protocol, Bot
+				.. InfrastructureNamespaces(), .. Host, Protocol, Bot
 			]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -165,7 +167,7 @@ public class LayeringTests
 	{
 		foreach (var assembly in ModuleAssemblies.Applications)
 			AssertNoDependency(assembly,
-				["Basil.Infrastructure.Common", .. InfrastructureNamespaces(), Host, Protocol, Bot]);
+				["Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. Host, Protocol, Bot]);
 	}
 
 	[Fact]
@@ -182,7 +184,7 @@ public class LayeringTests
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.DoNotResideInNamespaceMatching(InfrastructureWorkers).ShouldNot()
-			.HaveDependencyOnAny([.. ObjectNamespaces(), Host, Protocol, Bot]).GetResult();
+			.HaveDependencyOnAny([.. ObjectNamespaces(), .. Host, Protocol, Bot]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
@@ -215,7 +217,7 @@ public class LayeringTests
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.ResideInNamespaceMatching(InfrastructureWorkers).ShouldNot()
-			.HaveDependencyOnAny([.. CapabilityNamespaces(), Host, Protocol, Bot]).GetResult();
+			.HaveDependencyOnAny([.. CapabilityNamespaces(), .. Host, Protocol, Bot]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
@@ -235,7 +237,7 @@ public class LayeringTests
 	{
 		AssertNoDependency(BotAssembly,
 		[
-			"Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. NonScopedCapabilityTypeNames(), Host,
+			"Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. NonScopedCapabilityTypeNames(), .. Host,
 			Protocol
 		]);
 	}
