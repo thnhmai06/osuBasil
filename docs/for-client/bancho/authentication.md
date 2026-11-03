@@ -134,9 +134,11 @@ Tourney spectator clients are an exception and may run alongside the player's no
 
 ### Session lifetime
 
-Sessions are held in server memory.
+Sessions are recorded in the database, not only in server memory.
 
-A server restart therefore invalidates all existing session tokens. Clients must log in again after reconnecting.
+A game session token is tied to the live game connection: a server restart closes that connection, and a client that
+presents the old token is told to restart and log in again. API tokens and IRC keys are stored, so they keep working
+across a restart until they expire or are ended.
 
 ---
 
@@ -154,11 +156,10 @@ Established verified accounts are not rejected solely because their hardware mat
 
 ## Account verification
 
-A successful first login automatically gives the account the `Verified` privilege.
+Basil has no account-verification step. A new account receives the default permission set when it is created, and the
+client does not request or receive a verification privilege during login.
 
-The client does not request this privilege during login.
-
-See [`privileges.md`](../../for-developers/privileges.md) for the available privilege flags.
+See [`privileges.md`](../../for-developers/privileges.md) for the roles the client displays.
 
 ---
 
