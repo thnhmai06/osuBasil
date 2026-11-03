@@ -57,6 +57,15 @@ public class PacketWriterUserPresenceTests
 		Assert.Equal(Expected(0x18, expectedByte), Write(0, banchoPrivileges, mode));
 	}
 
+	[Theory]
+	[InlineData(32, 0, 0x00)] // the Tournament bit would be read back as mode bit 0
+	[InlineData(33, 2, 0x41)] // Player kept, Tournament dropped, mode 2 << 5 = 64
+	public void UserPresence_PrivilegeBitsAboveTheLowFive_DoNotReachTheModeBits(
+		int banchoPrivileges, int mode, byte expectedByte)
+	{
+		Assert.Equal(Expected(0x18, expectedByte), Write(0, banchoPrivileges, mode));
+	}
+
 	[Fact]
 	public void UserPresence_UtcOffsetOutsideByteRange_ThrowsOverflow()
 	{

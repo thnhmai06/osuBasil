@@ -508,7 +508,7 @@ public sealed partial class PacketWriter
 			_writer.WriteOsuString(name);
 			_writer.Write(checked((byte)(utcOffset + 24)));
 			_writer.Write(checked((byte)countryCode));
-			_writer.Write(checked((byte)(banchoPrivileges | (mode << 5))));
+			_writer.Write(checked((byte)((banchoPrivileges & 0x1F) | (mode << 5))));
 			_writer.Write((float)longitude);
 			_writer.Write((float)latitude);
 			_writer.Write(globalRank);
