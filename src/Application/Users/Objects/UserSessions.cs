@@ -42,9 +42,6 @@ public sealed class UserSessions
 	/// <summary>Gets the user's osu!tourney connections.</summary>
 	public IEnumerable<TourneyConnection> Tourneys => this[SessionType.OsuTourney].Cast<TourneyConnection>();
 
-	/// <summary>Gets the user's HTTP API connections.</summary>
-	public IEnumerable<ApiConnection> Apis => this[SessionType.Api].Cast<ApiConnection>();
-
 	/// <summary>Adds a connection to the account.</summary>
 	/// <param name="connection">The connection to add.</param>
 	internal void Add(Connection connection)
