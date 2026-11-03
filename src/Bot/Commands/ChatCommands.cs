@@ -1,3 +1,4 @@
+using Basil.Application.Chat.Objects;
 using Basil.Application.Content.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Bot.Commands.Mp;
@@ -47,7 +48,7 @@ internal sealed class ChatCommands(
 	private async Task<bool> IsChainAllowedAsync(CommandContext context, IReadOnlyList<CommandSegment> segments,
 		CancellationToken cancellationToken)
 	{
-		if (context.Channel == "#lobby")
+		if (context.Channel == GeneralChannel.LobbyName)
 		{
 			await context.Reply(BotReplies.ChainNotInLobby, cancellationToken);
 			return false;

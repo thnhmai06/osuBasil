@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
-using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
@@ -37,9 +37,6 @@ internal sealed partial class MpCommands(
 
 	/// <summary>Default <c>!mp timer</c> length in seconds.</summary>
 	private const int DefaultTimerSeconds = 30;
-
-	/// <summary>Matches a room channel name like <c>#mp_5</c> and captures the id.</summary>
-	private static readonly Regex MpChannelRegex = MpChannelRegexPattern();
 
 	/// <summary>The <c>!mp</c> subcommands that reject being chained on a <c>;</c> or <c>&amp;&amp;</c> line.</summary>
 	private static readonly FrozenSet<string> NonChainableSubcommands =
@@ -155,7 +152,7 @@ internal sealed partial class MpCommands(
 
 		return context with
 		{
-			Say = context.Channel == $"#mp_{roomId}"
+			Say = context.Channel == RoomChannel.NameFor(roomId)
 				? context.Say
 				: (text, cancellationToken) => context.Say(NameLines(text), cancellationToken),
 			SayPrivately = (text, cancellationToken) => context.SayPrivately(NameLines(text), cancellationToken)
@@ -181,14 +178,10 @@ internal sealed partial class MpCommands(
 		var actor = context.Actor;
 
 		// (a) Channel takes precedence: if sent in #mp_{id}, use that room
-		if (context.Channel is not null)
+		if (context.Channel is not null && RoomChannel.TryParseName(context.Channel, out var channelRoomId))
 		{
-			var match = MpChannelRegex.Match(context.Channel);
-			if (match.Success && int.TryParse(match.Groups[1].Value, out var channelRoomId))
-			{
-				var channelRoom = lobby.Find(channelRoomId);
-				if (channelRoom is not null) return channelRoom;
-			}
+			var channelRoom = lobby.Find(channelRoomId);
+			if (channelRoom is not null) return channelRoom;
 		}
 
 		// (b) PM scope: !mp in <id> sets a target room
@@ -222,7 +215,4 @@ internal sealed partial class MpCommands(
 			return await users.GetAsync(id, cancellationToken);
 		return await users.GetByNameAsync(raw, cancellationToken);
 	}
-
-	[GeneratedRegex(@"^#mp_(\d+)$")]
-	private static partial Regex MpChannelRegexPattern();
 }
