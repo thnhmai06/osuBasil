@@ -35,7 +35,7 @@ internal sealed class ChannelResolver(
 				return host is null ? null : spectatorChannels.Of(host);
 		}
 
-		if (name.StartsWith("#mp_", StringComparison.Ordinal) && int.TryParse(name.AsSpan(4), out var id) &&
+		if (RoomChannel.TryParseName(name, out var id) &&
 		    lobby.Find(id) is { IsClosed: false } found)
 			return roomChannels.Of(found);
 

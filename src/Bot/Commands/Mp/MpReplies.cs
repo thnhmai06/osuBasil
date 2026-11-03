@@ -53,21 +53,13 @@ internal static class MpReplies
 	/// <summary>Reply when the room is locked.</summary>
 	public static readonly Reply MatchIsLocked = new("mp.matchIsLocked", "The match is locked.");
 
-	/// <summary>Reply when the join failed for an otherwise-unreported reason.</summary>
-	public static readonly Reply FailedToJoinMatch = new("mp.failedToJoinMatch", "Failed to join the match.");
+	/// <summary>Reply when the server has locked room creation to room managers.</summary>
+	public static readonly Reply RoomsLocked = new("mp.roomsLocked", "Rooms are locked right now.");
 
 	// ── !mp in ─────────────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when the sender has no stored scope and is not in any room.</summary>
 	public static readonly Reply NotScopedToAnyMatch =
 		new("mp.notScopedToAnyMatch", "You aren't targeting any match right now.");
-
-	/// <summary>Reply when the stored scope points at a room that is no longer live; <c>{room}</c> is the id.</summary>
-	public static readonly Reply WasScopedToGoneMatch = new("mp.wasScopedToGoneMatch",
-		"You were targeting match #{room}, but it's no longer live.", "room");
-
-	/// <summary>Reply reporting the current scope; <c>{room}</c> is the room id, <c>{name}</c> its name.</summary>
-	public static readonly Reply CurrentlyScopedToMatch = new("mp.currentlyScopedToMatch",
-		"Currently targeting match #{room} {name}.", "room", "name");
 
 	/// <summary>Usage line for <c>!mp in</c>.</summary>
 	public static readonly Reply InUsage = new("mp.inUsage", "Usage: !mp in [match_id]");
@@ -341,11 +333,6 @@ internal static class MpReplies
 	public static readonly Reply UnknownMpSubcommand = new("mp.unknownMpSubcommand",
 		"Unknown !mp subcommand: {subcommand}. Use !mp help to list available subcommands.", "subcommand");
 
-	/// <summary>Reply when a subcommand is limited to the room's creator; <c>{subcommand}</c> is the subcommand.</summary>
-	public static readonly Reply CreatorOnlyMp = new("mp.creatorOnlyMp",
-		"Only the match's creator can run {subcommand}.",
-		"subcommand");
-
 	/// <summary>Reply when <c>!mp in</c> is run from a channel instead of a DM to the bot.</summary>
 	public static readonly Reply MpInDmOnly = new("mp.mpInDmOnly", "!mp in only works in a DM to BasilBot.");
 
@@ -527,6 +514,7 @@ internal static class MpReplies
 			RoomOutcome.NoRoomId => NoMatchesAvailable,
 			RoomOutcome.SlotNotOpen => DestinationSlotNotOpen,
 			RoomOutcome.RoomLocked => MatchIsLocked,
+			RoomOutcome.Locked => RoomsLocked,
 			RoomOutcome.InProgress => MatchAlreadyInProgress,
 			RoomOutcome.OwnSlot => OwnSlotLocked,
 			RoomOutcome.NoTeams => MatchHasNoTeams,

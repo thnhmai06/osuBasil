@@ -49,16 +49,6 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>Gets the osu! clients watching the multiplayer lobby.</summary>
 	public IReadOnlySet<BanchoConnection> Watchers => _watchers;
 
-	/// <summary>Gets a value that indicates whether every room id is taken or reserved, so no room can open.</summary>
-	internal bool IsFull
-	{
-		get
-		{
-			using var scope = _sync.EnterScope();
-			return _rooms.Count + _reserved.Count >= MaxRoomId;
-		}
-	}
-
 	/// <summary>Gets the osu! clients watching the multiplayer lobby, for changing them.</summary>
 	internal ISet<BanchoConnection> MutableWatchers => _watchers;
 
@@ -360,7 +350,8 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	public async Task RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
-		var actor = await Context.UserRepository.GetAsync(BasilBot.Id, cancellationToken) ?? user;
+		if (await Context.UserRepository.GetAsync(BasilBot.Id, cancellationToken) is not { } actor) return;
+
 		foreach (var room in Rooms.Values.ToArray())
 		{
 			if (!room.Authority.Referees.Contains(user)) continue;

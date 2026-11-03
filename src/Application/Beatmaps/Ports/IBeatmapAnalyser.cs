@@ -19,15 +19,6 @@ public interface IBeatmapAnalyser
 	/// <param name="mods">The mods whose difficulty adjustments the analysis should apply.</param>
 	/// <returns>The analyzed difficulty stats and per-mode hit-object counts.</returns>
 	BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods);
-
-	/// <summary>Analyzes a stored beatmap under a mod combination.</summary>
-	/// <param name="beatmap">The beatmap, whose stored .osu file is read the first time it is analyzed.</param>
-	/// <param name="mods">The mods whose difficulty adjustments the analysis should apply.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The analysis, or <see langword="null" /> when the beatmap's .osu file is not stored.</returns>
-	/// <remarks>The file is read once for each beatmap instance; analyzing it again under other mods reads no file.</remarks>
-	Task<BeatmapAnalysis?> AnalyzeAsync(BeatmapRecord beatmap, GameMods mods,
-		CancellationToken cancellationToken = default);
 }
 
 /// <summary>The result of analyzing a beatmap under a specific mode and mod combination.</summary>

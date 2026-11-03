@@ -15,8 +15,32 @@ public sealed class RoomChannel : Channel
 	/// <summary>Gets the room this channel belongs to.</summary>
 	public Room Room { get; }
 
+	/// <summary>The prefix every room channel name starts with.</summary>
+	public const string NamePrefix = "#mp_";
+
+	/// <summary>Gets the channel name of a room.</summary>
+	/// <param name="roomId">The room's id.</param>
+	/// <returns>The channel name clients use for the room.</returns>
+	public static string NameFor(int roomId)
+	{
+		return $"{NamePrefix}{roomId}";
+	}
+
+	/// <summary>Reads the room id out of a room channel name.</summary>
+	/// <param name="name">The channel name.</param>
+	/// <param name="roomId">The room's id, when the name is a room channel name.</param>
+	/// <returns><see langword="true" /> when the name is a room channel name.</returns>
+	public static bool TryParseName(string name, out int roomId)
+	{
+		roomId = 0;
+		if (!name.StartsWith(NamePrefix, StringComparison.Ordinal)) return false;
+
+		var digits = name.AsSpan(NamePrefix.Length);
+		return !digits.IsEmpty && digits.IndexOfAnyExceptInRange('0', '9') < 0 && int.TryParse(digits, out roomId);
+	}
+
 	/// <inheritdoc />
-	public override string Name => $"#mp_{Room.Id}";
+	public override string Name => NameFor(Room.Id);
 
 	/// <inheritdoc />
 	public override string Topic => Room.Match.Value.Name;

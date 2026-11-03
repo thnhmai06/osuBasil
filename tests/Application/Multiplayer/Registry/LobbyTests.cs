@@ -58,6 +58,7 @@ public sealed class LobbyTests
 	public async Task RemoveSuspendedAsync_ForAUserWhoMayNotJoinRooms_RemovesTheirRefereeEntries()
 	{
 		using var app = new TestApplication();
+		await app.SeedBotAsync();
 		var setup = await RoomFixture.CreateAsync(app);
 		await RestrictRoomJoinAsync(app, setup.Referee.Record);
 

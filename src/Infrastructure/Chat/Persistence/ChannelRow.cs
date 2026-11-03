@@ -1,3 +1,4 @@
+using Basil.Application.Chat.Objects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -22,6 +23,6 @@ internal sealed class ChannelRowConfiguration : IEntityTypeConfiguration<Channel
 		builder.HasKey(row => row.Name);
 		builder.HasData(
 			new ChannelRow { Name = "#osu", Topic = "General discussion.", AutoJoin = true, Visible = true },
-			new ChannelRow { Name = "#lobby", Topic = "Multiplayer lobby discussion.", Visible = true });
+			new ChannelRow { Name = GeneralChannel.LobbyName, Topic = "Multiplayer lobby discussion.", Visible = true });
 	}
 }

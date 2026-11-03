@@ -81,9 +81,6 @@ public sealed class User
 	/// <summary>Gets the user's osu!tourney connections.</summary>
 	public IEnumerable<TourneyConnection> Tourneys => Sessions.Tourneys;
 
-	/// <summary>Gets the user's HTTP API connections.</summary>
-	public IEnumerable<ApiConnection> Apis => Sessions.Apis;
-
 	/// <summary>Scopes this account's behaviour to a connection and its authority.</summary>
 	/// <param name="actor">The connection acting on the account.</param>
 	/// <returns>A short-lived scope for this account and connection.</returns>

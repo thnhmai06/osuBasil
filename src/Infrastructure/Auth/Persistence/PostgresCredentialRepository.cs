@@ -12,11 +12,21 @@ internal sealed class PostgresCredentialRepository(DatabaseReader reader, Databa
 	: RemovableMemoryRepository<int, PostgresCredentialRepository.StoredCredential>(reader, writer),
 		ICredentialRepository
 {
+	// A hash of a fixed password, checked for an account that has no credential yet, so an unknown account takes
+	// as long as a wrong password and cannot be told apart by timing.
+	private static readonly string AbsentAccountHash = BCrypt.Net.BCrypt.HashPassword("basil-absent-account");
+
 	/// <inheritdoc />
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
 	{
 		var stored = await FindAsync(credentials.User.Id, cancellationToken);
-		return stored is not null && BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, stored.Hash);
+		if (stored is null)
+		{
+			BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, AbsentAccountHash);
+			return false;
+		}
+
+		return BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, stored.Hash);
 	}
 
 	/// <inheritdoc />

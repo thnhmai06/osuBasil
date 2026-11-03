@@ -1,9 +1,6 @@
-using System.Runtime.CompilerServices;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Ports;
-using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
@@ -33,37 +30,13 @@ namespace Basil.Infrastructure.Beatmaps.Adapters;
 ///     The server uses these numbers for star rating and difficulty display only; they feed no
 ///     scoring, leaderboard, or match win condition.
 /// </remarks>
-internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapAnalyser
+internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 {
-	// The content lives as long as the beatmap instance; it is decoded again when the beatmap's file changes.
-	private readonly ConditionalWeakTable<BeatmapRecord, KeptContent> _contents = new();
-
 	/// <inheritdoc />
 	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
 	public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
 	{
 		return Analyze(new StreamlessWorkingBeatmap(Decode(content)), mode, mods);
-	}
-
-	/// <inheritdoc />
-	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
-	public async Task<BeatmapAnalysis?> AnalyzeAsync(BeatmapRecord beatmap, GameMods mods,
-		CancellationToken cancellationToken = default)
-	{
-		var hash = beatmap.Hash;
-		if (!_contents.TryGetValue(beatmap, out var kept) || kept.Hash != hash)
-		{
-			var osu = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version,
-				$"{hash}.osu", cancellationToken);
-			if (osu is null) return null;
-			await using var osuScope = osu;
-
-			var decoded = Decode(osu);
-			kept = new KeptContent(hash, new StreamlessWorkingBeatmap(decoded));
-			_contents.AddOrUpdate(beatmap, kept);
-		}
-
-		return Analyze(kept.Working, beatmap.Metadata.Difficulty.Mode, mods);
 	}
 
 	/// <summary>Decodes the content of a <c>.osu</c> file.</summary>
@@ -223,7 +196,4 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
 		};
 	}
-
-	/// <summary>The decoded content of a beatmap's .osu file, with the hash of the file it was decoded from.</summary>
-	private sealed record KeptContent(Md5 Hash, IWorkingBeatmap Working);
 }

@@ -523,6 +523,12 @@ internal sealed class FileBeatmapsetStorage(
 	/// <returns>The folder's full path, or <see langword="null" /> when no folder is stored for the set.</returns>
 	private string? FindFolder(int id, string? preferredName)
 	{
+		if (preferredName is not null && !IsHidden(preferredName) && LeadingId(preferredName) == id)
+		{
+			var preferred = Path.Combine(paths.Beatmapsets.Path, preferredName);
+			if (Directory.Exists(preferred)) return preferred;
+		}
+
 		var candidates = FoldersOf(id);
 		if (candidates.Count == 0) return null;
 		return (preferredName is null

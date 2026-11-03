@@ -4,7 +4,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Testing.Persistence;
-using NSubstitute;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
@@ -14,7 +13,7 @@ namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 /// </summary>
 public sealed class OsuBeatmapAnalyserTests
 {
-	private readonly OsuBeatmapAnalyser _analyser = new(Substitute.For<IBeatmapsetStorage>());
+	private readonly OsuBeatmapAnalyser _analyser = new();
 
 	/// <summary>Reads a sample difficulty again, from its start, for one analysis.</summary>
 	/// <param name="name">The sample's file name under the assets folder.</param>

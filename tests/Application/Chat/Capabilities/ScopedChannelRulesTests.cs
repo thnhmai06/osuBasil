@@ -1,3 +1,5 @@
+using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Handlers;
 using Basil.Application.Chat.Objects;
@@ -5,6 +7,7 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
@@ -183,6 +186,45 @@ public sealed class ScopedChannelRulesTests
 		var result = await pm.ScopeTo(sender).PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Closed, result.Outcome);
+	}
+
+	[Fact]
+	public async Task PostAsync_PrivateChannelClosedWhileCheckingTheRelationship_ReturnsClosedAndPublishesNothing()
+	{
+		PmChannel? pm = null;
+		var relationships = new ClosingRelationshipRepository(() => pm?.Close());
+		using var app = new TestApplication(services =>
+			services.AddSingleton<IRelationshipRepository>(relationships));
+		var ownerRecord = await app.CreateUserAsync("ClosesInSend", "password");
+		await app.LoginAsync(ownerRecord, SessionType.Irc);
+		pm = app.PmChannels.Of(app.Users.Of(ownerRecord));
+		var sender = await app.LoginAsync(await app.CreateUserAsync("CarefulSender", "password"));
+
+		var result = await pm.ScopeTo(sender)
+			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Closed, result.Outcome);
+		Assert.DoesNotContain(app.ChannelEvents.Events, @event => @event is ChannelMessagePosted);
+	}
+
+	private sealed class ClosingRelationshipRepository(Action onList) : IRelationshipRepository
+	{
+		public Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default)
+		{
+			return Task.CompletedTask;
+		}
+
+		public Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor,
+			CancellationToken cancellationToken = default)
+		{
+			onList();
+			return Task.FromResult<IReadOnlyList<Relationship>>([]);
+		}
 	}
 
 	[Fact]
