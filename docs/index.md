@@ -109,6 +109,23 @@ When two documents disagree, the authoritative document wins.
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
 | Diagnostic API design (samplers, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
+| Bancho protocol (client and server)                     | [`for-developers/bancho.md`](for-developers/bancho.md)                 |
+| IRC protocol                                           | [`for-developers/irc.md`](for-developers/irc.md)                       |
+| Chat channels and their rules                          | [`for-developers/chat.md`](for-developers/chat.md)                     |
+| Beatmap ingestion                                      | [`for-developers/beatmap-ingestion.md`](for-developers/beatmap-ingestion.md) |
+| Multiplayer behavior                                   | [`for-developers/multiplayer.md`](for-developers/multiplayer.md)       |
+| Database and persistence                               | [`for-developers/database.md`](for-developers/database.md)             |
+| API response envelope (client wire format)             | [`for-client/api/response-envelope.md`](for-client/api/response-envelope.md) |
+| API response envelope (server implementation)          | [`for-developers/response-envelope.md`](for-developers/response-envelope.md) |
+| Live HTTP streams (SSE) for clients                    | [`for-client/api/sse.md`](for-client/api/sse.md)                       |
+| Live HTTP streams (SSE) server design                  | [`for-developers/sse.md`](for-developers/sse.md)                       |
+| Testing policy                                         | [`for-developers/testing.md`](for-developers/testing.md)               |
+| Logging                                                | [`for-developers/logging.md`](for-developers/logging.md)               |
+| Development workflow                                   | [`for-developers/development.md`](for-developers/development.md)       |
+| Documentation rules                                    | [`for-developers/docs-guideline.md`](for-developers/docs-guideline.md) |
+| Deployment                                             | [`for-technicians/deployment.md`](for-technicians/deployment.md)       |
+| Docker deployment                                      | [`for-technicians/docker.md`](for-technicians/docker.md)               |
+| Troubleshooting                                        | [`for-technicians/troubleshooting.md`](for-technicians/troubleshooting.md) |
 
 Other documents may link to or summarize these topics, but they must not silently establish a conflicting definition.
 

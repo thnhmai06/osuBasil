@@ -150,7 +150,7 @@ the client must connect to `basil.local` and its corresponding Basil subdomains.
 
 ```shell
 osu! -devserver basil.local
-````
+```
 
 If the client is configured to use a different domain, it may fail to connect even when Basil itself is running correctly.
 
@@ -316,7 +316,9 @@ For Docker:
 docker compose restart
 ```
 
-Basil does not support overriding its application settings through environment variables. Edit `appsettings.json` instead.
+Basil also reads settings from environment variables (`Basil__Server__Domain`, where a double underscore stands for
+`:`) and from command-line arguments (`--Basil:Server:Domain=...`). Both win over `appsettings.json`; edit the file
+instead when you want a persistent change.
 
 See [`configuration.md`](configuration.md).
 
@@ -334,13 +336,10 @@ For Docker, check the host directory mounted to:
 /app/Data
 ```
 
-The database is:
+The database is the PostgreSQL server configured by `ConnectionStrings:Write`. Basil creates its tables and applies
+migrations on startup.
 
-```text
-Data/Basil.db
-```
-
-Do not replace or delete this file unless you intentionally want to create a new Basil installation.
+Do not drop or replace that database unless you intentionally want to create a new Basil installation.
 
 For beatmaps, check:
 

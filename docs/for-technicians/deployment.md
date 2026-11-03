@@ -9,7 +9,8 @@ service to install.
 
 Settings and the certificate live in `Configurations/` next to the executable. Stored files (replays, avatars,
 beatmapsets, screenshots) are under `Data/`. Logs are under `Logs/`. These directories are created automatically when
-Basil starts for the first time; the database is created and migrated by Basil itself.
+Basil starts for the first time; Basil creates its schema and applies migrations itself, but the database must already
+exist.
 
 This guide covers a manual deployment where clients connect to Basil over a LAN or the public internet.
 
@@ -241,6 +242,25 @@ falls back to plain log lines by itself; use `--nogui` to ask for that explicitl
 Under systemd or a container runtime, the exit code `75` asks the manager to start the server again (the `restart`
 command), while `0` is a normal stop; see [`console.md`](console.md).
 
+A minimal systemd unit for a server installed under `/opt/basil`:
+
+```ini
+[Unit]
+Description=Basil
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=basil
+WorkingDirectory=/opt/basil
+ExecStart=/opt/basil/Basil.Host --nogui
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
 On Windows, run the published executable normally or through the service mechanism used by your deployment environment.
 
 If a firewall is enabled, allow inbound traffic to the configured Basil ports.
@@ -339,14 +359,17 @@ To move an existing Basil server to another machine:
 If the target already contains a Basil installation:
 
 1. Stop Basil.
-2. Replace the application files with the new release.
-3. Keep the existing `Configurations/` and `Data/` directories (unless configuration changes are required).
-4. Start Basil.
-5. Check the startup log for errors.
+2. Back up the database with `pg_dump`. Basil applies migrations automatically when the new version starts, and
+   migrations cannot be rolled back.
+3. Replace the application files with the new release.
+4. Keep the existing `Configurations/` and `Data/` directories (unless configuration changes are required).
+5. Start Basil.
+6. Check the startup log for errors.
 
 Do **not** replace `Configurations/` or `Data/` with the ones from a release archive.
 
-Basil performs database migrations automatically when it starts.
+Basil performs database migrations automatically when it starts. Keep the backup until the new version has started
+cleanly: the previous schema cannot be restored without it.
 
 ---
 

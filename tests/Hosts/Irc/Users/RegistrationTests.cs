@@ -1,4 +1,5 @@
 using Basil.Application.Content.Persistence;
+using Basil.Host.Irc.Support;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -73,8 +74,8 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		await irc.SendAsync("NICK RegOther");
 		await irc.SendAsync("USER x 0 * :x");
 
-		Assert.Equal(":irc.basil.test 464 * :Password incorrect", await irc.ExpectAsync("464"));
-		Assert.Equal("ERROR :Closing Link: basil.test (Password incorrect)", await irc.ExpectAsync("ERROR"));
+		Assert.Equal($":irc.basil.test 464 * :{IrcReplies.BadCredentials}", await irc.ExpectAsync("464"));
+		Assert.Equal($"ERROR :Closing Link: basil.test ({IrcReplies.BadCredentials})", await irc.ExpectAsync("ERROR"));
 		Assert.Null(await irc.ReadLineAsync());
 	}
 

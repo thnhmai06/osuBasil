@@ -90,6 +90,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 		using var irc = await IrcClient.ConnectAsync(Host);
 		await irc.RegisterAsync("PrTwin", key);
 		await irc.ExpectFromAsync("366", "#osu");
+		await watcher.BarrierAsync();
 		watcher.Clear();
 
 		Host.Time.Advance(TimeSpan.FromSeconds(2));

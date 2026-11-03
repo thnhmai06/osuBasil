@@ -51,10 +51,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="docs-site\**" CopyToOutputDirectory="PreserveNewest"/>
-		<Content Include="..\..\..\assets\icon.png" Link="docs-site\icon.png">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
 		<Content Include="..\..\..\data\certs\basil.local.pfx" Link="Configurations\basil.local.pfx">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
