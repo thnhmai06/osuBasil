@@ -9,7 +9,7 @@ public readonly record struct ScoreFrame
 	/// <summary>The frame time in milliseconds since the start of the play.</summary>
 	public required int Time { get; init; }
 
-	/// <summary>The id of the player the frame belongs to.</summary>
+	/// <summary>The id of the frame within the replay.</summary>
 	public required int Id { get; init; }
 
 	/// <summary>The number of 300 hits so far.</summary>
