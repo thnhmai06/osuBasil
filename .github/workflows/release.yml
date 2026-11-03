@@ -48,11 +48,15 @@ jobs:
         run: dotnet restore
 
       - name: Publish
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        shell: bash
         run: >
           dotnet publish src/Hosts/Host
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
+          -p:Version=${TAG#v}
           -o publish/${{ matrix.rid }}
 
       - name: Package
