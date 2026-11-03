@@ -207,8 +207,10 @@ internal sealed class PostgresBeatmapRepository(
 		_bySet.Change(setId, liveSet,
 			current => [.. current.Where(beatmap => keepSet.Contains(beatmap.Id))],
 			retained);
-		_ = retained.ContinueWith(_ =>
+		_ = retained.ContinueWith(done =>
 		{
+			if (!done.IsCompletedSuccessfully) return;
+
 			NoteRemovalCommitted();
 			_retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet));
 		}, TaskScheduler.Default);

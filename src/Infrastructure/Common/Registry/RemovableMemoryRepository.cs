@@ -42,8 +42,12 @@ public abstract class RemovableMemoryRepository<TKey, T>(DatabaseReader reader, 
 		var erased = Writer.SaveAsync(RootOf(item), (GetType(), key), EraseCommand(key));
 		_removing[key] = erased;
 		Items.Remove(key);
-		_ = erased.ContinueWith(_ =>
+		// A deletion that failed has not committed: the item stays out of memory (the failure is logged by the writer
+		// and reaches a caller that waits), instead of being loaded again from the row that is still stored.
+		_ = erased.ContinueWith(done =>
 		{
+			if (!done.IsCompletedSuccessfully) return;
+
 			NoteRemovalCommitted();
 			_removing.TryRemove(new KeyValuePair<TKey, Task>(key, erased));
 		}, TaskScheduler.Default);
