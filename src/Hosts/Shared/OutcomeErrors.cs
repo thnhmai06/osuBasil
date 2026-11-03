@@ -83,6 +83,7 @@ public static class OutcomeErrors
 			{
 				ChannelOutcome.AccessDenied or ChannelOutcome.Blocked => ErrorKind.Forbidden,
 				ChannelOutcome.NotFound => ErrorKind.NotFound,
+				ChannelOutcome.Closed => ErrorKind.Gone,
 				ChannelOutcome.Empty or ChannelOutcome.InvalidText => ErrorKind.Invalid,
 				_ => ErrorKind.Conflict
 			},

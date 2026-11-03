@@ -49,7 +49,7 @@ public sealed class OutcomeErrorsTests
 	private static readonly Dictionary<ChannelOutcome, ErrorKind> Channels = new()
 	{
 		[ChannelOutcome.AlreadyMember] = Conflict, [ChannelOutcome.NotMember] = Conflict,
-		[ChannelOutcome.Closed] = Conflict,
+		[ChannelOutcome.Closed] = Gone,
 		[ChannelOutcome.Empty] = Invalid, [ChannelOutcome.InvalidText] = Invalid, [ChannelOutcome.Blocked] = Forbidden,
 		[ChannelOutcome.TargetSilenced] = Conflict, [ChannelOutcome.AccessDenied] = Forbidden,
 		[ChannelOutcome.NotFound] = NotFound
