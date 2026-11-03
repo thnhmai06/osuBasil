@@ -31,7 +31,7 @@ public sealed class AuthTests(RestHostFixture fixture)
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
 		using var response = await client.SendAsync(HttpMethod.Post, "/v1/auth/login",
-			new { username = "AuthCache", password = "password" });
+			new { username = "AuthCache", password = "password" }, TestContext.Current.CancellationToken);
 
 		Assert.True(response.Headers.CacheControl?.NoStore);
 	}
@@ -113,7 +113,7 @@ public sealed class AuthTests(RestHostFixture fixture)
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
-		using var response = await client.GetAsync("/health");
+		using var response = await client.GetAsync("/health", TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
