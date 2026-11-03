@@ -45,7 +45,7 @@ public sealed class ConnectionTests
 	public async Task CloseIdle_AtTimeoutBoundary_LeavesConnectionOpen(SessionType type, int timeoutSeconds)
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync($"Boundary{type}", "password");
+		var user = await app.CreateUserAsync($"Boundary{(int)type}", "password");
 		var connection = await app.LoginAsync(user, type);
 		app.Clock.Advance(TimeSpan.FromSeconds(timeoutSeconds));
 
@@ -61,7 +61,7 @@ public sealed class ConnectionTests
 	public async Task CloseIdle_OneSecondPastTimeout_ClosesConnection(SessionType type, int timeoutSeconds)
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync($"Expired{type}", "password");
+		var user = await app.CreateUserAsync($"Expired{(int)type}", "password");
 		var connection = await app.LoginAsync(user, type);
 		app.Clock.Advance(TimeSpan.FromSeconds(timeoutSeconds + 1));
 

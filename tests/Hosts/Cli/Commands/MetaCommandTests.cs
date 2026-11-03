@@ -107,7 +107,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 
 		Assert.Equal(0, code);
 		foreach (var label in new[]
-			         { "version:", "uptime:", "users online:", "osu connections:", "rooms:", "rounds in progress:" })
+			         { "version:", "uptime:", "users online:", "osustable connections:", "rooms:", "rounds in progress:" })
 			Assert.Contains(label, text);
 	}
 

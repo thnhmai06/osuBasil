@@ -114,7 +114,7 @@ public sealed class ServerNotifyTests
 	public async Task Notify_UserWhoseOnlyConnectionIsNotAnOsuGameClient_SendsNothing(SessionType type)
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync($"Only{type}", "password",
+		var user = await app.CreateUserAsync($"Only{(int)type}", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
 		await app.LoginAsync(user, type);
 

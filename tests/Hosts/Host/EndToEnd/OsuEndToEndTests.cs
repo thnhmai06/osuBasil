@@ -58,7 +58,7 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 		using var rest = new RestClient(Host.Url, Host.Domain);
 		var playerId = await rest.LoginAsync("E2eOsuPlayer");
 		var (_, sessions) = await rest.CallAsync(HttpMethod.Get, $"/v1/users/{playerId}/sessions?state=online");
-		var osuSession = sessions!["data"]!.AsArray().Single(session => (string)session!["type"]! == "osu");
+		var osuSession = sessions!["data"]!.AsArray().Single(session => (string)session!["type"]! == "osuStable");
 		var (closed, _) = await rest.CallAsync(HttpMethod.Delete,
 			$"/v1/users/{playerId}/sessions/{(Guid)osuSession!["id"]!}");
 
