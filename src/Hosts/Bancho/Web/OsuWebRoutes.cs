@@ -183,7 +183,7 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 		var score = new ScoreData(null, beatmapHash, WireMap.FromWire((WireGameMode)data.Mode) ?? GameMode.Standard,
 			WireMap.FromWire((WireMods)data.Mods),
 			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
-			data.TotalScore, checked((short)data.MaxCombo), checked((short)data.MaxCombo), ParseGrade(data.Grade), data.IsPassed,
+			data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), ParseGrade(data.Grade), data.IsPassed,
 			data.IsFullCombo, data.Timestamp);
 		return new Submission
 			{ Score = score, Flags = (OsuFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
@@ -307,6 +307,11 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)WireMap.ToWire(set.Status)}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
 	}
 
+	/// <summary>How many name checks one address may make in <see cref="RegistrationCheckWindow" />.</summary>
+	internal const int RegistrationChecksPerWindow = 20;
+
+	private static readonly TimeSpan RegistrationCheckWindow = TimeSpan.FromMinutes(10);
+
 	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry,
 		ISettingsRepository settings,
 		RateLimiter limiter, CancellationToken ct)
@@ -324,14 +329,18 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 		var name = form["user[username]"].ToString();
 		var password = form["user[password]"].ToString();
 		var checkOnly = form["check"] != "0";
+		var rules = (await settings.GetAsync(ct)).RateLimits.Registration;
+		var ip = ClientAddress.Resolve(context);
+		if (checkOnly && !limiter.TryAcquire($"register-check:{ip}", RegistrationChecksPerWindow, RegistrationCheckWindow))
+			return Results.Json(
+				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
+				statusCode: 429);
 		var failure = await registry.CheckRegistrationAsync(
 			new RegisterAttempt(name, new Md5(Encoding.UTF8.GetBytes(password))), ct);
 		if (failure is not null)
 			return Results.Json(new { form_error = new { user = new { username = new[] { failure.ToString() } } } },
 				statusCode: 400);
 		if (checkOnly) return Text("ok");
-		var rules = (await settings.GetAsync(ct)).RateLimits.Registration;
-		var ip = ClientAddress.Resolve(context);
 		if (!limiter.TryAcquire($"register:{ip}", rules.PerIp.Count, rules.PerIp.Window) ||
 		    !limiter.TryAcquire("register:server", rules.PerServer.Count, rules.PerServer.Window))
 			return Results.Json(

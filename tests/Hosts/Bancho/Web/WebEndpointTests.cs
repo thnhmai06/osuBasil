@@ -5,6 +5,7 @@ using Basil.Application.Content.Persistence;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Host.Bancho.Tests.Support;
+using Basil.Host.Bancho.Web;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;
 using OsuClient = Basil.Testing.Clients.OsuClient;
@@ -169,6 +170,20 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		var (status, _) = await OsuClient.RegisterAsync(Host, "SecondOfIp", "hunter22", forwardedFor: "198.51.100.2");
 
 		Assert.Equal(HttpStatusCode.TooManyRequests, status);
+	}
+
+	[Fact]
+	public async Task Register_NameChecksFromOneAddress_AreLimited_AndOtherAddressesAreNot()
+	{
+		HttpStatusCode last = default;
+		for (var i = 0; i < OsuWebRoutes.RegistrationChecksPerWindow; i++)
+			(last, _) = await OsuClient.RegisterAsync(Host, $"Probe{i}", "hunter22", true, "198.51.100.4");
+		var (limited, _) = await OsuClient.RegisterAsync(Host, "ProbeExtra", "hunter22", true, "198.51.100.4");
+		var (other, _) = await OsuClient.RegisterAsync(Host, "ProbeExtra", "hunter22", true, "198.51.100.5");
+
+		Assert.Equal(HttpStatusCode.OK, last);
+		Assert.Equal(HttpStatusCode.TooManyRequests, limited);
+		Assert.Equal(HttpStatusCode.OK, other);
 	}
 
 	[Fact]
