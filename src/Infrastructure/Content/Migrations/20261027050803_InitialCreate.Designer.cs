@@ -25,7 +25,7 @@ namespace Basil.Infrastructure.Content.Migrations
 
 			NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-			modelBuilder.Entity("Basil.Infrastructure.Content.Persistence.MenuBannerRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Content.Persistence.MenuBannerRow).FullName!, b =>
 				{
 					b.Property<string>("Image")
 						.HasColumnType("text")
@@ -54,7 +54,7 @@ namespace Basil.Infrastructure.Content.Migrations
 					b.ToTable("menu_banners", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Content.Persistence.SettingRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Content.Persistence.SettingRow).FullName!, b =>
 				{
 					b.Property<string>("Name")
 						.HasColumnType("text")
@@ -70,7 +70,7 @@ namespace Basil.Infrastructure.Content.Migrations
 					b.ToTable("settings", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.WriteTicketRow).FullName!, b =>
 				{
 					b.Property<Guid>("Id")
 						.HasColumnType("uuid")

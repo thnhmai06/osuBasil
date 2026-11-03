@@ -647,6 +647,16 @@ Use `Privilege`, not `Priv`, for new code and public models.
 
 Do not reintroduce the old abbreviation.
 
+#### Names of types and namespaces
+
+Never write the name or full namespace of a type as a string literal in code (`"Basil.Infrastructure.Users.Persistence.UserRow"`).
+Use `nameof(...)` for a simple name and `typeof(T).FullName`, `typeof(T).Namespace` or `typeof(T).Assembly` for the full
+name, so that renaming or moving a type or a module needs no search through strings. This covers EF migrations and
+snapshots (`Entity(typeof(Row).FullName!, ...)`), reflection, logging filters and tests. The exceptions are a name the
+compiler cannot reach: a type of another module that this project must not reference (a module's Infrastructure never
+references another module), an assembly or project loaded by name in architecture tests, and names that are stored data
+(table names, `__ef_migrations_<module>`), which are contracts and never change with a rename.
+
 ## Scope
 
 Basil is a backend platform: it offers capabilities through its protocols and its user-centric HTTP API, with

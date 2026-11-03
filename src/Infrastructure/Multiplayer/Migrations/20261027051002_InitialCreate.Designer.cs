@@ -25,7 +25,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 
 			NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.MatchEventRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchEventRow).FullName!, b =>
 				{
 					b.Property<long>("Id")
 						.ValueGeneratedOnAdd()
@@ -73,7 +73,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 					b.ToTable("match_events", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.MatchRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchRow).FullName!, b =>
 				{
 					b.Property<int>("Id")
 						.ValueGeneratedOnAdd()
@@ -118,7 +118,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.RoundRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.RoundRow).FullName!, b =>
 				{
 					b.Property<int>("MatchId")
 						.HasColumnType("integer")
@@ -179,7 +179,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 					b.ToTable("rounds", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.RoundScoreRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.RoundScoreRow).FullName!, b =>
 				{
 					b.Property<int>("ScoreId")
 						.HasColumnType("integer")
@@ -206,7 +206,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 					b.ToTable("round_scores", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.WriteTicketRow).FullName!, b =>
 				{
 					b.Property<Guid>("Id")
 						.HasColumnType("uuid")
@@ -358,7 +358,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.MatchEventRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchEventRow).FullName!, b =>
 				{
 					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
 						.WithMany()
@@ -366,7 +366,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 						.OnDelete(DeleteBehavior.NoAction)
 						.HasConstraintName("fk_match_events_users_actor_id");
 
-					b.HasOne("Basil.Infrastructure.Multiplayer.Persistence.MatchRow", null)
+					b.HasOne(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchRow).FullName!, null)
 						.WithMany()
 						.HasForeignKey("MatchId")
 						.OnDelete(DeleteBehavior.NoAction)
@@ -380,7 +380,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 						.HasConstraintName("fk_match_events_users_target_id");
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.MatchRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchRow).FullName!, b =>
 				{
 					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
 						.WithMany()
@@ -390,9 +390,9 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 						.IsRequired();
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.RoundRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.RoundRow).FullName!, b =>
 				{
-					b.HasOne("Basil.Infrastructure.Multiplayer.Persistence.MatchRow", null)
+					b.HasOne(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchRow).FullName!, null)
 						.WithMany()
 						.HasForeignKey("MatchId")
 						.OnDelete(DeleteBehavior.NoAction)
@@ -400,11 +400,11 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
 						.HasConstraintName("fk_rounds_matches_match_id");
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Multiplayer.Persistence.RoundScoreRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.RoundScoreRow).FullName!, b =>
 				{
 					b.HasOne("Basil.Infrastructure.Scores.Persistence.ScoreRow", null)
 						.WithOne()
-						.HasForeignKey("Basil.Infrastructure.Multiplayer.Persistence.RoundScoreRow", "ScoreId")
+						.HasForeignKey(typeof(Basil.Infrastructure.Multiplayer.Persistence.RoundScoreRow).FullName!, "ScoreId")
 						.OnDelete(DeleteBehavior.NoAction)
 						.IsRequired()
 						.HasConstraintName("fk_round_scores_scores_score_id");

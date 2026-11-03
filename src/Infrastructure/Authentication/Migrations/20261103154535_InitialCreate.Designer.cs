@@ -26,7 +26,7 @@ namespace Basil.Infrastructure.Authentication.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.CredentialRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.CredentialRow).FullName!, b =>
                 {
                     b.Property<int>("UserId")
                         .HasColumnType("integer")
@@ -43,7 +43,7 @@ namespace Basil.Infrastructure.Authentication.Migrations
                     b.ToTable("credentials", (string)null);
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.SessionRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.SessionRow).FullName!, b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -136,7 +136,7 @@ namespace Basil.Infrastructure.Authentication.Migrations
                     b.ToTable("sessions", (string)null);
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.WriteTicketRow).FullName!, b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -176,17 +176,17 @@ namespace Basil.Infrastructure.Authentication.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.CredentialRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.CredentialRow).FullName!, b =>
                 {
                     b.HasOne("UsersPrincipal", null)
                         .WithOne()
-                        .HasForeignKey("Basil.Infrastructure.Authentication.Persistence.CredentialRow", "UserId")
+                        .HasForeignKey(typeof(Basil.Infrastructure.Authentication.Persistence.CredentialRow).FullName!, "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_credentials_users_user_id");
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.SessionRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.SessionRow).FullName!, b =>
                 {
                     b.HasOne("UsersPrincipal", null)
                         .WithMany()

@@ -25,7 +25,7 @@ namespace Basil.Infrastructure.Users.Migrations
 
 			NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-			modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.WriteTicketRow).FullName!, b =>
 				{
 					b.Property<Guid>("Id")
 						.HasColumnType("uuid")
@@ -47,7 +47,7 @@ namespace Basil.Infrastructure.Users.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Users.Persistence.ModerationLogRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.ModerationLogRow).FullName!, b =>
 				{
 					b.Property<long>("Id")
 						.ValueGeneratedOnAdd()
@@ -89,7 +89,7 @@ namespace Basil.Infrastructure.Users.Migrations
 					b.ToTable("moderation_log", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Users.Persistence.RelationshipRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.RelationshipRow).FullName!, b =>
 				{
 					b.Property<int>("ActorId")
 						.HasColumnType("integer")
@@ -116,7 +116,7 @@ namespace Basil.Infrastructure.Users.Migrations
 					b.ToTable("relationships", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Users.Persistence.RestrictionRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.RestrictionRow).FullName!, b =>
 				{
 					b.Property<int>("Id")
 						.ValueGeneratedOnAdd()
@@ -153,7 +153,7 @@ namespace Basil.Infrastructure.Users.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Users.Persistence.UserRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, b =>
 				{
 					b.Property<int>("Id")
 						.ValueGeneratedOnAdd()
@@ -199,16 +199,16 @@ namespace Basil.Infrastructure.Users.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Users.Persistence.ModerationLogRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.ModerationLogRow).FullName!, b =>
 				{
-					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
+					b.HasOne(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, null)
 						.WithMany()
 						.HasForeignKey("ById")
 						.OnDelete(DeleteBehavior.NoAction)
 						.IsRequired()
 						.HasConstraintName("fk_moderation_log_users_by_id");
 
-					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
+					b.HasOne(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, null)
 						.WithMany()
 						.HasForeignKey("TargetId")
 						.OnDelete(DeleteBehavior.NoAction)
@@ -216,16 +216,16 @@ namespace Basil.Infrastructure.Users.Migrations
 						.HasConstraintName("fk_moderation_log_users_target_id");
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Users.Persistence.RelationshipRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.RelationshipRow).FullName!, b =>
 				{
-					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
+					b.HasOne(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, null)
 						.WithMany()
 						.HasForeignKey("ActorId")
 						.OnDelete(DeleteBehavior.NoAction)
 						.IsRequired()
 						.HasConstraintName("fk_relationships_users_actor_id");
 
-					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
+					b.HasOne(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, null)
 						.WithMany()
 						.HasForeignKey("TargetId")
 						.OnDelete(DeleteBehavior.NoAction)
@@ -233,9 +233,9 @@ namespace Basil.Infrastructure.Users.Migrations
 						.HasConstraintName("fk_relationships_users_target_id");
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Users.Persistence.RestrictionRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.RestrictionRow).FullName!, b =>
 				{
-					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
+					b.HasOne(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, null)
 						.WithMany()
 						.HasForeignKey("UserId")
 						.OnDelete(DeleteBehavior.Cascade)

@@ -29,7 +29,7 @@ namespace Basil.Infrastructure.Beatmaps.Migrations
             modelBuilder.HasSequence<int>("local_beatmapset_ids")
                 .StartsAt(1000000000L);
 
-            modelBuilder.Entity("Basil.Infrastructure.Beatmaps.Persistence.BeatmapRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Beatmaps.Persistence.BeatmapRow).FullName!, b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -144,7 +144,7 @@ namespace Basil.Infrastructure.Beatmaps.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Beatmaps.Persistence.BeatmapsetRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Beatmaps.Persistence.BeatmapsetRow).FullName!, b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -215,7 +215,7 @@ namespace Basil.Infrastructure.Beatmaps.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.WriteTicketRow).FullName!, b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -237,9 +237,9 @@ namespace Basil.Infrastructure.Beatmaps.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Beatmaps.Persistence.BeatmapRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Beatmaps.Persistence.BeatmapRow).FullName!, b =>
                 {
-                    b.HasOne("Basil.Infrastructure.Beatmaps.Persistence.BeatmapsetRow", "Set")
+                    b.HasOne(typeof(Basil.Infrastructure.Beatmaps.Persistence.BeatmapsetRow).FullName!, "Set")
                         .WithMany("Beatmaps")
                         .HasForeignKey("BeatmapsetId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -249,7 +249,7 @@ namespace Basil.Infrastructure.Beatmaps.Migrations
                     b.Navigation("Set");
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Beatmaps.Persistence.BeatmapsetRow", b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Beatmaps.Persistence.BeatmapsetRow).FullName!, b =>
                 {
                     b.Navigation("Beatmaps");
                 });

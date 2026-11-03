@@ -25,7 +25,7 @@ namespace Basil.Infrastructure.Scores.Migrations
 
 			NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-			modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.WriteTicketRow).FullName!, b =>
 				{
 					b.Property<Guid>("Id")
 						.HasColumnType("uuid")
@@ -47,7 +47,7 @@ namespace Basil.Infrastructure.Scores.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Scores.Persistence.ScoreRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Scores.Persistence.ScoreRow).FullName!, b =>
 				{
 					b.Property<int>("Id")
 						.ValueGeneratedOnAdd()
@@ -147,7 +147,7 @@ namespace Basil.Infrastructure.Scores.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Scores.Persistence.UserStatsRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Scores.Persistence.UserStatsRow).FullName!, b =>
 				{
 					b.Property<int>("UserId")
 						.HasColumnType("integer")
@@ -215,7 +215,7 @@ namespace Basil.Infrastructure.Scores.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Scores.Persistence.ScoreRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Scores.Persistence.ScoreRow).FullName!, b =>
 				{
 					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
 						.WithMany()
@@ -224,7 +224,7 @@ namespace Basil.Infrastructure.Scores.Migrations
 						.HasConstraintName("fk_scores_users_user_id");
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Scores.Persistence.UserStatsRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Scores.Persistence.UserStatsRow).FullName!, b =>
 				{
 					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
 						.WithMany()

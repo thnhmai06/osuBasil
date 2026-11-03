@@ -25,7 +25,7 @@ namespace Basil.Infrastructure.Chat.Migrations
 
 			NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-			modelBuilder.Entity("Basil.Infrastructure.Chat.Persistence.ChannelRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Chat.Persistence.ChannelRow).FullName!, b =>
 				{
 					b.Property<string>("Name")
 						.HasColumnType("text")
@@ -78,7 +78,7 @@ namespace Basil.Infrastructure.Chat.Migrations
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
+			modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.WriteTicketRow).FullName!, b =>
 				{
 					b.Property<Guid>("Id")
 						.HasColumnType("uuid")
