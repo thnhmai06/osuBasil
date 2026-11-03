@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Servers.Capabilities;
 
 /// <summary>Uploads beatmapsets to the server for one connection.</summary>
-public sealed class ScopedServerBeatmapsets
+public readonly struct ScopedServerBeatmapsets
 {
 	private readonly ScopedServer _scoped;
 

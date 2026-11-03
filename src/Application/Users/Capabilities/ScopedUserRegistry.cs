@@ -9,16 +9,31 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>The user registry as one connection may act on it: creating accounts.</summary>
-public sealed class ScopedUserRegistry : Scoped<UserPermissions, Connection>
+public readonly struct ScopedUserRegistry
 {
+	/// <summary>Gets the actor this scope is for.</summary>
+	public Connection Actor { get; }
+
+	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
+	public UserPermissions Rights { get; }
+
+	/// <summary>Checks whether the actor holds the right an action needs.</summary>
+	/// <param name="required">The right the action needs.</param>
+	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
+	internal UserPermissions? Require(UserPermissions required)
+	{
+		return ScopedRights.Require(Rights, required);
+	}
+
 	private readonly UserRegistry _registry;
 
 	/// <summary>Creates a scoped registry for a connection.</summary>
 	/// <param name="registry">The registry whose account creation is scoped.</param>
 	/// <param name="actor">The connection acting.</param>
-	internal ScopedUserRegistry(UserRegistry registry, Connection actor) : base(actor,
-		actor.EffectivePermissions(actor.User.Context.Clock.GetUtcNow()))
+	internal ScopedUserRegistry(UserRegistry registry, Connection actor)
 	{
+		Actor = actor;
+		Rights = actor.EffectivePermissions(actor.User.Context.Clock.GetUtcNow());
 		_registry = registry;
 	}
 

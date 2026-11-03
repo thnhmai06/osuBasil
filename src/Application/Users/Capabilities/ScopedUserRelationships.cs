@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>Sets and removes the friends and blocks held toward other users.</summary>
-public sealed class ScopedUserRelationships
+public readonly struct ScopedUserRelationships
 {
 	private readonly ScopedUser _scoped;
 

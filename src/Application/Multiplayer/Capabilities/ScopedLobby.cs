@@ -13,14 +13,29 @@ namespace Basil.Application.Multiplayer.Capabilities;
 
 /// <summary>A lobby scoped to one connection.</summary>
 /// <remarks>Use a scope for one request or command so permission checks use current authority.</remarks>
-public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
+public readonly struct ScopedLobby
 {
+	/// <summary>Gets the actor this scope is for.</summary>
+	public Connection Actor { get; }
+
+	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
+	public UserPermissions Rights { get; }
+
+	/// <summary>Checks whether the actor holds the right an action needs.</summary>
+	/// <param name="required">The right the action needs.</param>
+	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
+	internal UserPermissions? Require(UserPermissions required)
+	{
+		return ScopedRights.Require(Rights, required);
+	}
+
 	/// <summary>Creates a lobby scope for a connection.</summary>
 	/// <param name="lobby">The lobby to scope.</param>
 	/// <param name="actor">The connection acting on the lobby.</param>
 	internal ScopedLobby(Lobby lobby, Connection actor)
-		: base(actor, actor.EffectivePermissions(lobby.Context.Clock.GetUtcNow()))
 	{
+		Actor = actor;
+		Rights = actor.EffectivePermissions(lobby.Context.Clock.GetUtcNow());
 		Lobby = lobby;
 	}
 

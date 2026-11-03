@@ -12,47 +12,56 @@ namespace Basil.Application.Users.Capabilities;
 ///     The snapshot is for one request or command; keeping it longer lets its rights outlive changes to permissions
 ///     or restrictions.
 /// </remarks>
-public sealed class ScopedUser : Scoped<UserPermissions, Connection>
+public readonly struct ScopedUser
 {
+	/// <summary>Gets the actor this scope is for.</summary>
+	public Connection Actor { get; }
+
+	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
+	public UserPermissions Rights { get; }
+
+	/// <summary>Checks whether the actor holds the right an action needs.</summary>
+	/// <param name="required">The right the action needs.</param>
+	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
+	internal UserPermissions? Require(UserPermissions required)
+	{
+		return ScopedRights.Require(Rights, required);
+	}
+
 	/// <summary>Creates a scoped account for a connection.</summary>
 	/// <param name="user">The account to scope.</param>
 	/// <param name="actor">The connection acting on the account.</param>
-	internal ScopedUser(User user, Connection actor) : base(actor,
-		actor.EffectivePermissions(user.Context.Clock.GetUtcNow()))
+	internal ScopedUser(User user, Connection actor)
 	{
+		Actor = actor;
+		Rights = actor.EffectivePermissions(user.Context.Clock.GetUtcNow());
 		User = user;
 		Granted = actor.User.Record.Value.Permissions;
-		Profile = new ScopedUserProfile(this);
-		Credentials = new ScopedUserCredentials(this);
-		Sessions = new ScopedUserSessions(this);
-		Permissions = new ScopedUserPermissions(this);
-		Restrictions = new ScopedUserRestrictions(this);
-		Relationships = new ScopedUserRelationships(this);
 	}
 
 	/// <summary>Gets the account this scope is over.</summary>
 	public User User { get; }
 
 	/// <summary>The profile operations for this account.</summary>
-	public ScopedUserProfile Profile { get; }
+	public ScopedUserProfile Profile => new(this);
 
 	/// <summary>The credential operations for this account.</summary>
-	public ScopedUserCredentials Credentials { get; }
+	public ScopedUserCredentials Credentials => new(this);
 
 	/// <summary>The session operations for this account.</summary>
-	public ScopedUserSessions Sessions { get; }
+	public ScopedUserSessions Sessions => new(this);
 
 	/// <summary>The permission operations for this account.</summary>
-	public ScopedUserPermissions Permissions { get; }
+	public ScopedUserPermissions Permissions => new(this);
 
 	/// <summary>The permissions granted to the connection's user when this scope was created.</summary>
 	internal UserPermissions Granted { get; }
 
 	/// <summary>The restriction operations for this account.</summary>
-	public ScopedUserRestrictions Restrictions { get; }
+	public ScopedUserRestrictions Restrictions => new(this);
 
 	/// <summary>The friends and blocks this account sets toward other users.</summary>
-	public ScopedUserRelationships Relationships { get; }
+	public ScopedUserRelationships Relationships => new(this);
 
 	/// <summary>Whether the caller is acting on their own account.</summary>
 	internal bool IsSelf => Actor.Record.Equals(User.Record);

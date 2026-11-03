@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Servers.Capabilities;
 
 /// <summary>Reads and changes the policy settings of the running server.</summary>
-public sealed class ScopedServerSettings
+public readonly struct ScopedServerSettings
 {
 	private readonly ScopedServer _scoped;
 

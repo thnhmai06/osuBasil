@@ -5,7 +5,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Servers.Capabilities;
 
 /// <summary>Who may look at the server's diagnostics and run its maintenance actions.</summary>
-public sealed class ScopedServerDiagnostics
+public readonly struct ScopedServerDiagnostics
 {
 	private readonly ScopedServer _scoped;
 

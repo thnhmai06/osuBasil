@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Servers.Capabilities;
 
 /// <summary>General-channel operations scoped to one connection.</summary>
-public sealed class ScopedServerChannels
+public readonly struct ScopedServerChannels
 {
 	private readonly ScopedServer _scoped;
 

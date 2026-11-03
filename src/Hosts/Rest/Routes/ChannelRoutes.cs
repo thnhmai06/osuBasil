@@ -69,7 +69,7 @@ internal static class ChannelRoutes
 
 		try
 		{
-			var result = await channel.ScopeTo(context.Connection()).General!.ConfigureAsync(new GeneralChannelChange(
+			var result = await channel.ScopeTo(context.Connection()).General!.Value.ConfigureAsync(new GeneralChannelChange(
 				request.Topic,
 				(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
 				request.Visible), context.RequestAborted);
@@ -86,7 +86,7 @@ internal static class ChannelRoutes
 		var (found, channel) = server.ScopeTo(context.Connection()).Channels.Find(name);
 		return channel is null
 			? found.Refusal()
-			: (await channel.ScopeTo(context.Connection()).General!.DeleteAsync(context.RequestAborted)).Answer();
+			: (await channel.ScopeTo(context.Connection()).General!.Value.DeleteAsync(context.RequestAborted)).Answer();
 	}
 
 	/// <summary>A new general channel.</summary>

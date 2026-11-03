@@ -8,14 +8,29 @@ using Basil.Domain.Users;
 namespace Basil.Application.Chat.Capabilities;
 
 /// <summary>A chat channel scoped to one connection.</summary>
-public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
+public readonly struct ScopedChannel
 {
+	/// <summary>Gets the actor this scope is for.</summary>
+	public Connection Actor { get; }
+
+	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
+	public UserPermissions Rights { get; }
+
+	/// <summary>Checks whether the actor holds the right an action needs.</summary>
+	/// <param name="required">The right the action needs.</param>
+	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
+	internal UserPermissions? Require(UserPermissions required)
+	{
+		return ScopedRights.Require(Rights, required);
+	}
+
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="channel">The channel to scope.</param>
 	/// <param name="actor">The connection acting on the channel.</param>
-	internal ScopedChannel(Channel channel, Connection actor) : base(actor,
-		actor.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
+	internal ScopedChannel(Channel channel, Connection actor)
 	{
+		Actor = actor;
+		Rights = actor.EffectivePermissions(channel.Context.Clock.GetUtcNow());
 		Channel = channel;
 		General = channel is GeneralChannel general ? new ScopedGeneralChannel(general, actor) : null;
 	}
@@ -42,8 +57,9 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 		Connection? replaced = null;
 		if (!Actor.Type.AllowsMany())
 		{
+			var self = Actor;
 			replaced = Channel.Members.FirstOrDefault(member =>
-				member.Record.Equals(Actor.Record) && member.Type == Actor.Type);
+				member.Record.Equals(self.Record) && member.Type == self.Type);
 			if (replaced is not null)
 			{
 				if (replaced.IsOpen) return ChannelOutcome.AlreadyMember;
@@ -113,10 +129,11 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 		if (!Rights.Allows(UserPermissions.ChatManageMessageAnyone))
 		{
 			var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
+			var self = Actor.Record;
 			var blocked = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Block && relationship.Target.Equals(Actor.Record));
+				relationship.Type == RelationshipType.Block && relationship.Target.Equals(self));
 			var friend = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(Actor.Record));
+				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(self));
 			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
 		}
 

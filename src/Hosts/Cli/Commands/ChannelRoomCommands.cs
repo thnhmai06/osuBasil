@@ -183,7 +183,7 @@ internal static class ChannelRoomCommands
 		if (call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel)
 			return call.NotFound("channel");
 
-		var scoped = channel.ScopeTo(await call.ByAsync()).General!;
+		var scoped = channel.ScopeTo(await call.ByAsync()).General!.Value;
 		var result = await scoped.ConfigureAsync(new GeneralChannelChange(call.Text("topic"),
 			(UserPrivileges?)call.Mask("readPrivileges"), (UserPrivileges?)call.Mask("writePrivileges"),
 			call.Bool("autoJoin"),
@@ -195,7 +195,7 @@ internal static class ChannelRoomCommands
 	{
 		return call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel
 			? call.NotFound("channel")
-			: call.Report(await channel.ScopeTo(await call.ByAsync()).General!.DeleteAsync(call.CancellationToken),
+			: call.Report(await channel.ScopeTo(await call.ByAsync()).General!.Value.DeleteAsync(call.CancellationToken),
 				"Channel deleted.");
 	}
 

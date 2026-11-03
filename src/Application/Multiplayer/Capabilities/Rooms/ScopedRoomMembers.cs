@@ -8,7 +8,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 
 /// <summary>Membership operations on a room, scoped to a connection with its permissions.</summary>
-public sealed class ScopedRoomMembers
+public readonly struct ScopedRoomMembers
 {
 	private readonly ScopedRoom _scoped;
 
@@ -28,8 +28,9 @@ public sealed class ScopedRoomMembers
 	/// </returns>
 	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
 	{
+		var room = _scoped.Room;
 		return Task.FromResult(_scoped.Actor is StableConnection actor
-			? Claiming(actor, () => _scoped.Room.Join(actor, password))
+			? Claiming(actor, () => room.Join(actor, password))
 			: RoomOutcome.NotInRoom);
 	}
 

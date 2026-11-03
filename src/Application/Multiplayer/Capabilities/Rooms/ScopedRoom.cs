@@ -14,10 +14,16 @@ namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 ///     change of
 ///     role or restriction.
 /// </remarks>
-public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
+public readonly struct ScopedRoom
 {
 	/// <summary>The permissions the connection has globally, as they were when the scope was created.</summary>
 	private readonly UserPermissions _global;
+
+	/// <summary>Gets the connection this scope is for.</summary>
+	public Connection Actor { get; }
+
+	/// <summary>Gets the room rights the connection held when the scope was created.</summary>
+	public RoomPermissions Rights { get; }
 
 	/// <summary>Creates a scoped room for a connection.</summary>
 	/// <param name="room">The room to scope.</param>
@@ -28,17 +34,13 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 
 	private ScopedRoom(Room room, Connection actor,
 		(UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
-		: base(actor, snapshot.Rights)
 	{
+		Actor = actor;
+		Rights = snapshot.Rights;
 		Room = room;
 		_global = snapshot.Global;
 		Roles = snapshot.Roles;
 		ManagesAnyRoom = _global.Allows(UserPermissions.RoomManageAny);
-		Slots = new ScopedRoomSlots(this);
-		Rounds = new ScopedRoomRounds(this);
-		Settings = new ScopedRoomSettings(this);
-		Authority = new ScopedRoomAuthority(this);
-		Members = new ScopedRoomMembers(this);
 	}
 
 	/// <summary>The room this scope is over.</summary>
@@ -48,19 +50,19 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 	public RoomRoles Roles { get; }
 
 	/// <summary>The slots service for this scoped room.</summary>
-	public ScopedRoomSlots Slots { get; }
+	public ScopedRoomSlots Slots => new(this);
 
 	/// <summary>The rounds service for this scoped room.</summary>
-	public ScopedRoomRounds Rounds { get; }
+	public ScopedRoomRounds Rounds => new(this);
 
 	/// <summary>The settings service for this scoped room.</summary>
-	public ScopedRoomSettings Settings { get; }
+	public ScopedRoomSettings Settings => new(this);
 
 	/// <summary>The authority service for this scoped room.</summary>
-	public ScopedRoomAuthority Authority { get; }
+	public ScopedRoomAuthority Authority => new(this);
 
 	/// <summary>The membership operations for this scoped room.</summary>
-	public ScopedRoomMembers Members { get; }
+	public ScopedRoomMembers Members => new(this);
 
 	/// <summary>Whether the connection may manage every room.</summary>
 	internal bool ManagesAnyRoom { get; }
@@ -113,9 +115,9 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 	///     not
 	///     join rooms at all; otherwise <see cref="RoomOutcome.RoleDenied" />.
 	/// </returns>
-	internal new Result<RoomOutcome>? Require(RoomPermissions needed)
+	internal Result<RoomOutcome>? Require(RoomPermissions needed)
 	{
-		if (base.Require(needed) is null)
+		if (ScopedRights.Require(Rights, needed) is null)
 			return null;
 
 		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomOutcome.RoleDenied;

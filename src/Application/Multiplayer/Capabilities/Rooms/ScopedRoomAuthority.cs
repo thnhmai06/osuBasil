@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 
 /// <summary>Authority operations on a room, scoped to a connection with its permissions.</summary>
-public sealed class ScopedRoomAuthority
+public readonly struct ScopedRoomAuthority
 {
 	private readonly ScopedRoom _scoped;
 

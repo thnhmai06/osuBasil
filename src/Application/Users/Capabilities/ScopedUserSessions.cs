@@ -10,7 +10,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>Views, opens and closes the sessions belonging to an account.</summary>
-public sealed class ScopedUserSessions(ScopedUser scoped)
+public readonly struct ScopedUserSessions(ScopedUser scoped)
 {
 	private const int MaxLabelLength = 64;
 

@@ -1,6 +1,4 @@
 using Basil.Application.Common;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Testing;
 
 namespace Basil.Host.Tests.Common;
 
@@ -23,35 +21,29 @@ public class ScopedRightsTests
 	}
 
 	[Fact]
-	public async Task RequireRight_FlagsHoldingEveryRequiredBit_IsMet()
+	public void RequireRight_FlagsHoldingEveryRequiredBit_IsMet()
 	{
-		using var app = new TestApplication();
-		var actor = await app.LoginAsync(await app.CreateUserAsync("FlagsHolder", "password"));
-		var scope = new FlagsScope(actor, SampleBits.Read | SampleBits.Write);
+		var held = SampleBits.Read | SampleBits.Write;
 
-		Assert.Null(scope.Need(SampleBits.Read));
-		Assert.Null(scope.Need(SampleBits.Read | SampleBits.Write));
+		Assert.Null(ScopedRights.Require(held, SampleBits.Read));
+		Assert.Null(ScopedRights.Require(held, SampleBits.Read | SampleBits.Write));
 	}
 
 	[Fact]
-	public async Task RequireRight_FlagsMissingABit_NamesOnlyTheMissingBits()
+	public void RequireRight_FlagsMissingABit_NamesOnlyTheMissingBits()
 	{
-		using var app = new TestApplication();
-		var actor = await app.LoginAsync(await app.CreateUserAsync("FlagsMissing", "password"));
-		var scope = new FlagsScope(actor, SampleBits.Read);
+		var held = SampleBits.Read;
 
 		Assert.Equal(SampleBits.Write | SampleBits.Delete,
-			scope.Need(SampleBits.Read | SampleBits.Write | SampleBits.Delete));
+			ScopedRights.Require(held, SampleBits.Read | SampleBits.Write | SampleBits.Delete));
 	}
 
 	[Fact]
-	public async Task RequireRight_FlagsRequiringNothing_IsMet()
+	public void RequireRight_FlagsRequiringNothing_IsMet()
 	{
-		using var app = new TestApplication();
-		var actor = await app.LoginAsync(await app.CreateUserAsync("FlagsNothing", "password"));
-		var scope = new FlagsScope(actor, SampleBits.None);
+		var held = SampleBits.None;
 
-		Assert.Null(scope.Need(SampleBits.None));
+		Assert.Null(ScopedRights.Require(held, SampleBits.None));
 	}
 
 	[Theory]
@@ -60,31 +52,12 @@ public class ScopedRightsTests
 	[InlineData(SampleLevel.Guest, SampleLevel.Guest, true)]
 	[InlineData(SampleLevel.Member, SampleLevel.Admin, false)]
 	[InlineData(SampleLevel.Guest, SampleLevel.Member, false)]
-	public async Task RequireRight_Levels_AreMetWhenHeldIsAtLeastRequired(SampleLevel held, SampleLevel required,
+	public void RequireRight_Levels_AreMetWhenHeldIsAtLeastRequired(SampleLevel held, SampleLevel required,
 		bool met)
 	{
-		using var app = new TestApplication();
-		var actor = await app.LoginAsync(await app.CreateUserAsync("LevelHolder", "password"));
-		var scope = new LevelScope(actor, held);
-
-		var missing = scope.Need(required);
+		var missing = ScopedRights.Require(held, required);
 
 		Assert.Equal(met ? null : required, missing);
 	}
 
-	private sealed class FlagsScope(Connection actor, SampleBits held) : Scoped<SampleBits>(actor, held)
-	{
-		public SampleBits? Need(SampleBits required)
-		{
-			return Require(required);
-		}
-	}
-
-	private sealed class LevelScope(Connection actor, SampleLevel held) : Scoped<SampleLevel>(actor, held)
-	{
-		public SampleLevel? Need(SampleLevel required)
-		{
-			return Require(required);
-		}
-	}
 }

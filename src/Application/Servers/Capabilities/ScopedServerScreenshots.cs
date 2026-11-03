@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Servers.Capabilities;
 
 /// <summary>Screenshot operations scoped to one connection.</summary>
-public sealed class ScopedServerScreenshots
+public readonly struct ScopedServerScreenshots
 {
 	private readonly ScopedServer _scoped;
 

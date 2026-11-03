@@ -10,7 +10,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>Changes an account's password according to the caller's authority.</summary>
-public sealed class ScopedUserCredentials(ScopedUser scoped)
+public readonly struct ScopedUserCredentials(ScopedUser scoped)
 {
 	/// <summary>Replaces this account's password and signs its other sessions out.</summary>
 	/// <param name="newPasswordHash">The MD5 digest of the new password.</param>

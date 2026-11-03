@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>Changes the permissions granted to an account.</summary>
-public sealed class ScopedUserPermissions(ScopedUser scoped)
+public readonly struct ScopedUserPermissions(ScopedUser scoped)
 {
 	/// <summary>Replaces the permissions granted to this account.</summary>
 	/// <param name="permissions">The permissions to grant.</param>

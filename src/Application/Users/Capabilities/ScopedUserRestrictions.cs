@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>Restricts an account's permissions and lifts its restrictions.</summary>
-public sealed class ScopedUserRestrictions
+public readonly struct ScopedUserRestrictions
 {
 	private readonly ScopedUser _scoped;
 

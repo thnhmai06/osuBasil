@@ -6,14 +6,29 @@ using Basil.Domain.Users;
 namespace Basil.Application.Beatmaps.Capabilities;
 
 /// <summary>A beatmapset as one actor may act on it.</summary>
-public sealed class ScopedBeatmapset : Scoped<UserPermissions>
+public readonly struct ScopedBeatmapset
 {
+	/// <summary>Gets the actor this scope is for.</summary>
+	public IActor Actor { get; }
+
+	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
+	public UserPermissions Rights { get; }
+
+	/// <summary>Checks whether the actor holds the right an action needs.</summary>
+	/// <param name="required">The right the action needs.</param>
+	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
+	internal UserPermissions? Require(UserPermissions required)
+	{
+		return ScopedRights.Require(Rights, required);
+	}
+
 	/// <summary>Creates a scoped beatmapset for an actor.</summary>
 	/// <param name="beatmapset">The beatmapset to scope.</param>
 	/// <param name="actor">The actor acting on the beatmapset.</param>
-	internal ScopedBeatmapset(Beatmapset beatmapset, IActor actor) : base(actor,
-		actor.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
+	internal ScopedBeatmapset(Beatmapset beatmapset, IActor actor)
 	{
+		Actor = actor;
+		Rights = actor.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow());
 		Beatmapset = beatmapset;
 	}
 

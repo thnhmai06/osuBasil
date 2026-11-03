@@ -9,13 +9,28 @@ using Basil.Domain.Users;
 namespace Basil.Application.Scores.Capabilities;
 
 /// <summary>The score submission as one game client may do it.</summary>
-public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, StableConnection>
+public readonly struct ScopedScoreSubmitter
 {
+	/// <summary>Gets the actor this scope is for.</summary>
+	public StableConnection Actor { get; }
+
+	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
+	public UserPermissions Rights { get; }
+
+	/// <summary>Checks whether the actor holds the right an action needs.</summary>
+	/// <param name="required">The right the action needs.</param>
+	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
+	internal UserPermissions? Require(UserPermissions required)
+	{
+		return ScopedRights.Require(Rights, required);
+	}
+
 	private readonly ScoreSubmitter _submitter;
 
 	internal ScopedScoreSubmitter(ScoreSubmitter submitter, StableConnection actor, UserPermissions permissions)
-		: base(actor, permissions)
 	{
+		Actor = actor;
+		Rights = permissions;
 		_submitter = submitter;
 	}
 

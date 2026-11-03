@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>Changes the profile of an account according to the caller's authority.</summary>
-public sealed class ScopedUserProfile(ScopedUser scoped)
+public readonly struct ScopedUserProfile(ScopedUser scoped)
 {
 	/// <summary>Sets or clears the away message other users see.</summary>
 	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>

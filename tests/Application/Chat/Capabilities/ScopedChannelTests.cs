@@ -122,7 +122,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Closer", "password", UserPermissionsGroups.All));
-		await channel.ScopeTo(admin).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		await channel.ScopeTo(admin).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Latecomer", "password"));
 
 		var result = channel.ScopeTo(connection).Join();
@@ -496,7 +496,7 @@ public sealed class ScopedChannelTests
 		var channel = await OpenChannelAsync(app);
 		var connection = await app.LoginAsync(await app.CreateUserAsync("NotAnAdmin", "password"));
 
-		var result = await channel.ScopeTo(connection).General!.ConfigureAsync(new GeneralChannelChange("new"),
+		var result = await channel.ScopeTo(connection).General!.Value.ConfigureAsync(new GeneralChannelChange("new"),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
@@ -515,7 +515,7 @@ public sealed class ScopedChannelTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Configurer", "password",
 			UserPermissionsGroups.All));
 
-		var result = await channel.ScopeTo(admin).General!.ConfigureAsync(
+		var result = await channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange(ReadPrivileges: UserPrivileges.Moderator), TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
@@ -532,7 +532,7 @@ public sealed class ScopedChannelTests
 		var channel = await OpenChannelAsync(app);
 		var connection = await app.LoginAsync(await app.CreateUserAsync("NotAllowed", "password"));
 
-		var result = await channel.ScopeTo(connection).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		var result = await channel.ScopeTo(connection).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
 		Assert.False(channel.IsClosed);
@@ -547,7 +547,7 @@ public sealed class ScopedChannelTests
 		var member = await MemberOfAsync(app, channel, "Evicted");
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Deleter", "password", UserPermissionsGroups.All));
 
-		var result = await channel.ScopeTo(admin).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		var result = await channel.ScopeTo(admin).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 		Assert.True(channel.IsClosed);

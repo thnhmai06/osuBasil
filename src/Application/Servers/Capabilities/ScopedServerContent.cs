@@ -8,7 +8,7 @@ namespace Basil.Application.Servers.Capabilities;
 
 /// <summary>Changes the FAQ entries and the main menu; reading them needs no permission.</summary>
 /// <remarks>Every change requires <see cref="UserPermissions.ServerManageContent" />.</remarks>
-public sealed class ScopedServerContent
+public readonly struct ScopedServerContent
 {
 	private readonly ScopedServer _scoped;
 

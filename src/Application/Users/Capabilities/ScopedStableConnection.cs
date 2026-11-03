@@ -7,14 +7,29 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Capabilities;
 
 /// <summary>An osu! client as one connection may act on it.</summary>
-public sealed class ScopedStableConnection : Scoped<UserPermissions, Connection>
+public readonly struct ScopedStableConnection
 {
+	/// <summary>Gets the actor this scope is for.</summary>
+	public Connection Actor { get; }
+
+	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
+	public UserPermissions Rights { get; }
+
+	/// <summary>Checks whether the actor holds the right an action needs.</summary>
+	/// <param name="required">The right the action needs.</param>
+	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
+	internal UserPermissions? Require(UserPermissions required)
+	{
+		return ScopedRights.Require(Rights, required);
+	}
+
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
 	/// <param name="host">The client to scope.</param>
 	/// <param name="actor">The connection acting on the client.</param>
-	internal ScopedStableConnection(StableConnection host, Connection actor) : base(actor,
-		actor.EffectivePermissions(host.Context.Clock.GetUtcNow()))
+	internal ScopedStableConnection(StableConnection host, Connection actor)
 	{
+		Actor = actor;
+		Rights = actor.EffectivePermissions(host.Context.Clock.GetUtcNow());
 		Host = host;
 	}
 
@@ -63,8 +78,9 @@ public sealed class ScopedStableConnection : Scoped<UserPermissions, Connection>
 	private async Task<bool> IsBlockedAsync()
 	{
 		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
+		var actor = Actor.Record;
 		return relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
-		                                         relationship.Target.Equals(Actor.Record)) &&
+		                                         relationship.Target.Equals(actor)) &&
 		       Require(UserPermissions.RoomObserve) is not null;
 	}
 

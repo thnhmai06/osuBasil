@@ -3,57 +3,40 @@ using System.Reflection;
 namespace Basil.Application.Common;
 
 /// <summary>
-///     A short-lived capability over one object for one connection: the object's behaviour as that connection may do it.
+///     The comparison every capability view makes when an action needs a right: a capability is a short-lived value over
+///     one object for one actor, and this is how it states what an action needs.
 /// </summary>
 /// <remarks>
-///     The permissions the connection holds are snapshotted once when the scope is created; a scope serves one request or
-///     command and is then dropped, never kept. Implementations state what each behaviour needs through
-///     <see cref="Require" /> and return its refusal; they never compare permissions themselves. How a requirement is
-///     compared depends on the enum: a <see cref="FlagsAttribute" /> enum is met when every required bit is held, any
-///     other enum is ordered levels and is met when the held value is greater than or equal to the required one.
+///     The permissions an actor holds are snapshotted once when the capability is created; a capability serves one
+///     request or command and is then dropped, never kept. A <see cref="FlagsAttribute" /> enum is met when every
+///     required bit is held; any other enum is ordered levels and is met when the held value is greater than or equal to
+///     the required one.
 /// </remarks>
-/// <typeparam name="TPermissions">
-///     The enum of the permissions the scope checks: <c>Permissions</c> for the caller's effective permissions, a room
-///     scope's
-///     own room permissions, or any other flags or levels enum.
-/// </typeparam>
-/// <typeparam name="TActor">The kind of actor the scope is for.</typeparam>
-/// <remarks>Creates a scope for an actor with the permissions it holds.</remarks>
-/// <param name="actor">The actor acting.</param>
-/// <param name="permissions">The permissions the connection holds, as they are when the scope is created.</param>
-public abstract class Scoped<TPermissions, TActor>(TActor actor, TPermissions permissions)
-	where TPermissions : struct, Enum where TActor : IActor
+public static class ScopedRights
 {
-	private static readonly bool IsFlagsEnum = typeof(TPermissions).GetCustomAttribute<FlagsAttribute>() is not null;
-
-	/// <summary>Gets the actor this scope is for.</summary>
-	public TActor Actor { get; } = actor;
-
-	/// <summary>Gets the permissions the connection held when the scope was created.</summary>
-	public TPermissions Rights { get; } = permissions;
-
-	/// <summary>Checks whether the connection holds the right an action needs.</summary>
-	/// <param name="required">The right the action needs.</param>
+	/// <summary>Checks whether the held permissions meet the ones an action needs.</summary>
+	/// <typeparam name="TPermissions">The enum of the permissions that are checked.</typeparam>
+	/// <param name="held">The permissions the actor holds.</param>
+	/// <param name="required">The permissions the action needs.</param>
 	/// <returns>
-	///     <see langword="null" /> when it is held; otherwise what is missing: the bits not held for a flags enum, the
+	///     <see langword="null" /> when they are held; otherwise what is missing: the bits not held for a flags enum, the
 	///     required level for any other enum.
 	/// </returns>
-	protected TPermissions? Require(TPermissions required)
+	public static TPermissions? Require<TPermissions>(TPermissions held, TPermissions required)
+		where TPermissions : struct, Enum
 	{
-		var held = Convert.ToInt64(Rights);
+		var have = Convert.ToInt64(held);
 		var needed = Convert.ToInt64(required);
 
-		if (!IsFlagsEnum)
-			return held >= needed ? null : required;
+		if (!Flags<TPermissions>.IsFlags)
+			return have >= needed ? null : required;
 
-		var missing = needed & ~held;
+		var missing = needed & ~have;
 		return missing == 0 ? null : (TPermissions)Enum.ToObject(typeof(TPermissions), missing);
 	}
-}
 
-/// <summary>A scope for any actor.</summary>
-/// <typeparam name="TPermissions">The enum of the permissions the scope checks.</typeparam>
-/// <param name="actor">The actor acting.</param>
-/// <param name="permissions">The permissions the actor holds, as they are when the scope is created.</param>
-public abstract class Scoped<TPermissions>(IActor actor, TPermissions permissions)
-	: Scoped<TPermissions, IActor>(actor, permissions) where TPermissions : struct, Enum;
+	private static class Flags<TPermissions> where TPermissions : struct, Enum
+	{
+		public static readonly bool IsFlags = typeof(TPermissions).GetCustomAttribute<FlagsAttribute>() is not null;
+	}
+}

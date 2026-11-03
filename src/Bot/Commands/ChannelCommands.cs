@@ -105,7 +105,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 		Result<ChannelOutcome> result;
 		try
 		{
-			result = await channel.ScopeTo(context.Actor).General!.ConfigureAsync(change, cancellationToken);
+			result = await channel.ScopeTo(context.Actor).General!.Value.ConfigureAsync(change, cancellationToken);
 		}
 		catch (ArgumentException)
 		{
@@ -127,7 +127,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 			return false;
 		}
 
-		var result = await channel.ScopeTo(context.Actor).General!.DeleteAsync(cancellationToken);
+		var result = await channel.ScopeTo(context.Actor).General!.Value.DeleteAsync(cancellationToken);
 		var (reply, arguments) = ChannelReplies.Of(result, channel.Name, ChannelReplies.Deleted);
 		await context.Reply(reply, arguments, cancellationToken);
 		return result.IsOk;

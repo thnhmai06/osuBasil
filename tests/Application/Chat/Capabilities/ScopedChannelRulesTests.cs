@@ -121,7 +121,7 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
 		var admin = await AdminAsync(app);
-		await channel.ScopeTo(admin).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		await channel.ScopeTo(admin).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 		var player = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
 
 		var result = channel.ScopeTo(player).Join();
@@ -158,7 +158,7 @@ public sealed class ScopedChannelRulesTests
 		var member = await app.LoginAsync(await app.CreateUserAsync("Late", "password"));
 		channel.ScopeTo(member).Join();
 		var admin = await AdminAsync(app);
-		await channel.ScopeTo(admin).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		await channel.ScopeTo(admin).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 		var before = app.ChannelEvents.Events.Count;
 
 		var result = await channel.ScopeTo(member)
@@ -278,7 +278,7 @@ public sealed class ScopedChannelRulesTests
 		var player = await app.LoginAsync(await app.CreateUserAsync("Inside", "password"));
 		channel.ScopeTo(player).Join();
 		var admin = await AdminAsync(app);
-		await channel.ScopeTo(admin).General!.ConfigureAsync(
+		await channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange(WritePrivileges: UserPrivileges.Moderator),
 			TestContext.Current.CancellationToken);
 
@@ -375,7 +375,7 @@ public sealed class ScopedChannelRulesTests
 		var channel = await OpenChannelAsync(app);
 		var connection = await AdminAsync(app, "Viewer");
 
-		Assert.Same(channel, channel.ScopeTo(connection).General!.Channel);
+		Assert.Same(channel, channel.ScopeTo(connection).General!.Value.Channel);
 	}
 
 	#endregion
@@ -389,7 +389,7 @@ public sealed class ScopedChannelRulesTests
 		var channel = await OpenChannelAsync(app);
 		var admin = await AdminAsync(app);
 
-		var result = await channel.ScopeTo(admin).General!.ConfigureAsync(
+		var result = await channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange("Welcome", UserPrivileges.Player, UserPrivileges.Moderator, true, false),
 			TestContext.Current.CancellationToken);
 
@@ -411,7 +411,7 @@ public sealed class ScopedChannelRulesTests
 		var before = channel.Record.Value;
 		var (autoJoin, visible) = (before.AutoJoin, before.Visible);
 
-		await channel.ScopeTo(admin).General!.ConfigureAsync(new GeneralChannelChange("Only topic"),
+		await channel.ScopeTo(admin).General!.Value.ConfigureAsync(new GeneralChannelChange("Only topic"),
 			TestContext.Current.CancellationToken);
 
 		var after = channel.Record.Value;
@@ -427,7 +427,7 @@ public sealed class ScopedChannelRulesTests
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
-		var scoped = channel.ScopeTo(await AdminAsync(app)).General!;
+		var scoped = channel.ScopeTo(await AdminAsync(app)).General!.Value;
 
 		await scoped.ConfigureAsync(new GeneralChannelChange(AutoJoin: true, Visible: false),
 			TestContext.Current.CancellationToken);
@@ -447,7 +447,7 @@ public sealed class ScopedChannelRulesTests
 		var change = new GeneralChannelChange("News");
 		var before = app.ChannelEvents.Events.Count;
 
-		await channel.ScopeTo(admin).General!.ConfigureAsync(change, TestContext.Current.CancellationToken);
+		await channel.ScopeTo(admin).General!.Value.ConfigureAsync(change, TestContext.Current.CancellationToken);
 
 		var configured = Assert.IsType<ChannelConfigured>(Assert.Single(app.ChannelEvents.Events.Skip(before)));
 		Assert.Equal(change, configured.Change);
@@ -464,7 +464,7 @@ public sealed class ScopedChannelRulesTests
 		channel.ScopeTo(moderator).Join();
 		var admin = await AdminAsync(app);
 
-		await channel.ScopeTo(admin).General!.ConfigureAsync(
+		await channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange(ReadPrivileges: UserPrivileges.None),
 			TestContext.Current.CancellationToken);
 
@@ -481,7 +481,7 @@ public sealed class ScopedChannelRulesTests
 		var repository = app.Provider.GetRequiredService<IChannelRepository>();
 		repository.ClearReceivedCalls();
 
-		await channel.ScopeTo(admin).General!.ConfigureAsync(new GeneralChannelChange("Saved"),
+		await channel.ScopeTo(admin).General!.Value.ConfigureAsync(new GeneralChannelChange("Saved"),
 			TestContext.Current.CancellationToken);
 
 		await repository.Received(1).CreateOrUpdateAsync(
@@ -498,7 +498,7 @@ public sealed class ScopedChannelRulesTests
 		var repository = app.Provider.GetRequiredService<IChannelRepository>();
 		repository.ClearReceivedCalls();
 
-		await channel.ScopeTo(player).General!.ConfigureAsync(new GeneralChannelChange("Hijacked"),
+		await channel.ScopeTo(player).General!.Value.ConfigureAsync(new GeneralChannelChange("Hijacked"),
 			TestContext.Current.CancellationToken);
 
 		await repository.DidNotReceiveWithAnyArgs().CreateOrUpdateAsync(null!, TestContext.Current.CancellationToken);
@@ -514,7 +514,7 @@ public sealed class ScopedChannelRulesTests
 		app.AddRestriction(user, UserPermissions.ChatManageChannels);
 		var connection = await app.LoginAsync(user);
 
-		var result = await channel.ScopeTo(connection).General!.ConfigureAsync(new GeneralChannelChange("x"),
+		var result = await channel.ScopeTo(connection).General!.Value.ConfigureAsync(new GeneralChannelChange("x"),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
@@ -526,9 +526,9 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var admin = await AdminAsync(app);
-		await channel.ScopeTo(admin).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		await channel.ScopeTo(admin).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 
-		var result = await channel.ScopeTo(admin).General!.ConfigureAsync(new GeneralChannelChange("late"),
+		var result = await channel.ScopeTo(admin).General!.Value.ConfigureAsync(new GeneralChannelChange("late"),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Closed, result.Outcome);
@@ -540,10 +540,10 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var admin = await AdminAsync(app);
-		await channel.ScopeTo(admin).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		await channel.ScopeTo(admin).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 		var player = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
 
-		var result = await channel.ScopeTo(player).General!.ConfigureAsync(new GeneralChannelChange("x"),
+		var result = await channel.ScopeTo(player).General!.Value.ConfigureAsync(new GeneralChannelChange("x"),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
@@ -556,7 +556,7 @@ public sealed class ScopedChannelRulesTests
 		var channel = await OpenChannelAsync(app);
 		var admin = await AdminAsync(app);
 
-		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => channel.ScopeTo(admin).General!.ConfigureAsync(
+		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange("Half applied", (UserPrivileges)0x80), TestContext.Current.CancellationToken));
 
 		Assert.NotEqual("Half applied", channel.Topic);
@@ -570,7 +570,7 @@ public sealed class ScopedChannelRulesTests
 		var channel = await OpenChannelAsync(app);
 		var admin = await AdminAsync(app);
 
-		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => channel.ScopeTo(admin).General!.ConfigureAsync(
+		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange("Half applied", WritePrivileges: (UserPrivileges)0x80),
 			TestContext.Current.CancellationToken));
 
@@ -585,7 +585,7 @@ public sealed class ScopedChannelRulesTests
 		var admin = await AdminAsync(app);
 		var topicBefore = channel.Topic;
 
-		await Assert.ThrowsAsync<ArgumentException>(() => channel.ScopeTo(admin).General!.ConfigureAsync(
+		await Assert.ThrowsAsync<ArgumentException>(() => channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange("bad\0topic"), TestContext.Current.CancellationToken));
 
 		Assert.Equal(topicBefore, channel.Topic);
@@ -599,7 +599,7 @@ public sealed class ScopedChannelRulesTests
 		var admin = await AdminAsync(app);
 		var repository = app.Provider.GetRequiredService<IChannelRepository>();
 
-		await channel.ScopeTo(admin).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		await channel.ScopeTo(admin).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 
 		await repository.Received(1).DeleteAsync(
 			Arg.Is<GeneralChannelRecord>(record => record.Name == ChannelName), Arg.Any<CancellationToken>());
@@ -614,7 +614,7 @@ public sealed class ScopedChannelRulesTests
 		app.AddRestriction(user, UserPermissions.ChatManageChannels);
 		var connection = await app.LoginAsync(user);
 
-		var result = await channel.ScopeTo(connection).General!.DeleteAsync(TestContext.Current.CancellationToken);
+		var result = await channel.ScopeTo(connection).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
 		Assert.False(channel.IsClosed);
