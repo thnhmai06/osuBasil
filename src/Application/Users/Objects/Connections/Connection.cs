@@ -12,9 +12,9 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 {
 	// UTC ticks, written and read atomically: a connection and the activity flush touch them from different threads.
 	private const long None = long.MinValue;
+	private SessionEnd? _end;
 	private long _expiresTicks = login.Value.Credential.ExpiresAt?.UtcTicks ?? None;
 	private long _lastActiveTicks = login.StartedAt.UtcTicks;
-	private SessionEnd? _end;
 	private volatile bool _mustReauthenticate;
 
 	/// <summary>Gets the online user this connection belongs to.</summary>
@@ -47,12 +47,24 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	/// <summary>Gets how the session ended, or <see langword="null" /> while it remains active.</summary>
 	public SessionEnd? End => Volatile.Read(ref _end);
 
+	/// <summary>Gets the user who owns this connection.</summary>
+	public UserRecord Record => Session.User;
+
+	/// <inheritdoc />
+	public virtual UserPermissions EffectivePermissions(DateTimeOffset now)
+	{
+		return User.EffectivePermissions(now);
+	}
+
 	/// <summary>Gets the session as it stands now, ready to be stored.</summary>
 	/// <returns>The stored session with its current expiry and end.</returns>
 	internal SessionRecord Snapshot()
 	{
 		var value = Session.Value;
-		return Session with { Value = value with { Credential = value.Credential with { ExpiresAt = ExpiresAt }, End = End } };
+		return Session with
+		{
+			Value = value with { Credential = value.Credential with { ExpiresAt = ExpiresAt }, End = End }
+		};
 	}
 
 	/// <summary>Records activity on this connection's session.</summary>
@@ -84,15 +96,6 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 		_mustReauthenticate = true;
 	}
 
-	/// <summary>Gets the user who owns this connection.</summary>
-	public UserRecord Record => Session.User;
-
-	/// <inheritdoc />
-	public virtual UserPermissions EffectivePermissions(DateTimeOffset now)
-	{
-		return User.EffectivePermissions(now);
-	}
-
 	/// <summary>Tells whether this connection's authority is above an account's permissions.</summary>
 	/// <param name="granted">The permissions granted to this connection's user when the scope was made.</param>
 	/// <param name="target">The permissions granted to the account acted on.</param>
@@ -114,7 +117,8 @@ public sealed class OsuStableConnection : Connection
 	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="context">The runtime dependencies for the connection's behaviour.</param>
-	internal OsuStableConnection(SessionRecord login, string token, int utcOffset, ConnectionContext context) : base(login,
+	internal OsuStableConnection(SessionRecord login, string token, int utcOffset, ConnectionContext context) : base(
+		login,
 		token)
 	{
 		UtcOffset = utcOffset;

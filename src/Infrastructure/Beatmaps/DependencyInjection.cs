@@ -1,4 +1,3 @@
-using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;

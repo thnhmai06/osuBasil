@@ -5,7 +5,10 @@ namespace Basil.Host.Shared;
 /// <summary>Counts events per key inside a sliding window; keys whose events all expired are forgotten.</summary>
 public sealed class RateLimiter(TimeProvider clock)
 {
-	/// <summary>The most keys remembered at the same time; beyond it the keys with the fewest recent events are forgotten first.</summary>
+	/// <summary>
+	///     The most keys remembered at the same time; beyond it the keys with the fewest recent events are forgotten
+	///     first.
+	/// </summary>
 	public const int MaxKeys = 100_000;
 
 	private static readonly TimeSpan PurgeEvery = TimeSpan.FromMinutes(1);
@@ -95,7 +98,8 @@ public sealed class RateLimiter(TimeProvider clock)
 		var now = clock.GetTimestamp();
 		var due = Interlocked.Read(ref _nextPurge);
 		if (_events.Count <= MaxKeys && now < due) return;
-		if (Interlocked.CompareExchange(ref _nextPurge, now + (long)(PurgeEvery.TotalSeconds * clock.TimestampFrequency),
+		if (Interlocked.CompareExchange(ref _nextPurge,
+			    now + (long)(PurgeEvery.TotalSeconds * clock.TimestampFrequency),
 			    due) != due) return;
 
 		foreach (var (key, entry) in _events)
@@ -121,7 +125,7 @@ public sealed class RateLimiter(TimeProvider clock)
 				}
 			})
 			.OrderBy(item => item.Weight)
-			.Take(_events.Count - (MaxKeys / 10) * 9)
+			.Take(_events.Count - MaxKeys / 10 * 9)
 			.ToList();
 		foreach (var (key, _) in weakest) _events.TryRemove(key, out _);
 	}

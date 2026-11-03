@@ -6,6 +6,14 @@ namespace Basil.Host.Tests.Logging;
 /// <summary>The standard <c>Logging:LogLevel</c> settings decide which events are written, per source.</summary>
 public sealed class LogLevelSettingsTests
 {
+	private static readonly Dictionary<string, string?> Shipped = new()
+	{
+		["Default"] = "Information",
+		["Microsoft"] = "Warning",
+		["Microsoft.Hosting.Lifetime"] = "Information",
+		["System"] = "Warning"
+	};
+
 	private static ILogger Logger(string category, Dictionary<string, string?> levels)
 	{
 		var configuration = new ConfigurationBuilder().AddInMemoryCollection(
@@ -17,14 +25,6 @@ public sealed class LogLevelSettingsTests
 			})
 			.CreateLogger(category);
 	}
-
-	private static readonly Dictionary<string, string?> Shipped = new()
-	{
-		["Default"] = "Information",
-		["Microsoft"] = "Warning",
-		["Microsoft.Hosting.Lifetime"] = "Information",
-		["System"] = "Warning"
-	};
 
 	[Fact]
 	public void TheDefaultLevelAppliesToASourceWithoutAnEntry()

@@ -62,14 +62,17 @@ internal static class CommandCatalog
 	{
 		var depth = scope.Length == 0 ? 0 : scope.Count(c => c == ' ') + 1;
 		return string.Join('\n', All
-			.Where(command => command.Path.Count(c => c == ' ') == depth && (scope.Length == 0 || command.Path.StartsWith(scope + " ", StringComparison.Ordinal)))
-			.Select(command => $"!{command.Path}{(command.Usage.Length == 0 ? "" : " " + command.Usage)} - {replies.Text(command.Summary)}"));
+			.Where(command => command.Path.Count(c => c == ' ') == depth &&
+			                  (scope.Length == 0 || command.Path.StartsWith(scope + " ", StringComparison.Ordinal)))
+			.Select(command =>
+				$"!{command.Path}{(command.Usage.Length == 0 ? "" : " " + command.Usage)} - {replies.Text(command.Summary)}"));
 	}
 
 	private static CommandHelp Of(string path, string usage, string summary)
 	{
 		var name = path.Split(' ')[^1];
 		var surface = path.StartsWith("mp ", StringComparison.Ordinal) ? "mp" : "bot";
-		return new CommandHelp(path, usage, new Reply($"{surface}.help{char.ToUpperInvariant(name[0])}{name[1..]}", summary));
+		return new CommandHelp(path, usage,
+			new Reply($"{surface}.help{char.ToUpperInvariant(name[0])}{name[1..]}", summary));
 	}
 }

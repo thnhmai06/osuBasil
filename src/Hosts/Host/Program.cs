@@ -2,6 +2,7 @@ using System.Net;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Configuration;
 using Microsoft.Extensions.Options;
+using Velopack;
 
 namespace Basil.Host;
 
@@ -14,7 +15,7 @@ public static class Program
 	public static async Task<int> Main(string[] args)
 	{
 		// Lets the updater run its install and uninstall hooks; it returns at once when Basil was started normally.
-		Velopack.VelopackApp.Build().Run();
+		VelopackApp.Build().Run();
 		if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
 
 		var app = HostApplication.Create(args);

@@ -7,13 +7,13 @@ namespace Basil.Application.Chat.Objects;
 /// <summary>A configured chat channel while it is open.</summary>
 public sealed class GeneralChannel : Channel
 {
+	/// <summary>The name of the general channel the multiplayer lobby uses for discussion.</summary>
+	public const string LobbyName = "#lobby";
+
 	internal GeneralChannel(GeneralChannelRecord record, ChannelContext context) : base(context)
 	{
 		Record = record;
 	}
-
-	/// <summary>The name of the general channel the multiplayer lobby uses for discussion.</summary>
-	public const string LobbyName = "#lobby";
 
 	/// <summary>Gets the stored identity and settings of this channel.</summary>
 	public GeneralChannelRecord Record { get; }

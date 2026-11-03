@@ -17,8 +17,9 @@ public sealed class ScopedBeatmapsetTests
 {
 	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage;
 
-	private static async Task<(TestApplication App, BeatmapsetWorld World, Beatmapset Set, Connection Actor)> SetupAsync(
-		UserPermissions? permissions = null, Action<TestApplication, UserRecord>? restrict = null)
+	private static async Task<(TestApplication App, BeatmapsetWorld World, Beatmapset Set, Connection Actor)>
+		SetupAsync(
+			UserPermissions? permissions = null, Action<TestApplication, UserRecord>? restrict = null)
 	{
 		var world = new BeatmapsetWorld();
 		var app = world.CreateApplication();

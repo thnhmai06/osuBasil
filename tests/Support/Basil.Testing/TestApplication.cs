@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Auth.Persistence;
-using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Ports;

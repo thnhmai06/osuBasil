@@ -18,8 +18,8 @@ public sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOwne
 	private readonly Lock _gate = new();
 	private readonly ConditionalWeakTable<TOwner, Holder> _lists = new();
 	private readonly Dictionary<TKey, List<Load>> _loading = new();
-	private readonly Dictionary<TKey, List<Func<ImmutableList<T>, ImmutableList<T>>>> _uncommitted = new();
 	private readonly Dictionary<TKey, TaskCompletionSource> _settled = new();
+	private readonly Dictionary<TKey, List<Func<ImmutableList<T>, ImmutableList<T>>>> _uncommitted = new();
 
 	/// <summary>Waits until no change of the owner is still waiting for its write to commit.</summary>
 	/// <param name="key">The owner's key.</param>

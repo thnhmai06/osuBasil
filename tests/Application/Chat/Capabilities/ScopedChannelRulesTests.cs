@@ -1,5 +1,3 @@
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Objects;
 using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Handlers;
 using Basil.Application.Chat.Objects;
@@ -38,7 +36,8 @@ public sealed class ScopedChannelRulesTests
 			Name = ChannelName,
 			Value = new GeneralChannelData { ReadPrivileges = read, WritePrivileges = write }
 		};
-		Assert.True((await app.Server.ScopeTo(actor).Channels.CreateAsync(record, TestContext.Current.CancellationToken))
+		Assert.True(
+			(await app.Server.ScopeTo(actor).Channels.CreateAsync(record, TestContext.Current.CancellationToken))
 			.IsOk);
 		return app.Channels.Find(ChannelName)!;
 	}

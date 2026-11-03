@@ -344,7 +344,8 @@ public sealed class UserRegistry
 			var now = _context.Clock.GetUtcNow();
 			connection.MarkActive(now);
 			if (connection is ApiConnection api) api.ExtendExpiry(now, api.TokenLifetime);
-			if (connection.Session.Value.Credential.TokenHash is not null) _activity[connection.Session.Id] = connection;
+			if (connection.Session.Value.Credential.TokenHash is not null)
+				_activity[connection.Session.Id] = connection;
 		}
 	}
 

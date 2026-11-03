@@ -1,4 +1,3 @@
-using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Logic;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;

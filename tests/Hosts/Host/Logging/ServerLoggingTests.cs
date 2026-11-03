@@ -21,7 +21,8 @@ public sealed class ServerLoggingTests : IDisposable
 		{
 			["Logging:LogLevel:Default"] = "Information",
 			["Logging:LogLevel:Microsoft"] = "Warning",
-			["Logging:File:Location"] = Path.Combine(Path.GetTempPath(), "basil-logging-test-" + Guid.NewGuid().ToString("N"))
+			["Logging:File:Location"] =
+				Path.Combine(Path.GetTempPath(), "basil-logging-test-" + Guid.NewGuid().ToString("N"))
 		});
 		_settings = ((IConfigurationRoot)builder.Configuration).Providers.OfType<MemoryConfigurationProvider>().Last();
 		ServerLogging.Add(builder, CliMode.Full);

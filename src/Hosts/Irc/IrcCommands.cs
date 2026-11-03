@@ -178,7 +178,8 @@ internal sealed partial class IrcCommands(
 		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
 		session.Registered = true;
 		session.Numeric(IrcNumericReply.RplWelcome, $"Welcome to the {IrcReplies.Network} IRC network, {mask}");
-		session.Numeric(IrcNumericReply.RplYourHost, $"Your host is {serverName}, running version {IrcReplies.Version}");
+		session.Numeric(IrcNumericReply.RplYourHost,
+			$"Your host is {serverName}, running version {IrcReplies.Version}");
 		session.Numeric(IrcNumericReply.RplCreated, $"This server was started {state.StartedAt:u}");
 		session.Numeric(IrcNumericReply.RplMyInfo, serverName, IrcReplies.Version, "-", "-");
 		session.Numeric(IrcNumericReply.RplIsupport, "CASEMAPPING=ascii", "CHANTYPES=#", "PREFIX=(ov)@+",

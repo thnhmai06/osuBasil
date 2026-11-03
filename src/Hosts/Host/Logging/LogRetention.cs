@@ -20,7 +20,8 @@ public static class LogRetention
 		var deleted = 0;
 		var kept = 0;
 		long keptBytes = 0;
-		foreach (var file in new DirectoryInfo(directory).EnumerateFiles("*.log").OrderByDescending(file => file.LastWriteTimeUtc))
+		foreach (var file in new DirectoryInfo(directory).EnumerateFiles("*.log")
+			         .OrderByDescending(file => file.LastWriteTimeUtc))
 		{
 			var excess = (maxAge > TimeSpan.Zero && file.LastWriteTimeUtc < now - maxAge) ||
 			             (maxFiles > 0 && kept >= maxFiles) ||

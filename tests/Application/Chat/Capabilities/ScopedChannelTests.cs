@@ -27,7 +27,8 @@ public sealed class ScopedChannelTests
 			Name = ChannelName,
 			Value = new GeneralChannelData { ReadPrivileges = read, WritePrivileges = write }
 		};
-		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(record, TestContext.Current.CancellationToken);
+		var created = await app.Server.ScopeTo(actor).Channels
+			.CreateAsync(record, TestContext.Current.CancellationToken);
 		Assert.True(created.IsOk);
 		return app.Channels.Find(ChannelName)!;
 	}

@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Text;
-using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Mechanics;

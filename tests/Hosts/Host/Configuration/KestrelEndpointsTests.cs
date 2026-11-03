@@ -63,8 +63,10 @@ public sealed class KestrelEndpointsTests
 		var bindings = KestrelSetup.Bindings(Endpoints("https://0.0.0.0:443", "http://[::1]:8080", "http://*:9000"));
 
 		Assert.Equal(
-			[new IPEndPoint(IPAddress.Any, 443), new IPEndPoint(IPAddress.IPv6Loopback, 8080),
-				new IPEndPoint(IPAddress.Any, 9000)], bindings);
+		[
+			new IPEndPoint(IPAddress.Any, 443), new IPEndPoint(IPAddress.IPv6Loopback, 8080),
+			new IPEndPoint(IPAddress.Any, 9000)
+		], bindings);
 	}
 
 	[Fact]

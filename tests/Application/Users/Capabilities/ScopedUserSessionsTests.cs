@@ -29,7 +29,8 @@ public sealed class ScopedUserSessionsTests
 	private static async Task<(string Key, SessionEntry Session)> OpenIrcAsync(TestApplication app,
 		Connection actor, string label)
 	{
-		var (result, key, session) = await app.Users.Of(actor.Record).ScopeTo(actor).Sessions.OpenIrcAsync(label, Token);
+		var (result, key, session) =
+			await app.Users.Of(actor.Record).ScopeTo(actor).Sessions.OpenIrcAsync(label, Token);
 		Assert.True(result.IsOk);
 		return (key!, session!);
 	}
@@ -290,7 +291,8 @@ public sealed class ScopedUserSessionsTests
 
 		var (_, active) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Active, null, Token);
 		var (_, ended) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Ended, null, Token);
-		var (_, osuOnly) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Any, [SessionType.OsuStable], Token);
+		var (_, osuOnly) =
+			await scoped.ListAsync(new PageRequest(0, 10), SessionState.Any, [SessionType.OsuStable], Token);
 
 		Assert.Equal(api.Session.Id, Assert.Single(active!.Items).Id);
 		Assert.Equal(osu.Session.Id, Assert.Single(ended!.Items).Id);

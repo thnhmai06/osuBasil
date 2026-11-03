@@ -73,7 +73,8 @@ public sealed class MatchRecorderTests
 		var joined = app.RoomEvents.Events.OfType<RoomPlayerJoined>()
 			.First(membership => membership.Player == setup.Player);
 
-		await new RoomPlayerJoinedRecorder(recorder.Rounds, recorder.MatchEvents).Handle(joined, TestContext.Current.CancellationToken);
+		await new RoomPlayerJoinedRecorder(recorder.Rounds, recorder.MatchEvents).Handle(joined,
+			TestContext.Current.CancellationToken);
 
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.PlayerJoined &&
@@ -122,7 +123,8 @@ public sealed class MatchRecorderTests
 		await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
 		var closed = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomClosed>());
 
-		await new LobbyRoomClosedRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(closed, TestContext.Current.CancellationToken);
+		await new LobbyRoomClosedRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(closed,
+			TestContext.Current.CancellationToken);
 
 		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match, Arg.Any<CancellationToken>());
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
@@ -140,7 +142,8 @@ public sealed class MatchRecorderTests
 		var round = StoredRound(setup);
 		var recovered = new LobbyMatchRecovered(setup.Room.Match, [round]);
 
-		await new LobbyMatchRecoveredRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(recovered, TestContext.Current.CancellationToken);
+		await new LobbyMatchRecoveredRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(recovered,
+			TestContext.Current.CancellationToken);
 
 		await recorder.Rounds.Received(1).CreateOrUpdateAsync(round, Arg.Any<CancellationToken>());
 		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match, Arg.Any<CancellationToken>());
@@ -158,7 +161,8 @@ public sealed class MatchRecorderTests
 		var round = StoredRound(setup);
 		var roundScore = RoomFixture.Score(1, round);
 
-		await new RoomRoundScoreSubmittedRecorder(recorder.RoundScores).Handle(new RoomRoundScoreSubmitted(setup.Room, round, setup.Player.Record, roundScore),
+		await new RoomRoundScoreSubmittedRecorder(recorder.RoundScores).Handle(
+			new RoomRoundScoreSubmitted(setup.Room, round, setup.Player.Record, roundScore),
 			TestContext.Current.CancellationToken);
 
 		await recorder.RoundScores.Received(1).RecordAsync(roundScore, Arg.Any<CancellationToken>());

@@ -49,12 +49,16 @@ internal sealed partial class PacketHandlers(
 		return packet.Type switch
 		{
 			ClientPacketType.Logout => Run(() => registry.Close(actor, SessionEndReason.LoggedOut)),
-			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds), cancellationToken),
-			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds), cancellationToken),
+			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds),
+				cancellationToken),
+			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor,
+				reader.ReadInt32List().Take(MaxRequestedIds), cancellationToken),
 			ClientPacketType.UserPresenceRequestAll => PresenceRequestAsync(actor,
 				registry.Online.Keys.Select(user => user.Id).ToList(), cancellationToken),
-			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(actor, reader.ReadInt32(), cancellationToken),
-			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(actor, reader.ReadInt32(), cancellationToken),
+			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(actor, reader.ReadInt32(),
+				cancellationToken),
+			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(actor, reader.ReadInt32(),
+				cancellationToken),
 			ClientPacketType.TournamentLeaveMatchChannel =>
 				TourneyLeaveAsync(actor, reader.ReadInt32(), cancellationToken),
 			_ when actor is OsuStableConnection osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,

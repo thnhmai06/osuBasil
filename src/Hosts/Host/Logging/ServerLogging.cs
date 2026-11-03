@@ -3,10 +3,10 @@ using Basil.Host.Cli;
 using Basil.Host.Configuration;
 using Microsoft.Extensions.Options;
 using Serilog;
-using Serilog.Extensions.Logging;
 using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
+using Serilog.Extensions.Logging;
 using Serilog.Sinks.Async;
 using Serilog.Sinks.SystemConsole.Themes;
 

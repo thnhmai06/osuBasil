@@ -31,7 +31,9 @@ internal sealed class ChannelResolver(
 					? roomChannels.Of(room)
 					: null;
 			case OsuStableView.SpectatorAlias:
-				var host = actor is OsuStableConnection { Spectators.Count: > 0 } own ? own : registry.FindSpectating(actor);
+				var host = actor is OsuStableConnection { Spectators.Count: > 0 } own
+					? own
+					: registry.FindSpectating(actor);
 				return host is null ? null : spectatorChannels.Of(host);
 		}
 

@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Http;
 using Basil.Host.Rest.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Basil.Host.Rest.Tests.Http;
@@ -7,12 +7,6 @@ namespace Basil.Host.Rest.Tests.Http;
 /// <summary>An upload route lifts the request size limit for itself.</summary>
 public sealed class UploadLimitTests
 {
-	private sealed class BodyLimit : IHttpMaxRequestBodySizeFeature
-	{
-		public bool IsReadOnly { get; init; }
-		public long? MaxRequestBodySize { get; set; } = 1024;
-	}
-
 	[Fact]
 	public void AllowedUpload_RaisesTheLimit()
 	{
@@ -35,5 +29,11 @@ public sealed class UploadLimitTests
 		UploadLimit.Allow(context, 5000);
 
 		Assert.Equal(1024, feature.MaxRequestBodySize);
+	}
+
+	private sealed class BodyLimit : IHttpMaxRequestBodySizeFeature
+	{
+		public bool IsReadOnly { get; init; }
+		public long? MaxRequestBodySize { get; set; } = 1024;
 	}
 }

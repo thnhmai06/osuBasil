@@ -129,7 +129,8 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <returns><see langword="false" /> when another room is seating the same player right now.</returns>
 	/// <remarks>
 	///     Seated players are found by <see cref="RoomOf" />; this covers only the moment between a room's check and its
-	///     seating. The caller holds no room's scope, and ends the claim with <see cref="Release(OsuStableConnection, Room)" />.
+	///     seating. The caller holds no room's scope, and ends the claim with
+	///     <see cref="Release(OsuStableConnection, Room)" />.
 	/// </remarks>
 	internal bool TryClaim(OsuStableConnection player, Room room)
 	{

@@ -34,7 +34,8 @@ internal sealed partial class PacketHandlers
 			ClientPacketType.MatchReady => scoped.Slots.SetReadyAsync(true, cancellationToken),
 			ClientPacketType.MatchNotReady => scoped.Slots.SetReadyAsync(false, cancellationToken),
 			ClientPacketType.MatchLock => scoped.Slots.ToggleLockAsync(reader.ReadInt32(), cancellationToken),
-			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync(WireMap.FromWire((WireMods)reader.ReadInt32()),
+			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync(
+				WireMap.FromWire((WireMods)reader.ReadInt32()),
 				cancellationToken),
 			ClientPacketType.MatchChangeTeam => scoped.Slots.ToggleTeamAsync(cancellationToken),
 			ClientPacketType.MatchNoBeatmap => scoped.Slots.SetHasMapAsync(false, cancellationToken),

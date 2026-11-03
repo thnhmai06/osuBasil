@@ -7,7 +7,8 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Serves the pages of the documentation that the parts of the server write about themselves.</summary>
 internal static class GuideRoutes
 {
-	private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder().UsePipeTables().DisableHtml().Build();
+	private static readonly MarkdownPipeline Pipeline =
+		new MarkdownPipelineBuilder().UsePipeTables().DisableHtml().Build();
 
 	public static void MapGuides(this IEndpointRouteBuilder app)
 	{
@@ -34,7 +35,7 @@ internal static class GuideRoutes
 
 	private static IResult Html(string title, string body)
 	{
-		return Results.Content($"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
+		return Results.Content("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
 		                       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
 		                       $"<title>{WebUtility.HtmlEncode(title)}</title>" +
 		                       "<style>body{font:16px/1.5 system-ui,sans-serif;max-width:60rem;margin:2rem auto;padding:0 1rem}" +

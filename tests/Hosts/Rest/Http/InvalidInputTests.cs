@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Basil.Host.Shared;
 
 namespace Basil.Host.Rest.Tests.Http;
@@ -74,6 +75,6 @@ public sealed class InvalidInputTests(RestHostFixture fixture)
 	[Fact]
 	public void PlusAndNonAsciiLetters_AreNotEscapedInJson()
 	{
-		Assert.Equal("\"a+b é\"", System.Text.Json.JsonSerializer.Serialize("a+b é", ApiJson.Options));
+		Assert.Equal("\"a+b é\"", JsonSerializer.Serialize("a+b é", ApiJson.Options));
 	}
 }

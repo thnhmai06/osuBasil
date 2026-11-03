@@ -30,7 +30,8 @@ internal sealed class PacketDispatcher(PacketHandlers handlers, ILogger<PacketDi
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{
-				logger.LogError(ex, "OsuStable packet {PacketType} of user {UserId} failed", packet.Type, actor.Record.Id);
+				logger.LogError(ex, "OsuStable packet {PacketType} of user {UserId} failed", packet.Type,
+					actor.Record.Id);
 			}
 	}
 }

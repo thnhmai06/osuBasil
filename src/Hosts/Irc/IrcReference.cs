@@ -4,7 +4,10 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc;
 
-/// <summary>Writes what an IRC client can do on this server: how to reach it, the capabilities it grants and the commands it answers.</summary>
+/// <summary>
+///     Writes what an IRC client can do on this server: how to reach it, the capabilities it grants and the commands
+///     it answers.
+/// </summary>
 /// <param name="options">The address the server listens on.</param>
 public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 {
@@ -47,8 +50,9 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 	{
 		var text = new StringBuilder();
 		text.AppendLine("# IRC").AppendLine();
-		text.AppendLine("Basil has an IRC server that lets standard IRC clients, bots and bouncers use the same chat as the " +
-		                "osu! (stable) client: read channels, talk to other players, message BasilBot and run its commands.")
+		text.AppendLine(
+				"Basil has an IRC server that lets standard IRC clients, bots and bouncers use the same chat as the " +
+				"osu! (stable) client: read channels, talk to other players, message BasilBot and run its commands.")
 			.AppendLine();
 		text.AppendLine("## Connecting").AppendLine();
 		text.AppendLine("| Setting | Value |").AppendLine("| --- | --- |");
@@ -56,11 +60,13 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 		text.AppendLine($"| Port | `{options.Value.Port}`, plain text, no TLS |");
 		text.AppendLine("| Nickname | your username, with spaces written as `_` |");
 		text.AppendLine("| Password / SASL password | an IRC key, not your account password |").AppendLine();
-		text.AppendLine("An IRC key belongs to one device or bot and is created with the HTTP API; ending its session revokes it. " +
-		                "A wrong key, or a nickname that is not yours, is answered with `464` and the connection is closed.")
+		text.AppendLine(
+				"An IRC key belongs to one device or bot and is created with the HTTP API; ending its session revokes it. " +
+				"A wrong key, or a nickname that is not yours, is answered with `464` and the connection is closed.")
 			.AppendLine();
 		text.AppendLine("## Capabilities").AppendLine();
-		text.AppendLine("`CAP LS` offers: " + string.Join(", ", IrcCommands.Capabilities.Select(cap => $"`{cap}`")) + ".")
+		text.AppendLine("`CAP LS` offers: " + string.Join(", ", IrcCommands.Capabilities.Select(cap => $"`{cap}`")) +
+		                ".")
 			.AppendLine();
 		text.AppendLine("## Commands").AppendLine();
 		text.AppendLine("| Command | Needs sign-in | What it does |").AppendLine("| --- | --- | --- |");
@@ -69,7 +75,8 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 		text.AppendLine().AppendLine("Any other command is answered with `421`.").AppendLine();
 		text.AppendLine("## In Basil").AppendLine();
 		text.AppendLine("* Room chat is the channel `#mp_<room id>`.");
-		text.AppendLine("* Message `BasilBot` (`/msg BasilBot !help`) or type `!` commands in a channel; they run with your own rights.");
+		text.AppendLine(
+			"* Message `BasilBot` (`/msg BasilBot !help`) or type `!` commands in a channel; they run with your own rights.");
 		text.AppendLine("* The server keeps no chat history.");
 		return text.ToString();
 	}

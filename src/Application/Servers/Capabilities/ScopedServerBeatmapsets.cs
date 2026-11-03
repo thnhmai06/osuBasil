@@ -77,7 +77,8 @@ public sealed class ScopedServerBeatmapsets
 			return Counted(inner.Read(buffer, offset, count));
 		}
 
-		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+		public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
+			CancellationToken cancellationToken = default)
 		{
 			return Counted(await inner.ReadAsync(buffer, cancellationToken));
 		}

@@ -91,7 +91,7 @@ internal static class RoomRoutes
 		if (await Find(context, lobby, id) is not { } room) return Api.NotFound("No such room.");
 
 		var initial = RoomView.Of(room);
-		string? last = JsonSerializer.Serialize(initial, Api.Json);
+		var last = JsonSerializer.Serialize(initial, Api.Json);
 		return await context.StreamAsync($"room:{id}",
 			_ => Task.FromResult<(object, string?)>((initial, null)), null,
 			_ =>

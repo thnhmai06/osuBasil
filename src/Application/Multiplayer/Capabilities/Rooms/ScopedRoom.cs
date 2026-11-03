@@ -65,7 +65,8 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 	/// <summary>Whether the connection may manage every room.</summary>
 	internal bool ManagesAnyRoom { get; }
 
-	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection actor)
+	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room,
+		Connection actor)
 	{
 		var global = actor.EffectivePermissions(room.Context.Clock.GetUtcNow());
 		var roles = ComputeRoles(room, actor);

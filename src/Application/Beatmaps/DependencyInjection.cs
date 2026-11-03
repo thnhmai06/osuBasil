@@ -1,4 +1,3 @@
-using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Logic;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;

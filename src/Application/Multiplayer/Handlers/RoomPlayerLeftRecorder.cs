@@ -15,6 +15,8 @@ internal sealed class RoomPlayerLeftRecorder(
 	{
 		if (@event.RoundProgress is { Completed: true } progress)
 			await rounds.CreateOrUpdateAsync(progress.Round, cancellationToken);
-		await matchEvents.RecordAsync(new MatchEvent(@event.Room.Match, MatchEventType.PlayerLeft, @event.Timestamp, null, @event.Player.Record, null), cancellationToken);
+		await matchEvents.RecordAsync(
+			new MatchEvent(@event.Room.Match, MatchEventType.PlayerLeft, @event.Timestamp, null, @event.Player.Record),
+			cancellationToken);
 	}
 }

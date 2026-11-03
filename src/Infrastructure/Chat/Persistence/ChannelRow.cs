@@ -23,6 +23,7 @@ internal sealed class ChannelRowConfiguration : IEntityTypeConfiguration<Channel
 		builder.HasKey(row => row.Name);
 		builder.HasData(
 			new ChannelRow { Name = "#osu", Topic = "General discussion.", AutoJoin = true, Visible = true },
-			new ChannelRow { Name = GeneralChannel.LobbyName, Topic = "Multiplayer lobby discussion.", Visible = true });
+			new ChannelRow
+				{ Name = GeneralChannel.LobbyName, Topic = "Multiplayer lobby discussion.", Visible = true });
 	}
 }

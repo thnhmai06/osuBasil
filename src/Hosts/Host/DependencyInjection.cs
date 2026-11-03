@@ -1,7 +1,6 @@
 using Basil.Application.Anticheat;
 using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Beatmaps;
-using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Chat;
@@ -16,9 +15,9 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Events;
-using Basil.Host.OsuStable;
 using Basil.Host.Cli;
 using Basil.Host.Irc;
+using Basil.Host.OsuStable;
 using Basil.Host.Rest;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;

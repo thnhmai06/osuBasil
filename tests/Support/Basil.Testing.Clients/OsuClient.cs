@@ -20,9 +20,9 @@ public sealed class OsuClient : IDisposable
 	public const string UninstallId = "uninstall-id-1";
 	public const string DiskSignature = "disk-signature-1";
 	private const string BuildDate = "20260101";
-	private readonly string _osuStableHost;
 
 	private readonly HttpClient _http;
+	private readonly string _osuStableHost;
 	private readonly string _osuVersion;
 	private readonly List<ServerPacket> _received = [];
 	private readonly string _webHost;

@@ -26,9 +26,9 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 	private readonly Channel<string> _lines = Channel.CreateBounded<string>(
 		new BoundedChannelOptions(MaxQueuedLines) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
 
-	private int _queuedCharacters;
-
 	private List<Action<IrcSession>>? _held = [];
+
+	private int _queuedCharacters;
 
 	/// <summary>Gets the address of the socket; the only address the server uses and never shows.</summary>
 	public IPAddress Address { get; } = address;
@@ -199,6 +199,7 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 					Interlocked.Add(ref _queuedCharacters, -line.Length);
 					buffer.Append(line).Append("\r\n");
 				}
+
 				await stream.WriteAsync(Encoding.UTF8.GetBytes(buffer.ToString()), cancellationToken);
 			}
 		}

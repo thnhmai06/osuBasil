@@ -46,7 +46,8 @@ internal sealed class PostgresRoundScoreRepository(
 	{
 		// Taken before the database is read, so a relation whose write finishes during the read is in the snapshot or in
 		// the rows, never in neither.
-		var queued = _pending.Values.Select(pending => pending.RoundScore).Where(pending => pending.Round.Equals(round)).ToList();
+		var queued = _pending.Values.Select(pending => pending.RoundScore).Where(pending => pending.Round.Equals(round))
+			.ToList();
 		var rows = await reader.ReadAsync((MultiplayerDbContext context) => context.RoundScores
 			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)

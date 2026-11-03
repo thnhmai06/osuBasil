@@ -18,7 +18,6 @@ using Basil.Host;
 using Basil.Host.Irc;
 using Basil.Testing.Persistence;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;

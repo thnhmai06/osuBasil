@@ -16,7 +16,8 @@ public sealed class ServerSayTests
 		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPermissionsGroups.All);
 		var actor = await app.LoginAsync(admin);
 		var record = new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() };
-		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(record, TestContext.Current.CancellationToken);
+		var created = await app.Server.ScopeTo(actor).Channels
+			.CreateAsync(record, TestContext.Current.CancellationToken);
 		Assert.True(created.IsOk);
 		return app.Channels.Find(ChannelName)!;
 	}

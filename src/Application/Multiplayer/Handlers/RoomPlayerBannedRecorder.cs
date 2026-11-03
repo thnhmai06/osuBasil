@@ -15,6 +15,8 @@ internal sealed class RoomPlayerBannedRecorder(
 	{
 		if (@event.RoundProgress is { Completed: true } progress)
 			await rounds.CreateOrUpdateAsync(progress.Round, cancellationToken);
-		await matchEvents.RecordAsync(new MatchEvent(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.Actor, @event.Player, "Banned"), cancellationToken);
+		await matchEvents.RecordAsync(
+			new MatchEvent(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.Actor, @event.Player,
+				"Banned"), cancellationToken);
 	}
 }

@@ -14,7 +14,8 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 	/// <summary>The sections that are read when the server starts.</summary>
 	public static readonly IReadOnlyList<string> RestartRequired =
 	[
-		"Kestrel", "ConnectionStrings", "OpenTelemetry", "Logging:File", "Basil:Server", "Basil:Database", "Basil:Storage"
+		"Kestrel", "ConnectionStrings", "OpenTelemetry", "Logging:File", "Basil:Server", "Basil:Database",
+		"Basil:Storage"
 	];
 
 	/// <summary>The sections that apply as soon as they change.</summary>

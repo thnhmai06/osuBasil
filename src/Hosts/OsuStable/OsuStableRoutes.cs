@@ -83,7 +83,8 @@ public static class OsuStableRoutes
 			return Results.Bytes(reply, "text/html; charset=UTF-8");
 		}
 
-		if (registry.Find(token) is not { IsOpen: true, Type: SessionType.OsuStable or SessionType.OsuStableTourney } connection)
+		if (registry.Find(token) is not
+		    { IsOpen: true, Type: SessionType.OsuStable or SessionType.OsuStableTourney } connection)
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 
 		registry.MarkActive(connection);

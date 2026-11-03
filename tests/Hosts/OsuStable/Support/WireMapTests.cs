@@ -64,7 +64,7 @@ public sealed class WireMapTests
 	[Fact]
 	public void SlotTeam_UnknownDomainValue_Throws()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => WireMap.ToWire((GameTeam?)(GameTeam)9));
+		Assert.Throws<ArgumentOutOfRangeException>(() => WireMap.ToWire((GameTeam)9));
 	}
 
 	[Fact]

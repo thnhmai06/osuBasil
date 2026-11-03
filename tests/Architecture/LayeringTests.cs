@@ -276,11 +276,14 @@ public class LayeringTests
 
 	private static string[] CapabilityNamespaces()
 	{
-		return [.. ModuleAssemblies.Modules.SelectMany(module => new[]
-		{
-			$"Basil.Application.{module}.Capabilities", $"Basil.Application.{module}.Ports",
-			$"Basil.Application.{module}.Logic"
-		})];
+		return
+		[
+			.. ModuleAssemblies.Modules.SelectMany(module => new[]
+			{
+				$"Basil.Application.{module}.Capabilities", $"Basil.Application.{module}.Ports",
+				$"Basil.Application.{module}.Logic"
+			})
+		];
 	}
 
 	private static string[] NonScopedCapabilityTypeNames()

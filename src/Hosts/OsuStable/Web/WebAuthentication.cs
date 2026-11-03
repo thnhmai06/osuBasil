@@ -47,7 +47,8 @@ internal sealed class WebAuthentication(
 	/// <param name="passwordMd5">The MD5 digest of the password the client sent.</param>
 	/// <param name="cancellationToken">A token that cancels the check.</param>
 	/// <returns>The client's connection, or <see langword="null" /> when nobody online has that name and password.</returns>
-	public async Task<OsuStableConnection?> AuthenticateAsync(HttpContext context, string? username, string? passwordMd5,
+	public async Task<OsuStableConnection?> AuthenticateAsync(HttpContext context, string? username,
+		string? passwordMd5,
 		CancellationToken cancellationToken)
 	{
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;

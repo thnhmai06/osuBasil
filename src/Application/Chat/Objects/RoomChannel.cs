@@ -7,6 +7,9 @@ namespace Basil.Application.Chat.Objects;
 /// <summary>A multiplayer room's chat channel while the room is open.</summary>
 public sealed class RoomChannel : Channel
 {
+	/// <summary>The prefix every room channel name starts with.</summary>
+	public const string NamePrefix = "#mp_";
+
 	internal RoomChannel(Room room, ChannelContext context) : base(context)
 	{
 		Room = room;
@@ -15,8 +18,11 @@ public sealed class RoomChannel : Channel
 	/// <summary>Gets the room this channel belongs to.</summary>
 	public Room Room { get; }
 
-	/// <summary>The prefix every room channel name starts with.</summary>
-	public const string NamePrefix = "#mp_";
+	/// <inheritdoc />
+	public override string Name => NameFor(Room.Id);
+
+	/// <inheritdoc />
+	public override string Topic => Room.Match.Value.Name;
 
 	/// <summary>Gets the channel name of a room.</summary>
 	/// <param name="roomId">The room's id.</param>
@@ -38,12 +44,6 @@ public sealed class RoomChannel : Channel
 		var digits = name.AsSpan(NamePrefix.Length);
 		return !digits.IsEmpty && digits.IndexOfAnyExceptInRange('0', '9') < 0 && int.TryParse(digits, out roomId);
 	}
-
-	/// <inheritdoc />
-	public override string Name => NameFor(Room.Id);
-
-	/// <inheritdoc />
-	public override string Topic => Room.Match.Value.Name;
 
 	/// <inheritdoc />
 	internal override bool CanRead(Connection connection, DateTimeOffset now)

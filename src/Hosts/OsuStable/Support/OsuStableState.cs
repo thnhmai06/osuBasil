@@ -44,7 +44,8 @@ internal sealed class OsuStableShutdown(OsuStableState state, UserRegistry regis
 	{
 		StopAccepting();
 		var clients = registry.Online.Values.SelectMany(user => user.Connections)
-			.Where(connection => connection is { IsOpen: true } and (OsuStableConnection or TourneyConnection)).ToList();
+			.Where(connection => connection is { IsOpen: true } and (OsuStableConnection or TourneyConnection))
+			.ToList();
 		var waiting = new HashSet<Connection>(clients, ReferenceEqualityComparer.Instance);
 		var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 		var gate = new Lock();

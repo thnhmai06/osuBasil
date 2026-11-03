@@ -43,15 +43,16 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 
 	private async Task<bool> ListAsync(CommandContext context, CancellationToken cancellationToken)
 	{
-		var lines = channels.VisibleTo(context.Actor).Select(channel => context.Replies.Text(ChannelReplies.ListEntry, new
-		{
-			name = channel.Name,
-			read = (byte)channel.Record.Value.ReadPrivileges,
-			write = (byte)channel.Record.Value.WritePrivileges,
-			autoJoin = channel.Record.Value.AutoJoin,
-			visible = channel.Record.Value.Visible,
-			topic = channel.Topic
-		})).ToList();
+		var lines = channels.VisibleTo(context.Actor).Select(channel => context.Replies.Text(ChannelReplies.ListEntry,
+			new
+			{
+				name = channel.Name,
+				read = (byte)channel.Record.Value.ReadPrivileges,
+				write = (byte)channel.Record.Value.WritePrivileges,
+				autoJoin = channel.Record.Value.AutoJoin,
+				visible = channel.Record.Value.Visible,
+				topic = channel.Topic
+			})).ToList();
 		if (lines.Count == 0) await context.Reply(ChannelReplies.NoChannels, cancellationToken);
 		else await context.Say(string.Join('\n', lines), cancellationToken);
 		return true;

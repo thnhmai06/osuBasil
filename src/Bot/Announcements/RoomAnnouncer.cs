@@ -53,8 +53,10 @@ internal sealed class RoomAnnouncer(
 	{
 		if (@event.Reason is RoomCountdownCancelReason.Replaced)
 		{
-			var remaining = Math.Max(0, (int)Math.Round((@event.Countdown.EndsAt - timeProvider.GetUtcNow()).TotalSeconds));
-			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.CountdownReplaced, new { seconds = remaining }),
+			var remaining = Math.Max(0,
+				(int)Math.Round((@event.Countdown.EndsAt - timeProvider.GetUtcNow()).TotalSeconds));
+			await SayInRoomAsync(@event.Room,
+				replies.Text(AnnouncementReplies.CountdownReplaced, new { seconds = remaining }),
 				cancellationToken);
 			return;
 		}

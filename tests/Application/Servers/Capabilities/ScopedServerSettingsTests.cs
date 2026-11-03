@@ -5,12 +5,16 @@ using Basil.Testing;
 
 namespace Basil.Application.Servers.Tests.Capabilities;
 
-/// <summary>Changing the settings needs the right to manage them; widening the default permissions of new accounts also needs those permissions.</summary>
+/// <summary>
+///     Changing the settings needs the right to manage them; widening the default permissions of new accounts also
+///     needs those permissions.
+/// </summary>
 public sealed class ScopedServerSettingsTests
 {
 	private static ServerSettings WithDefault(UserPermissions permissions)
 	{
-		return new ServerSettings { Accounts = new ServerSettings.AccountSettings { DefaultPermissions = permissions } };
+		return new ServerSettings
+			{ Accounts = new ServerSettings.AccountSettings { DefaultPermissions = permissions } };
 	}
 
 	[Fact]

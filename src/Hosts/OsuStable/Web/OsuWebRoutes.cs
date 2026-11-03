@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Basil.Application.Anticheat.Services;
-using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
@@ -33,6 +32,11 @@ namespace Basil.Host.OsuStable.Web;
 /// <summary>The web endpoints of the osu! client (<c>osu.</c>), kept as the client expects them.</summary>
 internal static class OsuWebRoutes
 {
+	/// <summary>How many name checks one address may make in <see cref="RegistrationCheckWindow" />.</summary>
+	internal const int RegistrationChecksPerWindow = 20;
+
+	private static readonly TimeSpan RegistrationCheckWindow = TimeSpan.FromMinutes(10);
+
 	/// <summary>Maps the web endpoints.</summary>
 	/// <param name="app">The route builder of the <c>osu.</c> host.</param>
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
@@ -42,35 +46,35 @@ internal static class OsuWebRoutes
 		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
 			.WithSummary("List the best scores of a beatmap.")
 			.WithDescription("""
-				Query: `us` (username), `ha` (password hash), `c` (beatmap hash), `m` (mode), `v` (leaderboard type), `mods`.
-				The answer is a text: a header line with the ranked status and the beatmap, then one line per score.
-				An unknown beatmap is answered `-1|false`; wrong credentials are answered 401.
-				""");
+			                 Query: `us` (username), `ha` (password hash), `c` (beatmap hash), `m` (mode), `v` (leaderboard type), `mods`.
+			                 The answer is a text: a header line with the ranked status and the beatmap, then one line per score.
+			                 An unknown beatmap is answered `-1|false`; wrong credentials are answered 401.
+			                 """);
 		web.MapGet("/web/osu-getfriends.php", GetFriendsAsync)
 			.WithSummary("List the ids of the player's friends.")
 			.WithDescription("Query: `u` (username), `h` (password hash). The answer is one id per line.");
 		web.MapPost("/web/osu-getbeatmapinfo.php", GetBeatmapInfoAsync)
 			.WithSummary("Say which of the listed beatmap files the server knows.")
 			.WithDescription("""
-				Query: `u`, `h`. The JSON body lists the file names; the answer has one line per known file.
-				The number of file names answered is capped.
-				""");
+			                 Query: `u`, `h`. The JSON body lists the file names; the answer has one line per known file.
+			                 The number of file names answered is capped.
+			                 """);
 		web.MapPost("/web/osu-submit-modular-selector.php", SubmitAsync)
 			.WithSummary("Submit a score.")
 			.WithDescription("""
-				A multipart form: the encrypted score (`score`, with `iv` and `osuver`), the encrypted client hash (`s`), `pass`,
-				`c1`, `sbk` and the replay. A score that is accepted is answered with a line of beatmap statistics; anything
-				else (wrong credentials, a score that cannot be read, a refused score) is answered `error: no`.
-				""");
+			                 A multipart form: the encrypted score (`score`, with `iv` and `osuver`), the encrypted client hash (`s`), `pass`,
+			                 `c1`, `sbk` and the replay. A score that is accepted is answered with a line of beatmap statistics; anything
+			                 else (wrong credentials, a score that cannot be read, a refused score) is answered `error: no`.
+			                 """);
 		web.MapGet("/web/osu-getreplay.php", GetReplayAsync)
 			.WithSummary("Download the replay of a score.")
 			.WithDescription("Query: `u`, `h`, `c` (score id). The answer is the replay file, or 404.");
 		web.MapPost("/web/osu-screenshot.php", ScreenshotAsync)
 			.WithSummary("Upload a screenshot.")
 			.WithDescription("""
-				A multipart form with `u`, `p` and the picture `ss`. The answer is the reference of the stored screenshot;
-				400 is a refused picture and 413 one that is too large.
-				""");
+			                 A multipart form with `u`, `p` and the picture `ss`. The answer is the reference of the stored screenshot;
+			                 400 is a refused picture and 413 one that is too large.
+			                 """);
 		web.MapGet("/web/lastfm.php", LastFmAsync)
 			.WithSummary("Receive the client's cheat-detection flags.")
 			.WithDescription("Query: `us`, `ha`, `b` (the flags, written `a` followed by a number).");
@@ -83,21 +87,22 @@ internal static class OsuWebRoutes
 		web.MapGet("/d/{setId}", DownloadAsync)
 			.WithSummary("Download a beatmapset archive.")
 			.WithDescription("""
-				Query: `u`, `h`. The id may end with `n` (without video). Answers the archive, or redirects to where it can
-				be downloaded; needs the right to use osu!direct, otherwise 403.
-				""");
+			                 Query: `u`, `h`. The id may end with `n` (without video). Answers the archive, or redirects to where it can
+			                 be downloaded; needs the right to use osu!direct, otherwise 403.
+			                 """);
 		web.MapPost("/users", RegisterAsync)
 			.WithSummary("Register an account, or only check that the details are acceptable.")
 			.WithDescription("""
-				A form with `user[username]`, `user[user_email]`, `user[password]` and `check` (anything but `0` only checks
-				and is answered `ok`). Refusals are answered with a JSON `form_error`. Checks from one address are limited,
-				then answered 429.
-				""");
+			                 A form with `user[username]`, `user[user_email]`, `user[password]` and `check` (anything but `0` only checks
+			                 and is answered `ok`). Refusals are answered with a JSON `form_error`. Checks from one address are limited,
+			                 then answered 429.
+			                 """);
 		foreach (var stub in new[]
 			         { "bancho_connect.php", "check-updates.php", "osu-getseasonal.php", "osu-markasread.php" })
 			web.MapGet("/web/" + stub, () => Results.Text(stub == "osu-getseasonal.php" ? "[]" : string.Empty))
 				.WithSummary($"Answer the client's call to {stub} with nothing to say.")
-				.WithDescription("Basil has nothing to offer here; the answer is empty (`[]` for the seasonal backgrounds).");
+				.WithDescription(
+					"Basil has nothing to offer here; the answer is empty (`[]` for the seasonal backgrounds).");
 	}
 
 	private static IResult Text(string text, int status = 200)
@@ -109,7 +114,7 @@ internal static class OsuWebRoutes
 		IBeatmapRepository beatmaps, IScoreRepository scores, IUserRepository users, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { })
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is null)
 			return Results.Unauthorized();
 		if (!Md5Text.TryParse(query["c"], out var hash)) return Text("-1|false");
 		if (await beatmaps.GetAsync(hash, ct) is not { } map) return Text("-1|false");
@@ -117,7 +122,8 @@ internal static class OsuWebRoutes
 		var mode = ParseMode(query["m"]);
 		var rankedType = int.TryParse(query["v"], out var v) ? v : 1;
 		var page = await scores.ListAsync(
-			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? WireMap.FromWire((WireMods)mods) : null, BestPerPlayer: true),
+			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? WireMap.FromWire((WireMods)mods) : null,
+				BestPerPlayer: true),
 			new PageRequest(0, 50), ct);
 		var rows = new List<string>();
 		foreach (var (score, index) in page.Items.Where(score => score.Value.Mode == mode)
@@ -135,7 +141,9 @@ internal static class OsuWebRoutes
 
 	private static GameMode ParseMode(string? text)
 	{
-		return int.TryParse(text, out var m) && WireMap.FromWire((WireGameMode)m) is { } mode ? mode : GameMode.Standard;
+		return int.TryParse(text, out var m) && WireMap.FromWire((WireGameMode)m) is { } mode
+			? mode
+			: GameMode.Standard;
 	}
 
 	private static async Task<string> ScoreRowAsync(ScoreRecord score, int index, IUserRepository users,
@@ -171,7 +179,8 @@ internal static class OsuWebRoutes
 			var page = await beatmaps.ListAsync(new BeatmapQuery(FileName: request.Filenames[index]),
 				new PageRequest(0, 1), ct);
 			if (page.Items.FirstOrDefault() is { } map)
-				lines.Add($"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)WireMap.ToWire(map.Beatmapset.Status)}|N|N|N|N|{map.Hash}");
+				lines.Add(
+					$"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)WireMap.ToWire(map.Beatmapset.Status)}|N|N|N|N|{map.Hash}");
 		}
 
 		return Text(string.Join('\n', lines));
@@ -217,7 +226,7 @@ internal static class OsuWebRoutes
 		}
 	}
 
-private static OsuFingerprint Fingerprint(ClientHash hash)
+	private static OsuFingerprint Fingerprint(ClientHash hash)
 	{
 		return new OsuFingerprint(new Md5(hash.OsuPathHash),
 			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash),
@@ -229,7 +238,8 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 		var score = new ScoreData(null, beatmapHash, WireMap.FromWire((WireGameMode)data.Mode) ?? GameMode.Standard,
 			WireMap.FromWire((WireMods)data.Mods),
 			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
-			data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), ParseGrade(data.Grade), data.IsPassed,
+			data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), ParseGrade(data.Grade),
+			data.IsPassed,
 			data.IsFullCombo, data.Timestamp);
 		return new Submission
 			{ Score = score, Flags = (OsuFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
@@ -353,11 +363,6 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)WireMap.ToWire(set.Status)}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
 	}
 
-	/// <summary>How many name checks one address may make in <see cref="RegistrationCheckWindow" />.</summary>
-	internal const int RegistrationChecksPerWindow = 20;
-
-	private static readonly TimeSpan RegistrationCheckWindow = TimeSpan.FromMinutes(10);
-
 	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry,
 		ISettingsRepository settings,
 		RateLimiter limiter, CancellationToken ct)
@@ -377,7 +382,8 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 		var checkOnly = form["check"] != "0";
 		var rules = (await settings.GetAsync(ct)).RateLimits.Registration;
 		var ip = ClientAddress.Resolve(context);
-		if (checkOnly && !limiter.TryAcquire($"register-check:{ip}", RegistrationChecksPerWindow, RegistrationCheckWindow))
+		if (checkOnly &&
+		    !limiter.TryAcquire($"register-check:{ip}", RegistrationChecksPerWindow, RegistrationCheckWindow))
 			return Results.Json(
 				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
 				statusCode: 429);

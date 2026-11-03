@@ -13,16 +13,17 @@ namespace Basil.Application.Servers.Tests.Capabilities;
 
 /// <summary>
 ///     Behaviour of screenshot upload and deletion, from the XML contract of <see cref="ScopedServerScreenshots" />: an
-///     upload needs <see cref="UserPermissions.ScreenshotUpload" />, is at most the configured number of bytes and a PNG or JPEG
-///     of at most the configured pixels per side, told from content; a deletion needs <see cref="UserPermissions.ScreenshotManage" />.
+///     upload needs <see cref="UserPermissions.ScreenshotUpload" />, is at most the configured number of bytes and a PNG
+///     or JPEG
+///     of at most the configured pixels per side, told from content; a deletion needs
+///     <see cref="UserPermissions.ScreenshotManage" />.
 /// </summary>
 public sealed class ScopedServerScreenshotsTests
 {
-	private static readonly ContentReference Stored = new("screenshots/stored.png");
-
 	// The defaults of ServerSettings.Uploads: 10 MiB and 8192 pixels per side.
 	private const int MaxBytes = 10 * 1024 * 1024;
 	private const int MaxSide = 8192;
+	private static readonly ContentReference Stored = new("screenshots/stored.png");
 
 	private static MemoryStream Bytes(int length)
 	{

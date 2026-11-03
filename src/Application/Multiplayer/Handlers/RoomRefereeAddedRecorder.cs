@@ -6,11 +6,14 @@ using Mediator;
 namespace Basil.Application.Multiplayer.Handlers;
 
 /// <summary>Records a referee being added.</summary>
-internal sealed class RoomRefereeAddedRecorder(IMatchEventRepository matchEvents) : INotificationHandler<RoomRefereeAdded>
+internal sealed class RoomRefereeAddedRecorder(IMatchEventRepository matchEvents)
+	: INotificationHandler<RoomRefereeAdded>
 {
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRefereeAdded @event, CancellationToken cancellationToken)
 	{
-		await matchEvents.RecordAsync(new MatchEvent(@event.Room.Match, MatchEventType.RefAdded, @event.Timestamp, @event.Actor, @event.Referee, null), cancellationToken);
+		await matchEvents.RecordAsync(
+			new MatchEvent(@event.Room.Match, MatchEventType.RefAdded, @event.Timestamp, @event.Actor, @event.Referee),
+			cancellationToken);
 	}
 }

@@ -12,6 +12,8 @@ internal sealed class RoomHostChangedRecorder(IMatchEventRepository matchEvents)
 	public async ValueTask Handle(RoomHostChanged @event, CancellationToken cancellationToken)
 	{
 		if (@event.Host is { } host)
-			await matchEvents.RecordAsync(new MatchEvent(@event.Room.Match, MatchEventType.HostGranted, @event.Timestamp, @event.Actor, host.Record, null), cancellationToken);
+			await matchEvents.RecordAsync(
+				new MatchEvent(@event.Room.Match, MatchEventType.HostGranted, @event.Timestamp, @event.Actor,
+					host.Record), cancellationToken);
 	}
 }

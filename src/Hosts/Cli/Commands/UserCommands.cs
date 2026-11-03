@@ -173,7 +173,8 @@ internal static class UserCommands
 
 		var actor = await call.ByAsync();
 		var (record, result) = await call.Get<UserRegistry>().ScopeTo(actor)
-			.CreateAccountAsync(data, CommandHelpers.Md5Of(call.Required("password")), permissions, call.CancellationToken);
+			.CreateAccountAsync(data, CommandHelpers.Md5Of(call.Required("password")), permissions,
+				call.CancellationToken);
 		return result.IsOk
 			? Created(call, record!)
 			: call.Refuse(result);

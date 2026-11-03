@@ -37,7 +37,7 @@ public sealed class ScopedUserRegistry : Scoped<UserPermissions, Connection>
 		Md5 passwordHash, UserPermissions? permissions, CancellationToken cancellationToken = default)
 	{
 		var granted = permissions ??
-		             (await Actor.User.Context.Settings.GetAsync(cancellationToken)).Accounts.DefaultPermissions;
+		              (await Actor.User.Context.Settings.GetAsync(cancellationToken)).Accounts.DefaultPermissions;
 		if (Require(UserPermissions.UserManage | granted) is { } missing)
 			return (null, Result<UserOutcome>.Denied(missing));
 

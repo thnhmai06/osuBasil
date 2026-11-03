@@ -1,4 +1,3 @@
-using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Content.Persistence;
 using Microsoft.Extensions.DependencyInjection;

@@ -17,6 +17,8 @@ internal sealed class LobbyRoomClosedRecorder(
 		if (@event.AbortedRound is { } abortedRound)
 			await rounds.CreateOrUpdateAsync(abortedRound, cancellationToken);
 		await matches.UpdateAsync(@event.Room.Match, cancellationToken);
-		await matchEvents.RecordAsync(new MatchEvent(@event.Room.Match, MatchEventType.Closed, @event.Timestamp, @event.Actor, null, @event.Actor is null ? "Empty" : null), cancellationToken);
+		await matchEvents.RecordAsync(
+			new MatchEvent(@event.Room.Match, MatchEventType.Closed, @event.Timestamp, @event.Actor, null,
+				@event.Actor is null ? "Empty" : null), cancellationToken);
 	}
 }

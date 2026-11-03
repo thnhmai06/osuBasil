@@ -1,9 +1,9 @@
 using Basil.Application.Common.Events;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Host.OsuStable.Support;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc;
 using Basil.Host.Logging;
+using Basil.Host.OsuStable.Support;
 using Basil.Host.Rest.Sse;
 using Basil.Infrastructure.Common.Persistence;
 
