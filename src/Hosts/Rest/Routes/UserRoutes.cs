@@ -261,7 +261,9 @@ internal static class UserRoutes
 
 	private static async Task<IResult> CloseSessionsAsync(HttpContext context, int id)
 	{
-		var request = await context.OptionalBodyAsync<CloseSessionsRequest>();
+		var (request, refusal) = await context.OptionalBodyAsync<CloseSessionsRequest>();
+		if (refusal is not null) return refusal;
+
 		return await context.ScopeAsync(id) is not { } scoped
 			? Api.NotFound("No such user.")
 			: (await scoped.Sessions.CloseAllAsync(request?.KeepCurrent ?? true, context.RequestAborted)).Answer();

@@ -58,6 +58,21 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task CloseAll_WithABodyThatIsNotValid_IsRefusedAndClosesNothing()
+	{
+		var (first, id) = await fixture.SignInAsync("SesBadBody");
+		using var second = await SecondClientAsync("SesBadBody");
+		using (first)
+		{
+			var (refused, _) = await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions", "not an object");
+			var (secondStill, _) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
+
+			Assert.Equal(422, refused);
+			Assert.Equal(200, secondStill);
+		}
+	}
+
+	[Fact]
 	public async Task CloseOne_RevokesThatToken_AndStaffCloseEverySessionOfAnotherUser()
 	{
 		var (first, id) = await fixture.SignInAsync("SesOne");

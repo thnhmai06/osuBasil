@@ -34,18 +34,22 @@ public static class Targets
 	}
 
 	/// <summary>Reads a JSON body that may be absent.</summary>
-	/// <returns>The body, or <see langword="null" /> when the request has no JSON body or it is not valid JSON.</returns>
-	public static async Task<T?> OptionalBodyAsync<T>(this HttpContext context) where T : class
+	/// <returns>
+	///     The body, or <see langword="null" /> when the request has no JSON body; the refusal to answer with when the
+	///     body is present but is not valid JSON of the expected shape.
+	/// </returns>
+	public static async Task<(T? Body, IResult? Refusal)> OptionalBodyAsync<T>(this HttpContext context)
+		where T : class
 	{
-		if (!context.Request.HasJsonContentType()) return null;
+		if (!context.Request.HasJsonContentType()) return (null, null);
 
 		try
 		{
-			return await context.Request.ReadFromJsonAsync<T>(Api.Json, context.RequestAborted);
+			return (await context.Request.ReadFromJsonAsync<T>(Api.Json, context.RequestAborted), null);
 		}
 		catch (JsonException)
 		{
-			return null;
+			return (null, Api.Invalid("The body is not valid JSON."));
 		}
 	}
 
