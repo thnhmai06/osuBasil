@@ -31,6 +31,7 @@ public sealed class RestrictionLobbyHandlerTests
 	public async Task Handle_RestrictedRoomJoin_RemovesTheOfflineRefereeFromOpenRooms()
 	{
 		using var app = new TestApplication();
+		await app.SeedBotAsync();
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
 		app.Users.Close(setup.Referee, SessionEndReason.ConnectionLost);
