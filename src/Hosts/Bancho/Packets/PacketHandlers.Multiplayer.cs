@@ -7,6 +7,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Models.Multiplayer;
+using Basil.Protocol.Bancho.Models.Wire;
 using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho.Packets;
@@ -33,7 +34,7 @@ internal sealed partial class PacketHandlers
 			ClientPacketType.MatchReady => scoped.Slots.SetReadyAsync(true, cancellationToken),
 			ClientPacketType.MatchNotReady => scoped.Slots.SetReadyAsync(false, cancellationToken),
 			ClientPacketType.MatchLock => scoped.Slots.ToggleLockAsync(reader.ReadInt32(), cancellationToken),
-			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync((GameMods)reader.ReadInt32(),
+			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync(WireMap.FromWire((WireMods)reader.ReadInt32()),
 				cancellationToken),
 			ClientPacketType.MatchChangeTeam => scoped.Slots.ToggleTeamAsync(cancellationToken),
 			ClientPacketType.MatchNoBeatmap => scoped.Slots.SetHasMapAsync(false, cancellationToken),
@@ -84,23 +85,28 @@ internal sealed partial class PacketHandlers
 	private static MatchSettings SettingsOf(RoomStatePacket match)
 	{
 		var settings = new MatchSettings();
-		if (Enum.IsDefined((GameMode)match.Mode)) settings.Mode = (GameMode)match.Mode;
-		if (Enum.IsDefined((GameTeamType)match.TeamType)) settings.TeamType = (GameTeamType)match.TeamType;
-		if (Enum.IsDefined((GameWinCondition)match.WinCondition))
-			settings.WinCondition = (GameWinCondition)match.WinCondition;
+		if (ModeOf(match) is { } mode) settings.Mode = mode;
+		if (WireMap.FromWire((WireTeamType)match.TeamType) is { } teamType) settings.TeamType = teamType;
+		if (WireMap.FromWire((WireWinCondition)match.WinCondition) is { } winCondition)
+			settings.WinCondition = winCondition;
 		return settings;
+	}
+
+	private static GameMode? ModeOf(RoomStatePacket match)
+	{
+		return WireMap.FromWire((WireGameMode)match.Mode);
 	}
 
 	private Task<RoomSettingsChange>? BeatmapOf(RoomStatePacket match)
 	{
-		return match.MapMd5.Length == 32 && Enum.IsDefined((GameMode)match.Mode) ? BuildAsync() : null;
+		return match.MapMd5.Length == 32 && ModeOf(match) is { } mode ? BuildAsync(mode) : null;
 
-		async Task<RoomSettingsChange> BuildAsync()
+		async Task<RoomSettingsChange> BuildAsync(GameMode mode)
 		{
 			var hash = new Md5(match.MapMd5);
 			var known = await beatmaps.GetAsync(hash);
 			return new RoomSettingsChange(
-				Beatmap: new BeatmapReference(hash, match.MapId, match.MapName, (GameMode)match.Mode, known));
+				Beatmap: new BeatmapReference(hash, match.MapId, match.MapName, mode, known));
 		}
 	}
 
@@ -110,17 +116,15 @@ internal sealed partial class PacketHandlers
 		var current = room.Settings.MatchSettings;
 		var change = new RoomSettingsChange(
 			match.Name != room.Settings.Name ? match.Name : null,
-			Mode: Enum.IsDefined((GameMode)match.Mode) && (GameMode)match.Mode != current.Mode
-				? (GameMode)match.Mode
-				: null,
-			Mods: (GameMods)match.Mods != current.Mods ? (GameMods)match.Mods : null,
+			Mode: ModeOf(match) is { } mode && mode != current.Mode ? mode : null,
+			Mods: WireMap.FromWire((WireMods)match.Mods) is var mods && mods != current.Mods ? mods : null,
 			Freemods: match.FreeMods != current.Freemods ? match.FreeMods : null,
-			TeamType: Enum.IsDefined((GameTeamType)match.TeamType) && (GameTeamType)match.TeamType != current.TeamType
-				? (GameTeamType)match.TeamType
+			TeamType: WireMap.FromWire((WireTeamType)match.TeamType) is { } teamType && teamType != current.TeamType
+				? teamType
 				: null,
-			WinCondition: Enum.IsDefined((GameWinCondition)match.WinCondition) &&
-			              (GameWinCondition)match.WinCondition != current.WinCondition
-				? (GameWinCondition)match.WinCondition
+			WinCondition: WireMap.FromWire((WireWinCondition)match.WinCondition) is { } winCondition &&
+			              winCondition != current.WinCondition
+				? winCondition
 				: null);
 		if (BeatmapOf(match) is { } beatmapChange && room.Settings.Beatmap?.Hash.ToString() != match.MapMd5)
 			change = change with { Beatmap = (await beatmapChange).Beatmap };

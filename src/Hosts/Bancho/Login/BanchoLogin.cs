@@ -84,7 +84,8 @@ internal sealed class BanchoLogin(
 			request = LoginRequestBody.Parse(body);
 			build = ClientBuild.Parse(request.OsuVersion);
 			client = new OsuClient(
-				new OsuVersion(build.Date, build.Revision, (OsuVersionStream)(byte)build.Stream),
+				new OsuVersion(build.Date, build.Revision,
+					WireMap.FromWire(build.Stream) ?? throw new ArgumentException("Unknown client stream.")),
 				new OsuFingerprint(new Md5(request.ClientHash.OsuPathHash),
 					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash),
 					new NetworkAdapters
@@ -123,7 +124,8 @@ internal sealed class BanchoLogin(
 		var user = connection.User;
 		var now = clock.GetUtcNow();
 		var effective = user.EffectivePermissions(now);
-		var privileges = BanchoView.Privileges(effective);
+		var roles = BanchoView.Roles(effective);
+		var privileges = (int)WireMap.ToWire(roles);
 		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
 		var friends = (await user.ScopeTo(connection).Relationships.FriendsAsync(cancellationToken)).Users;
 		var restricted = (user.Record.Value.Permissions & ~effective) != UserPermissions.None;
@@ -140,7 +142,7 @@ internal sealed class BanchoLogin(
 			if (restricted) writer.AccountRestricted();
 			if (!string.IsNullOrEmpty(motd)) writer.Notification(motd);
 			writer.FriendsList([.. friends.Select(friend => friend.Id)]);
-			foreach (var channel in channels.All.Values.Where(channel => ReadableBy(channel, privileges)))
+			foreach (var channel in channels.All.Values.Where(channel => ReadableBy(channel, roles)))
 				writer.ChannelInfo(channel.Name, channel.Topic, channel.Members.Count);
 			writer.ChannelInfoEnd();
 			foreach (var (other, stats) in others)
@@ -152,10 +154,10 @@ internal sealed class BanchoLogin(
 		return [.. welcome, .. outbox.Drain(connection)];
 	}
 
-	private static bool ReadableBy(GeneralChannel channel, int privileges)
+	private static bool ReadableBy(GeneralChannel channel, UserPrivileges roles)
 	{
-		var read = (int)channel.Record.Value.ReadPrivileges;
-		return channel.Record.Value.Visible && (privileges & read) == read;
+		var read = channel.Record.Value.ReadPrivileges;
+		return channel.Record.Value.Visible && roles.Allows(read);
 	}
 
 	private static (string Token, byte[] Reply) Fail(LoginFailureReason reason, string? notification = null)

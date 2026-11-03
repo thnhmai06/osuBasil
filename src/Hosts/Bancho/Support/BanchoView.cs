@@ -5,6 +5,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Protocol.Bancho.Models.Multiplayer;
+using Basil.Protocol.Bancho.Models.Wire;
 using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho.Support;
@@ -28,17 +29,25 @@ internal static class BanchoView
 		};
 	}
 
-	/// <summary>Gets the role bits a client shows for an account.</summary>
+	/// <summary>Gets the roles an account shows to clients.</summary>
 	/// <param name="effective">The account's effective permissions.</param>
-	/// <returns>The roles that at least one effective permission belongs to; the player bit when there is none.</returns>
-	public static int Privileges(UserPermissions effective)
+	/// <returns>The roles that at least one effective permission belongs to; the player role when there is none.</returns>
+	public static UserPrivileges Roles(UserPermissions effective)
 	{
 		var roles = UserPrivileges.None;
 		foreach (var role in Enum.GetValues<UserPrivileges>().Where(role => role != UserPrivileges.None))
 			if ((role.Permissions & effective) != UserPermissions.None)
 				roles |= role;
 
-		return (int)(roles == UserPrivileges.None ? UserPrivileges.Player : roles);
+		return roles == UserPrivileges.None ? UserPrivileges.Player : roles;
+	}
+
+	/// <summary>Gets the role bits a client shows for an account.</summary>
+	/// <param name="effective">The account's effective permissions.</param>
+	/// <returns>The client's privilege bits for the account's roles.</returns>
+	public static int Privileges(UserPermissions effective)
+	{
+		return (int)WireMap.ToWire(Roles(effective));
 	}
 
 	/// <summary>Writes the presence packet of a user.</summary>
@@ -51,7 +60,7 @@ internal static class BanchoView
 		var client = user.Bancho;
 		writer.UserPresence(user.Record.Id, user.Record.Value.Name, client?.UtcOffset ?? 0,
 			(int)user.Record.Value.Country, Privileges(user.EffectivePermissions(now)),
-			(int)(client?.Status.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
+			(int)WireMap.ToWire(client?.Status.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
 	}
 
 	/// <summary>Writes the stats packet of a user.</summary>
@@ -61,9 +70,10 @@ internal static class BanchoView
 	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
 	{
 		var status = user.Bancho?.Status ?? PlayerStatus.Idle;
-		writer.UserStats(user.Record.Id, (int)status.Activity, status.Text,
+		writer.UserStats(user.Record.Id, (int)WireMap.ToWire(status.Activity), status.Text,
 			status.BeatmapHash?.ToString() ?? string.Empty,
-			(int)status.GameMods, (int)status.GameMode, status.BeatmapId ?? 0, stats.RankedScore,
+			(int)WireMap.ToWire(status.GameMods), (int)WireMap.ToWire(status.GameMode), status.BeatmapId ?? 0,
+			stats.RankedScore,
 			UserStats.Accuracy, stats.PlayCount, stats.TotalScore, stats.Rank, UserStats.Pp);
 	}
 
@@ -73,29 +83,23 @@ internal static class BanchoView
 	public static RoomPacket Match(Room room)
 	{
 		var slots = room.Slots.Select(slot => new RoomSlotPacket(SlotStatus(slot),
-			slot.Team is { } team ? (int)team : 0,
-			slot.Mods is { } mods ? (int)mods : 0, slot.Player?.Record.Id)).ToList();
+			(int)WireMap.ToWire(slot.Team),
+			slot.Mods is { } mods ? (int)WireMap.ToWire(mods) : 0, slot.Player?.Record.Id)).ToList();
 		var beatmap = room.Settings.Beatmap;
-		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods,
+		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)WireMap.ToWire(room.Settings.MatchSettings.Mods),
 			room.Settings.Name,
 			room.Settings.Password, beatmap?.Name ?? string.Empty, beatmap?.Id ?? 0,
 			beatmap?.Hash.ToString() ?? string.Empty,
-			slots, room.Authority.Host?.Record.Id ?? RoomPacket.NoHostId, (int)room.Settings.MatchSettings.Mode,
-			(int)room.Settings.MatchSettings.WinCondition, (int)room.Settings.MatchSettings.TeamType,
+			slots, room.Authority.Host?.Record.Id ?? RoomPacket.NoHostId,
+			(int)WireMap.ToWire(room.Settings.MatchSettings.Mode),
+			(int)WireMap.ToWire(room.Settings.MatchSettings.WinCondition),
+			(int)WireMap.ToWire(room.Settings.MatchSettings.TeamType),
 			room.Settings.MatchSettings.Freemods, room.Settings.MatchSettings.Seed);
 	}
 
 	private static int SlotStatus(RoomSlot slot)
 	{
-		if (slot.Player is null) return slot.Locked ? 2 : 1;
-		return slot.Status switch
-		{
-			RoomSlotStatus.NoMap => 16,
-			RoomSlotStatus.NotReady => 4,
-			RoomSlotStatus.Ready => 8,
-			RoomSlotStatus.Playing => 32,
-			RoomSlotStatus.Complete => 64,
-			_ => 4
-		};
+		if (slot.Player is null) return (int)(slot.Locked ? WireSlotStatus.Locked : WireSlotStatus.Open);
+		return (int)(slot.Status is { } status ? WireMap.ToWire(status) : WireSlotStatus.NotReady);
 	}
 }
