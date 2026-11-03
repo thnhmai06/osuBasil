@@ -61,8 +61,11 @@ public sealed class ScopedUserRestrictions
 		if (_scoped.Guard(UserPermissions.UserManageRestrict, false) is { } denied) return denied;
 		if (!restriction.Value.User.Equals(_scoped.User.Record)) return UserOutcome.NotFound;
 
+		var stored = await _scoped.User.Context.Restrictions.GetAsync(restriction.Id, cancellationToken);
+		if (stored is null || !stored.Value.User.Equals(_scoped.User.Record)) return UserOutcome.NotFound;
+
 		var now = _scoped.User.Context.Clock.GetUtcNow();
-		if (restriction.Value.EndsAt is { } endsAt && endsAt <= now) return UserOutcome.Ok;
+		if (stored.Value.EndsAt is { } endsAt && endsAt <= now) return UserOutcome.Ok;
 
 		var log = new ModerationData
 		{
@@ -73,13 +76,13 @@ public sealed class ScopedUserRestrictions
 			Timestamp = now
 		};
 
-		restriction.Value.EndsAt = now;
-		await _scoped.User.Context.Restrictions.UpdateAsync(restriction, cancellationToken);
+		stored.Value.EndsAt = now;
+		await _scoped.User.Context.Restrictions.UpdateAsync(stored, cancellationToken);
 		_scoped.User.Context.Registry.Online.GetValueOrDefault(_scoped.User.Record)
-			?.Restrictions.Remove(restriction);
+			?.Restrictions.Remove(stored);
 		await _scoped.User.Context.ModerationLog.AppendAsync(log, cancellationToken);
 
-		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, restriction));
+		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, stored));
 		return UserOutcome.Ok;
 	}
 

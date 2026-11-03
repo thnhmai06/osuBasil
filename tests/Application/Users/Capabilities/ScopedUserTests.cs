@@ -104,6 +104,30 @@ public sealed class ScopedUserTests
 	}
 
 	[Fact]
+	public async Task LiftAsync_RestrictionWhoseIdBelongsToAnotherUser_ReturnsNotFound()
+	{
+		using var app = new TestApplication();
+		var actorRecord = await app.CreateUserAsync("LiftForgeMod", "password", UserPermissionsGroups.All);
+		var actor = await app.LoginAsync(actorRecord);
+		var first = await app.CreateUserAsync("FirstLiftTgt", "password");
+		var second = await app.CreateUserAsync("SecondLiftTgt", "password");
+		var firstScoped = app.Users.Of(first).ScopeTo(actor);
+		var secondScoped = app.Users.Of(second).ScopeTo(actor);
+		var (_, firstRestriction) = await firstScoped.Restrictions.RestrictAsync(UserPermissions.ChatPost, null,
+			cancellationToken: TestContext.Current.CancellationToken);
+		var (_, secondRestriction) = await secondScoped.Restrictions.RestrictAsync(UserPermissions.ChatPost, null,
+			cancellationToken: TestContext.Current.CancellationToken);
+		var forged = new UserRestriction { Id = firstRestriction!.Id, Value = secondRestriction!.Value };
+
+		var result = await secondScoped.Restrictions.LiftAsync(forged,
+			cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.Equal(UserOutcome.NotFound, result.Outcome);
+		Assert.Null(firstRestriction.Value.EndsAt);
+		Assert.Null(secondRestriction.Value.EndsAt);
+	}
+
+	[Fact]
 	public async Task LiftAsync_KeepsTheRestrictionInTheHistory()
 	{
 		using var app = new TestApplication();
@@ -119,6 +143,29 @@ public sealed class ScopedUserTests
 
 		Assert.Same(restriction, Assert.Single(history));
 		Assert.Equal(app.Clock.GetUtcNow(), restriction!.Value.EndsAt);
+	}
+
+	[Fact]
+	public async Task LiftAsync_RestrictionIdOfAnotherAccount_DoesNotEndThatRestriction()
+	{
+		using var app = new TestApplication();
+		var admin = await app.LoginAsync(await app.CreateUserAsync("LiftCrossMod", "password",
+			UserPermissionsGroups.All));
+		var first = await app.CreateUserAsync("LiftCrossFirst", "password");
+		var second = await app.CreateUserAsync("LiftCrossSecond", "password");
+		var (_, own) = await app.Users.Of(first).ScopeTo(admin).Restrictions.RestrictAsync(UserPermissions.ChatPost,
+			null, cancellationToken: TestContext.Current.CancellationToken);
+		var (_, other) = await app.Users.Of(second).ScopeTo(admin).Restrictions.RestrictAsync(UserPermissions.ChatPost,
+			null, cancellationToken: TestContext.Current.CancellationToken);
+		var forged = new UserRestriction { Id = other!.Id, Value = own!.Value };
+
+		var result = await app.Users.Of(first).ScopeTo(admin).Restrictions.LiftAsync(forged,
+			cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.Equal(UserOutcome.NotFound, result.Outcome);
+		var otherHistory = await app.Users.Of(second).ScopeTo(admin).Restrictions
+			.ListAsync(TestContext.Current.CancellationToken);
+		Assert.Null(Assert.Single(otherHistory).Value.EndsAt);
 	}
 
 	[Fact]
