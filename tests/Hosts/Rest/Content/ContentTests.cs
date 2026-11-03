@@ -63,7 +63,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 				await client.CallAsync(HttpMethod.Patch, "/v1/settings/bot", new { commandPrefix = "?" });
 			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>().GetAsync();
 			var (invalid, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
-				new { idleWindow = "00:00:00" });
+				new { retentionPeriod = "00:00:00" });
 			var (restored, _) =
 				await client.CallAsync(HttpMethod.Patch, "/v1/settings/bot", new { commandPrefix = "!" });
 

@@ -11,7 +11,6 @@ public class ServerSettingsTests
 		() => _ = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.Zero },
 		() => _ = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.FromSeconds(-1) },
 		() => _ = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.Zero },
-		() => _ = new ServerSettings.SessionSettings { IdleWindow = TimeSpan.Zero },
 		() => _ = new ServerSettings.SessionSettings { RetentionPeriod = TimeSpan.FromDays(-1) },
 		() => _ = new ServerSettings.LoginLimitSettings { MaxAttempts = 0 },
 		() => _ = new ServerSettings.LoginLimitSettings { Window = TimeSpan.Zero },
@@ -88,7 +87,6 @@ public class ServerSettingsTests
 		var settings = new ServerSettings();
 
 		Assert.Equal(TimeSpan.FromDays(7), settings.Sessions.ApiToken.Lifetime);
-		Assert.Equal(TimeSpan.FromSeconds(300), settings.Sessions.IdleWindow);
 		Assert.Equal(TimeSpan.FromSeconds(10), settings.Multiplayer.Rounds.ScoreWait);
 		Assert.Equal(new ServerSettings.Limit(1, TimeSpan.FromHours(24)), settings.RateLimits.Registration.PerIp);
 		Assert.Equal("!", settings.Bot.CommandPrefix);

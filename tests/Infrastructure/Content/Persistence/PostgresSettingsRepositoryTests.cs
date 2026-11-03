@@ -30,8 +30,7 @@ public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container
 			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost },
 			Sessions = new ServerSettings.SessionSettings
 			{
-				ApiToken = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.FromDays(3) },
-				IdleWindow = TimeSpan.FromSeconds(60)
+				ApiToken = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.FromDays(3) }
 			},
 			Multiplayer = new ServerSettings.MultiplayerSettings
 			{

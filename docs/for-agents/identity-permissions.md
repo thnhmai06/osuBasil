@@ -79,7 +79,7 @@ touching users, connections, permissions, restrictions or the bot.
   token expires after `Sessions.ApiToken.Lifetime` (sliding, one week by default) and is verified against the database
   the first time it is used, then kept in memory while its connection is used. An IRC key belongs to one device, is
   issued by `POST /v1/users/{id}/sessions/irc`, and is the only credential IRC accepts. osu! signs in with username and
-  password every time. A connection idle for `Sessions.IdleWindow` (300 seconds) leaves memory; the session stays valid
+  password every time. A connection that has sent nothing for its transport's idle timeout leaves memory; the session stays valid
   and the next use opens a new connection. Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by
   default).
 * **Logging out is real.** Closing an Api session revokes its token; closing an osu! session also marks the device to

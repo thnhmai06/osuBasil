@@ -102,13 +102,6 @@ public sealed record ServerSettings
 		/// <summary>Gets the lifetime of an HTTP API token; each use renews it.</summary>
 		public ApiTokenSettings ApiToken { get; init; } = new();
 
-		/// <summary>Gets how long a connection may send nothing before it counts as offline.</summary>
-		public TimeSpan IdleWindow
-		{
-			get;
-			init => field = Positive(value);
-		} = TimeSpan.FromSeconds(300);
-
 		/// <summary>Gets how long ended sessions are kept.</summary>
 		public TimeSpan RetentionPeriod
 		{
