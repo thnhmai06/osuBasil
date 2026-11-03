@@ -114,11 +114,11 @@ public sealed partial class Room
 		       change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null;
 	}
 
-	/// <summary>Applies the this's freemod setting to the this's own mods and every seated player.</summary>
+	/// <summary>Applies the room's freemod setting to the room's own mods and every seated player.</summary>
 	/// <param name="value">Whether freemod is on.</param>
 	/// <remarks>
-	///     Turning freemod on hands the this's non-speed-changing mods to every seated player and
-	///     leaves the this with only its speed-changing mods. Turning it off gives the this its
+	///     Turning freemod on hands the room's non-speed-changing mods to every seated player and
+	///     leaves the room with only its speed-changing mods. Turning it off gives the room its
 	///     speed-changing mods plus the host's own mods, and clears every player's own mods.
 	/// </remarks>
 	private void ApplyFreemods(bool value)
@@ -126,7 +126,7 @@ public sealed partial class Room
 		var seated = Slots.Where(s => s.Player is not null).ToList();
 		if (value)
 		{
-			// Players take the this's mods that combine per player; the this keeps only the
+			// Players take the room's mods that combine per player; the room keeps only the
 			// speed-changing ones, which must stay the same for everyone.
 			foreach (var slot in seated)
 				slot.Mods = Settings.MatchSettings.Mods & ~GameModsGroups.SpeedChanging;
@@ -136,7 +136,7 @@ public sealed partial class Room
 		else
 		{
 			Settings.MatchSettings.Freemods = false;
-			// The this keeps its speed-changing mods and takes the host's own mods.
+			// The room keeps its speed-changing mods and takes the host's own mods.
 			var hostMods = (Authority.Host is { } host ? Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
 			Settings.MatchSettings.Mods =
 				(Settings.MatchSettings.Mods & GameModsGroups.SpeedChanging) | hostMods;
@@ -145,7 +145,7 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Applies the this's team arrangement, reassigning the teams of the seated players.</summary>
+	/// <summary>Applies the room's team arrangement, reassigning the teams of the seated players.</summary>
 	/// <param name="value">The team arrangement to set.</param>
 	private void ApplyTeamType(GameTeamType value)
 	{
