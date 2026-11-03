@@ -136,11 +136,9 @@ internal static class OsuWebRoutes
 	{
 		// A score submission carries a replay, which is far below the screenshot limit.
 		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
-		if (!context.Request.HasFormContentType) return Text("error: no");
-
-		var form = await context.Request.ReadFormAsync(ct);
 		try
 		{
+			var form = await context.Request.ReadFormAsync(ct);
 			var version = form["osuver"].ToString();
 			var iv = form["iv"].ToString();
 			var data = ScoreSubmission.Parse(ScoreSubmissionCipher.Decrypt(form["score"].First()!, iv, version));
@@ -166,13 +164,13 @@ internal static class OsuWebRoutes
 				: "error: no");
 		}
 		catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
-			                           or OverflowException)
+			                           or OverflowException or InvalidOperationException)
 		{
 			return Text("error: no");
 		}
 	}
 
-	private static OsuFingerprint Fingerprint(ClientHash hash)
+private static OsuFingerprint Fingerprint(ClientHash hash)
 	{
 		return new OsuFingerprint(new Md5(hash.OsuPathHash),
 			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash),
