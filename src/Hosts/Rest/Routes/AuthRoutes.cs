@@ -39,6 +39,8 @@ internal static class AuthRoutes
 		if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
 			return Api.Invalid("username and password are required.");
 
+		context.Response.Headers.CacheControl = "no-store";
+
 		var rules = (await settings.GetAsync(context.RequestAborted)).RateLimits.Login;
 		var ip = context.Ip();
 		var ipKey = $"login-fail:{ip}";
