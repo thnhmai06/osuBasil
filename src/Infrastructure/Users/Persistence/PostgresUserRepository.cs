@@ -28,22 +28,21 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		if (_freeing.TryGetValue(data.NormalizedName, out var freeing))
 			await Task.WhenAny(freeing);
 
-		var row = ToRow(0, data);
 		try
 		{
-			await Writer.WriteAsync(Root.Server, async (UsersDbContext context, CancellationToken token) =>
+			var id = await Writer.WriteAsync(Root.Server, async (UsersDbContext context, CancellationToken token) =>
 			{
+				var row = ToRow(0, data);
 				context.Users.Add(row);
 				await context.SaveChangesAsync(token);
 				return row.Id;
 			}, cancellationToken);
+			return TrackUser(new UserRecord { Id = id, Value = data });
 		}
 		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
 			throw AlreadyNamed(data.Name);
 		}
-
-		return TrackUser(new UserRecord { Id = row.Id, Value = data });
 	}
 
 	/// <inheritdoc />
