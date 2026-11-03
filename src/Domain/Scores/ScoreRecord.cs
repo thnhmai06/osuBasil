@@ -69,8 +69,8 @@ public sealed record ScoreData(
 	GameMods Mods,
 	HitCounts HitCounts,
 	int TotalScore,
-	short MaxCombo,
-	short CurrentCombo,
+	ushort MaxCombo,
+	ushort CurrentCombo,
 	Grade Grade,
 	bool IsPassed,
 	bool IsFullCombo,
@@ -108,21 +108,11 @@ public sealed record ScoreData(
 		init => field = Check(value);
 	} = Check(TotalScore);
 
-	/// <summary>Gets the maximum combo reached.</summary>
-	/// <exception cref="ArgumentOutOfRangeException">The maximum combo is negative.</exception>
-	public short MaxCombo
-	{
-		get;
-		init => field = Check(value);
-	} = Check(MaxCombo);
+	/// <summary>Gets the maximum combo reached, as the replay format stores it (unsigned 16-bit).</summary>
+	public ushort MaxCombo { get; init; } = MaxCombo;
 
-	/// <summary>Gets the combo count at the end of the beatmap.</summary>
-	/// <exception cref="ArgumentOutOfRangeException">The combo count is negative.</exception>
-	public short CurrentCombo
-	{
-		get;
-		init => field = Check(value);
-	} = Check(CurrentCombo);
+	/// <summary>Gets the combo count at the end of the beatmap, as the replay format stores it (unsigned 16-bit).</summary>
+	public ushort CurrentCombo { get; init; } = CurrentCombo;
 
 	/// <summary>
 	///     Gets the checksum the client computed for the submission of this score, which identifies the submission,
@@ -136,13 +126,6 @@ public sealed record ScoreData(
 	public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);
 
 	private static int Check(int value)
-	{
-		return value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must not be negative.");
-	}
-
-	private static short Check(short value)
 	{
 		return value >= 0
 			? value

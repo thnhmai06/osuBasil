@@ -11,7 +11,7 @@ public sealed record ScoreView(
 	GameMode Mode,
 	string Mods,
 	int TotalScore,
-	short MaxCombo,
+	ushort MaxCombo,
 	double Accuracy,
 	Grade Grade,
 	bool Passed,

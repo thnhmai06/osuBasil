@@ -10,7 +10,7 @@ public class GameWinConditionTests
 
 	private static readonly HitCounts NearlyPerfect = new(99, 0, 0, 0, 0, 1);
 
-	private static ScoreData Make(HitCounts hits, int totalScore, short maxCombo, short currentCombo)
+	private static ScoreData Make(HitCounts hits, int totalScore, ushort maxCombo, ushort currentCombo)
 	{
 		return new ScoreData(null, null, GameMode.Standard, GameMods.NoMod, hits, totalScore, maxCombo, currentCombo,
 			Grade.S, true, false, DateTimeOffset.UnixEpoch);

@@ -7,7 +7,7 @@ namespace Basil.Domain.Tests.Scores;
 public class ScoreDataTests
 {
 	private static ScoreData Make(int? userId = null, GameMode mode = GameMode.Standard, Grade grade = Grade.S,
-		int totalScore = 1000, short maxCombo = 10, short currentCombo = 10)
+		int totalScore = 1000, ushort maxCombo = 10, ushort currentCombo = 10)
 	{
 		return new ScoreData(userId, null, mode, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0), totalScore,
 			maxCombo, currentCombo, grade, true, false, DateTimeOffset.UnixEpoch);
@@ -25,34 +25,6 @@ public class ScoreDataTests
 		var score = Make();
 
 		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { TotalScore = -1 });
-	}
-
-	[Fact]
-	public void MaxCombo_Negative_Constructor_Throws()
-	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Make(maxCombo: -1));
-	}
-
-	[Fact]
-	public void MaxCombo_Negative_With_Throws()
-	{
-		var score = Make();
-
-		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { MaxCombo = -1 });
-	}
-
-	[Fact]
-	public void CurrentCombo_Negative_Constructor_Throws()
-	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Make(currentCombo: -1));
-	}
-
-	[Fact]
-	public void CurrentCombo_Negative_With_Throws()
-	{
-		var score = Make();
-
-		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { CurrentCombo = -1 });
 	}
 
 	[Fact]
