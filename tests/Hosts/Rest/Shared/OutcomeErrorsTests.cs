@@ -10,7 +10,7 @@ using static Basil.Host.Shared.ErrorKind;
 
 namespace Basil.Host.Rest.Tests.Shared;
 
-/// <summary>The outcome to error table: ADR-009 gives the classification of every refusal; each row is a case.</summary>
+/// <summary>The outcome to error table: the classification of every refusal; each row is a case.</summary>
 public sealed class OutcomeErrorsTests
 {
 	private static readonly Dictionary<UserOutcome, ErrorKind> Users = new()

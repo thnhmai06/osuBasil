@@ -2,7 +2,7 @@ using System.Net;
 
 namespace Basil.Host.Rest.Tests.Users;
 
-/// <summary>Sign-in, sign-out and the public/token rule (ADR-009).</summary>
+/// <summary>Sign-in, sign-out and the public/token rule.</summary>
 [Collection("REST host")]
 public sealed class AuthTests(RestHostFixture fixture)
 {

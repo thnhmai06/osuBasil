@@ -1,6 +1,6 @@
 namespace Basil.Host.Rest.Tests.Multiplayer;
 
-/// <summary>Rooms and the room command routes (ADR-009): permissions, visibility and outcomes.</summary>
+/// <summary>Rooms and the room command routes: permissions, visibility and outcomes.</summary>
 [Collection("REST host")]
 public sealed class RoomTests(RestHostFixture fixture)
 {
