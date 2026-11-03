@@ -29,7 +29,7 @@ public sealed class ScopedRoomMembers
 	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(_scoped.Actor is BanchoConnection actor
-			? Claiming(actor, () => _scoped.Room.Join(actor, password, _scoped.RequireJoin(), _scoped.ManagesAnyRoom))
+			? Claiming(actor, () => _scoped.Room.Join(actor, password))
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -61,26 +61,6 @@ public sealed class ScopedRoomMembers
 		return Task.FromResult(_scoped.Actor is BanchoConnection actor
 			? _scoped.Room.Leave(actor)
 			: RoomOutcome.NotInRoom);
-	}
-
-	/// <summary>Seats an online player in the room on behalf of a manager.</summary>
-	/// <param name="player">The player's game connection.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>
-	///     Ok, a denial naming the missing permission (also when the player may not join rooms), TargetOffline,
-	///     AlreadySeated, Banned, InAnotherRoom, IsObserver, Full or RoomClosed.
-	/// </returns>
-	public Task<Result<RoomOutcome>> SeatAsync(BanchoConnection player,
-		CancellationToken cancellationToken = default)
-	{
-		if (_scoped.Require(RoomPermissions.MembersSeat) is { } denied) return Task.FromResult(denied);
-		if (!player.IsOpen) return Task.FromResult<Result<RoomOutcome>>(RoomOutcome.TargetOffline);
-
-		if (!player.User.EffectivePermissions(_scoped.Room.Context.Clock.GetUtcNow()).Allows(UserPermissions.RoomJoin))
-			return Task.FromResult(Result<RoomOutcome>.Denied(UserPermissions.RoomJoin));
-
-		return Task.FromResult(_scoped.Room.MakeRoomFor(player, _scoped.Actor) ??
-		                       Claiming(player, () => _scoped.Room.SeatPlayer(player)));
 	}
 
 	/// <summary>Removes a player from the room.</summary>

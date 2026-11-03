@@ -361,40 +361,6 @@ public sealed class ScopedRoomAuthorityTests
 	[Theory]
 	[InlineData(RoomRole.Creator, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.Referee, RoomExpectation.Allowed)]
-	[InlineData(RoomRole.Host, RoomExpectation.RoleDenied)]
-	[InlineData(RoomRole.Player, RoomExpectation.RoleDenied)]
-	[InlineData(RoomRole.Outsider, RoomExpectation.RoleDenied)]
-	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
-	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
-	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task SeatAsync_TheCallersRoleDecidesWhoMaySeatAPlayer(RoomRole role, RoomExpectation expected)
-	{
-		using var app = new TestApplication();
-		var setup = await RoomFixture.CreateAsync(app);
-		var room = setup.RoomFor(role);
-		var caller = setup.ConnectionFor(role);
-		var target = setup.Outsider;
-		var before = room.Slots.Find(target.Record)?.Index;
-		var events = app.RoomEvents.Events.Count;
-
-		var result = await room.ScopeTo(caller).Members.SeatAsync(target, TestContext.Current.CancellationToken);
-
-		if (expected == RoomExpectation.Allowed)
-		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
-			Assert.NotNull(room.Slots.Find(target.Record));
-			Assert.IsType<RoomPlayerJoined>(app.RoomEvents.Events[^1]);
-			return;
-		}
-
-		AssertRefused(result, expected);
-		Assert.Equal(before, room.Slots.Find(target.Record)?.Index);
-		Assert.Equal(events, app.RoomEvents.Events.Count);
-	}
-
-	[Theory]
-	[InlineData(RoomRole.Creator, RoomExpectation.Allowed)]
-	[InlineData(RoomRole.Referee, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.Host, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.Player, RoomExpectation.RoleDenied)]
 	[InlineData(RoomRole.Outsider, RoomExpectation.RoleDenied)]

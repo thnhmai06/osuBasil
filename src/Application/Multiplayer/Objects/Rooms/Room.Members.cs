@@ -13,13 +13,15 @@ public sealed partial class Room
 	/// <summary>Seats a connection that asked to join, after the room's own checks.</summary>
 	/// <param name="actor">The connection joining.</param>
 	/// <param name="password">The password the player supplied.</param>
-	/// <param name="joinDenied">The denial for a player who may not join rooms, or <see langword="null" />.</param>
-	/// <param name="managesAnyRoom">Whether the player manages every room, so the password does not apply.</param>
 	/// <returns>
-	///     Ok, AlreadySeated, Banned, a denial, InAnotherRoom, IsObserver, WrongPassword, Full or RoomClosed.
+	///     Ok, AlreadySeated, Banned, a denial naming the permission to join rooms, InAnotherRoom, IsObserver,
+	///     WrongPassword, Full or RoomClosed.
 	/// </returns>
-	internal Result<RoomOutcome> Join(BanchoConnection actor, string password, Result<RoomOutcome>? joinDenied,
-		bool managesAnyRoom)
+	/// <remarks>
+	///     What the actor may do is asked of the actor's connection, not handed in: a player who may not join rooms is
+	///     refused, and one who manages every room does not need the password.
+	/// </remarks>
+	internal Result<RoomOutcome> Join(BanchoConnection actor, string password)
 	{
 		lock (_sync)
 		{
@@ -28,21 +30,21 @@ public sealed partial class Room
 			var stale = Slots.Find(actor.Record)?.Player;
 			if (stale is not null && (ReferenceEquals(stale, actor) || stale.IsOpen)) return RoomOutcome.AlreadySeated;
 
-			if (JoinRefusal(actor, password, joinDenied, managesAnyRoom) is { } refusal) return refusal;
+			if (JoinRefusal(actor, password) is { } refusal) return refusal;
 
 			return TakeSeat(actor, stale);
 		}
 	}
 
-	private Result<RoomOutcome>? JoinRefusal(BanchoConnection actor, string password,
-		Result<RoomOutcome>? joinDenied, bool managesAnyRoom)
+	private Result<RoomOutcome>? JoinRefusal(BanchoConnection actor, string password)
 	{
+		var rights = actor.EffectivePermissions(Context.Clock.GetUtcNow());
 		if (Members.Banned.Contains(actor.Record)) return RoomOutcome.Banned;
-		if (joinDenied is { } denied) return denied;
+		if (!rights.Allows(UserPermissions.RoomJoin)) return Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
 
 		if (RoomOf(actor) is { } other && !ReferenceEquals(other, this)) return RoomOutcome.InAnotherRoom;
 		if (Members.Observers.Any(observer => observer.Record.Equals(actor.Record))) return RoomOutcome.IsObserver;
-		if (WrongPassword(password, managesAnyRoom)) return RoomOutcome.WrongPassword;
+		if (WrongPassword(password, rights.Allows(UserPermissions.RoomManageAny))) return RoomOutcome.WrongPassword;
 
 		return null;
 	}
@@ -50,51 +52,6 @@ public sealed partial class Room
 	private bool WrongPassword(string password, bool managesAnyRoom)
 	{
 		return !string.IsNullOrEmpty(Settings.Password) && Settings.Password != password && !managesAnyRoom;
-	}
-
-	/// <summary>Seats a connection on behalf of a manager, once the manager's rights were checked.</summary>
-	/// <param name="player">The connection to seat.</param>
-	/// <returns>Ok, AlreadySeated, Banned, InAnotherRoom, IsObserver, Full or RoomClosed.</returns>
-	internal Result<RoomOutcome> SeatPlayer(BanchoConnection player)
-	{
-		lock (_sync)
-		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-
-			var stale = Slots.Find(player.Record)?.Player;
-			if (stale is not null && (ReferenceEquals(stale, player) || stale.IsOpen))
-				return RoomOutcome.AlreadySeated;
-			if (Members.Banned.Contains(player.Record)) return RoomOutcome.Banned;
-			if (RoomOf(player) is { } current && !ReferenceEquals(current, this)) return RoomOutcome.InAnotherRoom;
-			if (Members.Observers.Any(observer => observer.Record.Equals(player.Record)))
-				return RoomOutcome.IsObserver;
-
-			return TakeSeat(player, stale);
-		}
-	}
-
-	/// <summary>Checks what a manager's seating of a player needs and takes the player out of the room they sit in now.</summary>
-	/// <param name="player">The player to seat here.</param>
-	/// <param name="actor">The manager seating the player.</param>
-	/// <returns>
-	///     <see langword="null" /> when the player may be seated; otherwise Banned, InAnotherRoom (the manager has no
-	///     seating rights there), Full or IsObserver.
-	/// </returns>
-	/// <remarks>
-	///     The player leaves the other room before this one seats them, and the two steps are separate: when this
-	///     method returns, the player is in no room and seating them here is still to do.
-	/// </remarks>
-	internal Result<RoomOutcome>? MakeRoomFor(BanchoConnection player, Connection actor)
-	{
-		if (Members.Banned.Contains(player.Record)) return RoomOutcome.Banned;
-		if (RoomOf(player) is not { } other || ReferenceEquals(other, this)) return null;
-
-		if (other.ScopeTo(actor).Require(RoomPermissions.MembersSeat) is not null) return RoomOutcome.InAnotherRoom;
-		if (!Slots.Any(slot => slot is { Locked: false, Player: null })) return RoomOutcome.Full;
-		if (Members.Observers.Any(observer => observer.Record.Equals(player.Record))) return RoomOutcome.IsObserver;
-
-		other.Leave(player);
-		return null;
 	}
 
 	/// <summary>Removes a seated player on their own request.</summary>

@@ -31,9 +31,6 @@ public enum RoomPermissions : uint
 	/// <summary>Ban a user from the room.</summary>
 	MembersBan = 1 << 7,
 
-	/// <summary>Seat or unseat players.</summary>
-	MembersSeat = 1 << 8,
-
 	/// <summary>Invite users to the room.</summary>
 	MembersInvite = 1 << 9,
 
@@ -71,7 +68,7 @@ public static class RoomPermissionsGroups
 	                                   RoomPermissions.SettingsChange | RoomPermissions.SettingsRename |
 	                                   RoomPermissions.SettingsPassword | RoomPermissions.SettingsPrivate |
 	                                   RoomPermissions.MembersKick | RoomPermissions.MembersBan |
-	                                   RoomPermissions.MembersSeat | RoomPermissions.MembersInvite |
+	                                   RoomPermissions.MembersInvite |
 	                                   RoomPermissions.RefereesManage | RoomPermissions.HostTransfer |
 	                                   RoomPermissions.RoundsStart | RoomPermissions.RoundsAbort |
 	                                   RoomPermissions.RoundsCountdown | RoomPermissions.RoomClose |

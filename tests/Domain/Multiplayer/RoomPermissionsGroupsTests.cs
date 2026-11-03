@@ -18,7 +18,6 @@ public class RoomPermissionsGroupsTests
 		RoomPermissions.SettingsPrivate |
 		RoomPermissions.MembersKick |
 		RoomPermissions.MembersBan |
-		RoomPermissions.MembersSeat |
 		RoomPermissions.MembersInvite |
 		RoomPermissions.RefereesManage |
 		RoomPermissions.HostTransfer |
@@ -108,7 +107,6 @@ public class RoomPermissionsGroupsTests
 	{
 		Assert.True(RoomRoles.Referee.GetPermissions().HasFlag(RoomPermissions.SlotsMovePlayers));
 		Assert.True(RoomRoles.Referee.GetPermissions().HasFlag(RoomPermissions.MembersBan));
-		Assert.True(RoomRoles.Referee.GetPermissions().HasFlag(RoomPermissions.MembersSeat));
 		Assert.True(RoomRoles.Referee.GetPermissions().HasFlag(RoomPermissions.RoomClose));
 	}
 
@@ -125,7 +123,6 @@ public class RoomPermissionsGroupsTests
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.SlotsLock));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.MembersKick));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.MembersBan));
-		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.MembersSeat));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.HostTransfer));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.RoundsStart));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.RoundsAbort));
