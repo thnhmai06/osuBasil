@@ -170,8 +170,8 @@ Use the exact configuration keys and API routes from the current implementation.
 For example:
 
 ```text
-Server:Domain
-Bot:CommandPrefix
+Basil:Server:Domain
+Basil:Bot:Replies:Path
 ```
 
 Do not replace implementation names with informal descriptions when readers need to locate the corresponding configuration or code.
