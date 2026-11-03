@@ -19,4 +19,15 @@ public static class BasilBot
 	{
 		return user.Id == Id;
 	}
+
+	/// <summary>
+	///     Determines whether an account stands in the friend relationship with every account: it blocks nobody, may
+	///     always be messaged, and cannot be blocked or unfriended. This holds for BasilBot only.
+	/// </summary>
+	/// <param name="user">The account to check.</param>
+	/// <returns><see langword="true" /> when the account is a friend of everyone.</returns>
+	public static bool IsFriendOfEveryone(this UserRecord user)
+	{
+		return user.IsBasilBot();
+	}
 }

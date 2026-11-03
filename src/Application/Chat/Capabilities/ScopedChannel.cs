@@ -120,7 +120,7 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
 		}
 
-		if (!pm.Owner.Record.IsBasilBot() &&
+		if (!pm.Owner.Record.IsFriendOfEveryone() &&
 		    !pm.Owner.EffectivePermissions(now).Allows(UserPermissions.ChatPostPrivate))
 			return ChannelOutcome.TargetSilenced;
 

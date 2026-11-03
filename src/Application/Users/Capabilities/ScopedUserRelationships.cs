@@ -26,7 +26,7 @@ public sealed class ScopedUserRelationships
 
 		var target = _scoped.User.Record;
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsBasilBot()) return UserOutcome.Ok;
+		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
 
 		await _scoped.Actor.User.Relationships.SetAsync(target, RelationshipType.Friend, cancellationToken);
 		return UserOutcome.Ok;
@@ -40,7 +40,7 @@ public sealed class ScopedUserRelationships
 		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
+		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
 
 		await _scoped.Actor.User.Relationships.RemoveAsync(target, RelationshipType.Friend, cancellationToken);
 		return UserOutcome.Ok;
@@ -55,7 +55,7 @@ public sealed class ScopedUserRelationships
 
 		var target = _scoped.User.Record;
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
+		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
 
 		await _scoped.Actor.User.Relationships.SetAsync(target, RelationshipType.Block, cancellationToken);
 		return UserOutcome.Ok;
@@ -69,7 +69,7 @@ public sealed class ScopedUserRelationships
 		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (target.IsBasilBot()) return UserOutcome.Ok;
+		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
 
 		await _scoped.Actor.User.Relationships.RemoveAsync(target, RelationshipType.Block, cancellationToken);
 		return UserOutcome.Ok;

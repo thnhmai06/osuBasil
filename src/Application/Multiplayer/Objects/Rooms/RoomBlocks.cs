@@ -23,7 +23,7 @@ internal sealed class RoomBlocks
 	/// <remarks>BasilBot blocks nobody.</remarks>
 	internal async ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken)
 	{
-		if (blocker.IsBasilBot()) return false;
+		if (blocker.IsFriendOfEveryone()) return false;
 
 		var relationships = await _relationships.ListAsync(blocker, cancellationToken);
 		return relationships.Any(relationship => relationship.Target.Equals(who) &&
