@@ -23,8 +23,6 @@
 			},
 			"In": {
 				"NotScopedToAnyMatch": "You aren't targeting any match right now.",
-				"WasScopedToGoneMatch": "You were targeting match #{0}, but it's no longer live.",
-				"CurrentlyScopedToMatch": "Currently targeting match #{0} {1}.",
 				"YouAreARefereeOf": "You're a referee of:",
 				"InUsage": "Usage: !mp in [match_id]",
 				"NoActiveMatchWithHashId": "No active match with id #{0}.",
