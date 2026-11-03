@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Users.Objects.Events;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Objects.Connections;

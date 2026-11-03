@@ -1,6 +1,6 @@
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Testing;

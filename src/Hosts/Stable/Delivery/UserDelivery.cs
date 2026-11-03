@@ -1,7 +1,7 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Mechanics;
 using Basil.Host.Stable.Support;
 using Mediator;

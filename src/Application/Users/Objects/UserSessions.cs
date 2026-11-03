@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 
 namespace Basil.Application.Users.Objects;

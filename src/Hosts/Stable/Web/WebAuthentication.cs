@@ -1,12 +1,12 @@
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Auth.Persistence;
+using Basil.Application.Authentication.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Host.Stable.Support;

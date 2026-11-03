@@ -45,7 +45,7 @@ and Rest and Cli reference neither.
 
 ### Module projects
 
-A module (Auth, Beatmaps, Chat, Content, Multiplayer, Scores, Servers, Users, Anticheat) owns one slice of the business
+A module (Authentication, Beatmaps, Chat, Content, Multiplayer, Scores, Servers, Users, Anticheat) owns one slice of the business
 end to end. Splitting by module lets the compiler enforce which module may use which; `tests/Architecture/` fails on an
 edge outside this graph:
 
@@ -53,7 +53,7 @@ edge outside this graph:
 Auth        -> Common
 Beatmaps    -> Common
 Content     -> Common
-Users       -> Common, Auth, Content
+Users       -> Common, Authentication, Content
 Anticheat   -> Users
 Scores      -> Users, Beatmaps
 Multiplayer -> Users, Beatmaps, Content, Scores

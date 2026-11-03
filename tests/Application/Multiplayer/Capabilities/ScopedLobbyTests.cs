@@ -5,7 +5,7 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Testing;

@@ -1,5 +1,5 @@
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Host.Stable.Delivery;
 using Basil.Host.Stable.Login;
 using Basil.Host.Stable.Packets;

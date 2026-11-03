@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Support;

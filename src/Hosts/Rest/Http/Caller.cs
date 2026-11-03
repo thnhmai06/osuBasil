@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 
 namespace Basil.Host.Rest.Http;
 

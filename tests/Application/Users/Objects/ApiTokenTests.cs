@@ -1,11 +1,11 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Auth.Persistence;
+using Basil.Application.Authentication.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;

@@ -4,7 +4,7 @@ using System.Net.Sockets;
 using System.Text;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Hosting;

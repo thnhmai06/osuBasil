@@ -9,7 +9,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Common\Basil.Application.Common.csproj"/>
 		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\Auth\Basil.Application.Auth.csproj"/>
+		<ProjectReference Include="..\Authentication\Basil.Application.Authentication.csproj"/>
 		<ProjectReference Include="..\Content\Basil.Application.Content.csproj"/>
 	</ItemGroup>
 

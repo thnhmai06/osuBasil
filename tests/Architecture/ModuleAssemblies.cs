@@ -6,7 +6,7 @@ namespace Basil.ArchitectureTests;
 internal static class ModuleAssemblies
 {
 	internal static readonly string[] Modules =
-		["Anticheat", "Auth", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Servers", "Users"];
+		["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Servers", "Users"];
 
 	/// <summary>Modules without a storage of their own.</summary>
 	private static readonly string[] WithoutInfrastructure = ["Anticheat", "Servers"];

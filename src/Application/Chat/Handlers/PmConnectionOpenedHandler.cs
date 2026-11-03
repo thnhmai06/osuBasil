@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Registry;
 using Basil.Application.Users.Objects.Events;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Mediator;
 
 namespace Basil.Application.Chat.Handlers;

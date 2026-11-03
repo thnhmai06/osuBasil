@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Auth.Persistence;
+using Basil.Application.Authentication.Persistence;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
@@ -9,7 +9,7 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Chat;
 using Basil.Domain.Common;

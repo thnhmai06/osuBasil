@@ -7,7 +7,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Shared\Basil.Host.Shared.csproj"/>
 		<ProjectReference Include="..\..\Application\Anticheat\Basil.Application.Anticheat.csproj"/>
-		<ProjectReference Include="..\..\Application\Auth\Basil.Application.Auth.csproj"/>
+		<ProjectReference Include="..\..\Application\Authentication\Basil.Application.Authentication.csproj"/>
 		<ProjectReference Include="..\..\Application\Beatmaps\Basil.Application.Beatmaps.csproj"/>
 		<ProjectReference Include="..\..\Application\Chat\Basil.Application.Chat.csproj"/>
 		<ProjectReference Include="..\..\Application\Content\Basil.Application.Content.csproj"/>

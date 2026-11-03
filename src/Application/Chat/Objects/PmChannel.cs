@@ -1,6 +1,6 @@
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 
 namespace Basil.Application.Chat.Objects;
 

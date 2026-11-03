@@ -19,7 +19,7 @@ using Basil.Host.Cli;
 using Basil.Host.Irc;
 using Basil.Host.Stable;
 using Basil.Host.Rest;
-using Basil.Infrastructure.Auth;
+using Basil.Infrastructure.Authentication;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Common;

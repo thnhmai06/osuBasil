@@ -5,7 +5,7 @@
 	</Folder>
 	<Folder Name="/Sources/Application/">
 		<Project Path="src/Application/Anticheat/Basil.Application.Anticheat.csproj"/>
-		<Project Path="src/Application/Auth/Basil.Application.Auth.csproj"/>
+		<Project Path="src/Application/Authentication/Basil.Application.Authentication.csproj"/>
 		<Project Path="src/Application/Beatmaps/Basil.Application.Beatmaps.csproj"/>
 		<Project Path="src/Application/Chat/Basil.Application.Chat.csproj"/>
 		<Project Path="src/Application/Common/Basil.Application.Common.csproj"/>
@@ -16,7 +16,7 @@
 		<Project Path="src/Application/Users/Basil.Application.Users.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Infrastructure/">
-		<Project Path="src/Infrastructure/Auth/Basil.Infrastructure.Auth.csproj"/>
+		<Project Path="src/Infrastructure/Authentication/Basil.Infrastructure.Authentication.csproj"/>
 		<Project Path="src/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.csproj"/>
 		<Project Path="src/Infrastructure/Chat/Basil.Infrastructure.Chat.csproj"/>
 		<Project Path="src/Infrastructure/Common/Basil.Infrastructure.Common.csproj"/>
@@ -65,7 +65,7 @@
 		<Project Path="tests/Hosts/Shared/Basil.Host.Shared.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Infrastructure/">
-		<Project Path="tests/Infrastructure/Auth/Basil.Infrastructure.Auth.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Authentication/Basil.Infrastructure.Authentication.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Chat/Basil.Infrastructure.Chat.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Common/Basil.Infrastructure.Common.Tests.csproj"/>

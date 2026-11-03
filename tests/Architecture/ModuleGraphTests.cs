@@ -7,7 +7,7 @@ namespace Basil.ArchitectureTests;
 ///     references the compiler enforces, so this test reads the <c>ProjectReference</c> items of every project under
 ///     <c>src</c> (except the hosts, which are migrated separately) and fails on an edge outside the allowed graph or on a
 ///     cycle. Domain is shared by every project; the module Application projects follow
-///     <c>Users -&gt; Auth, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
+///     <c>Users -&gt; Authentication, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
 ///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c> and
 ///     <c>Servers</c> on top of all of them; a module Infrastructure project references only its own Application project
 ///     and the Common projects; <c>Host</c> and <c>Bot</c> sit above every module and nothing references them.
@@ -15,19 +15,19 @@ namespace Basil.ArchitectureTests;
 public class ModuleGraphTests
 {
 	private static readonly string[] Modules =
-		["Anticheat", "Auth", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Servers", "Users"];
+		["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Servers", "Users"];
 
 	private static readonly Dictionary<string, string[]> ModuleDependencies = new()
 	{
-		["Auth"] = [],
+		["Authentication"] = [],
 		["Beatmaps"] = [],
 		["Content"] = [],
-		["Users"] = ["Auth", "Content"],
+		["Users"] = ["Authentication", "Content"],
 		["Anticheat"] = ["Users"],
 		["Scores"] = ["Users", "Beatmaps"],
 		["Multiplayer"] = ["Users", "Beatmaps", "Content", "Scores"],
 		["Chat"] = ["Users", "Multiplayer"],
-		["Servers"] = ["Anticheat", "Auth", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Users"]
+		["Servers"] = ["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Users"]
 	};
 
 	[Fact]
@@ -57,13 +57,13 @@ public class ModuleGraphTests
 	public void TheMeasureSeesAnEdgeItShould()
 	{
 		Assert.Contains(("Basil.Infrastructure.Users", "Basil.Application.Users"), ProjectEdges());
-		Assert.Contains(("Basil.Application.Users", "Basil.Application.Auth"), ProjectEdges());
+		Assert.Contains(("Basil.Application.Users", "Basil.Application.Authentication"), ProjectEdges());
 	}
 
 	[Fact]
 	public void TheRulesRefuseAnEdgeTheyShould()
 	{
-		Assert.False(IsAllowed("Basil.Application.Auth", "Basil.Application.Users"));
+		Assert.False(IsAllowed("Basil.Application.Authentication", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Application.Users", "Basil.Host"));
 		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Common"));

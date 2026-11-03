@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 
 namespace Basil.Host.Shared.Diagnostics;
 

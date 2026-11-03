@@ -2,7 +2,7 @@ using System.Collections;
 using System.Globalization;
 using System.Numerics;
 using System.Reflection;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 
 namespace Basil.Host.Cli.Commands;

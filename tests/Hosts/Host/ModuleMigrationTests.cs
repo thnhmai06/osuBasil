@@ -15,7 +15,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	[
 		("Common", ["write_tickets"]),
 		("Users", ["users", "restrictions", "moderation_log", "relationships"]),
-		("Auth", ["credentials", "sessions"]),
+		("Authentication", ["credentials", "sessions"]),
 		("Beatmaps", ["beatmapsets", "beatmaps"]),
 		("Content", ["settings", "menu_banners"]),
 		("Scores", ["scores", "user_stats"]),

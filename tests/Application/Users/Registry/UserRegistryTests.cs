@@ -3,7 +3,7 @@ using System.Text;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Testing;

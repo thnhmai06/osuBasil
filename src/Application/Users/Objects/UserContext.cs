@@ -1,4 +1,4 @@
-using Basil.Application.Auth.Persistence;
+using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common.Events;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Ports;

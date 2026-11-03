@@ -2,7 +2,7 @@ using System.Text;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Host.Rest.Http;
 

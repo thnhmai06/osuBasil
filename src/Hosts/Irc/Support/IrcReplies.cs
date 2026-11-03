@@ -1,4 +1,4 @@
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 
 namespace Basil.Host.Irc.Support;
 

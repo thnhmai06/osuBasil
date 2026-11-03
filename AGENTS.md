@@ -392,7 +392,7 @@ References only point down:
 Auth        -> Common
 Beatmaps    -> Common
 Content     -> Common
-Users       -> Common, Auth, Content        (folders Users/ and Connections/: they reference each other)
+Users       -> Common, Authentication, Content   (folders Users/ and Connections/: they reference each other)
 Anticheat   -> Users
 Scores      -> Users, Beatmaps
 Multiplayer -> Users, Beatmaps, Content, Scores
@@ -401,7 +401,7 @@ Servers     -> every module above
 ```
 
 A module Infrastructure project never references another module; the foreign keys between the module databases
-decide the order in which `AddBasil()` registers the migrations (Common, Users, Auth, Beatmaps, Content, Scores,
+decide the order in which `AddBasil()` registers the migrations (Common, Users, Authentication, Beatmaps, Content, Scores,
 Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
 an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
 

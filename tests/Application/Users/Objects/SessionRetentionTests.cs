@@ -1,6 +1,6 @@
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Moderation;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;

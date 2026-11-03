@@ -1,5 +1,5 @@
 using Basil.Application.Users.Registry;
-using Basil.Domain.Auth;
+using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 
 namespace Basil.Host.Shared.Views;

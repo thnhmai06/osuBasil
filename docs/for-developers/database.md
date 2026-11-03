@@ -142,7 +142,7 @@ reference another's, the principal is not the other module's row type: `ContextM
 `UsersPrincipal` and `ScoresPrincipal`, excluded from migrations, and a row declares the key with
 `HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
-At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Common, Users, Auth, Beatmaps, Content,
+At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Common, Users, Authentication, Beatmaps, Content,
 Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. `write_tickets` belongs to
 Common, the beatmap id sequences belong to Beatmaps, and the seeded channels belong to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
