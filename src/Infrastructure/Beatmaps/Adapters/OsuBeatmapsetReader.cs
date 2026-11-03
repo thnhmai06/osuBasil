@@ -16,8 +16,10 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 	// At most 2,000 files per set; raise this only if legitimate osu! sets exceed it.
 	private const int MaxFiles = 2_000;
 
-	// At most 2 GiB unpacked per set; raise this only if legitimate osu! sets exceed it.
-	private const long MaxTotalBytes = 2L * 1024 * 1024 * 1024;
+	// At most 512 MiB unpacked per set. The osu! wiki caps an uploaded set at 100 MB, and sets are mostly audio, video
+	// and images that do not shrink further, so this leaves room for a text-heavy storyboard and stops a small archive
+	// from unpacking to gigabytes; raise this only if legitimate osu! sets exceed it.
+	private const long MaxTotalBytes = 512L * 1024 * 1024;
 
 	// Each difficulty is capped at 16 MiB; raise this only if valid osu! difficulty files exceed it.
 	private const int MaxOsuBytes = 16 * 1024 * 1024;
