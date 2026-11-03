@@ -26,7 +26,7 @@ Each kind of channel decides who may read and write it (`CanRead` and `CanWrite`
 | Kind | Read | Write |
 |---|---|---|
 | General | Effective privileges satisfy `ReadPrivileges` | Effective privileges satisfy `WritePrivileges` |
-| Room | A room participant or an account with effective `RoomObserve` | A room participant or an account with effective `ChatPostAnyRoom` |
+| Room | A room participant or an account with effective `RoomObserve` | A room participant or an account with effective `ChatManagePostAnyRoom` |
 | Spectator | The spectated player or one of that player's spectators | The spectated player or one of that player's spectators |
 | Private message | The recipient's connection, except osu!tourney | An open connection with effective `ChatPostPrivate` |
 
