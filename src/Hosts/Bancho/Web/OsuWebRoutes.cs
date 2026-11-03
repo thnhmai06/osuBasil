@@ -216,7 +216,16 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 		ISettingsRepository settings, CancellationToken ct)
 	{
 		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
-		var form = await context.Request.ReadFormAsync(ct);
+		IFormCollection form;
+		try
+		{
+			form = await context.Request.ReadFormAsync(ct);
+		}
+		catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+		{
+			return Results.BadRequest();
+		}
+
 		if (await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is not { } player)
 			return Results.Unauthorized();
 		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
@@ -302,7 +311,16 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 		ISettingsRepository settings,
 		RateLimiter limiter, CancellationToken ct)
 	{
-		var form = await context.Request.ReadFormAsync(ct);
+		IFormCollection form;
+		try
+		{
+			form = await context.Request.ReadFormAsync(ct);
+		}
+		catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+		{
+			return Results.BadRequest();
+		}
+
 		var name = form["user[username]"].ToString();
 		var password = form["user[password]"].ToString();
 		var checkOnly = form["check"] != "0";

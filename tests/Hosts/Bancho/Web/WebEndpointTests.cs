@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Client;
@@ -92,6 +93,34 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		var (status, _) = await client.UploadScreenshotAsync(Png.WithSize(8193, 1));
 
 		Assert.Equal(HttpStatusCode.RequestEntityTooLarge, status);
+	}
+
+	[Fact]
+	public async Task Screenshot_WithoutAForm_IsRefusedAsBadRequest()
+	{
+		using var client = new HttpClient { BaseAddress = Host.Url };
+		using var request = new HttpRequestMessage(HttpMethod.Post, "/web/osu-screenshot.php")
+		{
+			Content = new StringContent("{}", Encoding.UTF8, "application/json")
+		};
+		request.Headers.Host = $"osu.{Host.Domain}";
+		using var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	[Fact]
+	public async Task Register_WithoutAForm_IsRefusedAsBadRequest()
+	{
+		using var client = new HttpClient { BaseAddress = Host.Url };
+		using var request = new HttpRequestMessage(HttpMethod.Post, "/users")
+		{
+			Content = new StringContent("{}", Encoding.UTF8, "application/json")
+		};
+		request.Headers.Host = $"osu.{Host.Domain}";
+		using var response = await client.SendAsync(request);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
 
 	[Fact]
