@@ -51,6 +51,14 @@ internal sealed class RoomAnnouncer(
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomCountdownCancelled @event, CancellationToken cancellationToken)
 	{
+		if (@event.Reason is RoomCountdownCancelReason.Replaced)
+		{
+			var remaining = Math.Max(0, (int)Math.Round((@event.Countdown.EndsAt - timeProvider.GetUtcNow()).TotalSeconds));
+			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.CountdownReplaced, new { seconds = remaining }),
+				cancellationToken);
+			return;
+		}
+
 		await SayInRoomAsync(@event.Room, replies.Text(@event.Reason switch
 		{
 			RoomCountdownCancelReason.SettingsChanged => AnnouncementReplies.SettingsChangedCountdownCancelled,

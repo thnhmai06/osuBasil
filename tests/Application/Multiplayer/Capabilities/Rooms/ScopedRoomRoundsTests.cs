@@ -354,6 +354,23 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
+	public async Task StartCountdownAsync_WhileOneRuns_CancelsTheOldOneBeforeTheNewOneStarts()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		var rounds = setup.Room.ScopeTo(setup.Host).Rounds;
+		await rounds.StartCountdownAsync(TimeSpan.FromMinutes(5), false, TestContext.Current.CancellationToken);
+		var old = setup.Room.Rounds.Countdown;
+
+		await rounds.StartCountdownAsync(TimeSpan.FromMinutes(1), false, TestContext.Current.CancellationToken);
+
+		var cancelled = Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>());
+		Assert.Equal(RoomCountdownCancelReason.Replaced, cancelled.Reason);
+		Assert.Same(old, cancelled.Countdown);
+		Assert.NotSame(old, setup.Room.Rounds.Countdown);
+	}
+
+	[Fact]
 	public async Task AbortAsync_WithACountdown_CancelsTheCountdown()
 	{
 		using var app = new TestApplication();

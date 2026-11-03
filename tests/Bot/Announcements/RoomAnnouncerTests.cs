@@ -259,6 +259,21 @@ public sealed class RoomAnnouncerTests
 			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
+	[Fact]
+	public async Task CountdownCancelled_Replaced_SaysHowManySecondsWereLeft()
+	{
+		using var bot = new BotHarness();
+		var staff = await SetUpAsync(bot);
+		var countdown = CountdownIn(bot, staff, TimeSpan.FromSeconds(60), true);
+		bot.App.Clock.Advance(TimeSpan.FromSeconds(45));
+
+		await AnnouncerFor(bot).Handle(
+			new RoomCountdownCancelled(staff.Room, countdown, RoomCountdownCancelReason.Replaced), Token);
+
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownReplaced, new { seconds = 15 })],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
+	}
+
 	#endregion
 
 	#region Rounds

@@ -128,7 +128,10 @@ public enum RoomCountdownCancelReason
 	RoundStarted,
 
 	/// <summary>The round in progress was aborted.</summary>
-	RoundAborted
+	RoundAborted,
+
+	/// <summary>A new countdown was started while this one ran.</summary>
+	Replaced
 }
 
 /// <summary>A countdown was cancelled.</summary>

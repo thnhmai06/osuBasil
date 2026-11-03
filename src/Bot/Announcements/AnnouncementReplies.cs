@@ -35,6 +35,10 @@ internal static class AnnouncementReplies
 	/// <summary>Reply when a countdown is cancelled.</summary>
 	public static readonly Reply CountdownCancelled = new("announce.countdownCancelled", "Countdown aborted.");
 
+	/// <summary>Reply when a new countdown replaces a running one.</summary>
+	public static readonly Reply CountdownReplaced = new("announce.countdownReplaced",
+		"Countdown cancelled with {seconds} seconds remaining — a new countdown is starting.", "seconds");
+
 	/// <summary>Reply when starting a round by hand cancels a countdown.</summary>
 	public static readonly Reply CountdownCancelledByRoundStart = new("announce.countdownCancelledByRoundStart",
 		"Countdown cancelled — the round was started.");

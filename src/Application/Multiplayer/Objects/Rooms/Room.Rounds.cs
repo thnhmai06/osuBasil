@@ -16,7 +16,7 @@ public sealed partial class Room
 	/// <remarks>The caller holds the room's scope.</remarks>
 	internal RoomCountdown StartCountdown(UserRecord actor, TimeSpan length, bool startsRound)
 	{
-		CancelCountdown(null);
+		CancelCountdown(RoomCountdownCancelReason.Replaced);
 
 		var countdown = new RoomCountdown(actor, length, startsRound, Context.Clock.GetUtcNow());
 		Rounds.Countdown = countdown;
