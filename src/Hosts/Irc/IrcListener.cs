@@ -103,9 +103,11 @@ internal sealed class IrcListener(
 		var counted = _perAddress.AddOrUpdate(session.Address, 1, (_, count) => count + 1);
 		var stream = tcp.GetStream();
 		var writer = session.WriteAsync(stream, CancellationToken.None);
-		await using var deadline = session.Every(() => CloseIfUnregistered(session), RegistrationDeadline,
-			Timeout.InfiniteTimeSpan);
-		await using var ping = session.Every(() => PingIfRegistered(session), KeepAlive, KeepAlive);
+		await using var housekeeping = session.Every(() =>
+		{
+			if (!session.Registered) CloseIfUnregistered(session);
+			else PingIfRegistered(session);
+		}, RegistrationDeadline, KeepAlive);
 		try
 		{
 			var perIp = (await settings.GetAsync(stoppingToken)).RateLimits.Connections.PerIp;
@@ -147,7 +149,8 @@ internal sealed class IrcListener(
 		if (session.Key is { } key) clients.Release(key, session);
 		session.Close("Connection closed");
 		await writer;
-		_perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
+		var remaining = _perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
+		if (remaining <= 0) _perAddress.TryRemove(new KeyValuePair<IPAddress, int>(session.Address, remaining));
 		_sessions.TryRemove(session, out _);
 	}
 
