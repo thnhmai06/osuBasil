@@ -574,12 +574,6 @@ public sealed class BeatmapsetWorld
 			return new BeatmapAnalysis(new BeatmapDifficulty(mode, 120, TimeSpan.FromMinutes(1), 4, 5, 5, 5, 2.5),
 				BeatmapObjects.Empty(mode));
 		}
-
-		public Task<BeatmapAnalysis?> AnalyzeAsync(BeatmapRecord beatmap, GameMods mods,
-			CancellationToken cancellationToken = default)
-		{
-			return Task.FromResult<BeatmapAnalysis?>(null);
-		}
 	}
 
 	private sealed class FakeAssets : IBeatmapAssets
