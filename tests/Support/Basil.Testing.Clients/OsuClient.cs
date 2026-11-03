@@ -134,17 +134,17 @@ public sealed class OsuClient : IDisposable
 		return null;
 	}
 
-	/// <summary>Polls until a condition on what has been received holds, or the polls run out.</summary>
+	/// <summary>Polls until a condition on what has been received holds.</summary>
 	/// <param name="condition">What the received packets must satisfy.</param>
 	/// <param name="polls">How many times to poll before giving up.</param>
-	/// <returns>Whether the condition held.</returns>
-	public async Task<bool> WaitUntilAsync(Func<bool> condition, int polls = 40)
+	/// <exception cref="InvalidOperationException">The condition still does not hold after every poll.</exception>
+	public async Task WaitUntilAsync(Func<bool> condition, int polls = 40)
 	{
 		for (var index = 0; index < polls; index++)
 		{
-			if (condition()) return true;
+			if (condition()) return;
 			await PollAsync();
-			if (condition()) return true;
+			if (condition()) return;
 			await Task.Delay(25);
 		}
 
