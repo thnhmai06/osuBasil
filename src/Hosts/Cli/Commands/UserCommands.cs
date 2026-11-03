@@ -75,21 +75,6 @@ internal static class UserCommands
 					$"Lists the accounts this account has {(kind == RelationshipType.Friend ? "as friends" : "blocked")}.",
 				Run = call => RelationsAsync(call, kind)
 			};
-			yield return new CommandDef
-			{
-				Pattern = $"users <id:int> {word} <other:int> put", Route = $"PUT /v1/users/{{id}}/{word}/{{otherId}}",
-				Offline = true,
-				Summary = kind == RelationshipType.Friend ? "Makes the account a friend." : "Blocks the account.",
-				Run = call => HoldAsync(call, kind, true)
-			};
-			yield return new CommandDef
-			{
-				Pattern = $"users <id:int> {word} <other:int> delete",
-				Route = $"DELETE /v1/users/{{id}}/{word}/{{otherId}}",
-				Offline = true,
-				Summary = kind == RelationshipType.Friend ? "Removes the friend." : "Removes the block.",
-				Run = call => HoldAsync(call, kind, false)
-			};
 		}
 
 		yield return new CommandDef
@@ -281,17 +266,6 @@ internal static class UserCommands
 
 		call.Formatter.PrintTable(call.Output, [.. users.Select(UserRef.Of)]);
 		return ExitCodes.Success;
-	}
-
-	private static async Task<int> HoldAsync(CommandCall call, RelationshipType type, bool present)
-	{
-		var owner = await call.FindUserAsync();
-		if (owner is null) return call.NotFound(NoUser);
-
-		if (await call.ScopeUserAsync("other") is not { } scoped) return call.NotFound(NoUser);
-
-		return call.Report(await scoped.Relationships.HeldByAsync(owner, type, present, call.CancellationToken),
-			(present ? "Set " : "Removed ") + (type == RelationshipType.Friend ? "friend." : "block."));
 	}
 
 	private static async Task<int> RestrictionsAsync(CommandCall call)

@@ -174,8 +174,8 @@ HTTP diagnostics. Per-core CPU is shown on Linux only.
 | `users <id>`                                                                                        | `GET /v1/users/{id}`                                          | yes |
 | `users <id> set [--username] [--country] [--away] [--pmPrivate] [--permissions <mask>] [--password <pw>]` | `PATCH /v1/users/{id}`; `--password` is `PUT .../password` | yes |
 | `users <id> avatar --file <path>`, `users <id> avatar delete`                                       | `PUT`, `DELETE /v1/users/{id}/avatar`                         | yes |
-| `users <id> friends list`, `friends <fid> put`, `friends <fid> delete`                              | `/v1/users/{id}/friends[/{fid}]`                              | yes |
-| `users <id> blocks list`, `blocks <bid> put`, `blocks <bid> delete`                                 | `/v1/users/{id}/blocks[/{bid}]`                               | yes |
+| `users <id> friends list`                              | `GET /v1/users/{id}/friends`                              | yes |
+| `users <id> blocks list`                                 | `GET /v1/users/{id}/blocks`                               | yes |
 | `users <id> restrictions list`                                                                      | `GET /v1/users/{id}/restrictions`                             | yes |
 | `users <id> restrictions create --permissions <mask> [--duration <d>] [--reason <text>]`            | `POST /v1/users/{id}/restrictions`                            | yes |
 | `users <id> restrictions <rid> lift`                                                                | `POST .../restrictions/{rid}/lift`                            | yes |

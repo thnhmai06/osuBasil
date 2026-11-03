@@ -201,49 +201,22 @@ public sealed class UserCommandTests(CliFixture fixture)
 		Assert.Equal(UserPermissions.None, user.Value.Permissions);
 	}
 
-	[Fact]
-	public async Task Friends_PutListDelete_AreHeldByTheAccountNamedFirst()
+	[Theory]
+	[InlineData("friends")]
+	[InlineData("blocks")]
+	public async Task Relationships_OfAnotherAccount_CannotBeChangedFromTheConsole(string word)
 	{
-		var owner = await NewAsync("fo");
-		var other = await NewAsync("ft");
+		var owner = await NewAsync($"{word[0]}o");
+		var other = await NewAsync($"{word[0]}t");
 
-		var (put, _) = await fixture.RunAsync($"users {owner.Id} friends {other.Id} put");
-		var (_, listed) = await fixture.RunAsync($"users {owner.Id} friends list");
-		var (otherList, _) = await fixture.RunAsync($"users {other.Id} friends list");
-		var (delete, _) = await fixture.RunAsync($"users {owner.Id} friends {other.Id} delete");
-		var (_, after) = await fixture.RunAsync($"users {owner.Id} friends list");
+		var (put, _) = await fixture.RunAsync($"users {owner.Id} {word} {other.Id} put");
+		var (delete, _) = await fixture.RunAsync($"users {owner.Id} {word} {other.Id} delete");
+		var (list, listed) = await fixture.RunAsync($"users {owner.Id} {word} list");
 
-		Assert.Equal(0, put);
-		Assert.Contains(other.Value.Name, listed);
-		Assert.Equal(0, otherList);
-		Assert.Equal(0, delete);
-		Assert.DoesNotContain(other.Value.Name, after);
-	}
-
-	[Fact]
-	public async Task Blocks_PutListDelete_Work()
-	{
-		var owner = await NewAsync("bo");
-		var other = await NewAsync("bt");
-
-		await fixture.RunAsync($"users {owner.Id} blocks {other.Id} put");
-		var (_, listed) = await fixture.RunAsync($"users {owner.Id} blocks list");
-		await fixture.RunAsync($"users {owner.Id} blocks {other.Id} delete");
-		var (_, after) = await fixture.RunAsync($"users {owner.Id} blocks list");
-
-		Assert.Contains(other.Value.Name, listed);
-		Assert.DoesNotContain(other.Value.Name, after);
-	}
-
-	[Fact]
-	public async Task Friends_OfTheAccountWithItself_IsRefused()
-	{
-		var owner = await NewAsync("fs");
-
-		var (code, text) = await fixture.RunAsync($"users {owner.Id} friends {owner.Id} put");
-
-		Assert.Equal(2, code);
-		Assert.Contains("self", text);
+		Assert.NotEqual(0, put);
+		Assert.NotEqual(0, delete);
+		Assert.Equal(0, list);
+		Assert.DoesNotContain(other.Value.Name, listed);
 	}
 
 	[Fact]

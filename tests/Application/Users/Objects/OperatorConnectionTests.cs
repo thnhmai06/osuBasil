@@ -92,57 +92,6 @@ public sealed class OperatorRelationshipTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task HeldByAsync_TheOperatorSetsAndRemovesAFriendForAnotherAccount()
-	{
-		using var app = new TestApplication();
-		var owner = await app.CreateUserAsync("RelOwner", "password");
-		var target = await app.CreateUserAsync("RelTarget", "password");
-		var actor = await app.Users.OperateAsync(Token);
-		var scoped = app.Users.Of(target).ScopeTo(actor);
-
-		var set = await scoped.Relationships.HeldByAsync(owner, RelationshipType.Friend, true, Token);
-		var (listResult, friends) = await app.Users.Of(owner).ScopeTo(actor).Relationships.FriendsAsync(Token);
-		var removed = await scoped.Relationships.HeldByAsync(owner, RelationshipType.Friend, false, Token);
-		var (_, after) = await app.Users.Of(owner).ScopeTo(actor).Relationships.FriendsAsync(Token);
-
-		Assert.True(set.IsOk);
-		Assert.True(listResult.IsOk);
-		Assert.Contains(target, friends);
-		Assert.True(removed.IsOk);
-		Assert.DoesNotContain(target, after);
-	}
-
-	[Fact]
-	public async Task HeldByAsync_AnyoneElseGetsNotSelf()
-	{
-		using var app = new TestApplication();
-		var owner = await app.CreateUserAsync("RelOwner2", "password");
-		var other = await app.CreateUserAsync("RelOther2", "password", UserPermissionsGroups.All);
-		var target = await app.CreateUserAsync("RelTarget2", "password");
-		var actor = await app.LoginAsync(other);
-
-		var result = await app.Users.Of(target).ScopeTo(actor).Relationships
-			.HeldByAsync(owner, RelationshipType.Friend, true, Token);
-
-		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
-	}
-
-	[Fact]
-	public async Task HeldByAsync_RefusesTheSameAccountAndBasilBot()
-	{
-		using var app = new TestApplication();
-		var owner = await app.CreateUserAsync("RelOwner3", "password");
-		var actor = await app.Users.OperateAsync(Token);
-
-		Assert.Equal(UserOutcome.Self,
-			(await app.Users.Of(owner).ScopeTo(actor).Relationships
-				.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
-		Assert.Equal(UserOutcome.SystemAccount,
-			(await app.Users.Of(actor.Record).ScopeTo(actor).Relationships
-				.HeldByAsync(owner, RelationshipType.Block, true, Token)).Outcome);
-	}
-
-	[Fact]
 	public async Task TheOperatorMaySetAnotherAccountsAwayMessage_ButAnAdministratorMayNot()
 	{
 		using var app = new TestApplication();

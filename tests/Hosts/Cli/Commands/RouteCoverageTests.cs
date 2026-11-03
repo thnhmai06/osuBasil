@@ -24,7 +24,11 @@ public sealed partial class RouteCoverageTests(CliFixture fixture)
 		["GET /v1/beatmapsets/{id}/download"] = "a file download",
 		["GET /v1/beatmaps/{id}/audio"] = "a file download",
 		["GET /v1/beatmaps/{id}/video"] = "a file download",
-		["GET /v1/beatmaps/{id}/background"] = "a file download"
+		["GET /v1/beatmaps/{id}/background"] = "a file download",
+		["PUT /v1/users/{id}/friends/{otherId}"] = "changes the caller's own list: the console has no account of its own",
+		["DELETE /v1/users/{id}/friends/{otherId}"] = "changes the caller's own list: the console has no account of its own",
+		["PUT /v1/users/{id}/blocks/{otherId}"] = "changes the caller's own list: the console has no account of its own",
+		["DELETE /v1/users/{id}/blocks/{otherId}"] = "changes the caller's own list: the console has no account of its own"
 	};
 
 	[GeneratedRegex(@"\{\*\*?(\w+)\}")]
