@@ -1,22 +1,24 @@
 # Application design rules
 
-Rules for Domain and Application objects, scopes, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `src/Bot`.
+Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `src/Bot`.
+
+> **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers, object-free logic and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. Where a rule below mentions `Handlers/`, `Logic/` or `Services/` in an Application project, that is where the code is **today**; the contracts stay in Application and the implementations move. New code follows the target.
 
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 
-* **Every `ScopedX` derives from one abstract `Scoped<TRights> where TRights : struct, Enum`.** The base holds the connection
-  (`Actor`) and `TRights Rights { get; }`, the rights the connection held when `ScopeTo(connection)` created the scope, and
-  offers `protected TRights? Require(TRights required)`: `null` means the requirement is met, otherwise it returns what
-  is missing. A scope lives for one request or command and is then dropped; it is never stored. The comparison follows
-  the enum, found by reflection: a `[Flags]` enum is met when every required bit is held (the result is the missing
-  bits), any other enum is ordered levels and is met when the held value is greater than or equal to the required one
-  (the result is the required level). Most scopes are `Scoped<Permissions>` (`Rights` = the caller's **effective**
-  permissions) and pass the missing mask to `Result<TOutcome>.Denied`; `ScopedRoom` is `Scoped<RoomPermissions>`
-  (`Rights` = the rights its roles give, computed once from creator, referee, host and player roles and the global
-  permissions) and a role refusal is the outcome `RoleDenied`, or a denial naming `RoomJoin` when the caller may not join
-  rooms at all. A scope over `UserPrivileges` fits the same way. An implementation never compares rights itself: it states
-  the requirement of each behaviour through `Require` and returns the denial. Each scope exposes its owner as a property
-  named after it (`Channel`, `Room`, `User`, …).
+* **A capability (`ScopedX`, "Cap") is a `readonly struct` valid for one request or command.** `x.ScopeTo(connection)`
+  returns it. It holds the connection (`Actor`) and `Rights`, the rights the connection held when it was created (a
+  snapshot taken once, never re-taken), and it never lives in a field or property (an architecture test enforces this).
+  It exposes the owner as a property named after it (`Channel`, `Room`, `User`, …) and reaches the owner's parts through
+  **forwarding getters** (`room.ScopeTo(actor).Slots`, `.Rounds`, `.Settings`). The owner's raw mutators are `internal` to
+  its Application project, so only a capability, which has checked the rights, can change the owner. A behaviour states
+  the requirement through `ScopedRights.Require(held, required)`: `null` means the requirement is met, otherwise it returns
+  what is missing. A `[Flags]` enum is met when every required bit is held (the result is the missing bits); any other enum
+  is ordered levels and is met when the held value is at least the required one (the result is the required level). Most
+  capabilities hold the caller's **effective** `UserPermissions` and pass the missing mask to `Result<TOutcome>.Denied`;
+  `ScopedRoom` holds `RoomPermissions`, the rights its roles give, computed once from creator, referee, host and player
+  roles and the global permissions; a role refusal is the outcome `RoleDenied`, or a denial naming `RoomJoin` when the caller
+  may not join rooms at all. An implementation never compares rights itself.
 * **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,
   Permissions? Missing)` shared by all objects. Each object owns one outcome enum (`RoomOutcome`, `ChannelOutcome`,
   `UserOutcome`, `BeatmapsetOutcome`, …) with `Ok = 1` and `0` meaning "not set" (so a denied result, whose outcome is
@@ -33,9 +35,11 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 
 ### Domain and Application
 
-* **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
-  `User`, `Beatmap`, `Login`, …). A model guarantees that **it is valid**: field values
-  in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
+* **Domain** is the system at rest: the durable models (`Match`, `Round`, `MatchSettings`,
+  `User`, `Beatmap`, `Login`, …) and the rules that stay true while the system is offline. A model guarantees that **it is valid**: field values
+  in range, its own text format, values derived purely from its own data. No runtime-only state, no time, connection or
+  I/O, no events. A type that only means something while the server runs (session state, presence, spectator frames, a room in play) is
+  Application, not Domain; a row that carries data to the database is Infrastructure.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
   rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
   channels, `Beatmapset`, and the root `Server`) in the Objects folder of its module (`Basil.Application.<Module>`). It owns its state,
@@ -63,6 +67,11 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
+* **The service ladder.** Service > Ports > the three stores (Registry | Repository | Storage) > Objects; a level uses only the
+  levels below it. A call across levels is direct (dependency injection); a call between peers is a Mediator message. A
+  Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers` (target;
+  today in the Application `Handlers/` folder). Hosts do not call `ScopeTo`: they send a message that carries the `Connection`
+  and the handler scopes the object (target; see [`architecture.md`](../for-developers/architecture.md)).
 * **Each folder of a module owns one kind of type.** The full map is in `AGENTS.md`. **Persistence/** holds the
   persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Common
   holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their
@@ -130,9 +139,9 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   Persistent repositories, query records and paging belong to the module's Persistence folder, file-storage ports to
   its Storage folder. Other capability ports describe what lies outside the process: files, network, external
   computation and the clock (`TimeProvider`).
-* **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
+* **Outer layers use storage directly.** Infrastructure handlers read, list and search storage, and
   write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
-  beatmapset), directly through the repository, after the host has checked the caller's permission. Services are only for actions; a service
+  beatmapset), directly through the repository, after the capability has checked the caller's permission (today the hosts still do this themselves; target: they send a Query or Command). Services are only for actions; a service
   never wraps a plain read or write (a score service's `GetAsync` forwarding to `IScoreRepository.GetAsync` is
   wrong). Runtime state changes only through the behaviour of the object that owns that state; runtime setters
   are `internal`.
@@ -144,14 +153,16 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   `Beatmapsets.ScanAsync()`); Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
   closing) belongs to the lobby that owns the room and runs on `TimeProvider`. A room's countdown belongs to
-  its scoped round behaviour; aborting a round cancels a pending start. BasilBot announces the countdown marks.
+  BasilBot (target: it keeps the timer, listens to the room's events to cancel and sends the command that starts the round;
+  today it is still in the room's round behaviour). BasilBot announces the countdown marks.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user is one `User`; each place they log in from is a `Connection`.**
   `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
   shared (`AwayMessage`, the active `Restrictions`) plus its connections as child data, keyed by
   `ConnectionType` (`Stable`, `Tourney`, `Irc`, `Api`), with typed accessors (`Stable`, `Irc`, `Tourneys`,
-  `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the user registry owns.
+  `Apis`); how many connections of each type one user may hold is a per-type limit the user registry enforces (target;
+  see [`identity-permissions.md`](identity-permissions.md)).
   `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `StableConnection`,
   `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
   (`StableConnection.Status`). Rooms, channels and the lobby hold connections, not users' sessions.
@@ -203,11 +214,11 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
-  (this supersedes the older rule "Application does not consume events"). The base event,
+  (target: the handlers move to `Infrastructure.<Module>/Handlers`; contracts and event records stay in Application). The base event,
   `IEventPublisher<T>` and `EventQueue` live in Application.Common; the feature event records live in the Objects
   folder of their module (`Objects/Events/`) and its handlers in its Handlers folder. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
-  and returns at once. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
+  and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
   event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
   modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). The shared queue (`EventQueue`) is run by
   `EventDispatcher` in Infrastructure.Common's Workers folder and delivers the events one at a time in the order they

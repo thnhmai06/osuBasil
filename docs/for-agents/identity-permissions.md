@@ -50,8 +50,11 @@ touching users, connections, permissions, restrictions or the bot.
   account the server creates and the one id it chooses. The bot is a friend of everybody. Nobody can sign in as it or
   act for it (no login, no presentable token, no delegation); its record is fixed (not deleted, restricted, given
   permissions or a password, or disconnected), while its metadata (name, country, avatar) is editable. It never passes a
-  rights check because it never asks for anything; its privileges only decide how a client shows it. It is online with a
-  `BotConnection`, appears in every transport, and answers chat commands. A command runs on the objects scoped to the
+  rights check because it never asks for anything; its privileges only decide how a client shows it. It is a module (`Basil.Bot`; target
+  `Application.Bot` and `Infrastructure.Bot`) bound to user id 1. It is online with exactly one Stable and one Irc
+  connection, opened by the server with no transport behind them, and has no connection type of its own (the `Bot` type,
+  `BotConnection` and the bot branch of `UserRegistry.Open` are being removed). Transports skip those two connections when
+  delivering. It answers chat commands. A command runs on the objects scoped to the
   **typist's** connection and needs that user's rights; the bot only replies. Its own messages and server announcements
   go straight to chat, past the rights check. The wording lives in the replies file (see `basil-bot.md`).
 * **A name is unique among live accounts.** Deleting an account is a soft, permanent delete: it is never restored and its
@@ -65,7 +68,7 @@ touching users, connections, permissions, restrictions or the bot.
   `Accounts` lock is set. REST has no self-registration: `POST /v1/users` is for `UserManage`. The server creates no
   account by itself; the first administrator is made by the operator with a console command.
 * **The console is the operator's entry point.** It runs in `Basil.Host.Cli`, as the dashboard command box or as
-  `Basil.Host <command>` from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorConnection`:
+  `Basil.Host <command>` (target name `Basil`) from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorConnection`:
   BasilBot's identity with every permission, outranking every account, never registered, so no client can present it. It
   is the **one entry point that skips rights checks**, because whoever sits at the console owns the machine; BasilBot
   itself still has no permissions. `--noconsole` turns the command box off.
@@ -74,14 +77,22 @@ touching users, connections, permissions, restrictions or the bot.
   point; `BeatmapsetManage`, while the file watcher keeps running) and `Profiles` (a user changing their own username,
   country, avatar or password; `UserManage` may change another account's). A lock covers create, change and delete. It
   is checked in Application, never in a transport, and refuses with a `Locked` outcome.
-* **Sessions and tokens.** A `SessionRecord` (an identity with `SessionData` in device, credential, activity and end groups) is the persisted record of a sign-in (`ConnectionType`: Osu, Tourney, Irc, Api,
-  Bot); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
+* **Sessions and tokens.** A `SessionRecord` (an identity with `SessionData` in device, credential, activity and end groups) is the persisted record of a sign-in (connection types: Stable, StableTourney, Irc, Api; today
+  `SessionType` still has `Bot`, being removed); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
   token expires after `Sessions.ApiToken.Lifetime` (sliding, one week by default) and is verified against the database
   the first time it is used, then kept in memory while its connection is used. An IRC key belongs to one device, is
   issued by `POST /v1/users/{id}/sessions/irc`, and is the only credential IRC accepts. osu! signs in with username and
   password every time. A connection that has sent nothing for its transport's idle timeout leaves memory; the session stays valid
   and the next use opens a new connection. Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by
   default).
+* **Concurrent sessions per user are limited per connection type (target).** The Users module enforces the limit in
+  `UserRegistry.Open`, under the registry's lock, and the limits are runtime settings (`ServerSettings.Sessions`, positive
+  numbers) replacing today's `SessionType.AllowsMany()`. Defaults: Stable 1, StableTourney 10, Irc 5, Api 10; BasilBot is
+  fixed at one Stable and one Irc. Only open connections count; at the ceiling, connections of that user idle beyond the
+  idle timeout are closed first. Then Stable, StableTourney and Irc **refuse** the new connection (`TooManySessions`; Rest
+  answers `409 tooManySessions`), while Api **evicts the oldest idle token** (by last activity) and accepts the new one.
+  Open live streams (SSE) have a separate per-user ceiling. Refusals are counted in diagnostics
+  (`basil.connections.rejected`). This is a business rule of Users, not an admission policy of the gateway.
 * **Logging out revokes credentials, not saved passwords.** Closing an Api session revokes its token; closing an osu! session only disconnects the
   client, which can sign in again with its password; closing an IRC session revokes that
   device's key. Changing a password revokes every other Api token and every IRC key, and closes osu! connections.
@@ -89,8 +100,8 @@ touching users, connections, permissions, restrictions or the bot.
   of a stolen device needs a password change by someone else or a restriction.
 * **No authority by connection kind.** Never decide authority with `ConnectionType` or `is XConnection`. The kind only
   decides what the client can technically do (an osu! client takes a slot; a tourney client gets no private-message
-  channel). `Bot` is BasilBot's own connection; no client can request it, present its token or sign in as it, and idle
-  sweeps never close it; transports skip it when delivering.
+  channel). BasilBot's two connections are never presented by a client, cannot be signed in as and are never
+  closed by idle sweeps; transports skip them when delivering.
 * **No third party in the core.** Apart from the optional beatmap mirror, the server uses no third-party service.
   Country at registration comes from the host (a trusted proxy header or an offline GeoLite2 file); Domain and
   Application receive the country as an input.

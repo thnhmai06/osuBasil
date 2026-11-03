@@ -332,7 +332,7 @@ Projects that need PostgreSQL start a container; set `DOCKER_HOST` when the daem
 `BASIL_TEST_POSTGRES` to use an existing server. Never run every project in one `dotnet test` invocation.
 
 A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check, which
-`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of `Basil.Host` and `AddBot()`, builds the provider
+`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of the composition root (`Basil.Host` today, `Basil` after the migration) and `AddBot()`, builds the provider
 with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event handler is
 registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
 
@@ -344,43 +344,43 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 
 ## Architecture
 
+> **Migration status.** This section describes the target architecture. The code is migrated phase by phase; a part that is
+> not migrated yet is marked **(target)**. [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) owns
+> the full description and the status.
+
 ```text
-Basil.Domain                     business model and its own validity          -> (nothing)
+Basil.Domain                     the system at rest: durable models and the      -> (nothing)
+                                 rules that stay true offline
 
-Basil.Application.Common         shared application contracts and eventing     -> Domain, Mediator.Abstractions
-Basil.Infrastructure.Common      shared database, memory, files and event     -> Application.Common, Domain
-                                 dispatch infrastructure
+Basil.Application.Common         shared contracts, Result<T>, events, Mediator   -> Domain, Mediator.Abstractions
+                                 messages
+Basil.Infrastructure.Common      shared database, files and event dispatch       -> Application.Common, Domain
 
-Basil.Application.<Module>       the module's ports and objects, in folders by       -> Domain, Application.Common,
-                                 responsibility: Objects/ (live objects, contexts,    the Application projects of the
-                                 outcomes, event records), Registry/ (the objects     modules it uses (below)
-                                 kept in RAM), Capabilities/ (Scoped* views only),
-                                 Ports/ (ports to external computation), Logic/
-                                 (object-free logic), Services/ (services the
-                                 system provides: a contract and its implementation),
-                                 Persistence/ (repository ports, query records),
-                                 Storage/ (file-storage ports), Handlers/ (event
-                                 handlers), Workers/ (background runs);
-                                 Add<Module>Application()
-Basil.Infrastructure.<Module>    the module's implementations, in folders that        -> its own Application,
-                                 match those ports: Persistence/ (Postgres,           Infrastructure.Common,
-                                 DbContext, rows, migrations), Storage/ (files),      Application.Common
-                                 Adapters/ (osu! rulesets, FFMpegCore,
-                                 ImageSharp, HTTP), Registry/ (memory primitives),
-                                 Workers/ (sweepers, watchers);
-                                 Add<Module>Infrastructure()
-Basil.Host.Shared               views and outcome-to-error mapping used      -> Application projects
-                                 by the API and the console
-Basil.Protocol.Stable            osu! client-server wire formats, score         -> Domain, external libraries
-                                 submission cipher (BouncyCastle)
-Basil.Protocol.Irc               IRC wire format                                -> (nothing)
-Basil.Host.Stable / .Irc /       transports                                     -> Host.Shared, their Application
-.Rest / .Cli                                                                       projects, their Protocol
-Basil.Host                       entry point, composition root, configuration,  -> everything
-                                 logging, shutdown, LAN advertising
+Basil.Application.<Module>       the module's contracts (services, ports,        -> Domain, Application.Common,
+                                 repositories, storages) and its runtime objects:   the Application projects of the
+                                 Objects/, Registry/, Capabilities/ (Scoped*        modules it uses (below)
+                                 only), Ports/, Persistence/, Storage/,
+                                 Services/ (contracts); Add<Module>Application()
+Basil.Infrastructure.<Module>    the implementations of those contracts: Handlers/ -> its own Application,
+                                 (Mediator listeners), Logic/, Services/,            Infrastructure.Common,
+                                 Persistence/, Storage/, Adapters/, Workers/         Application.Common
+                                 (target; today Handlers, Logic and Workers sit
+                                 in Application); Add<Module>Infrastructure()
+Basil.Infrastructure.Postgres    (target) Npgsql provider and PostgreSQL         -> Infrastructure.Common
+                                 migrations; only Basil references it
+Basil.Protocol.Stable            the translation language of the osu! wire,      -> Domain, external libraries
+                                 score submission cipher (BouncyCastle)
+Basil.Protocol.Irc               the translation language of IRC                 -> (nothing)
+Basil.Gateway                    (target) admission control: Allow/Deny from     -> the rate-limiting library
+                                 size, rate, concurrency and load
+Basil.Host.Shared                views and outcome-to-error mapping              -> Application projects
+Basil.Host.Stable / .Irc /       transports: translate the wire to messages and  -> Host.Shared, Protocol, Gateway,
+.Rest / .Cli                     send them through Mediator                         Application projects
+Basil.Host                       (target name Basil) entry point, composition    -> everything
+                                 root, "the way to run"
 
-Basil.Bot                        BasilBot: chat commands and their replies,     -> the Application projects of the
-                                 an entry point of the server (not a client)        modules it uses, Application.Common
+Basil.Bot                        BasilBot, a module at the top of the graph      -> the Application projects of the
+                                 (target: Application.Bot / Infrastructure.Bot)     modules it uses, Application.Common
 ```
 
 The layers stay Clean Architecture (Domain, Application, Infrastructure, hosts); inside the Application and Infrastructure layers
@@ -397,7 +397,9 @@ Anticheat   -> Users
 Scores      -> Users, Beatmaps
 Multiplayer -> Users, Beatmaps, Content, Scores
 Chat        -> Users, Multiplayer
+Diagnostics -> Users                     (target)
 Servers     -> every module above
+Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users      (target as a module)
 ```
 
 A module Infrastructure project never references another module; the foreign keys between the module databases
@@ -419,7 +421,8 @@ validate and gives no business meaning: a number the client sends is checked by 
 `WireMap.Mods` before Application sees it. What has no Domain twin (a slot's neutral team, the open/locked/quit slot
 states) stays a Protocol enum, mapped by the host. If a wire format changes, only Protocol changes; a Domain enum
 value is never renumbered for a client. `Basil.Protocol.Irc` wraps IRC the same way and references nothing. Only the
-transport hosts reference Protocol; Application and Infrastructure never do.
+transport hosts reference Protocol; Application and Infrastructure never do. Protocol is the language the hosts use to
+translate the wire into the system's own messages and back; it does not validate and coordinates nothing.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`,
@@ -430,10 +433,11 @@ its short name without `Basil.`: `src/Domain/`,
 shared fixtures are under `tests/Support/`, and the tests that build the whole composition and run several hosts
 under `tests/Architecture/` and `tests/Hosts/`).
 
-Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
-an options type that the project using it owns; Application reads no configuration.
+The project that defines an options type binds it (`Add<Module>...(IConfiguration)`) **(target)**; the composition root
+only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
+project, `Basil.Host` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
 
-`Application.Common` owns `IActor`, `Result<T>`, `Scoped<T>`, shared query values and event contracts/queue; it depends
+`Application.Common` owns `IActor`, `Result<T>`, `ScopedRights`, shared query values and event contracts/queue; it depends
 on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
 event dispatcher; it depends on Domain, Application.Common and its external packages.
 
@@ -447,30 +451,41 @@ external computation (a capability with business meaning whose implementation ne
 reader, analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
 types). **Logic/** holds the application logic that needs no live object (account checks, beatmapset indexing, score
 validation and recording): it takes and returns records and plain results, never creates, receives or publishes an
-object or an event, and every such type is `internal`. **Services/** holds the services the system provides, a contract and its implementation
-(`IAnticheatReporter`); a helper that only serves one layer is not a service and stays with what implements it.
-**Persistence/** holds the repository ports and their query records, **Storage/** the file-storage ports,
-**Handlers/** the event handlers and **Workers/** the background runs.
+object or an event, and every such type is `internal`. **Services/** holds the services the system provides: the
+contract in Application and its implementation in Infrastructure (`IAnticheatReporter`); a helper that only serves one
+layer is not a service and stays with what implements it. **Persistence/** holds the repository ports and their query
+records, **Storage/** the file-storage ports, **Handlers/** the Mediator handlers (one `internal` class per message type)
+and **Workers/** the background runs. **(target)** Handlers, Logic, Workers and the implementations of Services move to
+`Basil.Infrastructure.<Module>`; Application keeps contracts and runtime objects only.
 Each module's public `Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()`
-registers the implementations of its ports and its migration. Handlers stay `internal`; a module that has them grants
-`InternalsVisibleTo("Basil.Host")` (the generated Mediator code names them) and to its own test project, and
-nothing else is made visible. `Basil.Host` calls `AddBasil()`.
+registers the implementations of its ports and its migration. Handlers stay `internal`; a project that has them grants
+`InternalsVisibleTo` to the composition root (the generated Mediator code names them) and to its own test project, and
+nothing else is made visible. The composition root calls `AddBasil()`. A call across levels of the ladder (Service, Ports,
+the three stores, Objects) is direct dependency injection; a call between peers is a Mediator message.
 
-### Hosts
+### Hosts, Gateway and Server
 
-`Basil.Host` is the composition root: the one `AddMediator` call, configuration binding, logging, shutdown/restart and
-host and subdomain routing. It holds no business rule and no recovery logic (those belong to Application and
-Infrastructure). The transports are `Basil.Host.Stable` (osu! packets, polling and legacy web endpoints),
-`Basil.Host.Irc` (plain TCP), `Basil.Host.Rest` (`api.`, images on `a.`/`assets.`, SSE, diagnostics) and
-`Basil.Host.Cli` (terminal dashboard and command box).
+The transports are `Basil.Host.Stable` (osu! packets, polling and legacy web endpoints), `Basil.Host.Irc` (plain TCP),
+`Basil.Host.Rest` (`api.`, images on `a.`/`assets.`, SSE, diagnostics) and `Basil.Host.Cli` (terminal dashboard and
+command box). The composition root is `Basil.Host` today and the project `Basil` after the migration **(target)**: the one
+`AddMediator` call, logging, shutdown/restart, host and subdomain routing, and the choice of Kestrel, ports, TLS and the
+database provider. It holds no business rule, no recovery logic and no admission policy. It is "the way to run" the
+system; no host or gateway knows it exists.
 
+* A host translates: inbound it turns the wire into a strongly typed message of the system (using Protocol), checks what
+  the client sent, and sends it through Mediator; outbound it listens to Notifications and writes its wire. It holds no
+  business, permission or state rule. **(target)** A host never calls `ScopeTo`, never references Infrastructure and
+  never references another host; today hosts still call `x.ScopeTo(connection)` and the migration replaces that with
+  messages, module by module. Every message carries the `Connection` of the session as its actor, and only the Users
+  module creates a `Connection`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
   `Protocol.Stable`. `tests/Architecture/HostGraphTests.cs` enforces this.
-* A transport takes the actor from the connection that opened the request or socket and works through scopes
-  (`x.ScopeTo(connection)`), never through a service, and holds no business, permission or state rule of its own.
-* Configuration is bound in `Basil.Host` only; a transport receives `IOptions<T>` of an options type it owns.
-  BasilBot's reply file is bound there too (`Configurations/Templates/replies.json`, written with the defaults when
-  missing).
+* `Basil.Gateway` **(target)** is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
+  concurrency and load, in two tiers (before and after authentication; the second tier receives an opaque
+  `AdmissionSubject` that `Host.Shared` maps from the `Connection`). It has no user types and no business facts. Every
+  entry point declares a policy. See [`docs/for-developers/gateway.md`](docs/for-developers/gateway.md).
+* The project that defines an options type binds it **(target)**; BasilBot's reply file is bound with the bot
+  (`Configurations/Templates/replies.json`, written with the defaults when missing).
 * Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
 * The console is the one entry point that skips rights checks (`OperatorConnection`); a chat command still uses the
   typist's rights. See [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md).
@@ -479,21 +494,23 @@ Infrastructure). The transports are `Basil.Host.Stable` (osu! packets, polling a
 
 Application is sliced by module first, then by folder of responsibility; namespace = project + folder
 (`Basil.Application.Chat.Objects`). Application.Common owns shared values, paging/search syntax and event
-contracts/queue; Infrastructure.Common owns shared persistence and event delivery.
+contracts/queue; Infrastructure.Common owns shared persistence and event delivery. The table lists where each folder's
+contents are **today**; the target moves `Handlers/`, `Logic/`, `Workers/` and the implementations of `Services/` to
+the module's Infrastructure project.
 
 Every module uses these folders, and creates only the ones it needs:
 
 | Folder | Holds |
 |---|---|
 | `Objects/` | The module's live objects, their parts and contexts, each object's outcome enum, and its event records (`Objects/Events/`) |
-| `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries) |
+| `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries); one of the three stores with Repository (`Persistence/`, awaited, cache-aside) and Storage (`Storage/`) |
 | `Capabilities/` | The `Scoped*` views only |
 | `Ports/` | The ports to external computation and the data they exchange |
 | `Logic/` | The object-free application logic behind the objects and ports |
 | `Services/` | Services the system provides: a contract and its implementation. Only what a module offers as a service belongs here |
 | `Persistence/` | The repository ports, their query records and the data both layers name |
 | `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
-| `Handlers/` | The event handlers of the module, one per concrete event type |
+| `Handlers/` | The Mediator handlers of the module, one per message type (target: `Infrastructure.<Module>/Handlers`) |
 | `Workers/` | The background runs the module declares (sweepers, watchers) |
 
 Infrastructure mirrors those ports: `Persistence/` for Postgres, `DbContext`, rows and migrations, `Storage/` for the
@@ -545,7 +562,8 @@ Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects
                ScopedServer and its parts                               (Capabilities)
 ```
 
-Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
+In the target, the room countdown moves to BasilBot and `Diagnostics` (intake and feed) becomes a module; the listing
+above is the state today. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
 event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
 Infrastructure.Common's `Workers/`. Concrete handlers live in the module's `Handlers/` folder or in the consumer that
 owns them, including `Basil.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
@@ -557,7 +575,7 @@ not Domain and not host configuration.
 
 * Common projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` objects. Anticheat flags,
-  wherever they arrive (score submission, `lastfm.php`), are reported by the host through `IAnticheatReporter.Report`,
+  wherever they arrive (score submission, `lastfm.php`), are reported through `IAnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.
 * `Chat` references `Multiplayer`, and both reference `Users` and `Connections` (`Room.Host`, `Channel.Members`, the online
   `User`); treat them as one cluster. `Users` and `Connections` reference each other (a user holds its connections, a
@@ -570,9 +588,9 @@ not Domain and not host configuration.
 
 The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 
-* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
+* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, capabilities (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
 * [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md): permissions, privileges, restrictions, hierarchy, sessions, BasilBot. Before touching users, connections, permissions or the bot.
-* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Common`.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Common`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants
@@ -596,7 +614,7 @@ Referee, host, and creator are separate concepts.
 Whoever creates a room is its creator, however it was created (in game, or through the API, directly or
 by a client acting for the user); every room has a creator. Creating a room needs `RoomCreate`. The
 creator is remembered on the match and ranks above referees; it is not added to the referee list. A creator
-who created the room in game is also its first host. When a tournament room is created, a creator whose
+who created the room in game is also its first host. When a room is opened through the API or BasilBot, a creator whose
 game client is online and not in any room is seated in the new room as host; a creator already in another
 room stays there and does not become host. Managing a room is for the creator and the referees (and
 `RoomManageAny`, which acts with the creator's authority in every room); being the host does not
@@ -608,6 +626,16 @@ Do not treat them as interchangeable.
 The creator has permanent match authority. Referee membership and host state have different lifecycles.
 
 See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) before changing match permissions or `!mp` authorization.
+
+#### Streaming
+
+Data reaches its consumer directly.
+
+* A database read is bounded (a limit, a page), loaded, the connection released, and only then sent to a client.
+* Every upload is spooled to a temporary file, validated, then moved atomically into place; no part of an uploaded name
+  becomes a path.
+* Application does not buffer a payload in a `MemoryStream` or a `byte[]` copy.
+* Large payloads (replays, `.osz` archives, images) never pass through a cache.
 
 #### No pp in gameplay
 
@@ -701,6 +729,8 @@ Important developer documents:
 * [`sse.md`](docs/for-developers/sse.md) — live HTTP streams
 * [`database.md`](docs/for-developers/database.md) — persistence design
 * [`logging.md`](docs/for-developers/logging.md) — logging design
+* [`gateway.md`](docs/for-developers/gateway.md) — admission control
+* [`diagnostics.md`](docs/for-developers/diagnostics.md) — diagnostics intake, feed and streams
 * [`docs-guideline.md`](docs/for-developers/docs-guideline.md) — documentation rules
 
 Technician documentation:
@@ -752,9 +782,10 @@ the owner merges them into the skill later, nobody edits the skill silently.
   tools of the main checkout, so the orchestrator runs the container check after merging; two agents at a time at most,
   and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
   hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
-* **Scoped base class and `Result<TOutcome>`** (2026-10-21, see `docs/for-agents/application-design.md`): one abstract
-  `Scoped<T>` holds the effective permissions snapshot and offers `Require(required)` returning the missing permissions
-  (`null` = met); behaviours return a shared `Result<TOutcome>` with per-object outcome enums starting at `Ok = 1`.
+* **Capabilities and `Result<TOutcome>`** (2026-10-21, revised; see `docs/for-agents/application-design.md`): a `Scoped*`
+  capability is a `readonly struct` valid for one request that snapshots the effective permissions and states each
+  requirement through `ScopedRights.Require` (`null` = met); behaviours return a shared `Result<TOutcome>` with
+  per-object outcome enums starting at `Ok = 1`.
 * **No `ConfigureAwait(false)`** in a server application (owner decision, 2026-10-26: the project rule stands and the
   skill's "every library await uses it" does not apply here).
 * **Tests for computed values** pin properties (valid, finite, monotone under a modifier), not the exact number, unless
@@ -775,9 +806,8 @@ the owner merges them into the skill later, nobody edits the skill silently.
   the exit code.
 * **Resolve what the exit path needs before running the host.** The service provider is disposed when the host has
   stopped; reading a service from it afterwards throws and loses the exit code. Take the object first, run, then use it.
-* **Read the memory-first store in the order that cannot lose a record.** When a list is the database rows plus the
-  writes still queued, snapshot the queued writes before reading the rows: a write that finishes in between is then in
-  one of the two, never in neither.
+* **Read the memory-first store in the order that cannot lose a record.** (Being removed with the write-behind model:
+  a repository that awaits its writes has no queue to snapshot. It stays only until the last module is migrated.)
 * **Validate at the boundary what the consumer will need, and let the consumer survive what slipped through.** A
   header-only inspection accepts a picture that cannot be decoded; the serving side answers 404, not 500. Probe only the
   formats the server accepts, so the parsers of the others never see uploaded bytes.
@@ -801,6 +831,26 @@ the owner merges them into the skill later, nobody edits the skill silently.
   fifteen items were already handled (the code closed the connection, or the lock had nothing left to block).
 * **Check the license before bumping a dependency to a fixed version.** A security release can change its terms; the
   version that fixes the advisories may not build without a key, which is the owner's decision, not a build detail.
+
+Proposals from the modular-monolith redesign, for the owner to merge into the skill (nobody edits the skill silently):
+
+* **Define the layers by lifecycle, not by technology.** Domain is the system at rest (what is stored and the rules true
+  offline); Application is the contracts plus the running system; Infrastructure implements the contracts. A type that
+  only means something while running is Application, however plain it looks.
+* **Separate "who" from "what".** Services are the doers (verbs with a contract); stores and objects are the things.
+  Order them Service > Ports > Registry | Repository | Storage > Objects, use direct injection across levels and a
+  mediator between peers.
+* **Never await a notification under a lock.** Objects enqueue events while they hold their lock; a dispatcher publishes
+  outside it. Give the queue a ceiling.
+* **A translation layer is a language, not a service.** Protocol is the vocabulary of a wire; the host translates and
+  dispatches, and the message type (not the host) chooses the handler. The actor travels in the message as an
+  unforgeable object created by one module only.
+* **Admission control is a leaf and knows no business.** Allow/Deny from size, rate, concurrency and load, in two tiers,
+  with an opaque subject for the second; every entry point must declare a policy and a test fails when one does not.
+* **Persistence is awaited.** Prefer cache-aside over write-behind; reads are bounded, a listing never instantiates live
+  objects, and a large payload never passes through a cache.
+* **Streaming is a rule, not an optimization.** Spool uploads to a temporary file, validate, move atomically; no
+  `MemoryStream` in the application layer.
 
 ## Agent skills
 

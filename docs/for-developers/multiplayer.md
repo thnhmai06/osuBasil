@@ -32,7 +32,7 @@ These roles have different owners and lifetimes:
 | Referee | A user added by the creator | Room-management authority until removed |
 | Host | The seated osu! connection selected as host | In-client host operations; does not make its user a manager |
 
-Every room has a creator. The creator is not in the referee list and ranks above referees. A room created in game seats its creator as the first host. Tournament-room creation seats the creator only when their game connection is online and not already in a room. A referee keeps authority when disconnected or unseated. There can be at most eight referees in addition to the creator.
+Every room has a creator. The creator is not in the referee list and ranks above referees. A room created in game seats its creator as the first host. A room opened through the API or BasilBot seats the creator as host only when their game connection is online and not already in a room; the source that opens a room decides this, not a kind of room. A referee keeps authority when disconnected or unseated. There can be at most eight referees in addition to the creator.
 
 ### Room roles and permissions
 
@@ -91,11 +91,15 @@ A round is decided once, automatically, as soon as it has ended and every awaite
 
 ## Countdown
 
-The countdown is room behavior, not a BasilBot-owned timer. `ScopedRoom.Rounds` starts or cancels it; the room owns its timing and state, and a countdown may start a round when it expires. `RoomCountdown` provides the start time, length and announcement marks. The room emits countdown events, and BasilBot announces the marks.
+The room countdown belongs to BasilBot, not to the room. BasilBot keeps the timer and announces its marks in the room channel; it listens to the room's events (the room closing, settings changing, a round starting) to cancel a pending countdown, and when the countdown expires it sends the same command that starts a round, with the typist's rights. The room only starts, aborts and decides rounds.
+
+> **Migration status (target).** Today the countdown is still room behavior (`ScopedRoom.Rounds`, `RoomCountdown` and its events); the migration moves it into BasilBot and removes it from the room and the lobby.
 
 ## Room lifecycle and concurrency
 
-The lobby opens and closes rooms. A room created in game closes when its last player leaves. An empty tournament room remains open for 15 minutes; the lobby announces the scheduled close when it starts and five minutes before it, and a player joining cancels it. If the room becomes empty again, the delay starts over.
+The lobby opens and closes rooms. "Tournament Room" is no longer a concept of the lifecycle: every room follows the same two limits. An empty room remains open for 15 minutes; the lobby announces the scheduled close when it starts and five minutes before it, and a player joining cancels it. If the room becomes empty again, the delay starts over. Each creator may have a limited number of rooms open at once. What still differs is the **source** that opens the room: opening in game needs the creator's own osu! client (or refuses with `AlreadyInRoom`), while opening through the API or BasilBot does not. The osu!tourney client and observers remain a connection type, not a kind of room.
+
+> **Migration status (target).** Today an in-game room closes as soon as its last player leaves, and the 15-minute wait and the per-creator cap apply only to tournament rooms (`Room.IsTournament`); the 15-minute close is to become a worker rather than a timer in the lobby.
 
 Room state is mutable and shared. Every transition that reads and then mutates is a synchronous method of `Room` (`Join`, `Kick`, `StartRound`, `Configure` and the rest) that takes the room's own lock, checks the state, changes it and publishes its events before releasing the lock; publishing only queues the event, so nothing is awaited under the lock. A closed room answers `RoomClosed`. `ScopedRoom` only checks the caller's permissions, does any asynchronous lookup that must come first, and calls the room's method. Never hold two room locks at once. Do not add another synchronization mechanism for room state.
 
@@ -121,7 +125,7 @@ A player is in at most one room. A room's own check cannot see another room's se
 * [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
 * [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs): room rights
-* [`RoomCountdown.cs`](../../src/Application/Multiplayer/Objects/Rooms/RoomCountdown.cs): countdown state and marks
+* [`RoomCountdown.cs`](../../src/Application/Multiplayer/Objects/Rooms/RoomCountdown.cs): countdown state and marks (moves to BasilBot)
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Multiplayer/Capabilities/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 
 ## See also

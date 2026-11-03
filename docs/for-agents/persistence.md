@@ -1,6 +1,10 @@
 # Persistence rules
 
-Repository contracts, byte storages and the memory-first model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, `DatabaseWriter` or anything under a module's `Application/Persistence` or `Application/Storage`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Common`.
+Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Application/Persistence`, `Application/Storage` or `Application/Registry`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Common`.
+
+> **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **being removed**, module by module. Until a module is migrated its code still behaves as the old model; the rules below are the target and are no longer described in the old terms.
+
+
 
 * **Repository contracts are written per model** as `IXxxRepository` (`IMatchRepository`,
   `IScoreRepository`, …), each declaring the operations Services and the outer layers need. A relation
@@ -10,9 +14,7 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   (nothing is created under an id the store has not given out, except BasilBot's fixed id through `IUserRepository.ReplaceAsync`), `CreateOrUpdateAsync(X)` only for a record keyed by
   what it is about (credentials by user, a relationship by its two users, stats by user and mode), `GetAsync(id)`,
   `GetByYAsync(y)` for a unique key, `ListAsync(XQuery, PageRequest) → Page<X>` for listing and search,
-  `DeleteAsync(X)`. A listing without a page is complete and is never copied to be returned: a list the
-  repository holds (an owned list) comes back as it is, through its read-only interface (`IReadOnlyList<X>`); a
-  listing computed when asked (filtered or ordered from memory) is an `IEnumerable<X>`, and the caller decides
+  `DeleteAsync(X)`. A listing without a page is complete; it is computed when asked and is an `IEnumerable<X>`, and the caller decides
   whether to materialise it. Soft deletion is a service setting `DeletedAt` and calling
   `UpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
   `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
@@ -59,60 +61,39 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   them or manages them (`private=1` then returns just those). A caller that serves match-owned data (the match, its rounds, events, report or round-score relation) to a
   user must check `ScopedLobby.CanViewAsync` first; the match repositories are plain storage and do not gate. A query used
   without `LimitTo` shows everything, so only the server's own work (a scan, startup recovery) skips it.
-* **Memory is the truth; the database is a copy of it.** Memory is where the server works; the database only keeps
-  a record of what was done. **No operation waits for the database unless its result comes from the database**
-  (a try-operation: an identity the store assigns, a unique value). Everything asks memory first and goes to the
-  database only on a miss, to verify or to load into memory; a miss means "not loaded", never "does not exist". A
-  change is applied to the live object in memory, and its copy is written to the database alongside. "Cache" means
-  only the on-disk `Cache/` directory of derived, rebuildable files (repacked `.osz` archives, audio previews); data
-  in memory is never called a cache.
-  * **Resident data**, the database records every client uses (`ServerSettings`, general channels, menu banners), is
-    loaded at startup and never released; it changes only through its repository, never in the database behind the
-    server's back. A change is written first: `CreateOrUpdateAsync`/`DeleteAsync` return once the database has
-    committed it, and only then does the resident copy follow (`ResidentWrites`), so a refused write leaves memory
-    unchanged and reaches the caller; of concurrent changes of one identity, memory ends equal to the last one
-    committed. Reads come from the resident copy. File storages are not resident and hold no file content in memory: the file system is their
-    index, read as it is when asked.
-  * **On-demand data:** a repository holds one live instance per identity, returned by every `GetAsync`,
-    `GetByYAsync` and `ListAsync`. It lives while anything holds it (a session its user, a room its match) or while
-    a change of it is not stored yet, and is then released; there is no TTL. A list owned by an object (a user's
-    restrictions and relationships, a set's beatmaps, a match's rounds and events) lives as long as
-    its owner instance: it is loaded whole the first time it is needed, then changed item by item.
-  * **Writes:** for the memory-first objects (users, matches, beatmaps, scores), `CreateOrUpdateAsync`/`DeleteAsync` queue
-    a copy of the values **as they are when queued** and return at once; only a try-operation waits for the database,
-    because its outcome comes from it. Resident data (above) and records that no business need keeps as live objects
-    await the write instead (none today). A relation recorded once and never changed (`round_scores`) is queued like the rest and its listing adds the relations still queued. A
-    round (`rounds`) is queued like the memory-first objects (`CreateOrUpdateAsync` returns at once, because handlers
-    never wait) and `ListAsync` adds the live rounds whose first write is still queued to what the database returns; a
-    room's round is the instance `ListAsync` returns while it is held. `DatabaseWriter` keeps
-    one queue per root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`) and sends its writes one
-    statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
-    `Basil:Database:Write:PoolSize` connections (8 by default) write at once. No write is grouped with unrelated
-    writes; a business operation that must store several rows together gets one try-operation of its own. A score
-    belongs to its player (`Root.User`); which round it was played in is a relation of its own
-    (`round_scores`), listed with the round.
-  * **Errors:** only environment errors (lost connection, timeout, server shutting down, read-only after a failover,
-    deadlock, authentication, permissions) are retried, before any later write of the same root. Any other error
-    fails that write alone: a try-operation throws it to its caller, a copy is logged as an error. A try-operation
-    runs in its own transaction and settles a broken commit with a write ticket row stored in the same transaction; its cancellation token counts
-    only while it waits for its turn. Appends (logins, match events) carry no business id: the database assigns it,
-    the repository queues the append and returns at once (logging in works without a database), and
-    `DatabaseWriter.AppendAsync` runs each append in its own transaction settled the same way, so it is stored
-    exactly once.
-  * **No SQL in Persistence.** Everything is Entity Framework Core with LINQ and row objects (`XxxRow` entities, never the Domain types); no Dapper, no `FromSql`/`ExecuteSql`/`SqlQuery`, no `NpgsqlCommand`. A snapshot write builds its row when it is queued and applies it with `RowWrites.UpsertAsync`/`ReplaceAsync` (or `ExecuteUpdate` for a few columns); a row with a store-generated key is created inside the lambda so a retry starts clean. Unique violations are recognised through `exception.IsUniqueViolation()`, which looks through Entity Framework wrappers.
-  * **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history (`__ef_migrations_<module>`). `DatabaseMigrator` applies Common, Users, Authentication, Beatmaps, Content, Scores, Multiplayer and Chat in that order; referencing contexts preserve foreign keys by mapping principal rows as excluded from their migrations. `write_tickets` is owned by Common and mapped by every context. This replaces the old `InitialCreate` only under the precondition that no database has applied it; see [`database.md`](../for-developers/database.md#migrations).
-  * **Reads** go straight to PostgreSQL on a context of their own for the owning module (a pooled connection, no change tracking: memory is the truth, not the context) and see only what is committed. A listing
-    asks the database which rows match and returns the live instance of each; a row whose deletion is still queued
-    never comes back into memory, and neither does one whose deletion committed while the read was running: a read
-    that overlapped a committed deletion starts again, so a deleted record cannot come back into memory.
-  * **A stored row is trusted.** Rows are written only by the server, through the Domain, so a row that fails the Domain rules on load is a fault of the database, not a case to work around: the read throws. The exception is configuration an operator edits by hand (the settings and the menu banners): a value that cannot be read is logged and the default is kept, or the banner is left out, so the server still starts.
-  * **A value unique across a table** (a user's safe name, a beatmap's hash or osu! id, a score's checksum, an id the
-    store assigns): when memory holds a record with that value the repository rejects the change at once; otherwise
-    the insert runs as a try-operation and a unique violation from the database means the value is taken. Either way
-    the repository throws `AlreadyExistsException` (a rename returns `false`) and does not load the existing record.
-  * A derived read model (the match report) is projected from memory when asked; it is not stored or rebuilt.
-  * A child refers to a parent of another root only once the parent is committed (such a parent is created by an
-    awaited try-operation); parents are created before their children. One database belongs to one Basil process. An
-    operation's lambda uses only its connection and transaction and never queues another operation.
-  * Without a database, creating identities and checking unique values wait for it; everything already in memory
-    keeps working.
+* **Three stores, three kinds of data.** A store holds one kind of data and is reached through a contract in the module's
+  Application project; its implementation is in the module's Infrastructure project.
+  * **Registry** (`Registry/`): live runtime objects in RAM (`UserRegistry`, `Lobby`, the channel registries). It is the
+    truth about what is running and owns the operations on what it holds. It stores nothing durable.
+  * **Repository** (`Persistence/`): durable records. Every operation awaits the database; the database is the truth.
+    Small records that are read often (a user, settings, a channel) may be cached **cache-aside**: read the cache, on a
+    miss read the database and fill the cache, and a write goes to the database first and then updates or drops the cache
+    entry. Large or streamed data never passes through the cache (`beatmaps.objects`, images, replays, `.osz` archives).
+  * **Storage** (`Storage/`): files and media (beatmapsets, replays, avatars, banners). The file system is the index.
+    Images are served through ImageSharp.Web ([`assets.md`](../for-developers/assets.md)).
+* **A write is awaited, and a failure reaches the caller.** There is no queue of pending writes and no copy that is
+  "sent later"; a refused write leaves the cache unchanged and throws or returns its failure to the caller. A value that is
+  unique across a table is checked by the insert: a unique violation (`exception.IsUniqueViolation()`) becomes
+  `AlreadyExistsException` (a rename returns `false`). A business operation that stores several rows together uses one
+  transaction of its own. Without a database, anything that needs it fails; objects already in a registry keep working.
+* **Reads are bounded.** A listing is a query with a limit that returns a page, and the database connection is released
+  before the result is sent to a client. A listing does not instantiate live objects and has no mandatory `COUNT`; the
+  next page is found by a keyset where possible. A live object that exists in a registry is looked up in the registry, not
+  rebuilt from the row.
+* **A stored row is trusted.** Rows are written only by the server, through the Domain, so a row that fails the Domain
+  rules on load is a fault of the database, not a case to work around: the read throws. The exception is configuration an
+  operator edits by hand (the settings and the menu banners): a value that cannot be read is logged and the default is
+  kept, or the banner is left out, so the server still starts.
+* **No SQL text in Persistence.** Everything is Entity Framework Core with LINQ and row objects (`XxxRow` entities, never
+  the Domain types); no Dapper, no `FromSql`/`ExecuteSql`/`SqlQuery`, no `NpgsqlCommand`. The generic EF API is what a
+  module's Infrastructure project uses; what is specific to PostgreSQL (the Npgsql provider, `Database.cs`, error
+  recognition, design-time factory and the migrations) belongs to `Basil.Infrastructure.Postgres` (**target**; today it sits
+  in `Infrastructure.Common` and the module projects) which only the composition root references. Tests run on PostgreSQL only.
+* **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history
+  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Common, Users, Authentication, Beatmaps, Content, Scores,
+  Multiplayer and Chat in that order; referencing contexts preserve foreign keys by mapping principal rows as excluded from
+  their migrations. The system is not in production, so a module's migrations may be regenerated while the schema settles; see
+  [`database.md`](../for-developers/database.md#migrations).
+* **Streaming is mandatory.** Data reaches the consumer directly; no `MemoryStream` in Application. A read is bounded,
+  loaded, the connection released, then sent. Every upload is spooled to a temporary file, validated, then moved
+  atomically (see the streaming rule in `AGENTS.md`).

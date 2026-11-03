@@ -110,8 +110,9 @@ When two documents disagree, the authoritative document wins.
 | Console commands, local socket, exit codes            | [`for-technicians/console.md`](for-technicians/console.md)             |
 | Privilege flags and their meanings                     | [`for-developers/privileges.md`](for-developers/privileges.md)         |
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
+| Admission control (rate, size, concurrency, load)      | [`for-developers/gateway.md`](for-developers/gateway.md)               |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
-| Diagnostic API design (samplers, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
+| Diagnostics (intake, feed, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
 | osu! (stable) protocol (client and server)                     | [`for-developers/osu-stable.md`](for-developers/osu-stable.md)                 |
 | IRC protocol                                           | [`for-developers/irc.md`](for-developers/irc.md)                       |
 | Chat channels and their rules                          | [`for-developers/chat.md`](for-developers/chat.md)                     |
@@ -162,7 +163,8 @@ This prevents the documentation from developing multiple competing versions of t
 
 * [`for-developers/architecture.md`](for-developers/architecture.md): system architecture and dependency direction
 * [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and ImageSharp.Web image serving
-* [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the Diagnostic API's samplers, live streams, and shared per-tick collection
+* [`for-developers/gateway.md`](for-developers/gateway.md): the admission policies every request passes before it reaches a module
+* [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the diagnostics module's intake and feed, live streams, and shared per-tick collection
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality
 * [`for-technicians/configuration.md`](for-technicians/configuration.md): server configuration
 * [`for-technicians/https.md`](for-technicians/https.md): TLS requirements
