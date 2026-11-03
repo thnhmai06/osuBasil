@@ -31,6 +31,27 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Live_DoesNotRepeatTheSnapshotWhileTheRoomIsUnchanged()
+	{
+		var (owner, _) = await fixture.SignInAsync("LiveRepeat");
+		using (owner)
+		{
+			var (_, envelope) = await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Still" });
+			var roomId = (int)envelope!["data"]!["id"]!;
+			var (response, reader) = await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live");
+			using (response)
+			{
+				Assert.Equal("snapshot", (await reader!.ReadAsync())!.Value.Event);
+
+				var polled = reader.ReadAsync();
+				fixture.Host.Time.Advance(TimeSpan.FromSeconds(1));
+				await Task.Delay(TimeSpan.FromMilliseconds(300));
+				Assert.False(polled.IsCompleted);
+			}
+		}
+	}
+
+	[Fact]
 	public async Task Live_SendsTheRoomFirst_ThenTheChange_AndEndsWhenTheRoomCloses()
 	{
 		var (owner, _) = await fixture.SignInAsync("LiveWatch");

@@ -90,9 +90,10 @@ internal static class RoomRoutes
 	{
 		if (await Find(context, lobby, id) is not { } room) return Api.NotFound("No such room.");
 
-		string? last = null;
+		var initial = RoomView.Of(room);
+		string? last = JsonSerializer.Serialize(initial, Api.Json);
 		return await context.StreamAsync($"room:{id}",
-			_ => Task.FromResult<(object, string?)>((RoomView.Of(room), null)), null,
+			_ => Task.FromResult<(object, string?)>((initial, null)), null,
 			_ =>
 			{
 				if (room.IsClosed) return Task.FromResult(new SsePoll([new SseEvent(new { type = "closed" })], true));
