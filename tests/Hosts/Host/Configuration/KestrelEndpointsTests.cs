@@ -19,6 +19,32 @@ public sealed class KestrelEndpointsTests
 		Assert.True(KestrelSetup.UsesHttps(Endpoints("http://127.0.0.1:8080", "https://0.0.0.0:443")));
 	}
 
+	[Theory]
+	[InlineData("basil", true)]
+	[InlineData("my-own-password", false)]
+	public void TheShippedCertificatePasswordIsRecognisedOnlyWhenTlsIsServed(string password, bool expected)
+	{
+		var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+		{
+			["Kestrel:Endpoints:E0:Url"] = "https://0.0.0.0:443",
+			["Kestrel:Certificates:Default:Password"] = password
+		}).Build();
+
+		Assert.Equal(expected, KestrelSetup.UsesPublishedCertificate(configuration));
+	}
+
+	[Fact]
+	public void ThePublishedCertificateIsNotAnIssueWithoutTls()
+	{
+		var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+		{
+			["Kestrel:Endpoints:E0:Url"] = "http://127.0.0.1:8080",
+			["Kestrel:Certificates:Default:Password"] = "basil"
+		}).Build();
+
+		Assert.False(KestrelSetup.UsesPublishedCertificate(configuration));
+	}
+
 	[Fact]
 	public void OnlyHttpEndpointsMeanPlainHttpBehindAProxy()
 	{

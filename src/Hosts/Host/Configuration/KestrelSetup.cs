@@ -11,6 +11,9 @@ public static class KestrelSetup
 	/// <summary>The largest request body in bytes; the routes that accept an uploaded file raise it for themselves.</summary>
 	public const long DefaultMaxRequestBodySize = 1024 * 1024;
 
+	/// <summary>The password of the certificate that ships with the server; anyone can read it in the repository.</summary>
+	public const string PublishedCertificatePassword = "basil";
+
 	/// <summary>Hides the server header and limits the size of request bodies.</summary>
 	/// <param name="builder">The builder.</param>
 	public static void Configure(WebApplicationBuilder builder)
@@ -27,6 +30,14 @@ public static class KestrelSetup
 	public static bool UsesHttps(IConfiguration configuration)
 	{
 		return Urls(configuration).Any(url => url.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+	}
+
+	/// <summary>Tells whether the server serves HTTPS with the certificate that ships with it, whose password is public.</summary>
+	/// <param name="configuration">The configuration.</param>
+	public static bool UsesPublishedCertificate(IConfiguration configuration)
+	{
+		return UsesHttps(configuration) &&
+		       configuration["Kestrel:Certificates:Default:Password"] == PublishedCertificatePassword;
 	}
 
 	/// <summary>Gives the TCP addresses and ports the configured endpoints listen on; a port of 0 is left out.</summary>

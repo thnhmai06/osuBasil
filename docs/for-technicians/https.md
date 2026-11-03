@@ -63,6 +63,8 @@ It covers the required `basil.local` subdomains and declares `basicConstraints` 
 through their system certificate store. The bundled `Configurations/appsettings.json` already points at it with the
 password `basil`, so a fresh local installation starts with HTTPS without generating anything.
 
+The key and the password are public, so this certificate is only for local use. The server logs a warning at start while it serves HTTPS with it; replace it with your own certificate (see below) before exposing the server.
+
 > [!IMPORTANT]
 > **Do not use the bundled certificate for production or a publicly exposed server.**
 >

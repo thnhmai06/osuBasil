@@ -89,6 +89,10 @@ public static class HostApplication
 		app.UseTrustedProxies();
 		if (KestrelSetup.UsesHttps(app.Configuration))
 			app.UseHsts();
+		if (KestrelSetup.UsesPublishedCertificate(app.Configuration))
+			app.Logger.LogWarning(
+				"HTTPS uses the certificate that ships with Basil, whose private key and password are public. " +
+				"Replace it with your own certificate before exposing the server");
 		app.UseRestImages();
 		app.UseBancho();
 		app.UseRest();
