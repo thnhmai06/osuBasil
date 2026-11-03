@@ -1,0 +1,46 @@
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Registry;
+using Basil.Host.Stable.Support;
+
+namespace Basil.Host.Stable.Packets;
+
+/// <summary>Finds the channel a client means by the name it uses.</summary>
+internal sealed class ChannelResolver(
+	GeneralChannelRegistry general,
+	Lobby lobby,
+	RoomChannels roomChannels,
+	SpectatorChannels spectatorChannels,
+	UserRegistry registry)
+{
+	/// <summary>Resolves a channel name for a connection.</summary>
+	/// <param name="name">
+	///     The name the client sent; the aliases of the match and spectator channels resolve to the caller's
+	///     own.
+	/// </param>
+	/// <param name="actor">The connection that sent it.</param>
+	/// <returns>The open channel, or <see langword="null" /> when none matches.</returns>
+	public Channel? Resolve(string name, Connection actor)
+	{
+		switch (name)
+		{
+			case StableView.MultiplayerAlias:
+				return actor is StableConnection player && lobby.RoomOf(player) is { IsClosed: false } room
+					? roomChannels.Of(room)
+					: null;
+			case StableView.SpectatorAlias:
+				var host = actor is StableConnection { Spectators.Count: > 0 } own
+					? own
+					: registry.FindSpectating(actor);
+				return host is null ? null : spectatorChannels.Of(host);
+		}
+
+		if (RoomChannel.TryParseName(name, out var id) &&
+		    lobby.Find(id) is { IsClosed: false } found)
+			return roomChannels.Of(found);
+
+		return general.Find(name) is { IsClosed: false } channel ? channel : null;
+	}
+}
