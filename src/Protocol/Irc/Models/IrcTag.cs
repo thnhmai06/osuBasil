@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Basil.Protocol.Irc;
+namespace Basil.Protocol.Irc.Models;
 
 /// <summary>An IRCv3 message tag: a key with an optional value.</summary>
 /// <param name="Key">The tag key; a client-only tag starts with <c>+</c>.</param>
@@ -34,7 +34,7 @@ public sealed record IrcTag(string Key, string? Value = null)
 			{
 				';' => "\\:",
 				' ' => "\\s",
-				'\\' => "\\\\",
+				'\\' => @"\\",
 				'\r' => "\\r",
 				'\n' => "\\n",
 				_ => c.ToString()

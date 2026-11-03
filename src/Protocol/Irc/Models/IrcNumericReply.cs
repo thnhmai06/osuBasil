@@ -1,4 +1,4 @@
-namespace Basil.Protocol.Irc;
+namespace Basil.Protocol.Irc.Models;
 
 /// <summary>RFC 1459/2812 numeric reply codes, not the full table.</summary>
 public enum IrcNumericReply : ushort

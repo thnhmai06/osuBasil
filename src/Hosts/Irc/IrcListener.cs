@@ -7,6 +7,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
+using Basil.Protocol.Irc.Models;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 

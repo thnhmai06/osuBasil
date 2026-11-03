@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
-namespace Basil.Protocol.Irc;
+namespace Basil.Protocol.Irc.Models;
 
 /// <summary>
 ///     A single IRC protocol line per RFC 1459 §2.3.1: [":prefix"] command param* [":trailing"].

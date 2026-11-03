@@ -1,13 +1,12 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-namespace Basil.Protocol.Irc;
+namespace Basil.Protocol.Irc.Models;
 
 /// <summary>Represents an IRC user prefix.</summary>
 /// <remarks>
 ///     The prefix has one of the forms <c>nick</c>, <c>nick@host</c>, or <c>nick!user@host</c>.
 /// </remarks>
-public readonly record struct IrcUserPrefix
-	: IParsable<IrcUserPrefix>, IFormattable
+public readonly record struct IrcUserPrefix : IParsable<IrcUserPrefix>, IFormattable
 {
 	/// <summary>Creates a prefix from its parts.</summary>
 	/// <param name="nick">The user's nickname.</param>

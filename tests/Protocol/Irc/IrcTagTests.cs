@@ -1,3 +1,5 @@
+using Basil.Protocol.Irc.Models;
+
 namespace Basil.Protocol.Irc.Tests;
 
 /// <summary>Message tags, with the expected text taken from the IRCv3 message-tags specification.</summary>

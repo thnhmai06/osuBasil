@@ -3,6 +3,7 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
+using Basil.Protocol.Irc.Models;
 using Mediator;
 using Microsoft.Extensions.Options;
 

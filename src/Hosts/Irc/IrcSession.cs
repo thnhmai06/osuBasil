@@ -8,6 +8,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
+using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc;
 

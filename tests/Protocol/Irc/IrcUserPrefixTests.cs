@@ -1,3 +1,5 @@
+using Basil.Protocol.Irc.Models;
+
 namespace Basil.Protocol.Irc.Tests;
 
 public class IrcUserPrefixTests
