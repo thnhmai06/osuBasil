@@ -25,6 +25,7 @@ using Basil.Host.Bancho.Packets;
 using Basil.Host.Bancho.Support;
 using Basil.Protocol.Bancho.Models.Auth;
 using Basil.Protocol.Bancho.Models.Scores;
+using Basil.Protocol.Bancho.Models.Wire;
 using Basil.Protocol.Bancho.Wire.Security;
 
 namespace Basil.Host.Bancho.Web;
@@ -70,7 +71,7 @@ internal static class OsuWebRoutes
 		var mode = ParseMode(query["m"]);
 		var rankedType = int.TryParse(query["v"], out var v) ? v : 1;
 		var page = await scores.ListAsync(
-			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? (GameMods)mods : null, BestPerPlayer: true),
+			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? WireMap.FromWire((WireMods)mods) : null, BestPerPlayer: true),
 			new PageRequest(0, 50), ct);
 		var rows = new List<string>();
 		foreach (var (score, index) in page.Items.Where(score => score.Value.Mode == mode)
@@ -79,7 +80,7 @@ internal static class OsuWebRoutes
 
 		var lines = new List<string>
 		{
-			$"{(int)map.Beatmapset.Status}|false|{map.Id}|{map.Beatmapset.Id}|{rows.Count}|0",
+			$"{(int)WireMap.ToWire(map.Beatmapset.Status)}|false|{map.Id}|{map.Beatmapset.Id}|{rows.Count}|0",
 			"0", map.Name, "10.0", string.Empty
 		};
 		lines.AddRange(rows);
@@ -88,7 +89,7 @@ internal static class OsuWebRoutes
 
 	private static GameMode ParseMode(string? text)
 	{
-		return int.TryParse(text, out var m) && Enum.IsDefined((GameMode)m) ? (GameMode)m : GameMode.Standard;
+		return int.TryParse(text, out var m) && WireMap.FromWire((WireGameMode)m) is { } mode ? mode : GameMode.Standard;
 	}
 
 	private static async Task<string> ScoreRowAsync(ScoreRecord score, int index, IUserRepository users,
@@ -97,7 +98,7 @@ internal static class OsuWebRoutes
 		var name = score.Value.UserId is { } id && await users.GetAsync(id, ct) is { } user ? user.Value.Name : "?";
 		var hits = score.Value.HitCounts;
 		return string.Create(CultureInfo.InvariantCulture,
-			$"{score.Id}|{name}|{score.Value.TotalScore}|{score.Value.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.IsFullCombo ? 1 : 0)}|{(int)score.Value.Mods}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
+			$"{score.Id}|{name}|{score.Value.TotalScore}|{score.Value.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.IsFullCombo ? 1 : 0)}|{(int)WireMap.ToWire(score.Value.Mods)}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
 	}
 
 	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth,
@@ -124,7 +125,7 @@ internal static class OsuWebRoutes
 			var page = await beatmaps.ListAsync(new BeatmapQuery(FileName: request.Filenames[index]),
 				new PageRequest(0, 1), ct);
 			if (page.Items.FirstOrDefault() is { } map)
-				lines.Add($"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)map.Beatmapset.Status}|N|N|N|N|{map.Hash}");
+				lines.Add($"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)WireMap.ToWire(map.Beatmapset.Status)}|N|N|N|N|{map.Hash}");
 		}
 
 		return Text(string.Join('\n', lines));
@@ -179,7 +180,8 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 
 	private static Submission ToSubmission(ScoreSubmission data, Md5 beatmapHash)
 	{
-		var score = new ScoreData(null, beatmapHash, (GameMode)data.Mode, (GameMods)data.Mods,
+		var score = new ScoreData(null, beatmapHash, WireMap.FromWire((WireGameMode)data.Mode) ?? GameMode.Standard,
+			WireMap.FromWire((WireMods)data.Mods),
 			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
 			data.TotalScore, (short)data.MaxCombo, (short)data.MaxCombo, ParseGrade(data.Grade), data.IsPassed,
 			data.IsFullCombo, data.Timestamp);
@@ -293,7 +295,7 @@ private static OsuFingerprint Fingerprint(ClientHash hash)
 	{
 		var meta = set.Metadata;
 		return
-			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)set.Status}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
+			$"{set.Id}.osz|{meta.Artist}|{meta.Title}|{meta.Creator}|{(int)WireMap.ToWire(set.Status)}|10.0|{set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{set.Id}|0|0|0|0|0";
 	}
 
 	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry,
