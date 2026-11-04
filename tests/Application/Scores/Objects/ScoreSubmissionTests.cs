@@ -14,6 +14,7 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 
 namespace Basil.Application.Scores.Tests.Objects;
 
@@ -48,6 +49,21 @@ public sealed class ScoreSubmissionTests
 		Assert.Empty(f.Scores);
 		Assert.Empty(f.Replays);
 		Assert.Null(f.StatsOf(GameMode.Standard));
+		Assert.Empty(f.App.ScoreEvents.Events);
+	}
+
+	[Fact]
+	public async Task SubmitScoreAsync_WhenTheStatisticsCannotBeStored_ReachesTheCallerAndPublishesNothing()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+		f.App.Provider.GetRequiredService<IUserStatsRepository>()
+			.AddPlayAsync(Arg.Any<UserRecord>(), Arg.Any<GameMode>(), Arg.Any<long>(), Arg.Any<long>(),
+				Arg.Any<CancellationToken>())
+			.Returns(_ => ValueTask.FromException<UserStats>(new InvalidOperationException("store down")));
+		var score = ScoreSubmissionFixture.PassedScore();
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() => SubmitAsync(f, f.Genuine(score)));
+
 		Assert.Empty(f.App.ScoreEvents.Events);
 	}
 
