@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Sockets;
 using Makaretu.Dns;
 using Microsoft.Extensions.Options;
@@ -29,16 +28,11 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		var multicast = server.Multicast;
 		if (!multicast.Enabled) return Task.CompletedTask;
 
-		Validate(multicast);
 		var names = Names(server.Domain);
 		var ttl = TimeSpan.FromSeconds(multicast.DnsTtl);
 		try
 		{
-			_service = new MulticastService
-			{
-				UseIpv4 = !string.IsNullOrEmpty(multicast.IPv4),
-				UseIpv6 = !string.IsNullOrEmpty(multicast.IPv6)
-			};
+			_service = new MulticastService();
 			_service.QueryReceived += (_, query) =>
 			{
 				var response = query.Message.CreateResponse();
@@ -69,22 +63,6 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 	{
 		Dispose();
 		return Task.CompletedTask;
-	}
-
-	/// <summary>Refuses a group address or port that the multicast DNS responder cannot use, instead of ignoring it.</summary>
-	internal static void Validate(ServerOptions.MulticastSettings multicast)
-	{
-		if (!string.IsNullOrEmpty(multicast.IPv4) &&
-		    !IPAddress.Parse(multicast.IPv4).Equals(IPAddress.Parse(ServerOptions.MulticastSettings.StandardIPv4)))
-			throw new InvalidOperationException(
-				$"Basil:Server:Multicast:IPv4 must be {ServerOptions.MulticastSettings.StandardIPv4} or empty; other group addresses are not supported.");
-		if (!string.IsNullOrEmpty(multicast.IPv6) &&
-		    !IPAddress.Parse(multicast.IPv6).Equals(IPAddress.Parse(ServerOptions.MulticastSettings.StandardIPv6)))
-			throw new InvalidOperationException(
-				$"Basil:Server:Multicast:IPv6 must be {ServerOptions.MulticastSettings.StandardIPv6} or empty; other group addresses are not supported.");
-		if (multicast.Port != ServerOptions.MulticastSettings.StandardPort)
-			throw new InvalidOperationException(
-				$"Basil:Server:Multicast:Port must be {ServerOptions.MulticastSettings.StandardPort}; other ports are not supported.");
 	}
 
 	internal static HashSet<string> Names(string domain)

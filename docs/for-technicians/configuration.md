@@ -63,7 +63,7 @@ under `Basil`.
 | `Basil:Server:Domain` | the public domain; every subdomain is derived from it |
 | `Basil:Server:TrustedProxies` | IPs and CIDR ranges whose forwarding headers are trusted; defaults to loopback |
 | `Basil:Server:Irc:Port` | plain TCP port of IRC, default `6667`; `0` picks a free port |
-| `Basil:Server:Multicast:Enabled`, `IPv4`, `IPv6`, `Port`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled); only the standard group addresses and port 5353 are supported, and an empty `IPv4` or `IPv6` switches that family off |
+| `Basil:Server:Multicast:Enabled`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled), on the standard mDNS groups and port 5353; `DnsTtl` is how many seconds a client may keep an answer |
 | `Basil:Storage:Location` | directory that holds stored files, default `Data` |
 | `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` under the storage location), and the folder of the ffmpeg executable (default: found on the PATH) |
 | `Basil:Database:Read:PoolSize`, `Write:PoolSize` | the database is always PostgreSQL; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
@@ -109,7 +109,7 @@ environment variable or command-line argument, where `:` is `__` in variables); 
 | `--urls`, `ASPNETCORE_URLS` | `Kestrel:Endpoints:<name>:Url` (it now wins over `--urls` when both are set) |
 | `Basil:Server:Ports:Irc` | `Basil:Server:Irc:Port` |
 | `Basil:Server:LanAdvertise` (default `true`) | `Basil:Server:Multicast:Enabled` (default `false`) |
-| (new) | `Basil:Server:Name`, `Basil:Server:Multicast:IPv4`, `IPv6`, `Port`, `DnsTtl` |
+| (new) | `Basil:Server:Name`, `Basil:Server:Multicast:DnsTtl` |
 | `Basil:Storage:DataDirectory` | `Basil:Storage:Location` |
 | `Basil:Database:ConnectionString` | `ConnectionStrings:Write` (and `ConnectionStrings:Read`, which falls back to `Write`) |
 | `Basil:Database:WriteConnections` | `Basil:Database:Write:PoolSize` |
