@@ -1,3 +1,4 @@
+using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Common;
 using Basil.Application.Users.Objects;
@@ -27,15 +28,18 @@ internal sealed partial class IrcCommands
 		}
 
 		var target = message.Parameters[0];
-		Channel? channel;
+		ChatTarget destination;
 		if (target.StartsWith('#'))
 		{
-			channel = Resolve(target);
-			if (channel is null)
+			if (target.StartsWith("#spec_", StringComparison.OrdinalIgnoreCase))
 			{
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, target, IrcReplies.NoSuchChannel);
 				return;
 			}
+
+			destination = RoomChannel.TryParseName(target, out var roomId)
+				? new ChatTarget.Room(roomId)
+				: new ChatTarget.General(target);
 		}
 		else
 		{
@@ -45,13 +49,13 @@ internal sealed partial class IrcCommands
 				return;
 			}
 
-			channel = pmChannels.Of(user);
+			destination = new ChatTarget.Private(user.Record);
 		}
 
 		if (!await MayChatAsync(session, actor, message.Command, target, cancellationToken)) return;
 
-		var result = await channel.ScopeTo(actor).PostAsync(IrcText.Limit(message.Parameters[1]), notice,
-			cancellationToken);
+		var result = await sender.Send(
+			new PostChatMessage(actor, destination, IrcText.Limit(message.Parameters[1]), notice), cancellationToken);
 		ReplyToPost(session, target, result);
 	}
 
@@ -79,7 +83,7 @@ internal sealed partial class IrcCommands
 
 		switch (result.Outcome)
 		{
-			case ChannelOutcome.Closed:
+			case ChannelOutcome.Closed or ChannelOutcome.NotFound:
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, target, IrcReplies.NoSuchChannel);
 				break;
 			case ChannelOutcome.NotMember or ChannelOutcome.AccessDenied:

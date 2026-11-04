@@ -29,6 +29,7 @@ public class LayeringTests
 	private const string Objects = @"^Basil\.Application\.\w+\.Objects";
 	private const string Storage = @"^Basil\.Application\.\w+\.Storage";
 	private const string InfrastructureWorkers = @"^Basil\.Infrastructure\.\w+\.Workers";
+	private const string InfrastructureHandlers = @"^Basil\.Infrastructure\.\w+\.Handlers";
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolStable = typeof(Protocol.Stable.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
@@ -180,13 +181,34 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureProjects_OutsideTheirWorkersFolderDoNotSeeApplicationObjectsHostsOrBot()
+	public void InfrastructureProjects_OutsideWorkersAndHandlersDoNotSeeApplicationObjectsHostsOrBot()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
-			.DoNotResideInNamespaceMatching(InfrastructureWorkers).ShouldNot()
+			.DoNotResideInNamespaceMatching(InfrastructureWorkers).And()
+			.DoNotResideInNamespaceMatching(InfrastructureHandlers).ShouldNot()
 			.HaveDependencyOnAny([.. ObjectNamespaces(), .. Host, Protocol, Bot]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
+	}
+
+	[Fact]
+	public void InfrastructureHandlers_DoNotSeeTheHostsOrBot()
+	{
+		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
+			.ResideInNamespaceMatching(InfrastructureHandlers).ShouldNot()
+			.HaveDependencyOnAny([.. Host, Protocol, Bot]).GetResult();
+
+		Assert.True(result.IsSuccessful, FailureMessage(result));
+	}
+
+	[Fact]
+	public void InfrastructureHandlers_DoDependOnApplicationObjects_PositiveControl()
+	{
+		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
+			.ResideInNamespaceMatching(InfrastructureHandlers).Should().NotHaveDependencyOnAny(ObjectNamespaces())
+			.GetResult();
+
+		Assert.False(result.IsSuccessful);
 	}
 
 	[Fact]

@@ -1,3 +1,4 @@
+using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Stable.Support;
@@ -34,23 +35,33 @@ internal sealed partial class PacketHandlers
 		return text.Length > StableReplies.MaxMessageLength ? text[..StableReplies.MaxMessageLength] : text;
 	}
 
+	private static ChatTarget TargetOf(string name)
+	{
+		return name switch
+		{
+			StableView.MultiplayerAlias => new ChatTarget.OwnRoom(),
+			StableView.SpectatorAlias => new ChatTarget.OwnSpectators(),
+			_ when RoomChannel.TryParseName(name, out var roomId) => new ChatTarget.Room(roomId),
+			_ => new ChatTarget.General(name)
+		};
+	}
+
 	private async Task PublicMessageAsync(StableConnection osu, StableMessage message,
 		CancellationToken cancellationToken)
 	{
-		if (channels.Resolve(message.Recipient, osu) is not { } channel) return;
 		if (!await MayChatAsync(osu, cancellationToken)) return;
-		await channel.ScopeTo(osu).PostAsync(Limit(message.Text), cancellationToken: cancellationToken);
+		await sender.Send(new PostChatMessage(osu, TargetOf(message.Recipient), Limit(message.Text)),
+			cancellationToken);
 	}
 
 	private async Task PrivateMessageAsync(StableConnection osu, StableMessage message,
 		CancellationToken cancellationToken)
 	{
 		if (await users.GetByNameAsync(message.Recipient, cancellationToken) is not { } record) return;
-		var target = registry.Of(record);
-		if (!target.IsOnline) return;
+		if (!registry.Of(record).IsOnline) return;
 		if (!await MayChatAsync(osu, cancellationToken)) return;
-		var result = await pmChannels.Of(target).ScopeTo(osu).PostAsync(Limit(message.Text),
-			cancellationToken: cancellationToken);
+		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record), Limit(message.Text)),
+			cancellationToken);
 		switch (result.Outcome)
 		{
 			case ChannelOutcome.Blocked when result.Missing is null:

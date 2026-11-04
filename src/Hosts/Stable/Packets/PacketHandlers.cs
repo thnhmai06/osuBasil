@@ -1,5 +1,4 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Chat.Registry;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Registry;
@@ -16,6 +15,7 @@ using Basil.Gateway;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Beatmaps;
 using Basil.Protocol.Stable.Wire.Packets;
+using Mediator;
 
 namespace Basil.Host.Stable.Packets;
 
@@ -24,7 +24,7 @@ internal sealed partial class PacketHandlers(
 	UserRegistry registry,
 	Lobby lobby,
 	ChannelResolver channels,
-	PmChannels pmChannels,
+	ISender sender,
 	IUserRepository users,
 	IUserStatsRepository statsRepository,
 	IBeatmapRepository beatmaps,

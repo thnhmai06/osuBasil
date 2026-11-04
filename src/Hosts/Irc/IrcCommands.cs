@@ -11,6 +11,7 @@ using Basil.Gateway;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
+using Mediator;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc;
@@ -22,7 +23,7 @@ internal sealed partial class IrcCommands(
 	GeneralChannelRegistry general,
 	Lobby lobby,
 	RoomChannels roomChannels,
-	PmChannels pmChannels,
+	ISender sender,
 	ISettingsRepository settings,
 	RateLimiter limiter,
 	LoginAttemptGuard attempts,
