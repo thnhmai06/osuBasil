@@ -591,7 +591,6 @@ public sealed class UserRegistry
 		// A token or key outlives its connection: only revoking it, or logging out of the API, ends the session.
 		if (connection.Session.Value.Credential.TokenHash is null || EndsToken(connection.Type, reason))
 			connection.EndSession(_context.Clock.GetUtcNow(), reason);
-		_ = _context.Sessions.UpdateAsync(connection.Snapshot());
 		_activity.TryRemove(connection.Session.Id, out _);
 		connection.IsOpen = false;
 		Unindex(connection);

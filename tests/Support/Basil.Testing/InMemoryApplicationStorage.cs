@@ -36,10 +36,31 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		return Task.FromResult(Seed(data, id));
 	}
 
+	/// <summary>Gets or sets the failure the next updates throw, or <see langword="null" /> to accept them.</summary>
+	public Exception? UpdateFailure { get; set; }
+
 	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		_users[user.Id] = user;
+		if (UpdateFailure is { } failure) throw failure;
+		if (_users.TryGetValue(user.Id, out var stored) && !ReferenceEquals(stored, user))
+		{
+			stored.Value.Country = user.Value.Country;
+			stored.Value.Permissions = user.Value.Permissions;
+			if (user.Value.DeletedAt is not null) stored.Value.DeletedAt = user.Value.DeletedAt;
+		}
+		else
+		{
+			_users[user.Id] = user;
+		}
+
+		return Task.CompletedTask;
+	}
+
+	public Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		_users.Remove(user.Id);
 		return Task.CompletedTask;
 	}
 
@@ -352,9 +373,13 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 
 	public IReadOnlyList<ModerationData> Entries => _values;
 
+	/// <summary>Gets or sets the failure the next appends throw, or <see langword="null" /> to accept them.</summary>
+	public Exception? AppendFailure { get; set; }
+
 	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
+		if (AppendFailure is { } failure) throw failure;
 		_entries.Add(new ModerationLog { Id = _nextId++, Value = entry });
 		_values.Add(entry);
 		return Task.CompletedTask;

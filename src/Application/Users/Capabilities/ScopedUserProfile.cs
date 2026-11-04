@@ -70,8 +70,8 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 		if (await GuardAsync(cancellationToken) is { } refused) return refused;
 		if (!Enum.IsDefined(country)) return UserOutcome.InvalidCountry;
 
+		await scoped.User.StoreChangeAsync(data => data.Country = country, cancellationToken);
 		scoped.User.Profile.SetCountry(country);
-		await scoped.User.Context.Users.UpdateAsync(scoped.User.Record, cancellationToken);
 		return UserOutcome.Ok;
 	}
 

@@ -198,7 +198,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 		var (code, _) = await fixture.RunAsync($"users {user.Id} set --permissions {(ulong)UserPermissions.None}");
 
 		Assert.Equal(0, code);
-		Assert.Equal(UserPermissions.None, user.Value.Permissions);
+		Assert.Equal(UserPermissions.None, (await fixture.UserAsync(name)).Value.Permissions);
 	}
 
 	[Theory]

@@ -46,6 +46,22 @@ public sealed class PostgresModerationLogRepositoryTests(PersistenceFixture cont
 	}
 
 	[Fact]
+	public async Task A_recorded_action_against_an_account_the_database_does_not_hold_is_refused_to_the_caller()
+	{
+		var moderator = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+		var unknown = new UserRecord { Id = 4242, Value = new UserData { Name = "not_stored" } };
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Log.AppendAsync(new ModerationData
+		{
+			Action = ModerationAction.Note,
+			Actor = moderator,
+			Target = unknown,
+			Timestamp = First
+		}, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
 	public async Task A_moderation_history_is_listed_newest_first()
 	{
 		var moderator = await Get<IUserRepository>()

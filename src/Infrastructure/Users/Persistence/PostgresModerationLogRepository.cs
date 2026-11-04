@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Moderation;
@@ -9,47 +8,37 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Users.Persistence;
 
 /// <summary>Stores the moderation history of users.</summary>
-internal sealed class PostgresModerationLogRepository(
-	DatabaseReader reader,
-	DatabaseWriter writer,
-	IUserRepository users)
-	: IModerationLogRepository
+internal sealed class PostgresModerationLogRepository(DatabaseSession database) : IModerationLogRepository
 {
 	/// <inheritdoc />
 	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
 	{
-		var action = (int)entry.Action;
-		var byId = entry.Actor.Id;
-		var targetId = entry.Target.Id;
-		var reason = entry.Reason;
-		var timestamp = entry.Timestamp.ToUniversalTime();
-		_ = writer.AppendAsync(Root.User(entry.Target.Id),
-			new WriteCommand<UsersDbContext>(async (context, token) =>
-			{
-				context.ModerationLog.Add(new ModerationLogRow
-				{
-					Action = action,
-					ById = byId,
-					TargetId = targetId,
-					Reason = reason,
-					Timestamp = timestamp
-				});
-				await context.SaveChangesAsync(token);
-			}));
-		return Task.CompletedTask;
+		var row = new ModerationLogRow
+		{
+			Action = (int)entry.Action,
+			ById = entry.Actor.Id,
+			TargetId = entry.Target.Id,
+			Reason = entry.Reason,
+			Timestamp = entry.Timestamp.ToUniversalTime()
+		};
+		return database.WriteAsync((UsersDbContext context, CancellationToken _) =>
+		{
+			context.ModerationLog.Add(row);
+			return Task.CompletedTask;
+		}, cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken cancellationToken = default)
 	{
-		var liveTarget = await users.GetAsync(target.Id, cancellationToken) ?? target;
+		var targetId = target.Id;
 		var minTimestamp = within?.Min?.ToUniversalTime();
 		var maxTimestamp = within?.Max?.ToUniversalTime();
 
-		var (total, rows) = await reader.ReadAsync(async (UsersDbContext context) =>
+		var (total, rows) = await database.ReadAsync(async (UsersDbContext context) =>
 		{
-			var query = context.ModerationLog.Where(row => row.TargetId == liveTarget.Id);
+			var query = context.ModerationLog.Where(row => row.TargetId == targetId);
 
 			if (minTimestamp is { } min)
 				query = within!.Value.MinInclusive
@@ -62,42 +51,31 @@ internal sealed class PostgresModerationLogRepository(
 					: query.Where(row => row.Timestamp < max);
 
 			var count = await query.CountAsync(cancellationToken);
-			var rows = await query
+			var paged = query
 				.OrderByDescending(row => row.Timestamp)
 				.ThenByDescending(row => row.Id)
 				.Skip(page.Offset)
-				.Take(page.Limit)
-				.ToListAsync(cancellationToken);
+				.Take(page.Limit);
+			var rows = await (from row in paged
+				join actor in context.Users on row.ById equals actor.Id
+				orderby row.Timestamp descending, row.Id descending
+				select new { row, actor }).ToListAsync(cancellationToken);
 			return (count, rows);
 		}, cancellationToken);
 
-		var entries = ImmutableList.CreateBuilder<ModerationLog>();
-		foreach (var row in rows)
-		{
-			var actor = await users.GetAsync(row.ById, cancellationToken);
-			if (actor is null)
-				continue;
-
-			var entryTarget = row.TargetId == liveTarget.Id
-				? liveTarget
-				: await users.GetAsync(row.TargetId, cancellationToken);
-			if (entryTarget is null)
-				continue;
-
-			entries.Add(new ModerationLog
+		return new Page<ModerationLog>([
+			.. rows.Select(found => new ModerationLog
 			{
-				Id = row.Id,
+				Id = found.row.Id,
 				Value = new ModerationData
 				{
-					Action = (ModerationAction)row.Action,
-					Actor = actor,
-					Target = entryTarget,
-					Reason = row.Reason,
-					Timestamp = row.Timestamp
+					Action = (ModerationAction)found.row.Action,
+					Actor = PostgresUserRepository.ToUser(found.actor),
+					Target = target,
+					Reason = found.row.Reason,
+					Timestamp = found.row.Timestamp
 				}
-			});
-		}
-
-		return new Page<ModerationLog>(entries.ToImmutable(), total);
+			})
+		], total);
 	}
 }

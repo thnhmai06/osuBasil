@@ -6,6 +6,7 @@ using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Logic;
 
@@ -13,7 +14,8 @@ namespace Basil.Infrastructure.Users.Logic;
 internal sealed class AccountRules(
 	IUserRepository users,
 	ICredentialRepository credentials,
-	ISettingsRepository settings) : IAccountRules
+	ISettingsRepository settings,
+	ILogger<AccountRules> logger) : IAccountRules
 {
 	/// <inheritdoc />
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
@@ -51,7 +53,17 @@ internal sealed class AccountRules(
 			return (null, RegistrationFailure.NameTaken);
 		}
 
-		await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash), cancellationToken);
+		try
+		{
+			await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash), cancellationToken);
+		}
+		catch
+		{
+			// An account without a credential can never sign in and would hold its name: take it back.
+			await DiscardAsync(user);
+			throw;
+		}
+
 		return (user, null);
 	}
 
@@ -66,5 +78,17 @@ internal sealed class AccountRules(
 			return (null, LoginFailure.WrongPassword);
 
 		return (user, null);
+	}
+
+	private async Task DiscardAsync(UserRecord user)
+	{
+		try
+		{
+			await users.DiscardAsync(user, CancellationToken.None);
+		}
+		catch (Exception exception)
+		{
+			logger.LogError(exception, "Could not discard user {UserId} whose credential was not stored", user.Id);
+		}
 	}
 }

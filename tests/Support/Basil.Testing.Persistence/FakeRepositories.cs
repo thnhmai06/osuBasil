@@ -32,6 +32,11 @@ public sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 		throw new NotSupportedException();
 	}
 
+	public Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default)
+	{
+		throw new NotSupportedException();
+	}
+
 	public Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default)
 	{
 		throw new NotSupportedException();
