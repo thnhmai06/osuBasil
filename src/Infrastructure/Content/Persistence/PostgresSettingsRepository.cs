@@ -11,8 +11,7 @@ namespace Basil.Infrastructure.Content.Persistence;
 
 /// <summary>Stores the server-wide settings.</summary>
 internal sealed class PostgresSettingsRepository(
-	DatabaseReader reader,
-	DatabaseWriter writer,
+	DatabaseSession database,
 	ILogger<PostgresSettingsRepository> logger)
 	: ISettingsRepository, IResident
 {
@@ -36,13 +35,15 @@ internal sealed class PostgresSettingsRepository(
 		Of("menu_icon", settings => settings.MenuIcon, (settings, value) => settings with { MenuIcon = value })
 	];
 
-	private readonly ResidentWrites<int> _writes = new();
+	// The cached record: filled at start, replaced only after the database accepted a change; the gate keeps the
+	// last change stored the one cached.
+	private readonly SemaphoreSlim _gate = new(1, 1);
 	private ServerSettings? _settings;
 
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await reader.ReadAsync((ContentDbContext context) => context.Settings
+		var rows = await database.ReadAsync((ContentDbContext context) => context.Settings
 			.ToListAsync(cancellationToken), cancellationToken);
 		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
@@ -81,12 +82,20 @@ internal sealed class PostgresSettingsRepository(
 	{
 		var values = Categories.ToDictionary(category => category.Name, category => category.Write(settings),
 			StringComparer.Ordinal);
-		await _writes.WriteAsync(1, () => writer.SaveAsync(Root.Server, (GetType(), 1),
-			new WriteCommand<ContentDbContext>(async (context, token) =>
+		await _gate.WaitAsync(cancellationToken);
+		try
+		{
+			await database.TransactAsync(async (ContentDbContext context, CancellationToken token) =>
 			{
 				foreach (var (name, value) in values)
 					await UpsertSettingAsync(context, name, value, token);
-			})), () => Interlocked.Exchange(ref _settings, settings));
+			}, cancellationToken);
+			Interlocked.Exchange(ref _settings, settings);
+		}
+		finally
+		{
+			_gate.Release();
+		}
 	}
 
 	private static Task UpsertSettingAsync(ContentDbContext context, string name, string? value,

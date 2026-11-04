@@ -26,7 +26,6 @@ public static class DependencyInjection
 		services.AddSingleton<PostgresMenuBannerRepository>();
 		services.AddSingleton<IMenuBannerRepository>(provider =>
 			provider.GetRequiredService<PostgresMenuBannerRepository>());
-		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresMenuBannerRepository>());
 		services.AddSingleton<IMenuBannerStorage, FileMenuBannerStorage>();
 		services.AddSingleton<IMenuIconStorage, FileMenuIconStorage>();
 		services.AddSingleton<IMenuSeasonalsStorage, FileMenuSeasonalsStorage>();

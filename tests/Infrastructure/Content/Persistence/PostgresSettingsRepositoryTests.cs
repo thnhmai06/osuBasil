@@ -119,7 +119,7 @@ public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container
 	}
 
 	[Fact]
-	public async Task Of_two_concurrent_changes_of_the_settings_memory_holds_the_ones_stored_last()
+	public async Task Of_two_concurrent_changes_of_the_settings_the_ones_stored_last_are_read()
 	{
 		var changes = new[]
 		{
