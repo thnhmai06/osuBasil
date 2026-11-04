@@ -29,7 +29,7 @@ public class LayeringTests
 	private const string Objects = @"^Basil\.Application\.\w+\.Objects";
 	private const string Storage = @"^Basil\.Application\.\w+\.Storage";
 	private const string InfrastructureWorkers = @"^Basil\.Infrastructure\.\w+\.Workers";
-	private const string InfrastructureHandlers = @"^Basil\.Infrastructure\.\w+\.Handlers";
+	private const string InfrastructureHandlers = @"^Basil\.Infrastructure\.\w+\.(Handlers|Services)";
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolStable = typeof(Protocol.Stable.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;

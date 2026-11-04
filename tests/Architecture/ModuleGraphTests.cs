@@ -88,7 +88,7 @@ public class ModuleGraphTests
 			       or "Basil.Gateway" or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                (name == $"Basil.Infrastructure.{module}" &&
-		                                 module is not ("Anticheat" or "Servers")));
+		                                 module is not "Servers"));
 	}
 
 	private static bool IsAllowed(string from, string to)

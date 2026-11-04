@@ -13,7 +13,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Anticheat"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Anticheat.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Anticheat.Tests"/>
 	</ItemGroup>
 

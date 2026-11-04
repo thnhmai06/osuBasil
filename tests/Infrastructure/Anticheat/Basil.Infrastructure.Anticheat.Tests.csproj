@@ -26,8 +26,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\..\src\Infrastructure\Common\Basil.Infrastructure.Common.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Common\Basil.Application.Common.csproj"/>
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\..\src\Infrastructure\Anticheat\Basil.Infrastructure.Anticheat.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Anticheat\Basil.Application.Anticheat.csproj"/>
 		<ProjectReference Include="..\..\Support\Basil.Testing\Basil.Testing.csproj"/>
 	</ItemGroup>

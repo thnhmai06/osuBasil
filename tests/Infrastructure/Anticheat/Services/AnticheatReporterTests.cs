@@ -6,7 +6,7 @@ using Basil.Domain.Client;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Basil.Application.Anticheat.Tests.Services;
+namespace Basil.Infrastructure.Anticheat.Tests.Services;
 
 /// <summary>Verifies how the flags a game client reports become anticheat events.</summary>
 public sealed class AnticheatReporterTests

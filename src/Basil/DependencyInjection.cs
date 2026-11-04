@@ -1,4 +1,3 @@
-using Basil.Application.Anticheat;
 using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Beatmaps;
 using Basil.Application.Beatmaps.Objects.Events;
@@ -19,6 +18,7 @@ using Basil.Host.Cli;
 using Basil.Host.Irc;
 using Basil.Host.Stable;
 using Basil.Host.Rest;
+using Basil.Infrastructure.Anticheat;
 using Basil.Infrastructure.Authentication;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Chat;
@@ -67,6 +67,7 @@ public static class DependencyInjection
 		services.AddScoresInfrastructure();
 		services.AddMultiplayerInfrastructure();
 		services.AddChatInfrastructure();
+		services.AddAnticheatInfrastructure();
 		return services;
 	}
 
@@ -80,7 +81,6 @@ public static class DependencyInjection
 	{
 		services.AddEvents();
 		services.AddUsersApplication();
-		services.AddAnticheatApplication();
 		services.AddBeatmapsApplication();
 		services.AddScoresApplication();
 		services.AddMultiplayerApplication();
