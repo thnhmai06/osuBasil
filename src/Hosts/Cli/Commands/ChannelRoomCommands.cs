@@ -1,3 +1,4 @@
+using Basil.Application.Servers.Messages.Channels;
 using Mediator;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Chat.Objects;
@@ -175,8 +176,8 @@ internal static class ChannelRoomCommands
 	private static async Task<int> CreateChannelAsync(CommandCall call)
 	{
 		var record = new GeneralChannelRecord { Name = call.Required("name"), Value = DataOf(call) };
-		var result = await call.Get<Server>().ScopeTo(await call.ByAsync()).Channels
-			.CreateAsync(record, call.CancellationToken);
+		var result = await call.Get<ISender>().Send(new CreateGeneralChannel(await call.ByAsync(), record),
+			call.CancellationToken);
 		return call.Report(result, $"Created channel {record.Name}.");
 	}
 
@@ -185,11 +186,10 @@ internal static class ChannelRoomCommands
 		if (call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel)
 			return call.NotFound("channel");
 
-		var scoped = channel.ScopeTo(await call.ByAsync()).General!.Value;
-		var result = await scoped.ConfigureAsync(new GeneralChannelChange(call.Text("topic"),
-			(UserPrivileges?)call.Mask("readPrivileges"), (UserPrivileges?)call.Mask("writePrivileges"),
-			call.Bool("autoJoin"),
-			call.Bool("visible")), call.CancellationToken);
+		var (result, _) = await call.Get<ISender>().Send(new ConfigureGeneralChannel(await call.ByAsync(), channel.Name,
+			new GeneralChannelChange(call.Text("topic"),
+				(UserPrivileges?)call.Mask("readPrivileges"), (UserPrivileges?)call.Mask("writePrivileges"),
+				call.Bool("autoJoin"), call.Bool("visible"))), call.CancellationToken);
 		return call.Report(result, "Updated.");
 	}
 
@@ -197,8 +197,8 @@ internal static class ChannelRoomCommands
 	{
 		return call.Get<GeneralChannelRegistry>().Find(call.Word("name")) is not { } channel
 			? call.NotFound("channel")
-			: call.Report(await channel.ScopeTo(await call.ByAsync()).General!.Value.DeleteAsync(call.CancellationToken),
-				"Channel deleted.");
+			: call.Report((await call.Get<ISender>().Send(new DeleteGeneralChannel(await call.ByAsync(), channel.Name),
+				call.CancellationToken)).Result, "Channel deleted.");
 	}
 
 	private static Task<int> ListRoomsAsync(CommandCall call)

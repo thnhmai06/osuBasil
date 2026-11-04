@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common;
@@ -15,7 +17,7 @@ namespace Basil.Bot.Commands;
 ///     Operations run on the server and the channel scoped to the connection of the user who typed the command; the
 ///     scope decides whether the typist may manage channels, and the command only turns the result into a reply.
 /// </remarks>
-internal sealed class ChannelCommands(Server server, GeneralChannelRegistry channels)
+internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry channels)
 {
 	/// <summary>Runs a <c>!channel &lt;subcommand&gt; [args...]</c> command for the sender.</summary>
 	/// <param name="context">Who sent the command, where it was sent, and how to answer it.</param>
@@ -83,7 +85,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 			return await InvalidAsync(context, cancellationToken);
 		}
 
-		var result = await server.ScopeTo(context.Actor).Channels.CreateAsync(record, cancellationToken);
+		var result = await sender.Send(new CreateGeneralChannel(context.Actor, record), cancellationToken);
 		var (reply, arguments) = ChannelReplies.Of(result, name);
 		await context.Reply(reply, arguments, cancellationToken);
 		return result.IsOk;
@@ -94,41 +96,26 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 	{
 		if (!TryParse(options, out var change)) return await InvalidAsync(context, cancellationToken);
 
-		var (found, channel) = server.ScopeTo(context.Actor).Channels.Find(name);
-		if (channel is null)
-		{
-			var (refusal, reason) = ChannelReplies.Of(found, name, ChannelReplies.Updated);
-			await context.Reply(refusal, reason, cancellationToken);
-			return false;
-		}
-
-		Result<ChannelOutcome> result;
+		GeneralChannelAnswer answer;
 		try
 		{
-			result = await channel.ScopeTo(context.Actor).General!.Value.ConfigureAsync(change, cancellationToken);
+			answer = await sender.Send(new ConfigureGeneralChannel(context.Actor, name, change), cancellationToken);
 		}
 		catch (ArgumentException)
 		{
 			return await InvalidAsync(context, cancellationToken);
 		}
 
-		var (reply, arguments) = ChannelReplies.Of(result, channel.Name, ChannelReplies.Updated);
+		var (result, channel) = answer;
+		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Updated);
 		await context.Reply(reply, arguments, cancellationToken);
 		return result.IsOk;
 	}
 
 	private async Task<bool> DeleteAsync(CommandContext context, string name, CancellationToken cancellationToken)
 	{
-		var (found, channel) = server.ScopeTo(context.Actor).Channels.Find(name);
-		if (channel is null)
-		{
-			var (refusal, reason) = ChannelReplies.Of(found, name, ChannelReplies.Deleted);
-			await context.Reply(refusal, reason, cancellationToken);
-			return false;
-		}
-
-		var result = await channel.ScopeTo(context.Actor).General!.Value.DeleteAsync(cancellationToken);
-		var (reply, arguments) = ChannelReplies.Of(result, channel.Name, ChannelReplies.Deleted);
+		var (result, channel) = await sender.Send(new DeleteGeneralChannel(context.Actor, name), cancellationToken);
+		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Deleted);
 		await context.Reply(reply, arguments, cancellationToken);
 		return result.IsOk;
 	}

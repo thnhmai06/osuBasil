@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Servers.Objects;
@@ -32,7 +34,7 @@ internal static class ChannelRoutes
 			.Select(c => ChannelView.Of(c.Record)).ToList());
 	}
 
-	private static async Task<IResult> CreateAsync(HttpContext context, CreateChannelRequest request, Server server)
+	private static async Task<IResult> CreateAsync(HttpContext context, CreateChannelRequest request, ISender sender)
 	{
 		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
 
@@ -57,23 +59,20 @@ internal static class ChannelRoutes
 			return Api.Invalid("The channel is not valid.");
 		}
 
-		var result = await server.ScopeTo(context.Connection()).Channels.CreateAsync(record, context.RequestAborted);
+		var result = await sender.Send(new CreateGeneralChannel(context.Connection(), record), context.RequestAborted);
 		return result.IsOk ? Api.Created(ChannelView.Of(record)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
-		Server server)
+		ISender sender)
 	{
-		var (found, channel) = server.ScopeTo(context.Connection()).Channels.Find(name);
-		if (channel is null) return found.Refusal();
-
 		try
 		{
-			var result = await channel.ScopeTo(context.Connection()).General!.Value.ConfigureAsync(new GeneralChannelChange(
-				request.Topic,
-				(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
-				request.Visible), context.RequestAborted);
-			return result.IsOk ? Api.Ok(ChannelView.Of(channel.Record), "Updated successfully") : result.Refusal();
+			var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Connection(), name,
+				new GeneralChannelChange(request.Topic,
+					(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
+					request.Visible)), context.RequestAborted);
+			return result.IsOk ? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully") : result.Refusal();
 		}
 		catch (ArgumentException)
 		{
@@ -81,12 +80,11 @@ internal static class ChannelRoutes
 		}
 	}
 
-	private static async Task<IResult> DeleteAsync(HttpContext context, string name, Server server)
+	private static async Task<IResult> DeleteAsync(HttpContext context, string name, ISender sender)
 	{
-		var (found, channel) = server.ScopeTo(context.Connection()).Channels.Find(name);
-		return channel is null
-			? found.Refusal()
-			: (await channel.ScopeTo(context.Connection()).General!.Value.DeleteAsync(context.RequestAborted)).Answer();
+		var (result, _) = await sender.Send(new DeleteGeneralChannel(context.Connection(), name),
+			context.RequestAborted);
+		return result.Answer();
 	}
 
 	/// <summary>A new general channel.</summary>
