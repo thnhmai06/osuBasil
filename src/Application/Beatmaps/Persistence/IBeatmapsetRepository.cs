@@ -32,7 +32,7 @@ public interface IBeatmapsetRepository
 	/// <remarks>
 	///     Either every change is stored or none is. A replaced beatmap keeps its id and whether it is locked or
 	///     visible; a replaced set keeps its id, creation time, lock and visibility. New sets and beatmaps get their
-	///     osu! id, or a new local id. The live instances in memory are changed only once everything is stored.
+	///     osu! id, or a new local id.
 	/// </remarks>
 	/// <exception cref="AlreadyExistsException">A new set or beatmap has an id or hash another stored one has.</exception>
 	Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes,
