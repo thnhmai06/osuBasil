@@ -2,6 +2,11 @@
 
 ## Overview
 
+> **Migration status.** The memory-first, write-behind model described below is being removed. The target is
+> awaited persistence with cache-aside reads (Registry / Repository / Storage), described in
+> [`persistence.md`](../for-agents/persistence.md); sections marked **(target: removed)** describe what the code still
+> does until the last module is migrated.
+
 Basil keeps its records in PostgreSQL, but the database is not where the server works. **Memory is the truth;
 the database keeps a copy of what was done.** A change to on-demand data is applied to the live object in memory first
 and its copy is queued for the database; resident data is written first, and memory follows once the write is
@@ -12,7 +17,7 @@ This document explains why the storage works this way, what is stored, and how w
 Files (beatmapsets, replays, avatars, menu images, screenshots, FAQs) are not in the database; see
 [`assets.md`](assets.md) and [`beatmap-ingestion.md`](beatmap-ingestion.md).
 
-## Why memory first
+## Why memory first (target: removed)
 
 Basil runs one server process for one deployment, and every request it answers concerns objects that are already
 alive: the user who is online, the room being played, the beatmap selected in it. Asking the database for them on
@@ -58,7 +63,7 @@ by how much, the ranking of the scores) is stored as JSON in `rounds.result` whe
 
 ## Invariants
 
-* **Memory first.** Everything asks memory first and reads the database only on a miss, to load into memory. A
+* **Memory first (target: removed).** Everything asks memory first and reads the database only on a miss, to load into memory. A
   change to on-demand data is applied to the live instance and its copy is queued; resident data is written first
   and memory follows the commit.
 * **One live instance per identity.** Every `GetAsync`, `GetByYAsync` and `ListAsync` of a repository returns the same

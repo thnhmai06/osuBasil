@@ -65,7 +65,7 @@ operation, so a class each would only add files.
 * Packets any osu! or tournament connection may send (logout, stats and presence requests, tournament match info and
   channel joins) are handled first.
 * Packets of a regular osu! client (`StableConnection`: status, friends, away message, channels, messages, lobby, spectating,
-  multiplayer) follow; a tournament client does not send them.
+  multiplayer) follow; a tournament client (target: removed) does not send them.
 * The multiplayer packets map onto the room's operations (`room.ScopeTo(connection)` and its parts: members, settings,
   authority, slots, rounds).
 
@@ -99,7 +99,7 @@ Handler ──► scoped Application operation ──► state change, event pub
 * Application publishes the event (a user came online, a member joined a channel, a room changed). The `Delivery` handlers of
   the host (`UserDelivery`, `ChatDelivery`, `RoomDelivery`) are the only consumers that know the packet form; they build the
   bytes once and queue them for every open osu! client among the recipients.
-* `RoomAudience` says who hears about a room: its players, its tournament observers and, for the lobby view, the clients
+* `RoomAudience` says who hears about a room: its players, its tournament observers (target: removed) and, for the lobby view, the clients
   watching the lobby.
 * Connections that are not osu! clients (API, IRC) are skipped by the `Outbox`; they get the same events through their own
   transports.

@@ -862,14 +862,8 @@ See [`docs/for-agents/issue-tracker.md`](docs/for-agents/issue-tracker.md).
 
 ### Domain modeling
 
-Domain-modeling work uses:
-
-```text
-CONTEXT.md
-docs/adr/
-```
-
-These files are created lazily by the `/domain-modeling` workflow.
+Domain-modeling work uses `CONTEXT.md`, created lazily by the `/domain-modeling` workflow. ADRs were removed; the plan
+and its decisions live in the documentation under `docs/`.
 
 See [`docs/for-agents/domain.md`](docs/for-agents/domain.md).
 

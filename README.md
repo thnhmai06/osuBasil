@@ -46,8 +46,7 @@ requiring third-party online services.
   the same with or without them.
 * **Fine-grained permissions**: every account acts under its own identity and permissions, osu!-style restrictions
   and silences included; the privileges an osu! client sees are derived from them.
-* **Memory-first storage**: live state is kept in memory and persisted to [PostgreSQL](https://www.postgresql.org/) in
-  the background; stored files live in a local `Data/` directory.
+* **Live state in memory, durable in PostgreSQL**: live objects run in memory and records are stored in [PostgreSQL](https://www.postgresql.org/) (today written behind the scenes; target: awaited writes with cache-aside reads); stored files live in a local `Data/` directory.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
   external beatmap mirrors.
 * **User-centric HTTP API**: clients sign in as users and get HTTP and SSE endpoints for rooms, chat, match reports,

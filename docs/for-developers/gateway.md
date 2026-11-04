@@ -89,7 +89,7 @@ runtime-configurable.
 
 * [`RateLimiter.cs`](../../src/Gateway/RateLimiter.cs) and [`LoginAttemptGuard.cs`](../../src/Gateway/LoginAttemptGuard.cs) — the limiter and login guard.
 * [`Admission.cs`](../../src/Gateway/Admission.cs) and [`GatewayLimits.cs`](../../src/Gateway/GatewayLimits.cs) — tier 2 and its swappable limits snapshot.
-* [`UploadLimit.cs`](../../src/Hosts/Rest/Http/UploadLimit.cs) and [`UploadLimit.cs`](../../src/Hosts/Stable/Support/UploadLimit.cs) — today's two upload limits (move to the gateway).
+* [`UploadLimit.cs`](../../src/Hosts/Rest/Http/UploadLimit.cs) and [`UploadLimit.cs`](../../src/Hosts/Stable/Support/UploadLimit.cs) — the two upload limits. They stay in the hosts: they differ and depend on ASP.NET and the stored settings, so they do not move to the gateway.
 
 ## See also
 

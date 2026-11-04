@@ -100,7 +100,7 @@ a user reference for the same purpose. A beatmapset and its difficulties are sho
 
 References are resolved from the in-memory state of the objects and registries that own them, which is the source of
 truth of a running server, so a response builder does not issue a database query per embedded reference. See
-[`database.md`](database.md) and `docs/for-agents/persistence.md` for the memory-first model.
+[`database.md`](database.md) and `docs/for-agents/persistence.md` for the storage model (memory-first today; cache-aside is the target).
 
 ## No `204` JSON responses
 

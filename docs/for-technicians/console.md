@@ -69,7 +69,7 @@ opened. After the command the write queue is drained and flushed before the proc
 confirmation has stored its change.
 
 > **Never run an offline command while another server uses the same database.** The offline process writes straight to
-> the database, and the memory-first data of the running server overwrites it.
+> the database, and the running server's in-memory data (memory-first today; target: removed) overwrites it.
 
 ### Exit codes of a command
 
