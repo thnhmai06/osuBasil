@@ -45,6 +45,7 @@
 		<ProjectReference Include="..\Infrastructure\Scores\Basil.Infrastructure.Scores.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Multiplayer\Basil.Infrastructure.Multiplayer.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Chat\Basil.Infrastructure.Chat.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Servers\Basil.Infrastructure.Servers.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
