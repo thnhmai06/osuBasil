@@ -19,7 +19,10 @@ internal sealed class BeatmapsetImporter(
 		{
 			var (content, stream) = await planner.ReadAsync(uploaded, cancellationToken);
 			if (content is null)
+			{
+				await storage.QuarantineAsync(uploaded, cancellationToken);
 				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
+			}
 
 			BeatmapsetPlan item;
 			await using (stream!)

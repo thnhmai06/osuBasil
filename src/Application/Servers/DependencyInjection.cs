@@ -1,3 +1,4 @@
+using Basil.Application.Common.Storage;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Persistence;
@@ -27,6 +28,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<RoomChannels>(),
 			sp.GetRequiredService<PmChannels>(),
 			sp.GetRequiredService<IScreenshotInspector>(),
+			sp.GetRequiredService<IUploadSpool>(),
 			sp.GetRequiredService<IScreenshotStorage>(),
 			sp.GetRequiredService<Lobby>(),
 			sp.GetRequiredService<IChannelRepository>(),

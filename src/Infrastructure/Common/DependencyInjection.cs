@@ -1,5 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Common.Events;
+using Basil.Application.Common.Storage;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
 using Basil.Infrastructure.Common.Workers;
@@ -25,6 +26,7 @@ public static class DependencyInjection
 		services.AddCommonApplication();
 		services.TryAddSingleton(TimeProvider.System);
 		services.AddSingleton<DataPaths>();
+		services.AddSingleton<IUploadSpool, FileUploadSpool>();
 		services.AddSingleton<Database>();
 		services.AddSingleton<DatabaseSession>();
 		services.AddSingleton<DatabaseMigrator>();

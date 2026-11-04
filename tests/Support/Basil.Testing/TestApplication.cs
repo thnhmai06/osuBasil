@@ -10,6 +10,7 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common.Events;
+using Basil.Application.Common.Storage;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
@@ -38,6 +39,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Mediator;
+using Basil.Infrastructure.Common.Storage;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Basil.Testing;
@@ -78,6 +81,7 @@ public sealed class TestApplication : IDisposable
 	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemorySettingsRepository _settings;
 
+	private readonly string _spoolRoot;
 	private readonly InMemoryUserRepository _users;
 
 	/// <summary>Creates the application and resolves its public roots.</summary>
@@ -100,6 +104,9 @@ public sealed class TestApplication : IDisposable
 		services.AddLogging();
 		services.AddSingleton<TimeProvider>(Clock);
 		RegisterStoragePorts(services);
+		_spoolRoot = Path.Combine(Path.GetTempPath(), "basil-test-" + Guid.NewGuid().ToString("N"));
+		services.AddSingleton<IUploadSpool>(new FileUploadSpool(
+			new DataPaths(Options.Create(new StorageOptions { Location = _spoolRoot })), Clock));
 		services.AddSingleton<IUserRepository>(_users);
 		services.AddSingleton<ICredentialRepository>(_credentials);
 		services.AddSingleton<IRestrictionRepository>(_restrictions);
@@ -239,7 +246,11 @@ public sealed class TestApplication : IDisposable
 	public void Dispose()
 	{
 		Provider.Dispose();
+		if (Directory.Exists(_spoolRoot)) Directory.Delete(_spoolRoot, true);
 	}
+
+	/// <summary>Gets the directory where the spool and the quarantine of uploads are kept.</summary>
+	public string UploadsRoot => _spoolRoot;
 
 	/// <summary>Drops a session from the store while its client stays online, as before its record is written.</summary>
 	/// <param name="id">The session.</param>

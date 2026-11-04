@@ -1,3 +1,4 @@
+using Basil.Application.Common.Storage;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common.Events;
 using Basil.Application.Content.Persistence;
@@ -34,6 +35,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<ICredentialRepository>(),
 			sp.GetRequiredService<IUserAvatarStorage>(),
 			sp.GetRequiredService<IScreenshotInspector>(),
+			sp.GetRequiredService<IUploadSpool>(),
 			sp.GetRequiredService<ISettingsRepository>()));
 		services.AddSingleton<ConnectionContext>(sp => new ConnectionContext(
 			sp.GetRequiredService<TimeProvider>(),

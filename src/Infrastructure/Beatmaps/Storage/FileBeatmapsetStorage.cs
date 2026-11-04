@@ -66,6 +66,16 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
+	public Task QuarantineAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)
+	{
+		if (archive is not FileBeatmapsetArchive placed || !IsHidden(Path.GetFileName(placed.Path)))
+			throw new ArgumentException("The archive was not uploaded to this storage.", nameof(archive));
+
+		Quarantine.Keep(paths, placed.Path, time);
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
 	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive,
 		CancellationToken cancellationToken = default)
 	{

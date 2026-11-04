@@ -178,11 +178,10 @@ internal sealed class BeatmapsetScanner(
 	private async Task<(List<BeatmapsetRecord> Remove, IReadOnlyList<BeatmapsetRecord> StoredSets)> CommitAsync(
 		ScanEntries entries, List<BeatmapsetPlan> indexed, CancellationToken cancellationToken)
 	{
-		var remove = (
-				await Paging.ListAllAsync(page => beatmapsets.ListAsync(
-					new BeatmapQuery(), page, cancellationToken), cancellationToken))
-			.Where(set => !entries.Seen.Contains(set.Id))
-			.ToList();
+		var remove = new List<BeatmapsetRecord>();
+		foreach (var id in (await beatmapsets.ListIdsAsync(cancellationToken)).Where(id => !entries.Seen.Contains(id)))
+			if (await beatmapsets.GetAsync(id, cancellationToken) is { } forgotten)
+				remove.Add(forgotten);
 
 		var store = indexed.Select(x => x.Change)
 			.Concat(entries.Changed.Select(x => x.Change))
