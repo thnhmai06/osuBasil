@@ -100,6 +100,15 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 * **Streaming is mandatory.** Data reaches the consumer directly; no `MemoryStream` in Application. A read is bounded,
   loaded, the connection released, then sent. Every upload is spooled to a temporary file, validated, then moved
   atomically (see the streaming rule in `AGENTS.md`).
+* **Uploads and the quarantine.** Application takes an upload that it must check through `IUploadSpool`
+  (`Application.Common/Storage`; `FileUploadSpool` in `Infrastructure.Common/Storage`): it is copied once into
+  `<Data>/Spool/<guid>.tmp`, cut one byte past its limit, read back for validation and deleted on disposal. An upload
+  that fails validation is moved to `<Data>/Quarantine/<guid>` (`Quarantine.Keep`, which also deletes quarantined
+  files older than seven days); an archive the importer cannot read is quarantined the same way
+  (`IBeatmapsetStorage.QuarantineAsync`). A stored file is written by `DataStorage.SaveAsync`, which streams into a
+  temporary file next to the target and moves it into place; a replay is written with its header around the submitted
+  frames in that one pass (`ReplayFile.WriteAsync`). Menu images are not inspected, so they only take the
+  temporary-file-and-move path. `Spool` and `Quarantine` are not swept at startup after a crash.
 
 ## How a repository is written now
 
