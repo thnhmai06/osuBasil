@@ -38,7 +38,9 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 		var found = await Restrictions.GetAsync(created.Id, TestContext.Current.CancellationToken);
 
 		Assert.NotNull(found);
-		Assert.Same(created, found);
+		Assert.Equal(created.Id, found.Id);
+		Assert.Equal(user.Id, found.Value.User.Id);
+		Assert.Equal(RestrictionData.Silence, found.Value.Permissions);
 	}
 
 	[Fact]
@@ -50,7 +52,15 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 
 		var listed = await Restrictions.ListAsync(user, TestContext.Current.CancellationToken);
 
-		Assert.Same(created, Assert.Single(listed));
+		Assert.Equal(created.Id, Assert.Single(listed).Id);
+	}
+
+	[Fact]
+	public async Task A_restriction_of_an_account_the_database_does_not_hold_is_refused_to_the_caller()
+	{
+		var unknown = new UserRecord { Id = 4242, Value = new UserData { Name = "not_stored" } };
+
+		await Assert.ThrowsAnyAsync<Exception>(() => CreateAsync(unknown, Moment));
 	}
 
 	[Fact]
