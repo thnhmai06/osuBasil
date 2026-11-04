@@ -38,7 +38,11 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 			},
 			Bot = new ServerSettings.BotSettings { CommandPrefix = "?" },
 			RateLimits = new ServerSettings.RateLimitSettings
-				{ Chat = new ServerSettings.Limit(3, TimeSpan.FromSeconds(2)) },
+			{
+				Chat = new ServerSettings.Limit(3, TimeSpan.FromSeconds(2)),
+				Admission = new ServerSettings.AdmissionLimitSettings(7, TimeSpan.FromSeconds(30), 3, 11, 12, 13, 14,
+					0.2, 0.4, 1, TimeSpan.FromSeconds(9))
+			},
 			Uploads = new ServerSettings.UploadSettings { AvatarMaxSide = 512 },
 			Cors = new ServerSettings.CorsSettings { AllowedOrigins = ["https://example.com"] },
 			MenuIcon = new ServerSettings.MenuIconSettings

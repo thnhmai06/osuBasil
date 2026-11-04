@@ -6,6 +6,15 @@ namespace Basil.Application.Content.Tests.Persistence;
 /// <summary>Verifies the validation of the settings an administrator changes while the server runs.</summary>
 public class ServerSettingsTests
 {
+	private static ServerSettings.AdmissionLimitSettings Limits(int requests = 120, TimeSpan? window = null,
+		int elevatedMultiplier = 4, int interactive = 256, int listing = 32, int upload = 8, int live = 1024,
+		double degraded = 0.5, double shed = 0.7, double hardShed = 0.9, TimeSpan? busyRetryAfter = null)
+	{
+		return new ServerSettings.AdmissionLimitSettings(requests, window ?? TimeSpan.FromMinutes(1),
+			elevatedMultiplier, interactive, listing, upload, live, degraded, shed, hardShed,
+			busyRetryAfter ?? TimeSpan.FromSeconds(5));
+	}
+
 	public static TheoryData<Action> InvalidValues => new()
 	{
 		() => _ = new ServerSettings.RoundSettings { ScoreWait = TimeSpan.Zero },
@@ -23,6 +32,18 @@ public class ServerSettingsTests
 		() => _ = new ServerSettings.UploadSettings { ScreenshotMaxSide = 0 },
 		() => _ = new ServerSettings.UploadSettings { AvatarMaxSize = 0 },
 		() => _ = new ServerSettings.UploadSettings { AvatarMaxSide = 0 },
+		() => _ = Limits(requests: 0),
+		() => _ = Limits(window: TimeSpan.Zero),
+		() => _ = Limits(elevatedMultiplier: 0),
+		() => _ = Limits(interactive: 0),
+		() => _ = Limits(listing: 0),
+		() => _ = Limits(upload: 0),
+		() => _ = Limits(live: 0),
+		() => _ = Limits(busyRetryAfter: TimeSpan.Zero),
+		() => _ = Limits(degraded: 0),
+		() => _ = Limits(hardShed: 1.01),
+		() => _ = Limits(degraded: 0.7, shed: 0.7),
+		() => _ = Limits(shed: 0.9, hardShed: 0.9),
 		() => _ = new ServerSettings.BotSettings { CommandPrefix = " " },
 		() => _ = new ServerSettings.AccountSettings { DefaultPermissions = (UserPermissions)(1UL << 62) }
 	};
