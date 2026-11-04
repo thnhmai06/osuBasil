@@ -19,6 +19,7 @@ using Basil.Host.Irc;
 using Basil.Host.Stable;
 using Basil.Host.Rest;
 using Basil.Infrastructure.Anticheat;
+using Basil.Infrastructure.Servers;
 using Basil.Infrastructure.Authentication;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Chat;
@@ -68,6 +69,7 @@ public static class DependencyInjection
 		services.AddMultiplayerInfrastructure();
 		services.AddChatInfrastructure();
 		services.AddAnticheatInfrastructure();
+		services.AddServersInfrastructure();
 		return services;
 	}
 

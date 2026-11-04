@@ -21,6 +21,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil.Application.Servers.Tests"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Servers"/>
 	</ItemGroup>
 
 	<ItemGroup>
