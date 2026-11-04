@@ -398,7 +398,7 @@ Anticheat   -> Users
 Scores      -> Users, Beatmaps
 Multiplayer -> Users, Beatmaps, Content, Scores
 Chat        -> Users, Multiplayer
-Diagnostics -> Users                     (target)
+Diagnostics -> Users
 Servers     -> every module above
 Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users      (target as a module)
 ```
@@ -569,10 +569,14 @@ Content/       ISettingsRepository, IMenuBannerRepository,
                IScreenshotInspector                                     (Ports)
 Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects)
                ScopedServer and its parts                               (Capabilities)
+Diagnostics/   ServerDiagnostics, DiagnosticsOutcome                    (Objects)
+               ScopedDiagnostics                                        (Capabilities)
+               IDiagnosticsIntake, IDiagnosticsFeed                     (Services)
 ```
 
-In the target, `Diagnostics` (intake and feed) becomes a module; the listing
-above is the state today. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
+`Diagnostics` (intake, feed and the maintenance actions behind `ScopedDiagnostics`) is a module of its own; the
+contribution contracts every module answers (`CollectDiagnostics`, `IDiagnosticsCollector`, `IClearTally`, `ICacheCleaner`,
+`DiagnosticsValue`, `DiagnosticsSample`) live in Application.Common. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
 event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
 Infrastructure.Common's `Workers/`. Concrete handlers live in the `Handlers/` folder of the module's Infrastructure project or in the consumer that
 owns them, including `Basil.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
