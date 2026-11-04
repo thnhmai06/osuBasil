@@ -40,11 +40,12 @@ internal static class OsuWebRoutes
 
 	private static readonly TimeSpan RegistrationCheckWindow = TimeSpan.FromMinutes(10);
 
-	/// <summary>Maps the web endpoints.</summary>
+	/// <summary>Maps the web endpoints; each one declares its admission policy.</summary>
 	/// <param name="app">The route builder of the <c>osu.</c> host.</param>
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
 	{
-		var web = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Web");
+		var web = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Web")
+			.WithMetadata(new AdmissionPolicyAttribute());
 		web.MapGet("/", () => "osu").WithSummary("Say that the web host of the osu! client is there.");
 		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
 			.WithSummary("List the best scores of a beatmap.")

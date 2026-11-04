@@ -28,6 +28,7 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil"/>
 		<InternalsVisibleTo Include="Basil.Host.Irc.Tests"/>
+		<InternalsVisibleTo Include="Basil.ArchitectureTests"/>
 	</ItemGroup>
 
 	<ItemGroup>

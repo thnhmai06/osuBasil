@@ -58,9 +58,12 @@ public static class StableRoutes
 		return labels.Any(label => host.StartsWith(label + ".", StringComparison.OrdinalIgnoreCase));
 	}
 
-	private static void MapStable(this IEndpointRouteBuilder app)
+	/// <summary>Maps the game server routes of the <c>c.</c> hosts; each one declares its admission policy.</summary>
+	/// <param name="app">The route builder of the <c>c.</c> hosts.</param>
+	internal static void MapStable(this IEndpointRouteBuilder app)
 	{
-		var cho = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Game server");
+		var cho = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Game server")
+			.WithMetadata(new AdmissionPolicyAttribute());
 		cho.MapGet("/", () => "cho").WithSummary("Say that the game server of the osu! client is there.");
 		cho.MapPost("/", ExchangeAsync)
 			.WithSummary("Log in, or exchange packets.")

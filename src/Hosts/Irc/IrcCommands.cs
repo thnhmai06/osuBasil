@@ -17,6 +17,7 @@ using Microsoft.Extensions.Options;
 namespace Basil.Host.Irc;
 
 /// <summary>Runs the commands of IRC clients: registration first, then chat through the clients' scoped objects.</summary>
+[AdmissionPolicy]
 internal sealed partial class IrcCommands(
 	UserRegistry registry,
 	Server server,
@@ -37,6 +38,13 @@ internal sealed partial class IrcCommands(
 	[
 		"cap-notify", "sasl", "server-time", "message-tags", "account-tag", "account-notify", "away-notify",
 		"extended-join", "multi-prefix", "userhost-in-names", "echo-message", "standard-replies"
+	];
+
+	/// <summary>Every command the server answers, with the admission policy metadata it is received under.</summary>
+	internal static IReadOnlyList<(string Name, IReadOnlyList<object> Metadata)> EntryPoints { get; } =
+	[
+		.. IrcReference.Commands.Select(command => (command.Command,
+			(IReadOnlyList<object>)typeof(IrcCommands).GetCustomAttributes(true)))
 	];
 
 	private IrcOptions Options => options.Value;

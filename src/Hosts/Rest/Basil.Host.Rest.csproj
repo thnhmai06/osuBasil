@@ -34,6 +34,7 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil"/>
 		<InternalsVisibleTo Include="Basil.Host.Rest.Tests"/>
+		<InternalsVisibleTo Include="Basil.ArchitectureTests"/>
 	</ItemGroup>
 
 	<ItemGroup>

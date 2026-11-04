@@ -61,11 +61,7 @@ public static class RestHost
 				branch.UseMiddleware<RestPipeline>();
 				branch.UseCors();
 				branch.UseRouting();
-				branch.UseEndpoints(endpoints =>
-				{
-					endpoints.MapRest();
-					endpoints.MapFallback(NoSuchRoute);
-				});
+				branch.UseEndpoints(endpoints => endpoints.MapRest());
 			});
 		return app;
 	}
@@ -81,8 +77,11 @@ public static class RestHost
 			: Api.NotFound("No such route.");
 	}
 
-	private static void MapRest(this IEndpointRouteBuilder app)
+	/// <summary>Maps every route of the <c>api.</c> host; each one declares its admission policy.</summary>
+	/// <param name="endpoints">The route builder of the <c>api.</c> host.</param>
+	internal static void MapRest(this IEndpointRouteBuilder endpoints)
 	{
+		var app = endpoints.MapGroup("").WithMetadata(new AdmissionPolicyAttribute());
 		app.MapGet("/health", () => Api.Ok("healthy")).WithTags("Operations")
 			.WithSummary("Check that the server answers.");
 		app.MapDocs();
@@ -99,5 +98,6 @@ public static class RestHost
 		v1.MapContent();
 		v1.MapMenu();
 		v1.MapAliases();
+		app.MapFallback(NoSuchRoute);
 	}
 }

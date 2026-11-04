@@ -22,6 +22,7 @@ using Mediator;
 namespace Basil.Host.Stable.Packets;
 
 /// <summary>Handles the packets an osu! client sends; each handler works through the scopes of the sender's connection.</summary>
+[AdmissionPolicy]
 internal sealed partial class PacketHandlers(
 	UserRegistry registry,
 	Lobby lobby,
@@ -34,6 +35,13 @@ internal sealed partial class PacketHandlers(
 	RateLimiter limiter,
 	TimeProvider clock)
 {
+	/// <summary>Every packet type a client can send, with the admission policy metadata it is received under.</summary>
+	internal static IReadOnlyList<(string Name, IReadOnlyList<object> Metadata)> EntryPoints { get; } =
+	[
+		.. Enum.GetValues<ClientPacketType>().Select(type => (type.ToString(),
+			(IReadOnlyList<object>)typeof(PacketHandlers).GetCustomAttributes(true)))
+	];
+
 	/// <summary>The most ids a stats or presence request is answered for; the rest are ignored.</summary>
 	internal const int MaxRequestedIds = 256;
 
