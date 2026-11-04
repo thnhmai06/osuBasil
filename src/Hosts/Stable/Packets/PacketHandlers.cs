@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Messages;
@@ -72,7 +73,7 @@ internal sealed partial class PacketHandlers(
 	{
 		return type switch
 		{
-			ClientPacketType.ChangeAction => ChangeActionAsync(osu, reader),
+			ClientPacketType.ChangeAction => ChangeActionAsync(osu, reader, cancellationToken),
 			ClientPacketType.RequestStatusUpdate => StatsRequestAsync(osu, [osu.Record.Id], cancellationToken),
 			ClientPacketType.FriendAdd => FriendAsync(osu, reader.ReadInt32(), true, cancellationToken),
 			ClientPacketType.FriendRemove => FriendAsync(osu, reader.ReadInt32(), false, cancellationToken),
@@ -84,13 +85,12 @@ internal sealed partial class PacketHandlers(
 			ClientPacketType.ChannelPart => PartChannelAsync(osu, reader.ReadOsuString(), cancellationToken),
 			ClientPacketType.SendPublicMessage => PublicMessageAsync(osu, reader.ReadMessage(), cancellationToken),
 			ClientPacketType.SendPrivateMessage => PrivateMessageAsync(osu, reader.ReadMessage(), cancellationToken),
-			ClientPacketType.JoinLobby => Run(() => lobby.ScopeTo(osu).Watch()),
-			ClientPacketType.PartLobby => Run(() => lobby.ScopeTo(osu).Unwatch()),
+			ClientPacketType.JoinLobby => sender.Send(new WatchLobby(osu), cancellationToken).AsTask(),
+			ClientPacketType.PartLobby => sender.Send(new UnwatchLobby(osu), cancellationToken).AsTask(),
 			ClientPacketType.StartSpectating => StartSpectatingAsync(osu, reader.ReadInt32(), cancellationToken),
-			ClientPacketType.StopSpectating => Run(() => registry.FindSpectating(osu)?.ScopeTo(osu).StopSpectating()),
-			ClientPacketType.CantSpectate => Run(() =>
-				registry.FindSpectating(osu)?.ScopeTo(osu).ReportSpectatingFailed()),
-			ClientPacketType.SpectateFrames => Run(() => ForwardFrames(osu, payload)),
+			ClientPacketType.StopSpectating => StopSpectatingAsync(osu, cancellationToken),
+			ClientPacketType.CantSpectate => ReportSpectatingFailedAsync(osu, cancellationToken),
+			ClientPacketType.SpectateFrames => ForwardFramesAsync(osu, payload, cancellationToken),
 			_ => HandleRoomAsync(osu, type, reader, cancellationToken)
 		};
 	}
@@ -106,7 +106,8 @@ internal sealed partial class PacketHandlers(
 		return await users.GetAsync(id, cancellationToken);
 	}
 
-	private async Task ChangeActionAsync(StableConnection osu, PacketReader reader)
+	private async Task ChangeActionAsync(StableConnection osu, PacketReader reader,
+		CancellationToken cancellationToken)
 	{
 		var action = reader.ReadChangeAction();
 		Md5? hash = null;
@@ -123,8 +124,7 @@ internal sealed partial class PacketHandlers(
 		    WireMap.Known<GameMode>(action.Mode) is not { } mode) return;
 		var status = new PlayerStatus(activity, action.InfoText, hash,
 			action.MapId == 0 ? null : action.MapId, WireMap.Mods(action.Mods), mode);
-		osu.ScopeTo(osu).SetStatus(status);
-		await Task.CompletedTask;
+		await sender.Send(new SetPlayerStatus(osu, status), cancellationToken);
 	}
 
 	private async Task StatsRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken cancellationToken)
@@ -171,9 +171,8 @@ internal sealed partial class PacketHandlers(
 	private async Task FriendAsync(StableConnection osu, int id, bool add, CancellationToken cancellationToken)
 	{
 		if (await FindUserAsync(id, cancellationToken) is not { } target) return;
-		var scoped = registry.Of(target).ScopeTo(osu).Relationships;
-		if (add) await scoped.AddFriendAsync(cancellationToken);
-		else await scoped.RemoveFriendAsync(cancellationToken);
+		if (add) await sender.Send(new AddFriend(osu, target), cancellationToken);
+		else await sender.Send(new RemoveFriend(osu, target), cancellationToken);
 	}
 
 	private async Task SetAwayAsync(StableConnection osu, string text, CancellationToken cancellationToken)

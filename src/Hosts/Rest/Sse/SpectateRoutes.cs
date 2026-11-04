@@ -1,3 +1,4 @@
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
@@ -30,7 +31,7 @@ internal static class SpectateRoutes
 	}
 
 	private static async Task<IResult> SpectateAsync(HttpContext context, int id, IUserRepository users,
-		UserRegistry registry)
+		UserRegistry registry, ISender sender)
 	{
 		if (await users.GetAsync(id, context.RequestAborted) is not { } record) return Api.NotFound("No such user.");
 
@@ -39,7 +40,7 @@ internal static class SpectateRoutes
 			return Api.Error(StatusCodes.Status409Conflict, "targetOffline", "The player is not in game.");
 
 		var connection = context.Connection();
-		var spectated = await host.ScopeTo(connection).SpectateAsync();
+		var spectated = await sender.Send(new SpectateUser(connection, host), context.RequestAborted);
 		if (!spectated.IsOk) return spectated.Refusal();
 
 		var result = await context.StreamAsync(KeyOf(id), _ => Task.FromResult<(object, string?)>((new
@@ -49,8 +50,8 @@ internal static class SpectateRoutes
 				id = record.Id, name = record.Value.Name, country = record.Value.Country.ToAcronym().ToLowerInvariant()
 			},
 			status = StatusOf(host.Status)
-		}, null)), () => host.ScopeTo(connection).StopSpectating());
-		if (result is not SseResult) host.ScopeTo(connection).StopSpectating();
+		}, null)), () => _ = sender.Send(new StopSpectating(connection, host)));
+		if (result is not SseResult) await sender.Send(new StopSpectating(connection, host));
 		return result;
 	}
 

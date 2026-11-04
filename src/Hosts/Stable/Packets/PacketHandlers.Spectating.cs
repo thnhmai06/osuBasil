@@ -1,3 +1,4 @@
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Client;
 using Basil.Protocol.Stable.Wire.Packets;
@@ -12,11 +13,22 @@ internal sealed partial class PacketHandlers
 		    registry.OpenStableClient(record) is not { } host)
 			return;
 
-		await host.ScopeTo(osu).SpectateAsync();
+		await sender.Send(new SpectateUser(osu, host), cancellationToken);
+	}
+
+	private async Task StopSpectatingAsync(StableConnection osu, CancellationToken cancellationToken)
+	{
+		if (registry.FindSpectating(osu) is { } host) await sender.Send(new StopSpectating(osu, host), cancellationToken);
+	}
+
+	private async Task ReportSpectatingFailedAsync(StableConnection osu, CancellationToken cancellationToken)
+	{
+		if (registry.FindSpectating(osu) is { } host)
+			await sender.Send(new ReportSpectatingFailed(osu, host), cancellationToken);
 	}
 
 	/// <summary>Relays the bytes of a frame bundle to the spectators; decodes it once only when an API client watches.</summary>
-	private void ForwardFrames(StableConnection osu, byte[] raw)
+	private async Task ForwardFramesAsync(StableConnection osu, byte[] raw, CancellationToken cancellationToken)
 	{
 		if (osu.Spectators.Count == 0) return;
 		outbox.Send(osu.Spectators, writer => writer.SpectateFrames(raw));
@@ -32,6 +44,6 @@ internal sealed partial class PacketHandlers
 		}
 
 		if (bundle.Action != SpectatorAction.Standard) return;
-		osu.ScopeTo(osu).PublishFrames(bundle);
+		await sender.Send(new PublishSpectatorFrames(osu, bundle), cancellationToken);
 	}
 }
