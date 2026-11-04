@@ -1,8 +1,6 @@
-using System.Collections.Concurrent;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -10,108 +8,82 @@ namespace Basil.Infrastructure.Content.Persistence;
 
 /// <summary>Stores the banners shown on the osu! main menu.</summary>
 internal sealed class PostgresMenuBannerRepository(
-	DatabaseReader reader,
-	DatabaseWriter writer,
-	ILogger<PostgresMenuBannerRepository> logger)
-	: IMenuBannerRepository, IResident
+	DatabaseSession database,
+	ILogger<PostgresMenuBannerRepository> logger) : IMenuBannerRepository
 {
-	private readonly ConcurrentDictionary<ContentReference, MenuBanner> _banners = new();
-	private readonly ResidentWrites<ContentReference> _writes = new();
-
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
-	{
-		// A banner keeps the instant it was created at when it is replaced.
-		var createdAt = _banners.TryGetValue(banner.Image, out var current) ? current.CreatedAt : banner.CreatedAt;
-		await _writes.WriteAsync(banner.Image,
-			() => writer.SaveAsync(Root.Server, (GetType(), banner.Image), Upsert(banner, createdAt)),
-			() => _banners.AddOrUpdate(banner.Image, banner, (_, currentBanner) =>
-			{
-				if (!ReferenceEquals(currentBanner, banner))
-					CopyTo(currentBanner, banner);
-				return currentBanner;
-			}));
-	}
-
-	/// <inheritdoc />
-	public ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken cancellationToken = default)
-	{
-		return ValueTask.FromResult(_banners.GetValueOrDefault(image));
-	}
-
-	/// <inheritdoc />
-	public Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken cancellationToken = default)
-	{
-		return Task.FromResult<IEnumerable<MenuBanner>>(_banners.Values.OrderBy(banner => banner.CreatedAt));
-	}
-
-	/// <inheritdoc />
-	public async Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
 		var image = banner.Image.ToString();
-		await _writes.WriteAsync(banner.Image,
-			() => writer.SaveAsync(Root.Server, (GetType(), banner.Image),
-				new WriteCommand<ContentDbContext>((context, token) => context
-					.MenuBanners
-					.Where(row => row.Image == image)
-					.ExecuteDeleteAsync(token))),
-			() => _banners.TryRemove(banner.Image, out _));
+		return database.WriteAsync(async (ContentDbContext context, CancellationToken token) =>
+		{
+			var stored = await context.MenuBanners.AsTracking().FirstOrDefaultAsync(row => row.Image == image, token);
+			if (stored is null)
+			{
+				context.MenuBanners.Add(new MenuBannerRow
+				{
+					Image = image,
+					Url = banner.Url.ToString(),
+					StartsAt = banner.StartsAt?.ToUniversalTime(),
+					EndsAt = banner.EndsAt?.ToUniversalTime(),
+					CreatedAt = banner.CreatedAt.ToUniversalTime()
+				});
+				return;
+			}
+
+			// A banner keeps the instant it was created at when it is replaced.
+			stored.Url = banner.Url.ToString();
+			stored.StartsAt = banner.StartsAt?.ToUniversalTime();
+			stored.EndsAt = banner.EndsAt?.ToUniversalTime();
+		}, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
+	public async ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken cancellationToken = default)
 	{
-		var rows = await reader.ReadAsync((ContentDbContext context) => context.MenuBanners
+		var name = image.ToString();
+		var row = await database.ReadAsync((ContentDbContext context) => context.MenuBanners
+			.FirstOrDefaultAsync(item => item.Image == name, cancellationToken), cancellationToken);
+		return row is null ? null : TryRead(row);
+	}
+
+	/// <inheritdoc />
+	public async Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken cancellationToken = default)
+	{
+		var rows = await database.ReadAsync((ContentDbContext context) => context.MenuBanners
+			.OrderBy(row => row.CreatedAt)
 			.ToListAsync(cancellationToken), cancellationToken);
-		foreach (var row in rows)
-		{
-			if (!ContentReference.TryParse(row.Image, null, out var image))
-			{
-				logger.LogWarning("The menu banner image {Image} is not a valid asset reference and is not shown",
-					row.Image);
-				continue;
-			}
-
-			try
-			{
-				var banner = ToBanner(row, image);
-				_banners[banner.Image] = banner;
-			}
-			catch (Exception exception) when (exception is ArgumentException or FormatException)
-			{
-				logger.LogWarning(exception, "The stored menu banner {Image} is not valid and is not shown", row.Image);
-			}
-		}
+		return rows.Select(TryRead).OfType<MenuBanner>().ToList();
 	}
 
-	private static void CopyTo(MenuBanner live, MenuBanner from)
+	/// <inheritdoc />
+	public Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
-		live.Url = from.Url;
-		// Each bound is checked against the other, so the one that moves past the other's old value goes second.
-		if (from.StartsAt > live.EndsAt)
-		{
-			live.EndsAt = from.EndsAt;
-			live.StartsAt = from.StartsAt;
-		}
-		else
-		{
-			live.StartsAt = from.StartsAt;
-			live.EndsAt = from.EndsAt;
-		}
+		var image = banner.Image.ToString();
+		return database.WriteAsync((ContentDbContext context, CancellationToken token) => context.MenuBanners
+			.Where(row => row.Image == image)
+			.ExecuteDeleteAsync(token), cancellationToken);
 	}
 
-	private static WriteCommand<ContentDbContext> Upsert(MenuBanner banner, DateTimeOffset createdAt)
+	/// <summary>Builds a banner from a stored row, or logs and returns null when the row is not valid.</summary>
+	private MenuBanner? TryRead(MenuBannerRow row)
 	{
-		var row = new MenuBannerRow
+		if (!ContentReference.TryParse(row.Image, null, out var image))
 		{
-			Image = banner.Image.ToString(),
-			Url = banner.Url.ToString(),
-			StartsAt = banner.StartsAt?.ToUniversalTime(),
-			EndsAt = banner.EndsAt?.ToUniversalTime(),
-			CreatedAt = createdAt.ToUniversalTime()
-		};
-		return new WriteCommand<ContentDbContext>((context, token) =>
-			context.UpsertAsync(row, stored => stored.Image == row.Image, token));
+			logger.LogWarning("The menu banner image {Image} is not a valid asset reference and is not shown",
+				row.Image);
+			return null;
+		}
+
+		try
+		{
+			return ToBanner(row, image);
+		}
+		catch (Exception exception) when (exception is ArgumentException or FormatException)
+		{
+			logger.LogWarning(exception, "The stored menu banner {Image} is not valid and is not shown", row.Image);
+			return null;
+		}
 	}
 
 	/// <summary>Builds a banner from a stored row and its parsed image.</summary>

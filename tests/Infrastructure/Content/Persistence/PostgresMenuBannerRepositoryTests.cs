@@ -14,7 +14,7 @@ public sealed class PostgresMenuBannerRepositoryTests(PersistenceFixture contain
 	private IMenuBannerRepository Banners => Get<IMenuBannerRepository>();
 
 	[Fact]
-	public async Task A_stored_banner_is_kept_in_memory()
+	public async Task A_stored_banner_is_found()
 	{
 		var banner = Banner("banners/one.png", Moment);
 
@@ -67,12 +67,12 @@ public sealed class PostgresMenuBannerRepositoryTests(PersistenceFixture contain
 	}
 
 	[Fact]
-	public async Task A_stored_banner_is_reloaded()
+	public async Task A_stored_banner_is_read_back_from_the_database()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
 
-		var reloaded = await ReloadAsync(banner.Image);
+		var reloaded = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
 
 		Assert.NotNull(reloaded);
 		Assert.Equal(banner.Url, reloaded.Url);
@@ -149,14 +149,14 @@ public sealed class PostgresMenuBannerRepositoryTests(PersistenceFixture contain
 			CreatedAt = Moment.AddDays(1)
 		}, TestContext.Current.CancellationToken);
 
-		var reloaded = await ReloadAsync(created.Image);
+		var reloaded = await Banners.GetAsync(created.Image, TestContext.Current.CancellationToken);
 
 		Assert.NotNull(reloaded);
 		Assert.Equal(created.CreatedAt, reloaded.CreatedAt);
 	}
 
 	[Fact]
-	public async Task Of_two_concurrent_changes_of_a_banner_memory_holds_the_one_stored_last()
+	public async Task Of_two_concurrent_changes_of_a_banner_the_one_stored_last_is_read()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
@@ -235,9 +235,9 @@ public sealed class PostgresMenuBannerRepositoryTests(PersistenceFixture contain
 			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
 		}
 
-		var reloaded = await ReloadAsync(good.Image);
+		var listed = await Banners.ListAsync(TestContext.Current.CancellationToken);
 
-		Assert.NotNull(reloaded);
+		Assert.Equal([good.Image], listed.Select(banner => banner.Image));
 	}
 
 	private static MenuBanner Banner(string image, DateTimeOffset createdAt)
@@ -250,16 +250,5 @@ public sealed class PostgresMenuBannerRepositoryTests(PersistenceFixture contain
 			EndsAt = null,
 			CreatedAt = createdAt
 		};
-	}
-
-	/// <summary>Reads a banner as a fresh server would read it.</summary>
-	/// <param name="image">The image of the banner to read.</param>
-	/// <returns>The banner the fresh server loaded from the database.</returns>
-	private async Task<MenuBanner?> ReloadAsync(ContentReference image)
-	{
-		await using var fresh = new StorageComposition(ConnectionString);
-		var repository = fresh.Get<IMenuBannerRepository>();
-		await fresh.ResidentOf(repository).LoadAsync(TestContext.Current.CancellationToken);
-		return await repository.GetAsync(image, TestContext.Current.CancellationToken);
 	}
 }
