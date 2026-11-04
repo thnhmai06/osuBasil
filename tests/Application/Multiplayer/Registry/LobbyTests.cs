@@ -1,4 +1,6 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
@@ -87,7 +89,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 
@@ -104,7 +106,7 @@ public sealed class LobbyTests
 		using var app = new TestApplication();
 		var first = await RoomFixture.CreateAsync(app);
 		var creator = await RoomFixture.PlayerAsync(app, "SecondCreator");
-		var (second, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("second room", "", false, false,
+		var (second, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("second room", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 
@@ -173,7 +175,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, result) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("private room", "", false, true,
+		var (room, result) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("private room", "", RoomSource.Game, true,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(result.IsOk);
 
@@ -198,5 +200,107 @@ public sealed class LobbyTests
 		var (result, _) = await app.Users.Of(target).ScopeTo(actor).Restrictions.RestrictAsync(
 			UserPermissions.RoomJoin, null, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(result.IsOk);
+	}
+
+	private static readonly TimeSpan OneSecond = TimeSpan.FromSeconds(1);
+
+	[Theory]
+	[InlineData(RoomSource.Game)]
+	[InlineData(RoomSource.Api)]
+	public async Task CloseEmptyRooms_ForARoomEmptyForFifteenMinutes_ClosesItOnlyThen(RoomSource source)
+	{
+		using var app = new TestApplication();
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", source, false,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+
+		app.Clock.Advance(Lobby.EmptyRoomTimeout - OneSecond);
+		var early = app.Lobby.CloseEmptyRooms();
+		app.Clock.Advance(OneSecond);
+		var closed = app.Lobby.CloseEmptyRooms();
+
+		Assert.Equal(0, early);
+		Assert.Equal(1, closed);
+		Assert.True(room.IsClosed);
+		Assert.Null(Assert.IsType<LobbyRoomClosed>(app.LobbyEvents.Events[^1]).Actor);
+	}
+
+	[Fact]
+	public async Task CloseEmptyRooms_ForARoomOpenedWithNobodySeated_ClosesItAfterFifteenMinutes()
+	{
+		using var app = new TestApplication();
+		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"));
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Api, false,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+
+		app.Clock.Advance(Lobby.EmptyRoomTimeout);
+
+		Assert.Equal(1, app.Lobby.CloseEmptyRooms());
+		Assert.True(room!.IsClosed);
+	}
+
+	[Fact]
+	public async Task CloseEmptyRooms_ForARoomWithAPlayer_LeavesItOpen()
+	{
+		using var app = new TestApplication();
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+
+		app.Clock.Advance(Lobby.EmptyRoomTimeout * 2);
+
+		Assert.Equal(0, app.Lobby.CloseEmptyRooms());
+		Assert.False(room!.IsClosed);
+	}
+
+	[Fact]
+	public async Task CloseEmptyRooms_ForARoomThatWasOccupiedThenEmptiedAgain_StartsTheClockOver()
+	{
+		using var app = new TestApplication();
+		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"));
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Api, false,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+		app.Clock.Advance(TimeSpan.FromMinutes(10));
+		var player = await RoomFixture.PlayerAsync(app, "Player");
+		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+
+		app.Clock.Advance(Lobby.EmptyRoomTimeout - OneSecond);
+		var early = app.Lobby.CloseEmptyRooms();
+		app.Clock.Advance(OneSecond);
+		var closed = app.Lobby.CloseEmptyRooms();
+
+		Assert.Equal(0, early);
+		Assert.Equal(1, closed);
+	}
+
+	[Fact]
+	public async Task CloseEmptyRooms_BeforeTheClose_AnnouncesTheClosingOnceAtTheWarningTime()
+	{
+		using var app = new TestApplication();
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		var closesAt = app.Clock.GetUtcNow() + Lobby.EmptyRoomTimeout;
+		var announcedAtLeave = app.LobbyEvents.Events.OfType<LobbyRoomClosingAnnounced>().Count();
+
+		app.Clock.Advance(Lobby.EmptyRoomTimeout - Lobby.EmptyRoomWarningBefore - OneSecond);
+		app.Lobby.CloseEmptyRooms();
+		var beforeWarning = app.LobbyEvents.Events.OfType<LobbyRoomClosingAnnounced>().Count();
+		app.Clock.Advance(OneSecond);
+		app.Lobby.CloseEmptyRooms();
+		app.Lobby.CloseEmptyRooms();
+
+		var announcements = app.LobbyEvents.Events.OfType<LobbyRoomClosingAnnounced>().ToList();
+		Assert.Equal(announcedAtLeave, beforeWarning);
+		Assert.Equal(announcedAtLeave + 1, announcements.Count);
+		Assert.Equal(closesAt, announcements[^1].ClosesAt);
 	}
 }

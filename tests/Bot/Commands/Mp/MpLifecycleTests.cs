@@ -26,7 +26,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_ByAUserWithAClient_OpensAPublicTournamentRoomCreatedByTheTypist()
+	public async Task Make_ByAUserWithAClient_OpensAPublicRoomCreatedByTheTypist()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -34,7 +34,6 @@ public sealed class MpLifecycleTests
 		await bot.TypeAsync(typist, "#osu", "!mp make Finals");
 
 		var room = Assert.Single(bot.App.Lobby.Rooms.Values);
-		Assert.True(room.IsTournament);
 		Assert.Equal(typist.Record, room.Authority.Creator);
 		Assert.False(room.Settings.IsPrivate);
 		Assert.Equal("Finals", room.Settings.Name);

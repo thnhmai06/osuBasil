@@ -62,7 +62,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_Create_OpensATournamentRoomOfTheOperatorAndShowsIt()
+	public async Task Rooms_Create_OpensARoomOfTheOperatorAndShowsIt()
 	{
 		var name = CliFixture.Name("room");
 
@@ -71,7 +71,6 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 		var (_, listed) = await fixture.RunAsync("rooms list");
 
 		Assert.Equal(0, code);
-		Assert.True(Lobby.Rooms[id].IsTournament);
 		Assert.Contains(name, text);
 		Assert.Contains("creator:", text);
 		Assert.Contains("BasilBot", text);

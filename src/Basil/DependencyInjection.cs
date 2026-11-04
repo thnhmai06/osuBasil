@@ -46,6 +46,7 @@ public static class DependencyInjection
 		services.AddBasilStorage();
 		services.AddHostedService<RuntimeStartup>();
 		services.AddUsersBackgroundWork();
+		services.AddMultiplayerBackgroundWork();
 		services.AddBeatmapsBackgroundWork();
 		services.AddBeatmapMirrorSettings();
 		return services.AddBasilApplication();

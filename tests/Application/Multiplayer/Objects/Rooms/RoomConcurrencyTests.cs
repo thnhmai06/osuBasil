@@ -97,7 +97,7 @@ public sealed class RoomConcurrencyTests
 		for (var attempt = 0; attempt < 100; attempt++)
 		{
 			var owner = await RoomFixture.PlayerAsync(app, $"Owner{attempt}");
-			var (room, opened) = await app.Lobby.ScopeTo(owner).OpenRoomAsync($"race {attempt}", "", false, false,
+			var (room, opened) = await app.Lobby.ScopeTo(owner).OpenRoomAsync($"race {attempt}", "", RoomSource.Game, false,
 				cancellationToken: TestContext.Current.CancellationToken);
 			Assert.True(opened.IsOk);
 			var joiner = await RoomFixture.PlayerAsync(app, $"Joiner{attempt}");

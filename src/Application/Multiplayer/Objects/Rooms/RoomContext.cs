@@ -27,11 +27,11 @@ internal interface IRoomLobbyPort
 	/// <returns>The room containing the player, or <see langword="null" />.</returns>
 	Room? RoomOf(StableConnection player);
 
-	/// <summary>Tells the lobby the room has a player again, which cancels a pending close.</summary>
+	/// <summary>Tells the lobby the room has a player again, which stops the clock of its closing.</summary>
 	/// <param name="room">The room that is occupied.</param>
 	void Occupied(Room room);
 
-	/// <summary>Tells the lobby the room has no player left, so it closes or schedules its closing.</summary>
+	/// <summary>Tells the lobby the room has no player left, so the clock of its closing starts.</summary>
 	/// <param name="room">The room that may be empty.</param>
 	void Emptied(Room room);
 

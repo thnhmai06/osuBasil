@@ -17,14 +17,14 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 {
 	private const int MaxRoomId = ushort.MaxValue;
 
-	/// <summary>The most tournament rooms one creator can have open.</summary>
+	/// <summary>The most rooms one creator can have open.</summary>
 	internal const int MaxRoomsPerCreator = 4;
 
-	/// <summary>How long an empty tournament room stays open.</summary>
-	internal static readonly TimeSpan EmptyTournamentRoomTimeout = TimeSpan.FromMinutes(15);
+	/// <summary>How long an empty room stays open.</summary>
+	public static readonly TimeSpan EmptyRoomTimeout = TimeSpan.FromMinutes(15);
 
-	/// <summary>How long before an empty tournament room closes the lobby announces its closing a second time.</summary>
-	internal static readonly TimeSpan EmptyRoomWarningBefore = TimeSpan.FromMinutes(5);
+	/// <summary>How long before an empty room closes the lobby announces its closing a second time.</summary>
+	public static readonly TimeSpan EmptyRoomWarningBefore = TimeSpan.FromMinutes(5);
 
 	private readonly Dictionary<StableConnection, Room> _claims = [];
 
@@ -195,7 +195,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		if (MutableWatchers.Remove(connection)) Context.Events.Publish(new LobbyWatcherLeft(connection));
 	}
 
-	/// <summary>Stops the countdown that would close an empty tournament room.</summary>
+	/// <summary>Stops the clock that would close an empty room.</summary>
 	/// <param name="room">The room that has a player again.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	internal static void Occupied(Room room)
@@ -204,21 +204,14 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	}
 
 	/// <summary>
-	///     Closes an empty room now; a tournament room is announced as closing at once and again
-	///     <see cref="EmptyRoomWarningBefore" /> before it closes, and closes after
-	///     <see cref="EmptyTournamentRoomTimeout" /> if still empty.
+	///     Starts the clock that closes an empty room and announces the closing; the room closes after
+	///     <see cref="EmptyRoomTimeout" /> if still empty, see <see cref="CloseEmptyRooms" />.
 	/// </summary>
 	/// <param name="room">The room that has no player left.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	internal void Emptied(Room room)
 	{
-		if (!room.IsTournament)
-		{
-			Close(room, null);
-			return;
-		}
-
-		Context.Events.Publish(new LobbyRoomClosingAnnounced(room, ScheduleClosing(room)));
+		Context.Events.Publish(new LobbyRoomClosingAnnounced(room, StartEmptyClock(room)));
 	}
 
 	/// <summary>Closes a room, ending its match and vacating every slot.</summary>
@@ -249,54 +242,58 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	private static void RoomOccupied(Room room)
 	{
-		var timer = room.ClosingTimer;
-		room.ClosingTimer = null;
-		timer?.Dispose();
+		room.EmptySince = null;
+		room.ClosingWarned = false;
 	}
 
-	/// <summary>Schedules the closing of a tournament room that stays empty.</summary>
+	/// <summary>Starts the clock of a room that has no player.</summary>
 	/// <param name="room">The empty room.</param>
 	/// <returns>When the room closes if it is still empty.</returns>
-	internal DateTimeOffset ScheduleClosing(Room room)
+	internal DateTimeOffset StartEmptyClock(Room room)
 	{
-		var closesAt = Context.Clock.GetUtcNow() + EmptyTournamentRoomTimeout;
-		Schedule(room, closesAt - EmptyRoomWarningBefore, () => WarnIfStillEmpty(room, closesAt));
-		return closesAt;
+		var now = Context.Clock.GetUtcNow();
+		room.EmptySince = now;
+		room.ClosingWarned = false;
+		return now + EmptyRoomTimeout;
 	}
 
-	private void Schedule(Room room, DateTimeOffset at, Action action)
+	/// <summary>
+	///     Closes the rooms that have stayed empty for <see cref="EmptyRoomTimeout" /> and announces the closing of those that
+	///     are <see cref="EmptyRoomWarningBefore" /> from it, when the server itself calls it; it needs no rights.
+	/// </summary>
+	/// <returns>How many rooms were closed.</returns>
+	public int CloseEmptyRooms()
 	{
-		var delay = at - Context.Clock.GetUtcNow();
-		var timer = Context.Clock.CreateTimer(_ => Room.Fire(action), null,
-			delay > TimeSpan.Zero ? delay : TimeSpan.Zero,
-			Timeout.InfiniteTimeSpan);
-		var previous = room.ClosingTimer;
-		room.ClosingTimer = timer;
-		previous?.Dispose();
+		var closed = 0;
+		foreach (var room in _rooms.Values.ToArray())
+		{
+			using var scope = room.Enter();
+			if (room.IsClosed || room.EmptySince is not { } since || room.Slots.Any(slot => slot.Player is not null))
+				continue;
+
+			var closesAt = since + EmptyRoomTimeout;
+			var now = Context.Clock.GetUtcNow();
+			if (now >= closesAt)
+			{
+				Close(room, null);
+				closed++;
+			}
+			else if (!room.ClosingWarned && now >= closesAt - EmptyRoomWarningBefore)
+			{
+				room.ClosingWarned = true;
+				Context.Events.Publish(new LobbyRoomClosingAnnounced(room, closesAt));
+			}
+		}
+
+		return closed;
 	}
 
-	private void WarnIfStillEmpty(Room room, DateTimeOffset closesAt)
-	{
-		using var scope = room.Enter();
-		if (room.IsClosed || room.Slots.Any(slot => slot.Player is not null)) return;
-
-		Context.Events.Publish(new LobbyRoomClosingAnnounced(room, closesAt));
-		Schedule(room, closesAt, () => CloseIfStillEmpty(room));
-	}
-
-	private void CloseIfStillEmpty(Room room)
-	{
-		using var scope = room.Enter();
-		if (!room.IsClosed && !room.Slots.Any(slot => slot.Player is not null)) Close(room, null);
-	}
-
-	/// <summary>Gets whether the creator has reached the limit for open tournament rooms.</summary>
+	/// <summary>Gets whether the creator has reached the limit for open rooms.</summary>
 	/// <param name="creator">The user who created the rooms.</param>
 	/// <returns><see langword="true" /> when the creator has reached the limit.</returns>
 	internal bool TooManyRooms(UserRecord creator)
 	{
-		return _rooms.Values.Count(room => room.IsTournament && creator.Equals(room.Authority.Creator)) >=
-		       MaxRoomsPerCreator;
+		return _rooms.Values.Count(room => creator.Equals(room.Authority.Creator)) >= MaxRoomsPerCreator;
 	}
 
 	/// <summary>Seats an online creator in a room and makes them its host.</summary>

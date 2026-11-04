@@ -21,9 +21,8 @@ public sealed partial class Room : IEquatable<Room>
 	/// <param name="id">The room id, carried by the client protocol.</param>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="settings">The room's initial settings.</param>
-	/// <param name="isTournament">Whether the room is a tournament room.</param>
 	/// <param name="context">The runtime context for emitting events and checking permissions.</param>
-	internal Room(int id, MatchRecord match, MatchSettings settings, bool isTournament, RoomContext context)
+	internal Room(int id, MatchRecord match, MatchSettings settings, RoomContext context)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegative(id);
 		Id = id;
@@ -32,7 +31,6 @@ public sealed partial class Room : IEquatable<Room>
 		Authority = new RoomAuthority(match);
 		Members = new RoomMembers();
 		Rounds = new RoomRounds();
-		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
 		Context = context;
 	}
@@ -45,9 +43,6 @@ public sealed partial class Room : IEquatable<Room>
 
 	/// <summary>Gets the runtime identifier assigned to this room.</summary>
 	public int Id { get; }
-
-	/// <summary>Gets a value that indicates whether the room is a tournament room, which stays open for a while when empty.</summary>
-	public bool IsTournament { get; }
 
 	/// <summary>The match's 16 slots, in order.</summary>
 	public RoomSlots Slots { get; }
@@ -71,8 +66,11 @@ public sealed partial class Room : IEquatable<Room>
 		internal set => Volatile.Write(ref field, value);
 	}
 
-	/// <summary>The timer that closes the room while it is empty.</summary>
-	internal ITimer? ClosingTimer { get; set; }
+	/// <summary>When the room last became empty; <see langword="null" /> while a player is seated.</summary>
+	internal DateTimeOffset? EmptySince { get; set; }
+
+	/// <summary>Whether the second announcement of the closing of the empty room was made.</summary>
+	internal bool ClosingWarned { get; set; }
 
 	/// <summary>Gets the join URL of this room, in <c>osump://{id}/{password}</c> form.</summary>
 	public string Url => $"osump://{Id}/{Settings.Password}";

@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
@@ -53,7 +54,7 @@ public sealed class RoomFixture
 	/// <summary>Gets the room the roles act in.</summary>
 	public Room Room { get; private init; } = null!;
 
-	/// <summary>Gets the tournament room the creator whose right to join rooms is suspended opened.</summary>
+	/// <summary>Gets the room, opened through the API, that the creator whose right to join rooms is suspended opened.</summary>
 	public Room SuspendedRoom { get; private init; } = null!;
 
 	/// <summary>Gets the connection that created the room.</summary>
@@ -115,7 +116,7 @@ public sealed class RoomFixture
 	public static async Task<RoomFixture> CreateAsync(TestApplication app)
 	{
 		var creator = await PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		Assert.NotNull(room);
@@ -137,12 +138,12 @@ public sealed class RoomFixture
 		var manager = await PlayerAsync(app, "Manager", UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
 		var noRoomJoin = await PlayerAsync(app, "NoJoin", UserPermissionsGroups.Default & ~UserPermissions.RoomJoin);
 
-		// The suspended creator may create a tournament room, but may not be seated in it.
+		// The suspended creator may create a room through the API, but may not be seated in it.
 		var suspendedUser = await app.CreateUserAsync("Suspended", "password");
 		app.AddRestriction(suspendedUser, UserPermissions.RoomJoin);
 		var suspendedCreator = await PlayerAsync(app, suspendedUser);
 		var (suspendedRoom, suspendedOpened) = await app.Lobby.ScopeTo(suspendedCreator)
-			.OpenRoomAsync("tournament room", "", true, false,
+			.OpenRoomAsync("api room", "", RoomSource.Api, false,
 				cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(suspendedOpened.IsOk);
 		Assert.NotNull(suspendedRoom);

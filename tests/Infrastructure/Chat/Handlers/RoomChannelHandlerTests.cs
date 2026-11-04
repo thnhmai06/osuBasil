@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
@@ -60,7 +61,7 @@ public sealed class RoomChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		var openedEvent = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomOpened>());

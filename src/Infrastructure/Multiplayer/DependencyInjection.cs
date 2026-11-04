@@ -1,6 +1,7 @@
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Multiplayer.Persistence;
+using Basil.Infrastructure.Multiplayer.Workers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Multiplayer;
@@ -19,6 +20,15 @@ public static class DependencyInjection
 		services.AddSingleton<IRoundRepository, EfRoundRepository>();
 		services.AddSingleton<IRoundScoreRepository, EfRoundScoreRepository>();
 		services.AddSingleton<IMatchEventRepository, EfMatchEventRepository>();
+		return services;
+	}
+
+	/// <summary>Adds the background work of Multiplayer: closing rooms that stay empty.</summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	public static IServiceCollection AddMultiplayerBackgroundWork(this IServiceCollection services)
+	{
+		services.AddHostedService<EmptyRoomCloser>();
 		return services;
 	}
 }

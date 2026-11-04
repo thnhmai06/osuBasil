@@ -62,7 +62,7 @@ internal sealed partial class PacketHandlers
 	{
 		var matchSettings = SettingsOf(match);
 		var (room, result) = await sender.Send(
-			new OpenRoom(osu, match.Name, match.Password, false, false, matchSettings), cancellationToken);
+			new OpenRoom(osu, match.Name, match.Password, RoomSource.Game, false, matchSettings), cancellationToken);
 		if (room is null || !result.IsOk)
 		{
 			outbox.Send(osu, writer => writer.MatchJoinFail());

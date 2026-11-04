@@ -2713,7 +2713,7 @@
 				"tags": [
 					"Rooms"
 				],
-				"summary": "Open a tournament room.",
+				"summary": "Open a room.",
 				"description": "The caller becomes its creator. While room creation is locked, only room managers can open one.",
 				"requestBody": {
 					"content": {
