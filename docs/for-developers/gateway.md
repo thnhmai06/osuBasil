@@ -6,9 +6,11 @@ The gateway is the admission control of Basil: for every request that wants to e
 `Deny`, using only facts that exist before any business logic runs. A request that is oversized, too frequent, too
 concurrent or arriving while the server is overloaded never reaches a module.
 
-> **Migration status.** The rate limiter and the login-attempt guard already live in `Basil.Gateway`. The Stable and
-> Rest hosts still have their own upload limit (they depend on ASP.NET Core and the runtime settings, so they cannot
-> move as they are). The migration then adds the second tier and the load policies.
+> **Migration status.** The rate limiter, the login-attempt guard and the second tier (`Admission`, `AdmissionSubject`,
+> `GatewayLimits`) live in `Basil.Gateway`. No host calls the second tier yet: mapping a `Connection` to an
+> `AdmissionSubject` in `Basil.Host.Shared` and enforcing the decision is **(target: phase 7)**. The Stable and Rest hosts
+> still have their own upload limit (they depend on ASP.NET Core and the runtime settings, so they cannot move as they
+> are). The load policies are **(target)**.
 
 ## Why
 
@@ -76,14 +78,17 @@ runtime-configurable.
 ## Invariants
 
 * The gateway is a leaf; it references no user, room or other business type.
-* Every entry point (an HTTP route, a packet type, an IRC command) declares an admission policy. A test lists the entry
-  points and fails for one without a policy, with a positive control **(target)**.
+* Every entry point (an HTTP route, a packet type, an IRC command) declares an admission policy. The rule is
+  `AdmissionPolicyTests`: an entry point declares it by carrying `AdmissionPolicyAttribute` in its metadata, and a
+  positive control proves an entry point without it is detected. No host enumerates its entry points yet, so Rest, Stable
+  and Irc are listed as known-undeclared **(target: phase 7)**.
 * A denial is decided before business logic runs, and the refusal is the same whether or not the target exists.
 * Bans and restrictions are not gateway concerns.
 
 ## Related code
 
 * [`RateLimiter.cs`](../../src/Gateway/RateLimiter.cs) and [`LoginAttemptGuard.cs`](../../src/Gateway/LoginAttemptGuard.cs) — the limiter and login guard.
+* [`Admission.cs`](../../src/Gateway/Admission.cs) and [`GatewayLimits.cs`](../../src/Gateway/GatewayLimits.cs) — tier 2 and its swappable limits snapshot.
 * [`UploadLimit.cs`](../../src/Hosts/Rest/Http/UploadLimit.cs) and [`UploadLimit.cs`](../../src/Hosts/Stable/Support/UploadLimit.cs) — today's two upload limits (move to the gateway).
 
 ## See also
