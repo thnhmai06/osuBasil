@@ -1,6 +1,6 @@
-using Basil.Host.Shared.Diagnostics;
+using Basil.Application.Common.Diagnostics;
 
-namespace Basil.Host.Shared.Tests;
+namespace Basil.Application.Common.Tests.Diagnostics;
 
 /// <summary>The Host header never becomes a new metric label.</summary>
 public sealed class HostLabelsTests

@@ -1,4 +1,4 @@
-namespace Basil.Host.Shared.Diagnostics;
+namespace Basil.Application.Common.Diagnostics;
 
 /// <summary>Empties the cache folder of derived files, which are made again when needed.</summary>
 public interface ICacheCleaner
