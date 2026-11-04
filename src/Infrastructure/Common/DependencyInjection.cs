@@ -26,6 +26,7 @@ public static class DependencyInjection
 		services.AddSingleton<DataPaths>();
 		services.AddSingleton<Database>();
 		services.AddSingleton<DatabaseReader>();
+		services.AddSingleton<DatabaseSession>();
 		services.AddSingleton<DatabaseMigrator>();
 		services.AddSingleton<IModuleMigration, ModuleMigration<CommonDbContext>>();
 		services.AddSingleton<DatabaseWriter>();

@@ -134,7 +134,17 @@ public sealed class UserRegistry
 		var openFailure = Open(connection, await ActiveRestrictionsAsync(record, cancellationToken));
 		if (openFailure is not null) return LoginResult.Fail(openFailure.Value);
 
-		_ = _context.Sessions.RecordAsync(session, CancellationToken.None);
+		try
+		{
+			await _context.Sessions.RecordAsync(session, cancellationToken);
+		}
+		catch
+		{
+			// A login that could not be recorded does not stay open.
+			Close(connection, SessionEndReason.ConnectionLost);
+			throw;
+		}
+
 		return LoginResult.Success(connection);
 	}
 

@@ -198,6 +198,13 @@ public sealed class TestApplication : IDisposable
 	/// <summary>Gets the login history written by the application.</summary>
 	public IReadOnlyList<SessionRecord> StoredSessions => _sessions.Entries;
 
+	/// <summary>Gets or sets the failure that recording a session throws, or <see langword="null" /> to accept it.</summary>
+	public Exception? SessionRecordFailure
+	{
+		get => _sessions.RecordFailure;
+		set => _sessions.RecordFailure = value;
+	}
+
 	/// <summary>Gets the moderation history written by the application.</summary>
 	public IReadOnlyList<ModerationData> ModerationEntries => _moderationLog.Entries;
 

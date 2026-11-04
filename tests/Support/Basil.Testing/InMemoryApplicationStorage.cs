@@ -190,9 +190,13 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 
 	public IReadOnlyList<SessionRecord> Entries => _entries;
 
+	/// <summary>Gets or sets the failure the next recordings throw, or <see langword="null" /> to accept them.</summary>
+	public Exception? RecordFailure { get; set; }
+
 	public Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
+		if (RecordFailure is { } failure) throw failure;
 		_entries.Add(login);
 		_tokens[login.Id] = (login.Value.Credential.TokenHash, login.Value.Credential.ExpiresAt);
 		return Task.CompletedTask;

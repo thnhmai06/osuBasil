@@ -1,5 +1,6 @@
 using System.Text;
 using Basil.Application.Authentication.Persistence;
+using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
@@ -125,6 +126,67 @@ public sealed class PostgresCredentialRepositoryTests(PersistenceFixture contain
 		var stored = rows[0].Text("password_hash");
 		Assert.NotEqual(Password, stored);
 		Assert.NotEqual(HashOf(Password).HashValue, stored);
+	}
+
+	[Fact]
+	public async Task A_stored_credential_is_in_the_database_when_the_write_returns()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
+
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
+			TestContext.Current.CancellationToken);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select user_id from credentials where user_id = @id",
+			new Dictionary<string, object?> { ["@id"] = user.Id }, TestContext.Current.CancellationToken);
+		Assert.Single(rows);
+	}
+
+	[Fact]
+	public async Task A_credential_for_an_account_that_does_not_exist_is_refused_to_the_caller()
+	{
+		var ghost = new UserRecord { Id = 9999, Value = new UserData { Name = "ghost" } };
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Credentials.CreateOrUpdateAsync(
+			new Credentials(ghost, HashOf(Password)), TestContext.Current.CancellationToken));
+
+		Assert.False(await Credentials.VerifyAsync(new Credentials(ghost, HashOf(Password)),
+			TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task A_replaced_password_takes_effect_after_the_old_one_was_verified()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the first password")),
+			TestContext.Current.CancellationToken);
+		Assert.True(await Credentials.VerifyAsync(new Credentials(user, HashOf("the first password")),
+			TestContext.Current.CancellationToken));
+
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the second password")),
+			TestContext.Current.CancellationToken);
+
+		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf("the first password")),
+			TestContext.Current.CancellationToken));
+		Assert.True(await Credentials.VerifyAsync(new Credentials(user, HashOf("the second password")),
+			TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task A_deleted_credential_verifies_nothing_after_it_was_verified()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
+			TestContext.Current.CancellationToken);
+		Assert.True(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)),
+			TestContext.Current.CancellationToken));
+
+		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+
+		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)),
+			TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>Computes the digest of a password, the way the osu! client sends it.</summary>

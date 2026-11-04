@@ -97,3 +97,26 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 * **Streaming is mandatory.** Data reaches the consumer directly; no `MemoryStream` in Application. A read is bounded,
   loaded, the connection released, then sent. Every upload is spooled to a temporary file, validated, then moved
   atomically (see the streaming rule in `AGENTS.md`).
+
+## How a repository is written now
+
+The Authentication module is the pilot; copy its shape (`PostgresCredentialRepository`, `PostgresSessionRepository`).
+
+* **One helper, `DatabaseSession`** (`Infrastructure.Common/Persistence`), injected into the repository. It has no queue
+  and no retry. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own (through
+  `DatabaseReader`). `WriteAsync<TContext>(change, ct)` and `WriteAsync<TContext, T>(change, ct)` create a context whose
+  commit is confirmed, run the change, call `SaveChanges` and dispose; the second form returns what the change returned
+  (a row count). `TransactAsync<TContext>(work, ct)` is the same inside one transaction, for a business operation that
+  stores several rows. Entities the change adds or modifies are saved by the helper; `ExecuteUpdate`/`ExecuteDelete`
+  run on their own.
+* **Failure contract.** A write is finished when the call returns. A unique violation becomes `AlreadyExistsException`;
+  every other failure (foreign key, connection, timeout) reaches the caller as the original exception. Nothing is
+  swallowed or retried, so a caller that must survive a failed write handles it, and a caller that cannot await (code
+  under a lock) must move the write to an event handler outside the lock.
+* **Cache-aside rule.** A small record read on every request may be cached with `CacheAside<TKey, TValue>`
+  (`Infrastructure.Common/Registry`): `GetAsync(key, load)` fills it on a miss (an absent record is never cached), and
+  the repository calls `Remove(key)` only after the awaited write succeeded, so a refused write leaves the cache
+  unchanged. A value loaded while its entry is being removed is not cached. Credentials cache the bcrypt hash by user id.
+* **Concurrency rule.** A row with a single owner (a credential, a session) is written last-write-wins, awaited.
+  Counters and aggregates (user stats, score totals) use column-level `ExecuteUpdate` or an atomic increment, never
+  read-modify-write.

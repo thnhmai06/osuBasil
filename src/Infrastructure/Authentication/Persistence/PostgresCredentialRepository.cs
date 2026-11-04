@@ -7,83 +7,49 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Authentication.Persistence;
 
 /// <summary>Stores the login credential of each user.</summary>
-internal sealed class PostgresCredentialRepository(DatabaseReader reader, DatabaseWriter writer)
-	: RemovableMemoryRepository<int, PostgresCredentialRepository.StoredCredential>(reader, writer),
-		ICredentialRepository
+internal sealed class PostgresCredentialRepository(DatabaseSession database) : ICredentialRepository
 {
 	// A hash of a fixed password, checked for an account that has no credential yet, so an unknown account takes
 	// as long as a wrong password and cannot be told apart by timing.
 	private static readonly string AbsentAccountHash = BCrypt.Net.BCrypt.HashPassword("basil-absent-account");
 
+	// The bcrypt hash of each account that signed in, read on every login.
+	private readonly CacheAside<int, string> _hashes = new();
+
 	/// <inheritdoc />
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
 	{
-		var stored = await FindAsync(credentials.User.Id, cancellationToken);
+		var userId = credentials.User.Id;
+		var stored = await _hashes.GetAsync(userId, () => database.ReadAsync((AuthenticationDbContext context) =>
+			context.Credentials.Where(c => c.UserId == userId).Select(c => c.PasswordHash).FirstOrDefaultAsync(
+				cancellationToken), cancellationToken));
 		if (stored is null)
 		{
 			BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, AbsentAccountHash);
 			return false;
 		}
 
-		return BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, stored.Hash);
+		return BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, stored);
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default)
 	{
-		var hash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue);
-		_ = SaveAsync(new StoredCredential(credentials.User.Id, hash));
-		return Task.CompletedTask;
+		var row = new CredentialRow
+		{
+			UserId = credentials.User.Id, PasswordHash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue)
+		};
+		await database.WriteAsync((AuthenticationDbContext context, CancellationToken token) =>
+			context.UpsertAsync(row, stored => stored.UserId == row.UserId, token), cancellationToken);
+		_hashes.Remove(row.UserId);
 	}
 
 	/// <inheritdoc />
 	public async Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
-		if (await FindAsync(user.Id, cancellationToken) is { } stored)
-			await RemoveAsync(stored);
-	}
-
-	protected override int KeyOf(StoredCredential item)
-	{
-		return item.UserId;
-	}
-
-	protected override Root RootOf(StoredCredential item)
-	{
-		return Root.User(item.UserId);
-	}
-
-	protected override void CopyTo(StoredCredential live, StoredCredential from)
-	{
-		live.Hash = from.Hash;
-	}
-
-	protected override async Task<StoredCredential?> LoadAsync(int key)
-	{
-		var row = await Reader.ReadAsync((AuthenticationDbContext context) => context.Credentials
-			.Where(c => c.UserId == key)
-			.FirstOrDefaultAsync());
-		return row is null ? null : new StoredCredential(key, row.PasswordHash);
-	}
-
-	protected override WriteCommand<AuthenticationDbContext> EraseCommand(int key)
-	{
-		return new WriteCommand<AuthenticationDbContext>((context, token) => context.Credentials
-			.Where(c => c.UserId == key)
-			.ExecuteDeleteAsync(token));
-	}
-
-	protected override WriteCommand<AuthenticationDbContext> SaveCommand(StoredCredential item)
-	{
-		var row = new CredentialRow { UserId = item.UserId, PasswordHash = item.Hash };
-		return new WriteCommand<AuthenticationDbContext>((context, token) =>
-			context.UpsertAsync(row, stored => stored.UserId == row.UserId, token));
-	}
-
-	/// <summary>Holds one user's stored credential hash.</summary>
-	internal sealed class StoredCredential(int userId, string hash)
-	{
-		public int UserId { get; } = userId;
-		public string Hash { get; set; } = hash;
+		await database.WriteAsync((AuthenticationDbContext context, CancellationToken token) => context.Credentials
+			.Where(c => c.UserId == user.Id)
+			.ExecuteDeleteAsync(token), cancellationToken);
+		_hashes.Remove(user.Id);
 	}
 }

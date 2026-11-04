@@ -11,31 +11,26 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Authentication.Persistence;
 
 /// <summary>Records the history of sessions.</summary>
-internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseReader reader) : ISessionRepository
+internal sealed class PostgresSessionRepository(DatabaseSession database) : ISessionRepository
 {
 	/// <inheritdoc />
 	public Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default)
 	{
 		var row = ToRow(login);
 
-		return writer.AppendAsync(Root.User(login.User.Id),
-			new WriteCommand<AuthenticationDbContext>(async (context, token) =>
-			{
-				context.Sessions.Add(row);
-				await context.SaveChangesAsync(token);
-			}));
+		return database.WriteAsync((AuthenticationDbContext context, CancellationToken _) =>
+		{
+			context.Sessions.Add(row);
+			return Task.CompletedTask;
+		}, cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public Task UpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		var row = ToRow(session);
-		return writer.SaveAsync(Root.User(session.User.Id), row.Id,
-			new WriteCommand<AuthenticationDbContext>(async (context, token) =>
-			{
-				await context.ReplaceAsync(row, item => item.Id == row.Id, token);
-			}));
+		return database.WriteAsync((AuthenticationDbContext context, CancellationToken token) =>
+			context.ReplaceAsync(row, item => item.Id == row.Id, token), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -44,7 +39,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	{
 		var types = filter.Types;
 		var now = filter.Now.ToUniversalTime();
-		var (total, rows) = await reader.ReadAsync(async (AuthenticationDbContext context) =>
+		var (total, rows) = await database.ReadAsync(async (AuthenticationDbContext context) =>
 		{
 			var query = context.Sessions.Where(row => row.UserId == user.Id);
 			if (types is not null) query = query.Where(row => types.Contains(row.Type));
@@ -72,7 +67,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	/// <inheritdoc />
 	public async Task<SessionRecord?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
 	{
-		var row = await reader.ReadAsync((AuthenticationDbContext context) => context.Sessions
+		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken),
 			cancellationToken);
 		return row is null ? null : ToRecord(row, user);
@@ -83,7 +78,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 		CancellationToken cancellationToken = default)
 	{
 		var at = now.ToUniversalTime();
-		var row = await reader.ReadAsync((AuthenticationDbContext context) => context.Sessions
+		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.TokenHash == tokenHash && item.Type == type && item.EndedAt == null &&
 				                             (item.ExpiresAt == null || item.ExpiresAt > at), cancellationToken),
 			cancellationToken);
@@ -97,7 +92,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 		DateTimeOffset at, SessionEndReason reason, CancellationToken cancellationToken = default)
 	{
 		var end = at.ToUniversalTime();
-		return writer.AppendAsync(Root.User(user.Id), new WriteCommand<AuthenticationDbContext>(async (context, token) =>
+		return database.WriteAsync(async (AuthenticationDbContext context, CancellationToken token) =>
 		{
 			var query = context.Sessions.Where(row => row.UserId == user.Id && types.Contains(row.Type));
 			if (only is { } one) query = query.Where(row => row.Id == one);
@@ -106,7 +101,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 			await query.Where(row => row.EndedAt == null).ExecuteUpdateAsync(setters => setters
 				.SetProperty(row => row.EndedAt, end)
 				.SetProperty(row => row.EndReason, reason), token);
-		}));
+		}, cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -115,7 +110,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	{
 		if (activity.Count == 0) return Task.CompletedTask;
 
-		return writer.AppendAsync(Root.Server, new WriteCommand<AuthenticationDbContext>(async (context, token) =>
+		return database.TransactAsync(async (AuthenticationDbContext context, CancellationToken token) =>
 		{
 			foreach (var item in activity)
 			{
@@ -126,14 +121,14 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 						.SetProperty(row => row.LastActiveAt, last)
 						.SetProperty(row => row.ExpiresAt, expires), token);
 			}
-		}));
+		}, cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
 	{
 		var before = cutoff.ToUniversalTime();
-		return writer.WriteAsync(Root.Server, async (AuthenticationDbContext context, CancellationToken token) =>
+		return database.WriteAsync(async (AuthenticationDbContext context, CancellationToken token) =>
 			await context.Sessions.Where(row => (row.EndedAt != null && row.EndedAt < before) ||
 			                                    (row.EndedAt == null && row.ExpiresAt != null &&
 			                                     row.ExpiresAt < before))

@@ -381,6 +381,37 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 
 	/// <summary>Waits until the given number of sessions is stored.</summary>
 	/// <param name="count">How many sessions to wait for.</param>
+	[Fact]
+	public async Task A_recorded_session_is_in_the_database_when_the_write_returns()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+
+		await RecordAsync(user, First, FirstId);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select id from sessions", null,
+			TestContext.Current.CancellationToken);
+		Assert.Single(rows);
+	}
+
+	[Fact]
+	public async Task Recording_a_session_twice_reports_that_it_already_exists()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+		await RecordAsync(user, First, FirstId);
+
+		await Assert.ThrowsAsync<AlreadyExistsException>(() => RecordAsync(user, First, FirstId));
+	}
+
+	[Fact]
+	public async Task A_session_of_an_account_that_does_not_exist_is_refused_to_the_caller()
+	{
+		var ghost = new UserRecord { Id = 9999, Value = new UserData { Name = "ghost" } };
+
+		await Assert.ThrowsAnyAsync<Exception>(() => RecordAsync(ghost, First, FirstId));
+	}
+
 	private async Task WaitForSessionsAsync(int count)
 	{
 		await StoredRows.WaitForAsync(ConnectionString, "select id from sessions", null,
