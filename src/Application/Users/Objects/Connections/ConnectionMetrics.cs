@@ -18,6 +18,6 @@ public static class ConnectionMetrics
 	public const string TooManySessions = "too_many_sessions";
 
 	/// <summary>Counts the connections refused, tagged with their kind and the reason.</summary>
-	public static readonly Counter<long> Rejected = new Meter("Basil", "1.0")
+	public static readonly Counter<long> Rejected = new Meter("Basil.Users", "1.0")
 		.CreateCounter<long>(RejectedName, description: "Connections the server refused to open.");
 }

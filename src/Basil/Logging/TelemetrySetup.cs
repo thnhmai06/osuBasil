@@ -1,5 +1,4 @@
 using Basil.Configuration;
-using Basil.Host.Shared.Diagnostics;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -27,7 +26,7 @@ public static class TelemetrySetup
 		var telemetry = builder.Services.AddOpenTelemetry().ConfigureResource(resource =>
 			resource.AddService(builder.Configuration["Basil:Server:Name"] ?? "Basil"));
 		if (options.Metrics)
-			telemetry.WithMetrics(metrics => metrics.AddMeter(BasilMeter.Instance.Name).AddAspNetCoreInstrumentation()
+			telemetry.WithMetrics(metrics => metrics.AddMeter("Basil.*").AddAspNetCoreInstrumentation()
 				.AddRuntimeInstrumentation().AddOtlpExporter(exporter => exporter.Endpoint = endpoint));
 		if (options.Traces)
 			telemetry.WithTracing(tracing => tracing.AddAspNetCoreInstrumentation()

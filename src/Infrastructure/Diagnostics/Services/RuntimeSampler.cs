@@ -2,20 +2,19 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Reflection;
-using System.Runtime;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
+using Basil.Application.Common.Diagnostics;
 
-namespace Basil.Host.Shared.Diagnostics;
+namespace Basil.Infrastructure.Diagnostics.Services;
 
 /// <summary>
 ///     Measures the process once a second: the runtime categories of the diagnostics that need nothing from the
 ///     application, shared by the HTTP API and the console dashboard.
 /// </summary>
-public sealed class RuntimeSampler : IDisposable
+internal sealed class RuntimeSampler : IDisposable, IClearTally
 {
 	private const int RecentExceptions = 20;
-	private static readonly string[] Categories = ["process", "gc", "threadpool", "runtime", "exceptions", "http"];
 	private readonly TimeProvider _clock;
 	private readonly ConcurrentDictionary<string, HostWindow> _hosts = new();
 	private readonly MeterListener _listener = new();
@@ -38,18 +37,14 @@ public sealed class RuntimeSampler : IDisposable
 		_started = clock.GetUtcNow();
 		_lastSample = _started;
 		AppDomain.CurrentDomain.FirstChanceException += OnException;
-		// The meter must exist before the listener starts, or its own creation would hide the instrument from the listener.
-		var duration = BasilMeter.HttpDuration;
+		// The hosts own the instrument; it is found by its agreed name wherever it is published.
 		_listener.InstrumentPublished = (instrument, listener) =>
 		{
-			if (ReferenceEquals(instrument, duration)) listener.EnableMeasurementEvents(instrument);
+			if (instrument.Name == DiagnosticsMetrics.HttpDurationName) listener.EnableMeasurementEvents(instrument);
 		};
 		_listener.SetMeasurementEventCallback<double>(OnDuration);
 		_listener.Start();
 	}
-
-	/// <summary>Gets the names of the categories this sampler fills.</summary>
-	public static IReadOnlyList<string> Names => Categories;
 
 	/// <summary>Gets or sets how the sample reads the number of log events dropped because the log queue was full.</summary>
 	public Func<long> LogsDropped { get; set; } = () => 0;
@@ -123,19 +118,12 @@ public sealed class RuntimeSampler : IDisposable
 		}
 	}
 
-	/// <summary>Forgets the counted exceptions and the list of recent ones.</summary>
-	public void ResetExceptions()
+	/// <inheritdoc />
+	public void Reset()
 	{
 		Interlocked.Exchange(ref _exceptions, 0);
 		_lastExceptions = 0;
 		_recent.Clear();
-	}
-
-	/// <summary>Collects the garbage now, compacting the large object heap.</summary>
-	public static void Collect()
-	{
-		GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-		GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
 	}
 
 	private void OnException(object? sender, FirstChanceExceptionEventArgs args)
@@ -150,8 +138,8 @@ public sealed class RuntimeSampler : IDisposable
 	{
 		string host = "other", status = "2xx";
 		foreach (var tag in tags)
-			if (tag.Key == "host") host = tag.Value?.ToString() ?? host;
-			else if (tag.Key == "status") status = tag.Value?.ToString() ?? status;
+			if (tag.Key == DiagnosticsMetrics.HostTag) host = tag.Value?.ToString() ?? host;
+			else if (tag.Key == DiagnosticsMetrics.StatusTag) status = tag.Value?.ToString() ?? status;
 
 		// Whoever calls the meter, the windows stay bounded to the known labels.
 		if (!HostLabels.All.Contains(host)) host = HostLabels.Other;

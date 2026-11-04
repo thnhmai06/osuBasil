@@ -30,6 +30,7 @@ using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Anticheat;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Users;
 using Basil.Infrastructure.Users.Handlers;
@@ -112,6 +113,7 @@ public sealed class TestApplication : IDisposable
 		services.AddScoresLogic();
 		services.AddBeatmapsLogic();
 		services.AddAnticheatInfrastructure();
+		services.AddDiagnosticsInfrastructure();
 		services.AddBasilApplication();
 		// The host registers the bot's handlers with the others, so a container built like the host needs the bot's services too.
 		services.AddBot();

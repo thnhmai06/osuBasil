@@ -11,7 +11,7 @@ internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<Ses
 	: INotificationHandler<UserConnectionClosed>
 {
 	/// <summary>Counts the sessions whose closing could not be stored.</summary>
-	internal static readonly Counter<long> UpdateFailures = new Meter("Basil", "1.0")
+	internal static readonly Counter<long> UpdateFailures = UsersMeter.Instance
 		.CreateCounter<long>("basil.sessions.update.failed", description: "Sessions whose closing was not stored.");
 
 	/// <inheritdoc />

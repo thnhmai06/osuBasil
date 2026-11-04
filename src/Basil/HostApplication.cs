@@ -11,7 +11,7 @@ using Basil.Host.Stable;
 using Basil.Host.Rest;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Images;
-using Basil.Host.Shared.Diagnostics;
+using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Host.Shared.Documentation;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Beatmaps;
@@ -58,7 +58,6 @@ public static class HostApplication
 				cache.CacheRootPath = Path.Combine(storage.Value.Location, "Cache");
 				cache.CacheFolder = "imagesharp";
 			});
-		builder.Services.AddSingleton<ICacheCleaner, CacheCleaner>();
 		builder.Services.AddCli(mode,
 			provider => ControlSocket.PathIn(
 				provider.GetRequiredService<IOptions<StorageOptions>>().Value.Location),

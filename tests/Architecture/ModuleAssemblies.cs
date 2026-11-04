@@ -6,7 +6,7 @@ namespace Basil.ArchitectureTests;
 internal static class ModuleAssemblies
 {
 	internal static readonly string[] Modules =
-		["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Servers", "Users"];
+		["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Servers", "Users"];
 
 	/// <summary>Gets the Application assembly of every module.</summary>
 	internal static IReadOnlyList<Assembly> Applications { get; } =

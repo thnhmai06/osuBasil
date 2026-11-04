@@ -7,6 +7,7 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Common;
 using Basil.Application.Common.Events;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Diagnostics;
 using Basil.Application.Multiplayer;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Scores;
@@ -25,6 +26,8 @@ using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Content;
+using Basil.Infrastructure.Diagnostics;
+using Basil.Infrastructure.Diagnostics.Pipeline;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Postgres;
 using Basil.Infrastructure.Scores;
@@ -73,6 +76,7 @@ public static class DependencyInjection
 		services.AddChatInfrastructure();
 		services.AddAnticheatInfrastructure();
 		services.AddServersInfrastructure();
+		services.AddDiagnosticsInfrastructure();
 		return services;
 	}
 
@@ -91,6 +95,7 @@ public static class DependencyInjection
 		services.AddMultiplayerApplication();
 		services.AddChatApplication();
 		services.AddServersApplication();
+		services.AddDiagnosticsApplication();
 		return services;
 	}
 
@@ -117,6 +122,7 @@ public static class DependencyInjection
 			options.ServiceLifetime = ServiceLifetime.Singleton;
 			options.GenerateTypesAsInternal = true;
 			options.NotificationPublisherType = typeof(QueuedNotificationPublisher);
+			options.PipelineBehaviors = [typeof(MessageMeasurement<,>)];
 		});
 		AddCategory<UserEvent>(services);
 		AddCategory<ChannelEvent>(services);

@@ -32,6 +32,7 @@
 		<ProjectReference Include="..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
 		<ProjectReference Include="..\Application\Chat\Basil.Application.Chat.csproj"/>
 		<ProjectReference Include="..\Application\Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Application\Diagnostics\Basil.Application.Diagnostics.csproj"/>
 		<ProjectReference Include="..\Hosts\Stable\Basil.Host.Stable.csproj"/>
 		<ProjectReference Include="..\Hosts\Irc\Basil.Host.Irc.csproj"/>
 		<ProjectReference Include="..\Hosts\Rest\Basil.Host.Rest.csproj"/>
@@ -46,6 +47,7 @@
 		<ProjectReference Include="..\Infrastructure\Multiplayer\Basil.Infrastructure.Multiplayer.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Chat\Basil.Infrastructure.Chat.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Servers\Basil.Infrastructure.Servers.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Diagnostics\Basil.Infrastructure.Diagnostics.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Postgres\Basil.Infrastructure.Postgres.csproj"/>
 	</ItemGroup>
 

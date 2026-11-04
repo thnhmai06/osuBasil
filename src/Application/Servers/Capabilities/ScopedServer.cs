@@ -44,9 +44,6 @@ public readonly struct ScopedServer
 	/// <summary>Gets operations for the content shown to players: FAQ entries and the main menu.</summary>
 	public ScopedServerContent Content => new(this);
 
-	/// <summary>Gets the access check of the diagnostics.</summary>
-	public ScopedServerDiagnostics Diagnostics => new(this);
-
 	/// <summary>Gets operations for screenshots.</summary>
 	public ScopedServerScreenshots Screenshots => new(this);
 

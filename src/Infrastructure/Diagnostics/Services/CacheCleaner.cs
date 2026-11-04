@@ -1,8 +1,8 @@
-using Basil.Host.Shared.Diagnostics;
+using Basil.Application.Common.Diagnostics;
 using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Options;
 
-namespace Basil;
+namespace Basil.Infrastructure.Diagnostics.Services;
 
 /// <summary>Empties <c>Data/Cache</c>, whose files are derived and made again when needed.</summary>
 internal sealed class CacheCleaner(IOptions<StorageOptions> storage) : ICacheCleaner

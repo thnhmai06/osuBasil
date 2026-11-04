@@ -8,14 +8,14 @@ namespace Basil.ArchitectureTests;
 ///     <c>src</c> (except the hosts, which are migrated separately) and fails on an edge outside the allowed graph or on a
 ///     cycle. Domain is shared by every project; the module Application projects follow
 ///     <c>Users -&gt; Authentication, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
-///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c> and
+///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c>, <c>Diagnostics -&gt; Users</c> and
 ///     <c>Servers</c> on top of all of them; a module Infrastructure project references only its own Application project
 ///     and the Common projects; <c>Basil</c> and <c>Bot</c> sit above every module and nothing references them.
 /// </summary>
 public class ModuleGraphTests
 {
 	private static readonly string[] Modules =
-		["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Servers", "Users"];
+		["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Servers", "Users"];
 
 	private static readonly Dictionary<string, string[]> ModuleDependencies = new()
 	{
@@ -27,7 +27,11 @@ public class ModuleGraphTests
 		["Scores"] = ["Users", "Beatmaps"],
 		["Multiplayer"] = ["Users", "Beatmaps", "Content", "Scores"],
 		["Chat"] = ["Users", "Multiplayer"],
-		["Servers"] = ["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Multiplayer", "Scores", "Users"]
+		["Diagnostics"] = ["Users"],
+		["Servers"] =
+		[
+			"Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Users"
+		]
 	};
 
 	[Fact]
@@ -77,6 +81,10 @@ public class ModuleGraphTests
 		Assert.False(IsAllowed("Basil.Gateway", "Basil.Domain"));
 		Assert.True(IsAllowed("Basil.Protocol.Stable", "Basil.Domain"));
 		Assert.True(IsAllowed("Basil.Application.Multiplayer", "Basil.Application.Scores"));
+		Assert.True(IsAllowed("Basil.Application.Diagnostics", "Basil.Application.Users"));
+		Assert.False(IsAllowed("Basil.Application.Diagnostics", "Basil.Application.Multiplayer"));
+		Assert.False(IsAllowed("Basil.Application.Users", "Basil.Application.Diagnostics"));
+		Assert.False(IsAllowed("Basil.Application.Chat", "Basil.Application.Diagnostics"));
 	}
 
 	[Fact]

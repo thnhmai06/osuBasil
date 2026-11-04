@@ -12,7 +12,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Host.Shared;
-using Basil.Host.Shared.Diagnostics;
+using Basil.Application.Diagnostics.Messages;
 using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Cli.Commands;
@@ -161,36 +161,25 @@ internal static class ContentCommands
 		yield return new CommandDef
 		{
 			Pattern = "diagnostics gc collect", Route = diagnosticsRoute, Summary = "Collects the garbage now.",
-			Run = call =>
-			{
-				RuntimeSampler.Collect();
-				call.Output.Ok("Garbage collected.");
-				return Task.FromResult(ExitCodes.Success);
-			}
+			Run = async call => call.Report(await SendAsync(call, actor => new CollectGarbage(actor)),
+				"Garbage collected.")
 		};
 		yield return new CommandDef
 		{
 			Pattern = "diagnostics caches clear", Route = diagnosticsRoute, Offline = true,
 			Summary = "Empties the cache of derived files.",
-			Run = call =>
+			Run = async call =>
 			{
-				var deleted = call.Services.GetService(typeof(ICacheCleaner)) is ICacheCleaner cleaner
-					? cleaner.Clear()
-					: 0;
-				call.Output.Ok($"Cache cleared: {deleted} files deleted.");
-				return Task.FromResult(ExitCodes.Success);
+				var (result, deleted) = await SendAsync(call, actor => new ClearCaches(actor));
+				return call.Report(result, $"Cache cleared: {deleted} files deleted.");
 			}
 		};
 		yield return new CommandDef
 		{
 			Pattern = "diagnostics exceptions reset", Route = diagnosticsRoute,
 			Summary = "Forgets the counted exceptions.",
-			Run = call =>
-			{
-				call.Get<RuntimeSampler>().ResetExceptions();
-				call.Output.Ok("Exceptions reset.");
-				return Task.FromResult(ExitCodes.Success);
-			}
+			Run = async call => call.Report(await SendAsync(call, actor => new ResetExceptions(actor)),
+				"Exceptions reset.")
 		};
 	}
 

@@ -2,12 +2,12 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Diagnostics.Services;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Shared;
-using Basil.Host.Shared.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Data;
@@ -22,9 +22,9 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 	{
 		var registry = services.GetRequiredService<UserRegistry>();
 		var lobby = services.GetRequiredService<Lobby>();
-		var runtime = services.GetRequiredService<RuntimeSampler>();
-		var sample = DiagnosticsSample.Create(runtime, registry, lobby, 0);
-		var json = JsonSerializer.SerializeToNode(sample, ApiJson.Options)!.AsObject();
+		// The intake answers without waiting for anything, so the frame loop can take the sample where it stands.
+		var sample = services.GetRequiredService<IDiagnosticsIntake>().TakeSampleAsync().AsTask().GetAwaiter().GetResult();
+		var json = JsonSerializer.SerializeToNode(sample.All, ApiJson.Options)!.AsObject();
 
 		model.Version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown";
 		model.Cpu.Add(Number(json, "process", "cpuPercent"));

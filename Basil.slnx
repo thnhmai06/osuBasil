@@ -11,6 +11,7 @@
 		<Project Path="src/Application/Chat/Basil.Application.Chat.csproj"/>
 		<Project Path="src/Application/Common/Basil.Application.Common.csproj"/>
 		<Project Path="src/Application/Content/Basil.Application.Content.csproj"/>
+		<Project Path="src/Application/Diagnostics/Basil.Application.Diagnostics.csproj"/>
 		<Project Path="src/Application/Multiplayer/Basil.Application.Multiplayer.csproj"/>
 		<Project Path="src/Application/Scores/Basil.Application.Scores.csproj"/>
 		<Project Path="src/Application/Servers/Basil.Application.Servers.csproj"/>
@@ -23,6 +24,7 @@
 		<Project Path="src/Infrastructure/Chat/Basil.Infrastructure.Chat.csproj"/>
 		<Project Path="src/Infrastructure/Common/Basil.Infrastructure.Common.csproj"/>
 		<Project Path="src/Infrastructure/Content/Basil.Infrastructure.Content.csproj"/>
+		<Project Path="src/Infrastructure/Diagnostics/Basil.Infrastructure.Diagnostics.csproj"/>
 		<Project Path="src/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.csproj"/>
 		<Project Path="src/Infrastructure/Postgres/Basil.Infrastructure.Postgres.csproj"/>
 		<Project Path="src/Infrastructure/Scores/Basil.Infrastructure.Scores.csproj"/>
@@ -57,6 +59,7 @@
 		<Project Path="tests/Application/Chat/Basil.Application.Chat.Tests.csproj"/>
 		<Project Path="tests/Application/Common/Basil.Application.Common.Tests.csproj"/>
 		<Project Path="tests/Application/Content/Basil.Application.Content.Tests.csproj"/>
+		<Project Path="tests/Application/Diagnostics/Basil.Application.Diagnostics.Tests.csproj"/>
 		<Project Path="tests/Application/Multiplayer/Basil.Application.Multiplayer.Tests.csproj"/>
 		<Project Path="tests/Application/Scores/Basil.Application.Scores.Tests.csproj"/>
 		<Project Path="tests/Application/Servers/Basil.Application.Servers.Tests.csproj"/>
@@ -79,6 +82,7 @@
 		<Project Path="tests/Infrastructure/Chat/Basil.Infrastructure.Chat.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Common/Basil.Infrastructure.Common.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Content/Basil.Infrastructure.Content.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Diagnostics/Basil.Infrastructure.Diagnostics.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Scores/Basil.Infrastructure.Scores.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Users/Basil.Infrastructure.Users.Tests.csproj"/>

@@ -2,7 +2,6 @@ using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Routes;
 using Basil.Host.Rest.Sse;
-using Basil.Host.Shared.Diagnostics;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Configuration;
 
@@ -18,8 +17,6 @@ public static class RestHost
 	{
 		services.AddSingleton<RateLimiter>();
 		services.AddSingleton<LoginAttemptGuard>();
-		services.AddSingleton<RuntimeSampler>(sp => new RuntimeSampler(sp.GetRequiredService<TimeProvider>()));
-		services.AddHostedService<DiagnosticsStarter>();
 		services.AddSingleton<SseHub>();
 		services.AddHostedService(sp => sp.GetRequiredService<SseHub>());
 		return services;

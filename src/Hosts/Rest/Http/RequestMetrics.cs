@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Basil.Host.Shared.Diagnostics;
+using Basil.Application.Common.Diagnostics;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Rest.Http;
@@ -19,9 +19,9 @@ internal sealed class RequestMetricsMiddleware(RequestDelegate next, IOptions<Re
 		finally
 		{
 			var label = HostLabels.Resolve(context.Request.Host.Host, _domain);
-			BasilMeter.HttpDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds,
-				new KeyValuePair<string, object?>("host", label),
-				new KeyValuePair<string, object?>("status", $"{context.Response.StatusCode / 100}xx"));
+			RestMeter.HttpDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+				new KeyValuePair<string, object?>(DiagnosticsMetrics.HostTag, label),
+				new KeyValuePair<string, object?>(DiagnosticsMetrics.StatusTag, $"{context.Response.StatusCode / 100}xx"));
 		}
 	}
 }

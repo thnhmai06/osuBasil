@@ -1,19 +1,16 @@
-using Mediator;
-using Basil.Application.Servers.Messages;
-using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Registry;
+using Basil.Application.Common.Diagnostics;
+using Basil.Application.Diagnostics.Messages;
+using Basil.Application.Diagnostics.Services;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
-using Basil.Host.Shared.Diagnostics;
-using Microsoft.Extensions.Hosting;
+using Mediator;
 
 namespace Basil.Host.Rest.Sse;
 
 /// <summary>Server diagnostics: live measurements and maintenance actions.</summary>
 internal static class DiagnosticsRoutes
 {
-	private static readonly string[] Categories = DiagnosticsSample.Categories;
+	private static readonly string[] Categories = [.. DiagnosticsSample.Categories];
 
 	private static readonly TimeSpan CollectInterval = TimeSpan.FromSeconds(30);
 
@@ -22,13 +19,14 @@ internal static class DiagnosticsRoutes
 	public static void MapDiagnostics(this RouteGroupBuilder v1)
 	{
 		var diagnostics = v1.MapGroup("/diagnostics").WithTags("Diagnostics").RequireToken();
-		diagnostics.MapGet("/", (HttpContext c, ISender sender) => StreamAsync(c, sender, null)).Sse()
+		diagnostics.MapGet("/", (HttpContext c, ISender sender, IDiagnosticsIntake intake) => StreamAsync(c, sender, intake, null)).Sse()
 			.WithSummary("Watch every diagnostics category.")
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample. Data is up to about one second old.
 			                 """);
 		diagnostics.MapGet("/{category}",
-				(HttpContext c, string category, ISender sender) => StreamAsync(c, sender, category)).Sse()
+				(HttpContext c, string category, ISender sender, IDiagnosticsIntake intake) =>
+					StreamAsync(c, sender, intake, category)).Sse()
 			.WithSummary("Watch one diagnostics category.")
 			.WithDescription("""
 			                 The categories are process, gc, threadpool, runtime, exceptions, http, application, database, stable, irc, events and sessions. Streamed like the full diagnostics.
@@ -39,37 +37,34 @@ internal static class DiagnosticsRoutes
 				"The actions are `gc/collect`, `caches/clear` and `exceptions/reset`. `gc/collect` can run once every 30 seconds; a request sooner is answered with 429.");
 	}
 
-	private static object Sample(RuntimeSampler runtime, UserRegistry registry, Lobby lobby, SseHub hub,
-		string? category)
+	private static async Task<object> SampleAsync(IDiagnosticsIntake intake, string? category,
+		CancellationToken cancellationToken)
 	{
-		var all = DiagnosticsSample.Create(runtime, registry, lobby, hub.OpenStreams);
-		return category is null ? all : all[category];
+		var sample = await intake.TakeSampleAsync(cancellationToken);
+		return category is null ? sample.All : sample[category];
 	}
 
-	private static async Task<IResult> StreamAsync(HttpContext context, ISender sender, string? category)
+	private static async Task<IResult> StreamAsync(HttpContext context, ISender sender, IDiagnosticsIntake intake,
+		string? category)
 	{
 		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
 		if (!access.IsOk) return access.Refusal();
 		if (category is not null && !Categories.Contains(category, StringComparer.OrdinalIgnoreCase))
 			return Api.NotFound("No such diagnostics category.");
 
-		var services = context.RequestServices;
-		var runtime = services.GetRequiredService<RuntimeSampler>();
-		var registry = services.GetRequiredService<UserRegistry>();
-		var lobby = services.GetRequiredService<Lobby>();
-		var hub = services.GetRequiredService<SseHub>();
 		category = category?.ToLowerInvariant();
 		return await context.StreamAsync($"diagnostics:{category ?? "all"}",
-			_ => Task.FromResult<(object, string?)>((Sample(runtime, registry, lobby, hub, category), null)), null,
-			_ => Task.FromResult(new SsePoll([new SseEvent(Sample(runtime, registry, lobby, hub, category))])));
+			async ct => (await SampleAsync(intake, category, ct), null), null,
+			async ct => new SsePoll([new SseEvent(await SampleAsync(intake, category, ct))]));
 	}
 
 	private static async Task<IResult> ActionAsync(HttpContext context, string category, string action, ISender sender,
-		RuntimeSampler runtime, ICacheCleaner? caches, RateLimiter limiter)
+		RateLimiter limiter)
 	{
 		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
 		if (!access.IsOk) return access.Refusal();
 
+		var actor = context.Connection();
 		switch ($"{category}/{action}".ToLowerInvariant())
 		{
 			case "gc/collect":
@@ -80,30 +75,16 @@ internal static class DiagnosticsRoutes
 						"Garbage can be collected once every 30 seconds.");
 				}
 
-				RuntimeSampler.Collect();
-				return Api.Done("Garbage collected");
+				var collected = await sender.Send(new CollectGarbage(actor), context.RequestAborted);
+				return collected.IsOk ? Api.Done("Garbage collected") : collected.Refusal();
 			case "caches/clear":
-				return Api.Ok(new { deleted = caches?.Clear() ?? 0 }, "Cache cleared");
+				var (cleared, deleted) = await sender.Send(new ClearCaches(actor), context.RequestAborted);
+				return cleared.IsOk ? Api.Ok(new { deleted }, "Cache cleared") : cleared.Refusal();
 			case "exceptions/reset":
-				runtime.ResetExceptions();
-				return Api.Done("Exceptions reset");
+				var reset = await sender.Send(new ResetExceptions(actor), context.RequestAborted);
+				return reset.IsOk ? Api.Done("Exceptions reset") : reset.Refusal();
 			default:
 				return Api.NotFound("No such action.");
 		}
-	}
-}
-
-/// <summary>Creates the sampler when the server starts, so it counts from the beginning.</summary>
-internal sealed class DiagnosticsStarter(RuntimeSampler sampler) : IHostedService
-{
-	public Task StartAsync(CancellationToken cancellationToken)
-	{
-		_ = sampler.Sample();
-		return Task.CompletedTask;
-	}
-
-	public Task StopAsync(CancellationToken cancellationToken)
-	{
-		return Task.CompletedTask;
 	}
 }
