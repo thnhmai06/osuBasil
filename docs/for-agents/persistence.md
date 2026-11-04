@@ -2,7 +2,7 @@
 
 Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Application/Persistence`, `Application/Storage` or `Application/Registry`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Common`.
 
-> **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **being removed**, module by module. Until a module is migrated its code still behaves as the old model; the rules below are the target and are no longer described in the old terms.
+> **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **removed**: every module repository runs on `DatabaseSession`. The split into `Basil.Infrastructure.Postgres` and the `write_tickets` table are still **(target)**.
 
 
 
@@ -103,15 +103,15 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 The Authentication module is the pilot; copy its shape (`PostgresCredentialRepository`, `PostgresSessionRepository`).
 
 * **One helper, `DatabaseSession`** (`Infrastructure.Common/Persistence`), injected into the repository. It has no queue
-  and no retry. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own (through
-  `DatabaseReader`). `WriteAsync<TContext>(change, ct)` and `WriteAsync<TContext, T>(change, ct)` create a context whose
+  and no retry of a change. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own. `WriteAsync<TContext>(change, ct)` and `WriteAsync<TContext, T>(change, ct)` create a context whose
   commit is confirmed, run the change, call `SaveChanges` and dispose; the second form returns what the change returned
   (a row count). `TransactAsync<TContext>(work, ct)` is the same inside one transaction, for a business operation that
   stores several rows. Entities the change adds or modifies are saved by the helper; `ExecuteUpdate`/`ExecuteDelete`
   run on their own.
 * **Failure contract.** A write is finished when the call returns. A unique violation becomes `AlreadyExistsException`;
   every other failure (foreign key, connection, timeout) reaches the caller as the original exception. Nothing is
-  swallowed or retried, so a caller that must survive a failed write handles it, and a caller that cannot await (code
+  swallowed, and a change is never retried (only the opening of the connection is, three times after 50, 200 and 800 ms),
+  so a caller that must survive a failed write handles it, and a caller that cannot await (code
   under a lock) must move the write to an event handler outside the lock.
 * **Cache-aside rule.** A small record read on every request may be cached with `CacheAside<TKey, TValue>`
   (`Infrastructure.Common/Registry`): `GetAsync(key, load)` fills it on a miss (an absent record is never cached), and

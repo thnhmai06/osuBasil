@@ -2,38 +2,26 @@
 
 ## Overview
 
-> **Migration status.** The memory-first, write-behind model described below is being removed. The target is
-> awaited persistence with cache-aside reads (Registry / Repository / Storage), described in
-> [`persistence.md`](../for-agents/persistence.md); sections marked **(target: removed)** describe what the code still
-> does until the last module is migrated.
-
-Basil keeps its records in PostgreSQL, but the database is not where the server works. **Memory is the truth;
-the database keeps a copy of what was done.** A change to on-demand data is applied to the live object in memory first
-and its copy is queued for the database; resident data is written first, and memory follows once the write is
-committed. No operation waits for the database unless its result comes from the database, or unless it changes
-resident data.
+Basil keeps its records in PostgreSQL. Live objects (users online, rooms, channels) are held by their registries and are
+the truth of the running server; the database keeps what must survive a restart. Repositories await their reads and
+writes, and a write that fails reaches the caller. Small, hot records may be cached aside (`CacheAside`), and the cache
+entry is dropped only after the awaited write succeeded. The storage rules are in
+[`persistence.md`](../for-agents/persistence.md).
 
 This document explains why the storage works this way, what is stored, and how writes, reads and migrations work.
 Files (beatmapsets, replays, avatars, menu images, screenshots, FAQs) are not in the database; see
 [`assets.md`](assets.md) and [`beatmap-ingestion.md`](beatmap-ingestion.md).
 
-## Why memory first (target: removed)
+## Why awaited persistence
 
-Basil runs one server process for one deployment, and every request it answers concerns objects that are already
-alive: the user who is online, the room being played, the beatmap selected in it. Asking the database for them on
-every request would add a network round trip to every packet and make a slow or lost database stall the game.
+Basil runs one server process for one deployment. Earlier versions wrote behind memory and queued copies of the
+changes; that hid failures from the caller, and the queues needed ordering, retry and drain logic of their own. Now a
+write is finished when the call returns and a refusal is the caller's to handle. The live state a player depends on
+(the room being played, the online user) does not come from the database, so play continues while the database is
+briefly unreachable; what needs the database (a new account, a stored score) waits for it or fails.
 
-So:
-
-* a player can log in, chat and play while the database is unreachable, as long as nothing they do needs a new
-  identity or a unique-value check;
-* the database never decides what the server sees: a row that is missing means "not loaded yet", never "does not
-  exist";
-* one database belongs to one Basil process; nothing else writes it behind the server's back.
-
-PostgreSQL replaced the earlier SQLite file to scale and to write in parallel: SQLite allows one writer at a time,
-PostgreSQL many concurrent transactions. The trade-off is that Basil is no longer self-contained: a deployment now
-needs a database server and its credentials. The write path was measured before it was fixed: 8 write connections is the smallest count within 10% of the best capacity (about 18 600 committed writes per second against 19 900 at 16) with the lowest p99 latency of a try-operation.
+One database belongs to one Basil process; nothing else writes it behind the server's back. PostgreSQL replaced the
+earlier SQLite file to write in parallel, so a deployment needs a database server and its credentials.
 
 ## What is stored
 
@@ -63,18 +51,13 @@ by how much, the ranking of the scores) is stored as JSON in `rounds.result` whe
 
 ## Invariants
 
-* **Memory first (target: removed).** Everything asks memory first and reads the database only on a miss, to load into memory. A
-  change to on-demand data is applied to the live instance and its copy is queued; resident data is written first
-  and memory follows the commit.
-* **One live instance per identity.** Every `GetAsync`, `GetByYAsync` and `ListAsync` of a repository returns the same
-  instance for the same identity while anything holds it or a change of it is not stored yet.
-* **Only a try-operation waits.** An operation whose outcome comes from the database (an identity the store assigns,
-  a unique value) is a try-operation and waits; everything else returns at once.
-* **Unique values.** When memory holds a record with the value, the change is rejected at once; otherwise the insert
-  runs as a try-operation and a unique violation means the value is taken (`AlreadyExistsException`, or `false` for
-  a rename). The existing record is not loaded.
-* **Parents before children.** A child refers to a parent of another root only once the parent is committed; such a
-  parent is created by an awaited try-operation.
+* **Awaited writes.** A repository change returns when the database has committed it, and a failure reaches the
+  caller. A change that stores several rows together runs in one transaction.
+* **Records are copies.** A repository returns fresh records; the live object in a registry is the truth of the
+  running server.
+* **Unique values.** The insert checks them; a unique violation becomes `AlreadyExistsException` (or `false` for a
+  rename).
+* **Parents before children.** A child refers to a parent only once the parent is committed.
 * **Appends are stored exactly once.** Logins and match events carry no business id; the database assigns it.
 * **Scores attach to the round they were played in.** A round is identified by its match and its number; the live
   room numbers the round when it starts, so the number is known before any score arrives. The room's latest round is
@@ -88,54 +71,21 @@ by how much, the ranking of the scores) is stored as JSON in `rounds.result` whe
 
 ## How it works
 
-### Memory
-
-Each repository keeps its live instances itself:
-
-* **Resident data**, the records every client uses (server settings, general channels, menu banners), is loaded at
-  startup and never released.
-* **On-demand data** is held by identity for as long as something holds it (a session its user, a room its match) or
-  a change of it is not stored yet; there is no expiry.
-* **Owned lists** (a user's restrictions and relationships, a set's beatmaps, a match's rounds and events, a round's
-  scores) live as long as their owner instance: loaded whole the first time they are needed, then changed item by
-  item. A change made while the list loads, or not committed yet, is applied to the loaded list too.
-
 ### Writes
 
-```mermaid
-flowchart LR
-    op["Repository change"] -->|"copy of the values now"| q["Queue of its root"]
-    q -->|"one change at a time, in order"| pg[(PostgreSQL)]
-    try["Try-operation"] -->|"own transaction, awaited"| q
-    app["Append"] -->|"own transaction, not awaited"| q
-```
-
-* `DatabaseWriter` keeps one queue per **root**: `Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`. Writes
-  of one root are sent in order, one change at a time; a copy not sent yet is replaced by a newer copy of the same
-  identity. At most `Basil:Database:Write:PoolSize` connections (8 by default) write at once.
-* Reads run on their own data source built from `ConnectionStrings:Read` (the write connection string when it is empty), so a read replica can serve them; storing changes and migrating use `ConnectionStrings:Write`.
-* A **copy** (`CreateOrUpdateAsync`, `DeleteAsync`) carries the values as they were when queued and returns at once.
-* A change to **resident data** is written first: `CreateOrUpdateAsync`/`DeleteAsync` return once the database has
-  committed it, and only then does the resident copy follow, so a refused write leaves memory unchanged and reaches
-  the caller (`ResidentWrites`).
-* A **try-operation** runs in a transaction of its own after the earlier writes of its root; its cancellation token
-  counts only while it waits for its turn. Its transaction also stores a ticket row (`write_tickets`); a commit whose outcome was lost with the connection is
-  settled by asking whether the ticket exists, so the write is neither lost nor run twice. Old tickets are removed.
-* An **append** runs the same way as a try-operation but nobody waits for it; a refusal is logged.
-* No write is grouped with unrelated writes. A business operation that must store several rows together gets one
-  try-operation of its own.
-
-### Errors
-
-Only environment errors are retried: lost connection, timeout, server shutting down, read-only after a failover,
-deadlock, authentication, permissions. They are retried before any later write of the same root, with a back-off up
-to 5 seconds. Any other error fails that write alone: a try-operation throws it to its caller, a copy or an append is
-logged as an error. On shutdown the server waits for the queues to drain and logs how many writes were not stored.
+* `DatabaseSession` runs each write on a context of its own whose commit is confirmed, then saves what the change
+  added or modified. `TransactAsync` does the same inside one transaction.
+* Opening the connection is retried up to three times (after 50, 200 and 800 ms) when the database is briefly
+  unreachable; the change itself runs once and is never retried, so a committed insert cannot be duplicated.
+* A unique violation becomes `AlreadyExistsException`; every other failure reaches the caller unchanged.
+* At most `Basil:Database:Write:PoolSize` connections (8 by default) write at once.
 
 ### Reads
 
-A read runs on a context of its own, on a pooled connection, and sees only what is committed. A listing asks the database which rows
-match and returns the live instance of each; a row whose deletion is still queued never comes back into memory.
+A read runs on a context of its own, on a pooled connection, and sees only what is committed. At most twice the
+processor count of reads run at once. Reads run on their own data source built from `ConnectionStrings:Read` (the write
+connection string when it is empty), so a read replica can serve them; writes and migrations use
+`ConnectionStrings:Write`.
 
 ### Migrations
 
@@ -148,7 +98,7 @@ reference another's, the principal is not the other module's row type: `ContextM
 `HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
 At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Common, Users, Authentication, Beatmaps, Content,
-Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. `write_tickets` belongs to
+Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. `write_tickets` (no longer written; removed with the regenerated migrations) belongs to
 Common, the beatmap id sequences belong to Beatmaps, and the seeded channels belong to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
 
@@ -158,8 +108,8 @@ new histories.
 
 ## Related code
 
-* `src/Infrastructure/Common/Persistence/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`, `ContextModel`
-* `src/Infrastructure/Common/Registry/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
+* `src/Infrastructure/Common/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
+* `src/Infrastructure/Common/Registry/` — `CacheAside`
 * `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
 * `src/Infrastructure/<Module>/Migrations/` — the module's migrations and their history table
 * `src/Infrastructure/Common/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the

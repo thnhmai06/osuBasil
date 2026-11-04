@@ -65,11 +65,10 @@ Both use the same parser, print the same output and return the same exit code.
 
 With the server stopped, a command with P = yes starts only the storage: the directories are created, the database is
 migrated (an empty database too), the stored data is loaded. The running state is not recovered and no listener is
-opened. After the command the write queue is drained and flushed before the process exits, so a command that printed its
-confirmation has stored its change.
+opened. A command waits for its changes to be stored, so a command that printed its confirmation has stored its change.
 
 > **Never run an offline command while another server uses the same database.** The offline process writes straight to
-> the database, and the running server's in-memory data (memory-first today; target: removed) overwrites it.
+> the database, and the running server's live state may disagree with it.
 
 ### Exit codes of a command
 
