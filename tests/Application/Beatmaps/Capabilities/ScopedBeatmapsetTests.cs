@@ -166,6 +166,39 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
+	public async Task SetVisibleAsync_WhenTheStoreFails_ReachesTheCaller()
+	{
+		var (app, world, set, actor) = await SetupAsync();
+		using var _ = app;
+		world.Sets.UpdateFailure = new InvalidOperationException("store down");
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			set.ScopeTo(actor).SetVisibleAsync(false, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task SetLockedAsync_WhenTheStoreFails_ReachesTheCaller()
+	{
+		var (app, world, set, actor) = await SetupAsync();
+		using var _ = app;
+		world.Sets.UpdateFailure = new InvalidOperationException("store down");
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			set.ScopeTo(actor).SetLockedAsync(true, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task SetStatusAsync_WhenTheStoreFails_ReachesTheCaller()
+	{
+		var (app, world, set, actor) = await SetupAsync();
+		using var _ = app;
+		world.Sets.UpdateFailure = new InvalidOperationException("store down");
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			set.ScopeTo(actor).SetStatusAsync(BeatmapsetStatus.Loved, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
 	public async Task SetVisibleAsync_ToTrueAgain_ShowsTheSet()
 	{
 		var (app, _, set, actor) = await SetupAsync();

@@ -8,6 +8,8 @@ using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Infrastructure.Beatmaps.Workers;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Registry;
+using Basil.Infrastructure.Common.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Beatmaps;
@@ -23,17 +25,30 @@ public static class DependencyInjection
 		services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
 		services.AddSingleton<IResident, IncomingLeftovers>();
 		services.AddSingleton<IBeatmapsetRepository, PostgresBeatmapsetRepository>();
-		services.AddSingleton<PostgresBeatmapRepository>();
-		services.AddSingleton<IBeatmapRepository>(provider => provider.GetRequiredService<PostgresBeatmapRepository>());
-		services.AddSingleton(provider =>
-			new Lazy<PostgresBeatmapRepository>(provider.GetRequiredService<PostgresBeatmapRepository>));
+		services.AddSingleton<IBeatmapRepository, PostgresBeatmapRepository>();
 		services.AddSingleton<FileBeatmapsetStorage>();
 		services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
 		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
 		services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
 		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
+		services.AddOptions<AssetOptions>().PostConfigure<DataPaths>((options, paths) =>
+		{
+			if (string.IsNullOrWhiteSpace(options.CacheDirectory))
+				options.CacheDirectory = Path.Combine(paths.Cache.Path, "Previews");
+		});
 		services.AddBeatmapsLogic();
+		return services;
+	}
+
+	/// <summary>Reads the asset settings (<c>Basil:Assets</c>) once, so a later edit of the files waits for the next start.</summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <param name="configuration">The configuration to read.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	public static IServiceCollection AddBeatmapsInfrastructureOptions(this IServiceCollection services,
+		IConfiguration configuration)
+	{
+		services.AddOptions<AssetOptions>().Bind(configuration.GetSection("Basil:Assets"));
 		return services;
 	}
 
