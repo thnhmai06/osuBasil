@@ -38,7 +38,9 @@ internal sealed class ScoreRowConfiguration : IEntityTypeConfiguration<ScoreRow>
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")
 			.OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(row => row.UserId);
-		builder.HasIndex(row => row.BeatmapHash);
+		// The leaderboard of a beatmap: best score first, then the earlier play and the lower id (also serves a lookup by beatmap).
+		builder.HasIndex(row => new { row.BeatmapHash, row.TotalScore, row.Timestamp, row.Id })
+			.IsDescending(false, true, false, false);
 		builder.HasIndex(row => row.Checksum).IsUnique();
 	}
 }
