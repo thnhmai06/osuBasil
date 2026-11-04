@@ -69,6 +69,7 @@ public class ModuleGraphTests
 		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Common"));
 		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Common"));
 		Assert.False(IsAllowed("Basil.Protocol.Irc", "Basil.Domain"));
+		Assert.False(IsAllowed("Basil.Gateway", "Basil.Domain"));
 		Assert.True(IsAllowed("Basil.Protocol.Stable", "Basil.Domain"));
 		Assert.True(IsAllowed("Basil.Application.Multiplayer", "Basil.Application.Scores"));
 	}
@@ -84,7 +85,7 @@ public class ModuleGraphTests
 	private static bool IsKnown(string name)
 	{
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
-			       or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
+			       or "Basil.Gateway" or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                (name == $"Basil.Infrastructure.{module}" &&
 		                                 module is not ("Anticheat" or "Servers")));
@@ -94,6 +95,7 @@ public class ModuleGraphTests
 	{
 		if (from == "Basil.Domain") return false;
 		if (from == "Basil.Protocol.Irc") return false;
+		if (from == "Basil.Gateway") return false;
 		if (from == "Basil.Protocol.Stable") return to == "Basil.Domain";
 		if (to == "Basil.Domain") return true;
 		if (from == "Basil.Application.Common") return false;

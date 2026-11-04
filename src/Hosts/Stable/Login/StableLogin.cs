@@ -12,6 +12,7 @@ using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
+using Basil.Gateway;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Authentication;
 

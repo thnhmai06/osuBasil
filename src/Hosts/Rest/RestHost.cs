@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Routes;
 using Basil.Host.Rest.Sse;

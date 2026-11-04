@@ -1,4 +1,5 @@
 using Basil.Application.Content.Persistence;
+using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Web.DependencyInjection;

@@ -9,6 +9,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
+using Basil.Gateway;
 using Basil.Host.Stable.Support;
 
 namespace Basil.Host.Stable.Web;

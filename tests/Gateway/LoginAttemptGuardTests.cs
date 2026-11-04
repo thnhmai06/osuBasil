@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Time.Testing;
 
-namespace Basil.Host.Shared.Tests;
+namespace Basil.Gateway.Tests;
 
 /// <summary>
 ///     Failed sign-ins are limited per pair and per address; the attempt is reserved before the credentials are

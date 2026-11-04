@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Time.Testing;
 
-namespace Basil.Host.Shared.Tests;
+namespace Basil.Gateway.Tests;
 
 /// <summary>The limiter forgets keys whose events expired and never remembers more than its cap.</summary>
 public sealed class RateLimiterTests

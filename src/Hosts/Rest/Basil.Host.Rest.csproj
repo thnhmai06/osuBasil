@@ -10,6 +10,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Shared\Basil.Host.Shared.csproj"/>
+		<ProjectReference Include="..\..\Gateway\Basil.Gateway.csproj"/>
 		<ProjectReference Include="..\..\Application\Anticheat\Basil.Application.Anticheat.csproj"/>
 		<ProjectReference Include="..\..\Application\Authentication\Basil.Application.Authentication.csproj"/>
 		<ProjectReference Include="..\..\Application\Beatmaps\Basil.Application.Beatmaps.csproj"/>

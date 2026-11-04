@@ -1,6 +1,7 @@
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Registry;
+using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Diagnostics;
 using Microsoft.Extensions.Hosting;

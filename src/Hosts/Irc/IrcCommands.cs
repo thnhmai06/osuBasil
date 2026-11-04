@@ -7,6 +7,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
+using Basil.Gateway;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;

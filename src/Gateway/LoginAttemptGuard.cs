@@ -1,4 +1,4 @@
-namespace Basil.Host.Shared;
+namespace Basil.Gateway;
 
 /// <summary>
 ///     Limits failed sign-ins per address and per (address, account) pair: an attempt is reserved before the credentials

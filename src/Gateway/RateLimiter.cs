@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace Basil.Host.Shared;
+namespace Basil.Gateway;
 
 /// <summary>Counts events per key inside a sliding window; keys whose events all expired are forgotten.</summary>
 public sealed class RateLimiter(TimeProvider clock)

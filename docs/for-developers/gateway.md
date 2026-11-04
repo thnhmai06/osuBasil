@@ -6,10 +6,9 @@ The gateway is the admission control of Basil: for every request that wants to e
 `Deny`, using only facts that exist before any business logic runs. A request that is oversized, too frequent, too
 concurrent or arriving while the server is overloaded never reaches a module.
 
-> **Migration status.** `Basil.Gateway` is the target. Today the same policies are scattered: the rate limiter and the
-> login-attempt guard live in `Basil.Host.Shared`, and each of the Stable and Rest hosts has its own upload limit. The
-> migration moves them into the gateway with the same limits and keys first, then adds the second tier and the load
-> policies.
+> **Migration status.** The rate limiter and the login-attempt guard already live in `Basil.Gateway`. The Stable and
+> Rest hosts still have their own upload limit (they depend on ASP.NET Core and the runtime settings, so they cannot
+> move as they are). The migration then adds the second tier and the load policies.
 
 ## Why
 
@@ -84,7 +83,7 @@ runtime-configurable.
 
 ## Related code
 
-* [`RateLimiter.cs`](../../src/Hosts/Shared/RateLimiter.cs) and [`LoginAttemptGuard.cs`](../../src/Hosts/Shared/LoginAttemptGuard.cs) — today's limiter and login guard (move to the gateway).
+* [`RateLimiter.cs`](../../src/Gateway/RateLimiter.cs) and [`LoginAttemptGuard.cs`](../../src/Gateway/LoginAttemptGuard.cs) — the limiter and login guard.
 * [`UploadLimit.cs`](../../src/Hosts/Rest/Http/UploadLimit.cs) and [`UploadLimit.cs`](../../src/Hosts/Stable/Support/UploadLimit.cs) — today's two upload limits (move to the gateway).
 
 ## See also

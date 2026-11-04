@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Registry;
+using Basil.Gateway;
 using Basil.Host.Rest.Sse;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 

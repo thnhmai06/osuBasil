@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Basil.Host.Shared.Documentation;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

@@ -4,6 +4,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Gateway;
 using Basil.Host.Rest.Http;
 
 namespace Basil.Host.Rest.Routes;

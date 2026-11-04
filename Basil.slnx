@@ -26,6 +26,9 @@
 		<Project Path="src/Infrastructure/Scores/Basil.Infrastructure.Scores.csproj"/>
 		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj"/>
 	</Folder>
+	<Folder Name="/Sources/Gateway/">
+		<Project Path="src/Gateway/Basil.Gateway.csproj"/>
+	</Folder>
 	<Folder Name="/Sources/Hosts/">
 		<Project Path="src/Hosts/Stable/Basil.Host.Stable.csproj"/>
 		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
@@ -56,6 +59,9 @@
 		<Project Path="tests/Application/Scores/Basil.Application.Scores.Tests.csproj"/>
 		<Project Path="tests/Application/Servers/Basil.Application.Servers.Tests.csproj"/>
 		<Project Path="tests/Application/Users/Basil.Application.Users.Tests.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Gateway/">
+		<Project Path="tests/Gateway/Basil.Gateway.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Hosts/">
 		<Project Path="tests/Hosts/Stable/Basil.Host.Stable.Tests.csproj"/>
