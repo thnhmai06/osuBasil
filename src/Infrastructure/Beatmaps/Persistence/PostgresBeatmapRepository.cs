@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Basil.Application.Beatmaps.Persistence;
@@ -8,17 +6,12 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
 
 /// <summary>Stores beatmap difficulties in the <c>beatmaps</c> table.</summary>
-internal sealed class PostgresBeatmapRepository(
-	DatabaseReader reader,
-	DatabaseWriter writer,
-	IBeatmapsetRepository beatmapsets)
-	: MemoryRepository<int, BeatmapRecord>(reader, writer), IBeatmapRepository
+internal sealed class PostgresBeatmapRepository(DatabaseSession database) : IBeatmapRepository
 {
 	// jsonb keeps object keys in its own order, so the mode discriminator need not come first.
 	// The objects of each mode are stored with a mode discriminator; jsonb keeps object keys in its own order.
@@ -28,192 +21,75 @@ internal sealed class PostgresBeatmapRepository(
 		TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { StoredObjects } }
 	};
 
-	private readonly WeakIndex<Md5, BeatmapRecord> _byHash = new();
-	private readonly OwnedLists<int, BeatmapsetRecord, BeatmapRecord> _bySet = new();
-
-	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
-	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
-
 	/// <inheritdoc />
-	public async Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default)
 	{
-		var value = Copy(beatmap, await LiveSetAsync(beatmap.Beatmapset, cancellationToken));
-		if (!Items.TryGetValue(beatmap.Id, out var current) || current.Hash != value.Hash)
-		{
-			if (_byHash.TryGetValue(value.Hash, out var known) && known.Id != beatmap.Id &&
-			    known.Hash == value.Hash)
-				throw new AlreadyExistsException($"A beatmap already has the hash {value.Hash}.");
-
-			// A hash must be unique across every beatmap, so a new or changed one is written at once and the live
-			// beatmap takes it only after the commit.
-			try
-			{
-				var row = ToRow(value);
-				await Writer.WriteAsync(Root.Beatmapset(value.Beatmapset.Id),
-					(BeatmapsDbContext context, CancellationToken token) =>
-						context.UpsertAsync(row, stored => stored.Id == row.Id, token),
-					cancellationToken);
-			}
-			catch (Exception exception) when (exception.IsUniqueViolation())
-			{
-				throw new AlreadyExistsException($"A beatmap already has the hash {value.Hash}.");
-			}
-
-			Remember(beatmap, value, Task.CompletedTask);
-			return;
-		}
-
-		var saved = SaveAsync(beatmap);
-		var live = Track(beatmap);
-		Remember(live, value, saved);
+		var row = ToRow(beatmap);
+		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) =>
+			context.UpsertAsync(row, stored => stored.Id == row.Id, token), cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
-		var beatmap = await FindAsync(id, cancellationToken);
-		if (beatmap is not null)
-			Index(beatmap);
-		return beatmap;
+		var row = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
+			.Include(b => b.Set)
+			.FirstOrDefaultAsync(b => b.Id == id, cancellationToken), cancellationToken);
+		return row is null ? null : ToBeatmap(row, row.Set.ToRecord());
 	}
 
 	/// <inheritdoc />
 	public async ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default)
 	{
-		if (_byHash.TryGetValue(hash, out var known) && known.Hash == hash)
-			return known;
-
-		var loaded = await ReadUntilStableAsync(async () =>
-		{
-			var row = await Reader.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
-				.Include(b => b.Set)
-				.Where(b => b.Hash == hash.HashValue)
-				.FirstOrDefaultAsync(cancellationToken), cancellationToken);
-			if (row is null)
-				return null;
-
-			// A row whose deletion is still queued never comes back into memory.
-			var stored = await ToBeatmapAsync(row, cancellationToken);
-			return IsBeingRemoved(stored) ? null : stored;
-		});
-		if (loaded is null)
-			return null;
-
-		var beatmap = Track(loaded);
-		Index(beatmap);
-		return beatmap;
+		var row = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
+			.Include(b => b.Set)
+			.Where(b => b.Hash == hash.HashValue)
+			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+		return row is null ? null : ToBeatmap(row, row.Set.ToRecord());
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set,
 		CancellationToken cancellationToken = default)
 	{
-		var liveSet = await LiveSetAsync(set, cancellationToken);
-		return await _bySet.GetOrLoadAsync(liveSet.Id, liveSet, async () =>
-		{
-			var loadedRows = await ReadUntilStableAsync(async () =>
-			{
-				var rows = await Reader.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
-					.Include(b => b.Set)
-					.Where(b => b.BeatmapsetId == liveSet.Id)
-					.OrderBy(b => b.Id)
-					.ToListAsync(cancellationToken), cancellationToken);
-				var loaded = new List<BeatmapRecord>();
-				foreach (var row in rows)
-				{
-					// A row whose deletion is still queued never comes back into memory.
-					var stored = await ToBeatmapAsync(row, cancellationToken);
-					if (!IsBeingRemoved(stored))
-						loaded.Add(stored);
-				}
-
-				return loaded;
-			});
-
-			var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
-			foreach (var beatmap in loadedRows.Select(Track))
-			{
-				Index(beatmap);
-				beatmaps.Add(beatmap);
-			}
-
-			return beatmaps.ToImmutable();
-		});
+		var rows = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
+			.Where(b => b.BeatmapsetId == set.Id)
+			.OrderBy(b => b.Id)
+			.ToListAsync(cancellationToken), cancellationToken);
+		return [.. rows.Select(row => ToBeatmap(row, set))];
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, loadedRows) = await ReadUntilStableAsync<(int Total, List<BeatmapRecord> Rows)>(async () =>
+		var (total, rows) = await database.ReadAsync(async (BeatmapsDbContext context) =>
 		{
-			var (count, rows) = await Reader.ReadAsync(async (BeatmapsDbContext context) =>
-			{
-				var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
-				var count = await matching.CountAsync(cancellationToken);
-				var rows = await matching
-					.Include(b => b.Set)
-					.OrderByDescending(b => b.BeatmapsetId)
-					.ThenBy(b => b.Star)
-					.ThenBy(b => b.Id)
-					.Skip(page.Offset)
-					.Take(page.Limit)
-					.ToListAsync(cancellationToken);
-				return (count, rows);
-			}, cancellationToken);
+			var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
+			var count = await matching.CountAsync(cancellationToken);
+			var rows = await matching
+				.Include(b => b.Set)
+				.OrderByDescending(b => b.BeatmapsetId)
+				.ThenBy(b => b.Star)
+				.ThenBy(b => b.Id)
+				.Skip(page.Offset)
+				.Take(page.Limit)
+				.ToListAsync(cancellationToken);
+			return (count, rows);
+		}, cancellationToken);
 
-			var loaded = new List<BeatmapRecord>();
-			foreach (var row in rows)
-			{
-				// A row whose deletion is still queued never comes back into memory.
-				var stored = await ToBeatmapAsync(row, cancellationToken);
-				if (!IsBeingRemoved(stored))
-					loaded.Add(stored);
-			}
-
-			return (count, loaded);
-		});
-
-		var items = new List<BeatmapRecord>();
-		foreach (var beatmap in loadedRows.Select(Track))
-		{
-			Index(beatmap);
-			items.Add(beatmap);
-		}
-
-		return new Page<BeatmapRecord>(items, total);
+		return new Page<BeatmapRecord>([.. rows.Select(row => ToBeatmap(row, row.Set.ToRecord()))], total);
 	}
 
 	/// <inheritdoc />
-	public async Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
+	public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
 		CancellationToken cancellationToken = default)
 	{
-		var liveSet = await LiveSetAsync(set, cancellationToken);
-		var setId = liveSet.Id;
+		var setId = set.Id;
 		var keepIds = keep.Select(beatmap => beatmap.Id).ToArray();
-		var keepSet = keepIds.ToHashSet();
-		foreach (var beatmap in Items.Values.Where(beatmap =>
-			         beatmap.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
-			RemoveFromMemory(beatmap);
-
-		_retaining[setId] = keepSet;
-		var retained = Writer.SaveAsync(Root.Beatmapset(setId), (GetType(), "retain", setId),
-			new WriteCommand<BeatmapsDbContext>(async (context, token) =>
-			{
-				await context.Beatmaps
-					.Where(b => b.BeatmapsetId == setId && !((IEnumerable<int>)keepIds).Contains(b.Id))
-					.ExecuteDeleteAsync(token);
-			}));
-		_bySet.Change(setId, liveSet,
-			current => [.. current.Where(beatmap => keepSet.Contains(beatmap.Id))],
-			retained);
-		_ = retained.ContinueWith(done =>
-		{
-			if (!done.IsCompletedSuccessfully) return;
-
-			NoteRemovalCommitted();
-			_retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet));
-		}, TaskScheduler.Default);
+		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) => context.Beatmaps
+			.Where(b => b.BeatmapsetId == setId && !((IEnumerable<int>)keepIds).Contains(b.Id))
+			.ExecuteDeleteAsync(token), cancellationToken);
 	}
 
 	/// <summary>Stores the difficulties of a beatmapset as a scan or import brings them in.</summary>
@@ -295,147 +171,9 @@ internal sealed class PostgresBeatmapRepository(
 		return await context.Beatmaps.FirstOrDefaultAsync(b => b.Id == onlineId, token);
 	}
 
-	/// <summary>Brings the live instance of a stored difficulty in step with the stored values.</summary>
-	/// <param name="set">The live beatmapset the difficulty belongs to.</param>
-	/// <param name="stored">The stored difficulty.</param>
-	/// <returns>The live difficulty.</returns>
-	internal BeatmapRecord Apply(BeatmapsetRecord set, BeatmapRecord stored)
+	/// <summary>Builds a beatmap from a stored row.</summary>
+	private static BeatmapRecord ToBeatmap(BeatmapRow row, BeatmapsetRecord set)
 	{
-		var beatmap = Copy(stored, set);
-		var live = Track(beatmap);
-		if (ReferenceEquals(live, beatmap))
-		{
-			Index(live);
-			return live;
-		}
-
-		Unindex(live);
-		CopyTo(live, beatmap);
-		Index(live);
-		return live;
-	}
-
-	/// <summary>Replaces the difficulties a beatmapset has with the ones it is stored with.</summary>
-	/// <param name="set">The live beatmapset.</param>
-	/// <param name="beatmaps">Every difficulty the set is stored with, in order.</param>
-	internal void Replace(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps)
-	{
-		_bySet.Change(set.Id, set, _ => ImmutableList.CreateRange(beatmaps), Task.CompletedTask);
-	}
-
-	/// <summary>Forgets the stored difficulties of a removed beatmapset.</summary>
-	/// <param name="id">The id of the removed beatmapset.</param>
-	/// <param name="set">The live beatmapset that was removed.</param>
-	internal void Forget(int id, BeatmapsetRecord set)
-	{
-		foreach (var beatmap in Items.Values.Where(beatmap => beatmap.Beatmapset.Id == id))
-			RemoveFromMemory(beatmap);
-
-		_bySet.Change(id, set, _ => ImmutableList<BeatmapRecord>.Empty, Task.CompletedTask);
-	}
-
-	protected override int KeyOf(BeatmapRecord item)
-	{
-		return item.Id;
-	}
-
-	protected override Root RootOf(BeatmapRecord item)
-	{
-		return Root.Beatmapset(item.Beatmapset.Id);
-	}
-
-	protected override void CopyTo(BeatmapRecord live, BeatmapRecord from)
-	{
-		live.Beatmapset = from.Beatmapset;
-		live.Hash = from.Hash;
-		live.Metadata = from.Metadata;
-		live.Assets = from.Assets;
-		live.Locked = from.Locked;
-		live.Visible = from.Visible;
-		live.UpdatedAt = from.UpdatedAt;
-	}
-
-	/// <summary>Gives the live instance of a beatmap the stored data and keeps the lookups in step.</summary>
-	private void Remember(BeatmapRecord beatmap, BeatmapRecord value, Task committed)
-	{
-		var live = Track(beatmap);
-		Unindex(live);
-		if (!ReferenceEquals(live, value)) CopyTo(live, value);
-		Index(live);
-		_bySet.Change(value.Beatmapset.Id, value.Beatmapset, current => AddOrReplace(current, live), committed);
-	}
-
-	protected override async Task<BeatmapRecord?> LoadAsync(int key)
-	{
-		var row = await Reader.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
-			.Include(b => b.Set)
-			.FirstOrDefaultAsync(b => b.Id == key));
-		return row is null ? null : await ToBeatmapAsync(row, CancellationToken.None);
-	}
-
-	protected override WriteCommand<BeatmapsDbContext> SaveCommand(BeatmapRecord beatmap)
-	{
-		var row = ToRow(beatmap);
-		return new WriteCommand<BeatmapsDbContext>((context, token) =>
-			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
-	}
-
-	protected override bool IsBeingRemoved(BeatmapRecord beatmap)
-	{
-		return base.IsBeingRemoved(beatmap) ||
-		       (_retaining.TryGetValue(beatmap.Beatmapset.Id, out var keep) && !keep.Contains(beatmap.Id));
-	}
-
-	private void RemoveFromMemory(BeatmapRecord beatmap)
-	{
-		Items.Remove(beatmap.Id);
-		Unindex(beatmap);
-	}
-
-	private void Unindex(BeatmapRecord beatmap)
-	{
-		_byHash.Remove(beatmap.Hash, beatmap);
-	}
-
-	private void Index(BeatmapRecord beatmap)
-	{
-		_byHash.Set(beatmap.Hash, beatmap);
-	}
-
-	private static ImmutableList<BeatmapRecord> AddOrReplace(ImmutableList<BeatmapRecord> current,
-		BeatmapRecord beatmap)
-	{
-		var index = current.FindIndex(item => item.Id == beatmap.Id);
-		return index < 0 ? current.Add(beatmap) : current.SetItem(index, beatmap);
-	}
-
-	/// <summary>Gets the live instance of a beatmapset, or the given one when it is not stored.</summary>
-	private async ValueTask<BeatmapsetRecord> LiveSetAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
-	{
-		return await beatmapsets.GetAsync(set.Id, cancellationToken) ?? set;
-	}
-
-	/// <summary>Copies a beatmap's values into a new instance that belongs to a given beatmapset.</summary>
-	private static BeatmapRecord Copy(BeatmapRecord beatmap, BeatmapsetRecord set)
-	{
-		return new BeatmapRecord
-		{
-			Id = beatmap.Id,
-			Beatmapset = set,
-			Hash = beatmap.Hash,
-			Metadata = beatmap.Metadata,
-			Assets = beatmap.Assets,
-			Locked = beatmap.Locked,
-			Visible = beatmap.Visible,
-			CreatedAt = beatmap.CreatedAt,
-			UpdatedAt = beatmap.UpdatedAt
-		};
-	}
-
-	/// <summary>Builds a beatmap from a stored row, which holds its set.</summary>
-	private async Task<BeatmapRecord> ToBeatmapAsync(BeatmapRow row, CancellationToken cancellationToken)
-	{
-		var set = await LiveSetAsync(row.Set.ToRecord(), cancellationToken);
 		var objects = row.Objects.Deserialize<BeatmapObjects>(StoredJson)
 		              ?? BeatmapObjects.Empty((GameMode)row.Mode);
 

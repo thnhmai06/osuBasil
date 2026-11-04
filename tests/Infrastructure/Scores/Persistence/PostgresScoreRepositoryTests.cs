@@ -279,7 +279,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		var outcomes = await RaceAsync(Enumerable.Repeat(player, Racers).ToList(), checksum);
 
 		var winner = Assert.Single(outcomes.OfType<ScoreRecord>());
-		Assert.Same(winner, await Scores.GetAsync(winner.Id, TestContext.Current.CancellationToken));
+		Assert.Equal(winner, await Scores.GetAsync(winner.Id, TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>Creates a play for every player at the same moment, all with the same checksum.</summary>

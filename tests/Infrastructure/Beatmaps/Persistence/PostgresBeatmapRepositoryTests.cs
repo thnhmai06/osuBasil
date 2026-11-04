@@ -4,7 +4,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Testing.Persistence;
-using Npgsql;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;
 
@@ -21,7 +20,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 	private IBeatmapRepository Beatmaps => Get<IBeatmapRepository>();
 
 	[Fact]
-	public async Task A_deletion_queued_makes_the_hash_lookup_answer_nothing()
+	public async Task A_retained_deletion_is_stored_when_the_call_returns()
 	{
 		var sets = Get<IBeatmapsetRepository>();
 		var beatmaps = Get<IBeatmapRepository>();
@@ -30,26 +29,11 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 			[new BeatmapsetChange(null, StoredBeatmaps.SetData(11))], []), TestContext.Current.CancellationToken);
 		Assert.NotNull(await beatmaps.GetAsync(BeatmapHash, TestContext.Current.CancellationToken));
 
-		await using (var connection = new NpgsqlConnection(ConnectionString))
-		{
-			await connection.OpenAsync(TestContext.Current.CancellationToken);
-			await using var transaction = await connection.BeginTransactionAsync(TestContext.Current.CancellationToken);
+		await beatmaps.RetainAsync(set, [], TestContext.Current.CancellationToken);
 
-			// Holding an exclusive lock keeps the queued deletion blocked, so the row is still stored while the
-			// deletion waits for its commit.
-			await new NpgsqlCommand("lock table beatmaps in exclusive mode", connection, transaction)
-				.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-			try
-			{
-				await beatmaps.RetainAsync(set, [], TestContext.Current.CancellationToken);
-				Assert.Null(await beatmaps.GetAsync(BeatmapHash, TestContext.Current.CancellationToken));
-			}
-			finally
-			{
-				await transaction.CommitAsync(TestContext.Current.CancellationToken);
-			}
-		}
-
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select id from beatmaps where beatmapset_id = @set",
+			new Dictionary<string, object?> { ["@set"] = 11 }, TestContext.Current.CancellationToken);
+		Assert.Empty(rows);
 		Assert.Null(await beatmaps.GetAsync(BeatmapHash, TestContext.Current.CancellationToken));
 	}
 

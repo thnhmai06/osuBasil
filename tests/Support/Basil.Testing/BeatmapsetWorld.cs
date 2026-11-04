@@ -339,6 +339,9 @@ public sealed class BeatmapsetWorld
 		/// <summary>Gets the stored sets by id.</summary>
 		public Dictionary<int, BeatmapsetRecord> Records { get; } = [];
 
+		/// <summary>Gets or sets the failure every update throws, or <see langword="null" /> for updates that succeed.</summary>
+		public Exception? UpdateFailure { get; set; }
+
 		/// <inheritdoc />
 		public ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 		{
@@ -348,6 +351,7 @@ public sealed class BeatmapsetWorld
 		/// <inheritdoc />
 		public Task UpdateAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 		{
+			if (UpdateFailure is { } failure) throw failure;
 			Records[set.Id] = set;
 			return Task.CompletedTask;
 		}

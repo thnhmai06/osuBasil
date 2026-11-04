@@ -5,7 +5,6 @@ using Basil.Domain.Common;
 using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Testing.Persistence;
-using Npgsql;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;
 
@@ -200,13 +199,13 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 	}
 
 	[Fact]
-	public async Task A_committed_set_is_the_set_the_store_returns()
+	public async Task A_committed_set_is_found_under_the_id_the_commit_returned()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
 		var found = await Sets.GetAsync(set.Id, TestContext.Current.CancellationToken);
 
-		Assert.Same(set, found);
+		Assert.Equal(set, found);
 	}
 
 	[Fact]
@@ -331,45 +330,35 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 	}
 
 	[Fact]
-	public async Task A_commit_is_stored_after_the_writes_queued_before_it_for_the_set_it_replaces()
+	public async Task A_commit_after_an_update_replaces_what_the_update_stored()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")])));
 		var beatmaps = Get<IBeatmapRepository>();
 		var easy = (await beatmaps.GetAsync(EasyHash, TestContext.Current.CancellationToken))!;
-		Task commit;
+		set.Locked = true;
+		await Sets.UpdateAsync(set, TestContext.Current.CancellationToken);
+		await beatmaps.UpdateAsync(easy, TestContext.Current.CancellationToken);
 
-		await using (var blocker = new NpgsqlConnection(ConnectionString))
-		{
-			await blocker.OpenAsync(TestContext.Current.CancellationToken);
-			await using var transaction = await blocker.BeginTransactionAsync(TestContext.Current.CancellationToken);
-			await new NpgsqlCommand("lock table beatmapsets in exclusive mode", blocker, transaction)
-				.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+		await Sets.CommitAsync(new BeatmapsetChanges(
+		[
+			new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
+				[StoredBeatmaps.Difficulty(301, EasyHash, "Easy renamed")]))
+		], []), TestContext.Current.CancellationToken);
 
-			// The update of the set waits for the lock and the update of the difficulty waits behind it, so both are
-			// still unstored when the commit is asked for.
-			set.Locked = true;
-			await Sets.UpdateAsync(set, TestContext.Current.CancellationToken);
-			await beatmaps.UpdateAsync(easy, TestContext.Current.CancellationToken);
-			commit = Sets.CommitAsync(new BeatmapsetChanges(
-			[
-				new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
-					[StoredBeatmaps.Difficulty(301, EasyHash, "Easy renamed")]))
-			], []), TestContext.Current.CancellationToken);
-
-			// A commit that is stored before the writes queued earlier would be overwritten by them afterwards.
-			await Assert.ThrowsAsync<TimeoutException>(() =>
-				commit.WaitAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken));
-			await transaction.CommitAsync(TestContext.Current.CancellationToken);
-		}
-
-		await commit;
-		await Get<DatabaseWriter>().WriteAsync<BeatmapsDbContext>(Root.Beatmapset(42),
-			(_, _) => Task.CompletedTask,
-			TestContext.Current.CancellationToken);
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select version from beatmaps where hash = @hash",
 			new Dictionary<string, object?> { ["@hash"] = EasyHash.HashValue }, TestContext.Current.CancellationToken);
 		Assert.Equal("Easy renamed", Assert.Single(rows).Text("version"));
+	}
+
+	[Fact]
+	public async Task A_beatmap_update_the_database_refuses_reaches_the_caller()
+	{
+		// The beatmap belongs to a set that is not stored, which breaks the foreign key.
+		var orphan = StoredBeatmaps.Beatmap(777);
+
+		await Assert.ThrowsAnyAsync<Exception>(() =>
+			Get<IBeatmapRepository>().UpdateAsync(orphan, TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>Commits one beatmapset as a new set.</summary>
