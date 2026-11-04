@@ -857,7 +857,7 @@ Proposals from the modular-monolith redesign, for the owner to merge into the sk
   Order them Service > Ports > Registry | Repository | Storage > Objects, use direct injection across levels and a
   mediator between peers.
 * **Never await a notification under a lock.** Objects enqueue events while they hold their lock; a dispatcher publishes
-  outside it. Give the queue a ceiling.
+  outside it.
 * **A translation layer is a language, not a service.** Protocol is the vocabulary of a wire; the host translates and
   dispatches, and the message type (not the host) chooses the handler. The actor travels in the message as an
   unforgeable object created by one module only.

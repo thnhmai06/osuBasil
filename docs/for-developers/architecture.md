@@ -120,7 +120,7 @@ An object publishes an event while it holds its own lock (a `Room` changes state
 Notifications are therefore **never awaited under a lock**: the object enqueues the event on the shared event queue
 (`EventQueue`, Application.Common) and returns at once, and a dispatcher in Infrastructure.Common (`EventDispatcher`)
 calls the Mediator handlers outside the lock, in order. No code calls `await mediator.Publish(...)` at the place where it
-emits. The queue has a ceiling and refuses to grow without bound (**target**, with the gateway's load policies).
+emits. The queue is unbounded; rate limiting and the `Outstanding` count in diagnostics watch its size.
 
 ```mermaid
 sequenceDiagram

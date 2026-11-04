@@ -19,7 +19,6 @@ public static class RestHost
 		services.AddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<LoadSignal>();
 		services.AddSingleton<Admission>();
-		services.AddHostedService<LoadSignalFeeder>();
 		services.AddSingleton<SseHub>();
 		services.AddHostedService(sp => sp.GetRequiredService<SseHub>());
 		return services;

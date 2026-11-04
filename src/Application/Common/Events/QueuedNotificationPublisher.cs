@@ -13,8 +13,7 @@ public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<Queued
 	public ValueTask Publish<TNotification>(NotificationHandlers<TNotification> handlers,
 		TNotification notification, CancellationToken cancellationToken) where TNotification : INotification
 	{
-		if (!queue.TryEnqueue(new Delivery<TNotification>(handlers, notification, logger)))
-			logger.LogWarning("{Event} was dropped because the event queue is full", typeof(TNotification).Name);
+		queue.Enqueue(new Delivery<TNotification>(handlers, notification, logger));
 		return ValueTask.CompletedTask;
 	}
 

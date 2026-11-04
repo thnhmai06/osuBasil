@@ -112,9 +112,6 @@ public readonly struct ScopedLobby
 		    Require(UserPermissions.RoomManageAny) is not null)
 			return RoomOutcome.Locked;
 
-		// A match is recorded by the events of its room: no room opens while the event queue cannot take them.
-		if (!Lobby.Context.Events.HasRoom) return RoomOutcome.Locked;
-
 		var limited = Require(UserPermissions.RoomManageCreateUnlimited) is not null;
 		if (limited && Lobby.TooManyRooms(Actor.Record)) return RoomOutcome.TooManyRooms;
 

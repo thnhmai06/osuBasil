@@ -54,7 +54,6 @@ public static class DependencyInjection
 			storage.Location = Path.Combine(AppContext.BaseDirectory, storage.Location);
 		services.AddSingleton(Options.Create(storage));
 		services.AddSingleton(Options.Create(DatabaseSetup.Read(configuration)));
-		services.AddSingleton(configuration.GetSection("Basil:Events").Get<EventQueueOptions>() ?? new EventQueueOptions());
 		return services;
 	}
 

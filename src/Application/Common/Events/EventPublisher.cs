@@ -13,9 +13,6 @@ public sealed class EventPublisher(Lazy<IPublisher> publisher, TimeProvider cloc
 	: IEventPublisher<Event>
 {
 	/// <inheritdoc />
-	public bool HasRoom => queue.HasRoom;
-
-	/// <inheritdoc />
 	public void Publish(Event @event)
 	{
 		@event.Timestamp = clock.GetUtcNow();
