@@ -95,6 +95,40 @@ public sealed class EventQueueTests
 		Assert.Equal(["one", "two"], await ReadAsync(done.Reader, 2));
 	}
 
+	[Fact]
+	public async Task DrainAsync_WaitsForADeliveryTheRunningLoopAlreadyTook()
+	{
+		var started = new TaskCompletionSource();
+		var release = new TaskCompletionSource();
+		var finished = false;
+		var queue = NewQueue();
+		using var stop = new CancellationTokenSource();
+		var running = queue.RunAsync(stop.Token);
+		queue.Enqueue(new GatedDelivery(started, release, () => finished = true));
+		await started.Task.WaitAsync(Patience, Token);
+
+		var drain = queue.DrainAsync(Token);
+		release.SetResult();
+		await drain.WaitAsync(Patience, Token);
+
+		Assert.True(finished);
+		await stop.CancelAsync();
+		await running.WaitAsync(Patience, Token);
+	}
+
+	/// <summary>Announces that it started, then waits until it is released.</summary>
+	private sealed class GatedDelivery(TaskCompletionSource started, TaskCompletionSource release, Action finish)
+		: IEventDelivery
+	{
+		/// <inheritdoc />
+		public async ValueTask DeliverAsync(CancellationToken cancellationToken)
+		{
+			started.SetResult();
+			await release.Task;
+			finish();
+		}
+	}
+
 	private static async Task<IReadOnlyList<T>> ReadAsync<T>(ChannelReader<T> reader, int count)
 	{
 		var values = new List<T>(count);
