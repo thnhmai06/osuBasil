@@ -18,8 +18,8 @@ public static class DependencyInjection
 	public static IServiceCollection AddScoresInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<ScoresDbContext>>();
-		services.AddSingleton<IScoreRepository, PostgresScoreRepository>();
-		services.AddSingleton<IUserStatsRepository, PostgresUserStatsRepository>();
+		services.AddSingleton<IScoreRepository, EfScoreRepository>();
+		services.AddSingleton<IUserStatsRepository, EfUserStatsRepository>();
 		services.AddSingleton<IReplayStorage, FileReplayStorage>();
 		services.AddScoresLogic();
 		return services;

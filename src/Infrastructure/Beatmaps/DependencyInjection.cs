@@ -24,8 +24,8 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
 		services.AddSingleton<IResident, IncomingLeftovers>();
-		services.AddSingleton<IBeatmapsetRepository, PostgresBeatmapsetRepository>();
-		services.AddSingleton<IBeatmapRepository, PostgresBeatmapRepository>();
+		services.AddSingleton<IBeatmapsetRepository, EfBeatmapsetRepository>();
+		services.AddSingleton<IBeatmapRepository, EfBeatmapRepository>();
 		services.AddSingleton<FileBeatmapsetStorage>();
 		services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
 		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();

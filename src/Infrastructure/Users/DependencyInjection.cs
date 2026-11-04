@@ -19,10 +19,10 @@ public static class DependencyInjection
 	public static IServiceCollection AddUsersInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<UsersDbContext>>();
-		services.AddSingleton<IUserRepository, PostgresUserRepository>();
-		services.AddSingleton<IRestrictionRepository, PostgresRestrictionRepository>();
-		services.AddSingleton<IRelationshipRepository, PostgresRelationshipRepository>();
-		services.AddSingleton<IModerationLogRepository, PostgresModerationLogRepository>();
+		services.AddSingleton<IUserRepository, EfUserRepository>();
+		services.AddSingleton<IRestrictionRepository, EfRestrictionRepository>();
+		services.AddSingleton<IRelationshipRepository, EfRelationshipRepository>();
+		services.AddSingleton<IModerationLogRepository, EfModerationLogRepository>();
 		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
 		services.AddUsersLogic();
 		return services;

@@ -1,0 +1,81 @@
+using Basil.Application.Common;
+using Basil.Application.Users.Persistence;
+using Basil.Domain.Moderation;
+using Basil.Domain.Users;
+using Basil.Infrastructure.Common.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Basil.Infrastructure.Users.Persistence;
+
+/// <summary>Stores the moderation history of users.</summary>
+internal sealed class EfModerationLogRepository(DatabaseSession database) : IModerationLogRepository
+{
+	/// <inheritdoc />
+	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
+	{
+		var row = new ModerationLogRow
+		{
+			Action = (int)entry.Action,
+			ById = entry.Actor.Id,
+			TargetId = entry.Target.Id,
+			Reason = entry.Reason,
+			Timestamp = entry.Timestamp.ToUniversalTime()
+		};
+		return database.WriteAsync((UsersDbContext context, CancellationToken _) =>
+		{
+			context.ModerationLog.Add(row);
+			return Task.CompletedTask;
+		}, cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
+		PageRequest page, CancellationToken cancellationToken = default)
+	{
+		var targetId = target.Id;
+		var minTimestamp = within?.Min?.ToUniversalTime();
+		var maxTimestamp = within?.Max?.ToUniversalTime();
+
+		var (total, rows) = await database.ReadAsync(async (UsersDbContext context) =>
+		{
+			var query = context.ModerationLog.Where(row => row.TargetId == targetId);
+
+			if (minTimestamp is { } min)
+				query = within!.Value.MinInclusive
+					? query.Where(row => row.Timestamp >= min)
+					: query.Where(row => row.Timestamp > min);
+
+			if (maxTimestamp is { } max)
+				query = within!.Value.MaxInclusive
+					? query.Where(row => row.Timestamp <= max)
+					: query.Where(row => row.Timestamp < max);
+
+			var count = await query.CountAsync(cancellationToken);
+			var paged = query
+				.OrderByDescending(row => row.Timestamp)
+				.ThenByDescending(row => row.Id)
+				.Skip(page.Offset)
+				.Take(page.Limit);
+			var rows = await (from row in paged
+				join actor in context.Users on row.ById equals actor.Id
+				orderby row.Timestamp descending, row.Id descending
+				select new { row, actor }).ToListAsync(cancellationToken);
+			return (count, rows);
+		}, cancellationToken);
+
+		return new Page<ModerationLog>([
+			.. rows.Select(found => new ModerationLog
+			{
+				Id = found.row.Id,
+				Value = new ModerationData
+				{
+					Action = (ModerationAction)found.row.Action,
+					Actor = EfUserRepository.ToUser(found.actor),
+					Target = target,
+					Reason = found.row.Reason,
+					Timestamp = found.row.Timestamp
+				}
+			})
+		], total);
+	}
+}

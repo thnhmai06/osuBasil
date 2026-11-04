@@ -19,13 +19,13 @@ public static class DependencyInjection
 	public static IServiceCollection AddContentInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<ContentDbContext>>();
-		services.AddSingleton<PostgresSettingsRepository>();
+		services.AddSingleton<EfSettingsRepository>();
 		services.AddSingleton<ISettingsRepository>(provider =>
-			provider.GetRequiredService<PostgresSettingsRepository>());
-		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresSettingsRepository>());
-		services.AddSingleton<PostgresMenuBannerRepository>();
+			provider.GetRequiredService<EfSettingsRepository>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<EfSettingsRepository>());
+		services.AddSingleton<EfMenuBannerRepository>();
 		services.AddSingleton<IMenuBannerRepository>(provider =>
-			provider.GetRequiredService<PostgresMenuBannerRepository>());
+			provider.GetRequiredService<EfMenuBannerRepository>());
 		services.AddSingleton<IMenuBannerStorage, FileMenuBannerStorage>();
 		services.AddSingleton<IMenuIconStorage, FileMenuIconStorage>();
 		services.AddSingleton<IMenuSeasonalsStorage, FileMenuSeasonalsStorage>();

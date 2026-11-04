@@ -102,7 +102,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 
 ## How a repository is written now
 
-The Authentication module is the pilot; copy its shape (`PostgresCredentialRepository`, `PostgresSessionRepository`).
+The Authentication module is the pilot; copy its shape (`EfCredentialRepository`, `EfSessionRepository`).
 
 * **One helper, `DatabaseSession`** (`Infrastructure.Common/Persistence`), injected into the repository. It has no queue
   and no retry of a change. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own. `WriteAsync<TContext>(change, ct)` and `WriteAsync<TContext, T>(change, ct)` create a context whose

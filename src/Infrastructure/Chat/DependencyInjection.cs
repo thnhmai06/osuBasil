@@ -14,8 +14,8 @@ public static class DependencyInjection
 	public static IServiceCollection AddChatInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<ChatDbContext>>();
-		services.AddSingleton<PostgresChannelRepository>();
-		services.AddSingleton<IChannelRepository>(provider => provider.GetRequiredService<PostgresChannelRepository>());
+		services.AddSingleton<EfChannelRepository>();
+		services.AddSingleton<IChannelRepository>(provider => provider.GetRequiredService<EfChannelRepository>());
 		return services;
 	}
 }

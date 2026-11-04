@@ -14,11 +14,11 @@ public static class DependencyInjection
 	public static IServiceCollection AddMultiplayerInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<MultiplayerDbContext>>();
-		services.AddSingleton<IMatchRepository, PostgresMatchRepository>();
+		services.AddSingleton<IMatchRepository, EfMatchRepository>();
 		services.AddSingleton<IMatchReportRepository, MatchReportRepository>();
-		services.AddSingleton<IRoundRepository, PostgresRoundRepository>();
-		services.AddSingleton<IRoundScoreRepository, PostgresRoundScoreRepository>();
-		services.AddSingleton<IMatchEventRepository, PostgresMatchEventRepository>();
+		services.AddSingleton<IRoundRepository, EfRoundRepository>();
+		services.AddSingleton<IRoundScoreRepository, EfRoundScoreRepository>();
+		services.AddSingleton<IMatchEventRepository, EfMatchEventRepository>();
 		return services;
 	}
 }
