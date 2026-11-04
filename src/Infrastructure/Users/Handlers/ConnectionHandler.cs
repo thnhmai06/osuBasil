@@ -4,7 +4,7 @@ using Basil.Application.Users.Registry;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Users.Handlers;
+namespace Basil.Infrastructure.Users.Handlers;
 
 /// <summary>Stops a closed connection spectating.</summary>
 internal sealed class ConnectionHandler(UserRegistry registry, ILogger<ConnectionHandler> logger)

@@ -2,7 +2,7 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Users.Logic;
+namespace Basil.Application.Users.Persistence;
 
 /// <summary>Checks a claimed password hash the way every login and password change does.</summary>
 internal static class CredentialChecks

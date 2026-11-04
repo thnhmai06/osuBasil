@@ -1,10 +1,10 @@
-using Basil.Application.Users.Handlers;
+using Basil.Infrastructure.Users.Handlers;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Basil.Application.Users.Tests.Handlers;
+namespace Basil.Infrastructure.Users.Tests.Handlers;
 
 /// <summary>What a closed connection leaves behind among the sessions: it stops spectating.</summary>
 public sealed class ConnectionHandlerTests

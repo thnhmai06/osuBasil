@@ -6,11 +6,11 @@ using System.Text;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Users.Capabilities;
-using Basil.Application.Users.Logic;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
@@ -24,7 +24,7 @@ public sealed class UserRegistry
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
-	private readonly AccountService _accounts;
+	private readonly IAccountRules _accounts;
 	private readonly ConcurrentDictionary<Guid, Connection> _activity = new();
 	private readonly ConnectionContext _connectionContext;
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
@@ -36,7 +36,7 @@ public sealed class UserRegistry
 	/// <param name="accounts">The account operations that use persistence.</param>
 	/// <param name="context">The ports through which the users of this registry perform their behaviour.</param>
 	/// <param name="connectionContext">The ports through which the connections of this registry perform their behaviour.</param>
-	internal UserRegistry(AccountService accounts, UserContext context, ConnectionContext connectionContext)
+	internal UserRegistry(IAccountRules accounts, UserContext context, ConnectionContext connectionContext)
 	{
 		_accounts = accounts;
 		_context = context;

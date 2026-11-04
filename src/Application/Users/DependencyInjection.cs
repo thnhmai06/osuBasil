@@ -2,11 +2,11 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common.Events;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Ports;
-using Basil.Application.Users.Logic;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Ports;
 using Basil.Application.Users.Registry;
 using Basil.Application.Users.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +21,6 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddUsersApplication(this IServiceCollection services)
 	{
-		services.AddSingleton<AccountService>();
 		// The contexts and the registry refer to each other, so the contexts resolve the registry at first use.
 		services.AddSingleton<UserContext>(sp => new UserContext(
 			sp.GetRequiredService<TimeProvider>(),
@@ -42,7 +41,7 @@ public static class DependencyInjection
 			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
 			sp.GetRequiredService<IRelationshipRepository>()));
 		services.AddSingleton<UserRegistry>(sp => new UserRegistry(
-			sp.GetRequiredService<AccountService>(),
+			sp.GetRequiredService<IAccountRules>(),
 			sp.GetRequiredService<UserContext>(),
 			sp.GetRequiredService<ConnectionContext>()));
 		return services;

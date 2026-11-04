@@ -1,6 +1,6 @@
 using System.Drawing;
 using Basil.Domain.Scores;
-using Basil.Application.Users.Handlers;
+using Basil.Infrastructure.Users.Handlers;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;

@@ -28,6 +28,7 @@ using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
@@ -101,6 +102,7 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IRoundRepository>(new InMemoryRoundRepository());
 		services.AddSingleton<IMatchEventRepository>(matchEvents);
 		configure?.Invoke(services);
+		services.AddUsersLogic();
 		services.AddBasilApplication();
 		// The host registers the bot's handlers with the others, so a container built like the host needs the bot's services too.
 		services.AddBot();

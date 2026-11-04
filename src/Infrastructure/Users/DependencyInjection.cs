@@ -1,6 +1,8 @@
 using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Ports;
 using Basil.Application.Users.Storage;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Users.Logic;
 using Basil.Infrastructure.Users.Persistence;
 using Basil.Infrastructure.Users.Storage;
 using Basil.Infrastructure.Users.Workers;
@@ -22,6 +24,16 @@ public static class DependencyInjection
 		services.AddSingleton<IRelationshipRepository, PostgresRelationshipRepository>();
 		services.AddSingleton<IModerationLogRepository, PostgresModerationLogRepository>();
 		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
+		services.AddUsersLogic();
+		return services;
+	}
+
+	/// <summary>Adds the account rules that the user registry applies at registration and sign-in.</summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	public static IServiceCollection AddUsersLogic(this IServiceCollection services)
+	{
+		services.AddSingleton<IAccountRules, AccountRules>();
 		return services;
 	}
 

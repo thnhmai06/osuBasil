@@ -5,7 +5,7 @@ using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Users.Handlers;
+namespace Basil.Infrastructure.Users.Handlers;
 
 /// <summary>Stops a restricted user from spectating when the restriction suspends spectating.</summary>
 internal sealed class RestrictionHandler(
