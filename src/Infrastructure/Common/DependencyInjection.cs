@@ -25,12 +25,9 @@ public static class DependencyInjection
 		services.TryAddSingleton(TimeProvider.System);
 		services.AddSingleton<DataPaths>();
 		services.AddSingleton<Database>();
-		services.AddSingleton<DatabaseReader>();
 		services.AddSingleton<DatabaseSession>();
 		services.AddSingleton<DatabaseMigrator>();
 		services.AddSingleton<IModuleMigration, ModuleMigration<CommonDbContext>>();
-		services.AddSingleton<DatabaseWriter>();
-		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWriter>());
 		services.AddHostedService<EventDispatcher>();
 		services.AddHostedService<StorageStartup>();
 		return services;

@@ -5,7 +5,6 @@ using Basil.Host.Irc;
 using Basil.Logging;
 using Basil.Host.Stable.Support;
 using Basil.Host.Rest.Sse;
-using Basil.Infrastructure.Common.Persistence;
 
 namespace Basil.Lifetime;
 
@@ -33,16 +32,13 @@ public sealed class ShutdownTimings
 	/// <summary>Gets the time limit of delivering the events that are queued.</summary>
 	public TimeSpan DrainEvents { get; init; } = TimeSpan.FromSeconds(10);
 
-	/// <summary>Gets the time limit of storing the writes that are queued.</summary>
-	public TimeSpan DrainWrites { get; init; } = TimeSpan.FromSeconds(20);
-
 	/// <summary>Gets the time limit of writing the log events that are queued.</summary>
 	public TimeSpan FlushLogs { get; init; } = TimeSpan.FromSeconds(3);
 }
 
 /// <summary>
 ///     Stops the server in order while it still serves: refuses new work, tells every client, closes the rooms, and waits
-///     until the events and the writes they caused are stored, then lets the host close its listeners and services.
+///     until the events are delivered, then lets the host close its listeners and services.
 /// </summary>
 /// <remarks>
 ///     It runs in <see cref="IHostedLifecycleService.StoppingAsync" />, which the host calls for every service before it
@@ -57,7 +53,6 @@ internal sealed class GracefulShutdown(
 	SseHub sse,
 	Lobby lobby,
 	EventQueue events,
-	DatabaseWriter writes,
 	LogDrops logs,
 	ILogger<GracefulShutdown> logger,
 	ShutdownTimings? timings = null) : IHostedLifecycleService
@@ -136,7 +131,6 @@ internal sealed class GracefulShutdown(
 			{
 				while (events.Outstanding > 0) await Task.Delay(10, token);
 			}),
-			new ShutdownStep("store the queued writes", _timings.DrainWrites, writes.DrainAsync),
 			new ShutdownStep("write the queued log events", _timings.FlushLogs, async token =>
 			{
 				while (logs.Pending > 0) await Task.Delay(10, token);

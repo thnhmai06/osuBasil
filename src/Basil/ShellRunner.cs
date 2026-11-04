@@ -11,8 +11,8 @@ namespace Basil;
 /// </summary>
 public static class ShellRunner
 {
-	/// <summary>The hosted services an offline command needs: the write queue, the event dispatch and the storage startup.</summary>
-	private static readonly string[] OfflineServices = ["DatabaseWriter", "EventDispatcher", "StorageStartup"];
+	/// <summary>The hosted services an offline command needs: the event dispatch and the storage startup.</summary>
+	private static readonly string[] OfflineServices = ["EventDispatcher", "StorageStartup"];
 
 	/// <summary>Tells whether the command line starts with the name of a console command.</summary>
 	/// <param name="args">The command-line arguments.</param>
@@ -107,7 +107,6 @@ public static class ShellRunner
 		}
 		finally
 		{
-			// Stopping drains the write queue and flushes it, so a command that printed its confirmation has stored its change.
 			foreach (var service in Enumerable.Reverse(lifecycle)) await service.StoppingAsync(CancellationToken.None);
 			foreach (var service in Enumerable.Reverse(started)) await service.StopAsync(CancellationToken.None);
 			foreach (var service in Enumerable.Reverse(lifecycle)) await service.StoppedAsync(CancellationToken.None);

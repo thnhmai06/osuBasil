@@ -21,23 +21,3 @@ public interface IWriteTicketContext
 	/// <summary>Gets the tickets of committed writes.</summary>
 	DbSet<WriteTicketRow> WriteTickets { get; }
 }
-
-/// <summary>One change to store, together with the context it runs on.</summary>
-public interface IDatabaseCommand
-{
-	/// <summary>Creates the context the change runs on.</summary>
-	/// <param name="database">The shared database.</param>
-	/// <param name="confirmed">Whether commits wait for the database to flush them.</param>
-	/// <returns>A new context of the module the change belongs to.</returns>
-	DbContext CreateContext(Database database, bool confirmed);
-
-	/// <summary>Gets the tickets of the context.</summary>
-	/// <param name="context">A context created by <see cref="CreateContext" />.</param>
-	/// <returns>The tickets that prove a committed write.</returns>
-	DbSet<WriteTicketRow> Tickets(DbContext context);
-
-	/// <summary>Applies the change to the context.</summary>
-	/// <param name="context">A context created by <see cref="CreateContext" />.</param>
-	/// <param name="cancellationToken">A token that cancels the change.</param>
-	Task RunAsync(DbContext context, CancellationToken cancellationToken);
-}

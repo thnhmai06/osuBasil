@@ -8,14 +8,12 @@ namespace Basil.Infrastructure.Common.Persistence;
 /// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 public sealed class Database : IAsyncDisposable
 {
-	private readonly ConcurrentDictionary<Type, object> _asynchronousOptions = new();
-	private readonly NpgsqlDataSource _asynchronousSource;
 	private readonly ConcurrentDictionary<Type, object> _readOptions = new();
 	private readonly NpgsqlDataSource _readSource;
 	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
 	private readonly NpgsqlDataSource _synchronousSource;
 
-	/// <summary>Creates the database connections used for reads and for confirmed and unconfirmed writes.</summary>
+	/// <summary>Creates the database connections used for reads and for confirmed writes.</summary>
 	/// <param name="options">The database connection settings.</param>
 	public Database(IOptions<DatabaseOptions> options)
 	{
@@ -26,15 +24,12 @@ public sealed class Database : IAsyncDisposable
 			settings.ReadPoolSize));
 		_synchronousSource = NpgsqlDataSource.Create(WithServerOptions(write,
 			"-c idle_in_transaction_session_timeout=30s", settings.WritePoolSize));
-		_asynchronousSource = NpgsqlDataSource.Create(WithServerOptions(write, "-c synchronous_commit=off",
-			settings.WritePoolSize));
 	}
 
 	public async ValueTask DisposeAsync()
 	{
 		await _readSource.DisposeAsync();
 		await _synchronousSource.DisposeAsync();
-		await _asynchronousSource.DisposeAsync();
 	}
 
 	/// <summary>Makes a context for reading, on the connections meant for reads.</summary>
@@ -51,13 +46,6 @@ public sealed class Database : IAsyncDisposable
 		return TContext.Create(OptionsFor<TContext>(_synchronousOptions, _synchronousSource));
 	}
 
-	/// <summary>Makes a context whose commits return before the database has flushed them, for copies of memory.</summary>
-	public TContext CreateUnconfirmedContext<TContext>()
-		where TContext : DbContext, IDatabaseContext<TContext>
-	{
-		return TContext.Create(OptionsFor<TContext>(_asynchronousOptions, _asynchronousSource));
-	}
-
 	private static DbContextOptions<TContext> OptionsFor<TContext>(ConcurrentDictionary<Type, object> cache,
 		NpgsqlDataSource source) where TContext : DbContext, IDatabaseContext<TContext>
 	{
@@ -67,7 +55,7 @@ public sealed class Database : IAsyncDisposable
 	private static DbContextOptions<TContext> CreateOptions<TContext>(NpgsqlDataSource source)
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
-		// No retrying execution strategy: DatabaseWriter retries, in the order the writes of a root were made.
+		// No retrying execution strategy: DatabaseSession retries only the opening of the connection.
 		return new DbContextOptionsBuilder<TContext>()
 			.UseNpgsql(source, postgres => postgres.MigrationsHistoryTable(TContext.HistoryTable))
 			.UseSnakeCaseNamingConvention()
