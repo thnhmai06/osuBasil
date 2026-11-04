@@ -37,7 +37,7 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
-		Assert.Same(round, Assert.Single(listed));
+		Assert.Equal(1, Assert.Single(listed).Index);
 	}
 
 	[Fact]
@@ -145,32 +145,13 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_round_in_use_is_listed_as_the_same_instance()
+	public async Task A_round_of_a_match_that_is_not_stored_is_refused_to_the_caller()
 	{
-		var match = await CreateMatchAsync("held_round_match");
-		var round = StoredMatches.Round(match, 1, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		var match = await CreateMatchAsync("unstored_round_match");
+		var round = StoredMatches.Round(new MatchRecord { Id = match.Id + 1000, Value = match.Value }, 1, First);
 
-		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
-
-		Assert.Same(round, Assert.Single(listed));
-		GC.KeepAlive(round);
-	}
-
-	[Fact]
-	public async Task A_round_in_use_takes_the_end_stored_for_another_instance_of_it()
-	{
-		var match = await CreateMatchAsync("held_end_match");
-		var round = StoredMatches.Round(match, 1, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
-		var ended = StoredMatches.Round(match, 1, First);
-		ended.EndedAt = Second;
-		await Rounds.CreateOrUpdateAsync(ended, TestContext.Current.CancellationToken);
-
-		var listed = Assert.Single(await Rounds.ListAsync(match, TestContext.Current.CancellationToken));
-
-		Assert.Equal(Second, listed.EndedAt);
-		GC.KeepAlive(round);
+		await Assert.ThrowsAnyAsync<Exception>(() =>
+			Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
