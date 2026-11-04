@@ -1,5 +1,5 @@
 using Basil.Application.Common.Events;
-using Basil.Application.Scores.Logic;
+using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,9 +14,8 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddScoresApplication(this IServiceCollection services)
 	{
-		services.AddSingleton<ScoreRecorder>();
 		services.AddSingleton<ScoreSubmitter>(sp => new ScoreSubmitter(
-			sp.GetRequiredService<ScoreRecorder>(),
+			sp.GetRequiredService<IScoreRecorder>(),
 			sp.GetRequiredService<IEventPublisher<ScoreEvent>>(),
 			sp.GetRequiredService<IScoreBeatmapAcceptance>(),
 			sp.GetRequiredService<TimeProvider>()));

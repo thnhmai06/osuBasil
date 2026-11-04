@@ -15,6 +15,8 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Scores"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Scores.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Scores.Tests"/>
 	</ItemGroup>
 

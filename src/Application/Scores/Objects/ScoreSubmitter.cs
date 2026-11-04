@@ -1,6 +1,6 @@
 using Basil.Application.Common.Events;
 using Basil.Application.Scores.Capabilities;
-using Basil.Application.Scores.Logic;
+using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 
@@ -19,7 +19,7 @@ public sealed class ScoreSubmitter
 	/// <param name="events">The publisher for score events.</param>
 	/// <param name="acceptance">Decides about scores on beatmaps the server does not have.</param>
 	/// <param name="clock">The clock the permissions of a scope are evaluated at.</param>
-	internal ScoreSubmitter(ScoreRecorder recorder, IEventPublisher<ScoreEvent> events,
+	internal ScoreSubmitter(IScoreRecorder recorder, IEventPublisher<ScoreEvent> events,
 		IScoreBeatmapAcceptance acceptance, TimeProvider clock)
 	{
 		Recorder = recorder;
@@ -28,7 +28,7 @@ public sealed class ScoreSubmitter
 		_clock = clock;
 	}
 
-	internal ScoreRecorder Recorder { get; }
+	internal IScoreRecorder Recorder { get; }
 
 	internal IEventPublisher<ScoreEvent> Events { get; }
 

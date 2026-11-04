@@ -1,6 +1,8 @@
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Storage;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Scores.Logic;
 using Basil.Infrastructure.Scores.Persistence;
 using Basil.Infrastructure.Scores.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,16 @@ public static class DependencyInjection
 		services.AddSingleton<IScoreRepository, PostgresScoreRepository>();
 		services.AddSingleton<IUserStatsRepository, PostgresUserStatsRepository>();
 		services.AddSingleton<IReplayStorage, FileReplayStorage>();
+		services.AddScoresLogic();
+		return services;
+	}
+
+	/// <summary>Adds the rules that validate and record a submitted score.</summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	public static IServiceCollection AddScoresLogic(this IServiceCollection services)
+	{
+		services.AddSingleton<IScoreRecorder, ScoreRecorder>();
 		return services;
 	}
 }
