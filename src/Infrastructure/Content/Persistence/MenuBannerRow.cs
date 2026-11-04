@@ -19,5 +19,6 @@ internal sealed class MenuBannerRowConfiguration : IEntityTypeConfiguration<Menu
 	{
 		builder.ToTable("menu_banners");
 		builder.HasKey(row => row.Image);
+		builder.Property(row => row.Image).HasMaxLength(255);
 	}
 }

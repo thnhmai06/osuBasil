@@ -21,6 +21,7 @@ internal sealed class MultiplayerDbContext(DbContextOptions<MultiplayerDbContext
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
+		IdCounters.Map(modelBuilder, "multiplayer_id_counters", ("match", 1), ("match_event", 1));
 		ContextModel.MapUsersReference(modelBuilder);
 		ContextModel.MapScoresReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<MultiplayerDbContext>(modelBuilder);

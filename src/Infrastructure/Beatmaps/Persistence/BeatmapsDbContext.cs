@@ -7,6 +7,8 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 	IDatabaseContext<BeatmapsDbContext>
 {
 	internal const int LocalIdFloor = 1_000_000_000;
+	internal const string LocalBeatmapsetIds = "local_beatmapset";
+	internal const string LocalBeatmapIds = "local_beatmap";
 
 	public DbSet<BeatmapsetRow> Beatmapsets => Set<BeatmapsetRow>();
 	public DbSet<BeatmapRow> Beatmaps => Set<BeatmapRow>();
@@ -21,7 +23,7 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<BeatmapsDbContext>(modelBuilder);
-		modelBuilder.HasSequence<int>("local_beatmapset_ids").StartsAt(LocalIdFloor);
-		modelBuilder.HasSequence<int>("local_beatmap_ids").StartsAt(LocalIdFloor);
+		IdCounters.Map(modelBuilder, "beatmap_id_counters", (LocalBeatmapsetIds, LocalIdFloor),
+			(LocalBeatmapIds, LocalIdFloor));
 	}
 }

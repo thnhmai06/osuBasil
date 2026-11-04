@@ -28,10 +28,10 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 			EndedAt = endedAt,
 			IsPrivate = isPrivate
 		};
-		await database.WriteAsync((MultiplayerDbContext context, CancellationToken _) =>
+		await database.WriteAsync(async (MultiplayerDbContext context, CancellationToken token) =>
 		{
+			row.Id = (int)await IdCounters.NextAsync(context, "match", token);
 			context.Matches.Add(row);
-			return Task.CompletedTask;
 		}, cancellationToken);
 
 		return new MatchRecord { Id = row.Id, Value = value };

@@ -13,8 +13,7 @@ namespace Basil.Infrastructure.Beatmaps.Persistence;
 /// <summary>Stores beatmap difficulties in the <c>beatmaps</c> table.</summary>
 internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRepository
 {
-	// jsonb keeps object keys in its own order, so the mode discriminator need not come first.
-	// The objects of each mode are stored with a mode discriminator; jsonb keeps object keys in its own order.
+	// The objects of each mode are stored with a mode discriminator that need not come first.
 	private static readonly JsonSerializerOptions StoredJson = new()
 	{
 		AllowOutOfOrderMetadataProperties = true,
@@ -125,14 +124,15 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 				$"A difficulty of another beatmapset already has the hash {item.Hash} or the id {row.Id}.");
 
 		var knownId = row?.Id ?? item.OnlineId;
-		// A record needs an id; the row of a difficulty without an osu! id has none until the sequence gives it one.
+		// A record needs an id; the row of a difficulty without an osu! id has none until a local id is taken.
 		var toStore = ToRow(Build(set, item, row, now, knownId ?? 1));
 		if (knownId is null)
 			toStore.Id = 0;
 
 		if (toStore.Id == 0)
 		{
-			// The database gives a difficulty without an osu! id the next local id.
+			// A difficulty without an osu! id takes the next local id.
+			toStore.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapIds, token);
 			context.Beatmaps.Add(toStore);
 			await context.SaveChangesAsync(token);
 		}

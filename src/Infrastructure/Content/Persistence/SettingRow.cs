@@ -16,5 +16,6 @@ internal sealed class SettingRowConfiguration : IEntityTypeConfiguration<Setting
 	{
 		builder.ToTable("settings");
 		builder.HasKey(row => row.Name);
+		builder.Property(row => row.Name).HasMaxLength(255);
 	}
 }

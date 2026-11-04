@@ -22,7 +22,7 @@ internal sealed class MatchEventRowConfiguration : IEntityTypeConfiguration<Matc
 	{
 		builder.ToTable("match_events");
 		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).ValueGeneratedOnAdd();
+		builder.Property(row => row.Id).ValueGeneratedNever();
 		builder.HasOne<MatchRow>().WithMany().HasForeignKey(row => row.MatchId).OnDelete(DeleteBehavior.NoAction);
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("ActorId")
 			.OnDelete(DeleteBehavior.NoAction);

@@ -101,7 +101,7 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		IReadOnlySet<int> releasable, BeatmapsDbContext context, CancellationToken token)
 	{
 		var knownId = existing?.Id ?? data.OnlineId;
-		// A record needs an id; the row of a set without an osu! id has none until the sequence gives it one.
+		// A record needs an id; the row of a set without an osu! id has none until a local id is taken.
 		var row = ToRow(Build(existing, data, now, knownId ?? 1));
 		if (knownId is null)
 			row.Id = 0;
@@ -109,6 +109,8 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		if (existing is null)
 		{
 			// A new set never replaces a stored one: an id another set has is refused by the database.
+			if (row.Id == 0)
+				row.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapsetIds, token);
 			context.Beatmapsets.Add(row);
 			await context.SaveChangesAsync(token);
 		}

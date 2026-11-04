@@ -19,7 +19,7 @@ internal sealed class RestrictionRowConfiguration : IEntityTypeConfiguration<Res
 	{
 		builder.ToTable("restrictions", table => table.HasCheckConstraint("restrictions_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).ValueGeneratedOnAdd();
+		builder.Property(row => row.Id).ValueGeneratedNever();
 		builder.HasOne<UserRow>().WithMany().HasForeignKey(row => row.UserId);
 		builder.HasIndex(row => row.UserId);
 	}

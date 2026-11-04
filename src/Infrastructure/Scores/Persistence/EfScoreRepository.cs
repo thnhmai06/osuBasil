@@ -15,10 +15,10 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 	public async Task<ScoreRecord> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
 	{
 		var row = ToRow(0, data);
-		await database.WriteAsync((ScoresDbContext context, CancellationToken _) =>
+		await database.WriteAsync(async (ScoresDbContext context, CancellationToken token) =>
 		{
+			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
 			context.Scores.Add(row);
-			return Task.CompletedTask;
 		}, cancellationToken);
 		return new ScoreRecord { Id = row.Id, Value = data };
 	}

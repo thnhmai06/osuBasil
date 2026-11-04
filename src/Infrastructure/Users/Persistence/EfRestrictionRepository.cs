@@ -20,10 +20,10 @@ internal sealed class EfRestrictionRepository(DatabaseSession database) : IRestr
 			StartsAt = data.StartsAt.ToUniversalTime(),
 			EndsAt = data.EndsAt?.ToUniversalTime()
 		};
-		await database.WriteAsync((UsersDbContext context, CancellationToken _) =>
+		await database.WriteAsync(async (UsersDbContext context, CancellationToken token) =>
 		{
+			row.Id = (int)await IdCounters.NextAsync(context, "restriction", token);
 			context.Restrictions.Add(row);
-			return Task.CompletedTask;
 		}, cancellationToken);
 
 		return new UserRestriction { Id = row.Id, Value = data };

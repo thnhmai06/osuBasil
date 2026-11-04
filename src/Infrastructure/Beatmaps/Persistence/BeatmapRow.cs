@@ -41,8 +41,10 @@ internal sealed class BeatmapRowConfiguration : IEntityTypeConfiguration<Beatmap
 	{
 		builder.ToTable("beatmaps", table => table.HasCheckConstraint("beatmaps_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).HasDefaultValueSql("nextval('local_beatmap_ids')").ValueGeneratedOnAdd();
-		builder.Property(row => row.Objects).HasColumnType("jsonb");
+		builder.Property(row => row.Id).ValueGeneratedNever();
+		builder.Property(row => row.Objects).HasConversion(
+			objects => objects.GetRawText(), json => JsonSerializer.Deserialize<JsonElement>(json, (JsonSerializerOptions?)null));
+		builder.Property(row => row.Hash).HasMaxLength(128);
 		builder.HasIndex(row => row.Hash).IsUnique();
 		builder.HasIndex(row => row.BeatmapsetId);
 		builder.HasIndex(row => row.Mode);

@@ -18,6 +18,7 @@ internal sealed class ScoresDbContext(DbContextOptions<ScoresDbContext> options)
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
+		IdCounters.Map(modelBuilder, "score_id_counters", ("score", 1));
 		ContextModel.MapUsersReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<ScoresDbContext>(modelBuilder);
 	}

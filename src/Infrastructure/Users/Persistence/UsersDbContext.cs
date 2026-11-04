@@ -21,6 +21,6 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) :
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<UsersDbContext>(modelBuilder);
-		modelBuilder.HasSequence<int>("user_ids").StartsAt(2);
+		IdCounters.Map(modelBuilder, "user_id_counters", ("user", 2), ("restriction", 1), ("moderation_log", 1));
 	}
 }

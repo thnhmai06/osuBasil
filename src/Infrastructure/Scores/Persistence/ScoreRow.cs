@@ -34,9 +34,11 @@ internal sealed class ScoreRowConfiguration : IEntityTypeConfiguration<ScoreRow>
 	{
 		builder.ToTable("scores", table => table.HasCheckConstraint("scores_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).ValueGeneratedOnAdd();
+		builder.Property(row => row.Id).ValueGeneratedNever();
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")
 			.OnDelete(DeleteBehavior.NoAction);
+		builder.Property(row => row.BeatmapHash).HasMaxLength(128);
+		builder.Property(row => row.Checksum).HasMaxLength(128);
 		builder.HasIndex(row => row.UserId);
 		// The leaderboard of a beatmap: best score first, then the earlier play and the lower id (also serves a lookup by beatmap).
 		builder.HasIndex(row => new { row.BeatmapHash, row.TotalScore, row.Timestamp, row.Id })

@@ -17,11 +17,11 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		var row = ToRow(0, data);
 		try
 		{
-			await database.WriteAsync((UsersDbContext context, CancellationToken _) =>
-			{
-				context.Users.Add(row);
-				return Task.CompletedTask;
-			}, cancellationToken);
+			await database.WriteAsync(async (UsersDbContext context, CancellationToken token) =>
+		{
+			row.Id = (int)await IdCounters.NextAsync(context, "user", token);
+			context.Users.Add(row);
+		}, cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
@@ -61,7 +61,9 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 			.ExecuteUpdateAsync(set => set
 				.SetProperty(row => row.Country, country)
 				.SetProperty(row => row.Permissions, permissions)
-				.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt), token), cancellationToken);
+				.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt)
+				.SetProperty(row => row.ActiveName,
+					row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null), token), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -87,7 +89,9 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 				.Where(row => row.Id == id)
 				.ExecuteUpdateAsync(set => set
 					.SetProperty(row => row.Name, name)
-					.SetProperty(row => row.NormalizedName, normalized), token), cancellationToken);
+					.SetProperty(row => row.NormalizedName, normalized)
+					.SetProperty(row => row.ActiveName, row => row.DeletedAt == null ? normalized : null), token),
+				cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
@@ -172,6 +176,7 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 			Id = id,
 			Name = data.Name,
 			NormalizedName = data.NormalizedName,
+			ActiveName = data.DeletedAt is null ? data.NormalizedName : null,
 			Country = (int)data.Country,
 			Permissions = (long)data.Permissions,
 			DeletedAt = data.DeletedAt?.ToUniversalTime()

@@ -21,10 +21,10 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 			Reason = entry.Reason,
 			Timestamp = entry.Timestamp.ToUniversalTime()
 		};
-		return database.WriteAsync((UsersDbContext context, CancellationToken _) =>
+		return database.WriteAsync(async (UsersDbContext context, CancellationToken token) =>
 		{
+			row.Id = await IdCounters.NextAsync(context, "moderation_log", token);
 			context.ModerationLog.Add(row);
-			return Task.CompletedTask;
 		}, cancellationToken);
 	}
 
