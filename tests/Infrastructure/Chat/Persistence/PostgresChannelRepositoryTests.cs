@@ -151,7 +151,7 @@ public sealed class PostgresChannelRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task Of_two_concurrent_changes_of_a_channel_memory_holds_the_one_stored_last()
+	public async Task Of_two_concurrent_changes_of_a_channel_the_one_stored_last_is_listed()
 	{
 		var changes = new[]
 		{
@@ -167,12 +167,20 @@ public sealed class PostgresChannelRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task The_channels_are_read_before_the_storage_has_started()
+	public async Task A_channel_stored_by_another_server_is_listed()
 	{
-		await using var fresh = new StorageComposition(ConnectionString);
+		await using (var connection = new Npgsql.NpgsqlConnection(ConnectionString))
+		{
+			await connection.OpenAsync(TestContext.Current.CancellationToken);
+			await using var command = new Npgsql.NpgsqlCommand(
+				"insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible) values ('#elsewhere', 't', 0, 0, false, true)",
+				connection);
+			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+		}
 
-		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			fresh.Get<IChannelRepository>().ListAsync(TestContext.Current.CancellationToken));
+		var channels = await Channels.ListAsync(TestContext.Current.CancellationToken);
+
+		Assert.Contains(channels, channel => channel.Name == "#elsewhere");
 	}
 
 	/// <summary>Builds the #osu channel with the given topic.</summary>

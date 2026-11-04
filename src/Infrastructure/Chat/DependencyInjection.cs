@@ -1,7 +1,6 @@
 using Basil.Application.Chat.Persistence;
 using Basil.Infrastructure.Chat.Persistence;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Chat;
@@ -17,7 +16,6 @@ public static class DependencyInjection
 		services.AddSingleton<IModuleMigration, ModuleMigration<ChatDbContext>>();
 		services.AddSingleton<PostgresChannelRepository>();
 		services.AddSingleton<IChannelRepository>(provider => provider.GetRequiredService<PostgresChannelRepository>());
-		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresChannelRepository>());
 		return services;
 	}
 }
