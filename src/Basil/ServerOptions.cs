@@ -34,6 +34,12 @@ public sealed class ServerOptions
 		/// <summary>Gets a value that indicates whether the server answers multicast DNS queries for its domain.</summary>
 		public bool Enabled { get; set; }
 
+		/// <summary>Gets a value that indicates whether the server answers on IPv4; <see langword="false" /> switches the family off.</summary>
+		public bool UseIPv4 { get; set; } = true;
+
+		/// <summary>Gets a value that indicates whether the server answers on IPv6; <see langword="false" /> switches the family off.</summary>
+		public bool UseIPv6 { get; set; } = true;
+
 		/// <summary>Gets how many seconds a client may keep an answer.</summary>
 		public int DnsTtl { get; set; } = 120;
 	}

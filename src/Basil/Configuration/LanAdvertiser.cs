@@ -32,7 +32,7 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		var ttl = TimeSpan.FromSeconds(multicast.DnsTtl);
 		try
 		{
-			_service = new MulticastService();
+			_service = NewService(multicast);
 			_service.QueryReceived += (_, query) =>
 			{
 				var response = query.Message.CreateResponse();
@@ -63,6 +63,12 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 	{
 		Dispose();
 		return Task.CompletedTask;
+	}
+
+	/// <summary>Creates the responder with the address families the settings leave on.</summary>
+	internal static MulticastService NewService(ServerOptions.MulticastSettings multicast)
+	{
+		return new MulticastService { UseIpv4 = multicast.UseIPv4, UseIpv6 = multicast.UseIPv6 };
 	}
 
 	internal static HashSet<string> Names(string domain)
