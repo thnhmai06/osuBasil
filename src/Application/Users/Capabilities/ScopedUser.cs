@@ -105,8 +105,13 @@ public readonly struct ScopedUser
 		if (Guard(UserPermissions.UserManage, true) is { } denied) return denied;
 		if (User.Record.Value.DeletedAt is not null) return UserOutcome.Ok;
 
-		User.Grants.MarkDeleted(User.Context.Clock.GetUtcNow());
-		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
+		var now = User.Context.Clock.GetUtcNow();
+		await User.StoreChangeAsync(data =>
+		{
+			data.DeletedAt = now;
+			data.Permissions = UserPermissions.None;
+		}, cancellationToken);
+		User.Grants.MarkDeleted(now);
 		User.Context.Registry.CloseAll(User.Record, SessionEndReason.Deleted);
 		return UserOutcome.Ok;
 	}

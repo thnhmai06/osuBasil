@@ -19,8 +19,8 @@ public readonly struct ScopedUserPermissions(ScopedUser scoped)
 		if (scoped.MissingPermissions(scoped.User.Record.Value.Permissions ^ permissions) is { } cannotGrant)
 			return Result<UserOutcome>.Denied(cannotGrant);
 
+		await scoped.User.StoreChangeAsync(data => data.Permissions = permissions, cancellationToken);
 		scoped.User.Grants.Replace(permissions);
-		await scoped.User.Context.Users.UpdateAsync(scoped.User.Record, cancellationToken);
 		if (scoped.User.Context.Registry.Online.GetValueOrDefault(scoped.User.Record) is { } user)
 			scoped.User.Context.Registry.CloseDisallowed(user);
 

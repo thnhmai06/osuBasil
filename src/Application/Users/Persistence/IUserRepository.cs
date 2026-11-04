@@ -20,6 +20,12 @@ public interface IUserRepository
 	/// <remarks>The name of a user already stored is kept; a stored user changes name only through <see cref="RenameAsync" />.</remarks>
 	Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default);
 
+	/// <summary>Removes a user that was stored a moment ago and never used.</summary>
+	/// <param name="user">The user to remove; nothing else refers to it yet.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>This undoes <see cref="CreateAsync" /> when the rest of creating an account failed; a user who has been in use is deleted, not discarded.</remarks>
+	Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default);
+
 	/// <summary>Stores a user under a given id, replacing the user that holds the id or creating it.</summary>
 	/// <param name="id">The id to store the user under.</param>
 	/// <param name="data">The account data the id holds afterwards.</param>

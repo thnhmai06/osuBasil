@@ -79,7 +79,6 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "freed_name" }, TestContext.Current.CancellationToken);
 		await DeleteAsync(user);
-		await WaitForDeletionAsync(user.Id);
 
 		var second =
 			await Users.CreateAsync(new UserData { Name = "freed_name" }, TestContext.Current.CancellationToken);
@@ -120,7 +119,6 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		var user = await Users.CreateAsync(new UserData { Name = "hidden_name" },
 			TestContext.Current.CancellationToken);
 		await DeleteAsync(user);
-		await WaitForDeletionAsync(user.Id);
 
 		Assert.Null(await Users.GetByNameAsync("hidden_name", TestContext.Current.CancellationToken));
 	}
@@ -135,9 +133,9 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		var found = await Users.GetAsync(BasilBot.Id, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BasilBot.Id, replaced.Id);
-		Assert.Same(replaced, found);
 		Assert.Equal("renamed_bot", found!.Value.Name);
-		Assert.Same(replaced, await Users.GetByNameAsync("renamed_bot", TestContext.Current.CancellationToken));
+		Assert.Equal(BasilBot.Id,
+			(await Users.GetByNameAsync("renamed_bot", TestContext.Current.CancellationToken))!.Id);
 	}
 
 	[Fact]
@@ -160,13 +158,13 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		var user = await Users.CreateAsync(new UserData { Name = "was_deleted" },
 			TestContext.Current.CancellationToken);
 		await DeleteAsync(user);
-		await WaitForDeletionAsync(user.Id);
 
 		var restored = await Users.ReplaceAsync(user.Id, new UserData { Name = "restored_user" },
 			TestContext.Current.CancellationToken);
 
 		Assert.Null(restored.Value.DeletedAt);
-		Assert.Same(restored, await Users.GetByNameAsync("restored_user", TestContext.Current.CancellationToken));
+		Assert.Equal(user.Id,
+			(await Users.GetByNameAsync("restored_user", TestContext.Current.CancellationToken))!.Id);
 		await StoredRows.WaitForAsync(ConnectionString, "select id from users where id = @id and deleted_at is null",
 			new Dictionary<string, object?> { ["@id"] = user.Id }, rows => rows.Count == 1,
 			"the restored account", TestContext.Current.CancellationToken);
@@ -181,7 +179,7 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(id, created.Id);
-		Assert.Same(created, await Users.GetAsync(id, TestContext.Current.CancellationToken));
+		Assert.Equal(id, (await Users.GetAsync(id, TestContext.Current.CancellationToken))!.Id);
 		await StoredRows.WaitForAsync(ConnectionString, "select id from users where id = @id",
 			new Dictionary<string, object?> { ["@id"] = id }, rows => rows.Count == 1,
 			"the created account", TestContext.Current.CancellationToken);
@@ -209,7 +207,7 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Two_reads_of_one_account_return_the_same_instance()
+	public async Task Two_reads_of_one_account_return_the_same_account()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "same_one" }, TestContext.Current.CancellationToken);
 
@@ -218,7 +216,7 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 
 		Assert.NotNull(byId);
 		Assert.NotNull(byName);
-		Assert.Same(byId, byName);
+		Assert.Equal(byId.Id, byName.Id);
 	}
 
 	[Fact]
@@ -257,6 +255,34 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
 
 		Assert.Throws<InvalidOperationException>(() => user.Value.DeletedAt = null);
+	}
+
+	[Fact]
+	public async Task A_discarded_account_is_gone_and_its_name_is_free()
+	{
+		var user = await Users.CreateAsync(new UserData { Name = "discarded_user" },
+			TestContext.Current.CancellationToken);
+
+		await Users.DiscardAsync(user, TestContext.Current.CancellationToken);
+
+		Assert.Null(await Users.GetAsync(user.Id, TestContext.Current.CancellationToken));
+		Assert.Null(await Users.GetByNameAsync("discarded_user", TestContext.Current.CancellationToken));
+		await Users.CreateAsync(new UserData { Name = "discarded_user" }, TestContext.Current.CancellationToken);
+	}
+
+	[Fact]
+	public async Task An_update_by_a_record_that_does_not_know_the_deletion_does_not_restore_the_account()
+	{
+		var user = await Users.CreateAsync(new UserData { Name = "stale_record" },
+			TestContext.Current.CancellationToken);
+		await DeleteAsync(user);
+		var stale = new UserRecord { Id = user.Id, Value = new UserData { Name = "stale_record", Country = Country.De } };
+
+		await Users.UpdateAsync(stale, TestContext.Current.CancellationToken);
+
+		var found = await Users.GetAsync(user.Id, TestContext.Current.CancellationToken);
+		Assert.NotNull(found!.Value.DeletedAt);
+		Assert.Equal(Country.De, found.Value.Country);
 	}
 
 	[Fact]
@@ -472,21 +498,11 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		Assert.Equal(new[] { first.Id, second.Id, third.Id }, page.Items.Select(account => account.Id));
 	}
 
-	/// <summary>Deletes an account and waits until the deletion is stored.</summary>
+	/// <summary>Deletes an account.</summary>
 	private async Task DeleteAsync(UserRecord user)
 	{
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
 		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
-	}
-
-	/// <summary>Waits until the deletion of an account is stored.</summary>
-	/// <param name="id">The id of the deleted account.</param>
-	private async Task WaitForDeletionAsync(int id)
-	{
-		await StoredRows.WaitForAsync(ConnectionString,
-			"select id from users where id = @id and deleted_at is not null",
-			new Dictionary<string, object?> { ["@id"] = id }, rows => rows.Count == 1,
-			$"the deletion of the account {id}", TestContext.Current.CancellationToken);
 	}
 
 	/// <summary>Creates two accounts and deletes the second one.</summary>
@@ -496,6 +512,5 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		var deleted =
 			await Users.CreateAsync(new UserData { Name = "dead_user" }, TestContext.Current.CancellationToken);
 		await DeleteAsync(deleted);
-		await WaitForDeletionAsync(deleted.Id);
 	}
 }

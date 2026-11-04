@@ -128,6 +128,29 @@ public sealed class User
 			change(online.Record.Value);
 	}
 
+	/// <summary>Stores the account data as a change would leave it, before the change is applied to the live record.</summary>
+	/// <param name="change">The change to apply to a copy of the data.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>A refused write leaves the live record as it was; the caller applies the change once this returns.</remarks>
+	internal Task StoreChangeAsync(Action<UserData> change, CancellationToken cancellationToken)
+	{
+		UserData copy;
+		using (Enter())
+		{
+			var current = Record.Value;
+			copy = new UserData
+			{
+				Name = current.Name,
+				Country = current.Country,
+				Permissions = current.Permissions,
+				DeletedAt = current.DeletedAt
+			};
+		}
+
+		change(copy);
+		return Context.Users.UpdateAsync(new UserRecord { Id = Record.Id, Value = copy }, cancellationToken);
+	}
+
 	/// <summary>Adds a connection.</summary>
 	internal void Add(Connection connection)
 	{
