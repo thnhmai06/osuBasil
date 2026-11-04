@@ -294,32 +294,23 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task CancelCountdownAsync_TheCallersRoleDecidesWhoMayCancelTheCountdown(RoomRole role,
+	public async Task RequireStart_TheCallersRoleDecidesWhoMayStartRounds(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var room = setup.RoomFor(role);
 		var caller = setup.ConnectionFor(role);
-		await room.ScopeTo(setup.Manager).Rounds.StartCountdownAsync(TimeSpan.FromMinutes(5), false,
-			TestContext.Current.CancellationToken);
-		var before = room.Rounds.Countdown;
-		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Rounds.CancelCountdownAsync(TestContext.Current.CancellationToken);
+		var result = room.ScopeTo(caller).Rounds.RequireStart();
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
-			Assert.Null(room.Rounds.Countdown);
-			Assert.Equal(RoomCountdownCancelReason.Aborted,
-				Assert.IsType<RoomCountdownCancelled>(app.RoomEvents.Events[^1]).Reason);
+			Assert.Null(result);
 			return;
 		}
 
-		AssertRefused(result, expected);
-		Assert.Same(before, room.Rounds.Countdown);
-		Assert.Equal(events, app.RoomEvents.Events.Count);
+		AssertRefused(result!.Value, expected);
 	}
 
 	[Theory]

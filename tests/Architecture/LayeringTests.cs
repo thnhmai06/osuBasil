@@ -265,11 +265,11 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void Bot_DoesDependOnScopedCapabilities_PositiveControl()
+	public void Bot_DoesDependOnTheMessagesOfApplication_PositiveControl()
 	{
-		var scopedRounds = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
-			.Single(type => type.Name == "ScopedRoomRounds");
-		var result = Types.InAssembly(BotAssembly).Should().NotHaveDependencyOnAny(scopedRounds.FullName!).GetResult();
+		var startRound = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
+			.Single(type => type.Name == "StartRound");
+		var result = Types.InAssembly(BotAssembly).Should().NotHaveDependencyOnAny(startRound.FullName!).GetResult();
 
 		Assert.False(result.IsSuccessful);
 	}

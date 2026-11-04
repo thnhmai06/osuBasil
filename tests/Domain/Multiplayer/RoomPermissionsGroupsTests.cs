@@ -23,7 +23,6 @@ public class RoomPermissionsGroupsTests
 		RoomPermissions.HostTransfer |
 		RoomPermissions.RoundsStart |
 		RoomPermissions.RoundsAbort |
-		RoomPermissions.RoundsCountdown |
 		RoomPermissions.RoomClose |
 		RoomPermissions.ChatPost;
 
@@ -51,8 +50,7 @@ public class RoomPermissionsGroupsTests
 			RoomPermissions.MembersKick |
 			RoomPermissions.HostTransfer |
 			RoomPermissions.RoundsStart |
-			RoomPermissions.RoundsAbort |
-			RoomPermissions.RoundsCountdown;
+			RoomPermissions.RoundsAbort;
 
 		Assert.Equal(expected, RoomRoles.Host.GetPermissions());
 	}
@@ -126,7 +124,6 @@ public class RoomPermissionsGroupsTests
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.HostTransfer));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.RoundsStart));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.RoundsAbort));
-		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.RoundsCountdown));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.RoomClose));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.SettingsChange));
 	}

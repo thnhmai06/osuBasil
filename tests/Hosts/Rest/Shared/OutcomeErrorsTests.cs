@@ -41,7 +41,7 @@ public sealed class OutcomeErrorsTests
 		[RoomOutcome.InvalidMods] = Invalid,
 		[RoomOutcome.InvalidSettings] = Invalid, [RoomOutcome.NoBeatmap] = Conflict,
 		[RoomOutcome.NotPlaying] = Conflict,
-		[RoomOutcome.NotInProgress] = Conflict, [RoomOutcome.NoCountdown] = Conflict,
+		[RoomOutcome.NotInProgress] = Conflict,
 		[RoomOutcome.RoundMismatch] = Conflict,
 		[RoomOutcome.RoomClosed] = Gone, [RoomOutcome.Blocked] = Forbidden
 	};
