@@ -274,6 +274,33 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
+	public async Task UploadAsync_ContentOfAnUnsupportedFormat_IsKeptInQuarantineAndNothingStaysInTheSpool()
+	{
+		using var f = new Fixture();
+		f.InspectedAs(null);
+		var screenshots = await f.UploaderAsync();
+
+		await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
+
+		Assert.Single(Directory.GetFiles(Path.Combine(f.App.UploadsRoot, "Quarantine")));
+		Assert.Empty(Directory.GetFiles(Path.Combine(f.App.UploadsRoot, "Spool")));
+	}
+
+	[Fact]
+	public async Task UploadAsync_AcceptedPicture_LeavesNothingInTheSpoolOrTheQuarantine()
+	{
+		using var f = new Fixture();
+		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
+		var screenshots = await f.UploaderAsync();
+
+		await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
+
+		Assert.Empty(Directory.GetFiles(Path.Combine(f.App.UploadsRoot, "Spool")));
+		Assert.False(Directory.Exists(Path.Combine(f.App.UploadsRoot, "Quarantine")) &&
+		             Directory.GetFiles(Path.Combine(f.App.UploadsRoot, "Quarantine")).Length > 0);
+	}
+
+	[Fact]
 	public async Task UploadAsync_EmptyContent_IsNotAPictureAndStoresNothing()
 	{
 		using var f = new Fixture();

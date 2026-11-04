@@ -31,12 +31,10 @@ internal sealed class FileReplayStorage(
 		var user = score.Value.UserId is { } userId ? await users.GetAsync(userId, cancellationToken) : null;
 		var beatmap = score.Value.BeatmapHash is { } hash ? await beatmaps.GetAsync(hash, cancellationToken) : null;
 
-		using var frames = new MemoryStream();
-		await content.CopyToAsync(frames, cancellationToken);
-		var file = ReplayFile.Build(score, user?.Value.Name ?? string.Empty, clientVersion, frames.ToArray());
-
 		var name = NameOf(score, user, beatmap);
-		await Files.SaveAsync(name, new MemoryStream(file), cancellationToken);
+		await Files.SaveAsync(name,
+			(output, token) => ReplayFile.WriteAsync(output, score, user?.Value.Name ?? string.Empty, clientVersion,
+				content, token), cancellationToken);
 		foreach (var previous in Find(score.Id).Where(previous => previous != name).ToList())
 			Files.Delete(previous);
 	}

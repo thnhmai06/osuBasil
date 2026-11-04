@@ -256,6 +256,17 @@ public sealed class BeatmapsetWorld
 			return Task.CompletedTask;
 		}
 
+		/// <summary>Gets the uploaded archives that were kept in quarantine.</summary>
+		public List<MemoryArchive> Quarantined { get; } = [];
+
+		/// <inheritdoc />
+		public Task QuarantineAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)
+		{
+			_uploaded.Remove((MemoryArchive)archive);
+			Quarantined.Add((MemoryArchive)archive);
+			return Task.CompletedTask;
+		}
+
 		/// <inheritdoc />
 		public Task DeleteAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)
 		{
@@ -363,6 +374,12 @@ public sealed class BeatmapsetWorld
 			var all = Records.Values.OrderByDescending(set => set.Id).ToList();
 			return Task.FromResult(new Page<BeatmapsetRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(),
 				all.Count));
+		}
+
+		/// <inheritdoc />
+		public Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult<IReadOnlyList<int>>([.. Records.Keys.OrderByDescending(id => id)]);
 		}
 
 		/// <inheritdoc />

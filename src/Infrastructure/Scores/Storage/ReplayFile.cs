@@ -12,14 +12,17 @@ internal static class ReplayFile
 {
 	private const byte StringMarker = 0x0B;
 
-	/// <summary>Builds the complete <c>.osr</c> file of a score from the frames the client submitted.</summary>
+	/// <summary>Writes the complete <c>.osr</c> file of a score around the frames the client submitted.</summary>
+	/// <param name="output">Where the file is written; it must be seekable.</param>
 	/// <param name="score">The score whose result the header records.</param>
 	/// <param name="playerName">The player's name; empty when the player is unknown.</param>
 	/// <param name="clientVersion">The osu! client version that played the score.</param>
-	/// <param name="frames">The LZMA-compressed frames exactly as the client submitted them.</param>
-	/// <returns>The bytes of the file.</returns>
-	public static byte[] Build(ScoreRecord score, string playerName, OsuVersion clientVersion,
-		ReadOnlySpan<byte> frames)
+	/// <param name="frames">
+	///     The LZMA-compressed frames exactly as the client submitted them, from the current position to the end.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	public static async Task WriteAsync(Stream output, ScoreRecord score, string playerName, OsuVersion clientVersion,
+		Stream frames, CancellationToken cancellationToken = default)
 	{
 		var data = score.Value;
 		var (counts, totalScore, maxCombo, _, isFullCombo) = data.LastState;
@@ -31,8 +34,7 @@ internal static class ReplayFile
 			$"{counts.Num100 + counts.Num300}p{counts.Num50}o{counts.NumGeki}o{counts.NumKatu}t{counts.NumMiss}" +
 			$"a{beatmapHash}r{maxCombo}e{isFullCombo}y{playerName}o{totalScore}u0{mods}True"))));
 
-		using var stream = new MemoryStream();
-		using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
+		using (var writer = new BinaryWriter(output, Encoding.UTF8, true))
 		{
 			writer.Write((byte)data.Mode);
 			writer.Write(clientVersion.Date.Year * 10000 + clientVersion.Date.Month * 100 + clientVersion.Date.Day);
@@ -51,13 +53,24 @@ internal static class ReplayFile
 			writer.Write(mods);
 			WriteString(writer, string.Empty); // the life bar graph, which the server does not keep
 			writer.Write(data.Timestamp.UtcTicks);
-			writer.Write(frames.Length);
-			writer.Write(frames);
+			writer.Write(0); // the frames' length, written once they are copied
+		}
+
+		var start = output.Position;
+		await frames.CopyToAsync(output, cancellationToken);
+		var end = output.Position;
+		output.Position = start - sizeof(int);
+		using (var writer = new BinaryWriter(output, Encoding.UTF8, true))
+		{
+			writer.Write(checked((int)(end - start)));
+		}
+
+		output.Position = end;
+		using (var writer = new BinaryWriter(output, Encoding.UTF8, true))
+		{
 			writer.Write((long)score.Id);
 			if ((data.Mods & GameMods.Target) != GameMods.NoMod) writer.Write(0.0);
 		}
-
-		return stream.ToArray();
 	}
 
 	/// <summary>Finds the LZMA frames inside a complete <c>.osr</c> file, reading only its header.</summary>

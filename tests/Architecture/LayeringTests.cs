@@ -304,6 +304,41 @@ public class LayeringTests
 		Assert.True(offenders.Count == 0, "ConfigureAwait is not used: " + string.Join(", ", offenders));
 	}
 
+	[Fact]
+	public void ApplicationSources_DoNotBufferPayloadsInAMemoryStream()
+	{
+		var applications = Path.Combine(FindRepositoryRoot(), "src", "Application");
+		var offenders = Directory.EnumerateFiles(applications, "*.cs", SearchOption.AllDirectories)
+			.Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
+			               !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}") &&
+			               UsesMemoryStream(path))
+			.ToList();
+
+		Assert.True(offenders.Count == 0,
+			"Application spools a payload to a file and never buffers it in a MemoryStream: " +
+			string.Join(", ", offenders));
+	}
+
+	[Fact]
+	public void TheMemoryStreamCheckSeesASourceThatBuffers_PositiveControl()
+	{
+		var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.cs");
+		File.WriteAllText(path, "class C { void M() { using var m = new MemoryStream(); } }");
+		try
+		{
+			Assert.True(UsesMemoryStream(path));
+		}
+		finally
+		{
+			File.Delete(path);
+		}
+	}
+
+	private static bool UsesMemoryStream(string path)
+	{
+		return File.ReadAllText(path).Contains("MemoryStream", StringComparison.Ordinal);
+	}
+
 	/// <summary>The sources whose entry points only send messages: they never scope an object themselves.</summary>
 	private static readonly string[] MessageOnlyHosts =
 		[Path.Combine("Hosts", "Irc"), Path.Combine("Hosts", "Stable"), Path.Combine("Hosts", "Rest"),

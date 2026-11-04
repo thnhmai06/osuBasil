@@ -35,28 +35,24 @@ public readonly struct ScopedServerScreenshots
 		var context = _scoped.Server.Context;
 		var limits = (await context.Settings.GetAsync(cancellationToken)).Uploads;
 
-		using var memory = new MemoryStream();
-		var buffer = new byte[81920];
-		while (true)
+		await using var upload = await context.Spool.SpoolAsync(content, limits.ScreenshotMaxSize, cancellationToken);
+		if (upload.TooLarge) return (null, ServerOutcome.TooLarge);
+
+		var info = await context.Inspector.InspectAsync(upload.Content, cancellationToken);
+		if (info is null || info.Width < 1 || info.Height < 1)
 		{
-			var allowance = (int)Math.Min(buffer.Length, limits.ScreenshotMaxSize + 1 - memory.Length);
-			if (allowance == 0) break;
-			var read = await content.ReadAsync(buffer.AsMemory(0, allowance), cancellationToken);
-			if (read == 0) break;
-			memory.Write(buffer, 0, read);
+			await upload.QuarantineAsync(cancellationToken);
+			return (null, ServerOutcome.InvalidImage);
 		}
 
-		if (memory.Length > limits.ScreenshotMaxSize) return (null, ServerOutcome.TooLarge);
-
-		memory.Position = 0;
-		var info = await context.Inspector.InspectAsync(memory, cancellationToken);
-		if (info is null || info.Width < 1 || info.Height < 1)
-			return (null, ServerOutcome.InvalidImage);
 		if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
+		{
+			await upload.QuarantineAsync(cancellationToken);
 			return (null, ServerOutcome.DimensionsTooLarge);
+		}
 
-		memory.Position = 0;
-		var reference = await context.Screenshots.SaveAsync(memory, info.Extension, cancellationToken);
+		upload.Content.Position = 0;
+		var reference = await context.Screenshots.SaveAsync(upload.Content, info.Extension, cancellationToken);
 		return (reference, ServerOutcome.Ok);
 	}
 
