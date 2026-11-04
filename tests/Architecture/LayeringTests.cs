@@ -304,8 +304,10 @@ public class LayeringTests
 		Assert.True(offenders.Count == 0, "ConfigureAwait is not used: " + string.Join(", ", offenders));
 	}
 
-	/// <summary>The hosts whose entry points only send messages: they never scope an object themselves.</summary>
-	private static readonly string[] MessageOnlyHosts = ["Irc"];
+	/// <summary>The sources whose entry points only send messages: they never scope an object themselves.</summary>
+	private static readonly string[] MessageOnlyHosts =
+		[Path.Combine("Hosts", "Irc"), Path.Combine("Hosts", "Stable"), Path.Combine("Hosts", "Rest"),
+		 Path.Combine("Hosts", "Cli"), Path.Combine("Hosts", "Shared"), "Bot"];
 
 	[Fact]
 	public void MessageOnlyHosts_DoNotCallScopeTo()
@@ -318,12 +320,21 @@ public class LayeringTests
 	[Fact]
 	public void TheScopeToCheckSeesAHostThatScopes_PositiveControl()
 	{
-		Assert.Contains(SourcesOfHost("Rest"), HasScopeTo);
+		var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.cs");
+		File.WriteAllText(path, "class C { void M(object x) { x.ScopeTo(y); } }");
+		try
+		{
+			Assert.True(HasScopeTo(path));
+		}
+		finally
+		{
+			File.Delete(path);
+		}
 	}
 
 	private static IEnumerable<string> SourcesOfHost(string host)
 	{
-		var directory = Path.Combine(FindRepositoryRoot(), "src", "Hosts", host);
+		var directory = Path.Combine(FindRepositoryRoot(), "src", host);
 		return Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
 			.Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
 			               !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
