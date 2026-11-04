@@ -89,7 +89,7 @@ public sealed class DashboardRenderer(DashboardModel model, ViewFormatter format
 		surface.Text(summary, 0, 2, "connections  : " + (model.Sessions.Count == 0
 			? "-"
 			: string.Join("  ",
-				model.Sessions.Where(pair => pair.Key != "bot").Select(pair => $"{pair.Key} {pair.Value}"))));
+				model.Sessions.Select(pair => $"{pair.Key} {pair.Value}"))));
 		Meter.Draw(surface, new Area(summary.X, summary.Y + 3, Math.Min(summary.Width, 60), 1), "cpu   ",
 			model.Cpu.Latest / 100, $"{model.Cpu.Latest:0.#}%");
 		Meter.Draw(surface, new Area(summary.X, summary.Y + 4, Math.Min(summary.Width, 60), 1), "memory",

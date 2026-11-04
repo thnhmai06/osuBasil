@@ -28,16 +28,15 @@ public sealed class UserSessions
 	public IEnumerable<Connection> Connections => _connections.Values.SelectMany(set => set);
 
 	/// <summary>Gets the user's osu! game client connection, if any.</summary>
-	public StableConnection? Osu => (StableConnection?)this[SessionType.Stable].SingleOrDefault();
+	/// <remarks>BasilBot's server-owned connection is not a game client, so the bot has none.</remarks>
+	public StableConnection? Osu =>
+		(StableConnection?)this[SessionType.Stable].SingleOrDefault(connection => !connection.IsServerOwned);
 
 	/// <summary>Gets one of the user's IRC connections, if any.</summary>
 	public IrcConnection? Irc => Ircs.FirstOrDefault();
 
 	/// <summary>Gets the user's IRC connections.</summary>
 	public IEnumerable<IrcConnection> Ircs => this[SessionType.Irc].Cast<IrcConnection>();
-
-	/// <summary>Gets the server's connection for BasilBot, if any.</summary>
-	public BotConnection? Bot => (BotConnection?)this[SessionType.Bot].SingleOrDefault();
 
 	/// <summary>Gets the user's osu!tourney connections.</summary>
 	public IEnumerable<TourneyConnection> Tourneys => this[SessionType.StableTourney].Cast<TourneyConnection>();

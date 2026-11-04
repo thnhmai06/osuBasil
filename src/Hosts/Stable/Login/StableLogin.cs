@@ -100,7 +100,8 @@ internal sealed class StableLogin(
 	private int CountOpenConnections(IPAddress? ip)
 	{
 		return registry.Online.Values.SelectMany(user => user.Connections)
-			.Count(connection => connection.IsOpen && Equals(connection.Session.Value.Device.Ip, ip));
+			.Count(connection => connection is { IsOpen: true, IsServerOwned: false } &&
+			                     Equals(connection.Session.Value.Device.Ip, ip));
 	}
 
 	private static (string Token, byte[] Reply) FailureReply(LoginFailure? failure)

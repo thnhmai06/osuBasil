@@ -242,7 +242,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task ConnectBotAsync_AfterALongIdleTime_KeepsTheBotConnection()
+	public async Task ConnectBotAsync_AfterALongIdleTime_KeepsTheBotConnections()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -252,6 +252,6 @@ public sealed class SessionLimitTests
 		var again = await app.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
 
 		Assert.Same(bot, again);
-		Assert.True(bot!.IsOpen);
+		Assert.All(bot!.Connections, connection => Assert.True(connection.IsOpen));
 	}
 }

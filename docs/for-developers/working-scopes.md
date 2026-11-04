@@ -200,7 +200,7 @@ Basil first reintroduced `BanchoBot` as a special session inside the server. The
 moved the commands out to BasilBot as a separate client. The 2026-10-16 redesign brought them back as a server entry point: BasilBot is a
 fixed user (id 1) that nobody can sign in as, commands run using the typist's connection, and the bot only replies
 and announces. The command and announcement handlers are implemented in `Basil.Bot`; transport
-integration remains planned for the Host phase; the bot's own connection is kept by the server. The earlier "special session" failed
+integration remains planned for the Host phase; the bot's own connections are kept by the server. The earlier "special session" failed
 because commands acted with the bot's own rights; that does not return: commands use the typist's rights, and the bot
 only speaks for the server.
 

@@ -1,3 +1,5 @@
+using Basil.Application.Users.Registry;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,6 +113,19 @@ public sealed class MetaCommandTests(CliFixture fixture)
 			         "version:", "uptime:", "users online:", "stable connections:", "rooms:", "rounds in progress:"
 		         })
 			Assert.Contains(label, text);
+	}
+
+	[Fact]
+	public async Task Status_TheBotIsOnline_CountsNoneOfItsConnectionsAsClients()
+	{
+		var bot = fixture.Host.Services.GetRequiredService<UserRegistry>().Online
+			.Single(pair => pair.Key.IsBasilBot()).Value;
+		Assert.Equal(2, bot.Connections.Count());
+
+		var (_, text) = await fixture.RunAsync("status");
+
+		Assert.Matches(@"stable connections:\s+0\b", text);
+		Assert.Matches(@"irc connections:\s+0\b", text);
 	}
 
 	[Fact]

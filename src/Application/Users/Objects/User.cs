@@ -75,9 +75,6 @@ public sealed class User
 	/// <summary>Gets the user's IRC connections.</summary>
 	public IEnumerable<IrcConnection> Ircs => Sessions.Ircs;
 
-	/// <summary>Gets the server's connection for BasilBot, if any.</summary>
-	public BotConnection? Bot => Sessions.Bot;
-
 	/// <summary>Gets the user's osu!tourney connections.</summary>
 	public IEnumerable<TourneyConnection> Tourneys => Sessions.Tourneys;
 

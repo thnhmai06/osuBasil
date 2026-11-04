@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Users;
 using Basil.Host.Shared;
 using Basil.Host.Shared.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,7 +64,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 	{
 		return
 		[
-			.. registry.Online.Values.Where(user => user.Bot is null).OrderBy(user => user.Record.Id).Select(user =>
+			.. registry.Online.Values.Where(user => !user.Record.IsBasilBot()).OrderBy(user => user.Record.Id).Select(user =>
 				new UserRow(
 					user.Record.Id, user.Record.Value.Name,
 					string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),

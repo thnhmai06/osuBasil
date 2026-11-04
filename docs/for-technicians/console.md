@@ -282,7 +282,7 @@ the dashboard without `--now` they ask `y/N` in the command box. Given on the co
 ## Design and invariants
 
 * Commands run as BasilBot with the operator's connection, which skips the rights checks; this exists only on the
-  console path. BasilBot's own connection and the chat commands keep their normal limits.
+  console path. BasilBot's own connections and the chat commands keep their normal limits.
 * Every command is built from the same Application behaviours as the HTTP route it mirrors, and prints the same record
   view. A test requires a command for every route, except the ones listed under the mapping rule.
 * A password, a new password or a key never appears in the log, the history, the suggestions or the output.

@@ -383,6 +383,6 @@ public sealed class ScopedUserSessionsTests
 		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAsync(Guid.NewGuid(), Token)).Outcome);
 		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAllAsync(false, Token)).Outcome);
 		Assert.Equal(UserOutcome.SystemAccount, (await scoped.OpenIrcAsync("x", Token)).Result.Outcome);
-		Assert.True(app.Users.Online.GetValueOrDefault(bot)?.Bot?.IsOpen);
+		Assert.All(app.Users.Online[bot].Connections, connection => Assert.True(connection.IsOpen));
 	}
 }

@@ -17,8 +17,7 @@ internal sealed class UserOnlineDelivery(
 {
 	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken cancellationToken)
 	{
-		if (!notification.CameOnline || notification.Connection.Type is not (SessionType.Stable or SessionType.Bot))
-			return;
+		if (!notification.CameOnline || notification.Connection.Type is not SessionType.Stable) return;
 		var user = notification.Connection.User;
 		var stats = await statsRepository.GetAsync(user.Record, user.Stable?.Status.GameMode ?? GameMode.Standard,
 			cancellationToken);

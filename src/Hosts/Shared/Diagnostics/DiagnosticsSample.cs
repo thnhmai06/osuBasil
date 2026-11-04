@@ -25,7 +25,7 @@ public static class DiagnosticsSample
 	{
 		int Count(SessionType type)
 		{
-			return registry.Online.Values.Sum(user => user.Connections.Count(c => c.Type == type));
+			return registry.Online.Values.Sum(user => user.Connections.Count(c => c.Type == type && !c.IsServerOwned));
 		}
 
 		return new Dictionary<string, object>(runtime.Sample())

@@ -99,9 +99,9 @@ public sealed class IdleConnectionSweeperTests
 		Assert.False(connection.IsOpen);
 	}
 
-	/// <summary>The server's own bot connection is never closed for being quiet.</summary>
+	/// <summary>The server's own bot connections are never closed for being quiet.</summary>
 	[Fact]
-	public async Task ExecuteAsync_LeavesTheBotConnectionOpen()
+	public async Task ExecuteAsync_LeavesTheBotConnectionsOpen()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -115,7 +115,7 @@ public sealed class IdleConnectionSweeperTests
 
 		await SweepUntilAsync(app, canaryClosed);
 
-		Assert.True(bot.IsOpen);
+		Assert.All(bot.Connections, connection => Assert.True(connection.IsOpen));
 	}
 
 	/// <summary>A connection closed once is not closed again by a later sweep.</summary>

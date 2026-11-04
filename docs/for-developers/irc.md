@@ -225,7 +225,7 @@ closes the socket.
   per-device key limits what a leak costs and can be revoked alone.
 * **No management over IRC.** Channels and rooms already have an API and BasilBot commands with permission checks;
   duplicating them as IRC modes would be a second, weaker surface.
-* **BasilBot is a user.** The bot is account 1 with a `BotConnection`, so it appears in `WHO`, `NAMES` and `WHOIS` and
+* **BasilBot is a user.** The bot is account 1 with a server-owned IRC connection, so it appears in `WHO`, `NAMES` and `WHOIS` and
   can be messaged like any user. It has no socket, and nobody can log in as it.
 
 ### Invariants

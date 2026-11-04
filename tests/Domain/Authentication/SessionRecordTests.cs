@@ -58,7 +58,6 @@ public class SessionRecordTests
 	[Theory]
 	[InlineData(SessionType.Irc)]
 	[InlineData(SessionType.Api)]
-	[InlineData(SessionType.Bot)]
 	public void New_NonOsuKindWithoutClient_IsAccepted(SessionType type)
 	{
 		Assert.Equal(type, Make(type: type, client: null).Type);

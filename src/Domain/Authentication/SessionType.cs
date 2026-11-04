@@ -1,6 +1,6 @@
 namespace Basil.Domain.Authentication;
 
-/// <summary>The kinds of client connections and server-owned connection.</summary>
+/// <summary>The kinds of client connections.</summary>
 public enum SessionType : byte
 {
 	/// <summary>An osu! (stable) game client.</summary>
@@ -13,8 +13,5 @@ public enum SessionType : byte
 	Irc = 1 << 2,
 
 	/// <summary>A client of the HTTP API.</summary>
-	Api = 1 << 3,
-
-	/// <summary>The server's own connection for BasilBot; no client is behind it.</summary>
-	Bot = 1 << 4
+	Api = 1 << 3
 }

@@ -70,7 +70,7 @@ Diagnostics.
 
 Every module's Infrastructure project owns a `Meter` named `Basil.<Module>` and a handler for `CollectDiagnostics`. Counts of
 connections are labelled by connection type (`stable`, `tourney`, `irc`, `api`) and are emitted where Users opens and
-closes a connection, so the bot's own connections are counted too and a type with zero connections still reports zero.
+closes a connection. The bot's own server-owned connections are not counted as clients, and a type with zero connections still reports zero.
 Rejected connections are counted by type and reason (`basil.connections.rejected`). Labels have a bounded set of values.
 
 The maintenance actions (`caches/clear`, `exceptions/reset`, `gc/collect`) are Commands that run through the capability of

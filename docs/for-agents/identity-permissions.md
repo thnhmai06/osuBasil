@@ -52,9 +52,10 @@ touching users, connections, permissions, restrictions or the bot.
   permissions or a password, or disconnected), while its metadata (name, country, avatar) is editable. It never passes a
   rights check because it never asks for anything; its privileges only decide how a client shows it. It is a module (`Basil.Bot`; target
   `Application.Bot` and `Infrastructure.Bot`) bound to user id 1. It is online with exactly one Stable and one Irc
-  connection, opened by the server with no transport behind them, and has no connection type of its own (the `Bot` type,
-  `BotConnection` and the bot branch of `UserRegistry.Open` are being removed). Transports skip those two connections when
-  delivering. It answers chat commands. A command runs on the objects scoped to the
+  connection, opened by the server with no transport behind them, and has no connection type of its own: they are an
+  ordinary `StableConnection` and `IrcConnection` that `Connection.IsServerOwned` marks (the connection of bot id 1).
+  A server-owned connection is not a game client (`User.Stable` stays `null`), is never indexed by token, never idle-closed
+  and is not counted as a client in diagnostics, the console status or the dashboard; transports skip it when delivering. It answers chat commands. A command runs on the objects scoped to the
   **typist's** connection and needs that user's rights; the bot only replies. Its own messages and server announcements
   go straight to chat, past the rights check. The wording lives in the replies file (see `basil-bot.md`).
 * **A name is unique among live accounts.** Deleting an account is a soft, permanent delete: it is never restored and its
@@ -77,8 +78,7 @@ touching users, connections, permissions, restrictions or the bot.
   point; `BeatmapsetManage`, while the file watcher keeps running) and `Profiles` (a user changing their own username,
   country, avatar or password; `UserManage` may change another account's). A lock covers create, change and delete. It
   is checked in Application, never in a transport, and refuses with a `Locked` outcome.
-* **Sessions and tokens.** A `SessionRecord` (an identity with `SessionData` in device, credential, activity and end groups) is the persisted record of a sign-in (connection types: Stable, StableTourney, Irc, Api; today
-  `SessionType` still has `Bot`, being removed); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
+* **Sessions and tokens.** A `SessionRecord` (an identity with `SessionData` in device, credential, activity and end groups) is the persisted record of a sign-in (connection types: Stable, StableTourney, Irc, Api; the bot has none of its own, and the console's operator connection is of kind Api); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
   token expires after `Sessions.ApiToken.Lifetime` (sliding, one week by default) and is verified against the database
   the first time it is used, then kept in memory while its connection is used. An IRC key belongs to one device, is
   issued by `POST /v1/users/{id}/sessions/irc`, and is the only credential IRC accepts. osu! signs in with username and
@@ -88,7 +88,7 @@ touching users, connections, permissions, restrictions or the bot.
 * **Concurrent sessions per user are limited per connection type.** The Users module enforces the limit in
   `UserRegistry.Open`, under the registry's lock, from the runtime setting `Sessions.MaxPerUser` (positive numbers;
   Rest `PATCH /v1/settings/sessions`, Cli `settings sessions set --maxPerUser.irc 7`). Defaults: Stable 1,
-  StableTourney 10, Irc 5, Api 10; BasilBot's connection is fixed at one and ignores the setting. Only open
+  StableTourney 10, Irc 5, Api 10; BasilBot's connections are fixed at one Stable and one Irc and ignore the setting. Only open
   connections count; at the ceiling, connections of that user and kind that have been idle beyond the idle timeout are
   closed first. Then Stable, StableTourney and Irc **refuse** the new connection (`LoginFailure.TooManySessions`: a
   Stable notice, an IRC `464` plus `ERROR`), while Api **closes the connection active longest ago** and accepts the new

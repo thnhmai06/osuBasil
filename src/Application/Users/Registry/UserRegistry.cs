@@ -24,6 +24,8 @@ public sealed class UserRegistry
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
+	private static readonly OsuClient ServerClient = new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
+
 	private readonly IAccountRules _accounts;
 	private readonly ConcurrentDictionary<Guid, Connection> _activity = new();
 	private readonly ConnectionContext _connectionContext;
@@ -106,7 +108,7 @@ public sealed class UserRegistry
 	/// <returns>The login's outcome: the new connection on success, or the reason it failed.</returns>
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="type" /> is not a defined value.</exception>
 	/// <exception cref="ArgumentException">
-	///     <paramref name="type" /> is BasilBot's own connection, or an IRC client, which signs in with a key through
+	///     <paramref name="type" /> is an IRC client, which signs in with a key through
 	///     <see cref="LoginWithTokenAsync" />.
 	/// </exception>
 	/// <exception cref="ArgumentNullException">
@@ -153,8 +155,6 @@ public sealed class UserRegistry
 		type.ThrowIfUndefined();
 		switch (type)
 		{
-			case SessionType.Bot:
-				throw new ArgumentException("The bot's connection cannot be requested.", nameof(type));
 			case SessionType.Irc:
 				throw new ArgumentException("An IRC client signs in with a key, not a password.", nameof(type));
 			case SessionType.Stable or SessionType.StableTourney when client is null:
@@ -351,15 +351,15 @@ public sealed class UserRegistry
 	/// <summary>Closes every connection that has sent nothing for too long.</summary>
 	/// <returns>How many connections were closed.</returns>
 	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it. The bot connection is not closed by
-	///     this operation.
+	///     This system operation needs no rights because the server itself calls it. BasilBot's connections are not closed
+	///     by this operation.
 	/// </remarks>
 	public int CloseIdle()
 	{
 		var now = _context.Clock.GetUtcNow();
 		var idleConnections = _online.Values
 			.SelectMany(user => user.Connections)
-			.Where(connection => connection is { IsOpen: true, Type: not SessionType.Bot } &&
+			.Where(connection => connection is { IsOpen: true, IsServerOwned: false } &&
 			                     now - connection.LastActiveAt > connection.Type.IdleTimeout())
 			.ToList();
 
@@ -375,7 +375,7 @@ public sealed class UserRegistry
 	/// <remarks>
 	///     <para>
 	///         An account that holds the id is taken over: it loses its permissions, its password and its restrictions,
-	///         a deleted one is restored, and its connections are closed (the bot's own connection stays open when the
+	///         a deleted one is restored, and its connections are closed (the bot's own connections stay open when the
 	///         account is the bot already). A live account keeps its name and country; a deleted one gets
 	///         <see cref="BasilBot.DefaultName" />. When the id holds nothing, the bot is created.
 	///     </para>
@@ -425,28 +425,37 @@ public sealed class UserRegistry
 	{
 		var bot = await _context.Users.GetAsync(BasilBot.Id, cancellationToken) ??
 		          await EnsureBotAsync(cancellationToken);
-		var login = NewBotSession(bot);
+		var login = NewServerSession(bot, SessionType.Api);
 		return new OperatorConnection(login, NewToken()) { User = Of(bot), IsOpen = true };
 	}
 
-	/// <summary>Brings BasilBot online with a connection of its own.</summary>
+	/// <summary>Brings BasilBot online with one osu! game client connection and one IRC connection of its own.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
-	///     The existing connection when BasilBot is already online, or <see langword="null" /> when its record is not
-	///     stored or its connection could not be opened.
+	///     The online bot, or <see langword="null" /> when its record is not stored or a connection could not be opened.
 	/// </returns>
-	/// <remarks>This system operation needs no rights because the server itself calls it at startup.</remarks>
-	public async Task<BotConnection?> ConnectBotAsync(CancellationToken cancellationToken = default)
+	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it at startup. Only a connection that is
+	///     missing is opened, the game client one first, so calling it again changes nothing. No transport sits behind
+	///     either connection.
+	/// </remarks>
+	public async Task<User?> ConnectBotAsync(CancellationToken cancellationToken = default)
 	{
 		var user = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
 		if (user is null) return null;
 
-		var online = _online.GetValueOrDefault(user);
-		if (online?.Bot is { IsOpen: true } connection) return connection;
+		foreach (var type in (ReadOnlySpan<SessionType>)[SessionType.Stable, SessionType.Irc])
+		{
+			if (_online.GetValueOrDefault(user)?[type].Any(open => open.IsOpen) is true) continue;
 
-		var login = NewBotSession(user);
-		var bot = new BotConnection(login, NewToken());
-		return Open(bot, []) is null ? bot : null;
+			var login = NewServerSession(user, type);
+			Connection connection = type is SessionType.Stable
+				? new StableConnection(login, NewToken(), 0, _connectionContext)
+				: new IrcConnection(login, NewToken());
+			if (Open(connection, []) is not null) return null;
+		}
+
+		return _online.GetValueOrDefault(user);
 	}
 
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
@@ -457,7 +466,7 @@ public sealed class UserRegistry
 	///     A user holds at most the number of open connections of a kind that the server settings allow. At the limit,
 	///     the user's connections of that kind that sent nothing for too long are closed first; if the user is still at
 	///     the limit, an HTTP API connection replaces the one that was active longest ago and any other kind is refused
-	///     with <see cref="LoginFailure.TooManySessions" />. BasilBot's connection is limited to one of its kind
+	///     with <see cref="LoginFailure.TooManySessions" />. BasilBot's connections are limited to one of each kind
 	///     whatever the settings say. An osu!tourney connection needs <see cref="UserPermissions.RoomObserve" /> in
 	///     effect.
 	/// </remarks>
@@ -486,8 +495,8 @@ public sealed class UserRegistry
 		user.Add(connection);
 		connection.IsOpen = true;
 
-		// The bot's token is never findable: nobody can present it, and nobody should be able to try.
-		if (connection.Type is not SessionType.Bot) Index(connection);
+		// The bot's tokens are never findable: nobody can present one, and nobody should be able to try.
+		if (!connection.IsServerOwned) Index(connection);
 
 		_context.Events.Publish(new UserConnectionOpened(connection, cameOnline));
 		return null;
@@ -496,7 +505,7 @@ public sealed class UserRegistry
 	private LoginFailure? MakeRoomFor(User user, Connection connection)
 	{
 		var type = connection.Type;
-		var isBot = connection.Record.Id == BasilBot.Id;
+		var isBot = connection.IsServerOwned;
 		var max = isBot ? 1 : _context.Settings.Current.Sessions.MaxPerUser.For(type);
 		if (user[type].Count < max) return null;
 
@@ -519,11 +528,13 @@ public sealed class UserRegistry
 		return LoginFailure.TooManySessions;
 	}
 
-	private SessionRecord NewBotSession(UserRecord bot)
+	private SessionRecord NewServerSession(UserRecord bot, SessionType type)
 	{
 		var now = _context.Clock.GetUtcNow();
-		return new SessionRecord(Guid.NewGuid(), bot, SessionType.Bot, now,
-			new SessionData(new SessionDevice(IPAddress.Loopback), new SessionCredential(), now));
+		// A game client session must report a client, and none stands behind the bot's.
+		var client = type is SessionType.Stable ? ServerClient : null;
+		return new SessionRecord(Guid.NewGuid(), bot, type, now,
+			new SessionData(new SessionDevice(IPAddress.Loopback, client), new SessionCredential(), now));
 	}
 
 	/// <summary>Creates the token of a new connection.</summary>
@@ -543,9 +554,11 @@ public sealed class UserRegistry
 		var online = _online.GetValueOrDefault(user);
 		if (online is null) return;
 
+		// The osu! game client goes last: the user's logout reaches the other clients only when it closes last.
 		foreach (var connection in online.Connections
 			         .Where(connection => connection.IsOpen && connection.Session.Id != except &&
-			                              (only is null || connection.Session.Id == only)).ToList())
+			                              (only is null || connection.Session.Id == only))
+			         .OrderByDescending(connection => connection.Type).ToList())
 		{
 			Close(connection, reason);
 		}
