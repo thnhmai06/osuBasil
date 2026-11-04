@@ -65,6 +65,7 @@ under `Basil`.
 | `Basil:Server:Irc:Port` | plain TCP port of IRC, default `6667`; `0` picks a free port |
 | `Basil:Server:Multicast:Enabled`, `IPv4`, `IPv6`, `Port`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled); only the standard group addresses and port 5353 are supported, and an empty `IPv4` or `IPv6` switches that family off |
 | `Basil:Storage:Location` | directory that holds stored files, default `Data` |
+| `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` under the storage location), and the folder of the ffmpeg executable (default: found on the PATH) |
 | `Basil:Database:Read:PoolSize`, `Write:PoolSize` | the database is always PostgreSQL; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
 | `Basil:Updates:CheckOnStartup`, `Source`, `Channel` | startup update check, its feed, and the release channel (`stable`, or the name of another published channel) |
 | `Basil:Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
@@ -77,7 +78,7 @@ Because the shipped file lists both connection strings, override both (`Connecti
 The server watches the configuration files.
 
 * `Logging:LogLevel` and `Basil:Updates` apply while the server runs.
-* `Kestrel`, `ConnectionStrings`, `OpenTelemetry`, `Logging:File`, `Basil:Server`, `Basil:Database` and `Basil:Storage`
+* `Kestrel`, `ConnectionStrings`, `OpenTelemetry`, `Logging:File`, `Basil:Server`, `Basil:Database`, `Basil:Storage` and `Basil:Assets`
   are read once at start. A change is logged as "applied after the server restarts" and takes effect at the next start.
 
 No rebuild is required.

@@ -14,6 +14,7 @@ using Basil.Host.Rest.Images;
 using Basil.Host.Shared.Diagnostics;
 using Basil.Host.Shared.Documentation;
 using Basil.Infrastructure.Common;
+using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Caching;
@@ -72,6 +73,7 @@ public static class HostApplication
 		ConfigurationSetup.AddAtStart<ServerOptions>(builder.Services,
 			builder.Configuration.GetSection("Basil:Server"));
 		builder.Services.AddCommonInfrastructureOptions(builder.Configuration);
+		builder.Services.AddBeatmapsInfrastructureOptions(builder.Configuration);
 		KestrelSetup.Configure(builder);
 
 		var app = builder.Build();
