@@ -375,7 +375,7 @@ public sealed class UserRegistry
 	/// <remarks>
 	///     <para>
 	///         An account that holds the id is taken over: it loses its permissions, its password and its restrictions,
-	///         a deleted one is restored, and its connections are closed (the bot's own connection stays open when the
+	///         a deleted one is restored, and its connections are closed (the bot's own connections stay open when the
 	///         account is the bot already). A live account keeps its name and country; a deleted one gets
 	///         <see cref="BasilBot.DefaultName" />. When the id holds nothing, the bot is created.
 	///     </para>

@@ -147,7 +147,7 @@ public sealed record ServerSettings
 
 		/// <summary>Gets how many connections of a kind one user may hold open.</summary>
 		/// <param name="type">The kind of connection.</param>
-		/// <returns>The limit of the kind; BasilBot's own connection is always limited to one.</returns>
+		/// <returns>The limit of the kind; BasilBot's own connections are always limited to one of each kind.</returns>
 		public int For(SessionType type)
 		{
 			return type switch
