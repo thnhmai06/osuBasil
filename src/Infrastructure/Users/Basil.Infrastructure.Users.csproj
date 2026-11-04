@@ -10,6 +10,7 @@
 		<InternalsVisibleTo Include="Basil"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Users.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Users.Tests"/>
+		<InternalsVisibleTo Include="Basil.Testing"/>
 	</ItemGroup>
 
 	<ItemGroup>

@@ -32,7 +32,9 @@ using Basil.Infrastructure.Anticheat;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Users;
+using Basil.Infrastructure.Users.Handlers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Mediator;
 using NSubstitute;
@@ -126,6 +128,12 @@ public sealed class TestApplication : IDisposable
 			ValidateOnBuild = true,
 			ValidateScopes = true
 		});
+		// The host delivers events to the handlers; this fixture runs the one that stores a closed session.
+		var sessionEnd = new SessionEndHandler(_sessions, NullLogger<SessionEndHandler>.Instance);
+		UserEvents.Recorded += @event =>
+		{
+			if (@event is UserConnectionClosed closed) _ = sessionEnd.Handle(closed, CancellationToken.None);
+		};
 		Users = Provider.GetRequiredService<UserRegistry>();
 		Lobby = Provider.GetRequiredService<Lobby>();
 		Channels = Provider.GetRequiredService<GeneralChannelRegistry>();
@@ -203,6 +211,20 @@ public sealed class TestApplication : IDisposable
 	{
 		get => _sessions.RecordFailure;
 		set => _sessions.RecordFailure = value;
+	}
+
+	/// <summary>Gets or sets the failure that updating a stored user throws, or <see langword="null" /> to accept it.</summary>
+	public Exception? UserUpdateFailure
+	{
+		get => _users.UpdateFailure;
+		set => _users.UpdateFailure = value;
+	}
+
+	/// <summary>Gets or sets the failure that appending to the moderation history throws, or <see langword="null" /> to accept it.</summary>
+	public Exception? ModerationLogFailure
+	{
+		get => _moderationLog.AppendFailure;
+		set => _moderationLog.AppendFailure = value;
 	}
 
 	/// <summary>Gets the moderation history written by the application.</summary>

@@ -120,3 +120,8 @@ The Authentication module is the pilot; copy its shape (`PostgresCredentialRepos
 * **Concurrency rule.** A row with a single owner (a credential, a session) is written last-write-wins, awaited.
   Counters and aggregates (user stats, score totals) use column-level `ExecuteUpdate` or an atomic increment, never
   read-modify-write.
+* **Records are copies; the registry holds the live object.** A repository of the Users module (`UserRepository` and
+  the others) returns a fresh record from every read and keeps none; the online `User` in `UserRegistry` is the live
+  truth. A change to an account is stored first and applied to the live record afterwards, so a refused write leaves the
+  live state as it was. Code that holds a lock publishes an event and a handler outside the lock stores (the closed
+  session is stored by `SessionEndHandler`).

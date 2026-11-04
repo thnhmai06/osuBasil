@@ -54,7 +54,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 
 	/// <summary>Gets the session as it stands now, ready to be stored.</summary>
 	/// <returns>The stored session with its current expiry, activity and end.</returns>
-	internal SessionRecord Snapshot()
+	public SessionRecord Snapshot()
 	{
 		var value = Session.Value;
 		return new SessionRecord(Session.Id, Session.User, Session.Type, Session.StartedAt,
