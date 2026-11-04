@@ -7,7 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Infrastructure.Postgres"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Persistence"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Content.Tests"/>
 	</ItemGroup>
 

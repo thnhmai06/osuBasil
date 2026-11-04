@@ -8,7 +8,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil"/>
-		<InternalsVisibleTo Include="Basil.Infrastructure.Postgres"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Persistence"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Chat.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Chat.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Multiplayer.Tests"/>

@@ -1,6 +1,6 @@
 using System.Reflection;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Postgres;
+using Basil.Infrastructure.Persistence;
 using Basil.Testing.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;

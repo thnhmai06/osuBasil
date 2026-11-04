@@ -23,7 +23,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\..\src\Infrastructure\Common\Basil.Infrastructure.Common.csproj"/>
-		<ProjectReference Include="..\..\..\src\Infrastructure\Postgres\Basil.Infrastructure.Postgres.csproj"/>
+		<ProjectReference Include="..\..\..\src\Infrastructure\Persistence\Basil.Infrastructure.Persistence.csproj"/>
 		<ProjectReference Include="..\..\..\src\Basil\Basil.csproj"/>
 	</ItemGroup>
 </Project>

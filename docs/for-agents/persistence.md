@@ -2,7 +2,7 @@
 
 Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Application/Persistence`, `Application/Storage` or `Application/Registry`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Common`.
 
-> **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **removed**: every module repository runs on `DatabaseSession`. PostgreSQL specifics live in `Basil.Infrastructure.Postgres`, and the `write_tickets` table no longer exists.
+> **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **removed**: every module repository runs on `DatabaseSession`. PostgreSQL specifics live in `Basil.Infrastructure.Persistence`, and the `write_tickets` table no longer exists.
 
 
 
@@ -88,8 +88,8 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 * **No SQL text in Persistence.** Everything is Entity Framework Core with LINQ and row objects (`XxxRow` entities, never
   the Domain types); no Dapper, no `FromSql`/`ExecuteSql`/`SqlQuery`, no `NpgsqlCommand`. The generic EF API is what a
   module's Infrastructure project uses; what is specific to PostgreSQL (the Npgsql provider behind `IDatabaseProvider`, error
-  recognition, the design-time factories and the migrations) belongs to `Basil.Infrastructure.Postgres`, which only the
-  composition root references; no other `src` project has an Npgsql package (`PostgresBoundaryTests`). Rows therefore use
+  recognition, the design-time factories and the migrations) belongs to `Basil.Infrastructure.Persistence`, which only the
+  composition root references; no other `src` project has an Npgsql package (`PersistenceBoundaryTests`). Rows therefore use
   portable mappings: `ValueGeneratedOnAdd` for identities, a named sequence with `HasDefaultValueSql("nextval(...)")` where
   a number must start above 1, and `EF.Functions.Like` over lowered text for case-insensitive search. Tests run on PostgreSQL only.
 * **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history

@@ -48,7 +48,7 @@
 		<ProjectReference Include="..\Infrastructure\Chat\Basil.Infrastructure.Chat.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Servers\Basil.Infrastructure.Servers.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Diagnostics\Basil.Infrastructure.Diagnostics.csproj"/>
-		<ProjectReference Include="..\Infrastructure\Postgres\Basil.Infrastructure.Postgres.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Persistence\Basil.Infrastructure.Persistence.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

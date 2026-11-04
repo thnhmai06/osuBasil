@@ -26,7 +26,7 @@
 		<Project Path="src/Infrastructure/Content/Basil.Infrastructure.Content.csproj"/>
 		<Project Path="src/Infrastructure/Diagnostics/Basil.Infrastructure.Diagnostics.csproj"/>
 		<Project Path="src/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.csproj"/>
-		<Project Path="src/Infrastructure/Postgres/Basil.Infrastructure.Postgres.csproj"/>
+		<Project Path="src/Infrastructure/Persistence/Basil.Infrastructure.Persistence.csproj"/>
 		<Project Path="src/Infrastructure/Scores/Basil.Infrastructure.Scores.csproj"/>
 		<Project Path="src/Infrastructure/Servers/Basil.Infrastructure.Servers.csproj"/>
 		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj"/>

@@ -105,18 +105,18 @@ text: schema changes are Entity Framework migrations and reads and writes use LI
 
 The shared `Database` and `DatabaseSession` talk to an `IDatabaseProvider` (Infrastructure.Common): it opens the pooled
 connections, points a context at a pool and its history table, and tells a unique violation and a connection failure
-apart (the open-retry of `DatabaseSession` retries only the latter). `Basil.Infrastructure.Postgres` implements it with
+apart (the open-retry of `DatabaseSession` retries only the latter). `Basil.Infrastructure.Persistence` implements it with
 Npgsql and snake_case names, owns the design-time factories and holds the migrations, one folder per module context
-(`src/Infrastructure/Postgres/Migrations/<Module>/`); history table names are unchanged. Only `Basil` references that
-project and calls `AddPostgresInfrastructure()`; module Infrastructure projects see their `DbContext` types through
+(`src/Infrastructure/Persistence/Migrations/<Module>/`); history table names are unchanged. Only `Basil` references that
+project and calls `AddPersistenceInfrastructure()`; module Infrastructure projects see their `DbContext` types through
 `InternalsVisibleTo`.
 
 Add a migration from the repository root (the project is also the startup project, and the output folder and namespace are
 named so the files stay in that module's folder):
 
 ```bash
-dotnet ef migrations add <Name> --project src/Infrastructure/Postgres --startup-project src/Infrastructure/Postgres \
-  --context <Module>DbContext --output-dir Migrations/<Module> --namespace Basil.Infrastructure.Postgres.Migrations.<Module>
+dotnet ef migrations add <Name> --project src/Infrastructure/Persistence --startup-project src/Infrastructure/Persistence \
+  --context <Module>DbContext --output-dir Migrations/<Module> --namespace Basil.Infrastructure.Persistence.Migrations.<Module>
 ```
 
 The generated snapshot may land in a nested `Basil/...` folder; move it next to the migration. Replace the entity-name
@@ -134,7 +134,7 @@ development databases are recreated; a database created by the earlier migration
 * `src/Infrastructure/Common/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
 * `src/Infrastructure/Common/Registry/` — `CacheAside`
 * `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
-* `src/Infrastructure/Postgres/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
+* `src/Infrastructure/Persistence/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
 * `src/Infrastructure/Common/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
   module migrations in the order above
 
