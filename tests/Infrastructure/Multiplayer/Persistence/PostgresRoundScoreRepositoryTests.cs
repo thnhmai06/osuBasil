@@ -56,7 +56,7 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 	}
 
 	[Fact]
-	public async Task A_round_score_whose_write_was_refused_is_still_listed()
+	public async Task A_round_score_of_a_score_that_is_not_stored_is_refused_to_the_caller()
 	{
 		var match = await CreateMatchAsync("refused_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -64,11 +64,9 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 		var stored = await CreateScoreAsync(player, 1000, First);
 		var neverStored = new ScoreRecord { Id = stored.Id + 1000, Value = stored.Value };
 
-		await RoundScores.RecordAsync(new RoundScore(neverStored, round, null), TestContext.Current.CancellationToken);
-		await Get<DatabaseWriter>().DrainAsync(TestContext.Current.CancellationToken);
-		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
-
-		Assert.Equal(neverStored.Id, Assert.Single(listed).Score.Id);
+		await Assert.ThrowsAnyAsync<Exception>(() =>
+			RoundScores.RecordAsync(new RoundScore(neverStored, round, null), TestContext.Current.CancellationToken));
+		Assert.Empty(await RoundScores.ListAsync(round, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

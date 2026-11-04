@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Mechanics;
@@ -9,15 +8,11 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
 /// <summary>Stores which round each score belongs to.</summary>
-internal sealed class PostgresRoundScoreRepository(
-	DatabaseReader reader,
-	DatabaseWriter writer,
-	IScoreRepository scores) : IRoundScoreRepository
+internal sealed class PostgresRoundScoreRepository(DatabaseSession database, IScoreRepository scores)
+	: IRoundScoreRepository
 {
-	private readonly ConcurrentDictionary<int, Queued> _pending = new();
-
 	/// <inheritdoc />
-	public Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
+	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
 	{
 		var round = roundScore.Round;
 		var row = new RoundScoreRow
@@ -27,28 +22,15 @@ internal sealed class PostgresRoundScoreRepository(
 			RoundNumber = round.Index,
 			Team = roundScore.Team is { } team ? (int)team : null
 		};
-		var queuedCopy = new Queued(roundScore);
-		_pending[row.ScoreId] = queuedCopy;
-		var queued = writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId),
-			new WriteCommand<MultiplayerDbContext>((context, token) =>
-				context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
-		// Only the copy this write stored leaves the queue, and only once it is stored: a refused write keeps listing it.
-		_ = queued.ContinueWith(task =>
-		{
-			if (task.IsCompletedSuccessfully)
-				_pending.TryRemove(new KeyValuePair<int, Queued>(row.ScoreId, queuedCopy));
-		}, TaskScheduler.Default);
-		return Task.FromResult(roundScore);
+		await database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
+			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token), cancellationToken);
+		return roundScore;
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default)
 	{
-		// Taken before the database is read, so a relation whose write finishes during the read is in the snapshot or in
-		// the rows, never in neither.
-		var queued = _pending.Values.Select(pending => pending.RoundScore).Where(pending => pending.Round.Equals(round))
-			.ToList();
-		var rows = await reader.ReadAsync((MultiplayerDbContext context) => context.RoundScores
+		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.RoundScores
 			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)
 			.ToListAsync(cancellationToken), cancellationToken);
@@ -57,15 +39,6 @@ internal sealed class PostgresRoundScoreRepository(
 		foreach (var row in rows)
 			if (await scores.GetAsync(row.ScoreId, cancellationToken) is { } score)
 				result.Add(new RoundScore(score, round, row.Team is { } team ? (GameTeam)team : null));
-
-		// A relation whose write is still queued is not in the database yet.
-		result.AddRange(queued.Where(pending => result.All(stored => stored.Score.Id != pending.Score.Id)));
-		return [.. result.OrderBy(roundScore => roundScore.Score.Id)];
-	}
-
-	// A class, so that comparing two copies compares the instances and not the scores they hold.
-	private sealed class Queued(RoundScore roundScore)
-	{
-		public RoundScore RoundScore { get; } = roundScore;
+		return result;
 	}
 }

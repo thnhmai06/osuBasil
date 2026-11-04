@@ -4,14 +4,12 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
 /// <summary>Stores matches.</summary>
-internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWriter writer, IUserRepository users)
-	: MemoryRepository<int, MatchRecord>(reader, writer), IMatchRepository
+internal sealed class PostgresMatchRepository(DatabaseSession database, IUserRepository users) : IMatchRepository
 {
 	/// <inheritdoc />
 	public async Task<MatchRecord> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
@@ -22,42 +20,53 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		var startedAt = value.StartedAt.ToUniversalTime();
 		var endedAt = value.EndedAt?.ToUniversalTime();
 		var isPrivate = value.IsPrivate;
-		var id = await Writer.WriteAsync(Root.Server, async (MultiplayerDbContext context, CancellationToken token) =>
+		var row = new MatchRow
 		{
-			var row = new MatchRow
-			{
-				Name = name,
-				CreatorId = creatorId,
-				StartedAt = startedAt,
-				EndedAt = endedAt,
-				IsPrivate = isPrivate
-			};
+			Name = name,
+			CreatorId = creatorId,
+			StartedAt = startedAt,
+			EndedAt = endedAt,
+			IsPrivate = isPrivate
+		};
+		await database.WriteAsync((MultiplayerDbContext context, CancellationToken _) =>
+		{
 			context.Matches.Add(row);
-			await context.SaveChangesAsync(token);
-			return row.Id;
+			return Task.CompletedTask;
 		}, cancellationToken);
 
-		return Track(new MatchRecord { Id = id, Value = value });
+		return new MatchRecord { Id = row.Id, Value = value };
 	}
 
 	/// <inheritdoc />
 	public Task UpdateAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
-		_ = SaveAsync(match);
-		return Task.CompletedTask;
+		var row = new MatchRow
+		{
+			Id = match.Id,
+			Name = match.Value.Name,
+			CreatorId = match.Value.Creator.Id,
+			StartedAt = match.Value.StartedAt.ToUniversalTime(),
+			EndedAt = match.Value.EndedAt?.ToUniversalTime(),
+			IsPrivate = match.Value.IsPrivate
+		};
+		return database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
+			context.ReplaceAsync(row, stored => stored.Id == row.Id, token), cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public ValueTask<MatchRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public async ValueTask<MatchRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
-		return FindAsync(id, cancellationToken);
+		var row = await database.ReadAsync((MultiplayerDbContext context) => context.Matches
+			.Where(item => item.Id == id)
+			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+		return row is null ? null : await ToMatchAsync(row, cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await Reader.ReadAsync(async (MultiplayerDbContext context) =>
+		var (total, rows) = await database.ReadAsync(async (MultiplayerDbContext context) =>
 		{
 			var matching = Filter(context, context.Matches, query);
 			var count = await matching.CountAsync(cancellationToken);
@@ -72,7 +81,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 
 		var matches = new List<MatchRecord>();
 		foreach (var row in rows)
-			matches.Add(Track(await ToMatchAsync(row, cancellationToken)));
+			matches.Add(await ToMatchAsync(row, cancellationToken));
 
 		return new Page<MatchRecord>(matches, total);
 	}
@@ -81,49 +90,9 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	public async Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,
 		CancellationToken cancellationToken = default)
 	{
-		return await Reader.ReadAsync((MultiplayerDbContext context) =>
+		return await database.ReadAsync((MultiplayerDbContext context) =>
 			WhereVisibleTo(context, context.Matches.Where(row => row.Id == match.Id), viewer.Id)
 				.AnyAsync(cancellationToken), cancellationToken);
-	}
-
-	protected override int KeyOf(MatchRecord item)
-	{
-		return item.Id;
-	}
-
-	protected override Root RootOf(MatchRecord item)
-	{
-		return Root.Match(item.Id);
-	}
-
-	protected override void CopyTo(MatchRecord live, MatchRecord from)
-	{
-		live.Value.Name = from.Value.Name;
-		live.Value.EndedAt = from.Value.EndedAt;
-		live.Value.IsPrivate = from.Value.IsPrivate;
-	}
-
-	protected override async Task<MatchRecord?> LoadAsync(int key)
-	{
-		var row = await Reader.ReadAsync((MultiplayerDbContext context) => context.Matches
-			.Where(row => row.Id == key)
-			.FirstOrDefaultAsync(CancellationToken.None));
-		return row is null ? null : await ToMatchAsync(row, CancellationToken.None);
-	}
-
-	protected override WriteCommand<MultiplayerDbContext> SaveCommand(MatchRecord match)
-	{
-		var row = new MatchRow
-		{
-			Id = match.Id,
-			Name = match.Value.Name,
-			CreatorId = match.Value.Creator.Id,
-			StartedAt = match.Value.StartedAt.ToUniversalTime(),
-			EndedAt = match.Value.EndedAt?.ToUniversalTime(),
-			IsPrivate = match.Value.IsPrivate
-		};
-		return new WriteCommand<MultiplayerDbContext>((context, token) =>
-			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
 	/// <summary>Narrows the matches to the ones a query asks for.</summary>
