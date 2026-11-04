@@ -88,7 +88,7 @@ These ownership rules keep channel membership on the object being joined and avo
 
 BasilBot is the server's voice, not an authority that users borrow.
 
-BasilBot is online with a permanent `User` and a `BotConnection` (target: removed) that the server opens at startup; a private message to it is a command. Commands act with the typist's connection and permissions, a room command calls the room through `room.ScopeTo(by)`, and countdown announcements follow room-owned countdown events. Server-originated bot messages do not go through an ordinary caller's permission check, and the bot never owns countdown timing or room authority.
+BasilBot is online with a permanent `User` and a `BotConnection` (target: removed) that the server opens at startup; a private message to it is a command. Commands act with the typist's connection and permissions, a room command calls the room through `room.ScopeTo(by)`, and BasilBot owns the room countdowns: it keeps their timers, announces their marks and starts the round with the typist's connection when one elapses. Server-originated bot messages do not go through an ordinary caller's permission check, and the bot never owns room authority.
 
 ## Invariants
 
@@ -112,7 +112,7 @@ BasilBot is online with a permanent `User` and a `BotConnection` (target: remove
 * [`RoomChannel.cs`](../../src/Application/Chat/Objects/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Chat/Objects/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../src/Application/Chat/Registry/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
 * [`User.cs`](../../src/Application/Users/Objects/User.cs), [`ScopedUser.cs`](../../src/Application/Users/Capabilities/ScopedUser.cs): the user's online state (away message, connections)
 * [`ScopedStableConnection.cs`](../../src/Application/Users/Capabilities/ScopedStableConnection.cs): spectator operations
-* [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs), [`RoomCountdown.cs`](../../src/Application/Multiplayer/Objects/Rooms/RoomCountdown.cs): room ownership and countdown
+* [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs), [`RoomCountdowns.cs`](../../src/Bot/Countdowns/RoomCountdowns.cs): room ownership and the bot's countdowns
 
 ## See also
 

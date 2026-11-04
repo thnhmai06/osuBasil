@@ -152,8 +152,8 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   `Beatmapsets.ScanAsync()`); Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
   closing) belongs to the lobby that owns the room and runs on `TimeProvider`. A room's countdown belongs to
-  BasilBot (target: it keeps the timer, listens to the room's events to cancel and sends the command that starts the round;
-  today it is still in the room's round behaviour). BasilBot announces the countdown marks.
+  BasilBot: it keeps the timer, listens to the room's events to cancel, announces the marks and sends the message that
+  starts the round.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user is one `User`; each place they log in from is a `Connection`.**
