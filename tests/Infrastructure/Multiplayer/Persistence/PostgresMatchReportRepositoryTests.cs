@@ -38,6 +38,19 @@ public sealed class PostgresMatchReportRepositoryTests(PersistenceFixture contai
 	}
 
 	[Fact]
+	public async Task A_report_shows_the_match_as_stored_now_not_the_copy_the_caller_holds()
+	{
+		var match = await CreateMatchAsync("ended_report_match");
+		var stale = (await Matches.GetAsync(match.Id, TestContext.Current.CancellationToken))!;
+		match.Value.EndedAt = Second;
+		await Matches.UpdateAsync(match, TestContext.Current.CancellationToken);
+
+		var report = await Reports.GetAsync(stale, TestContext.Current.CancellationToken);
+
+		Assert.Equal(Second, report.Match.Value.EndedAt);
+	}
+
+	[Fact]
 	public async Task A_report_holds_the_rounds_of_the_match()
 	{
 		var match = await CreateMatchAsync("round_report_match");
