@@ -7,10 +7,11 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Scores.Objects;
+using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
@@ -21,6 +22,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Gateway;
+using Mediator;
 using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Client;
@@ -155,13 +157,13 @@ internal static class OsuWebRoutes
 			$"{score.Id}|{name}|{score.Value.LastState.TotalScore}|{score.Value.LastState.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.LastState.IsFullCombo ? 1 : 0)}|{(int)score.Value.Mods}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
 	}
 
-	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth,
+	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth, ISender sender,
 		CancellationToken ct)
 	{
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
-		var (_, friends) = await player.User.ScopeTo(player).Relationships.FriendsAsync(ct);
+		var (_, friends) = await sender.Send(new GetFriends(player), ct);
 		return Text(string.Join('\n', friends.Select(friend => friend.Id)));
 	}
 
@@ -186,7 +188,7 @@ internal static class OsuWebRoutes
 		return Text(string.Join('\n', lines));
 	}
 
-	private static async Task<IResult> SubmitAsync(HttpContext context, UserRegistry registry, ScoreSubmitter submitter,
+	private static async Task<IResult> SubmitAsync(HttpContext context, UserRegistry registry, ISender sender,
 		IAnticheatReporter anticheat, IBeatmapRepository beatmaps, WebAuthentication auth, ISettingsRepository settings,
 		CancellationToken ct)
 	{
@@ -212,8 +214,8 @@ internal static class OsuWebRoutes
 			var submission = ToSubmission(data, beatmapHash);
 			anticheat.Report(client, submission.Flags);
 			await using var replay = OpenReplay(context);
-			var (result, _) = await submitter.ScopeTo(client).SubmitAsync(submission,
-				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay, ct);
+			var (result, _) = await sender.Send(new SubmitScore(client, submission,
+				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay), ct);
 			return Text(result.IsOk
 				? "beatmapId:0|beatmapSetId:0|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:\n"
 				: "error: no");
