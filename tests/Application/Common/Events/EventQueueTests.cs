@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Threading.Channels;
 using Basil.Application.Common.Events;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,9 +16,85 @@ public sealed class EventQueueTests
 
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-	private static EventQueue NewQueue()
+	private static EventQueue NewQueue(int? ceiling = null)
 	{
-		return new EventQueue(NullLogger<EventQueue>.Instance);
+		return new EventQueue(NullLogger<EventQueue>.Instance,
+			ceiling is { } value ? new EventQueueOptions { Ceiling = value } : null);
+	}
+
+	private static long CountRejections(Action action)
+	{
+		long rejected = 0;
+		using var listener = new MeterListener();
+		listener.InstrumentPublished = (instrument, meterListener) =>
+		{
+			if (instrument.Name == EventQueueMetrics.RejectedName) meterListener.EnableMeasurementEvents(instrument);
+		};
+		listener.SetMeasurementEventCallback<long>((_, value, _, _) => Interlocked.Add(ref rejected, value));
+		listener.Start();
+		action();
+		return Interlocked.Read(ref rejected);
+	}
+
+	[Fact]
+	public void TryEnqueue_BelowTheCeiling_AcceptsAndCountsNothingRejected()
+	{
+		var queue = NewQueue(2);
+		var results = new List<bool>();
+
+		var rejected = CountRejections(() => results.AddRange([
+			queue.TryEnqueue(new ThrowingDelivery()), queue.TryEnqueue(new ThrowingDelivery())
+		]));
+
+		Assert.Equal([true, true], results);
+		Assert.Equal(2, queue.Outstanding);
+		Assert.Equal(0, rejected);
+	}
+
+	[Fact]
+	public void TryEnqueue_AtTheCeiling_RejectsWithoutQueueingAndCountsTheRejection()
+	{
+		var queue = NewQueue(2);
+		queue.TryEnqueue(new ThrowingDelivery());
+		queue.TryEnqueue(new ThrowingDelivery());
+		var accepted = true;
+
+		var rejected = CountRejections(() => accepted = queue.TryEnqueue(new ThrowingDelivery()));
+
+		Assert.False(accepted);
+		Assert.Equal(2, queue.Outstanding);
+		Assert.Equal(1, rejected);
+	}
+
+	[Fact]
+	public async Task TryEnqueue_AcceptsAgainOnceDeliveriesHaveRun()
+	{
+		var queue = NewQueue(1);
+		queue.TryEnqueue(new ThrowingDelivery());
+		Assert.False(queue.TryEnqueue(new ThrowingDelivery()));
+
+		await queue.DrainAsync(Token);
+
+		Assert.True(queue.TryEnqueue(new ThrowingDelivery()));
+	}
+
+	[Theory]
+	[InlineData(10, 8, true)]
+	[InlineData(10, 9, false)]
+	[InlineData(100, 89, true)]
+	[InlineData(100, 90, false)]
+	public void HasRoom_KeepsTheLastTenthForWorkAlreadyAccepted(int ceiling, int outstanding, bool expected)
+	{
+		var queue = NewQueue(ceiling);
+		for (var i = 0; i < outstanding; i++) queue.TryEnqueue(new ThrowingDelivery());
+
+		Assert.Equal(expected, queue.HasRoom);
+	}
+
+	[Fact]
+	public void TheDefaultCeiling_IsOneHundredThousand()
+	{
+		Assert.Equal(100_000, NewQueue().Ceiling);
 	}
 
 	[Fact]
@@ -28,9 +105,9 @@ public sealed class EventQueueTests
 		using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
 		var running = queue.RunAsync(stop.Token);
 
-		queue.Enqueue(new RecordingDelivery("one", done));
-		queue.Enqueue(new RecordingDelivery("two", done));
-		queue.Enqueue(new RecordingDelivery("three", done));
+		queue.TryEnqueue(new RecordingDelivery("one", done));
+		queue.TryEnqueue(new RecordingDelivery("two", done));
+		queue.TryEnqueue(new RecordingDelivery("three", done));
 
 		Assert.Equal(["one", "two", "three"], await ReadAsync(done.Reader, 3));
 		await stop.CancelAsync();
@@ -43,7 +120,7 @@ public sealed class EventQueueTests
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();
 
-		queue.Enqueue(new RecordingDelivery("queued", done));
+		queue.TryEnqueue(new RecordingDelivery("queued", done));
 
 		Assert.False(done.Reader.TryRead(out _));
 		using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
@@ -61,8 +138,8 @@ public sealed class EventQueueTests
 		using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
 		var running = queue.RunAsync(stop.Token);
 
-		queue.Enqueue(new ThrowingDelivery());
-		queue.Enqueue(new RecordingDelivery("after", done));
+		queue.TryEnqueue(new ThrowingDelivery());
+		queue.TryEnqueue(new RecordingDelivery("after", done));
 
 		Assert.Equal(["after"], await ReadAsync(done.Reader, 1));
 		await stop.CancelAsync();
@@ -75,7 +152,7 @@ public sealed class EventQueueTests
 		var queue = NewQueue();
 		using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
 		var running = queue.RunAsync(stop.Token);
-		queue.Enqueue(new BlockedDelivery());
+		queue.TryEnqueue(new BlockedDelivery());
 
 		await stop.CancelAsync();
 
@@ -87,8 +164,8 @@ public sealed class EventQueueTests
 	{
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();
-		queue.Enqueue(new RecordingDelivery("one", done));
-		queue.Enqueue(new RecordingDelivery("two", done));
+		queue.TryEnqueue(new RecordingDelivery("one", done));
+		queue.TryEnqueue(new RecordingDelivery("two", done));
 
 		await queue.DrainAsync(Token);
 
@@ -104,7 +181,7 @@ public sealed class EventQueueTests
 		var queue = NewQueue();
 		using var stop = new CancellationTokenSource();
 		var running = queue.RunAsync(stop.Token);
-		queue.Enqueue(new GatedDelivery(started, release, () => finished = true));
+		queue.TryEnqueue(new GatedDelivery(started, release, () => finished = true));
 		await started.Task.WaitAsync(Patience, Token);
 
 		var drain = queue.DrainAsync(Token);
@@ -143,8 +220,8 @@ public sealed class EventQueueTests
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();
 
-		queue.Enqueue(new RecordingDelivery("one", done));
-		queue.Enqueue(new ThrowingDelivery());
+		queue.TryEnqueue(new RecordingDelivery("one", done));
+		queue.TryEnqueue(new ThrowingDelivery());
 		Assert.Equal(2, queue.Outstanding);
 
 		await queue.DrainAsync(Token);

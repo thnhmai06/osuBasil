@@ -51,6 +51,9 @@ public sealed class RecordingPublisher<T> : IEventPublisher<T> where T : Event
 	/// <summary>Gets every event published through this recorder, in order.</summary>
 	public IReadOnlyList<T> Events => _events;
 
+	/// <summary>Gets or sets whether the publisher reports room for the events of new work.</summary>
+	public bool HasRoom { get; set; } = true;
+
 	/// <summary>Records an event.</summary>
 	/// <param name="event">The event to record.</param>
 	public void Publish(T @event)

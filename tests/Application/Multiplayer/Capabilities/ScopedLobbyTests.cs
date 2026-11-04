@@ -192,6 +192,20 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
+	public async Task OpenRoomAsync_WhenTheEventQueueHasNoRoom_ReturnsLockedAndOpensNothing()
+	{
+		using var app = new TestApplication();
+		app.LobbyEvents.HasRoom = false;
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+
+		var (room, result) = await OpenAsync(app, creator);
+
+		Assert.Null(room);
+		Assert.Equal(RoomOutcome.Locked, result.Outcome);
+		Assert.Empty(app.Lobby.Rooms);
+	}
+
+	[Fact]
 	public async Task OpenRoomAsync_WhileRoomCreationIsLocked_AUserWhoManagesEveryRoomIsAllowed()
 	{
 		using var app = new TestApplication();

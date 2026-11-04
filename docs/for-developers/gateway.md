@@ -7,10 +7,11 @@ The gateway is the admission control of Basil: for every request that wants to e
 concurrent or arriving while the server is overloaded never reaches a module.
 
 > **Migration status.** The rate limiter, the login-attempt guard and the second tier (`Admission`, `AdmissionSubject`,
-> `GatewayLimits`) live in `Basil.Gateway`. No host calls the second tier yet: mapping a `Connection` to an
-> `AdmissionSubject` in `Basil.Host.Shared` and enforcing the decision is **(target: phase 7)**. The Stable and Rest hosts
-> still have their own upload limit (they depend on ASP.NET Core and the runtime settings, so they cannot move as they
-> are). The load policies are **(target)**.
+> `GatewayLimits`) live in `Basil.Gateway`, with the load policies below (bulkhead, shedding, health). No host enforces the
+> second tier yet: mapping a `Connection` to an `AdmissionSubject` in `Basil.Host.Shared`, choosing the `WorkClass` of each
+> route and turning a denial into 429/503 with `Retry-After` is **(target: phase 7)**. Only the health signal is read today
+> (`/health` on the `api.` host). The Stable and Rest hosts still have their own upload limit (they depend on ASP.NET Core
+> and the runtime settings, so they cannot move as they are).
 
 ## Why
 
@@ -49,16 +50,53 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
    all of a user's connections share one key. The tier is recomputed for each request from effective permissions and is not
    stored. The gateway never sees a Users type.
 
-### Load policies (target)
+### Load policies
 
 Taken from well-known cloud design patterns, limited to what this single process needs:
 
 * **Throttling** caps the rate at which a client or kind of work is served.
 * **Bulkhead** bounds concurrency per kind of work so that one slow kind (a beatmapset import, a leaderboard query) cannot
-  use up every worker.
-* **Priority shedding** under overload drops the least valuable work first: leaderboards and search before gameplay and chat.
+  use up every worker. An entry point declares its kind with `[AdmissionPolicy(Class = WorkClass.Listing)]`; the default
+  is `Interactive`. A saturated class is denied (`ClassSaturated`) without touching the others, and every allowed request
+  must be matched by one `Admission.Release(class)` when it ends.
+* **Priority shedding** under overload drops the least valuable work first. The decision is a pure function of the
+  `LoadSignal` and the class (`GatewayLimits.Sheds`).
+* **Health** is derived from the same signal (`Admission.Health`) and read by `/health`, which answers `healthy`,
+  `degraded` or `shedding`. It does not change the status code, so a probe does not restart a busy server.
 * **Queue-based load leveling** is used only for work that can be derived again (rebuilding a derived file, a re-scan).
   Never for a request whose answer the client waits for or whose loss would lose data.
+
+| Class | Work | Concurrency (default) | Shed from load |
+|---|---|---|---|
+| `Listing` | rankings, searches, listings | 32 | 0.70 (first) |
+| `Upload` | replays, screenshots, avatars, beatmapsets | 8 | 0.90 |
+| `Interactive` | gameplay, chat, rooms, accounts | 256 | 0.90 |
+| `Live` | SSE streams | 1024 | 0.90 |
+
+Health is `Healthy` below 0.50, `Degraded` from 0.50 and `Shedding` from 0.70. Every threshold and cap is a field of
+`GatewayLimits` and is swapped at runtime with `Admission.Apply`. The load is the fill of the event queue
+(`Outstanding / Ceiling`), reported once a second.
+
+#### The event queue ceiling
+
+`EventQueue` holds at most `Basil:Events:Ceiling` deliveries (default 100,000). `TryEnqueue` never waits: at the ceiling
+it drops the delivery, returns `false` and counts `basil.events.rejected`. Events are published under the locks of the
+objects, so a drop is the only way to stay non-blocking; a dropped event loses its notification (live fan-out, chat
+lines) and, for the recorders of a match, its history row. To keep that rare:
+
+* The last tenth of the ceiling is reserved. `IEventPublisher<T>.HasRoom` is false once the queue is nine tenths full.
+* An entry point whose events have durable consequences checks `HasRoom` before it changes state and refuses with an
+  existing outcome. Today the only one is opening a room (`ScopedLobby.OpenRoomAsync` returns `Locked`), because a match is
+  recorded by the events of its room. Operations on a room that is already open are not refused midway: their events
+  use the reserved tenth.
+* The only caller of `TryEnqueue` is the notification publisher, so every event of the application passes the same check.
+
+#### Audit of the queues for rebuildable work
+
+No queue was added. The background workers are `BeatmapsetStorageWatcher` (rebuildable: re-scans the files),
+`EmptyRoomCloser`, `IdleConnectionSweeper`, `SessionRetentionSweeper`, `DiagnosticsSampler` (periodic, nothing to level) and
+the `EventDispatcher`. The other channels (`CommandWorker` of BasilBot, `IrcSession`, `SseHub`, `DiagnosticsFeed`) carry a
+single connection's or stream's live traffic, which a client is waiting for, so they are not load-leveling candidates.
 
 ## How
 

@@ -1,4 +1,5 @@
 using Basil.Application.Common;
+using Basil.Application.Common.Events;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
 using Basil.Infrastructure.Common.Workers;
@@ -51,6 +52,7 @@ public static class DependencyInjection
 			storage.Location = Path.Combine(AppContext.BaseDirectory, storage.Location);
 		services.AddSingleton(Options.Create(storage));
 		services.AddSingleton(Options.Create(DatabaseSetup.Read(configuration)));
+		services.AddSingleton(configuration.GetSection("Basil:Events").Get<EventQueueOptions>() ?? new EventQueueOptions());
 		return services;
 	}
 

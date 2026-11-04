@@ -8,8 +8,13 @@ namespace Basil.Application.Common.Events;
 ///     that publish.
 /// </param>
 /// <param name="clock">The clock the events are stamped with.</param>
-public sealed class EventPublisher(Lazy<IPublisher> publisher, TimeProvider clock) : IEventPublisher<Event>
+/// <param name="queue">The queue the deliveries wait in.</param>
+public sealed class EventPublisher(Lazy<IPublisher> publisher, TimeProvider clock, EventQueue queue)
+	: IEventPublisher<Event>
 {
+	/// <inheritdoc />
+	public bool HasRoom => queue.HasRoom;
+
 	/// <inheritdoc />
 	public void Publish(Event @event)
 	{

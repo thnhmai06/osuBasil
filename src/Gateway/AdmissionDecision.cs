@@ -4,7 +4,13 @@ namespace Basil.Gateway;
 public enum AdmissionDenial
 {
 	/// <summary>The caller made more requests in the window than its tier allows.</summary>
-	RateExceeded = 1
+	RateExceeded = 1,
+
+	/// <summary>The kind of work the request asks for is already running at its concurrency cap.</summary>
+	ClassSaturated = 2,
+
+	/// <summary>The server is overloaded and refuses this kind of work.</summary>
+	Shed = 3
 }
 
 /// <summary>The answer of the gateway: let the request in, or refuse it.</summary>

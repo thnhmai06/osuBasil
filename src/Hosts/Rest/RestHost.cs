@@ -17,6 +17,9 @@ public static class RestHost
 	{
 		services.AddSingleton<RateLimiter>();
 		services.AddSingleton<LoginAttemptGuard>();
+		services.AddSingleton<LoadSignal>();
+		services.AddSingleton<Admission>();
+		services.AddHostedService<LoadSignalFeeder>();
 		services.AddSingleton<SseHub>();
 		services.AddHostedService(sp => sp.GetRequiredService<SseHub>());
 		return services;
@@ -79,8 +82,10 @@ public static class RestHost
 	internal static void MapRest(this IEndpointRouteBuilder endpoints)
 	{
 		var app = endpoints.MapGroup("").WithMetadata(new AdmissionPolicyAttribute());
-		app.MapGet("/health", () => Api.Ok("healthy")).WithTags("Operations")
-			.WithSummary("Check that the server answers.");
+		app.MapGet("/health", (Admission admission) => Api.Ok(admission.Health.ToString().ToLowerInvariant()))
+			.WithTags("Operations")
+			.WithSummary("Check that the server answers and how well it keeps up.")
+			.WithDescription("The state is `healthy`, `degraded` when the server is busier than usual, or `shedding` when it is overloaded and refuses the least valuable work.");
 		app.MapDocs();
 		app.MapGuides();
 		var v1 = app.MapGroup("/v1");

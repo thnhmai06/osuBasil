@@ -372,8 +372,8 @@ Basil.Infrastructure.Postgres    Npgsql provider (IDatabaseProvider), design-tim
 Basil.Protocol.Stable            the translation language of the osu! wire,      -> Domain, external libraries
                                  score submission cipher (BouncyCastle)
 Basil.Protocol.Irc               the translation language of IRC                 -> (nothing)
-Basil.Gateway                    (target) admission control: Allow/Deny from     -> the rate-limiting library
-                                 size, rate, concurrency and load
+Basil.Gateway                    admission control: Allow/Deny from size, rate,  -> the rate-limiting library
+                                 concurrency and load (hosts enforce: target)
 Basil.Host.Shared                views and outcome-to-error mapping              -> Application projects
 Basil.Host.Stable / .Irc /       transports: translate the wire to messages and  -> Host.Shared, Protocol, Gateway,
 .Rest / .Cli                     send them through Mediator                         Application projects
@@ -484,7 +484,7 @@ system; no host or gateway knows it exists.
   module creates a `Connection`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
   `Protocol.Stable`. `tests/Architecture/HostGraphTests.cs` enforces this.
-* `Basil.Gateway` **(target)** is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
+* `Basil.Gateway` (enforcement by the hosts: **target**) is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
   concurrency and load, in two tiers (before and after authentication; the second tier receives an opaque
   `AdmissionSubject` that `Host.Shared` maps from the `Connection`). It has no user types and no business facts. Every
   entry point declares a policy. See [`docs/for-developers/gateway.md`](docs/for-developers/gateway.md).

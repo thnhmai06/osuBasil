@@ -21,20 +21,38 @@ public sealed class EventQueue
 
 	/// <summary>Creates an empty queue.</summary>
 	/// <param name="logger">The logger that reports a delivery that failed.</param>
-	public EventQueue(ILogger<EventQueue> logger)
+	/// <param name="options">The limits of the queue; the defaults when omitted.</param>
+	public EventQueue(ILogger<EventQueue> logger, EventQueueOptions? options = null)
 	{
 		_logger = logger;
+		Ceiling = Math.Max(1, (options ?? new EventQueueOptions()).Ceiling);
 	}
+
+	/// <summary>Gets how many deliveries may wait at once.</summary>
+	public int Ceiling { get; }
 
 	/// <summary>Gets how many deliveries are queued or being delivered.</summary>
 	public int Outstanding => Volatile.Read(ref _outstanding);
 
-	/// <summary>Adds a delivery behind the ones already waiting; returns at once.</summary>
+	/// <summary>
+	///     Gets whether the queue can take the consequences of new work: the last tenth of the ceiling is kept for events
+	///     of work that was already accepted.
+	/// </summary>
+	public bool HasRoom => Outstanding < Ceiling - Ceiling / 10;
+
+	/// <summary>Adds a delivery behind the ones already waiting; returns at once and never waits.</summary>
 	/// <param name="delivery">The delivery to run.</param>
-	public void Enqueue(IEventDelivery delivery)
+	/// <returns><see langword="false" /> when the queue is at its ceiling and the delivery was dropped.</returns>
+	public bool TryEnqueue(IEventDelivery delivery)
 	{
-		Interlocked.Increment(ref _outstanding);
-		if (!_deliveries.Writer.TryWrite(delivery)) Interlocked.Decrement(ref _outstanding);
+		if (Interlocked.Increment(ref _outstanding) > Ceiling || !_deliveries.Writer.TryWrite(delivery))
+		{
+			Interlocked.Decrement(ref _outstanding);
+			EventQueueMetrics.Rejected.Add(1);
+			return false;
+		}
+
+		return true;
 	}
 
 	/// <summary>Delivers the queued events, and the ones queued later, until the server stops.</summary>
