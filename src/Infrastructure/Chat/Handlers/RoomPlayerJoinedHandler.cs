@@ -2,7 +2,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Keeps the chat channel of an open room in step when a player joins or replaces a connection.</summary>
 internal sealed class RoomPlayerJoinedHandler(RoomChannels channels) : INotificationHandler<RoomPlayerJoined>

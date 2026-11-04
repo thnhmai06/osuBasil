@@ -2,7 +2,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Parts a player who does not manage the room from its chat channel when they leave their seat.</summary>
 internal sealed class RoomPlayerLeftHandler(RoomChannels channels) : INotificationHandler<RoomPlayerLeft>

@@ -2,7 +2,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Parts a removed player from a room's chat channel.</summary>
 internal sealed class RoomPlayerKickedHandler(RoomChannels channels) : INotificationHandler<RoomPlayerKicked>

@@ -2,7 +2,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Parts a room observer from the room's chat channel unless they manage the room.</summary>
 internal sealed class RoomObserverLeftHandler(RoomChannels channels) : INotificationHandler<RoomObserverLeft>

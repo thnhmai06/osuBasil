@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Capabilities;
-using Basil.Application.Chat.Handlers;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;

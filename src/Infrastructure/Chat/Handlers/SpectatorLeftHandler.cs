@@ -3,7 +3,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Takes a left spectator and, once none remain, the spectated client out of the client's spectator channel.</summary>
 internal sealed class SpectatorLeftHandler(SpectatorChannels channels) : INotificationHandler<UserSpectatorLeft>

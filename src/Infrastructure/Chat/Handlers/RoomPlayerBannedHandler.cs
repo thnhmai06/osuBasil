@@ -2,7 +2,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Parts a banned player from a room's chat channel when their seat is vacated.</summary>
 internal sealed class RoomPlayerBannedHandler(RoomChannels channels) : INotificationHandler<RoomPlayerBanned>

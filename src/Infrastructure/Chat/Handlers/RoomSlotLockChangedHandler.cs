@@ -2,7 +2,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Parts a player from a room's chat channel when locking their slot removes them.</summary>
 internal sealed class RoomSlotLockChangedHandler(RoomChannels channels) : INotificationHandler<RoomSlotLockChanged>

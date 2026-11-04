@@ -1,10 +1,10 @@
-using Basil.Application.Chat.Handlers;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Testing;
 
-namespace Basil.Application.Chat.Tests.Handlers;
+namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
 /// <summary>Keeps private-message-channel membership and lifetime in step with connection events.</summary>
 public sealed class PmChannelHandlerTests

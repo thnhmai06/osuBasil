@@ -4,7 +4,7 @@ using Basil.Application.Users.Objects.Events;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>
 ///     Puts a connection into the channels that join themselves when it opens, and out of its channels when it

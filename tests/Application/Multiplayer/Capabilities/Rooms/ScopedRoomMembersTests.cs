@@ -1,4 +1,4 @@
-using Basil.Application.Chat.Handlers;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;

@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Registry;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Parts a released connection from every open room's chat channel.</summary>
 internal sealed class LobbyConnectionReleasedHandler(Lobby lobby, RoomChannels channels)

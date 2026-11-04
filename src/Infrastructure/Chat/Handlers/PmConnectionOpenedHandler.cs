@@ -3,7 +3,7 @@ using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Brings a newly opened connection into its user's private-message channel.</summary>
 internal sealed class PmConnectionOpenedHandler(PmChannels channels) : INotificationHandler<UserConnectionOpened>

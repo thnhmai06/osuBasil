@@ -1,11 +1,11 @@
-using Basil.Application.Chat.Handlers;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Testing;
 
-namespace Basil.Application.Chat.Tests.Handlers;
+namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
 /// <summary>Keeps room-channel membership and lifetime in step with room and connection events.</summary>
 public sealed class RoomChannelHandlerTests

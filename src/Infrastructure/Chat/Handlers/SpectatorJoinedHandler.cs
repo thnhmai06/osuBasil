@@ -3,7 +3,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>
 ///     Brings a joined spectator and, for the first spectating connection, the spectated client into the client's

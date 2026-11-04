@@ -1,4 +1,4 @@
-using Basil.Application.Chat.Handlers;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Users.Objects.Connections;
@@ -7,7 +7,7 @@ using Basil.Domain.Authentication;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Basil.Application.Chat.Tests.Handlers;
+namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
 /// <summary>
 ///     What the spectator channel handlers keep in step: the first spectator brings the spectated client in, the last

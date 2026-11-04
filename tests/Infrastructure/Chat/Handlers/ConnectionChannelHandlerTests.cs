@@ -1,4 +1,4 @@
-using Basil.Application.Chat.Handlers;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Basil.Application.Chat.Tests.Handlers;
+namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
 /// <summary>
 ///     What a connection does to its channels without the transport asking: it joins the channels that join

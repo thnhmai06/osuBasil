@@ -2,7 +2,7 @@ using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Chat.Handlers;
+namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Adds a room observer to the room's chat channel.</summary>
 internal sealed class RoomObserverJoinedHandler(RoomChannels channels) : INotificationHandler<RoomObserverJoined>
