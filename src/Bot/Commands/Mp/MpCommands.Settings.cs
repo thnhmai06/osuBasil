@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
@@ -93,10 +94,10 @@ internal sealed partial class MpCommands
 
 	// ── !mp lock / unlock ─────────────────────────────────────────────────────────────────
 
-	private static async Task<bool> SetLockedAsync(CommandContext context, Room room, bool locked,
+	private async Task<bool> SetLockedAsync(CommandContext context, Room room, bool locked,
 		CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.Actor).Settings.SetLockedAsync(locked, cancellationToken);
+		var outcome = await sender.Send(new SetRoomLocked(context.Actor, room, locked), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -109,7 +110,7 @@ internal sealed partial class MpCommands
 
 	// ── !mp private ──────────────────────────────────────────────────────────────────────
 
-	private static async Task<bool> PrivateAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> PrivateAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		var actor = context.Actor;
@@ -126,8 +127,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Settings.ConfigureAsync(
-			new RoomSettingsChange(IsPrivate: args[0] == "1"), cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(IsPrivate: args[0] == "1")), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -141,7 +141,7 @@ internal sealed partial class MpCommands
 
 	// ── !mp size ─────────────────────────────────────────────────────────────────────────
 
-	private static async Task<bool> SetSizeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> SetSizeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < 1 or > RoomRules.MaxPlayers)
@@ -150,8 +150,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(new RoomSettingsChange(Size: size),
-			cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(Size: size)), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -164,7 +163,7 @@ internal sealed partial class MpCommands
 
 	// ── !mp name / password ──────────────────────────────────────────────────────────────
 
-	private static async Task<bool> SetNameAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> SetNameAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		if (args.Count < 1)
@@ -176,8 +175,7 @@ internal sealed partial class MpCommands
 		var name = string.Join(' ', args);
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(new RoomSettingsChange(name),
-			cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(name)), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -188,13 +186,12 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	private static async Task<bool> SetPasswordAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> SetPasswordAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		var actor = context.Actor;
 		var password = args.Count == 0 ? string.Empty : string.Join(' ', args);
-		var outcome = await room.ScopeTo(actor).Settings.ConfigureAsync(new RoomSettingsChange(Password: password),
-			cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Password: password)), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -208,7 +205,7 @@ internal sealed partial class MpCommands
 
 	// ── !mp set ──────────────────────────────────────────────────────────────────────────
 
-	private static async Task<bool> SetAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> SetAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		if (!TryParseSetArguments(args, out var teamValue, out var winCondition, out var size))
@@ -219,7 +216,7 @@ internal sealed partial class MpCommands
 
 		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
 			Size: size);
-		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(change, cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, change), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -299,9 +296,7 @@ internal sealed partial class MpCommands
 
 		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name,
 			beatmap.Metadata.Difficulty.Mode, beatmap);
-		var outcome = await room.ScopeTo(context.Actor).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode)),
-			cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode))), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -326,7 +321,7 @@ internal sealed partial class MpCommands
 
 	// ── !mp mods ─────────────────────────────────────────────────────────────────────────
 
-	private static async Task<bool> SetModsAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> SetModsAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		var actor = context.Actor;
@@ -357,8 +352,7 @@ internal sealed partial class MpCommands
 
 		// Combinations the current mode does not allow are dropped (HT with DT keeps HT), not refused.
 		mods = mods.RemoveInvalidMods(room.Settings.MatchSettings.Mode);
-		var outcome = await room.ScopeTo(actor).Settings.ConfigureAsync(
-			new RoomSettingsChange(Mods: mods, Freemods: freemod), cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Mods: mods, Freemods: freemod)), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

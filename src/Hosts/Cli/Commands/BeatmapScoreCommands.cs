@@ -1,4 +1,4 @@
-using Basil.Application.Beatmaps.Capabilities;
+using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
@@ -8,6 +8,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
+using Mediator;
 using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Cli.Commands;
@@ -132,8 +133,10 @@ internal static class BeatmapScoreCommands
 
 		var status = call.Text("status") is { } text ? ParseStatus(text) : (BeatmapsetStatus?)null;
 
-		var scoped = call.Get<Beatmapsets>().Of(set).ScopeTo(await call.ByAsync());
-		if (await ApplyPatchAsync(call, scoped, status) is { } refused) return refused;
+		var result = await call.Get<ISender>().Send(
+			new PatchBeatmapset(await call.ByAsync(), set, status, call.Bool("visible"), call.Bool("locked")),
+			call.CancellationToken);
+		if (!result.IsOk) return call.Refuse(result);
 
 		call.Output.Ok("Updated.");
 		return ExitCodes.Success;
@@ -144,17 +147,6 @@ internal static class BeatmapScoreCommands
 		return Enum.TryParse<BeatmapsetStatus>(text, true, out var parsed) && Enum.IsDefined(parsed)
 			? parsed
 			: throw CommandException.Invalid("--status is not a beatmapset status.");
-	}
-
-	private static async Task<int?> ApplyPatchAsync(CommandCall call, ScopedBeatmapset scoped, BeatmapsetStatus? status)
-	{
-		var ct = call.CancellationToken;
-		if (status is { } s && await scoped.SetStatusAsync(s, ct) is { IsOk: false } a) return call.Refuse(a);
-		if (call.Bool("visible") is { } v && await scoped.SetVisibleAsync(v, ct) is { IsOk: false } b)
-			return call.Refuse(b);
-		if (call.Bool("locked") is { } l && await scoped.SetLockedAsync(l, ct) is { IsOk: false } c)
-			return call.Refuse(c);
-		return null;
 	}
 
 	private static async Task<int> RefreshAsync(CommandCall call)
@@ -169,7 +161,7 @@ internal static class BeatmapScoreCommands
 		return await call.Get<IBeatmapsetRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } set
 			? call.NotFound("beatmapset")
 			: call.Report(
-				await call.Get<Beatmapsets>().Of(set).ScopeTo(await call.ByAsync()).DeleteAsync(call.CancellationToken),
+				await call.Get<ISender>().Send(new DeleteBeatmapset(await call.ByAsync(), set), call.CancellationToken),
 				"Beatmapset deleted.");
 	}
 

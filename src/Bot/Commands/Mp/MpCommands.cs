@@ -8,6 +8,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Bot.Replies;
 using Basil.Domain.Users;
+using Mediator;
 
 namespace Basil.Bot.Commands.Mp;
 
@@ -24,7 +25,8 @@ internal sealed partial class MpCommands(
 	UserRegistry registry,
 	IUserRepository users,
 	IBeatmapRepository beatmaps,
-	MpTargets targets)
+	MpTargets targets,
+	ISender sender)
 {
 	/// <summary>The maximum length of a room name as accepted by the osu! client.</summary>
 	private const int MaxRoomNameLength = 50;

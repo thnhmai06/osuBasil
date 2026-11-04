@@ -1,7 +1,8 @@
+using Mediator;
+using Basil.Application.Multiplayer.Messages;
 using System.Text.Json;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Multiplayer.Registry;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -26,13 +27,14 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> ListAsync(HttpContext context, string? query, int? offset, int? limit,
-		Lobby lobby)
+		ISender sender)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var (result, found) = await lobby.ScopeTo(context.Connection()).ListMatchesAsync(
-			MatchQuery.Parse(query ?? string.Empty), page!, context.RequestAborted);
+		var (result, found) = await sender.Send(
+			new ListMatches(context.Connection(), MatchQuery.Parse(query ?? string.Empty), page!),
+			context.RequestAborted);
 		return result.IsOk
 			? Api.Paged(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.Total), page!)
 			: result.Refusal();
@@ -76,12 +78,12 @@ internal static class MatchRoutes
 	}
 
 	private static async Task<IResult> ReportAsync(HttpContext context, int id, IMatchRepository matches,
-		IMatchReportRepository reports, IRoundScoreRepository roundScores, Lobby lobby)
+		IMatchReportRepository reports, IRoundScoreRepository roundScores, ISender sender)
 	{
 		var ct = context.RequestAborted;
 		if (await matches.GetAsync(id, ct) is not { } match) return Api.NotFound("No such match.");
 
-		if (!await IsVisibleAsync(context, lobby, match, ct)) return Api.NotFound("No such match.");
+		if (!await IsVisibleAsync(context, sender, match, ct)) return Api.NotFound("No such match.");
 
 		var report = await reports.GetAsync(match, ct);
 		var entries = report.Records.OrderBy(r => r.Timestamp).ToList();
@@ -103,13 +105,13 @@ internal static class MatchRoutes
 		});
 	}
 
-	private static async Task<bool> IsVisibleAsync(HttpContext context, Lobby lobby, MatchRecord match,
+	private static async Task<bool> IsVisibleAsync(HttpContext context, ISender sender, MatchRecord match,
 		CancellationToken ct)
 	{
 		var connection = context.ConnectionOrNull();
 		return connection is null
 			? !match.Value.IsPrivate
-			: await lobby.ScopeTo(connection).CanViewAsync(match, ct);
+			: await sender.Send(new CanViewMatch(connection, match), ct);
 	}
 
 	private static async Task<(object, string?)> SnapshotAsync(IMatchReportRepository reports,

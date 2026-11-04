@@ -34,6 +34,7 @@ using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using Mediator;
 using NSubstitute;
 
 namespace Basil.Testing;
@@ -132,6 +133,15 @@ public sealed class TestApplication : IDisposable
 		PmChannels = Provider.GetRequiredService<PmChannels>();
 		Server = Provider.GetRequiredService<Server>();
 		Beatmapsets = Provider.GetRequiredService<Beatmapsets>();
+		var forwarding = new ServiceCollection().AddLogging().AddSingleton<EventQueue>();
+		foreach (var descriptor in services.Where(d => !d.ServiceType.IsGenericTypeDefinition && !d.IsKeyedService))
+		{
+			var type = descriptor.ServiceType;
+			forwarding.AddSingleton(type, _ => Provider.GetRequiredService(type));
+		}
+
+		Sender = forwarding.AddMediator(options => options.ServiceLifetime = ServiceLifetime.Singleton)
+			.BuildServiceProvider().GetRequiredService<ISender>();
 	}
 
 	/// <summary>Gets the service provider for the composed application and its test ports.</summary>
@@ -145,6 +155,9 @@ public sealed class TestApplication : IDisposable
 
 	/// <summary>Gets the multiplayer lobby.</summary>
 	public Lobby Lobby { get; }
+
+	/// <summary>Gets a sender that runs messages through the real handlers over the lobby of this application.</summary>
+	public ISender Sender { get; }
 
 	/// <summary>Gets the configured general chat channels.</summary>
 	public GeneralChannelRegistry Channels { get; }

@@ -1,0 +1,15 @@
+using Basil.Application.Common;
+using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Users;
+using Mediator;
+
+namespace Basil.Application.Multiplayer.Messages;
+
+/// <summary>Asks Multiplayer to make a user a referee of a room.</summary>
+/// <param name="Actor">The connection that acts.</param>
+/// <param name="Room">The room it acts on.</param>
+/// <param name="User">The user to make a referee.</param>
+/// <remarks>The answer is what the operation answers for the actor's permissions and the room's state.</remarks>
+public sealed record AddReferee(Connection Actor, Room Room, UserRecord User) : IRequest<Result<RoomOutcome>>;

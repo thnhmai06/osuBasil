@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common;
@@ -210,9 +212,9 @@ internal static class ChannelRoomCommands
 
 	private static async Task<int> CreateRoomAsync(CommandCall call)
 	{
-		var (room, result) = await call.Get<Lobby>().ScopeTo(await call.ByAsync()).OpenRoomAsync(
+		var (room, result) = await call.Get<ISender>().Send(new OpenRoom(await call.ByAsync(),
 			RoomCommands.Truncate(call.Required("name")), call.Text("password") ?? string.Empty, true,
-			call.Bool("private") ?? false, cancellationToken: call.CancellationToken);
+			call.Bool("private") ?? false), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Output.Ok($"Opened room {room!.Id}.");
@@ -232,15 +234,17 @@ internal static class ChannelRoomCommands
 		if (call.Get<Lobby>().Find(call.Id("id")) is not { } room) return call.NotFound("room");
 
 		var body = BodyOf(call, command.Body);
-		var result = await command.Run(room.ScopeTo(await call.ByAsync()), body, call.Services, call.CancellationToken);
+		var result = await command.Run(new RoomCall(call.Get<ISender>(), await call.ByAsync(), room), body,
+			call.Services, call.CancellationToken);
 		return call.Report(result, $"Done: {command.Name}.");
 	}
 
 	private static async Task<int> ListMatchesAsync(CommandCall call)
 	{
 		var page = call.Page();
-		var (result, found) = await call.Get<Lobby>().ScopeTo(await call.ByAsync()).ListMatchesAsync(
-			MatchQuery.Parse(call.Text("query") ?? string.Empty), page, call.CancellationToken);
+		var (result, found) = await call.Get<ISender>().Send(
+			new ListMatches(await call.ByAsync(), MatchQuery.Parse(call.Text("query") ?? string.Empty), page),
+			call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.PrintPage(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.Total), page);

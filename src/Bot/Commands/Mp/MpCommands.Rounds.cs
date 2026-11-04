@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects.Rooms;
 
@@ -7,13 +8,13 @@ internal sealed partial class MpCommands
 {
 	// ── !mp start / timer / aborttimer / abort ────────────────────────────────────────────
 
-	private static async Task<bool> StartAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> StartAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
 			return await StartCountdownAsync(context, room, seconds, true, cancellationToken);
 
-		var outcome = await room.ScopeTo(context.Actor).Rounds.StartAsync(cancellationToken);
+		var outcome = await sender.Send(new StartRound(context.Actor, room), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -24,7 +25,7 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	private static async Task<bool> TimerAsync(CommandContext context, Room room, IReadOnlyList<string> args,
+	private async Task<bool> TimerAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
 		var seconds = DefaultTimerSeconds;
@@ -38,11 +39,11 @@ internal sealed partial class MpCommands
 		return await StartCountdownAsync(context, room, seconds, false, cancellationToken);
 	}
 
-	private static async Task<bool> AbortTimerAsync(CommandContext context, Room room,
+	private async Task<bool> AbortTimerAsync(CommandContext context, Room room,
 		CancellationToken cancellationToken)
 	{
 		var actor = context.Actor;
-		var outcome = await room.ScopeTo(actor).Rounds.CancelCountdownAsync(cancellationToken);
+		var outcome = await sender.Send(new CancelCountdown(actor, room), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -60,7 +61,7 @@ internal sealed partial class MpCommands
 	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when it started; otherwise the reason was replied.</returns>
-	private static async Task<bool> StartCountdownAsync(CommandContext context, Room room, int seconds,
+	private async Task<bool> StartCountdownAsync(CommandContext context, Room room, int seconds,
 		bool startsRound,
 		CancellationToken cancellationToken)
 	{
@@ -71,8 +72,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Rounds.StartCountdownAsync(TimeSpan.FromSeconds(seconds), startsRound,
-			cancellationToken);
+		var outcome = await sender.Send(new StartCountdown(actor, room, TimeSpan.FromSeconds(seconds), startsRound), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -82,9 +82,9 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	private static async Task<bool> AbortAsync(CommandContext context, Room room, CancellationToken cancellationToken)
+	private async Task<bool> AbortAsync(CommandContext context, Room room, CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.Actor).Rounds.AbortAsync(cancellationToken);
+		var outcome = await sender.Send(new AbortRound(context.Actor, room), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
