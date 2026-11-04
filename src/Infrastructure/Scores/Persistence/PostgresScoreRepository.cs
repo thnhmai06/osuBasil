@@ -4,61 +4,39 @@ using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Scores.Persistence;
 
 /// <summary>Stores submitted scores.</summary>
-internal sealed class PostgresScoreRepository(
-	DatabaseReader reader,
-	DatabaseWriter writer) : MemoryRepository<int, ScoreRecord>(reader, writer), IScoreRepository
+internal sealed class PostgresScoreRepository(DatabaseSession database) : IScoreRepository
 {
-	private readonly WeakIndex<Md5, ScoreRecord> _byChecksum = new();
-
 	/// <inheritdoc />
 	public async Task<ScoreRecord> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
 	{
-		if (data.Checksum is { } checksum && _byChecksum.TryGetValue(checksum, out var known) &&
-		    known.Value.Checksum == checksum)
-			throw new AlreadyExistsException($"A score with checksum {checksum} is already stored.");
-
-		int id;
-		try
+		var row = ToRow(0, data);
+		await database.WriteAsync((ScoresDbContext context, CancellationToken _) =>
 		{
-			id = await Writer.WriteAsync(Root.User(data.UserId ?? 0),
-				async (ScoresDbContext context, CancellationToken token) =>
-				{
-					var row = ToRow(0, data);
-					context.Scores.Add(row);
-					await context.SaveChangesAsync(token);
-					return row.Id;
-				}, cancellationToken);
-		}
-		catch (Exception exception) when (exception.IsUniqueViolation())
-		{
-			throw new AlreadyExistsException("A score with the same checksum is already stored.");
-		}
-
-		var score = Track(new ScoreRecord { Id = id, Value = data });
-		IndexScore(score);
-		return score;
+			context.Scores.Add(row);
+			return Task.CompletedTask;
+		}, cancellationToken);
+		return new ScoreRecord { Id = row.Id, Value = data };
 	}
 
 	/// <inheritdoc />
 	public async ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
-		var score = await FindAsync(id, cancellationToken);
-		if (score is not null)
-			IndexScore(score);
-		return score;
+		var row = await database.ReadAsync((ScoresDbContext context) => context.Scores
+			.Where(score => score.Id == id)
+			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+		return row is null ? null : ToScore(row);
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery scoreQuery, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await Reader.ReadAsync(async (ScoresDbContext context) =>
+		var (total, rows) = await database.ReadAsync(async (ScoresDbContext context) =>
 		{
 			var matching = BuildFilter(context.Scores, scoreQuery);
 			// A player's best play is the highest score; the earlier play and then the lower id win a tie.
@@ -81,10 +59,7 @@ internal sealed class PostgresScoreRepository(
 			return (count, rows);
 		}, cancellationToken);
 
-		var items = rows.Select(row => Track(ToScore(row))).ToList();
-		foreach (var score in items)
-			IndexScore(score);
-		return new Page<ScoreRecord>(items, total);
+		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), total);
 	}
 
 	private static IQueryable<ScoreRow> BuildFilter(IQueryable<ScoreRow> q, ScoreQuery scoreQuery)
@@ -108,31 +83,6 @@ internal sealed class PostgresScoreRepository(
 			q = q.Where(s => s.UserId != null);
 
 		return q;
-	}
-
-	protected override int KeyOf(ScoreRecord item)
-	{
-		return item.Id;
-	}
-
-	protected override Root RootOf(ScoreRecord item)
-	{
-		return Root.User(item.Value.UserId ?? 0);
-	}
-
-	protected override async Task<ScoreRecord?> LoadAsync(int key)
-	{
-		var row = await Reader.ReadAsync((ScoresDbContext context) => context.Scores
-			.Where(row => row.Id == key)
-			.FirstOrDefaultAsync(CancellationToken.None));
-		return row is null ? null : ToScore(row);
-	}
-
-	protected override WriteCommand<ScoresDbContext> SaveCommand(ScoreRecord score)
-	{
-		var row = ToRow(score.Id, score.Value);
-		return new WriteCommand<ScoresDbContext>((context, token) =>
-			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
 	/// <summary>Makes the row that stores a score, with the values it has now; the id is 0 for a score not stored yet.</summary>
@@ -160,12 +110,6 @@ internal sealed class PostgresScoreRepository(
 			Timestamp = data.Timestamp.ToUniversalTime(),
 			Checksum = data.Checksum?.HashValue
 		};
-	}
-
-	private void IndexScore(ScoreRecord score)
-	{
-		if (score.Value.Checksum is { } checksum)
-			_byChecksum.Set(checksum, score);
 	}
 
 	private static ScoreRecord ToScore(ScoreRow row)

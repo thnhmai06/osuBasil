@@ -1,110 +1,103 @@
+using Basil.Application.Common;
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Scores.Persistence;
 
 /// <summary>Stores users' cumulative score statistics.</summary>
-internal sealed class PostgresUserStatsRepository(DatabaseReader reader, DatabaseWriter writer)
-	: MemoryRepository<(int UserId, GameMode Mode), UserStats>(reader, writer), IUserStatsRepository
+internal sealed class PostgresUserStatsRepository(DatabaseSession database) : IUserStatsRepository
 {
 	/// <inheritdoc />
 	public async ValueTask<UserStats> GetAsync(UserRecord user, GameMode mode,
 		CancellationToken cancellationToken = default)
 	{
-		var key = (user.Id, mode);
-		return await FindAsync(key, cancellationToken)
-		       ?? Track(new UserStats { UserId = user.Id, Mode = mode });
+		var userId = user.Id;
+		var storedMode = (int)mode;
+		var row = await database.ReadAsync((ScoresDbContext context) => context.UserStats
+			.Where(stats => stats.UserId == userId && stats.Mode == storedMode)
+			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+		return row is null ? new UserStats { UserId = userId, Mode = mode } : ToStats(row);
 	}
 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(UserStats stats, CancellationToken cancellationToken = default)
 	{
-		_ = SaveAsync(stats);
-		return Task.CompletedTask;
+		var row = new UserStatsRow
+		{
+			UserId = stats.UserId,
+			Mode = (int)stats.Mode,
+			TotalScore = stats.TotalScore,
+			RankedScore = stats.RankedScore,
+			PlayCount = stats.PlayCount
+		};
+		return database.WriteAsync((ScoresDbContext context, CancellationToken token) =>
+			context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode, token),
+			cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async ValueTask<UserStats> AddPlayAsync(UserRecord user, GameMode mode, long totalScore, long rankedScore,
 		CancellationToken cancellationToken = default)
 	{
-		var stats = await GetAsync(user, mode, cancellationToken);
-		lock (stats)
+		try
 		{
-			stats.PlayCount++;
-			stats.TotalScore += totalScore;
-			stats.RankedScore += rankedScore;
-			_ = SaveAsync(stats);
+			return await IncrementAsync(user.Id, mode, totalScore, rankedScore, cancellationToken);
 		}
-
-		return stats;
+		catch (AlreadyExistsException)
+		{
+			// Another first play of the same account and mode created the row between our update and our insert;
+			// the row exists now, so the increment finds it.
+			return await IncrementAsync(user.Id, mode, totalScore, rankedScore, cancellationToken);
+		}
 	}
 
-	protected override (int UserId, GameMode Mode) KeyOf(UserStats item)
+	/// <summary>Adds one play with column-level updates, or creates the row when the account has none yet.</summary>
+	private Task<UserStats> IncrementAsync(int userId, GameMode mode, long totalScore, long rankedScore,
+		CancellationToken cancellationToken)
 	{
-		return (item.UserId, item.Mode);
-	}
-
-	protected override Root RootOf(UserStats item)
-	{
-		return Root.User(item.UserId);
-	}
-
-	protected override void CopyTo(UserStats live, UserStats from)
-	{
-		live.TotalScore = from.TotalScore;
-		live.RankedScore = from.RankedScore;
-		live.PlayCount = from.PlayCount;
-	}
-
-	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key)
-	{
-		var mode = (int)key.Mode;
-		var row = await Reader.ReadAsync((ScoresDbContext context) => context.UserStats
-			.Where(row => row.UserId == key.UserId && row.Mode == mode)
-			.FirstOrDefaultAsync(CancellationToken.None));
-		return row is null
-			? null
-			: new UserStats
-			{
-				UserId = row.UserId,
-				Mode = (GameMode)row.Mode,
-				TotalScore = row.TotalScore,
-				RankedScore = row.RankedScore,
-				PlayCount = row.PlayCount
-			};
-	}
-
-	protected override WriteCommand<ScoresDbContext> SaveCommand(UserStats stats)
-	{
-		var userId = stats.UserId;
-		var mode = (int)stats.Mode;
-		var totalScore = stats.TotalScore;
-		var rankedScore = stats.RankedScore;
-		var playCount = stats.PlayCount;
-		return new WriteCommand<ScoresDbContext>(async (context, token) =>
+		var storedMode = (int)mode;
+		return database.WriteAsync(async (ScoresDbContext context, CancellationToken token) =>
 		{
 			var updated = await context.UserStats
-				.Where(s => s.UserId == userId && s.Mode == mode)
+				.Where(s => s.UserId == userId && s.Mode == storedMode)
 				.ExecuteUpdateAsync(set => set
-					.SetProperty(s => s.TotalScore, totalScore)
-					.SetProperty(s => s.RankedScore, rankedScore)
-					.SetProperty(s => s.PlayCount, playCount), token);
+					.SetProperty(s => s.PlayCount, s => s.PlayCount + 1)
+					.SetProperty(s => s.TotalScore, s => s.TotalScore + totalScore)
+					.SetProperty(s => s.RankedScore, s => s.RankedScore + rankedScore), token);
 			if (updated == 0)
 			{
 				context.UserStats.Add(new UserStatsRow
 				{
 					UserId = userId,
-					Mode = mode,
+					Mode = storedMode,
 					TotalScore = totalScore,
 					RankedScore = rankedScore,
-					PlayCount = playCount
+					PlayCount = 1
 				});
-				await context.SaveChangesAsync(token);
+				return new UserStats
+				{
+					UserId = userId, Mode = mode, TotalScore = totalScore, RankedScore = rankedScore, PlayCount = 1
+				};
 			}
-		});
+
+			var row = await context.UserStats.AsNoTracking()
+				.FirstAsync(s => s.UserId == userId && s.Mode == storedMode, token);
+			return ToStats(row);
+		}, cancellationToken);
+	}
+
+	private static UserStats ToStats(UserStatsRow row)
+	{
+		return new UserStats
+		{
+			UserId = row.UserId,
+			Mode = (GameMode)row.Mode,
+			TotalScore = row.TotalScore,
+			RankedScore = row.RankedScore,
+			PlayCount = row.PlayCount
+		};
 	}
 }
