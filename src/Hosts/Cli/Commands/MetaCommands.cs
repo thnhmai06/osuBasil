@@ -120,7 +120,7 @@ internal static class MetaCommands
 		var lobby = call.Get<Lobby>();
 		var now = call.Get<TimeProvider>().GetUtcNow();
 		using var process = Process.GetCurrentProcess();
-		var online = registry.Online.Values.SelectMany(user => user.Connections).Where(c => c.Type != SessionType.Bot)
+		var online = registry.Online.Values.SelectMany(user => user.Connections).Where(c => !c.IsServerOwned)
 			.ToList();
 		var fields = new List<(string, string)>
 		{
@@ -128,7 +128,7 @@ internal static class MetaCommands
 			("uptime", (now - process.StartTime.ToUniversalTime()).ToString(@"d\.hh\:mm\:ss")),
 			("users online", registry.Online.Count.ToString())
 		};
-		fields.AddRange(Enum.GetValues<SessionType>().Where(type => type != SessionType.Bot).Select(type =>
+		fields.AddRange(Enum.GetValues<SessionType>().Select(type =>
 			($"{type.ToString().ToLowerInvariant()} connections", online.Count(c => c.Type == type).ToString())));
 		fields.Add(("rooms", lobby.Rooms.Count.ToString()));
 		fields.Add(("rounds in progress", lobby.Rooms.Values.Count(room => room.Rounds.InProgress).ToString()));

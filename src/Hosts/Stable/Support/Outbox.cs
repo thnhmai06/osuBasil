@@ -105,7 +105,8 @@ internal sealed class Outbox(UserRegistry registry)
 
 	private static bool Receives(Connection connection)
 	{
-		return connection is { IsOpen: true } and (StableConnection or TourneyConnection);
+		// The bot's game client connection has no client to drain a queue, so it would overflow.
+		return connection is { IsOpen: true, IsServerOwned: false } and (StableConnection or TourneyConnection);
 	}
 
 	private sealed class Pending

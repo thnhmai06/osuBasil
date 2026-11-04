@@ -55,8 +55,7 @@ internal sealed class MessageDelivery(Outbox outbox) : INotificationHandler<Chan
 		var author = message.Author;
 		var target = channel is PmChannel pm ? pm.Owner.Record.Value.Name : StableView.ChannelName(channel);
 		var recipients = (await channel.RecipientsAsync(notification, cancellationToken))
-			.Where(recipient => recipient.Type is not SessionType.Bot &&
-			                    !(recipient.Type is SessionType.Stable && recipient.Record.Equals(author)));
+			.Where(recipient => !(recipient.Type is SessionType.Stable && recipient.Record.Equals(author)));
 		outbox.Send(recipients, writer =>
 			writer.SendMessage(author.Value.Name, message.Content, target, author.Id));
 		if (notification is { AwayReply: { } away, Actor: { } actor })

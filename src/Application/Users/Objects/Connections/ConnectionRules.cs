@@ -9,10 +9,10 @@ public static class ConnectionRules
 	extension(SessionType type)
 	{
 		/// <summary>Gets a value that indicates whether a new connection of a kind takes the place of the user's closed one in a channel.</summary>
-		/// <returns><see langword="true" /> for osu! game clients and BasilBot's connection, which hold one place per user.</returns>
+		/// <returns><see langword="true" /> for osu! game clients, which hold one place per user.</returns>
 		public bool ReplacesOnJoin()
 		{
-			return type is SessionType.Stable or SessionType.Bot;
+			return type is SessionType.Stable;
 		}
 
 		/// <summary>Gets how long a connection of a kind may send nothing before it is closed.</summary>

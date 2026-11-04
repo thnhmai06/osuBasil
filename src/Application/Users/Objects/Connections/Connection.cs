@@ -46,6 +46,9 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	/// <summary>Gets the user who owns this connection.</summary>
 	public UserRecord Record => Session.User;
 
+	/// <summary>Gets a value that indicates whether the server opened this connection for BasilBot, with no client behind it.</summary>
+	public bool IsServerOwned => Record.IsBasilBot();
+
 	/// <inheritdoc />
 	public virtual UserPermissions EffectivePermissions(DateTimeOffset now)
 	{
@@ -216,24 +219,10 @@ public sealed class ApiConnection : Connection
 	public override SessionType Type => SessionType.Api;
 }
 
-/// <summary>The server's own connection for BasilBot; no client is behind it.</summary>
-public sealed class BotConnection : Connection
-{
-	/// <summary>Initializes the server's connection for BasilBot.</summary>
-	/// <param name="login">The login that opened the connection.</param>
-	/// <param name="token">The token that identifies the connection.</param>
-	internal BotConnection(SessionRecord login, string token) : base(login, token)
-	{
-	}
-
-	/// <inheritdoc />
-	public override SessionType Type => SessionType.Bot;
-}
-
 /// <summary>
 ///     The operator's connection: BasilBot acting for whoever sits at the server's console. It is the one authority
 ///     that skips the rights checks, because the operator owns the machine; it is never registered, so no client can
-///     present it and BasilBot's own connection gains nothing from it.
+///     present it.
 /// </summary>
 public sealed class OperatorConnection : Connection
 {
@@ -245,7 +234,7 @@ public sealed class OperatorConnection : Connection
 	}
 
 	/// <inheritdoc />
-	public override SessionType Type => SessionType.Bot;
+	public override SessionType Type => SessionType.Api;
 
 	/// <inheritdoc />
 	public override UserPermissions EffectivePermissions(DateTimeOffset now)
