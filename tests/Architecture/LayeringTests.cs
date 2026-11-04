@@ -304,6 +304,36 @@ public class LayeringTests
 		Assert.True(offenders.Count == 0, "ConfigureAwait is not used: " + string.Join(", ", offenders));
 	}
 
+	/// <summary>The hosts whose entry points only send messages: they never scope an object themselves.</summary>
+	private static readonly string[] MessageOnlyHosts = ["Irc"];
+
+	[Fact]
+	public void MessageOnlyHosts_DoNotCallScopeTo()
+	{
+		var offenders = MessageOnlyHosts.SelectMany(SourcesOfHost).Where(HasScopeTo).ToList();
+
+		Assert.True(offenders.Count == 0, "A host sends messages and does not scope objects: " + string.Join(", ", offenders));
+	}
+
+	[Fact]
+	public void TheScopeToCheckSeesAHostThatScopes_PositiveControl()
+	{
+		Assert.Contains(SourcesOfHost("Rest"), HasScopeTo);
+	}
+
+	private static IEnumerable<string> SourcesOfHost(string host)
+	{
+		var directory = Path.Combine(FindRepositoryRoot(), "src", "Hosts", host);
+		return Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+			.Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
+			               !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
+	}
+
+	private static bool HasScopeTo(string path)
+	{
+		return File.ReadAllText(path).Contains(".ScopeTo(", StringComparison.Ordinal);
+	}
+
 	private static string[] PersistenceNamespaces()
 	{
 		return [.. ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Persistence")];

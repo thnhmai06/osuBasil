@@ -1,6 +1,7 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Common;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Irc.Support;
@@ -170,10 +171,11 @@ internal sealed partial class IrcCommands
 			: new ChatTarget.General(name);
 	}
 
-	private void Away(IrcSession session, Connection actor, IrcMessage message)
+	private async Task AwayAsync(IrcSession session, Connection actor, IrcMessage message,
+		CancellationToken cancellationToken)
 	{
 		var text = message.Parameters.Count > 0 && message.Parameters[0].Length > 0 ? message.Parameters[0] : null;
-		actor.User.ScopeTo(actor).Profile.SetAway(text);
+		await sender.Send(new SetAwayMessage(actor, text), cancellationToken);
 		session.Numeric(text is null ? IrcNumericReply.RplUnaway : IrcNumericReply.RplNowAway,
 			text is null ? "You are no longer marked as being away" : "You have been marked as being away");
 

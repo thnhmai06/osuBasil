@@ -1,3 +1,5 @@
+using Basil.Application.Users.Messages;
+using Mediator;
 using System.Net;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
@@ -27,7 +29,8 @@ internal sealed class StableLogin(
 	Outbox outbox,
 	LoginAttemptGuard attempts,
 	StableState state,
-	TimeProvider clock)
+	TimeProvider clock,
+	ISender sender)
 {
 	private const int ProtocolVersion = 19;
 
@@ -74,7 +77,7 @@ internal sealed class StableLogin(
 			return FailureReply(result.Failure);
 		}
 
-		if (request.BlockNonFriendDms) connection.User.ScopeTo(connection).Profile.SetPmPrivate(true);
+		if (request.BlockNonFriendDms) await sender.Send(new SetPmPrivate(connection, true), cancellationToken);
 		return (connection.Token, await WelcomeAsync(connection, cancellationToken));
 	}
 

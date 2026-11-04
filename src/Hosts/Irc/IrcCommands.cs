@@ -239,7 +239,7 @@ internal sealed partial class IrcCommands(
 				UserHost(session, message);
 				break;
 			case "AWAY":
-				Away(session, connection, message);
+				await AwayAsync(session, connection, message, cancellationToken);
 				break;
 			case "TOPIC":
 				Topic(session, connection, message);

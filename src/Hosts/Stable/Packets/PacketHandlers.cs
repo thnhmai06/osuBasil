@@ -3,6 +3,7 @@ using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
@@ -75,9 +76,8 @@ internal sealed partial class PacketHandlers(
 			ClientPacketType.RequestStatusUpdate => StatsRequestAsync(osu, [osu.Record.Id], cancellationToken),
 			ClientPacketType.FriendAdd => FriendAsync(osu, reader.ReadInt32(), true, cancellationToken),
 			ClientPacketType.FriendRemove => FriendAsync(osu, reader.ReadInt32(), false, cancellationToken),
-			ClientPacketType.SetAwayMessage => Run(() => SetAway(osu, reader.ReadMessage().Text)),
-			ClientPacketType.ToggleBlockNonFriendDms => Run(() =>
-				osu.User.ScopeTo(osu).Profile.SetPmPrivate(reader.ReadInt32() == 1)),
+			ClientPacketType.SetAwayMessage => SetAwayAsync(osu, reader.ReadMessage().Text, cancellationToken),
+			ClientPacketType.ToggleBlockNonFriendDms => sender.Send(new SetPmPrivate(osu, reader.ReadInt32() == 1), cancellationToken).AsTask(),
 			ClientPacketType.BeatmapInfoRequest => BeatmapInfoAsync(osu, reader.ReadBeatmapInfoRequest(),
 				cancellationToken),
 			ClientPacketType.ChannelJoin => JoinChannelAsync(osu, reader.ReadOsuString(), cancellationToken),
@@ -176,9 +176,9 @@ internal sealed partial class PacketHandlers(
 		else await scoped.RemoveFriendAsync(cancellationToken);
 	}
 
-	private static void SetAway(StableConnection osu, string text)
+	private async Task SetAwayAsync(StableConnection osu, string text, CancellationToken cancellationToken)
 	{
-		osu.User.ScopeTo(osu).Profile.SetAway(string.IsNullOrEmpty(text) ? null : text);
+		await sender.Send(new SetAwayMessage(osu, string.IsNullOrEmpty(text) ? null : text), cancellationToken);
 	}
 
 	private async Task BeatmapInfoAsync(StableConnection osu, BeatmapInfoRequest request,
