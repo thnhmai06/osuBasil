@@ -45,7 +45,7 @@ internal sealed class BotHarness : IDisposable
 		Faqs = App.Provider.GetRequiredService<IFaqStorage>();
 		Targets = new MpTargets();
 		Mp = new MpCommands(App.Lobby, App.Users, Users, Beatmaps, Targets, App.Sender);
-		Chat = new ChatCommands(Users, Faqs, Mp, new ChannelCommands(App.Server, App.Channels),
+		Chat = new ChatCommands(Users, Faqs, Mp, new ChannelCommands(App.Sender, App.Channels),
 			random ?? new FixedRandom(0));
 	}
 
