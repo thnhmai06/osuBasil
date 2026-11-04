@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Mechanics;
@@ -27,7 +28,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Slots.MoveAsync(target, slot, cancellationToken);
+		var outcome = await sender.Send(new MovePlayer(actor, room, target, slot), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -61,7 +62,7 @@ internal sealed partial class MpCommands
 		var host = registry.Online.GetValueOrDefault(target)?.Stable;
 		var outcome = host is not { IsOpen: true }
 			? RoomOutcome.TargetOffline
-			: await room.ScopeTo(actor).Authority.SetHostAsync(host, cancellationToken);
+			: await sender.Send(new SetRoomHost(actor, room, host), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -72,10 +73,10 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	private static async Task<bool> ClearHostAsync(CommandContext context, Room room,
+	private async Task<bool> ClearHostAsync(CommandContext context, Room room,
 		CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.Actor).Authority.SetHostAsync(null, cancellationToken);
+		var outcome = await sender.Send(new SetRoomHost(context.Actor, room, null), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -109,7 +110,7 @@ internal sealed partial class MpCommands
 		var targetUser = registry.Online.GetValueOrDefault(target);
 		var outcome = targetUser is null
 			? RoomOutcome.TargetOffline
-			: await room.ScopeTo(actor).Members.InviteAsync(targetUser, cancellationToken);
+			: await sender.Send(new InvitePlayer(actor, room, targetUser), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -140,7 +141,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Members.KickAsync(target, cancellationToken);
+		var outcome = await sender.Send(new KickPlayer(actor, room, target), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -169,7 +170,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Members.BanAsync(target, cancellationToken);
+		var outcome = await sender.Send(new BanPlayer(actor, room, target), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -198,7 +199,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Members.UnbanAsync(target, cancellationToken);
+		var outcome = await sender.Send(new UnbanPlayer(actor, room, target), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -237,7 +238,7 @@ internal sealed partial class MpCommands
 		}
 
 		var team = teamArg == "red" ? GameTeam.Red : GameTeam.Blue;
-		var outcome = await room.ScopeTo(actor).Slots.SetTeamAsync(target, team, cancellationToken);
+		var outcome = await sender.Send(new SetPlayerTeam(actor, room, target, team), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

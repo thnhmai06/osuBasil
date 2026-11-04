@@ -49,6 +49,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil.Tests"/>
+		<InternalsVisibleTo Include="Basil.Testing"/>
 	</ItemGroup>
 
 	<ItemGroup>

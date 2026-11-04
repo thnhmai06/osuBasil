@@ -1,4 +1,5 @@
-using Basil.Application.Multiplayer.Capabilities.Rooms;
+using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
@@ -8,6 +9,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Multiplayer;
 using Basil.Protocol.Stable.Wire.Packets;
+using Mediator;
 
 namespace Basil.Host.Stable.Packets;
 
@@ -25,31 +27,30 @@ internal sealed partial class PacketHandlers
 		}
 
 		if (lobby.RoomOf(osu) is not { } room) return Task.CompletedTask;
-		var scoped = room.ScopeTo(osu);
 		return type switch
 		{
-			ClientPacketType.PartMatch => scoped.Members.LeaveAsync(cancellationToken),
-			ClientPacketType.MatchChangeSlot => scoped.Slots.ChangeAsync(reader.ReadInt32(), cancellationToken),
-			ClientPacketType.MatchReady => scoped.Slots.SetReadyAsync(true, cancellationToken),
-			ClientPacketType.MatchNotReady => scoped.Slots.SetReadyAsync(false, cancellationToken),
-			ClientPacketType.MatchLock => scoped.Slots.ToggleLockAsync(reader.ReadInt32(), cancellationToken),
-			ClientPacketType.MatchChangeMods => scoped.Slots.SetModsAsync(
-				WireMap.Mods(reader.ReadInt32()),
+			ClientPacketType.PartMatch => Ask(new LeaveRoom(osu, room), cancellationToken),
+			ClientPacketType.MatchChangeSlot => Ask(new ChangeSlot(osu, room, reader.ReadInt32()), cancellationToken),
+			ClientPacketType.MatchReady => Ask(new SetReady(osu, room, true), cancellationToken),
+			ClientPacketType.MatchNotReady => Ask(new SetReady(osu, room, false), cancellationToken),
+			ClientPacketType.MatchLock => Ask(new ToggleSlotLock(osu, room, reader.ReadInt32()), cancellationToken),
+			ClientPacketType.MatchChangeMods => Ask(new SetMods(osu, room, WireMap.Mods(reader.ReadInt32())),
 				cancellationToken),
-			ClientPacketType.MatchChangeTeam => scoped.Slots.ToggleTeamAsync(cancellationToken),
-			ClientPacketType.MatchNoBeatmap => scoped.Slots.SetHasMapAsync(false, cancellationToken),
-			ClientPacketType.MatchHasBeatmap => scoped.Slots.SetHasMapAsync(true, cancellationToken),
-			ClientPacketType.MatchStart => scoped.Rounds.StartAsync(cancellationToken),
-			ClientPacketType.MatchLoadComplete => scoped.Rounds.MarkLoadedAsync(cancellationToken),
-			ClientPacketType.MatchSkipRequest => scoped.Rounds.SkipAsync(cancellationToken),
-			ClientPacketType.MatchFailed => scoped.Rounds.FailAsync(cancellationToken),
-			ClientPacketType.MatchComplete => scoped.Rounds.CompleteAsync(cancellationToken),
+			ClientPacketType.MatchChangeTeam => Ask(new ToggleTeam(osu, room), cancellationToken),
+			ClientPacketType.MatchNoBeatmap => Ask(new SetHasMap(osu, room, false), cancellationToken),
+			ClientPacketType.MatchHasBeatmap => Ask(new SetHasMap(osu, room, true), cancellationToken),
+			ClientPacketType.MatchStart => Ask(new StartRound(osu, room), cancellationToken),
+			ClientPacketType.MatchLoadComplete => Ask(new MarkRoundLoaded(osu, room), cancellationToken),
+			ClientPacketType.MatchSkipRequest => Ask(new SkipRound(osu, room), cancellationToken),
+			ClientPacketType.MatchFailed => Ask(new FailRound(osu, room), cancellationToken),
+			ClientPacketType.MatchComplete => Ask(new CompleteRound(osu, room), cancellationToken),
 			ClientPacketType.MatchTransferHost =>
-				TransferHostAsync(scoped, room, reader.ReadInt32(), cancellationToken),
-			ClientPacketType.MatchInvite => InviteAsync(scoped, reader.ReadInt32(), cancellationToken),
-			ClientPacketType.MatchChangePassword => ConfigureAsync(scoped,
-				new RoomSettingsChange(Password: reader.ReadMatch().Password), cancellationToken),
-			ClientPacketType.MatchChangeSettings => ChangeSettingsAsync(scoped, room, reader.ReadMatch(),
+				TransferHostAsync(osu, room, reader.ReadInt32(), cancellationToken),
+			ClientPacketType.MatchInvite => InviteAsync(osu, room, reader.ReadInt32(), cancellationToken),
+			ClientPacketType.MatchChangePassword => Ask(
+				new ConfigureRoom(osu, room, new RoomSettingsChange(Password: reader.ReadMatch().Password)),
+				cancellationToken),
+			ClientPacketType.MatchChangeSettings => ChangeSettingsAsync(osu, room, reader.ReadMatch(),
 				cancellationToken),
 			ClientPacketType.MatchScoreUpdate => Run(() => ForwardScore(osu, room, reader)),
 			_ => Task.CompletedTask
@@ -60,9 +61,8 @@ internal sealed partial class PacketHandlers
 		CancellationToken cancellationToken)
 	{
 		var matchSettings = SettingsOf(match);
-		var (room, result) = await lobby.ScopeTo(osu).OpenRoomAsync(match.Name, match.Password, false, false,
-			matchSettings,
-			cancellationToken);
+		var (room, result) = await sender.Send(
+			new OpenRoom(osu, match.Name, match.Password, false, false, matchSettings), cancellationToken);
 		if (room is null || !result.IsOk)
 		{
 			outbox.Send(osu, writer => writer.MatchJoinFail());
@@ -70,14 +70,14 @@ internal sealed partial class PacketHandlers
 		}
 
 		if (BeatmapOf(match) is { } beatmapChange)
-			await room.ScopeTo(osu).Settings.ConfigureAsync(await beatmapChange, cancellationToken);
+			await sender.Send(new ConfigureRoom(osu, room, await beatmapChange), cancellationToken);
 	}
 
 	private async Task JoinMatchAsync(StableConnection osu, JoinMatchRequest request,
 		CancellationToken cancellationToken)
 	{
 		var result = lobby.Find(request.MatchId) is { IsClosed: false } room
-			? await room.ScopeTo(osu).Members.JoinAsync(request.Password, cancellationToken)
+			? await sender.Send(new JoinRoom(osu, room, request.Password), cancellationToken)
 			: default;
 		if (!result.IsOk) outbox.Send(osu, writer => writer.MatchJoinFail());
 	}
@@ -110,7 +110,7 @@ internal sealed partial class PacketHandlers
 		}
 	}
 
-	private async Task ChangeSettingsAsync(ScopedRoom scoped, Room room, RoomStatePacket match,
+	private async Task ChangeSettingsAsync(StableConnection osu, Room room, RoomStatePacket match,
 		CancellationToken cancellationToken)
 	{
 		var current = room.Settings.MatchSettings;
@@ -129,26 +129,26 @@ internal sealed partial class PacketHandlers
 		if (BeatmapOf(match) is { } beatmapChange && room.Settings.Beatmap?.Hash.ToString() != match.MapMd5)
 			change = change with { Beatmap = (await beatmapChange).Beatmap };
 
-		await ConfigureAsync(scoped, change, cancellationToken);
+		await sender.Send(new ConfigureRoom(osu, room, change), cancellationToken);
 	}
 
-	private static Task ConfigureAsync(ScopedRoom scoped, RoomSettingsChange change,
-		CancellationToken cancellationToken)
+	private Task Ask<TMessage>(TMessage message, CancellationToken cancellationToken)
+		where TMessage : IRequest<Result<RoomOutcome>>
 	{
-		return scoped.Settings.ConfigureAsync(change, cancellationToken);
+		return sender.Send(message, cancellationToken).AsTask();
 	}
 
-	private static Task TransferHostAsync(ScopedRoom scoped, Room room, int slot, CancellationToken cancellationToken)
+	private Task TransferHostAsync(StableConnection osu, Room room, int slot, CancellationToken cancellationToken)
 	{
 		return room.Slots.At(slot)?.Player is { } player
-			? scoped.Authority.SetHostAsync(player, cancellationToken)
+			? Ask(new SetRoomHost(osu, room, player), cancellationToken)
 			: Task.CompletedTask;
 	}
 
-	private async Task InviteAsync(ScopedRoom scoped, int userId, CancellationToken cancellationToken)
+	private async Task InviteAsync(StableConnection osu, Room room, int userId, CancellationToken cancellationToken)
 	{
 		if (await FindUserAsync(userId, cancellationToken) is { } record)
-			await scoped.Members.InviteAsync(registry.Of(record), cancellationToken);
+			await sender.Send(new InvitePlayer(osu, room, registry.Of(record)), cancellationToken);
 	}
 
 	private void ForwardScore(StableConnection osu, Room room, PacketReader reader)
@@ -162,7 +162,7 @@ internal sealed partial class PacketHandlers
 	private async Task TourneyInfoAsync(Connection actor, int matchId, CancellationToken cancellationToken)
 	{
 		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
-		if (!await lobby.ScopeTo(actor).CanViewAsync(room.Match, cancellationToken)) return;
+		if (!await sender.Send(new CanViewMatch(actor, room.Match), cancellationToken)) return;
 		var match = StableView.Match(room);
 		outbox.Send(actor, writer => writer.UpdateMatch(match, false));
 	}
@@ -170,13 +170,13 @@ internal sealed partial class PacketHandlers
 	private async Task TourneyJoinAsync(Connection actor, int matchId, CancellationToken cancellationToken)
 	{
 		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
-		if (!await lobby.ScopeTo(actor).CanViewAsync(room.Match, cancellationToken)) return;
-		await room.ScopeTo(actor).Members.ObserverJoinAsync(cancellationToken);
+		if (!await sender.Send(new CanViewMatch(actor, room.Match), cancellationToken)) return;
+		await sender.Send(new ObserveRoom(actor, room), cancellationToken);
 	}
 
 	private async Task TourneyLeaveAsync(Connection actor, int matchId, CancellationToken cancellationToken)
 	{
 		if (actor is TourneyConnection && lobby.Find(matchId) is { } room)
-			await room.ScopeTo(actor).Members.ObserverLeaveAsync(cancellationToken);
+			await sender.Send(new StopObservingRoom(actor, room), cancellationToken);
 	}
 }

@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects.Rooms;
 
 namespace Basil.Bot.Commands.Mp;
@@ -24,7 +25,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Authority.AddRefereeAsync(target, cancellationToken);
+		var outcome = await sender.Send(new AddReferee(actor, room, target), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -53,7 +54,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(actor).Authority.RemoveRefereeAsync(target, cancellationToken);
+		var outcome = await sender.Send(new RemoveReferee(actor, room, target), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

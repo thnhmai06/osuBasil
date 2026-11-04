@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects.Rooms;
 
 namespace Basil.Bot.Commands.Mp;
@@ -15,8 +16,7 @@ internal sealed partial class MpCommands
 			: context.Replies.Text(MpReplies.DefaultRoomName, new { name = context.Sender.Value.Name });
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var (room, outcome) = await lobby.ScopeTo(actor).OpenRoomAsync(name, "", true, isPrivate,
-			cancellationToken: cancellationToken);
+		var (room, outcome) = await sender.Send(new OpenRoom(actor, name, "", true, isPrivate), cancellationToken);
 		if (!outcome.IsOk || room is null)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -50,7 +50,7 @@ internal sealed partial class MpCommands
 		}
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : string.Empty;
-		var outcome = await room.ScopeTo(actor).Members.JoinAsync(password, cancellationToken);
+		var outcome = await sender.Send(new JoinRoom(actor, room, password), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -101,9 +101,9 @@ internal sealed partial class MpCommands
 
 	// ── !mp close ────────────────────────────────────────────────────────────────────────
 
-	private static async Task<bool> CloseAsync(CommandContext context, Room room, CancellationToken cancellationToken)
+	private async Task<bool> CloseAsync(CommandContext context, Room room, CancellationToken cancellationToken)
 	{
-		var outcome = await room.ScopeTo(context.Actor).CloseAsync(cancellationToken);
+		var outcome = await sender.Send(new CloseRoom(context.Actor, room), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

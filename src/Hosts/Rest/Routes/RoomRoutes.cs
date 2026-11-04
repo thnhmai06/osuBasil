@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Multiplayer.Messages;
 using System.Text.Json;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects.Rooms;
@@ -32,9 +34,9 @@ internal static class RoomRoutes
 	/// <summary>Maps <c>POST /rooms/{id}/{name}</c> to a room operation of the scoped room.</summary>
 	private static void Command(RouteGroupBuilder rooms, RoomCommand command)
 	{
-		rooms.MapPost("/{id:int}/" + command.Name, async (HttpContext context, int id, Lobby lobby) =>
+		rooms.MapPost("/{id:int}/" + command.Name, async (HttpContext context, int id, Lobby lobby, ISender sender) =>
 		{
-			if (await Find(context, lobby, id) is not { } room) return Api.NotFound("No such room.");
+			if (await Find(context, lobby, sender, id) is not { } room) return Api.NotFound("No such room.");
 
 			object? body = null;
 			if (command.Body is { } type)
@@ -52,43 +54,42 @@ internal static class RoomRoutes
 				if (body is null) return Api.Invalid("A body is required.");
 			}
 
-			var result = await command.Run(room.ScopeTo(context.Connection()), body, context.RequestServices,
-				context.RequestAborted);
+			var result = await command.Run(new RoomCall(sender, context.Connection(), room), body,
+				context.RequestServices, context.RequestAborted);
 			return result.Answer();
 		}).WithSummary(command.Summary).WithTags("Rooms");
 	}
 
-	private static async Task<Room?> Find(HttpContext context, Lobby lobby, int id)
+	private static async Task<Room?> Find(HttpContext context, Lobby lobby, ISender sender, int id)
 	{
 		return lobby.Find(id) is { } room &&
-		       await lobby.ScopeTo(context.Connection()).CanViewAsync(room.Match, context.RequestAborted)
+		       await sender.Send(new CanViewMatch(context.Connection(), room.Match), context.RequestAborted)
 			? room
 			: null;
 	}
 
-	private static async Task<IResult> ListAsync(HttpContext context, Lobby lobby, int? offset, int? limit)
+	private static async Task<IResult> ListAsync(HttpContext context, Lobby lobby, ISender sender, int? offset, int? limit)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var scoped = lobby.ScopeTo(context.Connection());
 		var visible = new List<Room>();
 		foreach (var room in lobby.Rooms.Values.OrderBy(room => room.Id))
-			if (await scoped.CanViewAsync(room.Match, context.RequestAborted))
+			if (await sender.Send(new CanViewMatch(context.Connection(), room.Match), context.RequestAborted))
 				visible.Add(room);
 
 		return Api.Paged(new Page<RoomView>([.. visible.Skip(page!.Offset).Take(page.Limit).Select(RoomView.Of)],
 			visible.Count), page);
 	}
 
-	private static async Task<IResult> GetAsync(HttpContext context, Lobby lobby, int id)
+	private static async Task<IResult> GetAsync(HttpContext context, Lobby lobby, ISender sender, int id)
 	{
-		return await Find(context, lobby, id) is { } room ? Api.Ok(RoomView.Of(room)) : Api.NotFound("No such room.");
+		return await Find(context, lobby, sender, id) is { } room ? Api.Ok(RoomView.Of(room)) : Api.NotFound("No such room.");
 	}
 
-	private static async Task<IResult> LiveAsync(HttpContext context, Lobby lobby, int id)
+	private static async Task<IResult> LiveAsync(HttpContext context, Lobby lobby, ISender sender, int id)
 	{
-		if (await Find(context, lobby, id) is not { } room) return Api.NotFound("No such room.");
+		if (await Find(context, lobby, sender, id) is not { } room) return Api.NotFound("No such room.");
 
 		var initial = RoomView.Of(room);
 		var last = JsonSerializer.Serialize(initial, Api.Json);
@@ -107,14 +108,13 @@ internal static class RoomRoutes
 			});
 	}
 
-	private static async Task<IResult> CreateAsync(HttpContext context, Lobby lobby, CreateRoomRequest request)
+	private static async Task<IResult> CreateAsync(HttpContext context, ISender sender, CreateRoomRequest request)
 	{
 		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
 
-		var (room, result) = await lobby.ScopeTo(context.Connection()).OpenRoomAsync(
-			RoomCommands.Truncate(request.Name),
-			request.Password ?? string.Empty, true, request.IsPrivate ?? false,
-			cancellationToken: context.RequestAborted);
+		var (room, result) = await sender.Send(new OpenRoom(context.Connection(),
+			RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, true, request.IsPrivate ?? false),
+			context.RequestAborted);
 		return result.IsOk ? Api.Created(RoomView.Of(room!)) : result.Refusal();
 	}
 }
