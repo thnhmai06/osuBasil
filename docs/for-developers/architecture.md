@@ -97,6 +97,22 @@ Objects      runtime objects that own state, invariants and behaviour (User, Con
 * A handler that translates a Notification to a wire (Notification to packets or lines) lives in the host that owns that
   wire (the IRC host's `Delivery/` folder is the model).
 
+### Messages
+
+A message is a Mediator **request**: a `record` in the owning module's Application project that implements
+`IRequest<TResponse>` and carries the `Connection` of the caller as `Actor` (a login carries none, because it creates the
+`Connection`). Mediator maps each request type to exactly one handler, so the host never names a handler.
+
+* A command changes state and answers `Result<TOutcome>` (the outcome enum of the object it acts on); a query reads and
+  answers a view or `null`. Both are requests; the name says which (`PostChatMessage`, `GetChannelMembers`).
+* A message addresses things by identity, not by a transport's spelling: chat uses a `ChatTarget` (a general channel's
+  name, a room's id, a user's id), never an IRC `#name` or an osu! alias. The host translates its own spelling.
+* A message is a public type of Application; its handler is `internal` in Infrastructure and the `Basil` project is made
+  a friend of that assembly, because the one `AddMediator` call there generates the dispatch.
+* Pipeline behaviors apply to requests only; a Notification never passes through them.
+* Notifications are published by the event dispatcher, one handler after another; a handler that throws is logged and
+  the others still run (see below).
+
 ## Events and locks
 
 An object publishes an event while it holds its own lock (a `Room` changes state and announces it in one transition).
