@@ -1,6 +1,7 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Messages;
-using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Bot.Countdowns;
 
 namespace Basil.Bot.Commands.Mp;
 
@@ -43,7 +44,13 @@ internal sealed partial class MpCommands
 		CancellationToken cancellationToken)
 	{
 		var actor = context.Actor;
-		var outcome = await sender.Send(new CancelCountdown(actor, room), cancellationToken);
+		var outcome = await sender.Send(new CancelRoomCountdown(actor, room), cancellationToken);
+		if (outcome is { IsOk: false, Outcome: RoomOutcome.NotInProgress })
+		{
+			await context.Reply(MpReplies.NoCountdownRunning, cancellationToken);
+			return false;
+		}
+
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -66,13 +73,13 @@ internal sealed partial class MpCommands
 		CancellationToken cancellationToken)
 	{
 		var actor = context.Actor;
-		if (seconds < 1 || TimeSpan.FromSeconds(seconds) > ScopedRoomRounds.MaxCountdown)
+		if (seconds < 1 || TimeSpan.FromSeconds(seconds) > RoomCountdown.Max)
 		{
 			await context.Reply(MpReplies.CountdownOutOfRange, cancellationToken);
 			return false;
 		}
 
-		var outcome = await sender.Send(new StartCountdown(actor, room, TimeSpan.FromSeconds(seconds), startsRound), cancellationToken);
+		var outcome = await sender.Send(new StartRoomCountdown(actor, room, TimeSpan.FromSeconds(seconds), startsRound), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

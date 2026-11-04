@@ -1,6 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
-using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
@@ -153,7 +152,7 @@ public static class RoomCommands
 		Command<CountdownRequest>("timer", "Start a countdown of 30 seconds or the given length.",
 			(r, b, _, ct) => Countdown(r, b.Seconds ?? 30, false, ct)),
 		Command<object?>("aborttimer", "Cancel the running countdown.",
-			(r, _, _, ct) => r.Ask(new CancelCountdown(r.Actor, r.Room), ct)),
+			(r, _, _, ct) => r.Ask(new CancelRoomCountdown(r.Actor, r.Room), ct)),
 		Command<object?>("abort", "Abort the round in progress.", (r, _, _, ct) => r.Ask(new AbortRound(r.Actor, r.Room), ct))
 	];
 
@@ -178,9 +177,7 @@ public static class RoomCommands
 	private static Task<Result<RoomOutcome>> Countdown(RoomCall room, int seconds, bool startsRound,
 		CancellationToken ct)
 	{
-		return seconds < 1 || TimeSpan.FromSeconds(seconds) > ScopedRoomRounds.MaxCountdown
-			? Refuse(RoomOutcome.InvalidSettings)
-			: room.Ask(new StartCountdown(room.Actor, room.Room, TimeSpan.FromSeconds(seconds), startsRound), ct);
+		return room.Ask(new StartRoomCountdown(room.Actor, room.Room, TimeSpan.FromSeconds(seconds), startsRound), ct);
 	}
 
 	private static async Task<Result<RoomOutcome>> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,

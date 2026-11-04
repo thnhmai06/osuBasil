@@ -1,6 +1,7 @@
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
+using Basil.Bot.Countdowns;
 using Basil.Bot.Replies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +42,7 @@ public static class DependencyInjection
 		services.AddSingleton<RepliesWatcher>();
 		services.AddHostedService(sp => sp.GetRequiredService<RepliesWatcher>());
 		services.AddSingleton<MpTargets>();
+		services.AddSingleton<RoomCountdowns>();
 		services.AddSingleton<MpCommands>();
 		services.AddSingleton<ChannelCommands>();
 		services.AddSingleton<ChatCommands>();

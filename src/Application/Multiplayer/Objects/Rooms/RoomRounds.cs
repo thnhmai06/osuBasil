@@ -2,7 +2,7 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <summary>The rounds and countdown of a room.</summary>
+/// <summary>The rounds of a room.</summary>
 public sealed class RoomRounds
 {
 	/// <summary>Gets the most recently started round, or <see langword="null" /> before the first round.</summary>
@@ -23,10 +23,4 @@ public sealed class RoomRounds
 
 	/// <summary>What the latest round still waits for, or <see langword="null" /> before the first round.</summary>
 	internal RoundSettlement? Settlement { get; set; }
-
-	/// <summary>Gets the countdown running for the room, or <see langword="null" /> when none is running.</summary>
-	public RoomCountdown? Countdown { get; internal set; }
-
-	/// <summary>The timers that announce the countdown marks and its end.</summary>
-	internal ITimer[] CountdownTimers { get; set; } = [];
 }

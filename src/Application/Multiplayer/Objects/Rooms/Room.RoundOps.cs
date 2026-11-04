@@ -3,16 +3,12 @@ using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <content>Round transitions: starting, aborting, countdowns and the players' reports of what they do.</content>
+/// <content>Round transitions: starting, aborting and the players' reports of what they do.</content>
 public sealed partial class Room
 {
-	/// <summary>The longest countdown a room accepts.</summary>
-	public static readonly TimeSpan MaxCountdown = TimeSpan.FromHours(1);
-
 	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
 	/// <returns>Ok, InProgress, NoBeatmap or RoomClosed.</returns>
 	internal Result<RoomOutcome> StartRound()
@@ -23,43 +19,9 @@ public sealed partial class Room
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
 			if (Settings.Beatmap is null) return RoomOutcome.NoBeatmap;
 
-			CancelCountdown(RoomCountdownCancelReason.RoundStarted);
 			var (round, players) = BeginRound();
 			Emit(new RoomRoundStarted(this, round, players));
 			return RoomOutcome.Ok;
-		}
-	}
-
-	/// <summary>Starts a countdown, optionally starting a round when it elapses.</summary>
-	/// <param name="actor">The user who starts the countdown.</param>
-	/// <param name="length">How long the countdown runs.</param>
-	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
-	/// <returns>
-	///     Ok, InvalidSettings (shorter than one second or longer than <see cref="MaxCountdown" />), InProgress or
-	///     RoomClosed.
-	/// </returns>
-	internal Result<RoomOutcome> BeginCountdown(UserRecord actor, TimeSpan length, bool startsRound)
-	{
-		lock (_sync)
-		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (length < TimeSpan.FromSeconds(1) || length > MaxCountdown) return RoomOutcome.InvalidSettings;
-			if (startsRound && Rounds.InProgress) return RoomOutcome.InProgress;
-
-			StartCountdown(actor, length, startsRound);
-			return RoomOutcome.Ok;
-		}
-	}
-
-	/// <summary>Cancels the room's current countdown.</summary>
-	/// <returns>Ok, NoCountdown or RoomClosed.</returns>
-	internal Result<RoomOutcome> StopCountdown()
-	{
-		lock (_sync)
-		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-
-			return CancelCountdown(RoomCountdownCancelReason.Aborted) ? RoomOutcome.Ok : RoomOutcome.NoCountdown;
 		}
 	}
 
@@ -72,7 +34,6 @@ public sealed partial class Room
 			if (IsClosed) return RoomOutcome.RoomClosed;
 			if (!Rounds.InProgress) return RoomOutcome.NotInProgress;
 
-			CancelCountdown(RoomCountdownCancelReason.RoundAborted);
 			var round = EndCurrentRound(true)!;
 			Emit(new RoomRoundAborted(this, round));
 			return RoomOutcome.Ok;

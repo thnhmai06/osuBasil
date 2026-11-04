@@ -228,7 +228,6 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 		var aborted = room.EndCurrentRound(true);
 		room.DecideForClosing();
-		room.CancelCountdown(null);
 
 		var evicted = room.Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
 		foreach (var player in evicted) room.Vacate(player);

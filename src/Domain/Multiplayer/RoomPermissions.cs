@@ -46,8 +46,7 @@ public enum RoomPermissions : uint
 	/// <summary>Abort a round in progress.</summary>
 	RoundsAbort = 1 << 13,
 
-	/// <summary>Set or cancel countdowns.</summary>
-	RoundsCountdown = 1 << 14,
+	// 1 << 14 was RoundsCountdown; the countdown moved to BasilBot. The value stays unused and is never reassigned.
 
 	/// <summary>Close the room.</summary>
 	RoomClose = 1 << 15,
@@ -71,7 +70,7 @@ public static class RoomPermissionsGroups
 	                                   RoomPermissions.MembersInvite |
 	                                   RoomPermissions.RefereesManage | RoomPermissions.HostTransfer |
 	                                   RoomPermissions.RoundsStart | RoomPermissions.RoundsAbort |
-	                                   RoomPermissions.RoundsCountdown | RoomPermissions.RoomClose |
+	                                   RoomPermissions.RoomClose |
 	                                   RoomPermissions.ChatPost;
 
 	/// <summary>Gets the permissions granted by a combination of roles.</summary>
@@ -94,8 +93,7 @@ public static class RoomPermissionsGroups
 				RoomPermissions.MembersKick |
 				RoomPermissions.HostTransfer |
 				RoomPermissions.RoundsStart |
-				RoomPermissions.RoundsAbort |
-				RoomPermissions.RoundsCountdown;
+				RoomPermissions.RoundsAbort;
 
 		if ((roles & RoomRoles.Referee) != 0)
 			permissions |= All & ~RoomPermissions.RefereesManage;
