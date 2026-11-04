@@ -1,22 +1,16 @@
-using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Imports one uploaded beatmapset archive.</summary>
 internal sealed class BeatmapsetImporter(
 	IBeatmapsetStorage storage,
 	BeatmapsetPlanner planner,
-	BeatmapsetStorer storer)
+	BeatmapsetStorer storer) : IBeatmapsetImporter
 {
-	/// <summary>Imports one uploaded archive as a beatmapset.</summary>
-	/// <param name="archive">The uploaded archive.</param>
-	/// <param name="replaceExisting">
-	///     Whether an archive of a beatmapset the server already has replaces it; otherwise it is rejected.
-	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The result of the import and the beatmapset taken in, or <see langword="null" /> when it was rejected.</returns>
+	/// <inheritdoc />
 	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
 		bool replaceExisting, CancellationToken cancellationToken = default)
 	{

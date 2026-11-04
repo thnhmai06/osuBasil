@@ -2,7 +2,7 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Analyses the difficulties of a beatmapset.</summary>
 internal sealed class DifficultyAnalyser(IBeatmapAnalyser analyser)

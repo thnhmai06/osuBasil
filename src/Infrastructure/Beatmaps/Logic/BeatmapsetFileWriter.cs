@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Makes the files a stored beatmapset serves from its archive.</summary>
 internal sealed class BeatmapsetFileWriter(

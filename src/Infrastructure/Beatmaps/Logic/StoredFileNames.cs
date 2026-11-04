@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Persistence;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Chooses the names the files of a beatmapset are stored under.</summary>
 internal static partial class StoredFileNames

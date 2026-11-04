@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Domain.Common;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>The beatmapsets and difficulties already given to an archive by one scan or import.</summary>
 /// <remarks>Two archives of one scan never become the same beatmapset nor share a difficulty: the first wins.</remarks>

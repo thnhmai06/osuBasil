@@ -2,7 +2,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Checks that a stored beatmapset has every file it serves.</summary>
 internal sealed class BeatmapsetFileAudit(IBeatmapsetStorage storage, IBeatmapRepository beatmaps)

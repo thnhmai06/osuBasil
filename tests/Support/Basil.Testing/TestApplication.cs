@@ -28,6 +28,7 @@ using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,6 +106,7 @@ public sealed class TestApplication : IDisposable
 		configure?.Invoke(services);
 		services.AddUsersLogic();
 		services.AddScoresLogic();
+		services.AddBeatmapsLogic();
 		services.AddBasilApplication();
 		// The host registers the bot's handlers with the others, so a container built like the host needs the bot's services too.
 		services.AddBot();

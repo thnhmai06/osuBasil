@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Finds the stored beatmapset a read archive belongs to and whether storing it would touch something locked.</summary>
 internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapsetRepository beatmapsets)

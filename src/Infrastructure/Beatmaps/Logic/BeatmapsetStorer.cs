@@ -1,9 +1,8 @@
-using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Stores planned beatmapsets and forgets stored ones.</summary>
 internal sealed class BeatmapsetStorer(

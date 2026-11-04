@@ -2,6 +2,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Infrastructure.Beatmaps.Adapters;
+using Basil.Infrastructure.Beatmaps.Logic;
 using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Infrastructure.Beatmaps.Workers;
@@ -32,6 +33,23 @@ public static class DependencyInjection
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
 		services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
 		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
+		services.AddBeatmapsLogic();
+		return services;
+	}
+
+	/// <summary>Adds the rules that import, plan, store and scan beatmapsets.</summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	public static IServiceCollection AddBeatmapsLogic(this IServiceCollection services)
+	{
+		services.AddSingleton<DifficultyAnalyser>();
+		services.AddSingleton<BeatmapsetMatcher>();
+		services.AddSingleton<BeatmapsetPlanner>();
+		services.AddSingleton<BeatmapsetFileWriter>();
+		services.AddSingleton<BeatmapsetFileAudit>();
+		services.AddSingleton<BeatmapsetStorer>();
+		services.AddSingleton<IBeatmapsetImporter, BeatmapsetImporter>();
+		services.AddSingleton<IBeatmapsetScanner, BeatmapsetScanner>();
 		return services;
 	}
 

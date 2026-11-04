@@ -1,11 +1,10 @@
-using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Reads archives and plans the beatmapsets they hold.</summary>
 internal sealed class BeatmapsetPlanner(

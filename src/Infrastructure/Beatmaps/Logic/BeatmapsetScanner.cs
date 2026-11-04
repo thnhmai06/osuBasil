@@ -1,11 +1,11 @@
-using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 
-namespace Basil.Application.Beatmaps.Logic;
+namespace Basil.Infrastructure.Beatmaps.Logic;
 
 /// <summary>Keeps the beatmapsets the server has in step with the archives in the storage.</summary>
 internal sealed class BeatmapsetScanner(
@@ -15,11 +15,9 @@ internal sealed class BeatmapsetScanner(
 	BeatmapsetPlanner planner,
 	BeatmapsetStorer storer,
 	BeatmapsetFileWriter files,
-	BeatmapsetFileAudit audit)
+	BeatmapsetFileAudit audit) : IBeatmapsetScanner
 {
-	/// <summary>Brings the server in step with every entry of the storage.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
+	/// <inheritdoc />
 	public async Task<BeatmapsetScanOutcome> ScanAsync(CancellationToken cancellationToken = default)
 	{
 		var packed = new List<BeatmapsetArchive>();
@@ -35,10 +33,7 @@ internal sealed class BeatmapsetScanner(
 		}
 	}
 
-	/// <summary>Brings the server in step with one entry of the storage.</summary>
-	/// <param name="entry">The entry as it is now.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
+	/// <inheritdoc />
 	public async Task<BeatmapsetScanOutcome> ScanAsync(BeatmapsetSource entry,
 		CancellationToken cancellationToken = default)
 	{
