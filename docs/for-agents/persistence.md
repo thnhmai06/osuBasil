@@ -2,7 +2,7 @@
 
 Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Application/Persistence`, `Application/Storage` or `Application/Registry`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Common`.
 
-> **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **removed**: every module repository runs on `DatabaseSession`. The split into `Basil.Infrastructure.Postgres` and the `write_tickets` table are still **(target)**.
+> **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **removed**: every module repository runs on `DatabaseSession`. PostgreSQL specifics live in `Basil.Infrastructure.Postgres`, and the `write_tickets` table no longer exists.
 
 
 
@@ -86,11 +86,13 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   kept, or the banner is left out, so the server still starts.
 * **No SQL text in Persistence.** Everything is Entity Framework Core with LINQ and row objects (`XxxRow` entities, never
   the Domain types); no Dapper, no `FromSql`/`ExecuteSql`/`SqlQuery`, no `NpgsqlCommand`. The generic EF API is what a
-  module's Infrastructure project uses; what is specific to PostgreSQL (the Npgsql provider, `Database.cs`, error
-  recognition, design-time factory and the migrations) belongs to `Basil.Infrastructure.Postgres` (**target**; today it sits
-  in `Infrastructure.Common` and the module projects) which only the composition root references. Tests run on PostgreSQL only.
+  module's Infrastructure project uses; what is specific to PostgreSQL (the Npgsql provider behind `IDatabaseProvider`, error
+  recognition, the design-time factories and the migrations) belongs to `Basil.Infrastructure.Postgres`, which only the
+  composition root references; no other `src` project has an Npgsql package (`PostgresBoundaryTests`). Rows therefore use
+  portable mappings: `ValueGeneratedOnAdd` for identities, a named sequence with `HasDefaultValueSql("nextval(...)")` where
+  a number must start above 1, and `EF.Functions.Like` over lowered text for case-insensitive search. Tests run on PostgreSQL only.
 * **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history
-  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Common, Users, Authentication, Beatmaps, Content, Scores,
+  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Authentication, Beatmaps, Content, Scores,
   Multiplayer and Chat in that order; referencing contexts preserve foreign keys by mapping principal rows as excluded from
   their migrations. The system is not in production, so a module's migrations may be regenerated while the schema settles; see
   [`database.md`](../for-developers/database.md#migrations).

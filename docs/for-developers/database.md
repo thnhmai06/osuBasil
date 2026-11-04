@@ -97,21 +97,44 @@ reference another's, the principal is not the other module's row type: `ContextM
 `UsersPrincipal` and `ScoresPrincipal`, excluded from migrations, and a row declares the key with
 `HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
-At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Common, Users, Authentication, Beatmaps, Content,
-Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. `write_tickets` (no longer written; removed with the regenerated migrations) belongs to
-Common, the beatmap id sequences belong to Beatmaps, and the seeded channels belong to Chat. Persistence holds no SQL
+At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Users, Authentication, Beatmaps, Content,
+Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The beatmap id sequences belong to Beatmaps, the user id sequence (accounts start at 2; id 1 is BasilBot) to Users, and the seeded channels to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
 
-The module `InitialCreate` migrations replace the former single `InitialCreate`. This is safe only because no database
-has applied that old migration; an already-migrated database would need a separate one-time adoption before using the
-new histories.
+### PostgreSQL provider and where the migrations live
+
+The shared `Database` and `DatabaseSession` talk to an `IDatabaseProvider` (Infrastructure.Common): it opens the pooled
+connections, points a context at a pool and its history table, and tells a unique violation and a connection failure
+apart (the open-retry of `DatabaseSession` retries only the latter). `Basil.Infrastructure.Postgres` implements it with
+Npgsql and snake_case names, owns the design-time factories and holds the migrations, one folder per module context
+(`src/Infrastructure/Postgres/Migrations/<Module>/`); history table names are unchanged. Only `Basil` references that
+project and calls `AddPostgresInfrastructure()`; module Infrastructure projects see their `DbContext` types through
+`InternalsVisibleTo`.
+
+Add a migration from the repository root (the project is also the startup project, and the output folder and namespace are
+named so the files stay in that module's folder):
+
+```bash
+dotnet ef migrations add <Name> --project src/Infrastructure/Postgres --startup-project src/Infrastructure/Postgres \
+  --context <Module>DbContext --output-dir Migrations/<Module> --namespace Basil.Infrastructure.Postgres.Migrations.<Module>
+```
+
+The generated snapshot may land in a nested `Basil/...` folder; move it next to the migration. Replace the entity-name
+string literals of generated files with `typeof(Row).FullName!`.
+
+### Regenerated once
+
+The module `InitialCreate` migrations were regenerated once when the write tickets (and the empty common context that
+held them) were removed and the Npgsql-specific mappings became portable. The system is not in production, so
+development databases are recreated; a database created by the earlier migrations cannot be upgraded in place.
+`ModuleMigrationTests` fails when a context's model differs from its migrations.
 
 ## Related code
 
 * `src/Infrastructure/Common/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
 * `src/Infrastructure/Common/Registry/` — `CacheAside`
 * `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
-* `src/Infrastructure/<Module>/Migrations/` — the module's migrations and their history table
+* `src/Infrastructure/Postgres/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
 * `src/Infrastructure/Common/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
   module migrations in the order above
 

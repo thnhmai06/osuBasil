@@ -366,8 +366,9 @@ Basil.Infrastructure.<Module>    the implementations of those contracts: Handler
                                  Persistence/, Storage/, Adapters/, Workers/         Application.Common
                                  Add<Module>Infrastructure() is its only public
                                  surface
-Basil.Infrastructure.Postgres    (target) Npgsql provider and PostgreSQL         -> Infrastructure.Common
-                                 migrations; only Basil references it
+Basil.Infrastructure.Postgres    Npgsql provider (IDatabaseProvider), design-time  -> Infrastructure.Common, the
+                                 factories and all PostgreSQL migrations;           module Infrastructure projects
+                                 only Basil references it
 Basil.Protocol.Stable            the translation language of the osu! wire,      -> Domain, external libraries
                                  score submission cipher (BouncyCastle)
 Basil.Protocol.Irc               the translation language of IRC                 -> (nothing)
@@ -514,7 +515,7 @@ Every module uses these folders, and creates only the ones it needs:
 | `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
 | `Messages/` | The Mediator requests the module answers (a message carries the `Connection` as `Actor`) and the values they name |
 
-Infrastructure mirrors those ports: `Persistence/` for Postgres, `DbContext`, rows and migrations, `Storage/` for the
+Infrastructure mirrors those ports: `Persistence/` for the `DbContext`, rows and repositories (PostgreSQL and its migrations are in `Infrastructure.Postgres`), `Storage/` for the
 file implementations, `Adapters/` for what needs an external library, `Registry/` for the shared memory
 primitives, `Handlers/` for the Mediator handlers, `Logic/` for the object-free application logic, `Services/` for the
 service implementations and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
