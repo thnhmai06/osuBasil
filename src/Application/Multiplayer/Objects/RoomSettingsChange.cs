@@ -30,4 +30,9 @@ public sealed record RoomSettingsChange(
 	string? Password = null,
 	int? Size = null,
 	bool ClearBeatmap = false,
-	bool? IsPrivate = null);
+	bool? IsPrivate = null)
+{
+	/// <summary>Gets whether the change alters what the next round plays: the beatmap, the mode, the mods, the teams or the win condition.</summary>
+	public bool AltersTheRound => Beatmap is not null || ClearBeatmap || Mode is not null || Mods is not null ||
+	                              Freemods is not null || TeamType is not null || WinCondition is not null;
+}

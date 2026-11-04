@@ -1,7 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
@@ -18,9 +17,6 @@ public readonly struct ScopedRoomRounds
 		_scoped = scoped;
 	}
 
-	/// <summary>The longest countdown a room accepts.</summary>
-	public static TimeSpan MaxCountdown => Room.MaxCountdown;
-
 	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, InProgress, NoBeatmap or RoomClosed when the room has closed.</returns>
@@ -30,31 +26,11 @@ public readonly struct ScopedRoomRounds
 		                       _scoped.Room.StartRound());
 	}
 
-	/// <summary>Starts a countdown in the room, optionally starting a round when it elapses.</summary>
-	/// <param name="length">How long the countdown runs.</param>
-	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>
-	///     Ok, NotAuthorized, InvalidSettings (shorter than one second or longer than <see cref="MaxCountdown" />),
-	///     InProgress or RoomClosed when the room has closed.
-	/// </returns>
-	public Task<Result<RoomOutcome>> StartCountdownAsync(TimeSpan length, bool startsRound,
-		CancellationToken cancellationToken = default)
+	/// <summary>Checks that the connection may start rounds, without starting one.</summary>
+	/// <returns><see langword="null" /> when allowed; otherwise the refusal that <see cref="StartAsync" /> answers.</returns>
+	public Result<RoomOutcome>? RequireStart()
 	{
-		var required = RoomPermissions.RoundsCountdown;
-		if (startsRound) required |= RoomPermissions.RoundsStart;
-
-		return Task.FromResult(_scoped.Require(required) ??
-		                       _scoped.Room.BeginCountdown(_scoped.Actor.Record, length, startsRound));
-	}
-
-	/// <summary>Cancels the room's current countdown.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, NotAuthorized, NoCountdown or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> CancelCountdownAsync(CancellationToken cancellationToken = default)
-	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.RoundsCountdown) ??
-		                       _scoped.Room.StopCountdown());
+		return _scoped.Require(RoomPermissions.RoundsStart);
 	}
 
 	/// <summary>Aborts the round in progress; players go back to not ready.</summary>

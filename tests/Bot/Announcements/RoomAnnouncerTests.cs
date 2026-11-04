@@ -10,7 +10,7 @@ using Basil.Testing;
 namespace Basil.Bot.Tests.Announcements;
 
 /// <summary>
-///     What BasilBot announces when a room's countdown, round or closing changes. Expected replies are named by the
+///     What BasilBot announces when a room's round or closing changes. Expected replies are named by the
 ///     reply that owns the wording, filled with the arguments its documentation names.
 /// </summary>
 public sealed class RoomAnnouncerTests
@@ -28,11 +28,6 @@ public sealed class RoomAnnouncerTests
 		return await StaffRoom.OpenAsync(bot, "Finals");
 	}
 
-	private static RoomCountdown CountdownIn(BotHarness bot, StaffRoom staff, TimeSpan length, bool startsRound)
-	{
-		return new RoomCountdown(staff.Creator.Record, length, startsRound, bot.App.Clock.GetUtcNow());
-	}
-
 	private static LobbyRoomClosingAnnounced ClosingIn(BotHarness bot, StaffRoom staff, TimeSpan untilClosing)
 	{
 		return new LobbyRoomClosingAnnounced(staff.Room, bot.App.Clock.GetUtcNow() + untilClosing);
@@ -43,13 +38,6 @@ public sealed class RoomAnnouncerTests
 		return new RoomPlayerJoined(staff.Room, staff.Player, 2, null, null);
 	}
 
-	private static Task CancelCountdownAsync(BotHarness bot, StaffRoom staff, RoomCountdownCancelReason reason)
-	{
-		return AnnouncerFor(bot).Handle(
-			new RoomCountdownCancelled(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(60), true), reason),
-			Token).AsTask();
-	}
-
 	/// <summary>Has the creator start a round in the room and returns the event the room published for it.</summary>
 	private static async Task<RoomRoundStarted> StartRoundAsync(BotHarness bot, StaffRoom staff)
 	{
@@ -58,223 +46,6 @@ public sealed class RoomAnnouncerTests
 		Assert.True((await bot.TypeAsync(staff.Creator, "#osu", "!mp start")).Succeeded);
 		return Assert.Single(bot.App.RoomEvents.Events.OfType<RoomRoundStarted>());
 	}
-
-	#region Countdown started
-
-	[Fact]
-	public async Task CountdownStarted_ThatStartsARound_SaysQueuedWithTheCountdownSeconds()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownStarted(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), true)), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds = 90 })],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownStarted_ThatStartsNoRound_SaysTheCountdownSeconds()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownStarted(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(45), false)), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStarted, new { seconds = 45 })],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	#endregion
-
-	#region Countdown ticked
-
-	[Fact]
-	public async Task CountdownTicked_WithARound_SaysTheRemainingSecondsForTheRound()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), true),
-				TimeSpan.FromSeconds(30)), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds = 30 })],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownTicked_WithoutARound_SaysTheRemainingSeconds()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), false),
-				TimeSpan.FromSeconds(30)), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTicked, new { seconds = 30 })],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownTicked_With59Point6SecondsLeft_SaysSixtySeconds()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), false),
-				TimeSpan.FromSeconds(59.6)), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTicked, new { seconds = 60 })],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownTicked_With59Point4SecondsLeft_SaysFiftyNineSeconds()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), false),
-				TimeSpan.FromSeconds(59.4)), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTicked, new { seconds = 59 })],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	#endregion
-
-	#region Countdown elapsed
-
-	[Fact]
-	public async Task CountdownElapsed_ThatStartedARound_WishesGoodLuck()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true),
-				RoomOutcome.Ok), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.RoundStartedByCountdown)],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownElapsed_ThatWasNotForARound_SaysItFinished()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), false),
-				RoomOutcome.Ok), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownElapsed)], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownElapsed_WithNoBeatmapSelected_SaysTheMatchCannotStart()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true),
-				RoomOutcome.NoBeatmap), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownElapsedForRound)],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Theory]
-	[InlineData(RoomOutcome.InProgress)]
-	[InlineData(RoomOutcome.RoomClosed)]
-	public async Task CountdownElapsed_WithAnyOtherStartResult_SaysNothing(RoomOutcome result)
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true), result),
-			Token);
-
-		Assert.Empty(bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	#endregion
-
-	#region Countdown cancelled
-
-	[Fact]
-	public async Task CountdownCancelled_Aborted_SaysTheCountdownWasAborted()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.Aborted);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelled)],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownCancelled_SettingsChanged_SaysTheSettingsChangedTheCountdown()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.SettingsChanged);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.SettingsChangedCountdownCancelled)],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownCancelled_RoundStarted_SaysTheRoundStartCancelledIt()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.RoundStarted);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelledByRoundStart)],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownCancelled_RoundAborted_SaysTheRoundAbortCancelledIt()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-
-		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.RoundAborted);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelledByRoundAbort)],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	[Fact]
-	public async Task CountdownCancelled_Replaced_SaysHowManySecondsWereLeft()
-	{
-		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
-		var countdown = CountdownIn(bot, staff, TimeSpan.FromSeconds(60), true);
-		bot.App.Clock.Advance(TimeSpan.FromSeconds(45));
-
-		await AnnouncerFor(bot).Handle(
-			new RoomCountdownCancelled(staff.Room, countdown, RoomCountdownCancelReason.Replaced), Token);
-
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownReplaced, new { seconds = 15 })],
-			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
-	}
-
-	#endregion
 
 	#region Rounds
 

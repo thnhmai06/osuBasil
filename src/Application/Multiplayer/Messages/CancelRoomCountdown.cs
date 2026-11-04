@@ -6,8 +6,11 @@ using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-/// <summary>Asks Multiplayer to cancel the running countdown of a room.</summary>
+/// <summary>Asks to cancel the countdown running in a room.</summary>
 /// <param name="Actor">The connection that acts.</param>
 /// <param name="Room">The room it acts on.</param>
-/// <remarks>The answer is what the operation answers for the actor's permissions and the room's state.</remarks>
-public sealed record CancelCountdown(Connection Actor, Room Room) : IRequest<Result<RoomOutcome>>;
+/// <remarks>
+///     Cancelling needs the right to start rounds. The answer is Ok, a denial, NotInProgress (no countdown is running) or
+///     RoomClosed.
+/// </remarks>
+public sealed record CancelRoomCountdown(Connection Actor, Room Room) : IRequest<Result<RoomOutcome>>;

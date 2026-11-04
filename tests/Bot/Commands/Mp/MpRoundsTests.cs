@@ -1,16 +1,19 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Bot.Announcements;
 using Basil.Bot.Commands.Mp;
+using Basil.Bot.Countdowns;
 using Basil.Bot.Tests.Support;
 using Basil.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Bot.Tests.Commands.Mp;
 
 /// <summary>
 ///     The commands that start and stop rounds and countdowns: <c>!mp start</c>, <c>timer</c>, <c>aborttimer</c> and
-///     <c>abort</c>. Expected replies are named by the reply that owns the wording; the countdown announcements belong
-///     to the room, so the commands themselves say nothing when a countdown starts.
+///     <c>abort</c>. Expected replies are named by the reply that owns the wording; the countdown announces itself in
+///     the room, so the commands themselves say nothing when a countdown starts.
 /// </summary>
 public sealed class MpRoundsTests
 {
@@ -60,14 +63,14 @@ public sealed class MpRoundsTests
 
 		await bot.TypeAsync(creator, "#osu", "!mp timer");
 
-		var countdown = Assert.IsType<RoomCountdown>(room.Rounds.Countdown);
-		Assert.Equal(TimeSpan.FromSeconds(30), countdown.Length);
-		Assert.False(countdown.StartsRound);
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStarted, new { seconds = 30 })], SaidInRoom(bot, room));
+		bot.App.Clock.Advance(TimeSpan.FromSeconds(30));
+		Assert.Equal(bot.Text(AnnouncementReplies.CountdownElapsed), SaidInRoom(bot, room)[^1]);
 		Assert.False(room.Rounds.InProgress);
 	}
 
 	[Fact]
-	public async Task Timer_WithoutSeconds_SucceedsAndSaysNothingBecauseTheRoomAnnounces()
+	public async Task Timer_WithoutSeconds_SucceedsAndSaysNothingBecauseTheCountdownAnnounces()
 	{
 		using var bot = new BotHarness();
 		var (_, creator, _) = await SetUpAsync(bot);
@@ -86,9 +89,7 @@ public sealed class MpRoundsTests
 
 		await bot.TypeAsync(creator, "#osu", "!mp timer 90");
 
-		var countdown = Assert.IsType<RoomCountdown>(room.Rounds.Countdown);
-		Assert.Equal(TimeSpan.FromSeconds(90), countdown.Length);
-		Assert.False(countdown.StartsRound);
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStarted, new { seconds = 90 })], SaidInRoom(bot, room));
 	}
 
 	[Theory]
@@ -104,7 +105,8 @@ public sealed class MpRoundsTests
 
 		Assert.False(succeeded);
 		Assert.Equal([bot.TextIn(room.Id, MpReplies.TimerUsage)], said.Here);
-		Assert.Null(room.Rounds.Countdown);
+		Assert.Empty(SaidInRoom(bot, room));
+		Assert.False(IsCountdownRunning(bot, room));
 	}
 
 	[Fact]
@@ -117,7 +119,7 @@ public sealed class MpRoundsTests
 
 		Assert.True(succeeded);
 		Assert.Empty(said.All);
-		Assert.Equal(TimeSpan.FromHours(1), room.Rounds.Countdown!.Length);
+		Assert.Equal(bot.Text(AnnouncementReplies.CountdownStarted, new { seconds = 3600 }), SaidInRoom(bot, room)[0]);
 	}
 
 	[Fact]
@@ -130,7 +132,7 @@ public sealed class MpRoundsTests
 
 		Assert.False(succeeded);
 		Assert.Equal([bot.TextIn(room.Id, MpReplies.CountdownOutOfRange)], said.Here);
-		Assert.Null(room.Rounds.Countdown);
+		Assert.False(IsCountdownRunning(bot, room));
 	}
 
 	[Fact]
@@ -144,7 +146,8 @@ public sealed class MpRoundsTests
 
 		Assert.True(succeeded);
 		Assert.Equal([bot.TextIn(room.Id, MpReplies.CountdownAborted)], said.Here);
-		Assert.Null(room.Rounds.Countdown);
+		Assert.False(IsCountdownRunning(bot, room));
+		Assert.Equal(bot.Text(AnnouncementReplies.CountdownCancelled), SaidInRoom(bot, room)[^1]);
 	}
 
 	[Fact]
@@ -157,9 +160,8 @@ public sealed class MpRoundsTests
 
 		Assert.True(succeeded);
 		Assert.Empty(said.All);
-		var countdown = Assert.IsType<RoomCountdown>(room.Rounds.Countdown);
-		Assert.Equal(TimeSpan.FromSeconds(30), countdown.Length);
-		Assert.True(countdown.StartsRound);
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds = 30 })],
+			SaidInRoom(bot, room));
 		Assert.False(room.Rounds.InProgress);
 	}
 
@@ -185,7 +187,7 @@ public sealed class MpRoundsTests
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(30));
 
 		Assert.True(room.Rounds.InProgress);
-		Assert.Null(room.Rounds.Countdown);
+		Assert.False(IsCountdownRunning(bot, room));
 	}
 
 	[Fact]
@@ -227,14 +229,23 @@ public sealed class MpRoundsTests
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot, true);
 		Assert.True((await bot.TypeAsync(creator, "#osu", "!mp timer 60")).Succeeded);
-		var countdown = room.Rounds.Countdown;
 
 		var (succeeded, said) = await bot.TypeAsync(player, "#osu", message);
 
 		Assert.False(succeeded);
 		Assert.Equal([bot.TextIn(room.Id, MpReplies.NotAuthorizedInMatch)], said.Here);
-		Assert.Same(countdown, room.Rounds.Countdown);
+		Assert.True(IsCountdownRunning(bot, room));
 		Assert.Null(room.Rounds.LastRound);
+	}
+
+	private static List<string> SaidInRoom(BotHarness bot, Room room)
+	{
+		return bot.SaidIn(bot.App.RoomChannels.Of(room));
+	}
+
+	private static bool IsCountdownRunning(BotHarness bot, Room room)
+	{
+		return bot.App.Provider.GetRequiredService<RoomCountdowns>().IsRunning(room);
 	}
 
 	/// <summary>
@@ -245,6 +256,8 @@ public sealed class MpRoundsTests
 		BotHarness bot,
 		bool withBeatmap = false)
 	{
+		await bot.StartBotAsync();
+		CountdownEvents.Deliver(bot);
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
 		var room = await bot.MakeAsync(creator, "Finals");
 		var player = await RoomFixture.PlayerAsync(bot.App, "Player");

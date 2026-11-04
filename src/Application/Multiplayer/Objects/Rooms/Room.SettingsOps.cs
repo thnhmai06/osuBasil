@@ -58,9 +58,6 @@ public sealed partial class Room
 			if (change.Size is { } size) Slots.Resize(size);
 			if (change.IsPrivate is { } isPrivate) Match.Value.IsPrivate = isPrivate;
 
-			if (Rounds.Countdown is { StartsRound: true } && ChangesTheRound(change))
-				CancelCountdown(RoomCountdownCancelReason.SettingsChanged);
-
 			Emit(new RoomSettingsChanged(this, change with { Password = null },
 				change.Password is not null));
 			return RoomOutcome.Ok;
@@ -104,14 +101,6 @@ public sealed partial class Room
 		// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
 		if (freemods && actor is StableConnection caller && Slots.Find(caller) is { } callerSlot)
 			callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
-	}
-
-	/// <summary>Tells whether a change alters the round that a countdown would start.</summary>
-	private static bool ChangesTheRound(RoomSettingsChange change)
-	{
-		return change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null ||
-		       change.Mods is not null ||
-		       change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null;
 	}
 
 	/// <summary>Applies the room's freemod setting to the room's own mods and every seated player.</summary>

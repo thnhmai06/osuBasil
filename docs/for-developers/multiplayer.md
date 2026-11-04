@@ -41,7 +41,7 @@ Every room has a creator. The creator is not in the referee list and ranks above
 | `RoomRoles` value | How it is held | `RoomPermissions` granted by the role |
 |---|---|---|
 | `Player` | An osu! connection occupies a slot | Post in room chat; invite users |
-| `Host` | The connection is the room's current host | Change settings, lock slots, kick players, transfer host, start or abort rounds, manage countdowns |
+| `Host` | The connection is the room's current host | Change settings, lock slots, kick players, transfer host, start or abort rounds |
 | `Referee` | The caller's user is a referee and is not the creator | All room permissions except managing referees |
 | `Creator` | The caller's user is the creator | All room permissions, including managing referees |
 
@@ -91,9 +91,18 @@ A round is decided once, automatically, as soon as it has ended and every awaite
 
 ## Countdown
 
-The room countdown belongs to BasilBot, not to the room. BasilBot keeps the timer and announces its marks in the room channel; it listens to the room's events (the room closing, settings changing, a round starting) to cancel a pending countdown, and when the countdown expires it sends the same command that starts a round, with the typist's rights. The room only starts, aborts and decides rounds.
+The room countdown belongs to BasilBot, not to the room. A host (the `!mp start <seconds>` and `!mp timer` commands, or the API and console commands of the same name) asks for a countdown with `StartRoomCountdown` and cancels it with `CancelRoomCountdown`; both are answered by BasilBot. It needs the right to start rounds, which BasilBot asks the room about with `CheckRoundStart` for the connection that asked, so a countdown can be started by whoever may start a round and by nobody else. A room has at most one countdown; starting another replaces it and says how much of the old one was left.
 
-> **Migration status (target).** Today the countdown is still room behavior (`ScopedRoom.Rounds`, `RoomCountdown` and its events); the migration moves it into BasilBot and removes it from the room and the lobby.
+BasilBot keeps the timer and announces the marks in the room channel: a timer announces 60, 30, 10 and 5 seconds, a countdown that starts a round announces every whole minute left and then 30, 10, 5, 4 and 3 seconds, and a mark is announced only while it is shorter than the countdown. When a countdown that starts a round elapses, BasilBot sends the same `StartRound` message a person would, with the connection that started the countdown; if that connection is gone or no longer has the right, the countdown is cancelled with a message instead.
+
+BasilBot listens to the room's events to cancel a pending countdown: the room closing, a round starting or being aborted, and, for a countdown that starts a round, a change of the beatmap, mode, mods, teams or win condition. The room knows nothing of countdowns: it only starts, aborts and decides rounds. `RoomPermissions` has no countdown permission, so the bit it once used stays unused and is never reassigned.
+
+```text
+!mp start 30 / API start --StartRoomCountdown--> BasilBot (rights check, timer)
+                                                   | marks            -> room channel
+                                                   | elapsed          --StartRound--> Room
+Room events (closed, round started/aborted, settings changed) -------> BasilBot cancels
+```
 
 ## Room lifecycle and concurrency
 
@@ -125,7 +134,9 @@ A player is in at most one room. A room's own check cannot see another room's se
 * [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
 * [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs): room rights
-* [`RoomCountdown.cs`](../../src/Application/Multiplayer/Objects/Rooms/RoomCountdown.cs): countdown state and marks (moves to BasilBot)
+* [`CheckRoundStart.cs`](../../src/Application/Multiplayer/Messages/CheckRoundStart.cs): asks whether a connection may start rounds, without starting one
+* [`StartRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/StartRoomCountdown.cs), [`CancelRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/CancelRoomCountdown.cs): the countdown requests, answered by BasilBot
+* [`RoomCountdowns.cs`](../../src/Bot/Countdowns/RoomCountdowns.cs), [`RoomCountdown.cs`](../../src/Bot/Countdowns/RoomCountdown.cs): the countdown timers and their marks
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Multiplayer/Capabilities/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 
 ## See also

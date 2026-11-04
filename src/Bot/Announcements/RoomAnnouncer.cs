@@ -1,5 +1,4 @@
 using Basil.Application.Chat.Registry;
-using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Servers.Objects;
@@ -25,10 +24,6 @@ internal sealed class RoomAnnouncer(
 		INotificationHandler<RoomRoundAborted>,
 		INotificationHandler<RoomRoundDecided>,
 		INotificationHandler<RoomRoundEnded>,
-		INotificationHandler<RoomCountdownStarted>,
-		INotificationHandler<RoomCountdownTicked>,
-		INotificationHandler<RoomCountdownElapsed>,
-		INotificationHandler<RoomCountdownCancelled>,
 		INotificationHandler<RoomPlayerJoined>
 {
 	// Rounds announced as ended; only those are announced as decided, so a round nobody completed stays silent.
@@ -46,62 +41,6 @@ internal sealed class RoomAnnouncer(
 	public async ValueTask Handle(LobbyRoomClosingAnnounced @event, CancellationToken cancellationToken)
 	{
 		await AnnounceClosingAsync(@event, cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public async ValueTask Handle(RoomCountdownCancelled @event, CancellationToken cancellationToken)
-	{
-		if (@event.Reason is RoomCountdownCancelReason.Replaced)
-		{
-			var remaining = Math.Max(0,
-				(int)Math.Round((@event.Countdown.EndsAt - timeProvider.GetUtcNow()).TotalSeconds));
-			await SayInRoomAsync(@event.Room,
-				replies.Text(AnnouncementReplies.CountdownReplaced, new { seconds = remaining }),
-				cancellationToken);
-			return;
-		}
-
-		await SayInRoomAsync(@event.Room, replies.Text(@event.Reason switch
-		{
-			RoomCountdownCancelReason.SettingsChanged => AnnouncementReplies.SettingsChangedCountdownCancelled,
-			RoomCountdownCancelReason.RoundStarted => AnnouncementReplies.CountdownCancelledByRoundStart,
-			RoomCountdownCancelReason.RoundAborted => AnnouncementReplies.CountdownCancelledByRoundAbort,
-			_ => AnnouncementReplies.CountdownCancelled
-		}), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public async ValueTask Handle(RoomCountdownElapsed @event, CancellationToken cancellationToken)
-	{
-		var elapsed = @event.StartResult switch
-		{
-			RoomOutcome.Ok when @event.Countdown.StartsRound => AnnouncementReplies.RoundStartedByCountdown,
-			RoomOutcome.Ok when !@event.Countdown.StartsRound => AnnouncementReplies.CountdownElapsed,
-			RoomOutcome.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,
-			_ => null
-		};
-		if (elapsed is not null)
-			await SayInRoomAsync(@event.Room, replies.Text(elapsed), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public async ValueTask Handle(RoomCountdownStarted @event, CancellationToken cancellationToken)
-	{
-		var seconds = (int)@event.Countdown.Length.TotalSeconds;
-		var text = @event.Countdown.StartsRound
-			? replies.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds })
-			: replies.Text(AnnouncementReplies.CountdownStarted, new { seconds });
-		await SayInRoomAsync(@event.Room, text, cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public async ValueTask Handle(RoomCountdownTicked @event, CancellationToken cancellationToken)
-	{
-		var remainingSeconds = (int)Math.Round(@event.Remaining.TotalSeconds);
-		var tick = @event.Countdown.StartsRound
-			? replies.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds = remainingSeconds })
-			: replies.Text(AnnouncementReplies.CountdownTicked, new { seconds = remainingSeconds });
-		await SayInRoomAsync(@event.Room, tick, cancellationToken);
 	}
 
 	/// <inheritdoc />

@@ -105,9 +105,6 @@ public enum RoomOutcome : byte
 	/// <summary>No round is in progress.</summary>
 	NotInProgress,
 
-	/// <summary>There is no countdown to cancel.</summary>
-	NoCountdown,
-
 	/// <summary>The score was not played in the room's latest round.</summary>
 	RoundMismatch,
 
