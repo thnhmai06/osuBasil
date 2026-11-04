@@ -3,6 +3,7 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Content.Storage;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Bot.Commands;
@@ -80,13 +81,13 @@ internal sealed class BotHarness : IDisposable
 	}
 
 	/// <summary>Seeds BasilBot and connects it, so the server can speak as the bot.</summary>
-	/// <returns>The bot's connection; its user owns the private-message channel users write to.</returns>
-	public async Task<BotConnection> StartBotAsync()
+	/// <returns>The online bot; it owns the private-message channel users write to.</returns>
+	public async Task<User> StartBotAsync()
 	{
 		await App.SeedBotAsync();
-		var connection = await App.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
-		Assert.NotNull(connection);
-		return connection;
+		var bot = await App.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
+		Assert.NotNull(bot);
+		return bot;
 	}
 
 	/// <summary>Opens a general channel the bot may speak in.</summary>

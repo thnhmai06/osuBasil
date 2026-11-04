@@ -161,10 +161,10 @@ public sealed class BotAccountTests
 		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
 
 		var bot = await app.Users.EnsureBotAsync(Token);
-		var connection = await app.Users.ConnectBotAsync(Token);
+		var online = await app.Users.ConnectBotAsync(Token);
 
-		Assert.NotNull(connection);
-		Assert.True(connection.IsOpen);
+		Assert.NotNull(online);
+		Assert.All(online.Connections, connection => Assert.True(connection.IsOpen));
 		Assert.Contains(bot, app.Users.Online.Keys);
 	}
 
@@ -196,31 +196,34 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_BotIsOnline_KeepsItsConnectionOpen()
+	public async Task EnsureBotAsync_BotIsOnline_KeepsItsConnectionsOpen()
 	{
 		using var app = new TestApplication();
 		await app.Users.EnsureBotAsync(Token);
-		var connection = await app.Users.ConnectBotAsync(Token);
+		var online = await app.Users.ConnectBotAsync(Token);
 
 		await app.Users.EnsureBotAsync(Token);
 
-		Assert.NotNull(connection);
-		Assert.True(connection.IsOpen);
-		Assert.Same(connection, await app.Users.ConnectBotAsync(Token));
+		Assert.NotNull(online);
+		Assert.All(online.Connections, connection => Assert.True(connection.IsOpen));
+		Assert.Equal(2, online.Connections.Count());
+		Assert.Same(online, await app.Users.ConnectBotAsync(Token));
+		Assert.Equal(2, online.Connections.Count());
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_BotWasGivenPermissionsWhileOnline_ResetsItAndClosesItsConnection()
+	public async Task EnsureBotAsync_BotWasGivenPermissionsWhileOnline_ResetsItAndClosesItsConnections()
 	{
 		using var app = new TestApplication();
 		var bot = await app.Users.EnsureBotAsync(Token);
-		var connection = await app.Users.ConnectBotAsync(Token);
+		var online = await app.Users.ConnectBotAsync(Token);
+		Assert.NotNull(online);
+		var connections = online.Connections.ToList();
 		bot.Value.Permissions = UserPermissions.RoomManageAny;
 
 		var restored = await app.Users.EnsureBotAsync(Token);
 
-		Assert.NotNull(connection);
-		Assert.False(connection.IsOpen);
+		Assert.All(connections, connection => Assert.False(connection.IsOpen));
 		Assert.Equal(UserPermissions.None, restored.Value.Permissions);
 	}
 

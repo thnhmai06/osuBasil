@@ -122,12 +122,13 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_BotConnectionRequested_ThrowsArgumentException()
+	public async Task LoginAsync_RemovedBotKindRequested_ThrowsArgumentOutOfRangeException()
 	{
 		using var app = new TestApplication();
 
-		await Assert.ThrowsAsync<ArgumentException>(() => app.Users.LoginAsync(
-			new LoginAttempt("unused", new Md5("0123456789abcdef0123456789abcdef")), SessionType.Bot,
+		// 16 was the value of the removed bot kind; no connection kind carries it any more.
+		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => app.Users.LoginAsync(
+			new LoginAttempt("unused", new Md5("0123456789abcdef0123456789abcdef")), (SessionType)16,
 			IPAddress.Loopback, null, 0, TestContext.Current.CancellationToken));
 	}
 

@@ -1,4 +1,5 @@
 using Basil.Application.Users.Objects;
+using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -6,8 +7,8 @@ using Basil.Testing;
 namespace Basil.Application.Users.Tests.Objects;
 
 /// <summary>
-///     The console acts as BasilBot and is the one authority that skips the rights checks; BasilBot's own connection
-///     gains nothing from it.
+///     The console acts as BasilBot and is the one authority that skips the rights checks; BasilBot's own connections
+///     gain nothing from it.
 /// </summary>
 public sealed class OperatorConnectionTests
 {
@@ -21,6 +22,29 @@ public sealed class OperatorConnectionTests
 		var actor = await app.Users.OperateAsync(Token);
 
 		Assert.Equal(BasilBot.Id, actor.Record.Id);
+	}
+
+	[Fact]
+	public async Task OperateAsync_KindIsApi_AndKeepsEveryConsolePermission()
+	{
+		using var app = new TestApplication();
+
+		var actor = await app.Users.OperateAsync(Token);
+
+		Assert.Equal(SessionType.Api, actor.Type);
+		Assert.Equal(UserPermissionsGroups.All, actor.EffectivePermissions(app.Clock.GetUtcNow()));
+	}
+
+	[Fact]
+	public async Task OperateAsync_BotOnline_DoesNotAddAConnectionToTheBot()
+	{
+		using var app = new TestApplication();
+		await app.SeedBotAsync();
+		var bot = await app.Users.ConnectBotAsync(Token);
+
+		await app.Users.OperateAsync(Token);
+
+		Assert.Equal(2, bot!.Connections.Count());
 	}
 
 	[Fact]
@@ -73,16 +97,20 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task BasilBotsOwnConnection_StillHasNoAuthority()
+	public async Task BasilBotsOwnConnections_StillHaveNoAuthority()
 	{
 		using var app = new TestApplication();
 		await app.Users.EnsureBotAsync(Token);
 		var bot = await app.Users.ConnectBotAsync(Token);
 		var target = await app.CreateUserAsync("BotTarget", "password");
 
-		var result = await app.Users.Of(target).ScopeTo(bot!).Permissions.SetAsync(UserPermissionsGroups.All, Token);
+		foreach (var connection in bot!.Connections)
+		{
+			var result = await app.Users.Of(target).ScopeTo(connection).Permissions
+				.SetAsync(UserPermissionsGroups.All, Token);
 
-		Assert.False(result.IsOk);
+			Assert.False(result.IsOk);
+		}
 	}
 }
 

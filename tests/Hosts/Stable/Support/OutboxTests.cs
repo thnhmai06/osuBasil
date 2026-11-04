@@ -1,3 +1,4 @@
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Host.Stable.Support;
 using Basil.Testing.Clients;
@@ -38,6 +39,22 @@ public sealed class OutboxTests(StableHostFixture fixture)
 			outbox.Send(connection, writer => writer.Pong());
 
 		Assert.False(connection.IsOpen);
+	}
+
+	[Fact]
+	public async Task TheBotsGameClientConnection_NeverQueuesAndIsNeverDisconnected()
+	{
+		var registry = Host.Services.GetRequiredService<UserRegistry>();
+		await registry.EnsureBotAsync(TestContext.Current.CancellationToken);
+		var bot = await registry.ConnectBotAsync(TestContext.Current.CancellationToken);
+		var connection = bot!.Connections.OfType<StableConnection>().Single();
+		var outbox = Host.Services.GetRequiredService<Outbox>();
+
+		for (var sent = 0; sent <= Outbox.MaxQueuedPackets; sent++)
+			outbox.Send(connection, writer => writer.Pong());
+
+		Assert.True(connection.IsOpen);
+		Assert.False(outbox.HasPending(connection));
 	}
 
 	[Fact]

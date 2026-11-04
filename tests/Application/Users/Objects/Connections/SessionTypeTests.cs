@@ -11,6 +11,5 @@ public sealed class SessionTypeTests
 		Assert.Equal(2, (byte)SessionType.StableTourney);
 		Assert.Equal(4, (byte)SessionType.Irc);
 		Assert.Equal(8, (byte)SessionType.Api);
-		Assert.Equal(16, (byte)SessionType.Bot);
 	}
 }

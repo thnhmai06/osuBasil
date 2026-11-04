@@ -93,7 +93,7 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task CloseIdle_BotConnection_RemainsOpen()
+	public async Task CloseIdle_BotConnections_RemainOpen()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -102,11 +102,11 @@ public sealed class ConnectionTests
 
 		Assert.NotNull(bot);
 		Assert.Equal(0, app.Users.CloseIdle());
-		Assert.True(bot.IsOpen);
+		Assert.All(bot.Connections, connection => Assert.True(connection.IsOpen));
 	}
 
 	[Fact]
-	public async Task Find_OpenConnectionAndBotToken_ReturnsOnlyClientConnection()
+	public async Task Find_OpenConnectionAndBotTokens_ReturnsOnlyClientConnection()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("TokenUser", "password");
@@ -116,7 +116,7 @@ public sealed class ConnectionTests
 
 		Assert.Same(connection, app.Users.Find(connection.Token));
 		Assert.NotNull(bot);
-		Assert.Null(app.Users.Find(bot.Token));
+		Assert.All(bot.Connections, botConnection => Assert.Null(app.Users.Find(botConnection.Token)));
 	}
 
 	[Fact]

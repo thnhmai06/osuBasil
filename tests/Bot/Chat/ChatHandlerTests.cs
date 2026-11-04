@@ -1,6 +1,7 @@
 using System.Text;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;
@@ -25,7 +26,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	private readonly BotHarness _bot = new();
 	private readonly ChatHandler _handler;
 	private readonly CommandWorker _worker = new(NullLogger<CommandWorker>.Instance, TimeProvider.System);
-	private BotConnection _botConnection = null!;
+	private User _botUser = null!;
 	private GeneralChannel _channel = null!;
 	private StableConnection _typist = null!;
 
@@ -40,7 +41,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	public async ValueTask InitializeAsync()
 	{
 		await _worker.StartAsync(Token);
-		_botConnection = await _bot.StartBotAsync();
+		_botUser = await _bot.StartBotAsync();
 		_channel = await _bot.OpenChannelAsync("#osu");
 		_typist = await RoomFixture.PlayerAsync(_bot.App, "Typist");
 	}
@@ -131,7 +132,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Fact]
 	public async Task AMessageToTheBotInPrivate_NeedsNoPrefix()
 	{
-		await PostAsync(_bot.App.PmChannels.Of(_botConnection.User), "help");
+		await PostAsync(_bot.App.PmChannels.Of(_botUser), "help");
 
 		Assert.Equal(Lines(CommandCatalog.Lines(_bot.Replies, "")), _bot.WhisperedTo(_typist));
 	}
@@ -139,11 +140,11 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Fact]
 	public async Task AMessageToTheBotInPrivate_IsAnsweredByWhisperAndNotPostedInTheBotsChannel()
 	{
-		await PostAsync(_bot.App.PmChannels.Of(_botConnection.User), "roll");
+		await PostAsync(_bot.App.PmChannels.Of(_botUser), "roll");
 
 		Assert.Equal([_bot.Text(BotReplies.RollResult, new { user = "Typist", points = 0L })],
 			_bot.WhisperedTo(_typist));
-		Assert.Empty(_bot.SaidIn(_bot.App.PmChannels.Of(_botConnection.User)));
+		Assert.Empty(_bot.SaidIn(_bot.App.PmChannels.Of(_botUser)));
 	}
 
 	[Fact]
@@ -169,7 +170,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[InlineData("\t")]
 	public async Task AWhitespaceMessage_IsRunAsACommandLineAndGetsNoReply(string content)
 	{
-		await PostAsync(_bot.App.PmChannels.Of(_botConnection.User), content);
+		await PostAsync(_bot.App.PmChannels.Of(_botUser), content);
 
 		Assert.Empty(Posts());
 	}
@@ -177,7 +178,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Fact]
 	public async Task AMessageAuthoredByTheBotItself_IsIgnored()
 	{
-		await PostAsync(_channel, "!roll", author: _botConnection.Record);
+		await PostAsync(_channel, "!roll", author: _botUser.Record);
 
 		Assert.Empty(Posts());
 	}
