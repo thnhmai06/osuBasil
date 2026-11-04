@@ -1,8 +1,6 @@
 using System.Text;
 using Basil.Application.Common;
-using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
@@ -44,14 +42,6 @@ internal static class CommandHelpers
 	{
 		var record = await call.Get<IUserRepository>().GetAsync(call.Id(name), call.CancellationToken);
 		return record is null || record.Value.DeletedAt is not null ? null : record;
-	}
-
-	/// <summary>Finds an account and scopes it to the operator.</summary>
-	public static async Task<ScopedUser?> ScopeUserAsync(this CommandCall call, string name = "id")
-	{
-		return await call.FindUserAsync(name) is { } record
-			? call.Get<UserRegistry>().Of(record).ScopeTo(await call.ByAsync())
-			: null;
 	}
 
 	/// <summary>Hashes a plain password the way the API does.</summary>

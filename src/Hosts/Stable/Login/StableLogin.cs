@@ -122,7 +122,7 @@ internal sealed class StableLogin(
 		var roles = StableView.Roles(effective);
 		var privileges = (int)roles;
 		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
-		var friends = (await user.ScopeTo(connection).Relationships.FriendsAsync(cancellationToken)).Users;
+		var friends = (await sender.Send(new ListFriends(connection, user.Record), cancellationToken)).Users;
 		var restricted = (user.Record.Value.Permissions & ~effective) != UserPermissions.None;
 		var others = new List<(User User, UserStats Stats)>();
 		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))

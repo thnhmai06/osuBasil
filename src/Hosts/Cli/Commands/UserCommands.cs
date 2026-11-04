@@ -1,11 +1,12 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
-using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 
@@ -172,9 +173,8 @@ internal static class UserCommands
 				: throw CommandException.Invalid("--country must be a two-letter code.");
 
 		var actor = await call.ByAsync();
-		var (record, result) = await call.Get<UserRegistry>().ScopeTo(actor)
-			.CreateAccountAsync(data, CommandHelpers.Md5Of(call.Required("password")), permissions,
-				call.CancellationToken);
+		var (record, result) = await call.Get<ISender>().Send(new CreateAccount(actor, data,
+			CommandHelpers.Md5Of(call.Required("password")), permissions), call.CancellationToken);
 		return result.IsOk
 			? Created(call, record!)
 			: call.Refuse(result);
@@ -198,43 +198,47 @@ internal static class UserCommands
 
 	private static async Task<int> SetAsync(CommandCall call)
 	{
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
-		if (await SetProfileAsync(call, scoped) is { } profileRefusal) return profileRefusal;
-		if (await SetCredentialsAsync(call, scoped) is { } credentialsRefusal) return credentialsRefusal;
+		if (await SetProfileAsync(call, target) is { } profileRefusal) return profileRefusal;
+		if (await SetCredentialsAsync(call, target) is { } credentialsRefusal) return credentialsRefusal;
 
 		call.Output.Ok("Updated.");
 		return ExitCodes.Success;
 	}
 
-	private static async Task<int?> SetProfileAsync(CommandCall call, ScopedUser scoped)
+	private static async Task<int?> SetProfileAsync(CommandCall call, UserRecord target)
 	{
 		var ct = call.CancellationToken;
-		if (call.Text("username") is { } name && await scoped.Profile.RenameAsync(name, ct) is { IsOk: false } renamed)
+		var sender = call.Get<ISender>();
+		var actor = await call.ByAsync();
+		if (call.Text("username") is { } name && await sender.Send(new RenameUser(actor, target, name), ct) is { IsOk: false } renamed)
 			return call.Refuse(renamed);
 
 		if (call.Text("country") is { } code)
 		{
 			if (!(code.Length == 2 && Enum.TryParse<Country>(code, true, out var country) && Enum.IsDefined(country)))
 				throw CommandException.Invalid("--country must be a two-letter code.");
-			if (await scoped.Profile.SetCountryAsync(country, ct) is { IsOk: false } changed)
+			if (await sender.Send(new SetUserCountry(actor, target, country), ct) is { IsOk: false } changed)
 				return call.Refuse(changed);
 		}
 
-		if (call.Text("away") is { } away) scoped.Profile.SetAway(away.Length == 0 ? null : away);
-		if (call.Bool("pmPrivate") is { } pm) scoped.Profile.SetPmPrivate(pm);
+		if (call.Text("away") is { } away) await sender.Send(new SetUserAway(actor, target, away.Length == 0 ? null : away), ct);
+		if (call.Bool("pmPrivate") is { } pm) await sender.Send(new SetUserPmPrivate(actor, target, pm), ct);
 		return null;
 	}
 
-	private static async Task<int?> SetCredentialsAsync(CommandCall call, ScopedUser scoped)
+	private static async Task<int?> SetCredentialsAsync(CommandCall call, UserRecord target)
 	{
 		var ct = call.CancellationToken;
+		var sender = call.Get<ISender>();
+		var actor = await call.ByAsync();
 		if (call.Mask("permissions") is { } permissions &&
-		    await scoped.Permissions.SetAsync((UserPermissions)permissions, ct) is { IsOk: false } set)
+		    await sender.Send(new SetUserPermissions(actor, target, (UserPermissions)permissions), ct) is { IsOk: false } set)
 			return call.Refuse(set);
 
 		if (call.Text("password") is { } password &&
-		    await scoped.Credentials.ChangePasswordAsync(CommandHelpers.Md5Of(password), null, false, ct) is
+		    await sender.Send(new ChangeUserPassword(actor, target, CommandHelpers.Md5Of(password), null, false), ct) is
 			    { IsOk: false } changedPassword)
 			return call.Refuse(changedPassword);
 
@@ -243,26 +247,26 @@ internal static class UserCommands
 
 	private static async Task<int> SetAvatarAsync(CommandCall call)
 	{
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
 		await using var stream = File.OpenRead(call.Required("file"));
-		return call.Report(await scoped.Profile.SetAvatarAsync(stream, call.CancellationToken), "Avatar set.");
+		return call.Report(await call.Get<ISender>().Send(new SetUserAvatar(await call.ByAsync(), target, stream), call.CancellationToken), "Avatar set.");
 	}
 
 	private static async Task<int> RemoveAvatarAsync(CommandCall call)
 	{
-		return await call.ScopeUserAsync() is not { } scoped
+		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await scoped.Profile.RemoveAvatarAsync(call.CancellationToken), "Avatar removed.");
+			: call.Report(await call.Get<ISender>().Send(new RemoveUserAvatar(await call.ByAsync(), target), call.CancellationToken), "Avatar removed.");
 	}
 
 	private static async Task<int> RelationsAsync(CommandCall call, RelationshipType type)
 	{
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
 		var (result, users) = type == RelationshipType.Friend
-			? await scoped.Relationships.FriendsAsync(call.CancellationToken)
-			: await scoped.Relationships.BlocksAsync(call.CancellationToken);
+			? await call.Get<ISender>().Send(new ListFriends(await call.ByAsync(), target), call.CancellationToken)
+			: await call.Get<ISender>().Send(new ListBlocks(await call.ByAsync(), target), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Formatter.PrintTable(call.Output, [.. users.Select(UserRef.Of)]);
@@ -280,13 +284,13 @@ internal static class UserCommands
 
 	private static async Task<int> RestrictAsync(CommandCall call)
 	{
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
 		var duration = call.Duration("duration");
 		var endsAt = duration is { } length ? call.Get<TimeProvider>().GetUtcNow() + length : (DateTimeOffset?)null;
-		var (result, restriction) = await scoped.Restrictions.RestrictAsync(
-			(UserPermissions)call.Mask("permissions")!.Value,
-			endsAt, call.Text("reason"), call.CancellationToken);
+		var (result, restriction) = await call.Get<ISender>().Send(new RestrictUser(
+			await call.ByAsync(), target, (UserPermissions)call.Mask("permissions")!.Value,
+			endsAt, call.Text("reason")), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Output.Ok($"Restricted with restriction {restriction!.Id}.");
@@ -295,23 +299,23 @@ internal static class UserCommands
 
 	private static async Task<int> LiftAsync(CommandCall call)
 	{
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
 		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
 			{ } restriction
 			? call.NotFound("restriction")
-			: call.Report(await scoped.Restrictions.LiftAsync(restriction, null, call.CancellationToken),
+			: call.Report(await call.Get<ISender>().Send(new LiftRestriction(await call.ByAsync(), target, restriction), call.CancellationToken),
 				"Restriction lifted.");
 	}
 
 	private static async Task<int> DeleteRestrictionAsync(CommandCall call)
 	{
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
 		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
 			{ } restriction
 			? call.NotFound("restriction")
-			: call.Report(await scoped.Restrictions.DeleteAsync(restriction, null, call.CancellationToken),
+			: call.Report(await call.Get<ISender>().Send(new DeleteRestriction(await call.ByAsync(), target, restriction), call.CancellationToken),
 				"Restriction deleted.");
 	}
 
@@ -328,9 +332,9 @@ internal static class UserCommands
 		var kinds = call.Mask("types") is { } types
 			? Enum.GetValues<SessionType>().Where(type => (types & (ulong)type) != 0).ToList()
 			: null;
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
-		var (result, sessions) = await scoped.Sessions.ListAsync(page, state, kinds, call.CancellationToken);
+		var (result, sessions) = await call.Get<ISender>().Send(new ListUserSessions(await call.ByAsync(), target, page, state, kinds), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.PrintPage(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
@@ -340,9 +344,9 @@ internal static class UserCommands
 
 	private static async Task<int> SessionAsync(CommandCall call)
 	{
-		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
-		var (result, session) = await scoped.Sessions.GetAsync(Guid.Parse(call.Word("sid")), call.CancellationToken);
+		var (result, session) = await call.Get<ISender>().Send(new GetUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Formatter.Print(call.Output, SessionView.Of(session!));
@@ -351,23 +355,23 @@ internal static class UserCommands
 
 	private static async Task<int> CloseSessionAsync(CommandCall call)
 	{
-		return await call.ScopeUserAsync() is not { } scoped
+		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await scoped.Sessions.CloseAsync(Guid.Parse(call.Word("sid")), call.CancellationToken),
+			: call.Report(await call.Get<ISender>().Send(new CloseUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))), call.CancellationToken),
 				"Session closed.");
 	}
 
 	private static async Task<int> CloseSessionsAsync(CommandCall call)
 	{
-		return await call.ScopeUserAsync() is not { } scoped
+		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await scoped.Sessions.CloseAllAsync(false, call.CancellationToken), "Sessions closed.");
+			: call.Report(await call.Get<ISender>().Send(new CloseUserSessions(await call.ByAsync(), target, false), call.CancellationToken), "Sessions closed.");
 	}
 
 	private static async Task<int> DeleteAsync(CommandCall call)
 	{
-		return await call.ScopeUserAsync() is not { } scoped
+		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await scoped.DeleteAsync(call.CancellationToken), "User deleted.");
+			: call.Report(await call.Get<ISender>().Send(new DeleteUser(await call.ByAsync(), target), call.CancellationToken), "User deleted.");
 	}
 }

@@ -1,9 +1,8 @@
 using System.Text.Json;
 using Basil.Application.Common;
-using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
+using Mediator;
 
 namespace Basil.Host.Rest.Http;
 
@@ -22,15 +21,17 @@ public static class Targets
 		return (new PageRequest(o, l), null);
 	}
 
-	/// <summary>Finds the account with an id and scopes it to the calling connection.</summary>
-	/// <returns>The scoped account, or <see langword="null" /> when no such account exists.</returns>
-	public static async Task<ScopedUser?> ScopeAsync(this HttpContext context, int id)
+	/// <summary>Gets the sender of messages to the system.</summary>
+	public static ISender Sender(this HttpContext context)
 	{
-		var services = context.RequestServices;
-		var record = await services.GetRequiredService<IUserRepository>().GetAsync(id, context.RequestAborted);
-		return record is null
-			? null
-			: services.GetRequiredService<UserRegistry>().Of(record).ScopeTo(context.Connection());
+		return context.RequestServices.GetRequiredService<ISender>();
+	}
+
+	/// <summary>Finds the account with an id.</summary>
+	/// <returns>The account, or <see langword="null" /> when no such account exists.</returns>
+	public static async Task<UserRecord?> FindAsync(this HttpContext context, int id)
+	{
+		return await context.RequestServices.GetRequiredService<IUserRepository>().GetAsync(id, context.RequestAborted);
 	}
 
 	/// <summary>Reads a JSON body that may be absent.</summary>

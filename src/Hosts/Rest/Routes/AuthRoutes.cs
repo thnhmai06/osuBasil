@@ -1,5 +1,6 @@
 using System.Text;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -71,8 +72,8 @@ internal static class AuthRoutes
 	private static async Task<IResult> LogoutAsync(HttpContext context, CancellationToken cancellationToken)
 	{
 		var connection = context.Connection();
-		var result = await connection.User.ScopeTo(connection).Sessions.CloseAsync(connection.Session.Id,
-			cancellationToken);
+		var result = await context.Sender().Send(
+			new CloseUserSession(connection, connection.User.Record, connection.Session.Id), cancellationToken);
 		return result.Answer();
 	}
 

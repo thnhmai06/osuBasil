@@ -2,8 +2,9 @@ using System.Text;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -12,6 +13,7 @@ using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -73,17 +75,17 @@ internal static class UserRoutes
 
 		token.MapGet("/{id:int}/friends", FriendsAsync).WithSummary("List the friends of the calling account.");
 		token.MapPut("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, s => s.Relationships.AddFriendAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, (me, other) => new AddFriend(me, other)))
 			.WithSummary("Add a friend.");
 		token.MapDelete("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, s => s.Relationships.RemoveFriendAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, (me, other) => new RemoveFriend(me, other)))
 			.WithSummary("Remove a friend.");
 		token.MapGet("/{id:int}/blocks", BlocksAsync).WithSummary("List the accounts the calling account blocked.");
 		token.MapPut("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, s => s.Relationships.BlockAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, (me, other) => new BlockUser(me, other)))
 			.WithSummary("Block an account.");
 		token.MapDelete("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
-				RelationAsync(c, id, otherId, s => s.Relationships.UnblockAsync(c.RequestAborted)))
+				RelationAsync(c, id, otherId, (me, other) => new UnblockUser(me, other)))
 			.WithSummary("Unblock an account.");
 
 		token.MapPost("/{id:int}/restrictions", RestrictAsync).WithSummary("Restrict an account.");
@@ -136,44 +138,45 @@ internal static class UserRoutes
 		UserPermissions? permissions = request.Permissions is { } p ? (UserPermissions)p : null;
 		if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
 
-		var (record, result) = await registry.ScopeTo(context.Connection()).CreateAccountAsync(data,
-			new Md5(Encoding.UTF8.GetBytes(request.Password)), permissions, context.RequestAborted);
+		var (record, result) = await context.Sender().Send(new CreateAccount(context.Connection(), data,
+			new Md5(Encoding.UTF8.GetBytes(request.Password)), permissions), context.RequestAborted);
 		return result.IsOk ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchUserRequest request,
 		UserRegistry registry, TimeProvider clock)
 	{
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
 		var ct = context.RequestAborted;
-		if (await PatchNameAndCountryAsync(scoped, request, ct) is { } refusal) return refusal;
-		if (await PatchSelfAndPermissionsAsync(scoped, request, ct) is { } denied) return denied;
+		if (await PatchNameAndCountryAsync(context, target, request, ct) is { } refusal) return refusal;
+		if (await PatchSelfAndPermissionsAsync(context, target, request, ct) is { } denied) return denied;
 
-		return Api.Ok(UserView.Of(registry, scoped.User.Record, clock), "Updated successfully");
+		return Api.Ok(UserView.Of(registry, registry.Of(target).Record, clock), "Updated successfully");
 	}
 
-	private static async Task<IResult?> PatchNameAndCountryAsync(ScopedUser scoped, PatchUserRequest request,
-		CancellationToken ct)
+	private static async Task<IResult?> PatchNameAndCountryAsync(HttpContext context, UserRecord target,
+		PatchUserRequest request, CancellationToken ct)
 	{
-		if (request.Name is not null && await scoped.Profile.RenameAsync(request.Name, ct) is { IsOk: false } renamed)
+		if (request.Name is not null && await context.Sender().Send(new RenameUser(context.Connection(), target, request.Name), ct) is { IsOk: false } renamed)
 			return renamed.Refusal();
 
 		if (request.Country is null) return null;
 		if (Targets.ParseCountry(request.Country) is not { } country)
 			return Api.Invalid("country must be a two-letter code.");
-		return await scoped.Profile.SetCountryAsync(country, ct) is { IsOk: false } changed ? changed.Refusal() : null;
+		return await context.Sender().Send(new SetUserCountry(context.Connection(), target, country), ct) is { IsOk: false } changed ? changed.Refusal() : null;
 	}
 
-	private static async Task<IResult?> PatchSelfAndPermissionsAsync(ScopedUser scoped, PatchUserRequest request,
-		CancellationToken ct)
+	private static async Task<IResult?> PatchSelfAndPermissionsAsync(HttpContext context, UserRecord target,
+		PatchUserRequest request, CancellationToken ct)
 	{
-		if (request.Away is not null && !scoped.Profile.SetAway(request.Away.Length == 0 ? null : request.Away))
+		if (request.Away is not null && !await context.Sender().Send(
+			    new SetUserAway(context.Connection(), target, request.Away.Length == 0 ? null : request.Away), ct))
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
-		if (request.PmPrivate is { } pm && !scoped.Profile.SetPmPrivate(pm))
+		if (request.PmPrivate is { } pm && !await context.Sender().Send(new SetUserPmPrivate(context.Connection(), target, pm), ct))
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
 		if (request.Permissions is { } permissions &&
-		    await scoped.Permissions.SetAsync((UserPermissions)permissions, ct) is { IsOk: false } set)
+		    await context.Sender().Send(new SetUserPermissions(context.Connection(), target, (UserPermissions)permissions), ct) is { IsOk: false } set)
 			return set.Refusal();
 
 		return null;
@@ -182,18 +185,18 @@ internal static class UserRoutes
 	private static async Task<IResult> PasswordAsync(HttpContext context, int id, PasswordRequest request)
 	{
 		if (string.IsNullOrEmpty(request.New)) return Api.Invalid("new is required.");
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
 		var current = request.Current is null ? (Md5?)null : new Md5(Encoding.UTF8.GetBytes(request.Current));
-		return (await scoped.Credentials.ChangePasswordAsync(new Md5(Encoding.UTF8.GetBytes(request.New)), current,
-			request.IncludeCurrent ?? false, context.RequestAborted)).Answer();
+		return (await context.Sender().Send(new ChangeUserPassword(context.Connection(), target,
+			new Md5(Encoding.UTF8.GetBytes(request.New)), current, request.IncludeCurrent ?? false), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, int id)
 	{
-		return await context.ScopeAsync(id) is not { } scoped
+		return await context.FindAsync(id) is not { } target
 			? Api.NotFound("No such user.")
-			: (await scoped.DeleteAsync(context.RequestAborted)).Answer();
+			: (await context.Sender().Send(new DeleteUser(context.Connection(), target), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> PutAvatarAsync(HttpContext context, int id, ISettingsRepository settings)
@@ -205,17 +208,17 @@ internal static class UserRoutes
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
 		if (file.Length > (await settings.GetAsync(context.RequestAborted)).Uploads.AvatarMaxSize)
 			return Api.Invalid("The avatar is too large.", "tooLarge");
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
 		await using var stream = file.OpenReadStream();
-		return (await scoped.Profile.SetAvatarAsync(stream, context.RequestAborted)).Answer();
+		return (await context.Sender().Send(new SetUserAvatar(context.Connection(), target, stream), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> DeleteAvatarAsync(HttpContext context, int id)
 	{
-		return await context.ScopeAsync(id) is not { } scoped
+		return await context.FindAsync(id) is not { } target
 			? Api.NotFound("No such user.")
-			: (await scoped.Profile.RemoveAvatarAsync(context.RequestAborted)).Answer();
+			: (await context.Sender().Send(new RemoveUserAvatar(context.Connection(), target), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> ListSessionsAsync(HttpContext context, int id, string? state, int? types,
@@ -236,10 +239,11 @@ internal static class UserRoutes
 		var kinds = types is null
 			? null
 			: Enum.GetValues<SessionType>().Where(t => (types.Value & (int)t) != 0).ToList();
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
 		var (result, sessions) =
-			await scoped.Sessions.ListAsync(page!, sessionState.Value, kinds, context.RequestAborted);
+			await context.Sender().Send(
+				new ListUserSessions(context.Connection(), target, page!, sessionState.Value, kinds), context.RequestAborted);
 		if (!result.IsOk) return result.Refusal();
 
 		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)], sessions.Total), page!);
@@ -247,17 +251,17 @@ internal static class UserRoutes
 
 	private static async Task<IResult> GetSessionAsync(HttpContext context, int id, Guid sid)
 	{
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
-		var (result, session) = await scoped.Sessions.GetAsync(sid, context.RequestAborted);
+		var (result, session) = await context.Sender().Send(new GetUserSession(context.Connection(), target, sid), context.RequestAborted);
 		return result.IsOk ? Api.Ok(SessionView.Of(session!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, Guid sid)
 	{
-		return await context.ScopeAsync(id) is not { } scoped
+		return await context.FindAsync(id) is not { } target
 			? Api.NotFound("No such user.")
-			: (await scoped.Sessions.CloseAsync(sid, context.RequestAborted)).Answer();
+			: (await context.Sender().Send(new CloseUserSession(context.Connection(), target, sid), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> CloseSessionsAsync(HttpContext context, int id)
@@ -265,73 +269,76 @@ internal static class UserRoutes
 		var (request, refusal) = await context.OptionalBodyAsync<CloseSessionsRequest>();
 		if (refusal is not null) return refusal;
 
-		return await context.ScopeAsync(id) is not { } scoped
+		return await context.FindAsync(id) is not { } target
 			? Api.NotFound("No such user.")
-			: (await scoped.Sessions.CloseAllAsync(request?.KeepCurrent ?? true, context.RequestAborted)).Answer();
+			: (await context.Sender().Send(
+				new CloseUserSessions(context.Connection(), target, request?.KeepCurrent ?? true), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> OpenIrcAsync(HttpContext context, int id, IrcKeyRequest request)
 	{
 		if (string.IsNullOrWhiteSpace(request.Label)) return Api.Invalid("label is required.");
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
-		var (result, key, session) = await scoped.Sessions.OpenIrcAsync(request.Label, context.RequestAborted);
+		var (result, key, session) = await context.Sender().Send(new OpenIrcSession(context.Connection(), target, request.Label), context.RequestAborted);
 		return result.IsOk ? Api.Created(new IrcKeyResponse(session!.Id, key!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> FriendsAsync(HttpContext context, int id)
 	{
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
-		var (result, list) = await scoped.Relationships.FriendsAsync(context.RequestAborted);
+		var (result, list) = await context.Sender().Send(new ListFriends(context.Connection(), target), context.RequestAborted);
 		return result.IsOk ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
 	private static async Task<IResult> BlocksAsync(HttpContext context, int id)
 	{
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
-		var (result, list) = await scoped.Relationships.BlocksAsync(context.RequestAborted);
+		var (result, list) = await context.Sender().Send(new ListBlocks(context.Connection(), target), context.RequestAborted);
 		return result.IsOk ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
 	private static async Task<IResult> RelationAsync(HttpContext context, int id, int otherId,
-		Func<ScopedUser, Task<Result<UserOutcome>>> act)
+		Func<Connection, UserRecord, IRequest<Result<UserOutcome>>> ask)
 	{
 		if (id != context.Connection().Record.Id)
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
 
-		return await context.ScopeAsync(otherId) is not { } scoped
+		return await context.FindAsync(otherId) is not { } target
 			? Api.NotFound("No such user.")
-			: (await act(scoped)).Answer();
+			: (await context.Sender().Send(ask(context.Connection(), target), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> RestrictAsync(HttpContext context, int id, RestrictRequest request)
 	{
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
-		var (result, restriction) = await scoped.Restrictions.RestrictAsync((UserPermissions)request.Permissions,
-			request.EndsAt, request.Reason, context.RequestAborted);
+		var (result, restriction) = await context.Sender().Send(new RestrictUser(context.Connection(), target,
+			(UserPermissions)request.Permissions, request.EndsAt, request.Reason), context.RequestAborted);
 		return result.IsOk ? Api.Created(RestrictionView.Of(restriction!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> LiftAsync(HttpContext context, int id, int rid, IRestrictionRepository repo)
 	{
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
 		return await repo.GetAsync(rid, context.RequestAborted) is not { } restriction
 			? Api.NotFound("No such restriction.")
-			: (await scoped.Restrictions.LiftAsync(restriction, null, context.RequestAborted)).Answer();
+			: (await context.Sender().Send(new LiftRestriction(context.Connection(), target, restriction),
+				context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> DeleteRestrictionAsync(HttpContext context, int id, int rid,
 		IRestrictionRepository repo)
 	{
-		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
+		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
 		return await repo.GetAsync(rid, context.RequestAborted) is not { } restriction
 			? Api.NotFound("No such restriction.")
-			: (await scoped.Restrictions.DeleteAsync(restriction, null, context.RequestAborted)).Answer();
+			: (await context.Sender().Send(new DeleteRestriction(context.Connection(), target, restriction),
+				context.RequestAborted)).Answer();
 	}
 
 	/// <summary>The fields of an account that can change; absent fields stay as they are.</summary>
