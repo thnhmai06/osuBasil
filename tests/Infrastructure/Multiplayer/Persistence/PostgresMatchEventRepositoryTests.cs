@@ -35,6 +35,16 @@ public sealed class PostgresMatchEventRepositoryTests(PersistenceFixture contain
 	}
 
 	[Fact]
+	public async Task An_event_of_a_match_that_is_not_stored_is_refused_to_the_caller()
+	{
+		var match = await CreateMatchAsync("unstored_event_match");
+		var unstored = new MatchRecord { Id = match.Id + 1000, Value = match.Value };
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Events.RecordAsync(
+			StoredMatches.Event(unstored, MatchEventType.Created, First), TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
 	public async Task The_events_of_a_match_are_listed_in_the_order_they_happened()
 	{
 		var match = await CreateMatchAsync("ordered_event_match");
