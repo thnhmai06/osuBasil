@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Persistence;
@@ -11,6 +12,7 @@ public interface IMatchEventRepository
 	Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the events of a match in the order they happened.</summary>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> events are returned, the earliest ones.</remarks>
 	/// <param name="match">The match whose events to list.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The events of the match.</returns>

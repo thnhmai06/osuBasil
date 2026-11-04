@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
@@ -11,6 +12,29 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	private static readonly DateTimeOffset Moment = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 
 	private IRelationshipRepository Relationships => Get<IRelationshipRepository>();
+
+	[Fact]
+	public async Task A_listing_reads_no_more_relationships_than_the_ceiling()
+	{
+		var actor = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "many_friends" }, TestContext.Current.CancellationToken);
+		var parameters = new Dictionary<string, object?> { ["@actor"] = actor.Id, ["@count"] = ListLimits.Ceiling + 1 };
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into users (name, normalized_name, country, permissions) " +
+			"select 'bulk' || g, 'bulk' || g, u.country, u.permissions " +
+			"from users u, generate_series(1, @count) g where u.id = @actor",
+			parameters, TestContext.Current.CancellationToken);
+		// Every other account is a target, one more than the ceiling.
+		var stored = await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into relationships (actor_id, target_id, type, created_at) " +
+			"select @actor, id, 0, now() from users where id <> @actor",
+			parameters, TestContext.Current.CancellationToken);
+		Assert.Equal(ListLimits.Ceiling + 1, stored);
+
+		var listed = await Relationships.ListAsync(actor, TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count);
+	}
 
 	[Fact]
 	public async Task A_relationship_is_added()

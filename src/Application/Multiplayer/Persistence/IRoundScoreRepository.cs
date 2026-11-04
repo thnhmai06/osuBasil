@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Persistence;
@@ -12,6 +13,7 @@ public interface IRoundScoreRepository
 	Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the scores of a round, in submission order.</summary>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> scores are returned, the earliest ones.</remarks>
 	/// <param name="round">The round.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The round's scores.</returns>

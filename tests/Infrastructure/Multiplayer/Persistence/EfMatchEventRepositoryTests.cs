@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Multiplayer;
@@ -17,6 +18,24 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	private IMatchRepository Matches => Get<IMatchRepository>();
 
 	private IMatchEventRepository Events => Get<IMatchEventRepository>();
+
+	[Fact]
+	public async Task A_listing_reads_no_more_events_than_the_ceiling()
+	{
+		var match = await CreateMatchAsync("busy_event_match");
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into match_events (match_id, type, timestamp) " +
+			"select @match, @type, @start + g * interval '1 second' from generate_series(1, @count) g",
+			new Dictionary<string, object?>
+			{
+				["@match"] = match.Id, ["@type"] = (int)MatchEventType.Created, ["@start"] = First,
+				["@count"] = ListLimits.Ceiling + 1
+			}, TestContext.Current.CancellationToken);
+
+		var listed = await Events.ListAsync(match, TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count);
+	}
 
 	[Fact]
 	public async Task A_recorded_event_is_stored()

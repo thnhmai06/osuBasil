@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
@@ -11,6 +12,25 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 	private static readonly DateTimeOffset Moment = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 
 	private IRestrictionRepository Restrictions => Get<IRestrictionRepository>();
+
+	[Fact]
+	public async Task A_listing_reads_no_more_restrictions_than_the_ceiling()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "many_bans" }, TestContext.Current.CancellationToken);
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into restrictions (user_id, permissions, starts_at) " +
+			"select @user, @permissions, @start + g * interval '1 second' from generate_series(1, @count) g",
+			new Dictionary<string, object?>
+			{
+				["@user"] = user.Id, ["@permissions"] = (long)RestrictionData.Silence, ["@start"] = Moment,
+				["@count"] = ListLimits.Ceiling + 1
+			}, TestContext.Current.CancellationToken);
+
+		var listed = await Restrictions.ListAsync(user, TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count);
+	}
 
 	[Fact]
 	public async Task A_created_restriction_is_given_an_id_by_the_store()

@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
 using Basil.Testing.Persistence;
@@ -12,6 +13,20 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	private static readonly DateTimeOffset Moment = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 
 	private IMenuBannerRepository Banners => Get<IMenuBannerRepository>();
+
+	[Fact]
+	public async Task A_listing_reads_no_more_banners_than_the_ceiling()
+	{
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into menu_banners (image, url, created_at) " +
+			"select 'banners/bulk' || g || '.png', 'https://example.com/' || g, @created from generate_series(1, @count) g",
+			new Dictionary<string, object?> { ["@created"] = Moment, ["@count"] = ListLimits.Ceiling + 1 },
+			TestContext.Current.CancellationToken);
+
+		var listed = await Banners.ListAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count());
+	}
 
 	[Fact]
 	public async Task A_stored_banner_is_found()

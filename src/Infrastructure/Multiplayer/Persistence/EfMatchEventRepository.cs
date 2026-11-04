@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Multiplayer;
@@ -37,6 +38,7 @@ internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepo
 			.Where(row => row.MatchId == match.Id)
 			.OrderBy(row => row.Timestamp)
 			.ThenBy(row => row.Id)
+			.Take(ListLimits.Ceiling)
 			.ToListAsync(cancellationToken), cancellationToken);
 
 		var events = new List<MatchEvent>(rows.Count);

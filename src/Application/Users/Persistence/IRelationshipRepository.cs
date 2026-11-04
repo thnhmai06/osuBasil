@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Persistence;
@@ -15,7 +16,8 @@ public interface IRelationshipRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default);
 
-	/// <summary>Lists the relationships a user holds.</summary>
+	/// <summary>Lists the relationships a user holds, oldest first.</summary>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> relationships are returned.</remarks>
 	/// <param name="actor">The user whose relationships to list.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The relationships the user holds.</returns>

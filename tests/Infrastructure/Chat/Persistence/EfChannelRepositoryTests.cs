@@ -1,4 +1,5 @@
 using Basil.Application.Chat.Persistence;
+using Basil.Application.Common;
 using Basil.Domain.Chat;
 using Basil.Testing.Persistence;
 
@@ -9,6 +10,20 @@ namespace Basil.Infrastructure.Chat.Tests.Persistence;
 public sealed class EfChannelRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private IChannelRepository Channels => Get<IChannelRepository>();
+
+	[Fact]
+	public async Task A_listing_reads_no_more_channels_than_the_ceiling()
+	{
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible) " +
+			"select '#bulk' || g, topic, read_privileges, write_privileges, false, visible " +
+			"from channels, generate_series(1, @count) g where name = '#osu'",
+			new Dictionary<string, object?> { ["@count"] = ListLimits.Ceiling }, TestContext.Current.CancellationToken);
+
+		var listed = await Channels.ListAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count());
+	}
 
 	[Fact]
 	public async Task The_seeded_channels_are_offered()

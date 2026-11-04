@@ -55,6 +55,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 		var rows = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 			.Where(b => b.BeatmapsetId == set.Id)
 			.OrderBy(b => b.Id)
+			.Take(ListLimits.Ceiling)
 			.ToListAsync(cancellationToken), cancellationToken);
 		return [.. rows.Select(row => ToBeatmap(row, set))];
 	}

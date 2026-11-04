@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Domain.Content;
 
 namespace Basil.Application.Content.Persistence;
@@ -16,7 +17,8 @@ public interface IMenuBannerRepository
 	/// <returns>The banner, or <see langword="null" /> when none shows that image.</returns>
 	ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken cancellationToken = default);
 
-	/// <summary>Lists every banner, whether or not it is shown now.</summary>
+	/// <summary>Lists every banner, whether or not it is shown now, oldest first.</summary>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> banners are returned.</remarks>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>All stored banners.</returns>
 	Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken cancellationToken = default);

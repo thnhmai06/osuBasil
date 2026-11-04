@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
@@ -24,6 +25,36 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	private IRoundScoreRepository RoundScores => Get<IRoundScoreRepository>();
 
 	private IScoreRepository Scores => Get<IScoreRepository>();
+
+	[Fact]
+	public async Task A_listing_reads_no_more_round_scores_than_the_ceiling()
+	{
+		var match = await CreateMatchAsync("crowded_round_match");
+		var round = await CreateRoundAsync(match, 1);
+		var player = await CreatePlayerAsync("crowded_player");
+		var template = await CreateScoreAsync(player, 1000, First);
+		var parameters = new Dictionary<string, object?>
+		{
+			["@template"] = template.Id, ["@match"] = match.Id, ["@round"] = round.Index,
+			["@count"] = ListLimits.Ceiling
+		};
+		// The template plus the ceiling's worth of copies are one more score than the ceiling.
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into scores (user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss, " +
+			"total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum) " +
+			"select user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss, " +
+			"total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, md5(g::text) " +
+			"from scores, generate_series(1, @count) g where id = @template",
+			parameters, TestContext.Current.CancellationToken);
+		var stored = await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into round_scores (score_id, match_id, round_number) select id, @match, @round from scores",
+			parameters, TestContext.Current.CancellationToken);
+		Assert.Equal(ListLimits.Ceiling + 1, stored);
+
+		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count);
+	}
 
 	[Fact]
 	public async Task A_stored_round_score_is_listed_under_its_round()

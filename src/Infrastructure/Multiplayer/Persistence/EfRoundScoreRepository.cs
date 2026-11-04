@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Mechanics;
@@ -33,6 +34,7 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.RoundScores
 			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)
+			.Take(ListLimits.Ceiling)
 			.ToListAsync(cancellationToken), cancellationToken);
 
 		var result = new List<RoundScore>(rows.Count);

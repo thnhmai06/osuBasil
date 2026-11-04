@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -16,6 +17,25 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	private IMatchRepository Matches => Get<IMatchRepository>();
 
 	private IRoundRepository Rounds => Get<IRoundRepository>();
+
+	[Fact]
+	public async Task A_listing_reads_no_more_rounds_than_the_ceiling()
+	{
+		var match = await CreateMatchAsync("long_round_match");
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into rounds (match_id, number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, " +
+			"started_at, aborted) " +
+			"select @match, g, @hash, 0, 0, false, 0, 0, 0, @start, false from generate_series(1, @count) g",
+			new Dictionary<string, object?>
+			{
+				["@match"] = match.Id, ["@hash"] = StoredMatches.BeatmapHash.HashValue, ["@start"] = First,
+				["@count"] = ListLimits.Ceiling + 1
+			}, TestContext.Current.CancellationToken);
+
+		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count);
+	}
 
 	[Fact]
 	public async Task A_stored_round_is_listed_under_its_match()

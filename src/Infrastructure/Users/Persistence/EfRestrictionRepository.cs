@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
@@ -70,6 +71,7 @@ internal sealed class EfRestrictionRepository(DatabaseSession database) : IRestr
 			.Where(row => row.UserId == userId)
 			.OrderBy(row => row.StartsAt)
 			.ThenBy(row => row.Id)
+			.Take(ListLimits.Ceiling)
 			.ToListAsync(cancellationToken), cancellationToken);
 		return [.. rows.Select(row => ToRestriction(row, user))];
 	}

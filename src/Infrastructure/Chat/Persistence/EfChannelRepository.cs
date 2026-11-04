@@ -1,4 +1,5 @@
 using Basil.Application.Chat.Persistence;
+using Basil.Application.Common;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
@@ -12,8 +13,10 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 	/// <inheritdoc />
 	public async Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		var rows = await database.ReadAsync((ChatDbContext context) => context.Channels.ToListAsync(cancellationToken),
-			cancellationToken);
+		var rows = await database.ReadAsync((ChatDbContext context) => context.Channels
+			.OrderBy(row => row.Name)
+			.Take(ListLimits.Ceiling)
+			.ToListAsync(cancellationToken), cancellationToken);
 		return rows.Select(ToRecord).OrderBy(channel => channel.Name, StringComparer.Ordinal).ToList();
 	}
 

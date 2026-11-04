@@ -37,6 +37,25 @@ public static class StoredRows
 		return rows;
 	}
 
+	/// <summary>Runs a statement that changes rows, for tests that need many rows at once.</summary>
+	/// <param name="connectionString">How to reach the database.</param>
+	/// <param name="sql">The statement to run.</param>
+	/// <param name="parameters">The values the statement needs, by parameter name.</param>
+	/// <param name="cancellationToken">A token that cancels the statement.</param>
+	/// <returns>How many rows the statement changed.</returns>
+	public static async Task<int> ExecuteAsync(string connectionString, string sql,
+		IReadOnlyDictionary<string, object?>? parameters, CancellationToken cancellationToken)
+	{
+		await using var connection = new NpgsqlConnection(connectionString);
+		await connection.OpenAsync(cancellationToken);
+		await using var command = new NpgsqlCommand(sql, connection);
+		if (parameters is not null)
+			foreach (var (name, value) in parameters)
+				command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+
+		return await command.ExecuteNonQueryAsync(cancellationToken);
+	}
+
 	/// <summary>Waits until the rows a query returns satisfy the condition.</summary>
 	/// <param name="connectionString">How to reach the database.</param>
 	/// <param name="sql">The query that reads the rows.</param>

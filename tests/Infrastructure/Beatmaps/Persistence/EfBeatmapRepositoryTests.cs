@@ -20,6 +20,27 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	private IBeatmapRepository Beatmaps => Get<IBeatmapRepository>();
 
 	[Fact]
+	public async Task A_listing_of_a_set_reads_no_more_beatmaps_than_the_ceiling()
+	{
+		await CommitAsync(StoredBeatmaps.Data(43, "Camellia", "Title", "Mapper",
+			[StoredBeatmaps.Difficulty(null, OtherHash, "Easy")]));
+		var set = await Sets.GetAsync(43, TestContext.Current.CancellationToken);
+		Assert.NotNull(set);
+		await StoredRows.ExecuteAsync(ConnectionString,
+			"insert into beatmaps (beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, " +
+			"background, audio, video, preview_time, storyboard, created_at, updated_at, locked, visible) " +
+			"select beatmapset_id, md5(g::text), version, mode, star, length, bpm, cs, ar, od, hp, objects, " +
+			"background, audio, video, preview_time, storyboard, created_at, updated_at, locked, visible " +
+			"from beatmaps, generate_series(1, @count) g where beatmapset_id = @set",
+			new Dictionary<string, object?> { ["@set"] = 43, ["@count"] = ListLimits.Ceiling },
+			TestContext.Current.CancellationToken);
+
+		var listed = await Beatmaps.ListAsync(set, TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, listed.Count);
+	}
+
+	[Fact]
 	public async Task A_retained_deletion_is_stored_when_the_call_returns()
 	{
 		var sets = Get<IBeatmapsetRepository>();

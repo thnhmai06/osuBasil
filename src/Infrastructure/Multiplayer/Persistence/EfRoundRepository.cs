@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
@@ -26,6 +27,7 @@ internal sealed class EfRoundRepository(DatabaseSession database) : IRoundReposi
 		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.Rounds
 			.Where(row => row.MatchId == match.Id)
 			.OrderBy(row => row.Number)
+			.Take(ListLimits.Ceiling)
 			.ToListAsync(cancellationToken), cancellationToken);
 		return [.. rows.Select(row => ToRound(match, row))];
 	}

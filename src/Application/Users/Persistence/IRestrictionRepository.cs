@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Persistence;
@@ -28,6 +29,7 @@ public interface IRestrictionRepository
 	ValueTask<UserRestriction?> GetAsync(int id, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists every restriction of a user, ended ones included, oldest first.</summary>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> restrictions are returned.</remarks>
 	/// <param name="user">The restricted user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The user's restrictions.</returns>

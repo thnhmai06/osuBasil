@@ -27,6 +27,7 @@ public interface IBeatmapRepository
 	ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the beatmaps of a beatmapset, ordered by id.</summary>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> beatmaps are returned.</remarks>
 	/// <param name="set">The beatmapset.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The beatmaps of the set.</returns>

@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Common.Persistence;
@@ -52,6 +53,7 @@ internal sealed class EfMenuBannerRepository(
 	{
 		var rows = await database.ReadAsync((ContentDbContext context) => context.MenuBanners
 			.OrderBy(row => row.CreatedAt)
+			.Take(ListLimits.Ceiling)
 			.ToListAsync(cancellationToken), cancellationToken);
 		return rows.Select(TryRead).OfType<MenuBanner>().ToList();
 	}

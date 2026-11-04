@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat.Persistence;
@@ -5,7 +6,8 @@ namespace Basil.Application.Chat.Persistence;
 /// <summary>Stores the general chat channels the server offers.</summary>
 public interface IChannelRepository
 {
-	/// <summary>Lists every general channel.</summary>
+	/// <summary>Lists every general channel, by name.</summary>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> channels are returned.</remarks>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The general channels.</returns>
 	Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken cancellationToken = default);

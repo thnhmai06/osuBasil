@@ -1,3 +1,4 @@
+using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
@@ -45,7 +46,7 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 				where relationship.ActorId == actorId
 				join target in context.Users on relationship.TargetId equals target.Id
 				orderby relationship.CreatedAt, relationship.TargetId
-				select new { relationship, target }).ToListAsync(cancellationToken), cancellationToken);
+				select new { relationship, target }).Take(ListLimits.Ceiling).ToListAsync(cancellationToken), cancellationToken);
 
 		return
 		[
