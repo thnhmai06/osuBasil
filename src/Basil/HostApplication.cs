@@ -13,6 +13,7 @@ using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Images;
 using Basil.Host.Shared.Diagnostics;
 using Basil.Host.Shared.Documentation;
+using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Caching;
@@ -39,25 +40,16 @@ public static class HostApplication
 		ConfigurationSetup.Add(builder, args);
 		var drops = ServerLogging.Add(builder, mode);
 		TelemetrySetup.Add(builder);
-		builder.Services.AddOptions<IrcOptions>().Configure<IOptions<ServerOptions>>((irc, server) =>
-		{
-			irc.Port = server.Value.Irc.Port;
-			irc.Domain = server.Value.Domain;
-		});
-		builder.Services.AddOptions<RestOptions>().Configure<IOptions<ServerOptions>>((rest, server) =>
-			rest.Domain = server.Value.Domain);
-		builder.Services.AddOptions<RepliesOptions>().Bind(builder.Configuration.GetSection("Basil:Bot:Replies"))
-			.PostConfigure(replies => replies.Path = ConfigurationSetup.Resolve(replies.Path));
 		builder.Services.AddOptions<UpdateOptions>().Bind(builder.Configuration.GetSection("Basil:Updates"));
 		builder.Services.AddSingleton<ConfigurationWatcher>();
 		builder.Services.AddHostedService(provider => provider.GetRequiredService<ConfigurationWatcher>());
 		builder.Services.AddHostedService<LanAdvertiser>();
 		builder.Services.AddHostedService<UpdateChecker>();
 		builder.Services.AddBasil();
-		builder.Services.AddBot();
+		builder.Services.AddBot(builder.Configuration);
 		builder.Services.AddSingleton<IDocumentPage, BotReferencePage>();
-		builder.Services.AddIrcListener();
-		builder.Services.AddRestApi();
+		builder.Services.AddIrcListener(builder.Configuration);
+		builder.Services.AddRestApi(builder.Configuration);
 		builder.Services.AddRestImages();
 		builder.Services.AddOptions<PhysicalFileSystemCacheOptions>()
 			.Configure<IOptions<StorageOptions>>((cache, storage) =>
@@ -79,10 +71,7 @@ public static class HostApplication
 		// Read once, after the caller's changes, so a later edit of the files waits for the next start.
 		ConfigurationSetup.AddAtStart<ServerOptions>(builder.Services,
 			builder.Configuration.GetSection("Basil:Server"));
-		ConfigurationSetup.AddAtStart<StorageOptions>(builder.Services,
-			builder.Configuration.GetSection("Basil:Storage"),
-			storage => storage.Location = ConfigurationSetup.Resolve(storage.Location));
-		builder.Services.AddSingleton(Options.Create(DatabaseSetup.Read(builder.Configuration)));
+		builder.Services.AddCommonInfrastructureOptions(builder.Configuration);
 		KestrelSetup.Configure(builder);
 
 		var app = builder.Build();

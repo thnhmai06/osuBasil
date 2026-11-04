@@ -1,5 +1,6 @@
 using Basil.Gateway;
 using Basil.Host.Shared.Documentation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Host.Irc;
@@ -22,11 +23,21 @@ public static class IrcHost
 		return services;
 	}
 
-	/// <summary>Adds the socket listener, which is what makes the server answer on the IRC port.</summary>
+	/// <summary>
+	///     Adds the socket listener, which is what makes the server answer on the IRC port; the port is
+	///     <c>Basil:Server:Irc:Port</c> and the domain <c>Basil:Server:Domain</c>.
+	/// </summary>
 	/// <param name="services">The service collection.</param>
+	/// <param name="configuration">The configuration to read.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
-	public static IServiceCollection AddIrcListener(this IServiceCollection services)
+	public static IServiceCollection AddIrcListener(this IServiceCollection services,
+		IConfiguration configuration)
 	{
+		services.AddOptions<IrcOptions>().Configure(irc =>
+		{
+			irc.Port = configuration.GetValue("Basil:Server:Irc:Port", irc.Port);
+			irc.Domain = configuration.GetValue("Basil:Server:Domain", irc.Domain)!;
+		});
 		services.AddSingleton<IrcListener>();
 		services.AddHostedService(sp => sp.GetRequiredService<IrcListener>());
 		return services;

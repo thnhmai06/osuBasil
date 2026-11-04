@@ -2,8 +2,10 @@ using Basil.Application.Common;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
 using Basil.Infrastructure.Common.Workers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Common;
 
@@ -30,6 +32,28 @@ public static class DependencyInjection
 		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWriter>());
 		services.AddHostedService<EventDispatcher>();
 		services.AddHostedService<StorageStartup>();
+		return services;
+	}
+
+	/// <summary>
+	///     Reads the storage location (<c>Basil:Storage</c>) and the database settings (<c>ConnectionStrings</c>,
+	///     <c>Basil:Database</c>) once, so a later edit of the files waits for the next start.
+	/// </summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <param name="configuration">The configuration to read.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	/// <exception cref="InvalidOperationException">There is no storage location or no connection string to store changes.</exception>
+	public static IServiceCollection AddCommonInfrastructureOptions(this IServiceCollection services,
+		IConfiguration configuration)
+	{
+		var storage = configuration.GetSection("Basil:Storage").Get<StorageOptions>();
+		if (string.IsNullOrWhiteSpace(storage?.Location))
+			throw new InvalidOperationException("Basil:Storage:Location is not set.");
+		// A relative location is relative to the executable.
+		if (!Path.IsPathRooted(storage.Location))
+			storage.Location = Path.Combine(AppContext.BaseDirectory, storage.Location);
+		services.AddSingleton(Options.Create(storage));
+		services.AddSingleton(Options.Create(DatabaseSetup.Read(configuration)));
 		return services;
 	}
 

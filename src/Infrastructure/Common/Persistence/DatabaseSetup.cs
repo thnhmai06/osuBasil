@@ -1,6 +1,6 @@
-using Basil.Infrastructure.Common.Persistence;
+using Microsoft.Extensions.Configuration;
 
-namespace Basil.Configuration;
+namespace Basil.Infrastructure.Common.Persistence;
 
 /// <summary>Reads where the server stores its data (PostgreSQL) from <c>ConnectionStrings</c> and <c>Basil:Database</c>.</summary>
 public static class DatabaseSetup

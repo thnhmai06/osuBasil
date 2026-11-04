@@ -4,6 +4,7 @@ using Basil.Host.Rest.Routes;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Diagnostics;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.Extensions.Configuration;
 
 namespace Basil.Host.Rest;
 
@@ -24,11 +25,18 @@ public static class RestHost
 		return services;
 	}
 
-	/// <summary>Adds the web services of the HTTP API: documentation, CORS and the JSON options.</summary>
+	/// <summary>
+	///     Adds the web services of the HTTP API: documentation, CORS and the JSON options; the public domain is
+	///     <c>Basil:Server:Domain</c>.
+	/// </summary>
 	/// <param name="services">The service collection.</param>
+	/// <param name="configuration">The configuration to read.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
-	public static IServiceCollection AddRestApi(this IServiceCollection services)
+	public static IServiceCollection AddRestApi(this IServiceCollection services,
+		IConfiguration configuration)
 	{
+		services.AddOptions<RestOptions>().Configure(rest =>
+			rest.Domain = configuration.GetValue("Basil:Server:Domain", rest.Domain)!);
 		services.AddBasilOpenApi();
 		// Bad parameters throw instead of answering an empty 400, so that the pipeline answers with the envelope.
 		services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);

@@ -1,7 +1,7 @@
-using Basil.Configuration;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.Extensions.Configuration;
 
-namespace Basil.Tests.Configuration;
+namespace Basil.Infrastructure.Common.Tests.Persistence;
 
 /// <summary>The database settings: two connection strings and their pools.</summary>
 public sealed class DatabaseSetupTests
