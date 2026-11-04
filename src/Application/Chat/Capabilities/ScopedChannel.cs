@@ -44,8 +44,8 @@ public readonly struct ScopedChannel
 	/// <summary>Adds the scoped connection to the channel.</summary>
 	/// <returns>Ok, or Closed, AccessDenied or AlreadyMember.</returns>
 	/// <remarks>
-	///     The connection must be allowed to read the channel. A closed connection of a kind limited to one channel
-	///     membership per user is replaced, and the join event reports it.
+	///     The connection must be allowed to read the channel. A closed connection of a kind that holds one channel
+	///     place per user is replaced, and the join event reports it.
 	/// </remarks>
 	public Result<ChannelOutcome> Join()
 	{
@@ -55,7 +55,7 @@ public readonly struct ScopedChannel
 		if (Channel.Members.Contains(Actor)) return ChannelOutcome.AlreadyMember;
 
 		Connection? replaced = null;
-		if (!Actor.Type.AllowsMany())
+		if (Actor.Type.ReplacesOnJoin())
 		{
 			var self = Actor;
 			replaced = Channel.Members.FirstOrDefault(member =>

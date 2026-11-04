@@ -1,3 +1,4 @@
+using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
@@ -22,7 +23,7 @@ public sealed record ServerSettings
 	/// <summary>Gets the settings of new accounts.</summary>
 	public AccountSettings Accounts { get; init; } = new();
 
-	/// <summary>Gets the lifetimes of sessions and tokens.</summary>
+	/// <summary>Gets the lifetimes and limits of sessions and tokens.</summary>
 	public SessionSettings Sessions { get; init; } = new();
 
 	/// <summary>Gets the limits on how often things may be done.</summary>
@@ -96,9 +97,12 @@ public sealed record ServerSettings
 		} = UserPermissionsGroups.Default;
 	}
 
-	/// <summary>The lifetimes of sessions and tokens.</summary>
+	/// <summary>The lifetimes and limits of sessions and tokens.</summary>
 	public sealed record SessionSettings
 	{
+		/// <summary>Gets how many connections one user may hold open at once, for each kind of connection.</summary>
+		public MaxSessionsSettings MaxPerUser { get; init; } = new();
+
 		/// <summary>Gets the lifetime of an HTTP API token; each use renews it.</summary>
 		public ApiTokenSettings ApiToken { get; init; } = new();
 
@@ -108,6 +112,53 @@ public sealed record ServerSettings
 			get;
 			init => field = Positive(value);
 		} = TimeSpan.FromDays(90);
+	}
+
+	/// <summary>How many connections one user may hold open at once, for each kind of connection.</summary>
+	public sealed record MaxSessionsSettings
+	{
+		/// <summary>Gets how many osu! game clients one user may hold open.</summary>
+		public int Stable
+		{
+			get;
+			init => field = Positive(value);
+		} = 1;
+
+		/// <summary>Gets how many osu!tourney clients one user may hold open.</summary>
+		public int StableTourney
+		{
+			get;
+			init => field = Positive(value);
+		} = 10;
+
+		/// <summary>Gets how many IRC clients one user may hold open.</summary>
+		public int Irc
+		{
+			get;
+			init => field = Positive(value);
+		} = 5;
+
+		/// <summary>Gets how many HTTP API connections one user may hold open; a new one beyond it replaces the oldest.</summary>
+		public int Api
+		{
+			get;
+			init => field = Positive(value);
+		} = 10;
+
+		/// <summary>Gets how many connections of a kind one user may hold open.</summary>
+		/// <param name="type">The kind of connection.</param>
+		/// <returns>The limit of the kind; BasilBot's own connection is always limited to one.</returns>
+		public int For(SessionType type)
+		{
+			return type switch
+			{
+				SessionType.Stable => Stable,
+				SessionType.StableTourney => StableTourney,
+				SessionType.Irc => Irc,
+				SessionType.Api => Api,
+				_ => 1
+			};
+		}
 	}
 
 	/// <summary>The lifetime of an HTTP API token.</summary>

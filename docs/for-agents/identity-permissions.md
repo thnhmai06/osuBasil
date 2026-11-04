@@ -85,14 +85,18 @@ touching users, connections, permissions, restrictions or the bot.
   password every time. A connection that has sent nothing for its transport's idle timeout leaves memory; the session stays valid
   and the next use opens a new connection. Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by
   default).
-* **Concurrent sessions per user are limited per connection type (target).** The Users module enforces the limit in
-  `UserRegistry.Open`, under the registry's lock, and the limits are runtime settings (`ServerSettings.Sessions`, positive
-  numbers) replacing today's `SessionType.AllowsMany()`. Defaults: Stable 1, StableTourney 10, Irc 5, Api 10; BasilBot is
-  fixed at one Stable and one Irc. Only open connections count; at the ceiling, connections of that user idle beyond the
-  idle timeout are closed first. Then Stable, StableTourney and Irc **refuse** the new connection (`TooManySessions`; Rest
-  answers `409 tooManySessions`), while Api **evicts the oldest idle token** (by last activity) and accepts the new one.
-  Open live streams (SSE) have a separate per-user ceiling. Refusals are counted in diagnostics
-  (`basil.connections.rejected`). This is a business rule of Users, not an admission policy of the gateway.
+* **Concurrent sessions per user are limited per connection type.** The Users module enforces the limit in
+  `UserRegistry.Open`, under the registry's lock, from the runtime setting `Sessions.MaxPerUser` (positive numbers;
+  Rest `PATCH /v1/settings/sessions`, Cli `settings sessions set --maxPerUser.irc 7`). Defaults: Stable 1,
+  StableTourney 10, Irc 5, Api 10; BasilBot's connection is fixed at one and ignores the setting. Only open
+  connections count; at the ceiling, connections of that user and kind that have been idle beyond the idle timeout are
+  closed first. Then Stable, StableTourney and Irc **refuse** the new connection (`LoginFailure.TooManySessions`: a
+  Stable notice, an IRC `464` plus `ERROR`), while Api **closes the connection active longest ago** and accepts the new
+  one (its token stays valid; the next use opens a connection again), so an Api login never fails on this rule. Open
+  live streams (SSE) have a separate per-user ceiling equal to the Api limit and answer `429`. Refusals are counted
+  in diagnostics (`basil.connections.rejected`, tags `type` and `reason=too_many_sessions`). This is a business rule
+  of Users, not an admission policy of the gateway. Whether a new connection takes the place of the user's closed one in
+  a channel is a different, fixed rule (`ReplacesOnJoin`: osu! game clients and BasilBot).
 * **Logging out revokes credentials, not saved passwords.** Closing an Api session revokes its token; closing an osu! session only disconnects the
   client, which can sign in again with its password; closing an IRC session revokes that
   device's key. Changing a password revokes every other Api token and every IRC key, and closes osu! connections.

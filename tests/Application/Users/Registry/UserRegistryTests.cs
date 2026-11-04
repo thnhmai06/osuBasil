@@ -185,7 +185,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondStableLoginRightAfterTheFirst_ReturnsAlreadyOnline()
+	public async Task LoginAsync_SecondStableLoginRightAfterTheFirst_ReturnsTooManySessions()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("AlreadyOnline", "password");
@@ -194,11 +194,11 @@ public sealed class UserRegistryTests
 
 		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.Stable);
 
-		Assert.Equal(LoginFailure.AlreadyOnline, result.Failure);
+		Assert.Equal(LoginFailure.TooManySessions, result.Failure);
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondStableLoginWhileTheFirstIsOpen_ReturnsAlreadyOnlineHoweverLongItHasBeenIdle()
+	public async Task LoginAsync_SecondStableLoginWhileTheFirstIsOpen_ReturnsTooManySessionsHoweverLongItHasBeenIdle()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("StillOpen", "password");
@@ -207,7 +207,7 @@ public sealed class UserRegistryTests
 
 		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.Stable);
 
-		Assert.Equal(LoginFailure.AlreadyOnline, result.Failure);
+		Assert.Equal(LoginFailure.TooManySessions, result.Failure);
 		Assert.True(old.IsOpen);
 	}
 

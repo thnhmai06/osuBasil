@@ -454,9 +454,12 @@ public sealed class UserRegistry
 	/// <param name="restrictions">The user's restrictions that have not ended.</param>
 	/// <returns><see langword="null" /> on success; otherwise, why the connection was refused.</returns>
 	/// <remarks>
-	///     A kind that allows one connection per user refuses a new one while the user still has an open
-	///     connection of that kind. An osu!tourney
-	///     connection needs <see cref="UserPermissions.RoomObserve" /> in effect.
+	///     A user holds at most the number of open connections of a kind that the server settings allow. At the limit,
+	///     the user's connections of that kind that sent nothing for too long are closed first; if the user is still at
+	///     the limit, an HTTP API connection replaces the one that was active longest ago and any other kind is refused
+	///     with <see cref="LoginFailure.TooManySessions" />. BasilBot's connection is limited to one of its kind
+	///     whatever the settings say. An osu!tourney connection needs <see cref="UserPermissions.RoomObserve" /> in
+	///     effect.
 	/// </remarks>
 	internal LoginFailure? Open(Connection connection, IReadOnlyList<UserRestriction> restrictions)
 	{
@@ -469,11 +472,11 @@ public sealed class UserRegistry
 			    .Allows(UserPermissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
 
+		if (_online.GetValueOrDefault(connection.Record) is { } holder && MakeRoomFor(holder, connection) is { } refusal)
+			return refusal;
+
+		// Making room may have closed the user's last connection and taken them offline.
 		var user = _online.GetValueOrDefault(connection.Record);
-
-		if (user is not null && !connection.Type.AllowsMany() && user[connection.Type].Any())
-			return LoginFailure.AlreadyOnline;
-
 		var cameOnline = user is null;
 		user ??= Of(connection.Record);
 		if (cameOnline) Add(user);
@@ -488,6 +491,32 @@ public sealed class UserRegistry
 
 		_context.Events.Publish(new UserConnectionOpened(connection, cameOnline));
 		return null;
+	}
+
+	private LoginFailure? MakeRoomFor(User user, Connection connection)
+	{
+		var type = connection.Type;
+		var isBot = connection.Record.Id == BasilBot.Id;
+		var max = isBot ? 1 : _context.Settings.Current.Sessions.MaxPerUser.For(type);
+		if (user[type].Count < max) return null;
+
+		var now = _context.Clock.GetUtcNow();
+		if (!isBot)
+			foreach (var idle in user[type].Where(open => now - open.LastActiveAt > type.IdleTimeout()).ToList())
+				CloseCore(idle, SessionEndReason.TimedOut);
+
+		var current = _online.GetValueOrDefault(connection.Record);
+		if (current is null || current[type].Count < max) return null;
+
+		if (type is SessionType.Api)
+		{
+			CloseCore(current[type].MinBy(open => open.LastActiveAt)!, SessionEndReason.Replaced);
+			return null;
+		}
+
+		ConnectionMetrics.Rejected.Add(1, new KeyValuePair<string, object?>(ConnectionMetrics.TypeTag, type.ToString()),
+			new KeyValuePair<string, object?>(ConnectionMetrics.ReasonTag, ConnectionMetrics.TooManySessions));
+		return LoginFailure.TooManySessions;
 	}
 
 	private SessionRecord NewBotSession(UserRecord bot)

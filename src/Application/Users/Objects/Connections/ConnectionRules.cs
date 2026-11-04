@@ -8,12 +8,11 @@ public static class ConnectionRules
 	/// <param name="type">The kind of connection.</param>
 	extension(SessionType type)
 	{
-		/// <summary>Gets a value that indicates whether one user may hold several connections of a kind at once.</summary>
-		/// <returns><see langword="true" /> for IRC, osu!tourney and HTTP API connections.</returns>
-		/// <remarks>Each IRC client of a user has a key of its own, so several can be connected at once.</remarks>
-		public bool AllowsMany()
+		/// <summary>Gets a value that indicates whether a new connection of a kind takes the place of the user's closed one in a channel.</summary>
+		/// <returns><see langword="true" /> for osu! game clients and BasilBot's connection, which hold one place per user.</returns>
+		public bool ReplacesOnJoin()
 		{
-			return type is SessionType.StableTourney or SessionType.Irc or SessionType.Api;
+			return type is SessionType.Stable or SessionType.Bot;
 		}
 
 		/// <summary>Gets how long a connection of a kind may send nothing before it is closed.</summary>
