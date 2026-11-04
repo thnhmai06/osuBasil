@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Stores the match again when its name or privacy changed.</summary>
 internal sealed class RoomSettingsChangedRecorder(IMatchRepository matches) : INotificationHandler<RoomSettingsChanged>

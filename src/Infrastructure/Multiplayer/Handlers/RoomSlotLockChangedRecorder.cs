@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Stores the round a slot lock change ended.</summary>
 internal sealed class RoomSlotLockChangedRecorder(IRoundRepository rounds) : INotificationHandler<RoomSlotLockChanged>

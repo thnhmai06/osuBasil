@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Multiplayer;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Stores the rounds a recovery aborted, ends the recovered match and records the recovery.</summary>
 internal sealed class LobbyMatchRecoveredRecorder(

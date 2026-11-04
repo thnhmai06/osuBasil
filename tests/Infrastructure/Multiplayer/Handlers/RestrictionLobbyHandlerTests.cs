@@ -1,11 +1,11 @@
-using Basil.Application.Multiplayer.Handlers;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Basil.Application.Multiplayer.Tests.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 
 /// <summary>
 ///     What a restriction costs a user in multiplayer: a suspended right to join rooms takes away the seat and the

@@ -29,6 +29,7 @@
 		<ProjectReference Include="..\..\..\src\Application\Common\Basil.Application.Common.csproj"/>
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\..\..\src\Infrastructure\Multiplayer\Basil.Infrastructure.Multiplayer.csproj"/>
 		<ProjectReference Include="..\..\Support\Basil.Testing\Basil.Testing.csproj"/>
 	</ItemGroup>
 </Project>

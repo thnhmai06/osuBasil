@@ -1,5 +1,5 @@
 using Basil.Application.Content.Persistence;
-using Basil.Application.Multiplayer.Handlers;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Scores.Objects.Events;

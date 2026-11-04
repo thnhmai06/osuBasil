@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Multiplayer;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Records a referee being added.</summary>
 internal sealed class RoomRefereeAddedRecorder(IMatchEventRepository matchEvents)

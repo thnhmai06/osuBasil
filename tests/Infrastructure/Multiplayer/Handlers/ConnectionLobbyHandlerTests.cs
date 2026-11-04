@@ -1,11 +1,11 @@
-using Basil.Application.Multiplayer.Handlers;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Basil.Application.Multiplayer.Tests.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 
 /// <summary>
 ///     What a closed connection leaves behind in the multiplayer lobby: its room and its place among the lobby's

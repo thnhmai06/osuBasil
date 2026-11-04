@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Multiplayer;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Records a player being kicked, and the round the departure ended.</summary>
 internal sealed class RoomPlayerKickedRecorder(

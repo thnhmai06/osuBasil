@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Objects.Events;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Offers every stored score to the rooms, which take it when one of their rounds awaits it.</summary>
 public sealed class ScoreHandler(Lobby lobby) : INotificationHandler<ScoreSubmitted>

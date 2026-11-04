@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Stores which round a submitted score belongs to.</summary>
 internal sealed class RoomRoundScoreSubmittedRecorder(IRoundScoreRepository roundScores)

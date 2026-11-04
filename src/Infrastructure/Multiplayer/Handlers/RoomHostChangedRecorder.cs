@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Multiplayer;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Records a host being granted to a player.</summary>
 internal sealed class RoomHostChangedRecorder(IMatchEventRepository matchEvents) : INotificationHandler<RoomHostChanged>

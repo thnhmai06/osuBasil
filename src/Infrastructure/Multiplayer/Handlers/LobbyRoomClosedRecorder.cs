@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Multiplayer;
 using Mediator;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Stores the round a closing room aborted, ends its match and records who closed it.</summary>
 internal sealed class LobbyRoomClosedRecorder(

@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Multiplayer.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Applies the room consequences of a user's restrictions: a user who may no longer join rooms leaves them.</summary>
 internal sealed class RestrictionLobbyHandler(

@@ -1,4 +1,4 @@
-using Basil.Application.Multiplayer.Handlers;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
@@ -6,7 +6,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Testing;
 using NSubstitute;
 
-namespace Basil.Application.Multiplayer.Tests.Handlers;
+namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 
 /// <summary>
 ///     What a room and the lobby leave behind as stored matches, rounds and match events. The expected values come

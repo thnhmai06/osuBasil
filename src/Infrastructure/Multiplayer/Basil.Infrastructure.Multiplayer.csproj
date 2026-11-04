@@ -7,7 +7,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="Basil"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Multiplayer.Tests"/>
+		<InternalsVisibleTo Include="Basil.Application.Multiplayer.Tests"/>
+		<InternalsVisibleTo Include="Basil.Application.Scores.Tests"/>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -18,6 +21,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
 		<PackageReference Include="Npgsql"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
