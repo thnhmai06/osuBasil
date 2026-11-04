@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Authentication.Persistence;
 
 internal sealed class AuthenticationDbContext(DbContextOptions<AuthenticationDbContext> options) : DbContext(options),
-	IDatabaseContext<AuthenticationDbContext>, IWriteTicketContext
+	IDatabaseContext<AuthenticationDbContext>
 {
 	public DbSet<CredentialRow> Credentials => Set<CredentialRow>();
 	public DbSet<SessionRow> Sessions => Set<SessionRow>();
@@ -16,12 +16,9 @@ internal sealed class AuthenticationDbContext(DbContextOptions<AuthenticationDbC
 		return new AuthenticationDbContext(options);
 	}
 
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
-
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.MapUsersReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<AuthenticationDbContext>(modelBuilder);
-		ContextModel.MapWriteTicketReference(modelBuilder);
 	}
 }

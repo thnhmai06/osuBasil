@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Scores.Persistence;
 
 internal sealed class ScoresDbContext(DbContextOptions<ScoresDbContext> options) : DbContext(options),
-	IDatabaseContext<ScoresDbContext>, IWriteTicketContext
+	IDatabaseContext<ScoresDbContext>
 {
 	public DbSet<ScoreRow> Scores => Set<ScoreRow>();
 	public DbSet<UserStatsRow> UserStats => Set<UserStatsRow>();
@@ -16,12 +16,9 @@ internal sealed class ScoresDbContext(DbContextOptions<ScoresDbContext> options)
 		return new ScoresDbContext(options);
 	}
 
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
-
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.MapUsersReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<ScoresDbContext>(modelBuilder);
-		ContextModel.MapWriteTicketReference(modelBuilder);
 	}
 }

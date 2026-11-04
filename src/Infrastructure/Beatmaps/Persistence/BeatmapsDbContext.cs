@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Beatmaps.Persistence;
 
 internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> options) : DbContext(options),
-	IDatabaseContext<BeatmapsDbContext>, IWriteTicketContext
+	IDatabaseContext<BeatmapsDbContext>
 {
 	internal const int LocalIdFloor = 1_000_000_000;
 
@@ -18,12 +18,9 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 		return new BeatmapsDbContext(options);
 	}
 
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
-
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<BeatmapsDbContext>(modelBuilder);
-		ContextModel.MapWriteTicketReference(modelBuilder);
 		modelBuilder.HasSequence<int>("local_beatmapset_ids").StartsAt(LocalIdFloor);
 		modelBuilder.HasSequence<int>("local_beatmap_ids").StartsAt(LocalIdFloor);
 	}

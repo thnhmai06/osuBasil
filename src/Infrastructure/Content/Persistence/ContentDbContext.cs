@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Content.Persistence;
 
 internal sealed class ContentDbContext(DbContextOptions<ContentDbContext> options) : DbContext(options),
-	IDatabaseContext<ContentDbContext>, IWriteTicketContext
+	IDatabaseContext<ContentDbContext>
 {
 	public DbSet<SettingRow> Settings => Set<SettingRow>();
 	public DbSet<MenuBannerRow> MenuBanners => Set<MenuBannerRow>();
@@ -16,11 +16,8 @@ internal sealed class ContentDbContext(DbContextOptions<ContentDbContext> option
 		return new ContentDbContext(options);
 	}
 
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
-
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<ContentDbContext>(modelBuilder);
-		ContextModel.MapWriteTicketReference(modelBuilder);
 	}
 }

@@ -1,6 +1,8 @@
 using System.Reflection;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Postgres;
 using Basil.Testing.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
@@ -13,7 +15,6 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 {
 	private static readonly (string Module, string[] Tables)[] Modules =
 	[
-		("Common", ["write_tickets"]),
 		("Users", ["users", "restrictions", "moderation_log", "relationships"]),
 		("Authentication", ["credentials", "sessions"]),
 		("Beatmaps", ["beatmapsets", "beatmaps"]),
@@ -26,14 +27,11 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	[Fact]
 	public void Module_migrations_create_only_tables_owned_by_their_context()
 	{
-		var assembly = typeof(DatabaseMigrator).Assembly;
+		var migrationsAssembly = typeof(PostgresDatabaseProvider).Assembly;
 		foreach (var (module, ownedTables) in Modules)
 		{
-			var moduleAssembly = module == "Common" ? assembly : Assembly.Load($"Basil.Infrastructure.{module}");
-			var context = moduleAssembly.GetTypes().SingleOrDefault(type => type.Name == $"{module}DbContext");
-			Assert.NotNull(context);
-
-			var migrations = moduleAssembly.GetTypes()
+			var context = Context(module);
+			var migrations = migrationsAssembly.GetTypes()
 				.Where(type => typeof(Migration).IsAssignableFrom(type) && !type.IsAbstract)
 				.Where(type => type.GetCustomAttribute<DbContextAttribute>()?.ContextType == context)
 				.ToArray();
@@ -50,14 +48,34 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
+	public void Every_module_context_has_no_model_change_the_migrations_miss()
+	{
+		var create = typeof(Database).GetMethod(nameof(Database.CreateConfirmedContext))!;
+		var database = Get<Database>();
+		foreach (var (module, _) in Modules)
+		{
+			using var context = (DbContext)create.MakeGenericMethod(Context(module)).Invoke(database, null)!;
+
+			Assert.False(context.Database.HasPendingModelChanges(), $"{module} has model changes without a migration.");
+		}
+	}
+
+	private static Type Context(string module)
+	{
+		var type = Assembly.Load($"Basil.Infrastructure.{module}").GetTypes()
+			.SingleOrDefault(candidate => candidate.Name == $"{module}DbContext");
+		Assert.NotNull(type);
+		return type;
+	}
+
+	[Fact]
 	public async Task Module_migrations_are_applied_in_the_documented_order()
 	{
 		// A module with several migrations has several rows; the order of the modules is what is pinned.
 		var rows = await StoredRows.ReadAsync(ConnectionString, """
 		                                                        SELECT module, transaction_id
 		                                                        FROM (
-		                                                        	SELECT 'common' AS module, xmin::text::bigint AS transaction_id FROM "__ef_migrations_common"
-		                                                        	UNION ALL SELECT 'users', xmin::text::bigint FROM "__ef_migrations_users"
+		                                                        	SELECT 'users' AS module, xmin::text::bigint AS transaction_id FROM "__ef_migrations_users"
 		                                                        	UNION ALL SELECT 'auth', xmin::text::bigint FROM "__ef_migrations_auth"
 		                                                        	UNION ALL SELECT 'beatmaps', xmin::text::bigint FROM "__ef_migrations_beatmaps"
 		                                                        	UNION ALL SELECT 'content', xmin::text::bigint FROM "__ef_migrations_content"
@@ -68,7 +86,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		                                                        ORDER BY transaction_id
 		                                                        """, null, TestContext.Current.CancellationToken);
 
-		Assert.Equal(["common", "users", "auth", "beatmaps", "content", "scores", "multiplayer", "chat"],
+		Assert.Equal(["users", "auth", "beatmaps", "content", "scores", "multiplayer", "chat"],
 			rows.Select(row => row.Text("module")).Distinct());
 	}
 

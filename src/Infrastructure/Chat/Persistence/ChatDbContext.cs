@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Chat.Persistence;
 
 internal sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContext(options),
-	IDatabaseContext<ChatDbContext>, IWriteTicketContext
+	IDatabaseContext<ChatDbContext>
 {
 	public DbSet<ChannelRow> Channels => Set<ChannelRow>();
 
@@ -15,11 +15,8 @@ internal sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : D
 		return new ChatDbContext(options);
 	}
 
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
-
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<ChatDbContext>(modelBuilder);
-		ContextModel.MapWriteTicketReference(modelBuilder);
 	}
 }

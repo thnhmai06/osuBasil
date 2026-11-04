@@ -27,7 +27,6 @@ public static class DependencyInjection
 		services.AddSingleton<Database>();
 		services.AddSingleton<DatabaseSession>();
 		services.AddSingleton<DatabaseMigrator>();
-		services.AddSingleton<IModuleMigration, ModuleMigration<CommonDbContext>>();
 		services.AddHostedService<EventDispatcher>();
 		services.AddHostedService<StorageStartup>();
 		return services;

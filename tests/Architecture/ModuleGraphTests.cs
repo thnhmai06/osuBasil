@@ -66,6 +66,11 @@ public class ModuleGraphTests
 		Assert.False(IsAllowed("Basil.Application.Authentication", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Application.Users", "Basil"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Users", "Basil.Infrastructure.Postgres"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Common", "Basil.Infrastructure.Postgres"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Postgres", "Basil.Application.Users"));
+		Assert.True(IsAllowed("Basil", "Basil.Infrastructure.Postgres"));
+		Assert.True(IsAllowed("Basil.Infrastructure.Postgres", "Basil.Infrastructure.Users"));
 		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Common"));
 		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Common"));
 		Assert.False(IsAllowed("Basil.Protocol.Irc", "Basil.Domain"));
@@ -85,7 +90,7 @@ public class ModuleGraphTests
 	private static bool IsKnown(string name)
 	{
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
-			       or "Basil.Gateway" or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
+			       or "Basil.Infrastructure.Postgres" or "Basil.Gateway" or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                name == $"Basil.Infrastructure.{module}");
 	}
@@ -99,8 +104,11 @@ public class ModuleGraphTests
 		if (to == "Basil.Domain") return true;
 		if (from == "Basil.Application.Common") return false;
 		if (from == "Basil.Infrastructure.Common") return to == "Basil.Application.Common";
+		if (from == "Basil.Infrastructure.Postgres")
+			return to == "Basil.Infrastructure.Common" || IsModuleProject(to) && to.StartsWith("Basil.Infrastructure.", StringComparison.Ordinal);
 		if (to == "Basil.Application.Common") return true;
-		if (from == "Basil") return IsModuleProject(to) || to == "Basil.Infrastructure.Common";
+		if (from == "Basil")
+			return IsModuleProject(to) || to is "Basil.Infrastructure.Common" or "Basil.Infrastructure.Postgres";
 		if (from == "Basil.Bot")
 			return to.StartsWith("Basil.Application.", StringComparison.Ordinal) && IsModuleProject(to);
 

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Users.Persistence;
 
 internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContext(options),
-	IDatabaseContext<UsersDbContext>, IWriteTicketContext
+	IDatabaseContext<UsersDbContext>
 {
 	public DbSet<UserRow> Users => Set<UserRow>();
 	public DbSet<RestrictionRow> Restrictions => Set<RestrictionRow>();
@@ -18,11 +18,9 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) :
 		return new UsersDbContext(options);
 	}
 
-	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
-
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<UsersDbContext>(modelBuilder);
-		ContextModel.MapWriteTicketReference(modelBuilder);
+		modelBuilder.HasSequence<int>("user_ids").StartsAt(2);
 	}
 }

@@ -44,17 +44,4 @@ public static class ContextModel
 			entity.HasKey("Id");
 		});
 	}
-
-	/// <summary>Maps the write tickets table, which the common module creates, without migrating it.</summary>
-	/// <param name="modelBuilder">The model being built.</param>
-	public static void MapWriteTicketReference(ModelBuilder modelBuilder)
-	{
-		modelBuilder.Entity<WriteTicketRow>(row =>
-		{
-			row.ToTable("write_tickets", table => table.ExcludeFromMigrations());
-			row.HasKey(ticket => ticket.Id);
-			row.Property(ticket => ticket.Id).ValueGeneratedNever();
-			row.HasIndex(ticket => ticket.CreatedAt);
-		});
-	}
 }

@@ -73,12 +73,12 @@ internal static class BeatmapQueryFilter
 		// Free text: every whitespace-separated word must match artist, title, creator or version.
 		if (!string.IsNullOrWhiteSpace(query.Text))
 			beatmaps = query.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-				.Select(LikePattern.Containing).Aggregate(beatmaps, (current, pattern)
+				.Select(word => LikePattern.Containing(word).ToLowerInvariant()).Aggregate(beatmaps, (current, pattern)
 					=> current.Where(row =>
-						EF.Functions.ILike(row.Set.Artist, pattern, LikePattern.Escape) ||
-						EF.Functions.ILike(row.Set.Title, pattern, LikePattern.Escape) ||
-						EF.Functions.ILike(row.Set.Creator, pattern, LikePattern.Escape) ||
-						EF.Functions.ILike(row.Version, pattern, LikePattern.Escape)));
+						EF.Functions.Like(row.Set.Artist.ToLower(), pattern, LikePattern.Escape) ||
+						EF.Functions.Like(row.Set.Title.ToLower(), pattern, LikePattern.Escape) ||
+						EF.Functions.Like(row.Set.Creator.ToLower(), pattern, LikePattern.Escape) ||
+						EF.Functions.Like(row.Version.ToLower(), pattern, LikePattern.Escape)));
 
 		return beatmaps;
 	}
@@ -88,20 +88,20 @@ internal static class BeatmapQueryFilter
 	{
 		if (!string.IsNullOrWhiteSpace(query.Creator))
 		{
-			var pattern = LikePattern.Containing(query.Creator);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Creator, pattern, LikePattern.Escape));
+			var pattern = LikePattern.Containing(query.Creator).ToLowerInvariant();
+			beatmaps = beatmaps.Where(row => EF.Functions.Like(row.Set.Creator.ToLower(), pattern, LikePattern.Escape));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Artist))
 		{
-			var pattern = LikePattern.Containing(query.Artist);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern, LikePattern.Escape));
+			var pattern = LikePattern.Containing(query.Artist).ToLowerInvariant();
+			beatmaps = beatmaps.Where(row => EF.Functions.Like(row.Set.Artist.ToLower(), pattern, LikePattern.Escape));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Title))
 		{
-			var pattern = LikePattern.Containing(query.Title);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Title, pattern, LikePattern.Escape));
+			var pattern = LikePattern.Containing(query.Title).ToLowerInvariant();
+			beatmaps = beatmaps.Where(row => EF.Functions.Like(row.Set.Title.ToLower(), pattern, LikePattern.Escape));
 		}
 
 		return beatmaps;
@@ -112,18 +112,18 @@ internal static class BeatmapQueryFilter
 	{
 		if (!string.IsNullOrWhiteSpace(query.Difficulty))
 		{
-			var pattern = LikePattern.Containing(query.Difficulty);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Version, pattern, LikePattern.Escape));
+			var pattern = LikePattern.Containing(query.Difficulty).ToLowerInvariant();
+			beatmaps = beatmaps.Where(row => EF.Functions.Like(row.Version.ToLower(), pattern, LikePattern.Escape));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.FileName))
 		{
-			var pattern = LikePattern.Literal(BeatmapMetadata.NormalizeFileName(query.FileName));
+			var pattern = LikePattern.Literal(BeatmapMetadata.NormalizeFileName(query.FileName)).ToLowerInvariant();
 			// The name of the .osu file of a beatmap leaves out the characters a file name cannot hold.
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(
+			beatmaps = beatmaps.Where(row => EF.Functions.Like(
 				(row.Set.Artist + " - " + row.Set.Title + " (" + row.Set.Creator + ") [" + row.Version + "].osu")
 				.Replace(":", "").Replace("\\", "").Replace("/", "").Replace("*", "").Replace("<", "").Replace(">", "")
-				.Replace("?", "").Replace("\"", "").Replace("|", ""),
+				.Replace("?", "").Replace("\"", "").Replace("|", "").ToLower(),
 				pattern, LikePattern.Escape));
 		}
 

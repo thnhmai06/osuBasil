@@ -20,7 +20,7 @@ internal sealed class ModerationLogRowConfiguration : IEntityTypeConfiguration<M
 	{
 		builder.ToTable("moderation_log");
 		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).UseIdentityAlwaysColumn();
+		builder.Property(row => row.Id).ValueGeneratedOnAdd();
 		builder.HasOne<UserRow>().WithMany().HasForeignKey(row => row.ById).OnDelete(DeleteBehavior.NoAction);
 		builder.HasOne<UserRow>().WithMany().HasForeignKey(row => row.TargetId).OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(row => new { row.TargetId, row.Timestamp }).IsDescending(false, true);

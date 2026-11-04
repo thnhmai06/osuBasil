@@ -25,7 +25,7 @@ internal sealed class UserRowConfiguration : IEntityTypeConfiguration<UserRow>
 		builder.HasKey(row => row.Id);
 		// Id 1 is BasilBot, the fixed account the server speaks as; it is stored at startup under that id, so the
 		// accounts the database numbers start at 2.
-		builder.Property(row => row.Id).UseIdentityByDefaultColumn().HasIdentityOptions(2);
+		builder.Property(row => row.Id).HasDefaultValueSql("nextval('user_ids')").ValueGeneratedOnAdd();
 		builder.HasIndex(row => row.NormalizedName).IsUnique().HasFilter("deleted_at is null");
 	}
 }

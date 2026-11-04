@@ -34,7 +34,7 @@ internal sealed class ScoreRowConfiguration : IEntityTypeConfiguration<ScoreRow>
 	{
 		builder.ToTable("scores", table => table.HasCheckConstraint("scores_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).UseIdentityByDefaultColumn();
+		builder.Property(row => row.Id).ValueGeneratedOnAdd();
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")
 			.OnDelete(DeleteBehavior.NoAction);
 		builder.HasIndex(row => row.UserId);

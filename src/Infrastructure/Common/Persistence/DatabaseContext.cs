@@ -14,10 +14,3 @@ public interface IDatabaseContext<TContext> where TContext : DbContext
 	/// <returns>A new, short-lived context.</returns>
 	static abstract TContext Create(DbContextOptions<TContext> options);
 }
-
-/// <summary>A context that can store the tickets with which a write proves afterwards that it was committed.</summary>
-public interface IWriteTicketContext
-{
-	/// <summary>Gets the tickets of committed writes.</summary>
-	DbSet<WriteTicketRow> WriteTickets { get; }
-}

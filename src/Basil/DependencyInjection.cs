@@ -26,6 +26,7 @@ using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Multiplayer;
+using Basil.Infrastructure.Postgres;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Users;
 
@@ -59,6 +60,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddBasilStorage(this IServiceCollection services)
 	{
 		services.AddCommonInfrastructure();
+		services.AddPostgresInfrastructure();
 
 		// The foreign keys decide the order of the migrations, not the project references.
 		services.AddUsersInfrastructure();

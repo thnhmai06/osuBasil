@@ -76,7 +76,7 @@ public class DatabaseSession(Database database, TimeProvider time)
 			await context.SaveChangesAsync(cancellationToken);
 			return result;
 		}
-		catch (Exception exception) when (exception.IsUniqueViolation())
+		catch (Exception exception) when (database.Provider.IsUniqueViolation(exception))
 		{
 			throw new AlreadyExistsException("A value that must be unique is already stored.");
 		}
@@ -119,7 +119,9 @@ public class DatabaseSession(Database database, TimeProvider time)
 				await OpenAsync(context, cancellationToken);
 				return context;
 			}
-			catch (Exception) when (!cancellationToken.IsCancellationRequested && retry < OpenRetryDelays.Length)
+			catch (Exception exception) when (!cancellationToken.IsCancellationRequested &&
+			                                  retry < OpenRetryDelays.Length &&
+			                                  database.Provider.IsConnectionFailure(exception))
 			{
 				await context.DisposeAsync();
 				await Task.Delay(OpenRetryDelays[retry], time, cancellationToken);

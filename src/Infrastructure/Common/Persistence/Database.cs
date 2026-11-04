@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace Basil.Infrastructure.Common.Persistence;
 
@@ -9,22 +8,25 @@ namespace Basil.Infrastructure.Common.Persistence;
 public sealed class Database : IAsyncDisposable
 {
 	private readonly ConcurrentDictionary<Type, object> _readOptions = new();
-	private readonly NpgsqlDataSource _readSource;
+	private readonly IDatabaseSource _readSource;
 	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
-	private readonly NpgsqlDataSource _synchronousSource;
+	private readonly IDatabaseSource _synchronousSource;
 
 	/// <summary>Creates the database connections used for reads and for confirmed writes.</summary>
+	/// <param name="provider">The database engine.</param>
 	/// <param name="options">The database connection settings.</param>
-	public Database(IOptions<DatabaseOptions> options)
+	public Database(IDatabaseProvider provider, IOptions<DatabaseOptions> options)
 	{
+		Provider = provider;
 		var settings = options.Value;
 		var write = settings.WriteConnectionString;
 		var read = string.IsNullOrEmpty(settings.ReadConnectionString) ? write : settings.ReadConnectionString;
-		_readSource = NpgsqlDataSource.Create(WithServerOptions(read, "-c idle_in_transaction_session_timeout=30s",
-			settings.ReadPoolSize));
-		_synchronousSource = NpgsqlDataSource.Create(WithServerOptions(write,
-			"-c idle_in_transaction_session_timeout=30s", settings.WritePoolSize));
+		_readSource = provider.CreateSource(read, settings.ReadPoolSize);
+		_synchronousSource = provider.CreateSource(write, settings.WritePoolSize);
 	}
+
+	/// <summary>Gets the database engine, which tells the failures of a write apart.</summary>
+	internal IDatabaseProvider Provider { get; }
 
 	public async ValueTask DisposeAsync()
 	{
@@ -46,28 +48,18 @@ public sealed class Database : IAsyncDisposable
 		return TContext.Create(OptionsFor<TContext>(_synchronousOptions, _synchronousSource));
 	}
 
-	private static DbContextOptions<TContext> OptionsFor<TContext>(ConcurrentDictionary<Type, object> cache,
-		NpgsqlDataSource source) where TContext : DbContext, IDatabaseContext<TContext>
+	private DbContextOptions<TContext> OptionsFor<TContext>(ConcurrentDictionary<Type, object> cache,
+		IDatabaseSource source) where TContext : DbContext, IDatabaseContext<TContext>
 	{
 		return (DbContextOptions<TContext>)cache.GetOrAdd(typeof(TContext), _ => CreateOptions<TContext>(source));
 	}
 
-	private static DbContextOptions<TContext> CreateOptions<TContext>(NpgsqlDataSource source)
+	private DbContextOptions<TContext> CreateOptions<TContext>(IDatabaseSource source)
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
 		// No retrying execution strategy: DatabaseSession retries only the opening of the connection.
-		return new DbContextOptionsBuilder<TContext>()
-			.UseNpgsql(source, postgres => postgres.MigrationsHistoryTable(TContext.HistoryTable))
-			.UseSnakeCaseNamingConvention()
-			.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
-			.Options;
-	}
-
-	private static string WithServerOptions(string connectionString, string serverOption, int poolSize)
-	{
-		var builder = new NpgsqlConnectionStringBuilder(connectionString);
-		if (poolSize > 0) builder.MaxPoolSize = poolSize;
-		builder.Options = string.IsNullOrEmpty(builder.Options) ? serverOption : $"{builder.Options} {serverOption}";
-		return builder.ConnectionString;
+		var builder = new DbContextOptionsBuilder<TContext>();
+		Provider.Configure(builder, source, TContext.HistoryTable);
+		return builder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking).Options;
 	}
 }

@@ -8,6 +8,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Postgres"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Multiplayer.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Multiplayer.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Scores.Tests"/>
@@ -22,12 +23,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="Mediator.Abstractions"/>
-		<PackageReference Include="Npgsql"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
-		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
-		<PackageReference Include="EFCore.NamingConventions"/>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"/>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Options"/>

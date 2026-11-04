@@ -1,6 +1,6 @@
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Testing.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
 
@@ -23,7 +23,7 @@ public sealed class DatabaseSessionOpenRetryTests
 		var session = new UnreachableSession(_clock, 2);
 		var runs = 0;
 
-		await Complete(session.WriteAsync<CommonDbContext>((_, _) =>
+		await Complete(session.WriteAsync<ProbeContext>((_, _) =>
 		{
 			runs++;
 			return Task.CompletedTask;
@@ -39,7 +39,7 @@ public sealed class DatabaseSessionOpenRetryTests
 		var session = new UnreachableSession(_clock, int.MaxValue);
 		var runs = 0;
 
-		var write = session.WriteAsync<CommonDbContext>((_, _) =>
+		var write = session.WriteAsync<ProbeContext>((_, _) =>
 		{
 			runs++;
 			return Task.CompletedTask;
@@ -56,7 +56,7 @@ public sealed class DatabaseSessionOpenRetryTests
 		var session = new UnreachableSession(_clock, 0);
 		var runs = 0;
 
-		var write = session.WriteAsync<CommonDbContext>((_, _) =>
+		var write = session.WriteAsync<ProbeContext>((_, _) =>
 		{
 			runs++;
 			throw new InvalidOperationException("change failed");
@@ -79,6 +79,18 @@ public sealed class DatabaseSessionOpenRetryTests
 		await write;
 	}
 
+	/// <summary>A context with no tables; the session only opens its connection.</summary>
+	private sealed class ProbeContext(DbContextOptions<ProbeContext> options) : DbContext(options),
+		IDatabaseContext<ProbeContext>
+	{
+		static string IDatabaseContext<ProbeContext>.HistoryTable => "__ef_migrations_probe";
+
+		static ProbeContext IDatabaseContext<ProbeContext>.Create(DbContextOptions<ProbeContext> options)
+		{
+			return new ProbeContext(options);
+		}
+	}
+
 	/// <summary>A session whose first connection attempts fail and whose later ones succeed without a database.</summary>
 	private sealed class UnreachableSession(TimeProvider time, int failures) : DatabaseSession(NewDatabase(), time)
 	{
@@ -92,8 +104,7 @@ public sealed class DatabaseSessionOpenRetryTests
 
 		private static Database NewDatabase()
 		{
-			return new Database(Options.Create(new DatabaseOptions
-				{ WriteConnectionString = "Host=localhost;Database=unused" }));
+			return TestDatabase.Create("Host=localhost;Database=unused");
 		}
 	}
 
