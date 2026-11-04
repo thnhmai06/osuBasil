@@ -2,7 +2,7 @@
 
 Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `src/Bot`.
 
-> **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers, object-free logic and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. Where a rule below mentions `Handlers/`, `Logic/` or `Services/` in an Application project, that is where the code is **today**; the contracts stay in Application and the implementations move. New code follows the target.
+> **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers, object-free logic and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. The handlers, the object-free logic and the service implementations are already in `Basil.Infrastructure.<Module>`; the contracts stay in Application. A rule below that mentions `Handlers/`, `Logic/` or `Workers/` means the folder of the module's Infrastructure project. Hosts still call `ScopeTo` for the modules not yet migrated. New code follows the target.
 
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 
@@ -69,15 +69,14 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   share a name.
 * **The service ladder.** Service > Ports > the three stores (Registry | Repository | Storage) > Objects; a level uses only the
   levels below it. A call across levels is direct (dependency injection); a call between peers is a Mediator message. A
-  Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers` (target;
-  today in the Application `Handlers/` folder). Hosts do not call `ScopeTo`: they send a message that carries the `Connection`
+  Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers`. Hosts do not call `ScopeTo`: they send a message that carries the `Connection`
   and the handler scopes the object (target; see [`architecture.md`](../for-developers/architecture.md)).
 * **Each folder of a module owns one kind of type.** The full map is in `AGENTS.md`. **Persistence/** holds the
   persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Common
   holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their
   contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
   RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
-  views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the object-free logic in **Logic/**; the event handlers in **Handlers/**; the background runs in **Workers/**. In the
+  views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the contracts of the object-free logic in **Ports/** (an `internal` interface, implemented in `Infrastructure.<Module>/Logic`); the event handlers, the logic and the background runs live in the Infrastructure project (**Handlers/**, **Logic/**, **Workers/**). In the
   Users module the online user and its context are in `Objects/`, its connections in `Objects/Connections/`, and its
   registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
   timer. A state change and its consequences belong to the object that owns the state.
@@ -214,9 +213,9 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
-  (target: the handlers move to `Infrastructure.<Module>/Handlers`; contracts and event records stay in Application). The base event,
+  (the handlers are in `Infrastructure.<Module>/Handlers`; contracts and event records stay in Application). The base event,
   `IEventPublisher<T>` and `EventQueue` live in Application.Common; the feature event records live in the Objects
-  folder of their module (`Objects/Events/`) and its handlers in its Handlers folder. An object or the
+  folder of their module (`Objects/Events/`) and its handlers in the Handlers folder of its Infrastructure project. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
   event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their

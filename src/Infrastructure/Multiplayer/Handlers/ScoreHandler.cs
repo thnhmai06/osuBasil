@@ -5,7 +5,7 @@ using Mediator;
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Offers every stored score to the rooms, which take it when one of their rounds awaits it.</summary>
-public sealed class ScoreHandler(Lobby lobby) : INotificationHandler<ScoreSubmitted>
+internal sealed class ScoreHandler(Lobby lobby) : INotificationHandler<ScoreSubmitted>
 {
 	/// <inheritdoc />
 	public ValueTask Handle(ScoreSubmitted @event, CancellationToken cancellationToken)

@@ -278,9 +278,9 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 ## Related code
 
-* [`BeatmapsetImporter.cs`](../../src/Application/Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
-* [`BeatmapsetScanner.cs`](../../src/Application/Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
-* [`BeatmapsetPlanner.cs`](../../src/Application/Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
+* [`BeatmapsetImporter.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
+* [`BeatmapsetScanner.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
+* [`BeatmapsetPlanner.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
 * [`BeatmapsetStorageWatcher.cs`](../../src/Infrastructure/Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
 * [`FileBeatmapsetStorage.cs`](../../src/Infrastructure/Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
 * [`OsuBeatmapAnalyser.cs`](../../src/Infrastructure/Beatmaps/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations

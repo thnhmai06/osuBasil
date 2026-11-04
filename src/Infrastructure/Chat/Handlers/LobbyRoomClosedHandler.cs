@@ -5,7 +5,7 @@ using Mediator;
 namespace Basil.Infrastructure.Chat.Handlers;
 
 /// <summary>Closes and forgets the chat channel of a closed room.</summary>
-public sealed class LobbyRoomClosedHandler(RoomChannels channels) : INotificationHandler<LobbyRoomClosed>
+internal sealed class LobbyRoomClosedHandler(RoomChannels channels) : INotificationHandler<LobbyRoomClosed>
 {
 	/// <inheritdoc />
 	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken cancellationToken)

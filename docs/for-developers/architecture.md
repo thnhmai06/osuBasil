@@ -9,8 +9,8 @@ Around that core sit four kinds of project that do not hold business rules: Prot
 wire), Hosts (translate and dispatch), Gateway (admission control) and the Server (the way to run it all).
 
 > **Migration status.** This page describes the target architecture. The code is migrated phase by phase, and parts
-> of the page are marked **(target)** where the code does not match yet. Handlers and object-free logic still sit in the Application projects (they move to
-> Infrastructure), hosts still call `ScopeTo` themselves (they will send Mediator messages), the rate limiter and upload
+> of the page are marked **(target)** where the code does not match yet. Handlers, object-free logic and service
+> implementations are in the Infrastructure projects; hosts still call `ScopeTo` themselves (they will send Mediator messages), the rate limiter and upload
 > limits still sit in `Basil.Host.Shared` and the hosts (they move to `Basil.Gateway`), persistence still has
 > write-behind pieces (being removed, see [`database.md`](database.md)), and `Application.Diagnostics`,
 > `Application.Bot` and `Basil.Gateway` do not exist yet. Where this page and the code disagree, the code is the

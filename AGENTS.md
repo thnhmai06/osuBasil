@@ -364,8 +364,8 @@ Basil.Application.<Module>       the module's contracts (services, ports,       
 Basil.Infrastructure.<Module>    the implementations of those contracts: Handlers/ -> its own Application,
                                  (Mediator listeners), Logic/, Services/,            Infrastructure.Common,
                                  Persistence/, Storage/, Adapters/, Workers/         Application.Common
-                                 (target; today Handlers, Logic and Workers sit
-                                 in Application); Add<Module>Infrastructure()
+                                 Add<Module>Infrastructure() is its only public
+                                 surface
 Basil.Infrastructure.Postgres    (target) Npgsql provider and PostgreSQL         -> Infrastructure.Common
                                  migrations; only Basil references it
 Basil.Protocol.Stable            the translation language of the osu! wire,      -> Domain, external libraries
@@ -449,18 +449,21 @@ out (`UserRegistry`, `Lobby`, the channel registries) and owns the operations on
 holds only the `Scoped*` views (the object's behaviour as one connection may do it). **Ports/** holds the ports to
 external computation (a capability with business meaning whose implementation needs external libraries: beatmapset
 reader, analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
-types). **Logic/** holds the application logic that needs no live object (account checks, beatmapset indexing, score
-validation and recording): it takes and returns records and plain results, never creates, receives or publishes an
-object or an event, and every such type is `internal`. **Services/** holds the services the system provides: the
-contract in Application and its implementation in Infrastructure (`IAnticheatReporter`); a helper that only serves one
-layer is not a service and stays with what implements it. **Persistence/** holds the repository ports and their query
-records, **Storage/** the file-storage ports, **Handlers/** the Mediator handlers (one `internal` class per message type)
-and **Workers/** the background runs. **(target)** Handlers, Logic, Workers and the implementations of Services move to
-`Basil.Infrastructure.<Module>`; Application keeps contracts and runtime objects only.
+types). **Services/** holds the contracts of the services the system provides (`IAnticheatReporter`). **Persistence/** holds the
+repository ports and their query records, **Storage/** the file-storage ports. Application holds **no** handler, no
+object-free logic and no background run: the Mediator handlers (**Handlers/**, one `internal` class per message type),
+the object-free application logic that needs no live object (**Logic/**: account checks, beatmapset indexing, score
+validation and recording; it takes and returns records and plain results, never creates, receives or publishes an
+object or an event), the implementations of **Services/** and the background runs (**Workers/**) live in
+`Basil.Infrastructure.<Module>`. When an object calls such logic, the object's project declares an `internal` interface
+in **Ports/** (`IAccountRules`, `IScoreRecorder`, `IBeatmapsetImporter`) and the Infrastructure project implements it;
+the plain data both sides name stays in **Persistence/**. `tests/Architecture/ImplementationPlacementTests.cs` enforces
+this. Application grants `InternalsVisibleTo` to its own Infrastructure project and the tests of both.
 Each module's public `Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()`
 registers the implementations of its ports and its migration. Handlers stay `internal`; a project that has them grants
 `InternalsVisibleTo` to the composition root (the generated Mediator code names them) and to its own test project, and
-nothing else is made visible. The composition root calls `AddBasil()`. A call across levels of the ladder (Service, Ports,
+nothing else is made visible (the Application project of the module also grants it to the Infrastructure project, because
+the handlers and the logic use its internal members). The composition root calls `AddBasil()`. A call across levels of the ladder (Service, Ports,
 the three stores, Objects) is direct dependency injection; a call between peers is a Mediator message.
 
 ### Hosts, Gateway and Server
@@ -495,8 +498,8 @@ system; no host or gateway knows it exists.
 Application is sliced by module first, then by folder of responsibility; namespace = project + folder
 (`Basil.Application.Chat.Objects`). Application.Common owns shared values, paging/search syntax and event
 contracts/queue; Infrastructure.Common owns shared persistence and event delivery. The table lists where each folder's
-contents are **today**; the target moves `Handlers/`, `Logic/`, `Workers/` and the implementations of `Services/` to
-the module's Infrastructure project.
+contents are; `Handlers/`, `Logic/` and `Workers/` and the implementations of `Services/` are in the module's
+Infrastructure project.
 
 Every module uses these folders, and creates only the ones it needs:
 
@@ -506,53 +509,58 @@ Every module uses these folders, and creates only the ones it needs:
 | `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries); one of the three stores with Repository (`Persistence/`, awaited, cache-aside) and Storage (`Storage/`) |
 | `Capabilities/` | The `Scoped*` views only |
 | `Ports/` | The ports to external computation and the data they exchange |
-| `Logic/` | The object-free application logic behind the objects and ports |
-| `Services/` | Services the system provides: a contract and its implementation. Only what a module offers as a service belongs here |
+| `Services/` | The contracts of the services the system provides (the implementation is in Infrastructure). Only what a module offers as a service belongs here |
 | `Persistence/` | The repository ports, their query records and the data both layers name |
 | `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
-| `Handlers/` | The Mediator handlers of the module, one per message type (target: `Infrastructure.<Module>/Handlers`) |
-| `Workers/` | The background runs the module declares (sweepers, watchers) |
+| `Messages/` | The Mediator requests the module answers (a message carries the `Connection` as `Actor`) and the values they name |
 
 Infrastructure mirrors those ports: `Persistence/` for Postgres, `DbContext`, rows and migrations, `Storage/` for the
 file implementations, `Adapters/` for what needs an external library, `Registry/` for the shared memory
-primitives and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
+primitives, `Handlers/` for the Mediator handlers, `Logic/` for the object-free application logic, `Services/` for the
+service implementations and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
 
 ```text
 Users/         IUserRepository and friends, UserQuery, login inputs    (Persistence)
                IUserAvatarStorage                                      (Storage)
+               IAccountRules (internal)                                (Ports)
                User, UserContext, UserGrants, UserProfile, UserOutcome  (Objects)
                Connection, ConnectionContext, ConnectionRules,
                PlayerStatus                                            (Objects/Connections)
                UserRegistry                                            (Registry)
                ScopedUser*, ScopedStableConnection                      (Capabilities)
-               AccountService, CredentialChecks                        (Logic)
-               ConnectionHandler, RestrictionHandler                   (Handlers)
+               AccountRules                                            (Infrastructure Logic)
+               ConnectionHandler, RestrictionHandler                   (Infrastructure Handlers)
 Chat/          IChannelRepository                                      (Persistence)
                the channel tree, ChannelContext, ChannelOutcome,
                ChannelEvents                                            (Objects)
                GeneralChannelRegistry, RoomChannels, PmChannels,
                SpectatorChannels                                       (Registry)
                ScopedChannel, ScopedGeneralChannel                     (Capabilities)
-               the room, lobby, connection and spectator handlers      (Handlers)
+               PostChatMessage, ChatTarget                             (Messages)
+               PostChatMessageHandler and the room, lobby, connection
+               and spectator handlers                                  (Infrastructure Handlers)
 Multiplayer/   match, round, event and report repositories             (Persistence)
                Room and its parts, RoomOutcome, the event records       (Objects)
                Lobby, LobbyContext                                      (Registry)
                ScopedLobby and the room's scopes                        (Capabilities)
-               MatchRecorder, ScoreHandler, the lobby handlers          (Handlers)
+               the match recorders, ScoreHandler, the lobby handlers    (Infrastructure Handlers)
 Beatmaps/      beatmap and beatmapset repositories, import and scan
                data                                                     (Persistence)
                IBeatmapsetStorage                                       (Storage)
                Beatmapset, Beatmapsets, contexts, outcomes, events      (Objects)
                ScopedBeatmapset                                         (Capabilities)
-               the reader/analyser/mirror/assets ports                  (Ports)
-               the importer, scanner and planner                        (Logic)
+               the reader/analyser/mirror/assets ports and
+               IBeatmapsetImporter, IBeatmapsetScanner (internal)       (Ports)
+               the importer, scanner and planner                        (Infrastructure Logic)
 Scores/        score, stats repositories, submission inputs             (Persistence)
                IReplayStorage                                           (Storage)
                ScoreSubmitter, IScoreBeatmapAcceptance,
                ScoreSubmissionOutcome, ScoreOutcome, ScoreEvents        (Objects)
                ScopedScoreSubmitter                                     (Capabilities)
-               ScoreRecorder                                            (Logic)
-Anticheat/     IAnticheatReporter, AnticheatReporter                    (Services)
+               IScoreRecorder (internal)                                (Ports)
+               ScoreRecorder                                            (Infrastructure Logic)
+Anticheat/     IAnticheatReporter                                       (Services)
+               AnticheatReporter                                        (Infrastructure Services)
                AnticheatEvents                                          (Objects/Events)
 Content/       ISettingsRepository, IMenuBannerRepository,
                ServerSettings                                           (Persistence)
@@ -565,7 +573,7 @@ Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects
 In the target, the room countdown moves to BasilBot and `Diagnostics` (intake and feed) becomes a module; the listing
 above is the state today. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
 event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
-Infrastructure.Common's `Workers/`. Concrete handlers live in the module's `Handlers/` folder or in the consumer that
+Infrastructure.Common's `Workers/`. Concrete handlers live in the `Handlers/` folder of the module's Infrastructure project or in the consumer that
 owns them, including `Basil.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
 and announcements are server features: a command is an entry point that uses the typist's scoped objects, and the bot
 only replies. Query **records** (the filter a repository applies, with `Parse` for the search syntax) belong to
