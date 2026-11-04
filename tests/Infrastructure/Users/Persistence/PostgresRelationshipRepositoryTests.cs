@@ -36,6 +36,22 @@ public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture conta
 	}
 
 	[Fact]
+	public async Task A_relationship_toward_an_account_the_database_does_not_hold_is_refused_to_the_caller()
+	{
+		var actor = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_alone" }, TestContext.Current.CancellationToken);
+		var unknown = new UserRecord { Id = 4242, Value = new UserData { Name = "not_stored" } };
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Relationships.CreateOrUpdateAsync(new Relationship
+		{
+			Actor = actor,
+			Target = unknown,
+			Type = RelationshipType.Friend,
+			CreatedAt = Moment
+		}, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
 	public async Task A_relationship_toward_the_same_account_replaces_the_earlier_one()
 	{
 		var actor = await Get<IUserRepository>()
