@@ -87,8 +87,7 @@ public class ModuleGraphTests
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
 			       or "Basil.Gateway" or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
-		                                (name == $"Basil.Infrastructure.{module}" &&
-		                                 module is not "Servers"));
+		                                name == $"Basil.Infrastructure.{module}");
 	}
 
 	private static bool IsAllowed(string from, string to)
