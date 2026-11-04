@@ -1,6 +1,7 @@
 using Basil.Application.Servers.Messages.Channels;
 using Mediator;
 using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common;
@@ -59,7 +60,7 @@ internal static class ChannelRoomCommands
 		};
 		yield return new CommandDef
 		{
-			Pattern = "rooms create", Route = "POST /v1/rooms", Summary = "Opens a tournament room.",
+			Pattern = "rooms create", Route = "POST /v1/rooms", Summary = "Opens a room.",
 			Options =
 			[
 				new OptionDef("name", "The name of the room.", Required: true),
@@ -213,7 +214,7 @@ internal static class ChannelRoomCommands
 	private static async Task<int> CreateRoomAsync(CommandCall call)
 	{
 		var (room, result) = await call.Get<ISender>().Send(new OpenRoom(await call.ByAsync(),
-			RoomCommands.Truncate(call.Required("name")), call.Text("password") ?? string.Empty, true,
+			RoomCommands.Truncate(call.Required("name")), call.Text("password") ?? string.Empty, RoomSource.Api,
 			call.Bool("private") ?? false), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 

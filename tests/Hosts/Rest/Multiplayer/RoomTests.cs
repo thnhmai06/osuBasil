@@ -43,6 +43,20 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Create_ShowsARoomWithoutAKindOfRoom()
+	{
+		var (client, _) = await fixture.SignInAsync("RoomKind");
+		using (client)
+		{
+			var (_, envelope) = await client.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Plain" });
+
+			var room = envelope!["data"]!.AsObject();
+			Assert.False(room.ContainsKey("isTournament"));
+			Assert.True(room.ContainsKey("isPrivate"));
+		}
+	}
+
+	[Fact]
 	public async Task Create_WithoutAName_Answers422()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomNoName");

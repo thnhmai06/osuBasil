@@ -2,6 +2,7 @@ using Mediator;
 using Basil.Application.Multiplayer.Messages;
 using System.Text.Json;
 using Basil.Application.Common;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Rest.Http;
@@ -19,7 +20,7 @@ internal static class RoomRoutes
 
 		rooms.MapGet("/", ListAsync).WithSummary("List the open rooms the caller may see.")
 			.WithDescription("Private rooms are listed only for those who may view them.");
-		rooms.MapPost("/", CreateAsync).WithSummary("Open a tournament room.")
+		rooms.MapPost("/", CreateAsync).WithSummary("Open a room.")
 			.WithDescription(
 				"The caller becomes its creator. While room creation is locked, only room managers can open one.");
 		rooms.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve a room with its slots, referees and bans.");
@@ -113,7 +114,7 @@ internal static class RoomRoutes
 		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
 
 		var (room, result) = await sender.Send(new OpenRoom(context.Connection(),
-			RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, true, request.IsPrivate ?? false),
+			RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, RoomSource.Api, request.IsPrivate ?? false),
 			context.RequestAborted);
 		return result.IsOk ? Api.Created(RoomView.Of(room!)) : result.Refusal();
 	}

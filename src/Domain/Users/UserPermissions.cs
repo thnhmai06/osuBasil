@@ -19,7 +19,7 @@ public enum UserPermissions : ulong
 
 	#region Rooms
 
-	/// <summary>Create rooms, in game or for a tournament.</summary>
+	/// <summary>Create rooms, in game or through the API.</summary>
 	RoomCreate = 1UL << 0,
 
 	/// <summary>Join rooms and take a seat, including being seated by a referee.</summary>

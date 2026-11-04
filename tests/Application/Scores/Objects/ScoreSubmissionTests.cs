@@ -469,7 +469,7 @@ public sealed class ScoreSubmissionTests
 	private static async Task<Room> StartRoundAsync(ScoreSubmissionFixture f,
 		GameTeamType teamType = GameTeamType.HeadToHead)
 	{
-		var (room, opened) = await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", false, false,
+		var (room, opened) = await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		var scope = room!.ScopeTo(f.Client);

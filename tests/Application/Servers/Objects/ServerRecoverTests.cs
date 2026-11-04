@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Domain.Chat;
@@ -85,7 +86,7 @@ public sealed class ServerRecoverTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("left running", "", false, false,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("left running", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		Assert.Null(room!.Match.Value.EndedAt);

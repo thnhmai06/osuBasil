@@ -401,9 +401,9 @@ internal static class MpReplies
 	public static readonly Reply TargetNotObserver =
 		new("mp.targetNotObserver", "That user is not watching this match.");
 
-	/// <summary>Reply when the actor already has the maximum number of tournament matches open.</summary>
+	/// <summary>Reply when the actor already has the maximum number of matches open.</summary>
 	public static readonly Reply RoomLimitReached = new("mp.roomLimitReached",
-		"You already have the most tournament matches open that you can.");
+		"You already have the most matches open that you can.");
 
 	/// <summary>Reply when no more matches can be opened right now.</summary>
 	public static readonly Reply NoMatchesAvailable =

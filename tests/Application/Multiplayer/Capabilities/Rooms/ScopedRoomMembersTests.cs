@@ -1,6 +1,7 @@
 using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
@@ -124,7 +125,7 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var other = await RoomFixture.PlayerAsync(app, "Other");
 		var (otherRoom, opened) = await app.Lobby.ScopeTo(setup.Creator)
-			.OpenRoomAsync("other room", "", true, false, cancellationToken: TestContext.Current.CancellationToken);
+			.OpenRoomAsync("other room", "", RoomSource.Api, false, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		Assert.True((await otherRoom!.ScopeTo(other).Members.JoinAsync("",
 			TestContext.Current.CancellationToken)).IsOk);
@@ -140,7 +141,7 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		var player = await RoomFixture.PlayerAsync(app, "Player");
@@ -152,30 +153,14 @@ public sealed class ScopedRoomMembersTests
 		Assert.Same(player, room.Authority.Host);
 	}
 
-	[Fact]
-	public async Task LeaveAsync_ForTheLastPlayerOfANonTournamentRoom_ClosesTheRoomAndItsChannel()
+	[Theory]
+	[InlineData(RoomSource.Game)]
+	[InlineData(RoomSource.Api)]
+	public async Task LeaveAsync_ForTheLastPlayer_KeepsTheRoomOpenAndAnnouncesItsClosing(RoomSource source)
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
-			cancellationToken: TestContext.Current.CancellationToken);
-		Assert.True(opened.IsOk);
-		var channel = app.RoomChannels.Of(room!);
-
-		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
-
-		Assert.True(room.IsClosed);
-		var closed = Assert.IsType<LobbyRoomClosed>(app.LobbyEvents.Events[^1]);
-		await new LobbyRoomClosedHandler(app.RoomChannels).Handle(closed, TestContext.Current.CancellationToken);
-		Assert.True(channel.IsClosed);
-	}
-
-	[Fact]
-	public async Task LeaveAsync_ForTheLastPlayerOfATournamentRoom_KeepsTheRoomOpen()
-	{
-		using var app = new TestApplication();
-		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", true, false,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", source, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 
@@ -183,6 +168,8 @@ public sealed class ScopedRoomMembersTests
 
 		Assert.False(room.IsClosed);
 		Assert.False(app.RoomChannels.Of(room).IsClosed);
+		var announced = Assert.IsType<LobbyRoomClosingAnnounced>(app.LobbyEvents.Events[^1]);
+		Assert.Equal(app.Clock.GetUtcNow() + Lobby.EmptyRoomTimeout, announced.ClosesAt);
 	}
 
 	[Fact]
@@ -280,7 +267,7 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		var user = await app.CreateUserAsync("Watcher", "password",

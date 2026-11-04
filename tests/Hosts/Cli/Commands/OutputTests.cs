@@ -82,7 +82,7 @@ public sealed class OutputTests
 	public void A_list_of_users_prints_as_a_table_with_a_name_and_id_for_a_reference()
 	{
 		var output = new CollectedOutput();
-		var room = new RoomView(1, 2, "R", true, false, false, false, false, new UserRef(7, "bob"), null, [], [], null,
+		var room = new RoomView(1, 2, "R", false, false, false, false, new UserRef(7, "bob"), null, [], [], null,
 			GameMode.Standard, "NoMod", false, GameTeamType.HeadToHead,
 			GameWinCondition.Score, []);
 

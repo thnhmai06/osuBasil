@@ -19,7 +19,6 @@ public sealed record RoomView(
 	int Id,
 	int MatchId,
 	string Name,
-	bool IsTournament,
 	bool IsPrivate,
 	bool HasPassword,
 	bool Locked,
@@ -41,7 +40,7 @@ public sealed record RoomView(
 	{
 		var host = room.Authority.Host;
 		var settings = room.Settings.MatchSettings;
-		return new RoomView(room.Id, room.Match.Id, room.Settings.Name, room.IsTournament, room.Settings.IsPrivate,
+		return new RoomView(room.Id, room.Match.Id, room.Settings.Name, room.Settings.IsPrivate,
 			room.Settings.Password.Length > 0, room.Slots.Locked, room.Rounds.InProgress,
 			UserRef.Of(room.Authority.Creator),
 			host is null ? null : UserRef.Of(host.Record), [.. room.Authority.Referees.Select(UserRef.Of)],

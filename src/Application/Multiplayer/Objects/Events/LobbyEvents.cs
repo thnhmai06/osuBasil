@@ -18,8 +18,8 @@ public sealed record LobbyMatchRecovered(MatchRecord Match, IReadOnlyList<Round>
 /// <param name="Room">The room that was opened.</param>
 /// <param name="Host">The room's first host, or <see langword="null" /> when nobody was seated.</param>
 /// <param name="ClosesAt">
-///     When the room closes if no player joins: set for a tournament room opened with nobody seated,
-///     otherwise <see langword="null" />.
+///     When the room closes if no player joins: set for a room opened with nobody seated, otherwise
+///     <see langword="null" />.
 /// </param>
 public sealed record LobbyRoomOpened(Room Room, StableConnection? Host, DateTimeOffset? ClosesAt) : LobbyEvent;
 
@@ -44,7 +44,7 @@ public sealed record LobbyRoomClosed(
 /// <param name="Connection">The connection that was released.</param>
 public sealed record LobbyConnectionReleased(Connection Connection) : LobbyEvent;
 
-/// <summary>An empty tournament room will close unless a player joins.</summary>
+/// <summary>An empty room will close unless a player joins.</summary>
 /// <remarks>Announced when the room becomes empty after having players, and again shortly before it closes.</remarks>
 /// <param name="Room">The empty room.</param>
 /// <param name="ClosesAt">When the room closes if it is still empty.</param>

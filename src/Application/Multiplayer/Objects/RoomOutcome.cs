@@ -60,7 +60,7 @@ public enum RoomOutcome : byte
 	/// <summary>The user is not observing the room.</summary>
 	NotObserver,
 
-	/// <summary>The creator already has the maximum number of tournament rooms open.</summary>
+	/// <summary>The creator already has the maximum number of rooms open.</summary>
 	TooManyRooms,
 
 	/// <summary>Every room id is in use.</summary>

@@ -16,7 +16,7 @@ namespace Basil.Application.Multiplayer.Tests.Capabilities;
 /// <summary>
 ///     Opening rooms. The expected behaviour comes from AGENTS.md ("Authority") and
 ///     docs/for-developers/multiplayer.md ("Room lifecycle and concurrency"): a room needs its creator, a room
-///     opened in game seats its creator, and an empty tournament room closes after fifteen minutes.
+///     opened in game seats its creator, and every room is limited by the same number of rooms per creator.
 /// </summary>
 public sealed class ScopedLobbyTests
 {
@@ -27,7 +27,7 @@ public sealed class ScopedLobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
 			UserPermissionsGroups.Default & ~UserPermissions.RoomCreate);
 
-		var (room, result) = await OpenAsync(app, creator, isTournament: true);
+		var (room, result) = await OpenAsync(app, creator, source: RoomSource.Api);
 
 		Assert.Null(room);
 		Assert.False(result.IsOk);
@@ -66,13 +66,13 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_ForATournamentRoomWhileTheCreatorsClientIsOffline_SeatsNobody()
+	public async Task OpenRoomAsync_OpenedThroughTheApiWhileTheCreatorsClientIsOffline_SeatsNobody()
 	{
 		using var app = new TestApplication();
 		var creator = await app.CreateUserAsync("Creator", "password");
 		var connection = await app.LoginAsync(creator);
 
-		var (room, result) = await OpenAsync(app, connection, isTournament: true);
+		var (room, result) = await OpenAsync(app, connection, source: RoomSource.Api);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(room);
@@ -84,12 +84,12 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_ForATournamentRoomWhileTheCreatorsClientIsOnline_SeatsTheCreatorAsHost()
+	public async Task OpenRoomAsync_OpenedThroughTheApiWhileTheCreatorsClientIsOnline_SeatsTheCreatorAsHost()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 
-		var (room, result) = await OpenAsync(app, creator, isTournament: true);
+		var (room, result) = await OpenAsync(app, creator, source: RoomSource.Api);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(room);
@@ -99,13 +99,13 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_ForATournamentRoomWhileTheCreatorIsInAnotherRoom_LeavesTheCreatorThere()
+	public async Task OpenRoomAsync_OpenedThroughTheApiWhileTheCreatorIsInAnotherRoom_LeavesTheCreatorThere()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (first, _) = await OpenAsync(app, creator);
 
-		var (second, result) = await OpenAsync(app, creator, "second", true);
+		var (second, result) = await OpenAsync(app, creator, "second", RoomSource.Api);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(second);
@@ -129,29 +129,45 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_AFifthTournamentRoom_IsRefused()
+	public async Task OpenRoomAsync_AFifthRoomOpenedThroughTheApi_IsRefused()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		for (var index = 0; index < 4; index++)
-			Assert.True((await OpenAsync(app, creator, $"room {index}", true)).Result.IsOk);
+			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
 
-		var (room, result) = await OpenAsync(app, creator, "room 4", true);
+		var (room, result) = await OpenAsync(app, creator, "room 4", RoomSource.Api);
 
 		Assert.Null(room);
 		Assert.Equal(RoomOutcome.TooManyRooms, result.Outcome);
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_WithRoomCreateUnlimited_OpensMoreThanFourTournamentRooms()
+	public async Task OpenRoomAsync_AFifthRoomOpenedInGame_IsRefused()
+	{
+		using var app = new TestApplication();
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+		for (var index = 0; index < 4; index++)
+		{
+			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
+		}
+
+		var (room, result) = await OpenAsync(app, creator, "room 4");
+
+		Assert.Null(room);
+		Assert.Equal(RoomOutcome.TooManyRooms, result.Outcome);
+	}
+
+	[Fact]
+	public async Task OpenRoomAsync_WithRoomCreateUnlimited_OpensMoreThanFourRooms()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
 			UserPermissionsGroups.Default | UserPermissions.RoomManageCreateUnlimited);
 		for (var index = 0; index < 4; index++)
-			Assert.True((await OpenAsync(app, creator, $"room {index}", true)).Result.IsOk);
+			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
 
-		var (room, result) = await OpenAsync(app, creator, "room 4", true);
+		var (room, result) = await OpenAsync(app, creator, "room 4", RoomSource.Api);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(room);
@@ -213,7 +229,7 @@ public sealed class ScopedLobbyTests
 		var user = await app.CreateUserAsync("Creator", "password");
 		var creator = await app.LoginAsync(user);
 
-		var (room, result) = await OpenAsync(app, creator, isTournament: true);
+		var (room, result) = await OpenAsync(app, creator, source: RoomSource.Api);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(user, room!.Authority.Creator);
@@ -226,7 +242,7 @@ public sealed class ScopedLobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 
 		var (first, _) = await OpenAsync(app, creator, "first");
-		var (second, _) = await OpenAsync(app, creator, "second", true);
+		var (second, _) = await OpenAsync(app, creator, "second", RoomSource.Api);
 
 		Assert.NotEqual(first!.Id, second!.Id);
 	}
@@ -245,69 +261,10 @@ public sealed class ScopedLobbyTests
 		Assert.Equal(first.Id, second!.Id);
 	}
 
-	[Fact]
-	public async Task OpenRoomAsync_ATournamentRoomNobodySitsIn_ClosesAfterFifteenMinutes()
-	{
-		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("Creator", "password");
-		var connection = await app.LoginAsync(user);
-		var (room, result) = await OpenAsync(app, connection, isTournament: true);
-		Assert.True(result.IsOk);
-		var opened = Assert.IsType<LobbyRoomOpened>(app.LobbyEvents.Events[^1]);
-		Assert.Equal(app.Clock.GetUtcNow().AddMinutes(15), opened.ClosesAt);
-
-		app.Clock.Advance(TimeSpan.FromMinutes(14) + TimeSpan.FromSeconds(59));
-
-		Assert.False(room!.IsClosed);
-
-		app.Clock.Advance(TimeSpan.FromSeconds(1));
-
-		Assert.True(room.IsClosed);
-		Assert.IsType<LobbyRoomClosed>(app.LobbyEvents.Events[^1]);
-	}
-
-	[Fact]
-	public async Task OpenRoomAsync_ATournamentRoomSomebodySitsIn_StaysOpen()
-	{
-		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("Creator", "password");
-		var connection = await app.LoginAsync(user);
-		var (room, result) = await OpenAsync(app, connection, isTournament: true);
-		Assert.True(result.IsOk);
-		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
-
-		app.Clock.Advance(TimeSpan.FromMinutes(16));
-
-		Assert.False(room.IsClosed);
-		Assert.DoesNotContain(app.LobbyEvents.Events, lobbyEvent => lobbyEvent is LobbyRoomClosed);
-	}
-
-	[Fact]
-	public async Task OpenRoomAsync_ATournamentRoomThatBecomesEmptyAgain_StartsTheDelayOver()
-	{
-		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("Creator", "password");
-		var connection = await app.LoginAsync(user);
-		var (room, result) = await OpenAsync(app, connection, isTournament: true);
-		Assert.True(result.IsOk);
-		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await room.ScopeTo(player).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
-
-		app.Clock.Advance(TimeSpan.FromMinutes(14));
-
-		Assert.False(room.IsClosed);
-
-		app.Clock.Advance(TimeSpan.FromMinutes(1));
-
-		Assert.True(room.IsClosed);
-	}
-
 	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection actor,
-		string name = "test room", bool isTournament = false, string password = "")
+		string name = "test room", RoomSource source = RoomSource.Game, string password = "")
 	{
-		return app.Lobby.ScopeTo(actor).OpenRoomAsync(name, password, isTournament, false,
+		return app.Lobby.ScopeTo(actor).OpenRoomAsync(name, password, source, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 	}
 
@@ -444,7 +401,7 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", false, true,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		var player = await RoomFixture.PlayerAsync(app, "Player");
@@ -458,7 +415,7 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", false, true,
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		var stranger = await RoomFixture.PlayerAsync(app, "Stranger");

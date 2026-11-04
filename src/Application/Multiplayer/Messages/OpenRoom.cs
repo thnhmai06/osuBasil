@@ -11,7 +11,7 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Actor">The connection that creates the room.</param>
 /// <param name="Name">The room's name.</param>
 /// <param name="Password">The room's password, or an empty string for none.</param>
-/// <param name="IsTournament">Whether the room is a tournament room.</param>
+/// <param name="Source">Where the request comes from: the creator's game client or the API.</param>
 /// <param name="IsPrivate">Whether the room is private.</param>
 /// <param name="Settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
 /// <remarks>The answer carries the opened room when the outcome is Ok.</remarks>
@@ -19,7 +19,7 @@ public sealed record OpenRoom(
 	Connection Actor,
 	string Name,
 	string Password,
-	bool IsTournament,
+	RoomSource Source,
 	bool IsPrivate,
 	MatchSettings? Settings = null) : IRequest<OpenedRoom>;
 
