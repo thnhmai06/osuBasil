@@ -212,7 +212,8 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	{
 		if (_stopping) return (null, null, ShuttingDown());
 
-		var limit = (await settings.GetAsync(cancellationToken)).RateLimits.Connections.PerIp;
+		var current = await settings.GetAsync(cancellationToken);
+		var limit = current.RateLimits.Connections.PerIp;
 		var owner = connection is null ? "ip:" + ip : "user:" + connection.Record.Id;
 		SseStream stream;
 		Root root;
@@ -220,6 +221,12 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		{
 			var open = _roots.Values.SelectMany(r => r.Streams).Count(s => s.Owner == owner || s.Owner == "ip:" + ip);
 			if (open >= limit)
+				return (null, null,
+					Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many open streams."));
+
+			// A signed-in caller also has a ceiling of its own, the same as its number of API connections.
+			if (connection is not null && _roots.Values.SelectMany(r => r.Streams).Count(s => s.Owner == owner) >=
+			    current.Sessions.MaxPerUser.Api)
 				return (null, null,
 					Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many open streams."));
 

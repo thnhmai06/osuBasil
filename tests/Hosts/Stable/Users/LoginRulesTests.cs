@@ -110,6 +110,20 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Login_SecondGameClientOfTheSameUser_IsRefusedWithTheTooManySessionsNotice()
+	{
+		using var first = await Host.NewClientAsync("TwoClients");
+		using var second = OsuClient.Create(Host, "TwoClients", "password");
+		await first.LoginAsync();
+
+		var packets = await second.LoginAsync();
+
+		Assert.Equal(-1, second.LoginCode);
+		Assert.Equal(StableReplies.TooManySessions,
+			packets.First(packet => packet.Id == OsuClient.In.Notification).Strings(1)[0]);
+	}
+
+	[Fact]
 	public async Task Restart_AnnouncedByTheServer_ReachesEveryOnlineClientWithTheDelay()
 	{
 		using var client = await Host.NewClientAsync("RestartWatcher");

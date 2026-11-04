@@ -118,6 +118,28 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task OpenStreams_BeyondTheApiLimitOfTheUser_Answer429()
+	{
+		await using var host = await BasilHost.StartAsync(fixture.Database);
+		await host.CreateUserAsync("UserStream", "password",
+			UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
+		using var client = new RestClient(host.Url, host.Domain);
+		await client.LoginAsync("UserStream");
+		await ChangeAsync(host, s => s with
+		{
+			Sessions = s.Sessions with { MaxPerUser = new ServerSettings.MaxSessionsSettings { Api = 1 } }
+		});
+
+		var (first, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime");
+		var (second, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime");
+		using (first)
+		using (second)
+		{
+			Assert.Equal([200, 429], [(int)first.StatusCode, (int)second.StatusCode]);
+		}
+	}
+
+	[Fact]
 	public async Task Shutdown_SendsAFinalServerEvent_EndsStreams_AndRefusesNewOnesWith503()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);

@@ -163,7 +163,7 @@ internal sealed partial class IrcCommands(
 		clients.Release(key, session);
 		// Only a key that matches no session counts against the sign-in limit.
 		if (result.Failure is LoginFailure.InvalidToken) attempt.Keep();
-		return IrcReplies.BadCredentials;
+		return result.Failure is LoginFailure.TooManySessions ? IrcReplies.TooManySessions : IrcReplies.BadCredentials;
 	}
 
 	private static void Fail(IrcSession session, IrcNumericReply numeric, string reason)

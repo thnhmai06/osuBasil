@@ -132,6 +132,22 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
+	public async Task Settings_Set_SessionLimits_ChangesOneKind_AndNonPositiveIsInvalid()
+	{
+		var before = await Get<ISettingsRepository>().GetAsync();
+
+		var (code, _) = await fixture.RunAsync("settings sessions set --maxPerUser.irc 7");
+		var after = await Get<ISettingsRepository>().GetAsync();
+		var (bad, _) = await fixture.RunAsync("settings sessions set --maxPerUser.api 0");
+		await fixture.RunAsync($"settings sessions set --maxPerUser.irc {before.Sessions.MaxPerUser.Irc}");
+
+		Assert.Equal(0, code);
+		Assert.Equal(7, after.Sessions.MaxPerUser.Irc);
+		Assert.Equal(before.Sessions.MaxPerUser.Api, after.Sessions.MaxPerUser.Api);
+		Assert.Equal(2, bad);
+	}
+
+	[Fact]
 	public async Task Settings_Set_Locks_TakesBooleans_AndAnInvalidValueIsInvalid()
 	{
 		var before = (await Get<ISettingsRepository>().GetAsync()).Locks;

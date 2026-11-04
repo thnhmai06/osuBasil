@@ -107,7 +107,8 @@ internal sealed class StableLogin(
 	{
 		return failure switch
 		{
-			LoginFailure.AlreadyOnline => Fail(LoginFailureReason.AuthenticationFailed, StableReplies.AlreadyOnline),
+			LoginFailure.TooManySessions => Fail(LoginFailureReason.AuthenticationFailed,
+				StableReplies.TooManySessions),
 			LoginFailure.NoTourneyPermission => Fail(LoginFailureReason.AuthenticationFailed,
 				StableReplies.NoTourneyPermission),
 			_ => Fail(LoginFailureReason.AuthenticationFailed)

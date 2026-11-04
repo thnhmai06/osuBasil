@@ -9,8 +9,8 @@ public static class StableReplies
 	/// <summary>Shown when a client chats faster than the server allows.</summary>
 	public const string ChatTooFast = "You are sending messages too fast. Slow down.";
 
-	/// <summary>Shown when login is refused because the account is already online.</summary>
-	public const string AlreadyOnline = "This account is already online.";
+	/// <summary>Shown when login is refused because the account already has as many open sessions as it may.</summary>
+	public const string TooManySessions = "This account has too many open sessions.";
 
 	/// <summary>Shown when login is refused because of too many failed attempts.</summary>
 	public const string TooManyAttempts = "Too many failed login attempts. Try again later.";

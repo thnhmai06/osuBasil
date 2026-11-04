@@ -38,6 +38,9 @@ public static class IrcReplies
 	/// <summary>Closing text when the address has too many connections.</summary>
 	public const string TooManyConnections = "Too many connections from your address.";
 
+	/// <summary>Closing text when the account already has as many open IRC connections as it may.</summary>
+	public const string TooManySessions = "This account has too many open connections.";
+
 	/// <summary>Closing text when the key is already used by another socket.</summary>
 	public const string KeyInUse = "This key is already connected.";
 

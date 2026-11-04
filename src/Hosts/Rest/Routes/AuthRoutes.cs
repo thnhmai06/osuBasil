@@ -60,6 +60,10 @@ internal static class AuthRoutes
 		{
 			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) reservation.Keep();
 
+			if (result.Failure is LoginFailure.TooManySessions)
+				return Api.Error(StatusCodes.Status409Conflict, "tooManySessions",
+					"The account has too many open sessions.");
+
 			return Api.Error(StatusCodes.Status401Unauthorized, "invalidCredentials",
 				"The username or password is wrong, or the account cannot sign in.");
 		}

@@ -80,6 +80,37 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Pass_AccountAtItsConnectionLimit_IsRefusedWith464AndTheTooManySessionsText()
+	{
+		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
+		var original = await settings.GetAsync();
+		await settings.CreateOrUpdateAsync(original with
+		{
+			Sessions = original.Sessions with { MaxPerUser = new ServerSettings.MaxSessionsSettings { Irc = 1 } }
+		});
+		try
+		{
+			var (first, firstKey) = await Host.NewIrcClientAsync("RegLimit");
+			using var _ = first;
+			await first.RegisterAsync("RegLimit", firstKey);
+			var secondKey = await Host.CreateIrcKeyAsync("RegLimit");
+			using var second = await IrcClient.ConnectAsync(Host);
+
+			await second.SendAsync($"PASS {secondKey}");
+			await second.SendAsync("NICK RegLimit");
+			await second.SendAsync("USER x 0 * :x");
+
+			Assert.Equal($":irc.basil.test 464 * :{IrcReplies.TooManySessions}", await second.ExpectAsync("464"));
+			Assert.Equal($"ERROR :Closing Link: basil.test ({IrcReplies.TooManySessions})",
+				await second.ExpectAsync("ERROR"));
+		}
+		finally
+		{
+			await settings.CreateOrUpdateAsync(original);
+		}
+	}
+
+	[Fact]
 	public async Task Pass_WrongKey_IsRefusedWith464()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("RegWrongKey");

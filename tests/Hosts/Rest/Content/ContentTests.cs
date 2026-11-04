@@ -76,6 +76,29 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Settings_SessionLimits_PatchRoundTrips_AndRefusesNonPositiveValues()
+	{
+		var (client, _) = await fixture.SignInAsync("SetSessions", Settings);
+		using (client)
+		{
+			var (patched, envelope) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
+				new { maxPerUser = new { irc = 7 } });
+			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>().GetAsync();
+			var (invalid, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
+				new { maxPerUser = new { api = 0 } });
+			var (restored, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
+				new { maxPerUser = new { irc = 5 } });
+
+			Assert.Equal(200, patched);
+			Assert.Equal(7, (int)envelope!["data"]!["maxPerUser"]!["irc"]!);
+			Assert.Equal(1, (int)envelope["data"]!["maxPerUser"]!["stable"]!);
+			Assert.Equal(7, stored.Sessions.MaxPerUser.Irc);
+			Assert.Equal(422, invalid);
+			Assert.Equal(200, restored);
+		}
+	}
+
+	[Fact]
 	public async Task Settings_Locks_AreSwitchedAsFlags()
 	{
 		var (client, _) = await fixture.SignInAsync("SetLocks", Settings);
