@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Servers.Messages;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Registry;
@@ -20,13 +22,13 @@ internal static class DiagnosticsRoutes
 	public static void MapDiagnostics(this RouteGroupBuilder v1)
 	{
 		var diagnostics = v1.MapGroup("/diagnostics").WithTags("Diagnostics").RequireToken();
-		diagnostics.MapGet("/", (HttpContext c, Server server) => StreamAsync(c, server, null)).Sse()
+		diagnostics.MapGet("/", (HttpContext c, ISender sender) => StreamAsync(c, sender, null)).Sse()
 			.WithSummary("Watch every diagnostics category.")
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample. Data is up to about one second old.
 			                 """);
 		diagnostics.MapGet("/{category}",
-				(HttpContext c, string category, Server server) => StreamAsync(c, server, category)).Sse()
+				(HttpContext c, string category, ISender sender) => StreamAsync(c, sender, category)).Sse()
 			.WithSummary("Watch one diagnostics category.")
 			.WithDescription("""
 			                 The categories are process, gc, threadpool, runtime, exceptions, http, application, database, stable, irc, events and sessions. Streamed like the full diagnostics.
@@ -44,9 +46,9 @@ internal static class DiagnosticsRoutes
 		return category is null ? all : all[category];
 	}
 
-	private static async Task<IResult> StreamAsync(HttpContext context, Server server, string? category)
+	private static async Task<IResult> StreamAsync(HttpContext context, ISender sender, string? category)
 	{
-		var access = server.ScopeTo(context.Connection()).Diagnostics.Access();
+		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
 		if (!access.IsOk) return access.Refusal();
 		if (category is not null && !Categories.Contains(category, StringComparer.OrdinalIgnoreCase))
 			return Api.NotFound("No such diagnostics category.");
@@ -62,10 +64,10 @@ internal static class DiagnosticsRoutes
 			_ => Task.FromResult(new SsePoll([new SseEvent(Sample(runtime, registry, lobby, hub, category))])));
 	}
 
-	private static async Task<IResult> ActionAsync(HttpContext context, string category, string action, Server server,
+	private static async Task<IResult> ActionAsync(HttpContext context, string category, string action, ISender sender,
 		RuntimeSampler runtime, ICacheCleaner? caches, RateLimiter limiter)
 	{
-		var access = server.ScopeTo(context.Connection()).Diagnostics.Access();
+		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
 		if (!access.IsOk) return access.Refusal();
 
 		switch ($"{category}/{action}".ToLowerInvariant())

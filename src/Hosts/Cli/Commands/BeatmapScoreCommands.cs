@@ -1,3 +1,4 @@
+using Basil.Application.Servers.Messages;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
@@ -105,8 +106,8 @@ internal static class BeatmapScoreCommands
 	private static async Task<int> UploadAsync(CommandCall call)
 	{
 		await using var stream = File.OpenRead(call.Required("file"));
-		var (result, import) = await call.Get<Server>().ScopeTo(await call.ByAsync()).Beatmapsets
-			.UploadAsync(stream, call.CancellationToken);
+		var (result, import) = await call.Get<ISender>().Send(
+			new UploadBeatmapset(await call.ByAsync(), stream), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		switch (import!.Failure)

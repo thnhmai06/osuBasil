@@ -1,3 +1,4 @@
+using Basil.Application.Servers.Messages;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -261,7 +262,7 @@ internal static class OsuWebRoutes
 		return Results.File(stream, "application/x-osu-replay");
 	}
 
-	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, Server server,
+	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, ISender sender,
 		ISettingsRepository settings, CancellationToken ct)
 	{
 		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
@@ -279,7 +280,7 @@ internal static class OsuWebRoutes
 			return Results.Unauthorized();
 		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
 		await using var stream = file.OpenReadStream();
-		var (reference, result) = await server.ScopeTo(player).Screenshots.UploadAsync(stream, ct);
+		var (reference, result) = await sender.Send(new UploadScreenshot(player, stream), ct);
 		return result.IsOk
 			? Text(reference?.ToString() ?? string.Empty)
 			: Text(string.Empty, result.Outcome == ServerOutcome.DimensionsTooLarge ? 413 : 400);

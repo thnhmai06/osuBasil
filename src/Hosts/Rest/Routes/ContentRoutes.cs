@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Servers.Messages;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Servers.Objects;
@@ -31,35 +33,35 @@ internal static class ContentRoutes
 		screenshots.MapDelete("/{id}", DeleteScreenshotAsync).WithSummary("Delete a screenshot.");
 	}
 
-	private static async Task<IResult> GetAllAsync(HttpContext context, Server server)
+	private static async Task<IResult> GetAllAsync(HttpContext context, ISender sender)
 	{
-		var (result, settings) = await server.ScopeTo(context.Connection()).Settings.GetAsync(context.RequestAborted);
+		var (result, settings) = await sender.Send(new GetSettings(context.Connection()), context.RequestAborted);
 		return result.IsOk
 			? Api.Ok(SettingsCategories.GetAll(settings!))
 			: result.Refusal();
 	}
 
-	private static async Task<IResult> GetCategoryAsync(HttpContext context, string category, Server server)
+	private static async Task<IResult> GetCategoryAsync(HttpContext context, string category, ISender sender)
 	{
 		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
-		var (result, settings) = await server.ScopeTo(context.Connection()).Settings.GetAsync(context.RequestAborted);
+		var (result, settings) = await sender.Send(new GetSettings(context.Connection()), context.RequestAborted);
 		return result.IsOk ? Api.Ok(SettingsCategories.Get(category, settings!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchCategoryAsync(HttpContext context, string category, JsonObject patch,
-		Server server)
+		ISender sender)
 	{
 		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
-		var scoped = server.ScopeTo(context.Connection()).Settings;
-		var (read, current) = await scoped.GetAsync(context.RequestAborted);
+		var actor = context.Connection();
+		var (read, current) = await sender.Send(new GetSettings(actor), context.RequestAborted);
 		if (!read.IsOk) return read.Refusal();
 
 		try
 		{
 			var changed = SettingsCategories.Patch(category, current!, patch);
-			var stored = await scoped.UpdateAsync(changed, context.RequestAborted);
+			var stored = await sender.Send(new UpdateSettings(actor, changed), context.RequestAborted);
 			return stored.IsOk
 				? Api.Ok(SettingsCategories.Get(category, changed), "Updated successfully")
 				: stored.Refusal();
@@ -71,15 +73,15 @@ internal static class ContentRoutes
 		}
 	}
 
-	private static async Task<IResult> AnnounceAsync(HttpContext context, AnnounceRequest request, Server server,
+	private static async Task<IResult> AnnounceAsync(HttpContext context, AnnounceRequest request, ISender sender,
 		IUserRepository users)
 	{
 		if (string.IsNullOrWhiteSpace(request.Text)) return Api.Invalid("text is required.");
 
-		var scoped = server.ScopeTo(context.Connection());
+		var actor = context.Connection();
 		if (request.To is not { Length: > 0 } ids)
 		{
-			var (all, sent) = scoped.NotifyAll(request.Text);
+			var (all, sent) = await sender.Send(new NotifyEveryone(actor, request.Text), context.RequestAborted);
 			return all.IsOk ? Api.Ok(new AnnounceResponse(sent)) : all.Refusal();
 		}
 
@@ -91,29 +93,29 @@ internal static class ContentRoutes
 			recipients.Add(user);
 		}
 
-		var (some, count) = scoped.Notify(request.Text, recipients);
+		var (some, count) = await sender.Send(new NotifyUsers(actor, request.Text, recipients), context.RequestAborted);
 		return some.IsOk ? Api.Ok(new AnnounceResponse(count)) : some.Refusal();
 	}
 
-	private static async Task<IResult> ListScreenshotsAsync(HttpContext context, Server server)
+	private static async Task<IResult> ListScreenshotsAsync(HttpContext context, ISender sender)
 	{
-		var (result, list) = await server.ScopeTo(context.Connection()).Screenshots.ListAsync(context.RequestAborted);
+		var (result, list) = await sender.Send(new ListScreenshots(context.Connection()), context.RequestAborted);
 		return result.IsOk
 			? Api.Ok(list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList())
 			: result.Refusal();
 	}
 
-	private static async Task<IResult> DeleteScreenshotAsync(HttpContext context, string id, Server server)
+	private static async Task<IResult> DeleteScreenshotAsync(HttpContext context, string id, ISender sender)
 	{
-		var screenshots = server.ScopeTo(context.Connection()).Screenshots;
-		var (listed, list) = await screenshots.ListAsync(context.RequestAborted);
+		var actor = context.Connection();
+		var (listed, list) = await sender.Send(new ListScreenshots(actor), context.RequestAborted);
 		if (!listed.IsOk) return listed.Refusal();
 
 		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<ContentReference?>()
 			.FirstOrDefault();
 		return match is null
 			? Api.NotFound("No such screenshot.")
-			: (await screenshots.DeleteAsync(match.Value, context.RequestAborted)).Answer();
+			: (await sender.Send(new DeleteScreenshot(actor, match.Value), context.RequestAborted)).Answer();
 	}
 
 	/// <summary>The body of an announcement; no recipients means everyone.</summary>

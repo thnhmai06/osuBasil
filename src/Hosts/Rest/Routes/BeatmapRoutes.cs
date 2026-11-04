@@ -1,3 +1,4 @@
+using Basil.Application.Servers.Messages;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
@@ -160,7 +161,7 @@ internal static class BeatmapRoutes
 			: Api.Ok(BeatmapView.Of(map, true));
 	}
 
-	private static async Task<IResult> UploadAsync(HttpContext context, Server server, ISettingsRepository settings)
+	private static async Task<IResult> UploadAsync(HttpContext context, ISender sender, ISettingsRepository settings)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form with a file field is required.");
 
@@ -170,7 +171,7 @@ internal static class BeatmapRoutes
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
 
 		await using var stream = file.OpenReadStream();
-		var (result, import) = await server.ScopeTo(context.Connection()).Beatmapsets.UploadAsync(stream,
+		var (result, import) = await sender.Send(new UploadBeatmapset(context.Connection(), stream),
 			context.RequestAborted);
 		if (!result.IsOk) return result.Refusal();
 

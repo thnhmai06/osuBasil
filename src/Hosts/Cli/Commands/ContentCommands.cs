@@ -1,10 +1,12 @@
+using Basil.Application.Users.Objects.Connections;
+using Mediator;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
-using Basil.Application.Servers.Capabilities;
+using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;
@@ -85,7 +87,7 @@ internal static class ContentCommands
 			Pattern = "menu icon delete", Route = "DELETE /v1/menu/icon", Offline = true,
 			Summary = "Removes the main-menu icon.",
 			Run = async call => call.Report(
-				await call.Get<Server>().ScopeTo(await call.ByAsync()).Content.ClearIconAsync(call.CancellationToken),
+				await SendAsync(call, actor => new ClearMenuIcon(actor)),
 				"Icon removed.")
 		};
 
@@ -192,9 +194,9 @@ internal static class ContentCommands
 		};
 	}
 
-	private static async Task<ScopedServer> ServerAsync(CommandCall call)
+	private static async Task<T> SendAsync<T>(CommandCall call, Func<Connection, IRequest<T>> message)
 	{
-		return call.Get<Server>().ScopeTo(await call.ByAsync());
+		return await call.Get<ISender>().Send(message(await call.ByAsync()), call.CancellationToken);
 	}
 
 	private static async Task<int> ListBannersAsync(CommandCall call)
@@ -224,9 +226,8 @@ internal static class ContentCommands
 
 		var path = call.Required("image");
 		await using var stream = File.OpenRead(path);
-		var (result, banner) = await (await ServerAsync(call)).Content.AddBannerAsync(Path.GetFileName(path), stream,
-			url, begins, expires,
-			call.CancellationToken);
+		var (result, banner) = await SendAsync(call,
+			actor => new AddMenuBanner(actor, Path.GetFileName(path), stream, url, begins, expires));
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Output.Ok($"Added banner {Path.GetFileName(banner!.Image.Value)}.");
@@ -240,7 +241,7 @@ internal static class ContentCommands
 			.FirstOrDefault(b => Path.GetFileName(b.Image.Value) == image);
 		return banner is null
 			? call.NotFound("banner")
-			: call.Report(await (await ServerAsync(call)).Content.DeleteBannerAsync(banner, call.CancellationToken),
+			: call.Report(await SendAsync(call, actor => new DeleteMenuBanner(actor, banner)),
 				"Banner deleted.");
 	}
 
@@ -256,8 +257,7 @@ internal static class ContentCommands
 		var path = call.Required("image");
 		await using var stream = File.OpenRead(path);
 		var (result, image) =
-			await (await ServerAsync(call)).Content.AddSeasonalAsync(Path.GetFileName(path), stream,
-				call.CancellationToken);
+			await SendAsync(call, actor => new AddMenuSeasonal(actor, Path.GetFileName(path), stream));
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Output.Ok($"Added background {Path.GetFileName(image!.Value.Value)}.");
@@ -273,7 +273,7 @@ internal static class ContentCommands
 		return reference is null
 			? call.NotFound("background")
 			: call.Report(
-				await (await ServerAsync(call)).Content.DeleteSeasonalAsync(reference.Value, call.CancellationToken),
+				await SendAsync(call, actor => new DeleteMenuSeasonal(actor, reference.Value)),
 				"Background deleted.");
 	}
 
@@ -293,9 +293,8 @@ internal static class ContentCommands
 
 		var path = call.Text("image");
 		await using var stream = path is null ? null : File.OpenRead(path);
-		var result = await (await ServerAsync(call)).Content.SetIconAsync(path is null ? null : Path.GetFileName(path),
-			stream, url,
-			call.CancellationToken);
+		var result = await SendAsync(call,
+			actor => new SetMenuIcon(actor, path is null ? null : Path.GetFileName(path), stream, url));
 		return call.Report(result, "Icon set.");
 	}
 
@@ -325,7 +324,7 @@ internal static class ContentCommands
 	{
 		var text = await File.ReadAllTextAsync(call.Required("file"), call.CancellationToken);
 		return call.Report(
-			await (await ServerAsync(call)).Content.SaveFaqAsync(call.Word("entry"), text, call.CancellationToken),
+			await SendAsync(call, actor => new SaveFaq(actor, call.Word("entry"), text)),
 			"Entry saved.");
 	}
 
@@ -334,7 +333,7 @@ internal static class ContentCommands
 		try
 		{
 			return call.Report(
-				await (await ServerAsync(call)).Content.DeleteFaqAsync(call.Word("entry"), call.CancellationToken),
+				await SendAsync(call, actor => new DeleteFaq(actor, call.Word("entry"))),
 				"Entry deleted.");
 		}
 		catch (ArgumentException)
@@ -366,7 +365,7 @@ internal static class ContentCommands
 
 	private static async Task<int> ShowSettingsAsync(CommandCall call)
 	{
-		var (result, settings) = await (await ServerAsync(call)).Settings.GetAsync(call.CancellationToken);
+		var (result, settings) = await SendAsync(call, actor => new GetSettings(actor));
 		if (!result.IsOk) return call.Refuse(result);
 
 		var lines = new List<(string, string)>();
@@ -381,7 +380,7 @@ internal static class ContentCommands
 		var category = call.Word("category");
 		if (!SettingsCategories.Exists(category)) return call.NotFound("settings category");
 
-		var (result, settings) = await (await ServerAsync(call)).Settings.GetAsync(call.CancellationToken);
+		var (result, settings) = await SendAsync(call, actor => new GetSettings(actor));
 		if (!result.IsOk) return call.Refuse(result);
 
 		var lines = new List<(string, string)>();
@@ -408,14 +407,13 @@ internal static class ContentCommands
 			target[parts[^1]] = ValueOf(text);
 		}
 
-		var scoped = (await ServerAsync(call)).Settings;
-		var (read, current) = await scoped.GetAsync(call.CancellationToken);
+		var (read, current) = await SendAsync(call, actor => new GetSettings(actor));
 		if (!read.IsOk) return call.Refuse(read);
 
 		try
 		{
 			var changed = SettingsCategories.Patch(category, current!, patch);
-			return call.Report(await scoped.UpdateAsync(changed, call.CancellationToken), "Updated.");
+			return call.Report(await SendAsync(call, actor => new UpdateSettings(actor, changed)), "Updated.");
 		}
 		catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException
 			                           or FormatException)
@@ -439,11 +437,10 @@ internal static class ContentCommands
 
 	private static async Task<int> AnnounceAsync(CommandCall call)
 	{
-		var scoped = await ServerAsync(call);
 		var text = call.Required("text");
 		if (call.List("to") is not { Length: > 0 } ids)
 		{
-			var (all, sent) = scoped.NotifyAll(text);
+			var (all, sent) = await SendAsync(call, actor => new NotifyEveryone(actor, text));
 			return all.IsOk ? Announced(call, sent) : call.Refuse(all);
 		}
 
@@ -458,7 +455,7 @@ internal static class ContentCommands
 			recipients.Add(user);
 		}
 
-		var (some, count) = scoped.Notify(text, recipients);
+		var (some, count) = await SendAsync(call, actor => new NotifyUsers(actor, text, recipients));
 		return some.IsOk ? Announced(call, count) : call.Refuse(some);
 	}
 
@@ -471,7 +468,7 @@ internal static class ContentCommands
 	private static async Task<int> ListScreenshotsAsync(CommandCall call)
 	{
 		var page = call.Page();
-		var (result, list) = await (await ServerAsync(call)).Screenshots.ListAsync(call.CancellationToken);
+		var (result, list) = await SendAsync(call, actor => new ListScreenshots(actor));
 		if (!result.IsOk) return call.Refuse(result);
 
 		var views = list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList();
@@ -481,8 +478,7 @@ internal static class ContentCommands
 
 	private static async Task<int> DeleteScreenshotAsync(CommandCall call)
 	{
-		var screenshots = (await ServerAsync(call)).Screenshots;
-		var (listed, list) = await screenshots.ListAsync(call.CancellationToken);
+		var (listed, list) = await SendAsync(call, actor => new ListScreenshots(actor));
 		if (!listed.IsOk) return call.Refuse(listed);
 
 		var id = call.Word("id");
@@ -490,6 +486,6 @@ internal static class ContentCommands
 			.FirstOrDefault();
 		return match is null
 			? call.NotFound("screenshot")
-			: call.Report(await screenshots.DeleteAsync(match.Value, call.CancellationToken), "Screenshot deleted.");
+			: call.Report(await SendAsync(call, actor => new DeleteScreenshot(actor, match.Value)), "Screenshot deleted.");
 	}
 }

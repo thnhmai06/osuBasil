@@ -1,3 +1,5 @@
+using Mediator;
+using Basil.Application.Servers.Messages;
 using System.Globalization;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
@@ -47,8 +49,8 @@ internal static class MenuRoutes
 		menu.MapPut("/icon", SetIconAsync).DisableAntiforgery().RequireToken()
 			.WithSummary(
 				"Set the main-menu icon from an optional image in the `image` field and an optional address in `url`.");
-		menu.MapDelete("/icon", async (HttpContext context, Server server) =>
-				(await server.ScopeTo(context.Connection()).Content.ClearIconAsync(context.RequestAborted)).Answer())
+		menu.MapDelete("/icon", async (HttpContext context, ISender sender) =>
+				(await sender.Send(new ClearMenuIcon(context.Connection()), context.RequestAborted)).Answer())
 			.RequireToken().WithSummary("Remove the main-menu icon.");
 	}
 
@@ -68,14 +70,14 @@ internal static class MenuRoutes
 	}
 
 	private static async Task<IResult> SaveFaqAsync(HttpContext context, string entry, FaqRequest request,
-		Server server)
+		ISender sender)
 	{
 		if (request.Text is null) return Api.Invalid("text is required.");
 
 		try
 		{
-			return (await server.ScopeTo(context.Connection()).Content
-				.SaveFaqAsync(entry, request.Text, context.RequestAborted)).Answer();
+			return (await sender.Send(new SaveFaq(context.Connection(), entry, request.Text), context.RequestAborted))
+				.Answer();
 		}
 		catch (ArgumentException)
 		{
@@ -83,12 +85,11 @@ internal static class MenuRoutes
 		}
 	}
 
-	private static async Task<IResult> DeleteFaqAsync(HttpContext context, string entry, Server server)
+	private static async Task<IResult> DeleteFaqAsync(HttpContext context, string entry, ISender sender)
 	{
 		try
 		{
-			return (await server.ScopeTo(context.Connection()).Content.DeleteFaqAsync(entry, context.RequestAborted))
-				.Answer();
+			return (await sender.Send(new DeleteFaq(context.Connection(), entry), context.RequestAborted)).Answer();
 		}
 		catch (ArgumentException)
 		{
@@ -113,7 +114,7 @@ internal static class MenuRoutes
 		return file.Length > MaxImageBytes ? (null, Api.Invalid("The image is too large.", "tooLarge")) : (file, null);
 	}
 
-	private static async Task<IResult> AddBannerAsync(HttpContext context, Server server,
+	private static async Task<IResult> AddBannerAsync(HttpContext context, ISender sender,
 		ISettingsRepository settings)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
@@ -132,9 +133,9 @@ internal static class MenuRoutes
 		try
 		{
 			await using var stream = file!.OpenReadStream();
-			var (result, banner) = await server.ScopeTo(context.Connection()).Content.AddBannerAsync(file.FileName,
-				stream, url,
-				begins, expires, context.RequestAborted);
+			var (result, banner) = await sender.Send(
+				new AddMenuBanner(context.Connection(), file.FileName, stream, url, begins, expires),
+				context.RequestAborted);
 			return result.IsOk
 				? Api.Created(new BannerView(Path.GetFileName(banner!.Image.Value), banner.Url.AbsoluteUri,
 					banner.StartsAt, banner.EndsAt, true))
@@ -157,18 +158,18 @@ internal static class MenuRoutes
 	}
 
 	private static async Task<IResult> DeleteBannerAsync(HttpContext context, string image,
-		IMenuBannerRepository banners, Server server)
+		IMenuBannerRepository banners, ISender sender)
 	{
 		var banner =
 			(await banners.ListAsync(context.RequestAborted)).FirstOrDefault(b =>
 				Path.GetFileName(b.Image.Value) == image);
 		return banner is null
 			? Api.NotFound("No such banner.")
-			: (await server.ScopeTo(context.Connection()).Content.DeleteBannerAsync(banner, context.RequestAborted))
+			: (await sender.Send(new DeleteMenuBanner(context.Connection(), banner), context.RequestAborted))
 			.Answer();
 	}
 
-	private static async Task<IResult> AddSeasonalAsync(HttpContext context, Server server)
+	private static async Task<IResult> AddSeasonalAsync(HttpContext context, ISender sender)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
 
@@ -178,8 +179,8 @@ internal static class MenuRoutes
 		try
 		{
 			await using var stream = file!.OpenReadStream();
-			var (result, image) = await server.ScopeTo(context.Connection()).Content
-				.AddSeasonalAsync(file.FileName, stream, context.RequestAborted);
+			var (result, image) = await sender.Send(new AddMenuSeasonal(context.Connection(), file.FileName, stream),
+				context.RequestAborted);
 			return result.IsOk ? Api.Created(Path.GetFileName(image!.Value.Value)) : result.Refusal();
 		}
 		catch (ArgumentException)
@@ -189,17 +190,17 @@ internal static class MenuRoutes
 	}
 
 	private static async Task<IResult> DeleteSeasonalAsync(HttpContext context, string image,
-		IMenuSeasonalsStorage seasonals, Server server)
+		IMenuSeasonalsStorage seasonals, ISender sender)
 	{
 		var reference = (await seasonals.ListAsync(context.RequestAborted)).Cast<ContentReference?>()
 			.FirstOrDefault(r => Path.GetFileName(r!.Value.Value) == image);
 		return reference is null
 			? Api.NotFound("No such background.")
-			: (await server.ScopeTo(context.Connection()).Content
-				.DeleteSeasonalAsync(reference.Value, context.RequestAborted)).Answer();
+			: (await sender.Send(new DeleteMenuSeasonal(context.Connection(), reference.Value), context.RequestAborted))
+			.Answer();
 	}
 
-	private static async Task<IResult> SetIconAsync(HttpContext context, Server server,
+	private static async Task<IResult> SetIconAsync(HttpContext context, ISender sender,
 		ISettingsRepository settings)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
@@ -216,8 +217,8 @@ internal static class MenuRoutes
 		try
 		{
 			await using var stream = file?.OpenReadStream();
-			return (await server.ScopeTo(context.Connection()).Content
-				.SetIconAsync(file?.FileName, stream, url, context.RequestAborted)).Answer();
+			return (await sender.Send(new SetMenuIcon(context.Connection(), file?.FileName, stream, url),
+				context.RequestAborted)).Answer();
 		}
 		catch (ArgumentException)
 		{
