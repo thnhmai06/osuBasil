@@ -21,8 +21,7 @@ public sealed class PostChatMessageHandlerTests
 
 	private static PostChatMessageHandler HandlerFor(TestApplication app)
 	{
-		return new PostChatMessageHandler(app.Channels, app.Lobby, app.RoomChannels,
-			app.Provider.GetRequiredService<SpectatorChannels>(), app.PmChannels, app.Users);
+		return new PostChatMessageHandler(app.Provider.GetRequiredService<ChannelDirectory>());
 	}
 
 	private static async Task<Connection> OpenChannelAsync(TestApplication app)

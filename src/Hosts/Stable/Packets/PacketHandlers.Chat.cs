@@ -8,18 +8,18 @@ namespace Basil.Host.Stable.Packets;
 
 internal sealed partial class PacketHandlers
 {
-	private void JoinChannel(StableConnection osu, string name)
+	private async Task JoinChannelAsync(StableConnection osu, string name, CancellationToken cancellationToken)
 	{
-		var result = channels.Resolve(name, osu) is { } channel ? channel.ScopeTo(osu).Join() : default;
+		var result = await sender.Send(new JoinChannel(osu, TargetOf(name)), cancellationToken);
 		if (!result.IsOk && result.Outcome != ChannelOutcome.AlreadyMember)
 			outbox.Send(osu, writer => writer.ChannelKick(name));
 	}
 
-	private void PartChannel(StableConnection osu, string name)
+	private async Task PartChannelAsync(StableConnection osu, string name, CancellationToken cancellationToken)
 	{
 		// The client leaves the match and spectator channels together with the match or the host.
 		if (name is StableView.MultiplayerAlias or StableView.SpectatorAlias) return;
-		channels.Resolve(name, osu)?.ScopeTo(osu).Part();
+		await sender.Send(new PartChannel(osu, TargetOf(name)), cancellationToken);
 	}
 
 	private async Task<bool> MayChatAsync(StableConnection osu, CancellationToken cancellationToken)

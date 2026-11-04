@@ -23,7 +23,6 @@ namespace Basil.Host.Stable.Packets;
 internal sealed partial class PacketHandlers(
 	UserRegistry registry,
 	Lobby lobby,
-	ChannelResolver channels,
 	ISender sender,
 	IUserRepository users,
 	IUserStatsRepository statsRepository,
@@ -81,8 +80,8 @@ internal sealed partial class PacketHandlers(
 				osu.User.ScopeTo(osu).Profile.SetPmPrivate(reader.ReadInt32() == 1)),
 			ClientPacketType.BeatmapInfoRequest => BeatmapInfoAsync(osu, reader.ReadBeatmapInfoRequest(),
 				cancellationToken),
-			ClientPacketType.ChannelJoin => Run(() => JoinChannel(osu, reader.ReadOsuString())),
-			ClientPacketType.ChannelPart => Run(() => PartChannel(osu, reader.ReadOsuString())),
+			ClientPacketType.ChannelJoin => JoinChannelAsync(osu, reader.ReadOsuString(), cancellationToken),
+			ClientPacketType.ChannelPart => PartChannelAsync(osu, reader.ReadOsuString(), cancellationToken),
 			ClientPacketType.SendPublicMessage => PublicMessageAsync(osu, reader.ReadMessage(), cancellationToken),
 			ClientPacketType.SendPrivateMessage => PrivateMessageAsync(osu, reader.ReadMessage(), cancellationToken),
 			ClientPacketType.JoinLobby => Run(() => lobby.ScopeTo(osu).Watch()),

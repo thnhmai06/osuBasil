@@ -114,7 +114,8 @@ internal sealed partial class IrcCommands
 		return registry.Online.Values.FirstOrDefault(user => IrcView.IsNick(user.Record, nick));
 	}
 
-	private void Join(IrcSession session, Connection actor, IrcMessage message)
+	private async Task JoinAsync(IrcSession session, Connection actor, IrcMessage message,
+		CancellationToken cancellationToken)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -130,15 +131,10 @@ internal sealed partial class IrcCommands
 				continue;
 			}
 
-			if (Resolve(name) is not { } channel)
+			var result = await sender.Send(new JoinChannel(actor, IrcTarget(name)), cancellationToken);
+			switch (result.Outcome)
 			{
-				session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
-				continue;
-			}
-
-			switch (channel.ScopeTo(actor).Join().Outcome)
-			{
-				case ChannelOutcome.Closed:
+				case ChannelOutcome.Closed or ChannelOutcome.NotFound:
 					session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
 					break;
 				case ChannelOutcome.AccessDenied:
@@ -148,7 +144,8 @@ internal sealed partial class IrcCommands
 		}
 	}
 
-	private void Part(IrcSession session, Connection actor, IrcMessage message)
+	private async Task PartAsync(IrcSession session, Connection actor, IrcMessage message,
+		CancellationToken cancellationToken)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -157,10 +154,20 @@ internal sealed partial class IrcCommands
 		}
 
 		foreach (var name in message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries))
-			if (Resolve(name) is not { } channel)
+		{
+			var result = await sender.Send(new PartChannel(actor, IrcTarget(name)), cancellationToken);
+			if (result.Outcome == ChannelOutcome.NotFound)
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
-			else if (channel.ScopeTo(actor).Part().Outcome == ChannelOutcome.NotMember)
+			else if (result.Outcome == ChannelOutcome.NotMember)
 				session.Numeric(IrcNumericReply.ErrNotOnChannel, name, IrcReplies.NotOnChannel);
+		}
+	}
+
+	private static ChatTarget IrcTarget(string name)
+	{
+		return RoomChannel.TryParseName(name, out var roomId)
+			? new ChatTarget.Room(roomId)
+			: new ChatTarget.General(name);
 	}
 
 	private void Away(IrcSession session, Connection actor, IrcMessage message)

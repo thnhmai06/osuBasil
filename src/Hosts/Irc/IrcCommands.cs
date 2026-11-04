@@ -215,10 +215,10 @@ internal sealed partial class IrcCommands(
 				await MessageAsync(session, connection, message, cancellationToken);
 				break;
 			case "JOIN":
-				Join(session, connection, message);
+				await JoinAsync(session, connection, message, cancellationToken);
 				break;
 			case "PART":
-				Part(session, connection, message);
+				await PartAsync(session, connection, message, cancellationToken);
 				break;
 			case "NAMES":
 				Names(session, connection, message);

@@ -27,7 +27,6 @@ public static class StableRoutes
 		services.AddSingleton(StableDocumentation.Document);
 		services.AddSingleton<StableShutdown>();
 		services.AddSingleton<StableLogin>();
-		services.AddSingleton<ChannelResolver>();
 		services.AddSingleton<PacketHandlers>();
 		services.AddSingleton<PacketDispatcher>();
 		services.AddSingleton<WebAuthentication>();
