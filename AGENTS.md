@@ -332,7 +332,7 @@ Projects that need PostgreSQL start a container; set `DOCKER_HOST` when the daem
 `BASIL_TEST_POSTGRES` to use an existing server. Never run every project in one `dotnet test` invocation.
 
 A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check, which
-`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of the composition root (`Basil`) and `AddBot()`, builds the provider
+`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of the composition root (`Basil`), builds the provider
 with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event handler is
 registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
 
@@ -380,8 +380,9 @@ Basil.Host.Stable / .Irc /       transports: translate the wire to messages and 
 Basil                            entry point, composition    -> everything
                                  root, "the way to run"
 
-Basil.Bot                        BasilBot, a module at the top of the graph      -> the Application projects of the
-                                 (target: Application.Bot / Infrastructure.Bot)     modules it uses, Application.Common
+Basil.Application.Bot            BasilBot, a module at the top of the graph:     -> the Application projects of the
+Basil.Infrastructure.Bot         contracts and objects / handlers, commands,        modules it uses, Application.Common
+                                 workers
 ```
 
 The layers stay Clean Architecture (Domain, Application, Infrastructure, hosts); inside the Application and Infrastructure layers
@@ -400,7 +401,7 @@ Multiplayer -> Users, Beatmaps, Content, Scores
 Chat        -> Users, Multiplayer
 Diagnostics -> Users
 Servers     -> every module above
-Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users      (target as a module)
+Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users
 ```
 
 A module Infrastructure project never references another module; the foreign keys between the module databases
@@ -428,7 +429,7 @@ translate the wire into the system's own messages and back; it does not validate
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`,
 `src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Hosts/{Host,Shared,Stable,Irc,Rest,Cli}/`,
-`src/Protocol/{Stable,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
+`src/Protocol/{Stable,Irc}/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
 `tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `src/Application/Users`;
 shared fixtures are under `tests/Support/`, and the tests that build the whole composition and run several hosts
@@ -579,7 +580,7 @@ contribution contracts every module answers (`CollectDiagnostics`, `IDiagnostics
 `DiagnosticsValue`, `DiagnosticsSample`) live in Application.Common. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
 event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
 Infrastructure.Common's `Workers/`. Concrete handlers live in the `Handlers/` folder of the module's Infrastructure project or in the consumer that
-owns them, including `Basil.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
+owns them, including `Basil.Infrastructure.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
 and announcements are server features: a command is an entry point that uses the typist's scoped objects, and the bot
 only replies. Query **records** (the filter a repository applies, with `Parse` for the search syntax) belong to
 Persistence; routes and handlers that answer queries do not. Server settings changed at runtime (`ServerSettings`,

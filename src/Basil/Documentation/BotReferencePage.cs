@@ -1,4 +1,4 @@
-using Basil.Bot;
+using Basil.Application.Bot;
 using Basil.Host.Shared.Documentation;
 
 namespace Basil.Documentation;

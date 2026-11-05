@@ -9,13 +9,13 @@ namespace Basil.ArchitectureTests;
 ///     cycle. Domain is shared by every project; the module Application projects follow
 ///     <c>Users -&gt; Authentication, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
 ///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c>, <c>Diagnostics -&gt; Users</c> and
-///     <c>Servers</c> on top of all of them; a module Infrastructure project references only its own Application project
-///     and the Common projects; <c>Basil</c> and <c>Bot</c> sit above every module and nothing references them.
+///     <c>Servers</c> on top of all of them, and <c>Bot</c> on top of <c>Servers</c>; a module Infrastructure project references only its own Application project
+///     and the Common projects; <c>Basil</c> sits above every module and nothing references it.
 /// </summary>
 public class ModuleGraphTests
 {
 	private static readonly string[] Modules =
-		["Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Servers", "Users"];
+		["Anticheat", "Authentication", "Beatmaps", "Bot", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Servers", "Users"];
 
 	private static readonly Dictionary<string, string[]> ModuleDependencies = new()
 	{
@@ -31,7 +31,8 @@ public class ModuleGraphTests
 		["Servers"] =
 		[
 			"Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Users"
-		]
+		],
+		["Bot"] = ["Anticheat", "Beatmaps", "Chat", "Multiplayer", "Scores", "Servers", "Users"]
 	};
 
 	[Fact]
@@ -85,6 +86,9 @@ public class ModuleGraphTests
 		Assert.False(IsAllowed("Basil.Application.Diagnostics", "Basil.Application.Multiplayer"));
 		Assert.False(IsAllowed("Basil.Application.Users", "Basil.Application.Diagnostics"));
 		Assert.False(IsAllowed("Basil.Application.Chat", "Basil.Application.Diagnostics"));
+		Assert.True(IsAllowed("Basil.Application.Bot", "Basil.Application.Servers"));
+		Assert.False(IsAllowed("Basil.Application.Servers", "Basil.Application.Bot"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Bot", "Basil.Application.Chat"));
 	}
 
 	[Fact]
@@ -98,7 +102,7 @@ public class ModuleGraphTests
 	private static bool IsKnown(string name)
 	{
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
-			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Bot" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
+			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                name == $"Basil.Infrastructure.{module}");
 	}
@@ -117,8 +121,6 @@ public class ModuleGraphTests
 		if (to == "Basil.Application.Common") return true;
 		if (from == "Basil")
 			return IsModuleProject(to) || to is "Basil.Infrastructure.Common" or "Basil.Infrastructure.Persistence";
-		if (from == "Basil.Bot")
-			return to.StartsWith("Basil.Application.", StringComparison.Ordinal) && IsModuleProject(to);
 
 		var parts = from.Split('.');
 		if (parts.Length != 3) return false;
