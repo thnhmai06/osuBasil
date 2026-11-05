@@ -16,10 +16,11 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 	public async Task<ScoreRecord> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
 	{
 		var row = ToRow(0, data);
-		await database.WriteAsync(async (ScoresDbContext context, CancellationToken token) =>
+		await database.TransactAsync(async (ScoresDbContext context, CancellationToken token) =>
 		{
 			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
 			context.Scores.Add(row);
+			await IdCounters.AddAsync(context, ScoresDbContext.ScoreRows, 1, token);
 		}, cancellationToken);
 		return new ScoreRecord { Id = row.Id, Value = data };
 	}
@@ -49,6 +50,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		{
 			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
 			context.Scores.Add(row);
+			await IdCounters.AddAsync(context, ScoresDbContext.ScoreRows, 1, token);
 			stats = await EfUserStatsRepository.AddPlayAsync(context, data.UserId!.Value, data.Mode,
 				data.LastState.TotalScore, rankedScore, token);
 		}, cancellationToken);
@@ -92,7 +94,10 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 				                                               (other.Timestamp < s.Timestamp ||
 				                                                (other.Timestamp == s.Timestamp && other.Id < s.Id))))))
 				: matching;
-			var count = await q.CountAsync(cancellationToken);
+			// Every score, with no filter: the counter knows how many there are.
+			var count = scoreQuery == new ScoreQuery()
+				? (int)await IdCounters.ValueAsync(context, ScoresDbContext.ScoreRows, cancellationToken)
+				: await q.CountAsync(cancellationToken);
 			q = scoreQuery.BestPerPlayer || scoreQuery.BeatmapHash is not null
 				? q.OrderByDescending(s => s.TotalScore).ThenBy(s => s.Timestamp).ThenBy(s => s.Id)
 				: q.OrderByDescending(s => s.Timestamp).ThenByDescending(s => s.Id);

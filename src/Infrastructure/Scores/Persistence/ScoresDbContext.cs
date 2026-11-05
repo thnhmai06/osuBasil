@@ -6,6 +6,9 @@ namespace Basil.Infrastructure.Scores.Persistence;
 internal sealed class ScoresDbContext(DbContextOptions<ScoresDbContext> options) : DbContext(options),
 	IDatabaseContext<ScoresDbContext>
 {
+	/// <summary>The counter of how many scores are stored.</summary>
+	internal const string ScoreRows = "score_rows";
+
 	public DbSet<ScoreRow> Scores => Set<ScoreRow>();
 	public DbSet<UserStatsRow> UserStats => Set<UserStatsRow>();
 
@@ -18,7 +21,7 @@ internal sealed class ScoresDbContext(DbContextOptions<ScoresDbContext> options)
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-		IdCounters.Map(modelBuilder, "score_id_counters", ("score", 1));
+		IdCounters.Map(modelBuilder, "score_id_counters", ("score", 1), (ScoreRows, 0));
 		ContextModel.MapUsersReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<ScoresDbContext>(modelBuilder);
 	}

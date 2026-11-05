@@ -30,6 +30,29 @@ public static class IdCounters
 		});
 	}
 
+	/// <summary>Adds to a counter that counts rows, so a listing of every row needs no <c>COUNT</c>.</summary>
+	/// <param name="context">The context of the module that owns the counter.</param>
+	/// <param name="name">The name of the counter.</param>
+	/// <param name="delta">How many rows were added (negative when removed).</param>
+	/// <param name="cancellationToken">A token that cancels the call.</param>
+	/// <remarks>Call it inside the transaction that stores or removes the rows, so the two never disagree.</remarks>
+	public static async Task AddAsync(DbContext context, string name, long delta, CancellationToken cancellationToken)
+	{
+		await context.Set<IdCounterRow>().Where(row => row.Name == name)
+			.ExecuteUpdateAsync(set => set.SetProperty(row => row.Next, row => row.Next + delta), cancellationToken);
+	}
+
+	/// <summary>Reads a counter that counts rows.</summary>
+	/// <param name="context">The context of the module that owns the counter.</param>
+	/// <param name="name">The name of the counter.</param>
+	/// <param name="cancellationToken">A token that cancels the call.</param>
+	/// <returns>The value of the counter.</returns>
+	public static async Task<long> ValueAsync(DbContext context, string name, CancellationToken cancellationToken)
+	{
+		return await context.Set<IdCounterRow>().Where(row => row.Name == name).Select(row => row.Next)
+			.SingleAsync(cancellationToken);
+	}
+
 	/// <summary>Takes the next id of a counter; two callers never take the same id.</summary>
 	/// <param name="context">The context of the module that owns the counter.</param>
 	/// <param name="name">The name of the counter.</param>

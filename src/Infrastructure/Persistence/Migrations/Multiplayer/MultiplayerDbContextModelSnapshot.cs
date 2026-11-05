@@ -44,6 +44,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                         {
                             Name = "match_event",
                             Next = 1L
+                        },
+                        new
+                        {
+                            Name = "match_rows",
+                            Next = 0L
                         });
                 });
 

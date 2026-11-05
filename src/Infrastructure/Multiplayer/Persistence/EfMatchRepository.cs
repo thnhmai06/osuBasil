@@ -28,10 +28,11 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 			EndedAt = endedAt,
 			IsPrivate = isPrivate
 		};
-		await database.WriteAsync(async (MultiplayerDbContext context, CancellationToken token) =>
+		await database.TransactAsync(async (MultiplayerDbContext context, CancellationToken token) =>
 		{
 			row.Id = (int)await IdCounters.NextAsync(context, "match", token);
 			context.Matches.Add(row);
+			await IdCounters.AddAsync(context, MultiplayerDbContext.MatchRows, 1, token);
 		}, cancellationToken);
 
 		return new MatchRecord { Id = row.Id, Value = value };
@@ -69,7 +70,10 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		var (total, rows) = await database.ReadAsync(async (MultiplayerDbContext context) =>
 		{
 			var matching = Filter(context, context.Matches, query);
-			var count = await matching.CountAsync(cancellationToken);
+			// Every match, with no filter: the counter knows how many there are.
+			var count = query == new MatchQuery()
+				? (int)await IdCounters.ValueAsync(context, MultiplayerDbContext.MatchRows, cancellationToken)
+				: await matching.CountAsync(cancellationToken);
 			var rows = await matching
 				.OrderByDescending(row => row.StartedAt)
 				.ThenByDescending(row => row.Id)

@@ -39,6 +39,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                         {
                             Name = "score",
                             Next = 1L
+                        },
+                        new
+                        {
+                            Name = "score_rows",
+                            Next = 0L
                         });
                 });
 

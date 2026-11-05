@@ -175,6 +175,22 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
+	public async Task The_total_of_an_unfiltered_listing_counts_every_stored_score_and_of_a_filtered_one_only_its_own()
+	{
+		var player = await CreatePlayerAsync("counted_player");
+		var other = await CreatePlayerAsync("counted_other");
+		await CreateScoreAsync(player, StoredScores.Hash("count_one"), 1000, First);
+		await CreateScoreAsync(player, StoredScores.Hash("count_two"), 2000, Second);
+		await CreateScoreAsync(other, StoredScores.Hash("count_three"), 3000, Second);
+
+		var all = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 1), TestContext.Current.CancellationToken);
+		var mine = await Scores.ListAsync(new ScoreQuery(player), new PageRequest(0, 1),
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal((3, 2), (all.Total, mine.Total));
+	}
+
+	[Fact]
 	public async Task A_listing_shows_the_scores_of_one_beatmap()
 	{
 		var player = await CreatePlayerAsync("hash_player");
