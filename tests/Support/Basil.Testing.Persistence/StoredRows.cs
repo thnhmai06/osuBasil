@@ -1,5 +1,5 @@
+using System.Data.Common;
 using System.Globalization;
-using Npgsql;
 
 namespace Basil.Testing.Persistence;
 
@@ -15,13 +15,8 @@ public static class StoredRows
 	public static async Task<IReadOnlyList<StoredRow>> ReadAsync(string connectionString, string sql,
 		IReadOnlyDictionary<string, object?>? parameters, CancellationToken cancellationToken)
 	{
-		await using var connection = new NpgsqlConnection(connectionString);
-		await connection.OpenAsync(cancellationToken);
-		await using var command = new NpgsqlCommand(sql, connection);
-		if (parameters is not null)
-			foreach (var (name, value) in parameters)
-				command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-
+		await using var connection = await TestServer.OpenAsync(connectionString, cancellationToken);
+		await using var command = Command(connection, sql, parameters);
 		await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 		var rows = new List<StoredRow>();
 		while (await reader.ReadAsync(cancellationToken))
@@ -46,14 +41,54 @@ public static class StoredRows
 	public static async Task<int> ExecuteAsync(string connectionString, string sql,
 		IReadOnlyDictionary<string, object?>? parameters, CancellationToken cancellationToken)
 	{
-		await using var connection = new NpgsqlConnection(connectionString);
-		await connection.OpenAsync(cancellationToken);
-		await using var command = new NpgsqlCommand(sql, connection);
-		if (parameters is not null)
-			foreach (var (name, value) in parameters)
-				command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-
+		await using var connection = await TestServer.OpenAsync(connectionString, cancellationToken);
+		await using var command = Command(connection, sql, parameters);
 		return await command.ExecuteNonQueryAsync(cancellationToken);
+	}
+
+	/// <summary>Stores rows into a table in one transaction, for tests that need more rows than a repository makes.</summary>
+	/// <param name="connectionString">How to reach the database.</param>
+	/// <param name="table">The table to insert into.</param>
+	/// <param name="rows">The rows, each as the value of its columns; every row names the same columns.</param>
+	/// <param name="cancellationToken">A token that cancels the insert.</param>
+	/// <returns>How many rows were stored.</returns>
+	public static async Task<int> InsertAsync(string connectionString, string table,
+		IEnumerable<IReadOnlyDictionary<string, object?>> rows, CancellationToken cancellationToken)
+	{
+		await using var connection = await TestServer.OpenAsync(connectionString, cancellationToken);
+		await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+		var stored = 0;
+		foreach (var row in rows)
+		{
+			var columns = row.Keys.ToArray();
+			var sql = $"insert into {table} ({string.Join(", ", columns)}) values " +
+			          $"({string.Join(", ", columns.Select(column => "@" + column))})";
+			await using var command = Command(connection, sql,
+				row.ToDictionary(pair => "@" + pair.Key, pair => pair.Value));
+			command.Transaction = transaction;
+			stored += await command.ExecuteNonQueryAsync(cancellationToken);
+		}
+
+		await transaction.CommitAsync(cancellationToken);
+		return stored;
+	}
+
+	private static DbCommand Command(DbConnection connection, string sql,
+		IReadOnlyDictionary<string, object?>? parameters)
+	{
+		var command = connection.CreateCommand();
+		command.CommandText = sql;
+		if (parameters is null) return command;
+
+		foreach (var (name, value) in parameters)
+		{
+			var parameter = command.CreateParameter();
+			parameter.ParameterName = name;
+			parameter.Value = value ?? DBNull.Value;
+			command.Parameters.Add(parameter);
+		}
+
+		return command;
 	}
 
 	/// <summary>Waits until the rows a query returns satisfy the condition.</summary>

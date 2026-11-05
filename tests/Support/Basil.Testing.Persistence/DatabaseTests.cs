@@ -4,6 +4,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -60,6 +61,17 @@ public abstract class DatabaseTests(PersistenceFixture container) : IAsyncLifeti
 	protected T Get<T>() where T : notnull
 	{
 		return _provider!.GetRequiredService<T>();
+	}
+
+	/// <summary>Stores many rows at once, straight into a module's tables, for tests that need more rows than a repository makes.</summary>
+	/// <typeparam name="TContext">The context of the module that owns the tables.</typeparam>
+	/// <param name="rows">The rows to store, with the keys they should have.</param>
+	protected async Task StoreRowsAsync<TContext>(IEnumerable<object> rows)
+		where TContext : DbContext, IDatabaseContext<TContext>
+	{
+		await using var context = Get<Database>().CreateConfirmedContext<TContext>();
+		context.AddRange(rows);
+		await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 	}
 
 	/// <summary>Creates a match in the store, created by an account the test shares.</summary>

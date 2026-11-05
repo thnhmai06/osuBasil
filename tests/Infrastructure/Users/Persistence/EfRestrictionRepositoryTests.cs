@@ -18,14 +18,13 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "many_bans" }, TestContext.Current.CancellationToken);
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into restrictions (user_id, permissions, starts_at) " +
-			"select @user, @permissions, @start + g * interval '1 second' from generate_series(1, @count) g",
-			new Dictionary<string, object?>
-			{
-				["@user"] = user.Id, ["@permissions"] = (long)RestrictionData.Silence, ["@start"] = Moment,
-				["@count"] = ListLimits.Ceiling + 1
-			}, TestContext.Current.CancellationToken);
+		await StoredRows.InsertAsync(ConnectionString, "restrictions",
+			Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g =>
+				(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+				{
+					["id"] = 100_000_000 + g, ["user_id"] = user.Id, ["permissions"] = (long)RestrictionData.Silence,
+					["starts_at"] = Moment.AddSeconds(g)
+				}), TestContext.Current.CancellationToken);
 
 		var listed = await Restrictions.ListAsync(user, TestContext.Current.CancellationToken);
 

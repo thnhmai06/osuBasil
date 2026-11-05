@@ -22,15 +22,13 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	public async Task A_listing_reads_no_more_rounds_than_the_ceiling()
 	{
 		var match = await CreateMatchAsync("long_round_match");
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into rounds (match_id, number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, " +
-			"started_at, aborted) " +
-			"select @match, g, @hash, 0, 0, false, 0, 0, 0, @start, false from generate_series(1, @count) g",
-			new Dictionary<string, object?>
+		await StoredRows.InsertAsync(ConnectionString, "rounds", Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g =>
+			(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
 			{
-				["@match"] = match.Id, ["@hash"] = StoredMatches.BeatmapHash.HashValue, ["@start"] = First,
-				["@count"] = ListLimits.Ceiling + 1
-			}, TestContext.Current.CancellationToken);
+				["match_id"] = match.Id, ["number"] = g, ["beatmap_hash"] = StoredMatches.BeatmapHash.HashValue,
+				["mode"] = 0, ["mods"] = 0, ["freemods"] = false, ["team_type"] = 0, ["win_condition"] = 0,
+				["seed"] = 0, ["started_at"] = First, ["aborted"] = false
+			}), TestContext.Current.CancellationToken);
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 

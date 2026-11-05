@@ -23,14 +23,13 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	public async Task A_listing_reads_no_more_events_than_the_ceiling()
 	{
 		var match = await CreateMatchAsync("busy_event_match");
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into match_events (match_id, type, timestamp) " +
-			"select @match, @type, @start + g * interval '1 second' from generate_series(1, @count) g",
-			new Dictionary<string, object?>
-			{
-				["@match"] = match.Id, ["@type"] = (int)MatchEventType.Created, ["@start"] = First,
-				["@count"] = ListLimits.Ceiling + 1
-			}, TestContext.Current.CancellationToken);
+		await StoredRows.InsertAsync(ConnectionString, "match_events",
+			Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g =>
+				(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+				{
+					["id"] = 100_000_000L + g, ["match_id"] = match.Id, ["type"] = (int)MatchEventType.Created,
+					["timestamp"] = First.AddSeconds(g)
+				}), TestContext.Current.CancellationToken);
 
 		var listed = await Events.ListAsync(match, TestContext.Current.CancellationToken);
 

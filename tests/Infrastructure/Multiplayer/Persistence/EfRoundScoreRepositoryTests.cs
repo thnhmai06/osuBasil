@@ -33,22 +33,23 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var round = await CreateRoundAsync(match, 1);
 		var player = await CreatePlayerAsync("crowded_player");
 		var template = await CreateScoreAsync(player, 1000, First);
-		var parameters = new Dictionary<string, object?>
-		{
-			["@template"] = template.Id, ["@match"] = match.Id, ["@round"] = round.Index,
-			["@count"] = ListLimits.Ceiling
-		};
 		// The template plus the ceiling's worth of copies are one more score than the ceiling.
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into scores (user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss, " +
-			"total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum) " +
-			"select user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss, " +
-			"total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, md5(g::text) " +
-			"from scores, generate_series(1, @count) g where id = @template",
-			parameters, TestContext.Current.CancellationToken);
-		var stored = await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into round_scores (score_id, match_id, round_number) select id, @match, @round from scores",
-			parameters, TestContext.Current.CancellationToken);
+		var original = (await StoredRows.ReadAsync(ConnectionString, "select * from scores where id = @template",
+			new Dictionary<string, object?> { ["@template"] = template.Id },
+			TestContext.Current.CancellationToken)).Single();
+		var copyIds = Enumerable.Range(1, ListLimits.Ceiling).Select(g => 100_000_000 + g).ToArray();
+		await StoredRows.InsertAsync(ConnectionString, "scores", copyIds.Select(id =>
+		{
+			var copy = new Dictionary<string, object?>(original.Values);
+			copy["id"] = id;
+			copy["checksum"] = id.ToString("x32");
+			return (IReadOnlyDictionary<string, object?>)copy;
+		}), TestContext.Current.CancellationToken);
+		var stored = await StoredRows.InsertAsync(ConnectionString, "round_scores", copyIds.Prepend(template.Id)
+			.Select(scoreId => (IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+			{
+				["score_id"] = scoreId, ["match_id"] = match.Id, ["round_number"] = round.Index
+			}), TestContext.Current.CancellationToken);
 		Assert.Equal(ListLimits.Ceiling + 1, stored);
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);

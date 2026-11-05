@@ -40,14 +40,14 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
-			"select id::text, user_id, type, host(ip) as ip, client_info, started_at, last_active_at, ended_at, " +
+			"select id, user_id, type, ip as ip, client_info, started_at, last_active_at, ended_at, " +
 			"end_reason, token_hash, expires_at, client_date, client_revision, client_stream, " +
 			"osu_path_hash, network_adapters, network_adapters_hash, uninstall_hash, disk_signature_hash " +
 			"from sessions",
 			null, rows => rows.Count == 1, "the recorded session", TestContext.Current.CancellationToken);
 
 		var row = rows[0];
-		Assert.Equal(FirstId.ToString(), row.Text("id"));
+		Assert.Equal(FirstId.ToString(), row["id"]!.ToString());
 		Assert.Equal(user.Id, row.Number("user_id"));
 		Assert.Equal((int)SessionType.Stable, row.Number("type"));
 		Assert.Equal("192.0.2.10", row.Text("ip"));

@@ -15,12 +15,12 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 {
 	private static readonly (string Module, string[] Tables)[] Modules =
 	[
-		("Users", ["users", "restrictions", "moderation_log", "relationships"]),
+		("Users", ["users", "restrictions", "moderation_log", "relationships", "user_id_counters"]),
 		("Authentication", ["credentials", "sessions"]),
-		("Beatmaps", ["beatmapsets", "beatmaps"]),
+		("Beatmaps", ["beatmapsets", "beatmaps", "beatmap_id_counters"]),
 		("Content", ["settings", "menu_banners"]),
-		("Scores", ["scores", "user_stats"]),
-		("Multiplayer", ["matches", "rounds", "match_events", "round_scores"]),
+		("Scores", ["scores", "user_stats", "score_id_counters"]),
+		("Multiplayer", ["matches", "rounds", "match_events", "round_scores", "multiplayer_id_counters"]),
 		("Chat", ["channels"])
 	];
 

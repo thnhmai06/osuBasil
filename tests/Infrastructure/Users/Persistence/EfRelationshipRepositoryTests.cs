@@ -18,17 +18,19 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "many_friends" }, TestContext.Current.CancellationToken);
-		var parameters = new Dictionary<string, object?> { ["@actor"] = actor.Id, ["@count"] = ListLimits.Ceiling + 1 };
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into users (name, normalized_name, country, permissions) " +
-			"select 'bulk' || g, 'bulk' || g, u.country, u.permissions " +
-			"from users u, generate_series(1, @count) g where u.id = @actor",
-			parameters, TestContext.Current.CancellationToken);
-		// Every other account is a target, one more than the ceiling.
-		var stored = await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into relationships (actor_id, target_id, type, created_at) " +
-			"select @actor, id, 0, now() from users where id <> @actor",
-			parameters, TestContext.Current.CancellationToken);
+		var targets = Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g => 100_000_000 + g).ToArray();
+		await StoredRows.InsertAsync(ConnectionString, "users", targets.Select(id =>
+			(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+			{
+				["id"] = id, ["name"] = "bulk" + id, ["normalized_name"] = "bulk" + id, ["active_name"] = "bulk" + id,
+				["country"] = 0, ["permissions"] = 0L
+			}), TestContext.Current.CancellationToken);
+		// Each of those accounts is a target, one more than the ceiling.
+		var stored = await StoredRows.InsertAsync(ConnectionString, "relationships", targets.Select(id =>
+			(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+			{
+				["actor_id"] = actor.Id, ["target_id"] = id, ["type"] = 0, ["created_at"] = DateTimeOffset.UtcNow
+			}), TestContext.Current.CancellationToken);
 		Assert.Equal(ListLimits.Ceiling + 1, stored);
 
 		var listed = await Relationships.ListAsync(actor, TestContext.Current.CancellationToken);

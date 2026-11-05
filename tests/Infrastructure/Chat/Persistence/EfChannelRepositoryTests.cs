@@ -14,11 +14,12 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	[Fact]
 	public async Task A_listing_reads_no_more_channels_than_the_ceiling()
 	{
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible) " +
-			"select '#bulk' || g, topic, read_privileges, write_privileges, false, visible " +
-			"from channels, generate_series(1, @count) g where name = '#osu'",
-			new Dictionary<string, object?> { ["@count"] = ListLimits.Ceiling }, TestContext.Current.CancellationToken);
+		await StoredRows.InsertAsync(ConnectionString, "channels", Enumerable.Range(1, ListLimits.Ceiling).Select(g =>
+			(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+			{
+				["name"] = "#bulk" + g, ["topic"] = "t", ["read_privileges"] = 0L, ["write_privileges"] = 0L,
+				["auto_join"] = false, ["visible"] = true
+			}), TestContext.Current.CancellationToken);
 
 		var listed = await Channels.ListAsync(TestContext.Current.CancellationToken);
 
@@ -184,14 +185,13 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	[Fact]
 	public async Task A_channel_stored_by_another_server_is_listed()
 	{
-		await using (var connection = new Npgsql.NpgsqlConnection(ConnectionString))
-		{
-			await connection.OpenAsync(TestContext.Current.CancellationToken);
-			await using var command = new Npgsql.NpgsqlCommand(
-				"insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible) values ('#elsewhere', 't', 0, 0, false, true)",
-				connection);
-			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-		}
+		await StoredRows.InsertAsync(ConnectionString, "channels", [
+			new Dictionary<string, object?>
+			{
+				["name"] = "#elsewhere", ["topic"] = "t", ["read_privileges"] = 0L, ["write_privileges"] = 0L,
+				["auto_join"] = false, ["visible"] = true
+			}
+		], TestContext.Current.CancellationToken);
 
 		var channels = await Channels.ListAsync(TestContext.Current.CancellationToken);
 

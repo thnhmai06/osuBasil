@@ -2,7 +2,6 @@ using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
-using Npgsql;
 
 namespace Basil.Infrastructure.Content.Tests.Persistence;
 
@@ -100,12 +99,8 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	public async Task Settings_the_database_refuses_leave_the_settings_unchanged()
 	{
 		var before = await Settings.GetAsync(TestContext.Current.CancellationToken);
-		await using (var connection = new NpgsqlConnection(ConnectionString))
-		{
-			await connection.OpenAsync(TestContext.Current.CancellationToken);
-			await using var command = new NpgsqlCommand("drop table settings", connection);
-			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-		}
+		await StoredRows.ExecuteAsync(ConnectionString, "drop table settings", null,
+			TestContext.Current.CancellationToken);
 
 		await Assert.ThrowsAnyAsync<Exception>(() => Settings.CreateOrUpdateAsync(
 			new ServerSettings
@@ -148,15 +143,9 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	[InlineData("rate_limits", "{\"Chat\":{\"Count\":0,\"Window\":\"00:00:05\"}}")]
 	public async Task A_stored_category_that_is_not_valid_keeps_its_defaults(string name, string value)
 	{
-		await using (var connection = new NpgsqlConnection(ConnectionString))
-		{
-			await connection.OpenAsync(TestContext.Current.CancellationToken);
-			await using var command =
-				new NpgsqlCommand("insert into settings (name, value) values (@name, @value)", connection);
-			command.Parameters.AddWithValue("@name", name);
-			command.Parameters.AddWithValue("@value", value);
-			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-		}
+		await StoredRows.InsertAsync(ConnectionString, "settings", [
+			new Dictionary<string, object?> { ["name"] = name, ["value"] = value }
+		], TestContext.Current.CancellationToken);
 
 		var reloaded = await ReloadAsync();
 

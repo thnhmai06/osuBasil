@@ -26,14 +26,15 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 			[StoredBeatmaps.Difficulty(null, OtherHash, "Easy")]));
 		var set = await Sets.GetAsync(43, TestContext.Current.CancellationToken);
 		Assert.NotNull(set);
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into beatmaps (beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, " +
-			"background, audio, video, preview_time, storyboard, created_at, updated_at, locked, visible) " +
-			"select beatmapset_id, md5(g::text), version, mode, star, length, bpm, cs, ar, od, hp, objects, " +
-			"background, audio, video, preview_time, storyboard, created_at, updated_at, locked, visible " +
-			"from beatmaps, generate_series(1, @count) g where beatmapset_id = @set",
-			new Dictionary<string, object?> { ["@set"] = 43, ["@count"] = ListLimits.Ceiling },
-			TestContext.Current.CancellationToken);
+		var template = (await StoredRows.ReadAsync(ConnectionString, "select * from beatmaps where beatmapset_id = @set",
+			new Dictionary<string, object?> { ["@set"] = 43 }, TestContext.Current.CancellationToken)).Single();
+		await StoredRows.InsertAsync(ConnectionString, "beatmaps", Enumerable.Range(1, ListLimits.Ceiling).Select(g =>
+		{
+			var copy = new Dictionary<string, object?>(template.Values);
+			copy["id"] = 100_000_000 + g;
+			copy["hash"] = g.ToString("x32");
+			return (IReadOnlyDictionary<string, object?>)copy;
+		}), TestContext.Current.CancellationToken);
 
 		var listed = await Beatmaps.ListAsync(set, TestContext.Current.CancellationToken);
 

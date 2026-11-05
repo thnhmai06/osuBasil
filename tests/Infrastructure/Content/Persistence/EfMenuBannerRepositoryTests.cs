@@ -2,7 +2,6 @@ using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
 using Basil.Testing.Persistence;
-using Npgsql;
 
 namespace Basil.Infrastructure.Content.Tests.Persistence;
 
@@ -17,11 +16,12 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_listing_reads_no_more_banners_than_the_ceiling()
 	{
-		await StoredRows.ExecuteAsync(ConnectionString,
-			"insert into menu_banners (image, url, created_at) " +
-			"select 'banners/bulk' || g || '.png', 'https://example.com/' || g, @created from generate_series(1, @count) g",
-			new Dictionary<string, object?> { ["@created"] = Moment, ["@count"] = ListLimits.Ceiling + 1 },
-			TestContext.Current.CancellationToken);
+		await StoredRows.InsertAsync(ConnectionString, "menu_banners",
+			Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g =>
+				(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
+				{
+					["image"] = $"banners/bulk{g}.png", ["url"] = "https://example.com/" + g, ["created_at"] = Moment
+				}), TestContext.Current.CancellationToken);
 
 		var listed = await Banners.ListAsync(TestContext.Current.CancellationToken);
 
@@ -239,16 +239,9 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	{
 		var good = Banner("banners/good.png", Moment);
 		await Banners.CreateOrUpdateAsync(good, TestContext.Current.CancellationToken);
-		await using (var connection = new NpgsqlConnection(ConnectionString))
-		{
-			await connection.OpenAsync(TestContext.Current.CancellationToken);
-			await using var command = new NpgsqlCommand(
-				"insert into menu_banners (image, url, created_at) values (@image, @url, @created)", connection);
-			command.Parameters.AddWithValue("@image", image);
-			command.Parameters.AddWithValue("@url", url);
-			command.Parameters.AddWithValue("@created", Moment);
-			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-		}
+		await StoredRows.InsertAsync(ConnectionString, "menu_banners", [
+			new Dictionary<string, object?> { ["image"] = image, ["url"] = url, ["created_at"] = Moment }
+		], TestContext.Current.CancellationToken);
 
 		var listed = await Banners.ListAsync(TestContext.Current.CancellationToken);
 

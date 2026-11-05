@@ -3,7 +3,6 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
-using Npgsql;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 
@@ -81,18 +80,14 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	[Fact]
 	public async Task The_table_refuses_a_match_without_a_creator()
 	{
-		await using var connection = new NpgsqlConnection(ConnectionString);
-		await connection.OpenAsync(TestContext.Current.CancellationToken);
-		await using var command = new NpgsqlCommand(
-			"insert into matches (name, creator_id, started_at, is_private) values (@name, null, @started, false)",
-			connection);
-		command.Parameters.AddWithValue("@name", "orphan_match");
-		command.Parameters.AddWithValue("@started", First);
-
-		var refused = await Assert.ThrowsAsync<PostgresException>(async () =>
-			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken));
-
-		Assert.Equal(PostgresErrorCodes.NotNullViolation, refused.SqlState);
+		await Assert.ThrowsAnyAsync<System.Data.Common.DbException>(() => StoredRows.InsertAsync(ConnectionString,
+			"matches", [
+				new Dictionary<string, object?>
+				{
+					["id"] = 100_000_000, ["name"] = "orphan_match", ["creator_id"] = null, ["started_at"] = First,
+					["is_private"] = false
+				}
+			], TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
