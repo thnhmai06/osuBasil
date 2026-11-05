@@ -1,3 +1,4 @@
+using System.Net;
 using System.Diagnostics.Metrics;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
@@ -174,6 +175,22 @@ public sealed class SessionLimitTests
 		Assert.False(oldest.IsOpen);
 		Assert.True(newer.IsOpen);
 		Assert.Equal(2, app.Users.Of(user)[SessionType.Api].Count);
+	}
+
+	[Fact]
+	public async Task LoginAsync_ApiAtTheLimit_EndsTheSessionOfTheReplacedConnection_SoItsTokenIsRefused()
+	{
+		using var app = new TestApplication();
+		await app.SetSettingsAsync(Limits(api: 1));
+		var user = await app.CreateUserAsync("ApiEvicted", "password");
+		var first = await app.LoginAsync(user);
+		var evictedAt = app.Clock.GetUtcNow();
+
+		await app.AttemptLoginAsync(user.Value.Name, "password");
+		var reused = await app.Users.LoginWithTokenAsync(SessionType.Api, first.Token, IPAddress.Loopback);
+
+		Assert.Equal(new SessionEnd(evictedAt, SessionEndReason.Replaced), first.End);
+		Assert.Null(reused.Connection);
 	}
 
 	[Fact]
