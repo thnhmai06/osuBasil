@@ -6,6 +6,7 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Ports;
+using Basil.Application.Beatmaps.Services;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
@@ -115,6 +116,8 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IMatchRepository>(new InMemoryMatchRepository(matchEvents));
 		services.AddSingleton<IRoundRepository>(new InMemoryRoundRepository());
 		services.AddSingleton<IMatchEventRepository>(matchEvents);
+		services.AddSingleton<IRulesetUpdater, NoRulesets>();
+		services.AddSingleton<IBeatmapReloader, NoReload>();
 		configure?.Invoke(services);
 		services.AddUsersLogic();
 		services.AddScoresLogic();
@@ -414,5 +417,35 @@ public sealed class TestApplication : IDisposable
 			          type.Namespace.EndsWith(".Ports", StringComparison.Ordinal)) &&
 			         !inMemoryPortTypes.Contains(type)))
 			services.AddSingleton(port, _ => Substitute.For([port], []));
+	}
+
+	/// <summary>Stands in for the ruleset updater, which reaches the network.</summary>
+	private sealed class NoRulesets : IRulesetUpdater
+	{
+		public RulesetVersions Version()
+		{
+			return new RulesetVersions("test", null);
+		}
+
+		public Task<RulesetCheck> CheckAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(new RulesetCheck(Version(), "test"));
+		}
+
+		public Task<RulesetStageResult> StageAsync(CancellationToken cancellationToken = default)
+		{
+			return Task.FromResult(new RulesetStageResult("test", false));
+		}
+	}
+
+	/// <summary>Stands in for the beatmap reload, which reads the stored beatmapsets.</summary>
+	private sealed class NoReload : IBeatmapReloader
+	{
+		public bool Running => false;
+
+		public bool TryStart()
+		{
+			return true;
+		}
 	}
 }
