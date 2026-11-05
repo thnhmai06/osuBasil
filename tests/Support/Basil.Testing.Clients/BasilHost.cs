@@ -89,6 +89,7 @@ public sealed class BasilHost : IAsyncDisposable
 			{
 				["ConnectionStrings:Write"] = connection,
 				["ConnectionStrings:Read"] = "",
+				["Basil:Database:Write:Provider"] = TestServer.ProviderName,
 				["Basil:Storage:Location"] = Path.Combine(_root, "Data"),
 				["Basil:Server:Domain"] = DomainName,
 				["Basil:Server:Irc:Port"] = "0",

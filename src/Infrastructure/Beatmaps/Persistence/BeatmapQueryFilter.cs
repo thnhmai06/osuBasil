@@ -122,11 +122,15 @@ internal static class BeatmapQueryFilter
 		if (!string.IsNullOrWhiteSpace(query.FileName))
 		{
 			var pattern = LikePattern.Literal(BeatmapMetadata.NormalizeFileName(query.FileName)).ToLowerInvariant();
-			// The name of the .osu file of a beatmap leaves out the characters a file name cannot hold.
+			// The name of the .osu file of a beatmap leaves out the characters a file name cannot hold. The characters
+			// are query parameters, not literals, because a literal holding a quote or a backslash is not portable.
+			string colon = ":", backslash = "\\", slash = "/", star = "*", less = "<", greater = ">", question = "?",
+				quote = "\"", bar = "|", none = "";
 			beatmaps = beatmaps.Where(row => EF.Functions.Like(
 				(row.Set.Artist + " - " + row.Set.Title + " (" + row.Set.Creator + ") [" + row.Version + "].osu")
-				.Replace(":", "").Replace("\\", "").Replace("/", "").Replace("*", "").Replace("<", "").Replace(">", "")
-				.Replace("?", "").Replace("\"", "").Replace("|", "").ToLower(),
+				.Replace(colon, none).Replace(backslash, none).Replace(slash, none).Replace(star, none)
+				.Replace(less, none).Replace(greater, none).Replace(question, none).Replace(quote, none)
+				.Replace(bar, none).ToLower(),
 				pattern, LikePattern.Escape));
 		}
 

@@ -4,6 +4,7 @@ using Basil.Infrastructure.Persistence;
 using Basil.Testing.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 
@@ -60,6 +61,31 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		}
 	}
 
+	[Fact]
+	public async Task Both_engines_name_the_same_tables_and_columns()
+	{
+		var create = typeof(Database).GetMethod(nameof(Database.CreateConfirmedContext))!;
+		foreach (var (module, _) in Modules)
+		{
+			var postgres = await Schema(create, module, "PostgreSQL", "Host=localhost;Database=schema");
+			var mysql = await Schema(create, module, "MySql", "Server=localhost;Database=schema");
+
+			Assert.Equal(postgres, mysql);
+		}
+	}
+
+	private static async Task<string[]> Schema(System.Reflection.MethodInfo create, string module, string provider,
+		string connectionString)
+	{
+		var options = new DatabaseOptions { WriteConnectionString = connectionString, WriteProvider = provider };
+		await using var database = new Database(Infrastructure.Persistence.DependencyInjection.Providers(options),
+			Microsoft.Extensions.Options.Options.Create(options));
+		using var context = (DbContext)create.MakeGenericMethod(Context(module)).Invoke(database, null)!;
+		return context.GetService<IDesignTimeModel>().Model.GetRelationalModel().Tables
+			.SelectMany(table => table.Columns.Select(column => $"{table.Name}.{column.Name}"))
+			.Order(StringComparer.Ordinal).ToArray();
+	}
+
 	private static Type Context(string module)
 	{
 		var type = Assembly.Load($"Basil.Infrastructure.{module}").GetTypes()
@@ -72,19 +98,8 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	public async Task Module_migrations_are_applied_in_the_documented_order()
 	{
 		// A module with several migrations has several rows; the order of the modules is what is pinned.
-		var rows = await StoredRows.ReadAsync(ConnectionString, """
-		                                                        SELECT module, transaction_id
-		                                                        FROM (
-		                                                        	SELECT 'users' AS module, xmin::text::bigint AS transaction_id FROM "__ef_migrations_users"
-		                                                        	UNION ALL SELECT 'auth', xmin::text::bigint FROM "__ef_migrations_auth"
-		                                                        	UNION ALL SELECT 'beatmaps', xmin::text::bigint FROM "__ef_migrations_beatmaps"
-		                                                        	UNION ALL SELECT 'content', xmin::text::bigint FROM "__ef_migrations_content"
-		                                                        	UNION ALL SELECT 'scores', xmin::text::bigint FROM "__ef_migrations_scores"
-		                                                        	UNION ALL SELECT 'multiplayer', xmin::text::bigint FROM "__ef_migrations_multiplayer"
-		                                                        	UNION ALL SELECT 'chat', xmin::text::bigint FROM "__ef_migrations_chat"
-		                                                        ) AS migrations
-		                                                        ORDER BY transaction_id
-		                                                        """, null, TestContext.Current.CancellationToken);
+		var rows = await StoredRows.ReadAsync(ConnectionString, SchemaQueries.MigrationOrder, null,
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(["users", "auth", "beatmaps", "content", "scores", "multiplayer", "chat"],
 			rows.Select(row => row.Text("module")).Distinct());
@@ -93,8 +108,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	[Fact]
 	public async Task Migrating_creates_every_foreign_key()
 	{
-		var rows = await StoredRows.ReadAsync(ConnectionString,
-			"SELECT conname FROM pg_constraint WHERE contype = 'f' ORDER BY conname", null,
+		var rows = await StoredRows.ReadAsync(ConnectionString, SchemaQueries.ForeignKeys, null,
 			TestContext.Current.CancellationToken);
 
 		string[] expected =

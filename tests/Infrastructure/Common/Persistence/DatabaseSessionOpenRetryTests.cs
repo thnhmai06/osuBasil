@@ -2,7 +2,6 @@ using Basil.Infrastructure.Common.Persistence;
 using Basil.Testing.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
-using Npgsql;
 
 namespace Basil.Infrastructure.Common.Tests.Persistence;
 
@@ -44,7 +43,7 @@ public sealed class DatabaseSessionOpenRetryTests
 			runs++;
 			return Task.CompletedTask;
 		}, TestContext.Current.CancellationToken);
-		await Assert.ThrowsAsync<NpgsqlException>(() => Complete(write));
+		await Assert.ThrowsAsync<TimeoutException>(() => Complete(write));
 
 		Assert.Equal(0, runs);
 		Assert.Equal(Waits, _clock.Waits);
@@ -98,7 +97,7 @@ public sealed class DatabaseSessionOpenRetryTests
 
 		protected override Task OpenAsync(DbContext context, CancellationToken cancellationToken)
 		{
-			if (_failures-- > 0) throw new NpgsqlException("unreachable", new IOException());
+			if (_failures-- > 0) throw new TimeoutException("unreachable");
 			return Task.CompletedTask;
 		}
 
