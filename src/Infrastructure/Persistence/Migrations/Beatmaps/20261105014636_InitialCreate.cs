@@ -41,7 +41,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     storyboard = table.Column<bool>(nullable: false),
                     locked = table.Column<bool>(nullable: false),
                     visible = table.Column<bool>(nullable: false),
-                    status = table.Column<short>(nullable: false)
+                    status = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
                 {

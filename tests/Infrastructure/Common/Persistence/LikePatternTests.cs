@@ -8,10 +8,10 @@ public sealed class LikePatternTests
 	/// <summary>The characters LIKE gives a meaning to are escaped; every other character is left as it is.</summary>
 	[Theory]
 	[InlineData("plain", "plain")]
-	[InlineData("a_b", @"a\_b")]
-	[InlineData("100%", @"100\%")]
-	[InlineData(@"a\b", @"a\\b")]
-	[InlineData(@"a_b%c\d", @"a\_b\%c\\d")]
+	[InlineData("a_b", "a!_b")]
+	[InlineData("100%", "100!%")]
+	[InlineData("a!b", "a!!b")]
+	[InlineData("a_b%c!d", "a!_b!%c!!d")]
 	[InlineData("", "")]
 	public void Literal_EscapesTheWildcardsOfLike(string text, string expected)
 	{
@@ -22,6 +22,6 @@ public sealed class LikePatternTests
 	[Fact]
 	public void Containing_WrapsTheLiteralTextInPercentSigns()
 	{
-		Assert.Equal(@"%a\_b%", LikePattern.Containing("a_b"));
+		Assert.Equal("%a!_b%", LikePattern.Containing("a_b"));
 	}
 }

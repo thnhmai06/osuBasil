@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
 {
     [DbContext(typeof(BeatmapsDbContext))]
-    [Migration("20261104212308_InitialCreate")]
+    [Migration("20261105014636_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -148,7 +148,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<bool>("Locked")
                         .HasColumnName("locked");
 
-                    b.Property<short>("Status")
+                    b.Property<int>("Status")
                         .HasColumnName("status");
 
                     b.Property<bool>("Storyboard")

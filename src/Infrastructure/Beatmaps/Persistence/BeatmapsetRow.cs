@@ -33,6 +33,7 @@ internal sealed class BeatmapsetRowConfiguration : IEntityTypeConfiguration<Beat
 		builder.ToTable("beatmapsets", table => table.HasCheckConstraint("beatmapsets_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).ValueGeneratedNever();
+		builder.Property(row => row.Status).HasConversion<int>();
 		builder.HasMany(row => row.Beatmaps).WithOne(row => row.Set).HasForeignKey(row => row.BeatmapsetId)
 			.OnDelete(DeleteBehavior.Cascade);
 	}

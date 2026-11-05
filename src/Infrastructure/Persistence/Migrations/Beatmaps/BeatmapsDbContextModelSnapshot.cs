@@ -145,7 +145,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<bool>("Locked")
                         .HasColumnName("locked");
 
-                    b.Property<short>("Status")
+                    b.Property<int>("Status")
                         .HasColumnName("status");
 
                     b.Property<bool>("Storyboard")
