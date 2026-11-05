@@ -1,6 +1,5 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
@@ -19,12 +18,6 @@ public readonly struct ScopedUserPermissions(ScopedUser scoped)
 		if (scoped.MissingPermissions(scoped.User.Record.Value.Permissions ^ permissions) is { } cannotGrant)
 			return Result<UserOutcome>.Denied(cannotGrant);
 
-		await scoped.User.StoreChangeAsync(data => data.Permissions = permissions, cancellationToken);
-		scoped.User.Grants.Replace(permissions);
-		if (scoped.User.Context.Registry.Online.GetValueOrDefault(scoped.User.Record) is { } user)
-			scoped.User.Context.Registry.CloseDisallowed(user);
-
-		scoped.User.Context.Events.Publish(new UserPermissionsChanged(scoped.User.Record, permissions));
-		return UserOutcome.Ok;
+		return await scoped.User.Grants.SetAsync(permissions, cancellationToken);
 	}
 }

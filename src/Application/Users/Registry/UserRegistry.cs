@@ -657,4 +657,24 @@ public sealed class UserRegistry
 	{
 		return _accounts.CreateAsync(data, passwordHash, permissions, cancellationToken);
 	}
+
+	/// <summary>Creates an account and reports the outcome as a user outcome.</summary>
+	/// <param name="data">The account data.</param>
+	/// <param name="passwordHash">The MD5 digest of the password.</param>
+	/// <param name="permissions">
+	///     The permissions of the account, or <see langword="null" /> for the default permissions of new accounts.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The new account when the result is ok; otherwise why none was created.</returns>
+	internal async Task<(UserRecord? User, UserOutcome Outcome)> RegisterAsync(UserData data, Md5 passwordHash,
+		UserPermissions? permissions, CancellationToken cancellationToken)
+	{
+		var (user, failure) = await CreateAccountAsync(data, passwordHash, permissions, cancellationToken);
+		return failure switch
+		{
+			null => (user, UserOutcome.Ok),
+			RegistrationFailure.InvalidName => (null, UserOutcome.InvalidName),
+			_ => (null, UserOutcome.NameTaken)
+		};
+	}
 }

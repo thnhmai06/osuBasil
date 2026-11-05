@@ -24,11 +24,7 @@ public sealed partial class ScopedThinnessTests
 	///     The Scoped files whose methods still hold the logic of their object; each is listed until it is thinned, and
 	///     <see cref="TheListOfFilesNotThinnedYet_HoldsOnlyFilesThatAreStillTooLong" /> removes it from the list.
 	/// </summary>
-	private static readonly HashSet<string> NotThinnedYet = new(StringComparer.Ordinal)
-	{
-		"ScopedStableConnection.cs",
-		"ScopedUserCredentials.cs", "ScopedUserProfile.cs", "ScopedUserRestrictions.cs", "ScopedUserSessions.cs"
-	};
+	private static readonly HashSet<string> NotThinnedYet = new(StringComparer.Ordinal);
 
 	[Fact]
 	public void ScopedMethods_StayWithinTheBodyLimit()

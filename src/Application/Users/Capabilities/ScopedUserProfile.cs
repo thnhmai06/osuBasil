@@ -46,17 +46,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	public async Task<Result<UserOutcome>> RenameAsync(string name, CancellationToken cancellationToken = default)
 	{
 		if (await GuardAsync(cancellationToken) is { } refused) return refused;
-
-		try
-		{
-			return await scoped.User.Context.Users.RenameAsync(scoped.User.Record, name, cancellationToken)
-				? UserOutcome.Ok
-				: UserOutcome.NameTaken;
-		}
-		catch (ArgumentException)
-		{
-			return UserOutcome.InvalidName;
-		}
+		return await scoped.User.Profile.RenameAsync(name, cancellationToken);
 	}
 
 	/// <summary>Sets the country shown on this account's profile.</summary>
@@ -68,11 +58,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 		CancellationToken cancellationToken = default)
 	{
 		if (await GuardAsync(cancellationToken) is { } refused) return refused;
-		if (!Enum.IsDefined(country)) return UserOutcome.InvalidCountry;
-
-		await scoped.User.StoreChangeAsync(data => data.Country = country, cancellationToken);
-		scoped.User.Profile.SetCountry(country);
-		return UserOutcome.Ok;
+		return await scoped.User.Profile.SetCountryAsync(country, cancellationToken);
 	}
 
 	/// <summary>Replaces this account's avatar image.</summary>
@@ -87,29 +73,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	public async Task<Result<UserOutcome>> SetAvatarAsync(Stream image, CancellationToken cancellationToken = default)
 	{
 		if (await GuardAsync(cancellationToken) is { } refused) return refused;
-
-		var context = scoped.User.Context;
-		var limits = (await context.Settings.GetAsync(cancellationToken)).Uploads;
-
-		await using var upload = await context.Spool.SpoolAsync(image, limits.AvatarMaxSize, cancellationToken);
-		if (upload.TooLarge) return UserOutcome.TooLarge;
-
-		var info = await context.Inspector.InspectAsync(upload.Content, cancellationToken);
-		if (info is null || info.Width < 1 || info.Height < 1)
-		{
-			await upload.QuarantineAsync(cancellationToken);
-			return UserOutcome.InvalidImage;
-		}
-
-		if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
-		{
-			await upload.QuarantineAsync(cancellationToken);
-			return UserOutcome.DimensionsTooLarge;
-		}
-
-		upload.Content.Position = 0;
-		await context.Avatars.SaveAsync(scoped.User.Record, upload.Content, cancellationToken);
-		return UserOutcome.Ok;
+		return await scoped.User.Profile.SetAvatarAsync(image, cancellationToken);
 	}
 
 	/// <summary>Removes this account's avatar image, so the default avatar shows.</summary>
@@ -119,9 +83,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	public async Task<Result<UserOutcome>> RemoveAvatarAsync(CancellationToken cancellationToken = default)
 	{
 		if (await GuardAsync(cancellationToken) is { } refused) return refused;
-
-		await scoped.User.Context.Avatars.DeleteAsync(scoped.User.Record, cancellationToken);
-		return UserOutcome.Ok;
+		return await scoped.User.Profile.RemoveAvatarAsync(cancellationToken);
 	}
 
 	// BasilBot's metadata changes like any user's; only its permissions, password and sessions are fixed.

@@ -56,12 +56,7 @@ public readonly struct ScopedUserRegistry
 		if (Require(UserPermissions.UserManage | granted) is { } missing)
 			return (null, Result<UserOutcome>.Denied(missing));
 
-		var (user, failure) = await _registry.CreateAccountAsync(data, passwordHash, granted, cancellationToken);
-		return failure switch
-		{
-			null => (user, UserOutcome.Ok),
-			RegistrationFailure.InvalidName => (null, UserOutcome.InvalidName),
-			_ => (null, UserOutcome.NameTaken)
-		};
+		var (user, outcome) = await _registry.RegisterAsync(data, passwordHash, granted, cancellationToken);
+		return (user, outcome);
 	}
 }

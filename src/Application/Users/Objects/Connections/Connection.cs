@@ -2,6 +2,7 @@ using Basil.Application.Common;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
@@ -169,6 +170,87 @@ public sealed class StableConnection : Connection
 		MutableSpectators.Clear();
 		foreach (var spectator in spectators)
 			Context.Events.Publish(new UserSpectatorLeft(this, spectator));
+	}
+
+	/// <summary>Checks whether this client's user has blocked a connection's user.</summary>
+	/// <param name="other">The connection whose user may be blocked.</param>
+	/// <returns><see langword="true" /> when the block exists.</returns>
+	internal async Task<bool> HasBlockedAsync(Connection other)
+	{
+		var relationships = await Context.Relationships.ListAsync(Record);
+		return relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
+		                                         relationship.Target.Equals(other.Record));
+	}
+
+	/// <summary>Adds a connection to the spectators of this client.</summary>
+	/// <param name="spectator">The connection that spectates.</param>
+	/// <returns>The outcome of spectating.</returns>
+	/// <remarks>
+	///     The spectator stops spectating its previous client first. Spectating this client again announces the
+	///     spectator, as an osu! client does once it has the beatmap.
+	/// </remarks>
+	internal ConnectionOutcome Spectate(Connection spectator)
+	{
+		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.
+		var previous = Context.Registry.FindSpectating(spectator);
+		if (previous is not null && !ReferenceEquals(previous, this)) previous.StopSpectating(spectator);
+
+		using var scope = EnterSpectators();
+
+		if (!IsOpen) return ConnectionOutcome.TargetOffline;
+		// The connection may have closed during the awaits before; check it again before the spectator is added.
+		if (!spectator.IsOpen) return ConnectionOutcome.Closed;
+		if (spectator.Record.Equals(Record)) return ConnectionOutcome.Self;
+
+		if (!Spectators.Contains(spectator)) MutableSpectators.Add(spectator);
+		Context.Events.Publish(new UserSpectatorJoined(this, spectator));
+		return ConnectionOutcome.Ok;
+	}
+
+	/// <summary>Stops a connection spectating this client.</summary>
+	/// <param name="spectator">The connection that stops.</param>
+	/// <returns><see langword="true" /> if the connection stopped spectating.</returns>
+	internal bool StopSpectating(Connection spectator)
+	{
+		using var scope = EnterSpectators();
+		if (!MutableSpectators.Remove(spectator)) return false;
+
+		Context.Events.Publish(new UserSpectatorLeft(this, spectator));
+		return true;
+	}
+
+	/// <summary>Reports that a spectator failed to spectate this client.</summary>
+	/// <param name="spectator">The connection that failed.</param>
+	/// <returns><see langword="true" /> if the connection is spectating this client.</returns>
+	internal bool ReportSpectatingFailed(Connection spectator)
+	{
+		if (!Spectators.Contains(spectator)) return false;
+
+		Context.Events.Publish(new UserSpectatorFailed(this, spectator));
+		return true;
+	}
+
+	/// <summary>Hands the frames this client sent to the HTTP API connections spectating it.</summary>
+	/// <param name="bundle">The decoded frames.</param>
+	/// <returns><see langword="true" /> if the frames were published.</returns>
+	internal bool PublishFrames(SpectatorBundle bundle)
+	{
+		if (!IsOpen || !HasApiSpectators) return false;
+
+		Context.Events.Publish(new UserSpectatorFramesReceived(this, bundle));
+		return true;
+	}
+
+	/// <summary>Records the presence status this client reported.</summary>
+	/// <param name="status">The reported status.</param>
+	/// <returns><see langword="true" /> if the status changed.</returns>
+	internal bool SetStatus(PlayerStatus status)
+	{
+		if (!IsOpen || Equals(Status, status)) return false;
+
+		Status = status;
+		Context.Events.Publish(new UserConnectionStatusChanged(this, status));
+		return true;
 	}
 }
 
