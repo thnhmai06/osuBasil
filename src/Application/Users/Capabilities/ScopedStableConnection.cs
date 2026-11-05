@@ -1,6 +1,5 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 
@@ -56,47 +55,10 @@ public readonly struct ScopedStableConnection
 
 		if (Require(UserPermissions.SpectatingWatch) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
 
-		if (await IsBlockedAsync()) return ConnectionOutcome.Blocked;
+		if (await Host.HasBlockedAsync(Actor) && Require(UserPermissions.RoomObserve) is not null)
+			return ConnectionOutcome.Blocked;
 
-		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.
-		LeavePreviousHost();
-
-		using var scope = Host.EnterSpectators();
-
-		if (SpectatorRefusal() is { } refusal) return refusal;
-		if (Host.Spectators.Contains(Actor))
-		{
-			Host.Context.Events.Publish(new UserSpectatorJoined(Host, Actor));
-			return ConnectionOutcome.Ok;
-		}
-
-		Host.MutableSpectators.Add(Actor);
-		Host.Context.Events.Publish(new UserSpectatorJoined(Host, Actor));
-		return ConnectionOutcome.Ok;
-	}
-
-	private async Task<bool> IsBlockedAsync()
-	{
-		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
-		var actor = Actor.Record;
-		return relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
-		                                         relationship.Target.Equals(actor)) &&
-		       Require(UserPermissions.RoomObserve) is not null;
-	}
-
-	private void LeavePreviousHost()
-	{
-		var previous = Host.Context.Registry.FindSpectating(Actor);
-		if (previous is not null && !ReferenceEquals(previous, Host)) previous.ScopeTo(Actor).StopSpectating();
-	}
-
-	private ConnectionOutcome? SpectatorRefusal()
-	{
-		if (!Host.IsOpen) return ConnectionOutcome.TargetOffline;
-		// The connection may have closed during the awaits above; check it again before the spectator is added.
-		if (!Actor.IsOpen) return ConnectionOutcome.Closed;
-		if (Actor.Record.Equals(Host.Record)) return ConnectionOutcome.Self;
-		return null;
+		return Host.Spectate(Actor);
 	}
 
 	/// <summary>Stops this connection spectating this host.</summary>
@@ -104,21 +66,14 @@ public readonly struct ScopedStableConnection
 	/// <remarks>Calling it again does nothing.</remarks>
 	public bool StopSpectating()
 	{
-		using var scope = Host.EnterSpectators();
-		if (!Host.MutableSpectators.Remove(Actor)) return false;
-
-		Host.Context.Events.Publish(new UserSpectatorLeft(Host, Actor));
-		return true;
+		return Host.StopSpectating(Actor);
 	}
 
 	/// <summary>Reports that this connection failed to spectate this host, for example because it lacks the beatmap.</summary>
 	/// <returns><see langword="true" /> if the connection is spectating this host.</returns>
 	public bool ReportSpectatingFailed()
 	{
-		if (!Host.Spectators.Contains(Actor)) return false;
-
-		Host.Context.Events.Publish(new UserSpectatorFailed(Host, Actor));
-		return true;
+		return Host.ReportSpectatingFailed(Actor);
 	}
 
 	/// <summary>Hands the frames this client sent to the HTTP API connections spectating it.</summary>
@@ -129,10 +84,7 @@ public readonly struct ScopedStableConnection
 	/// </returns>
 	public bool PublishFrames(SpectatorBundle bundle)
 	{
-		if (!ReferenceEquals(Actor, Host) || !Host.IsOpen || !Host.HasApiSpectators) return false;
-
-		Host.Context.Events.Publish(new UserSpectatorFramesReceived(Host, bundle));
-		return true;
+		return ReferenceEquals(Actor, Host) && Host.PublishFrames(bundle);
 	}
 
 	/// <summary>Records the presence status this client reported.</summary>
@@ -141,10 +93,6 @@ public readonly struct ScopedStableConnection
 	/// <remarks>A different connection, a closed client, or its current status does nothing.</remarks>
 	public bool SetStatus(PlayerStatus status)
 	{
-		if (!ReferenceEquals(Actor, Host) || !Host.IsOpen || Equals(Host.Status, status)) return false;
-
-		Host.Status = status;
-		Host.Context.Events.Publish(new UserConnectionStatusChanged(Host, status));
-		return true;
+		return ReferenceEquals(Actor, Host) && Host.SetStatus(status);
 	}
 }

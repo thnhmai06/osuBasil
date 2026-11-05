@@ -148,6 +148,24 @@ public sealed class User
 		return Context.Users.UpdateAsync(new UserRecord { Id = Record.Id, Value = copy }, cancellationToken);
 	}
 
+	/// <summary>Deletes this account, keeping it out of sign-in and every listing while its record remains.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome of deleting the account.</returns>
+	internal async Task<UserOutcome> DeleteAsync(CancellationToken cancellationToken)
+	{
+		if (Record.Value.DeletedAt is not null) return UserOutcome.Ok;
+
+		var now = Context.Clock.GetUtcNow();
+		await StoreChangeAsync(data =>
+		{
+			data.DeletedAt = now;
+			data.Permissions = UserPermissions.None;
+		}, cancellationToken);
+		Grants.MarkDeleted(now);
+		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);
+		return UserOutcome.Ok;
+	}
+
 	/// <summary>Adds a connection.</summary>
 	internal void Add(Connection connection)
 	{

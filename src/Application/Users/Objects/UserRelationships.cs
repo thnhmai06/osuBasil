@@ -51,4 +51,69 @@ public sealed class UserRelationships
 		if (existing is not null)
 			await _user.Context.Relationships.DeleteAsync(existing, cancellationToken);
 	}
+
+	/// <summary>Adds another user as a friend.</summary>
+	/// <param name="target">The other user.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome of adding the friend.</returns>
+	internal async Task<UserOutcome> AddFriendAsync(UserRecord target, CancellationToken cancellationToken)
+	{
+		if (_user.Record.Equals(target)) return UserOutcome.Self;
+		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
+		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
+
+		await SetAsync(target, RelationshipType.Friend, cancellationToken);
+		return UserOutcome.Ok;
+	}
+
+	/// <summary>Removes another user as a friend.</summary>
+	/// <param name="target">The other user.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome of removing the friend.</returns>
+	internal async Task<UserOutcome> RemoveFriendAsync(UserRecord target, CancellationToken cancellationToken)
+	{
+		if (_user.Record.Equals(target)) return UserOutcome.Self;
+		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
+
+		await RemoveAsync(target, RelationshipType.Friend, cancellationToken);
+		return UserOutcome.Ok;
+	}
+
+	/// <summary>Blocks another user.</summary>
+	/// <param name="target">The other user.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome of blocking the user.</returns>
+	internal async Task<UserOutcome> BlockAsync(UserRecord target, CancellationToken cancellationToken)
+	{
+		if (_user.Record.Equals(target)) return UserOutcome.Self;
+		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
+		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
+
+		await SetAsync(target, RelationshipType.Block, cancellationToken);
+		return UserOutcome.Ok;
+	}
+
+	/// <summary>Removes a block on another user.</summary>
+	/// <param name="target">The other user.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome of removing the block.</returns>
+	internal async Task<UserOutcome> UnblockAsync(UserRecord target, CancellationToken cancellationToken)
+	{
+		if (_user.Record.Equals(target)) return UserOutcome.Self;
+		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
+
+		await RemoveAsync(target, RelationshipType.Block, cancellationToken);
+		return UserOutcome.Ok;
+	}
+
+	/// <summary>Lists the users this account has set a relationship toward, of one kind.</summary>
+	/// <param name="type">The kind of relationship.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The users the relationships name.</returns>
+	internal async Task<IReadOnlyList<UserRecord>> TargetsAsync(RelationshipType type,
+		CancellationToken cancellationToken)
+	{
+		var relationships = await ListAsync(type, cancellationToken);
+		return relationships.Select(relationship => relationship.Target).ToList();
+	}
 }

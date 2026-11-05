@@ -1,3 +1,4 @@
+using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects;
@@ -39,6 +40,21 @@ public sealed class UserGrants
 	{
 		using var scope = _user.Enter();
 		_user.Change(data => data.Permissions = permissions);
+	}
+
+	/// <summary>Replaces the permissions granted to the account, signs out sessions that no longer have the right, and announces it.</summary>
+	/// <param name="permissions">The permissions to grant.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome of replacing the permissions.</returns>
+	internal async Task<UserOutcome> SetAsync(UserPermissions permissions, CancellationToken cancellationToken)
+	{
+		await _user.StoreChangeAsync(data => data.Permissions = permissions, cancellationToken);
+		Replace(permissions);
+		if (_user.Context.Registry.Online.GetValueOrDefault(_user.Record) is { } user)
+			_user.Context.Registry.CloseDisallowed(user);
+
+		_user.Context.Events.Publish(new UserPermissionsChanged(_user.Record, permissions));
+		return UserOutcome.Ok;
 	}
 
 	/// <summary>Marks the account as deleted, taking all its permissions away.</summary>
