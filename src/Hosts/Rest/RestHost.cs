@@ -59,6 +59,7 @@ public static class RestHost
 				branch.UseMiddleware<RestPipeline>();
 				branch.UseCors();
 				branch.UseRouting();
+				branch.UseMiddleware<RestAdmission>();
 				branch.UseEndpoints(endpoints => endpoints.MapRest());
 			});
 		return app;

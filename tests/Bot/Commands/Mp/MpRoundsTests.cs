@@ -136,7 +136,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task AbortTimer_AfterATimer_SaysTheCountdownWasAbortedAndLeavesNoCountdown()
+	public async Task AbortTimer_AfterATimer_AnnouncesTheAbortOnceAndLeavesNoCountdown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -145,9 +145,9 @@ public sealed class MpRoundsTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp aborttimer");
 
 		Assert.True(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.CountdownAborted)], said.Here);
+		Assert.Empty(said.Here);
 		Assert.False(IsCountdownRunning(bot, room));
-		Assert.Equal(bot.Text(AnnouncementReplies.CountdownCancelled), SaidInRoom(bot, room)[^1]);
+		Assert.Single(SaidInRoom(bot, room), bot.Text(AnnouncementReplies.CountdownCancelled));
 	}
 
 	[Fact]

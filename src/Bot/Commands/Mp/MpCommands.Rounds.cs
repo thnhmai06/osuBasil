@@ -57,7 +57,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		await context.Reply(MpReplies.CountdownAborted, cancellationToken);
+		// The room announces the abort itself, whoever cancelled the countdown.
 		return true;
 	}
 

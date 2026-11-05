@@ -5,6 +5,7 @@ using System.Text;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
+using Basil.Gateway;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Irc.Models;
@@ -19,6 +20,7 @@ internal sealed class IrcListener(
 	IrcCommands commands,
 	IrcClients clients,
 	IrcState state,
+	Admission admission,
 	UserRegistry registry,
 	ISettingsRepository settings,
 	TimeProvider clock,
@@ -165,6 +167,18 @@ internal sealed class IrcListener(
 
 		if (!IrcMessage.TryParse(text, null, out var message)) return;
 
+		var subject = session.Connection is { } connection
+			? AdmissionRefusals.SubjectOf(connection)
+			: AdmissionRefusals.SubjectOf(session.Label);
+		var decision = admission.Admit(subject);
+		if (!decision.Allowed)
+		{
+			session.Send(new IrcMessage("NOTICE", session.ServerName, session.Nick,
+				decision.Reason == AdmissionDenial.RateExceeded ? IrcReplies.Flooding : IrcReplies.ServerBusy));
+			if (decision.Reason == AdmissionDenial.RateExceeded) session.Close(IrcReplies.Flooding);
+			return;
+		}
+
 		try
 		{
 			await commands.HandleAsync(session, message, cancellationToken);
@@ -172,6 +186,10 @@ internal sealed class IrcListener(
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
 			logger.LogError(ex, "IRC command {Command} failed", message.Command);
+		}
+		finally
+		{
+			admission.Release(WorkClass.Interactive);
 		}
 	}
 

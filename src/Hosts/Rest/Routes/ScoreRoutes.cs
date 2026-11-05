@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Scores.Persistence;
@@ -16,7 +17,7 @@ internal static class ScoreRoutes
 	public static void MapScores(this RouteGroupBuilder v1)
 	{
 		var scores = v1.MapGroup("/scores").WithTags("Scores");
-		scores.MapGet("/", ListAsync).WithSummary("List scores.")
+		scores.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List scores.")
 			.WithDescription(
 				"Filter by `beatmap` (a beatmap id) and `user` (a user id). Newest first, paged with `offset` and `limit`.");
 		scores.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve a score.");

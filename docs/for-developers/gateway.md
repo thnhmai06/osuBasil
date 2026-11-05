@@ -7,10 +7,10 @@ The gateway is the admission control of Basil: for every request that wants to e
 concurrent or arriving while the server is overloaded never reaches a module.
 
 > **Migration status.** The rate limiter, the login-attempt guard and the second tier (`Admission`, `AdmissionSubject`,
-> `GatewayLimits`) live in `Basil.Gateway`, with the load policies below (bulkhead, shedding, health). No host enforces the
-> second tier yet: mapping a `Connection` to an `AdmissionSubject` in `Basil.Host.Shared`, choosing the `WorkClass` of each
-> route and turning a denial into 429/503 with `Retry-After` is **(target: phase 7)**. Only the health signal is read today
-> (`/health` on the `api.` host). The Stable and Rest hosts still have their own upload limit (they depend on ASP.NET Core
+> `GatewayLimits`) live in `Basil.Gateway`, with the load policies below (bulkhead, shedding, health). The Rest, Stable and
+> IRC hosts call `Admit` before they handle a request and `Release` when it ends; `Basil.Host.Shared` maps a `Connection` to
+> an `AdmissionSubject` and decides how a denial is reported. Every subject is `Standard` for now: no rule yet grants the
+> `Elevated` allowance. The Stable and Rest hosts still have their own upload limit (they depend on ASP.NET Core
 > and the runtime settings, so they cannot move as they are).
 
 ## Why
@@ -26,8 +26,12 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
   hosts reference it; it references no user type.
 * **Allow or Deny only.** A decision carries a reason code and, when useful, a retry delay. It does not translate, route or
   dispatch.
-* **The host enforces.** The host reports a denial in its own protocol: HTTP 429, 413 or 503 (with `Retry-After` when there
-  is a delay) on Rest and the web endpoints of Stable, and the refusal form of IRC and the console on those hosts.
+* **The host enforces.** The host reports a denial in its own protocol. On Rest and on the web and game endpoints of
+  Stable a denial is HTTP 429 when the subject is over its allowance and 503 when the server is shedding or the kind of
+  work is full, both with `Retry-After`; Rest answers in the response envelope (`rateLimited` or `busy`). `/health` is
+  never refused. On IRC a line over the allowance is answered with a `NOTICE` and the connection is closed; a line refused
+  for load gets a `NOTICE` and is dropped. A signed-in caller is counted as a user, whatever the number of its connections;
+  a caller that is not signed in is counted by its address (IRC: by its socket).
 * **No admission facts from the business.** There is no interface through which the gateway asks the business whether a user
   is banned or restricted.
 
@@ -58,7 +62,9 @@ Taken from well-known cloud design patterns, limited to what this single process
 * **Bulkhead** bounds concurrency per kind of work so that one slow kind (a beatmapset import, a leaderboard query) cannot
   use up every worker. An entry point declares its kind with `[AdmissionPolicy(Class = WorkClass.Listing)]`; the default
   is `Interactive`. A saturated class is denied (`ClassSaturated`) without touching the others, and every allowed request
-  must be matched by one `Admission.Release(class)` when it ends.
+  must be matched by one `Admission.Release(class)` when it ends. A route declares its class with
+  `AdmissionPolicyAttribute` (the most specific declaration wins): list and search routes are `Listing`, uploads are
+  `Upload`, `/live` streams are `Live`; everything else, packets and IRC lines included, is `Interactive`.
 * **Priority shedding** under overload drops the least valuable work first. The decision is a pure function of the
   `LoadSignal` and the class (`GatewayLimits.Sheds`).
 * **Health** is derived from the same signal (`Admission.Health`) and read by `/health`, which answers `healthy`,

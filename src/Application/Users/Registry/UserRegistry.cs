@@ -649,7 +649,7 @@ public sealed class UserRegistry
 	private static bool EndsToken(SessionType type, SessionEndReason reason)
 	{
 		return reason is SessionEndReason.Revoked or SessionEndReason.CredentialsChanged or SessionEndReason.Deleted ||
-		       (reason is SessionEndReason.LoggedOut && type is SessionType.Api);
+		       (reason is SessionEndReason.LoggedOut or SessionEndReason.Replaced && type is SessionType.Api);
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,

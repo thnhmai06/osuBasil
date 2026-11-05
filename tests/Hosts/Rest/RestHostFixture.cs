@@ -40,6 +40,8 @@ public sealed class RestHostFixture : IAsyncLifetime
 		{
 			RateLimits = current.RateLimits with
 			{
+				Admission = new ServerSettings.AdmissionLimitSettings(100_000, TimeSpan.FromMinutes(1), 4, 256, 32, 8,
+					1024, 0.5, 0.7, 0.9, TimeSpan.FromSeconds(5)),
 				Rest = new ServerSettings.RestLimitSettings
 				{
 					Mutations = new ServerSettings.Limit(100_000, TimeSpan.FromMinutes(1)),

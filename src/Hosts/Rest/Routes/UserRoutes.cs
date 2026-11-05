@@ -1,4 +1,6 @@
+using Basil.Gateway;
 using System.Text;
+using System.Text.Json;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
@@ -33,7 +35,7 @@ internal static class UserRoutes
 			.WithDescription("An account's profile, permissions and restriction history are public.");
 
 		token.MapSpectate();
-		token.MapGet("/", SearchAsync).WithSummary("Search accounts.")
+		token.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).WithSummary("Search accounts.")
 			.WithDescription("`query` uses the user search syntax. Paged with `offset` and `limit`.");
 		token.MapPost("/", CreateAsync).WithSummary("Create an account.")
 			.WithDescription("For staff only. Accounts are not created by themselves through this API.");
@@ -50,7 +52,7 @@ internal static class UserRoutes
 			                 """);
 		token.MapDelete("/{id:int}", DeleteAsync)
 			.WithSummary("Delete an account, keeping its record but ending every session.");
-		token.MapPut("/{id:int}/avatar", PutAvatarAsync).DisableAntiforgery()
+		token.MapPut("/{id:int}/avatar", PutAvatarAsync).Admitted(WorkClass.Upload).DisableAntiforgery()
 			.WithSummary("Upload the avatar of an account as an image in the `file` field.")
 			.WithDescription("""
 			                 While the profiles area is locked only staff can change an avatar. The avatar is shown on the avatar host.
@@ -60,7 +62,7 @@ internal static class UserRoutes
 			                 """);
 		token.MapDelete("/{id:int}/avatar", DeleteAvatarAsync).WithSummary("Remove the avatar of an account.");
 
-		token.MapGet("/{id:int}/sessions", ListSessionsAsync).WithSummary("List the sessions of an account.")
+		token.MapGet("/{id:int}/sessions", ListSessionsAsync).Admitted(WorkClass.Listing).WithSummary("List the sessions of an account.")
 			.WithDescription(
 				"Filter by `state` (all, online, offline) and by `types`, a bitmask of the connection kinds.");
 		token.MapGet("/{id:int}/sessions/{sid:guid}", GetSessionAsync)
@@ -70,17 +72,18 @@ internal static class UserRoutes
 			.WithDescription(
 				"Closing an osu! session only disconnects the client, which can sign in again with its password; change the password to keep the client out.");
 		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Close every session of an account.");
-		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).WithSummary("Create an IRC key for one device.")
+		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).Accepts<IrcKeyRequest>(true, "application/json", "*/*")
+			.WithSummary("Create an IRC key for one device.")
 			.WithDescription("The key is shown only in this response. Close the key's session to revoke it.");
 
-		token.MapGet("/{id:int}/friends", FriendsAsync).WithSummary("List the friends of the calling account.");
+		token.MapGet("/{id:int}/friends", FriendsAsync).Admitted(WorkClass.Listing).WithSummary("List the friends of the calling account.");
 		token.MapPut("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new AddFriend(me, other)))
 			.WithSummary("Add a friend.");
 		token.MapDelete("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new RemoveFriend(me, other)))
 			.WithSummary("Remove a friend.");
-		token.MapGet("/{id:int}/blocks", BlocksAsync).WithSummary("List the accounts the calling account blocked.");
+		token.MapGet("/{id:int}/blocks", BlocksAsync).Admitted(WorkClass.Listing).WithSummary("List the accounts the calling account blocked.");
 		token.MapPut("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new BlockUser(me, other)))
 			.WithSummary("Block an account.");
@@ -275,8 +278,20 @@ internal static class UserRoutes
 				new CloseUserSessions(context.Connection(), target, request?.KeepCurrent ?? true), context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> OpenIrcAsync(HttpContext context, int id, IrcKeyRequest request)
+	private static async Task<IResult> OpenIrcAsync(HttpContext context, int id)
 	{
+		if (!context.Request.HasJsonContentType()) return Api.Invalid("A JSON body is required.");
+		IrcKeyRequest? request;
+		try
+		{
+			request = await context.Request.ReadFromJsonAsync<IrcKeyRequest>(Api.Json, context.RequestAborted);
+		}
+		catch (JsonException)
+		{
+			return Api.Invalid("The body is not valid.");
+		}
+
+		if (request is null) return Api.Invalid("A body is required.");
 		if (string.IsNullOrWhiteSpace(request.Label)) return Api.Invalid("label is required.");
 		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 

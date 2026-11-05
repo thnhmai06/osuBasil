@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Mediator;
 using Basil.Application.Multiplayer.Messages;
 using System.Text.Json;
@@ -18,7 +19,7 @@ internal static class RoomRoutes
 	{
 		var rooms = v1.MapGroup("/rooms").WithTags("Rooms").RequireToken();
 
-		rooms.MapGet("/", ListAsync).WithSummary("List the open rooms the caller may see.")
+		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List the open rooms the caller may see.")
 			.WithDescription("Private rooms are listed only for those who may view them.");
 		rooms.MapPost("/", CreateAsync).WithSummary("Open a room.")
 			.WithDescription(

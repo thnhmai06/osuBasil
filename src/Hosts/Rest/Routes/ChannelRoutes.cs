@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Mediator;
 using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Chat.Objects;
@@ -16,7 +17,7 @@ internal static class ChannelRoutes
 	public static void MapChannels(this RouteGroupBuilder v1)
 	{
 		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
-		channels.MapGet("/", List).WithSummary("List the general channels the caller may see.")
+		channels.MapGet("/", List).Admitted(WorkClass.Listing).WithSummary("List the general channels the caller may see.")
 			.WithDescription(
 				"Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
 		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.");

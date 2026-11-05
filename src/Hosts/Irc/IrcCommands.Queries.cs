@@ -97,7 +97,7 @@ internal sealed partial class IrcCommands
 		session.Numeric(IrcNumericReply.RplWhoIsUser, shown, shown, session.Domain, "*", shown);
 		session.Numeric(IrcNumericReply.RplWhoIsServer, shown, session.ServerName, IrcReplies.Network);
 		if (user.AwayMessage is { } away) session.Numeric(IrcNumericReply.RplAway, shown, away.ReplaceLineEndings(" "));
-		session.Numeric(IrcNumericReply.RplWhoIsAccount, shown, user.Record.Value.Name, "is logged in as");
+		session.Numeric(IrcNumericReply.RplWhoIsAccount, shown, shown, "is logged in as");
 		var now = session.Now;
 		var visible = VisibleChannels(actor, now).ToHashSet();
 		var channels = general.All.Values

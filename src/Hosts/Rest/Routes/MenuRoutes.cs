@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Mediator;
 using Basil.Application.Servers.Messages;
 using System.Globalization;
@@ -20,6 +21,7 @@ internal static class MenuRoutes
 		var faqs = v1.MapGroup("/faqs").WithTags("Faqs");
 		faqs.MapGet("/",
 				async (IFaqStorage storage, CancellationToken ct) => Api.Ok((await storage.ListAsync(ct)).ToList()))
+			.Admitted(WorkClass.Listing)
 			.WithSummary("List the FAQ entries.")
 			.WithDescription("A folder inside the entry names is written with `:`.");
 		faqs.MapGet("/{entry}", GetFaqAsync).WithSummary("Retrieve a FAQ entry.");
@@ -27,16 +29,17 @@ internal static class MenuRoutes
 		faqs.MapDelete("/{entry}", DeleteFaqAsync).RequireToken().WithSummary("Delete a FAQ entry.");
 
 		var menu = v1.MapGroup("/menu").WithTags("Menu");
-		menu.MapGet("/banners", ListBannersAsync).WithSummary("List the main-menu banners.");
-		menu.MapPost("/banners", AddBannerAsync).DisableAntiforgery().RequireToken()
+		menu.MapGet("/banners", ListBannersAsync).Admitted(WorkClass.Listing).WithSummary("List the main-menu banners.");
+		menu.MapPost("/banners", AddBannerAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
 			.WithSummary("Add a main-menu banner from an image in the `image` field and the address in `url`.")
 			.WithDescription(
 				"`begins` and `expires` are optional ISO 8601 times; a banner without them is always current.");
 		menu.MapDelete("/banners/{image}", DeleteBannerAsync).RequireToken().WithSummary("Delete a main-menu banner.");
 		menu.MapGet("/seasonals", async (IMenuSeasonalsStorage storage, CancellationToken ct) =>
 				Api.Ok((await storage.ListAsync(ct)).Select(r => Path.GetFileName(r.Value)).ToList()))
+			.Admitted(WorkClass.Listing)
 			.WithSummary("List the seasonal backgrounds.");
-		menu.MapPost("/seasonals", AddSeasonalAsync).DisableAntiforgery().RequireToken()
+		menu.MapPost("/seasonals", AddSeasonalAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
 			.WithSummary("Add a seasonal background from an image in the `image` field.");
 		menu.MapDelete("/seasonals/{image}", DeleteSeasonalAsync).RequireToken()
 			.WithSummary("Delete a seasonal background.");
@@ -46,7 +49,7 @@ internal static class MenuRoutes
 			return Api.Ok(new IconView(icon.Image is { } image ? Path.GetFileName(image.Value) : null,
 				icon.Url?.AbsoluteUri));
 		}).WithSummary("Retrieve the main-menu icon.");
-		menu.MapPut("/icon", SetIconAsync).DisableAntiforgery().RequireToken()
+		menu.MapPut("/icon", SetIconAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
 			.WithSummary(
 				"Set the main-menu icon from an optional image in the `image` field and an optional address in `url`.");
 		menu.MapDelete("/icon", async (HttpContext context, ISender sender) =>

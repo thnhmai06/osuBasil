@@ -45,9 +45,10 @@ internal static class OsuWebRoutes
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
 	{
 		var web = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Web")
-			.WithMetadata(new AdmissionPolicyAttribute());
+			.WithMetadata(new AdmissionPolicyAttribute()).AddEndpointFilter<StableAdmission>();
 		web.MapGet("/", () => "osu").WithSummary("Say that the web host of the osu! client is there.");
 		web.MapGet("/web/osu-osz2-getscores.php", GetScoresAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("List the best scores of a beatmap.")
 			.WithDescription("""
 			                 Query: `us` (username), `ha` (password hash), `c` (beatmap hash), `m` (mode), `v` (leaderboard type), `mods`.
@@ -64,6 +65,7 @@ internal static class OsuWebRoutes
 			                 The number of file names answered is capped.
 			                 """);
 		web.MapPost("/web/osu-submit-modular-selector.php", SubmitAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload })
 			.WithSummary("Submit a score.")
 			.WithDescription("""
 			                 A multipart form: the encrypted score (`score`, with `iv` and `osuver`), the encrypted client hash (`s`), `pass`,
@@ -74,6 +76,7 @@ internal static class OsuWebRoutes
 			.WithSummary("Download the replay of a score.")
 			.WithDescription("Query: `u`, `h`, `c` (score id). The answer is the replay file, or 404.");
 		web.MapPost("/web/osu-screenshot.php", ScreenshotAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Upload })
 			.WithSummary("Upload a screenshot.")
 			.WithDescription("""
 			                 A multipart form with `u`, `p` and the picture `ss`. The answer is the reference of the stored screenshot;
@@ -83,9 +86,11 @@ internal static class OsuWebRoutes
 			.WithSummary("Receive the client's cheat-detection flags.")
 			.WithDescription("Query: `us`, `ha`, `b` (the flags, written `a` followed by a number).");
 		web.MapGet("/web/osu-search.php", SearchAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Search beatmapsets for osu!direct.")
 			.WithDescription("Query: `u`, `h`, `q` (the search). Needs the right to use osu!direct, otherwise 403.");
 		web.MapGet("/web/osu-search-set.php", SearchSetAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Look up one beatmapset for osu!direct.")
 			.WithDescription("Query: `u`, `h`, `s` (set id). Needs the right to use osu!direct, otherwise 403.");
 		web.MapGet("/d/{setId}", DownloadAsync)

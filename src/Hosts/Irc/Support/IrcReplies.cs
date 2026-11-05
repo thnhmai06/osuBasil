@@ -38,6 +38,12 @@ public static class IrcReplies
 	/// <summary>Closing text when the address has too many connections.</summary>
 	public const string TooManyConnections = "Too many connections from your address.";
 
+	/// <summary>Shown, and the closing text, when a client sends lines faster than the server allows.</summary>
+	public const string Flooding = "Excess flood.";
+
+	/// <summary>Shown when the server is too busy to take a line.</summary>
+	public const string ServerBusy = "The server is busy. Try again later.";
+
 	/// <summary>Closing text when the account already has as many open IRC connections as it may.</summary>
 	public const string TooManySessions = "This account has too many open connections.";
 

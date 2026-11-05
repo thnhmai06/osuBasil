@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
@@ -37,12 +38,12 @@ internal static class BeatmapRoutes
 		var sets = v1.MapGroup("/beatmapsets").WithTags("Beatmapsets");
 		var maps = v1.MapGroup("/beatmaps").WithTags("Beatmaps");
 
-		sets.MapGet("/", SearchAsync).RequireToken().WithSummary("Search beatmapsets.")
+		sets.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).RequireToken().WithSummary("Search beatmapsets.")
 			.WithDescription(
 				"`query` uses the beatmap search syntax. Hidden sets are listed only for those who manage them. Paged with `offset` and `limit`.");
 		sets.MapGet("/{id:int}", GetSetAsync).WithSummary("Retrieve a beatmapset with its beatmaps.");
 		maps.MapGet("/{id:int}", GetBeatmapAsync).WithSummary("Retrieve a beatmap with its beatmapset.");
-		sets.MapPost("/", UploadAsync).RequireToken().DisableAntiforgery()
+		sets.MapPost("/", UploadAsync).Admitted(WorkClass.Upload).RequireToken().DisableAntiforgery()
 			.WithSummary("Upload a beatmapset as an .osz archive in the `file` field.")
 			.WithDescription(
 				"A set that already exists is refused; the content of a set is never replaced. While the beatmapsets area is locked only managers can upload.");
