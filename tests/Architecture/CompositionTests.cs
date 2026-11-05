@@ -1,10 +1,8 @@
-using Basil.Bot;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using DependencyInjection = Basil.Bot.DependencyInjection;
 
 namespace Basil.ArchitectureTests;
 
@@ -23,7 +21,6 @@ public sealed class CompositionTests
 		services.AddLogging();
 		AddCommonOptions(services);
 		services.AddBasil();
-		services.AddBot();
 
 		await using var provider = services.BuildServiceProvider(new ServiceProviderOptions
 		{
@@ -37,7 +34,7 @@ public sealed class CompositionTests
 		Assert.Empty(unresolved);
 	}
 
-	/// <summary>Every handler class of the application and the bot is registered for each event type it handles.</summary>
+	/// <summary>Every handler class of the modules is registered for each event type it handles.</summary>
 	[Fact]
 	public async Task EveryEventHandlerIsRegisteredForTheEventsItHandles()
 	{
@@ -45,10 +42,9 @@ public sealed class CompositionTests
 		services.AddLogging();
 		AddCommonOptions(services);
 		services.AddBasil();
-		services.AddBot();
 		await using var provider = services.BuildServiceProvider();
 
-		var contracts = ModuleAssemblies.Applications.Append(typeof(DependencyInjection).Assembly)
+		var contracts = ModuleAssemblies.Applications.Concat(ModuleAssemblies.Infrastructures)
 			.SelectMany(assembly => assembly.GetTypes())
 			.Where(type => type is { IsClass: true, IsAbstract: false })
 			.SelectMany(type => type.GetInterfaces()

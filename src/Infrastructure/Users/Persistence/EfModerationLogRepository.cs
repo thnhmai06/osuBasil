@@ -13,6 +13,13 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 	/// <inheritdoc />
 	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
 	{
+		return database.WriteAsync((UsersDbContext context, CancellationToken token) => AddAsync(context, entry, token),
+			cancellationToken);
+	}
+
+	/// <summary>Adds an entry to a context, to be stored with the other changes of that context.</summary>
+	internal static async Task AddAsync(UsersDbContext context, ModerationData entry, CancellationToken cancellationToken)
+	{
 		var row = new ModerationLogRow
 		{
 			Action = (int)entry.Action,
@@ -21,11 +28,8 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 			Reason = entry.Reason,
 			Timestamp = entry.Timestamp.ToUniversalTime()
 		};
-		return database.WriteAsync(async (UsersDbContext context, CancellationToken token) =>
-		{
-			row.Id = await IdCounters.NextAsync(context, "moderation_log", token);
-			context.ModerationLog.Add(row);
-		}, cancellationToken);
+		row.Id = await IdCounters.NextAsync(context, "moderation_log", cancellationToken);
+		context.ModerationLog.Add(row);
 	}
 
 	/// <inheritdoc />

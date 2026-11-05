@@ -52,7 +52,9 @@ by how much, the ranking of the scores) is stored as JSON in `rounds.result` whe
 ## Invariants
 
 * **Awaited writes.** A repository change returns when the database has committed it, and a failure reaches the
-  caller. A change that stores several rows together runs in one transaction.
+  caller. A change that stores several rows together runs in one transaction: a restriction and its moderation-log entry,
+  a score and the statistics of its play. When the two live in different module databases no transaction covers both,
+  so the log entry is appended first.
 * **Records are copies.** A repository returns fresh records; the live object in a registry is the truth of the
   running server.
 * **Unique values.** The insert checks them; a unique violation becomes `AlreadyExistsException` (or `false` for a

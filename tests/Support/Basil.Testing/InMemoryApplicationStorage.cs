@@ -133,28 +133,34 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 	}
 }
 
-internal sealed class InMemoryRestrictionRepository : IRestrictionRepository
+internal sealed class InMemoryRestrictionRepository(InMemoryModerationLogRepository moderationLog) : IRestrictionRepository
 {
 	private readonly Dictionary<int, List<UserRestriction>> _restrictions = [];
 	private int _nextId = 1;
 
-	public Task<UserRestriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
+	public Task<UserRestriction> CreateAsync(RestrictionData data, ModerationData? log = null,
+		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
+		if (log is not null) moderationLog.AppendAsync(log, cancellationToken).GetAwaiter().GetResult();
 		var restriction = new UserRestriction { Id = _nextId++, Value = data };
 		GetFor(data.User).Add(restriction);
 		return Task.FromResult(restriction);
 	}
 
-	public Task UpdateAsync(UserRestriction restriction, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(UserRestriction restriction, ModerationData? log = null,
+		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
+		if (log is not null) moderationLog.AppendAsync(log, cancellationToken).GetAwaiter().GetResult();
 		return Task.CompletedTask;
 	}
 
-	public Task DeleteAsync(UserRestriction restriction, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(UserRestriction restriction, ModerationData? log = null,
+		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
+		if (log is not null) moderationLog.AppendAsync(log, cancellationToken).GetAwaiter().GetResult();
 		GetFor(restriction.Value.User).RemoveAll(item => item.Id == restriction.Id);
 		return Task.CompletedTask;
 	}

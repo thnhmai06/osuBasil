@@ -12,8 +12,8 @@ wire), Hosts (translate and dispatch), Gateway (admission control) and the Serve
 > of the page are marked **(target)** where the code does not match yet. Handlers, object-free logic and service
 > implementations are in the Infrastructure projects; hosts other than `Basil.Host.Irc` still call `ScopeTo` themselves (they will send Mediator messages), the rate limiter and upload
 > limits still sit in `Basil.Host.Shared` and the hosts (they move to `Basil.Gateway`), persistence
-> is awaited (see [`database.md`](database.md)), and `Application.Bot` and `Basil.Gateway` do not exist yet
-> (`Application.Diagnostics` and `Infrastructure.Diagnostics` do). Where this page and the code disagree, the code is the
+> is awaited (see [`database.md`](database.md)), and `Basil.Gateway` does not exist yet
+> (`Application.Bot`, `Infrastructure.Bot`, `Application.Diagnostics` and `Infrastructure.Diagnostics` do). Where this page and the code disagree, the code is the
 > state and this page is the direction.
 
 ## Layers
@@ -62,7 +62,7 @@ Multiplayer  -> Users, Beatmaps, Content, Scores
 Chat         -> Users, Multiplayer
 Diagnostics  -> Users
 Servers      -> every module above
-Bot          -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users      (target: today Basil.Bot)
+Bot          -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users
 ```
 
 Each module is two projects. `Basil.Application.<Module>` holds only contracts and runtime objects.

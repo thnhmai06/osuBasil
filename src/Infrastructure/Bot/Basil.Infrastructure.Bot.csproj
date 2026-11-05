@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Infrastructure.Bot</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Bot.Tests"/>
+		<InternalsVisibleTo Include="Basil.Application.Bot.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\Application\Bot\Basil.Application.Bot.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="MessageFormat"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
+	</ItemGroup>
+</Project>

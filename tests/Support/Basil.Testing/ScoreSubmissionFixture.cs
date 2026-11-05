@@ -64,7 +64,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 		var provider = app.Provider;
 
 		provider.GetRequiredService<IScoreRepository>()
-			.CreateAsync(Arg.Any<ScoreData>(), Arg.Any<CancellationToken>())
+			.CreateWithPlayAsync(Arg.Any<ScoreData>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
 			.Returns(call =>
 			{
 				var data = call.Arg<ScoreData>();
@@ -72,7 +72,14 @@ public sealed class ScoreSubmissionFixture : IDisposable
 					throw new AlreadyExistsException("A score with this checksum is already stored.");
 				var record = new ScoreRecord { Id = _scores.Count + 1, Value = data };
 				_scores.Add(record);
-				return Task.FromResult(record);
+
+				var key = (UserId: data.UserId!.Value, data.Mode);
+				if (!_stats.TryGetValue(key, out var known))
+					_stats[key] = known = new UserStats { UserId = key.UserId, Mode = key.Mode };
+				known.PlayCount++;
+				known.TotalScore += data.LastState.TotalScore;
+				known.RankedScore += call.ArgAt<long>(1);
+				return Task.FromResult((record, known));
 			});
 
 		provider.GetRequiredService<IRoundScoreRepository>()
@@ -87,20 +94,6 @@ public sealed class ScoreSubmissionFixture : IDisposable
 				call.Arg<Stream>().CopyTo(copy);
 				_replays.Add((call.Arg<ScoreRecord>(), copy.ToArray()));
 				return Task.CompletedTask;
-			});
-
-		var stats = provider.GetRequiredService<IUserStatsRepository>();
-		stats.AddPlayAsync(Arg.Any<UserRecord>(), Arg.Any<GameMode>(), Arg.Any<long>(), Arg.Any<long>(),
-				Arg.Any<CancellationToken>())
-			.Returns(call =>
-			{
-				var key = (UserId: call.Arg<UserRecord>().Id, Mode: call.ArgAt<GameMode>(1));
-				if (!_stats.TryGetValue(key, out var known))
-					_stats[key] = known = new UserStats { UserId = key.UserId, Mode = key.Mode };
-				known.PlayCount++;
-				known.TotalScore += call.ArgAt<long>(2);
-				known.RankedScore += call.ArgAt<long>(3);
-				return ValueTask.FromResult(known);
 			});
 	}
 

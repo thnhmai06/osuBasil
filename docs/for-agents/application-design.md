@@ -1,6 +1,6 @@
 # Application design rules
 
-Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `src/Bot`.
+Rules for Domain and Application objects, capabilities, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application/*` or `src/Infrastructure/Bot`.
 
 > **Migration status.** The target architecture ([`architecture.md`](../for-developers/architecture.md)) moves handlers, object-free logic and service implementations from `Basil.Application.<Module>` into `Basil.Infrastructure.<Module>`, makes hosts send Mediator messages instead of calling `ScopeTo`, and moves BasilBot into its own module. The handlers, the object-free logic and the service implementations are already in `Basil.Infrastructure.<Module>`; the contracts stay in Application. A rule below that mentions `Handlers/`, `Logic/` or `Workers/` means the folder of the module's Infrastructure project. Hosts still call `ScopeTo` for the modules not yet migrated. New code follows the target.
 
@@ -219,7 +219,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
   event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
-  modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). The shared queue (`EventQueue`) is run by
+  modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Infrastructure.Bot`). The shared queue (`EventQueue`) is run by
   `EventDispatcher` in Infrastructure.Common's Workers folder and delivers the events one at a time in the order they
   were published,
   across all event types; a failing handler is logged and the others still run. The mediator resolves handlers at

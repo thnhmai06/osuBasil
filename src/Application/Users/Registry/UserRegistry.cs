@@ -407,7 +407,7 @@ public sealed class UserRegistry
 			if (restriction.Value.EndsAt <= now) continue;
 
 			restriction.Value.EndsAt = restriction.Value.StartsAt > now ? restriction.Value.StartsAt : now;
-			await _context.Restrictions.UpdateAsync(restriction, cancellationToken);
+			await _context.Restrictions.UpdateAsync(restriction, cancellationToken: cancellationToken);
 		}
 
 		await _context.Credentials.DeleteAsync(bot, cancellationToken);
