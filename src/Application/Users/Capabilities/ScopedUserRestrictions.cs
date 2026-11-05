@@ -77,11 +77,9 @@ public readonly struct ScopedUserRestrictions
 		};
 
 		stored.Value.EndsAt = now;
-		await _scoped.User.Context.Restrictions.UpdateAsync(stored, cancellationToken);
+		await _scoped.User.Context.Restrictions.UpdateAsync(stored, log, cancellationToken);
 		_scoped.User.Context.Registry.Online.GetValueOrDefault(_scoped.User.Record)
 			?.Restrictions.Remove(stored);
-		await _scoped.User.Context.ModerationLog.AppendAsync(log, cancellationToken);
-
 		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, stored));
 		return UserOutcome.Ok;
 	}
@@ -102,16 +100,8 @@ public readonly struct ScopedUserRestrictions
 
 		var now = _scoped.User.Context.Clock.GetUtcNow();
 		var active = stored.Value.EndsAt is null || stored.Value.EndsAt > now;
-		await _scoped.User.Context.Restrictions.DeleteAsync(stored, cancellationToken);
-
 		var context = _scoped.User.Context;
-		if (active && context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
-		{
-			user.Restrictions.Remove(stored);
-			context.Registry.CloseDisallowed(user);
-		}
-
-		await context.ModerationLog.AppendAsync(new ModerationData
+		await context.Restrictions.DeleteAsync(stored, new ModerationData
 		{
 			Action = ModerationAction.Delete,
 			Actor = _scoped.Actor.Record,
@@ -119,6 +109,12 @@ public readonly struct ScopedUserRestrictions
 			Reason = reason,
 			Timestamp = now
 		}, cancellationToken);
+
+		if (active && context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
+		{
+			user.Restrictions.Remove(stored);
+			context.Registry.CloseDisallowed(user);
+		}
 
 		context.Events.Publish(new UserRestrictionDeleted(_scoped.User.Record, stored));
 		return UserOutcome.Ok;
@@ -149,14 +145,12 @@ public readonly struct ScopedUserRestrictions
 			EndsAt = endsAt
 		};
 		var context = _scoped.User.Context;
-		var restriction = await context.Restrictions.CreateAsync(data, cancellationToken);
+		var restriction = await context.Restrictions.CreateAsync(data, log, cancellationToken);
 		if (context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
 		{
 			user.Restrictions.Add(restriction);
 			context.Registry.CloseDisallowed(user);
 		}
-
-		await context.ModerationLog.AppendAsync(log, cancellationToken);
 
 		context.Events.Publish(new UserRestricted(_scoped.User.Record, restriction));
 		return (UserOutcome.Ok, restriction);

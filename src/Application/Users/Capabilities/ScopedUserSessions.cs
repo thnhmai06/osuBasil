@@ -118,7 +118,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
 
 		Guid? keep = scoped.IsSelf && keepCurrent && scoped.Actor is ApiConnection api ? api.Session.Id : null;
-		await Close(null, keep, cancellationToken);
+		// The sessions live in another module's database, so no transaction covers both: log first, so an action is never unrecorded.
 		if (!scoped.IsSelf)
 			await scoped.User.Context.ModerationLog.AppendAsync(new ModerationData
 			{
@@ -127,6 +127,8 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 				Target = scoped.User.Record,
 				Timestamp = scoped.User.Context.Clock.GetUtcNow()
 			}, cancellationToken);
+
+		await Close(null, keep, cancellationToken);
 
 		return UserOutcome.Ok;
 	}

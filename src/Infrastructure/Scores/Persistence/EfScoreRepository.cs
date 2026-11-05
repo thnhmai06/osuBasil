@@ -3,6 +3,7 @@ using Basil.Application.Scores.Persistence;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,12 +25,56 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 	}
 
 	/// <inheritdoc />
+	public async Task<(ScoreRecord Score, UserStats Stats)> CreateWithPlayAsync(ScoreData data, long rankedScore,
+		CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			return await StoreAsync(data, rankedScore, cancellationToken);
+		}
+		catch (AlreadyExistsException)
+		{
+			// Either another first play of the same account and mode created the statistics row between our update
+			// and our insert, which a second attempt finds, or the score is a duplicate and the second attempt refuses it again.
+			return await StoreAsync(data, rankedScore, cancellationToken);
+		}
+	}
+
+	private async Task<(ScoreRecord Score, UserStats Stats)> StoreAsync(ScoreData data, long rankedScore,
+		CancellationToken cancellationToken)
+	{
+		var row = ToRow(0, data);
+		UserStats stats = null!;
+		await database.TransactAsync(async (ScoresDbContext context, CancellationToken token) =>
+		{
+			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
+			context.Scores.Add(row);
+			stats = await EfUserStatsRepository.AddPlayAsync(context, data.UserId!.Value, data.Mode,
+				data.LastState.TotalScore, rankedScore, token);
+		}, cancellationToken);
+		return (new ScoreRecord { Id = row.Id, Value = data }, stats);
+	}
+
+	/// <inheritdoc />
 	public async ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		var row = await database.ReadAsync((ScoresDbContext context) => context.Scores
 			.Where(score => score.Id == id)
 			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
 		return row is null ? null : ToScore(row);
+	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<ScoreRecord>> GetManyAsync(IReadOnlyCollection<int> ids,
+		CancellationToken cancellationToken = default)
+	{
+		var wanted = ids.ToArray();
+		var rows = await database.ReadAsync((ScoresDbContext context) => context.Scores
+			.Where(score => wanted.Contains(score.Id))
+			.OrderBy(score => score.Id)
+			.Take(ListLimits.Ceiling)
+			.ToListAsync(cancellationToken), cancellationToken);
+		return [.. rows.Select(ToScore)];
 	}
 
 	/// <inheritdoc />

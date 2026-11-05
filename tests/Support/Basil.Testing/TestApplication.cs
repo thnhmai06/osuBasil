@@ -92,10 +92,10 @@ public sealed class TestApplication : IDisposable
 		Clock = new FakeTimeProvider(Start);
 		_users = new InMemoryUserRepository();
 		_credentials = new InMemoryCredentialRepository();
-		_restrictions = new InMemoryRestrictionRepository();
 		_sessions = new InMemorySessionRepository();
 		var relationships = new InMemoryRelationshipRepository();
 		_moderationLog = new InMemoryModerationLogRepository();
+		_restrictions = new InMemoryRestrictionRepository(_moderationLog);
 		_settings = new InMemorySettingsRepository();
 
 		var services = new ServiceCollection();

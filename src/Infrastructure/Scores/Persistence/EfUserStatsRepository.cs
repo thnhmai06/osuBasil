@@ -58,35 +58,40 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 	private Task<UserStats> IncrementAsync(int userId, GameMode mode, long totalScore, long rankedScore,
 		CancellationToken cancellationToken)
 	{
-		var storedMode = (int)mode;
-		return database.WriteAsync(async (ScoresDbContext context, CancellationToken token) =>
-		{
-			var updated = await context.UserStats
-				.Where(s => s.UserId == userId && s.Mode == storedMode)
-				.ExecuteUpdateAsync(set => set
-					.SetProperty(s => s.PlayCount, s => s.PlayCount + 1)
-					.SetProperty(s => s.TotalScore, s => s.TotalScore + totalScore)
-					.SetProperty(s => s.RankedScore, s => s.RankedScore + rankedScore), token);
-			if (updated == 0)
-			{
-				context.UserStats.Add(new UserStatsRow
-				{
-					UserId = userId,
-					Mode = storedMode,
-					TotalScore = totalScore,
-					RankedScore = rankedScore,
-					PlayCount = 1
-				});
-				return new UserStats
-				{
-					UserId = userId, Mode = mode, TotalScore = totalScore, RankedScore = rankedScore, PlayCount = 1
-				};
-			}
+		return database.WriteAsync((ScoresDbContext context, CancellationToken token) =>
+			AddPlayAsync(context, userId, mode, totalScore, rankedScore, token), cancellationToken);
+	}
 
-			var row = await context.UserStats.AsNoTracking()
-				.FirstAsync(s => s.UserId == userId && s.Mode == storedMode, token);
-			return ToStats(row);
-		}, cancellationToken);
+	/// <summary>Adds one play on a context with column-level updates, or adds the row when the account has none yet.</summary>
+	internal static async Task<UserStats> AddPlayAsync(ScoresDbContext context, int userId, GameMode mode,
+		long totalScore, long rankedScore, CancellationToken token)
+	{
+		var storedMode = (int)mode;
+		var updated = await context.UserStats
+			.Where(s => s.UserId == userId && s.Mode == storedMode)
+			.ExecuteUpdateAsync(set => set
+				.SetProperty(s => s.PlayCount, s => s.PlayCount + 1)
+				.SetProperty(s => s.TotalScore, s => s.TotalScore + totalScore)
+				.SetProperty(s => s.RankedScore, s => s.RankedScore + rankedScore), token);
+		if (updated == 0)
+		{
+			context.UserStats.Add(new UserStatsRow
+			{
+				UserId = userId,
+				Mode = storedMode,
+				TotalScore = totalScore,
+				RankedScore = rankedScore,
+				PlayCount = 1
+			});
+			return new UserStats
+			{
+				UserId = userId, Mode = mode, TotalScore = totalScore, RankedScore = rankedScore, PlayCount = 1
+			};
+		}
+
+		var row = await context.UserStats.AsNoTracking()
+			.FirstAsync(s => s.UserId == userId && s.Mode == storedMode, token);
+		return ToStats(row);
 	}
 
 	private static UserStats ToStats(UserStatsRow row)
