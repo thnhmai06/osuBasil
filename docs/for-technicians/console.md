@@ -230,12 +230,27 @@ Rooms exist only while the server runs.
 | `beatmapsets create --file <path.osz>`                                           | `POST /v1/beatmapsets`              | yes |
 | `beatmapsets <id> set [--status <status>] [--visible <bool>] [--locked <bool>]`  | `PATCH /v1/beatmapsets/{id}`        | yes |
 | `beatmapsets <id> delete`                                                        | `DELETE /v1/beatmapsets/{id}`       | yes |
-| `beatmapsets refresh`                                                            | console only                        | yes |
+| `beatmapsets reload`                                                             | `POST /v1/beatmapsets/reload`       | no  |
 | `beatmaps <id>`                                                                  | `GET /v1/beatmaps/{id}`             | yes |
 
-`beatmapsets refresh` scans `Data/Beatmapsets` as at startup: sets added by hand are picked up and sets removed from the
-folder are dropped. Changing a set's status can change how clients submit scores and replays; prefer a status that has a
+`beatmapsets reload` recomputes the metadata of every stored beatmap, star rating included, with the rulesets in use. It
+runs in the background, one at a time, and logs its progress. Run it after `ruleset update` and a restart, because the
+star ratings stored before are those of the old rulesets. Changing a set's status can change how clients submit scores and replays; prefer a status that has a
 leaderboard (ranked, approved, qualified, loved).
+
+### version and rulesets
+
+| Command          | API route                            | P   |
+|------------------|--------------------------------------|-----|
+| `version`        | `GET /v1/version`                    | yes |
+| `ruleset version`| `GET /v1/settings/ruleset/version`   | yes |
+| `ruleset update` | `POST /v1/settings/ruleset/update`   | yes |
+
+The four osu! ruleset libraries compute the star rating. `ruleset update` downloads the newest stable version from the
+NuGet feed, checks it against the hash the feed publishes, and stages it under `<Storage>/Rulesets/<version>/`; nothing
+is kept when the check fails. A staged version takes effect after the next start (also when the command ran while the
+server was running); then run `beatmapsets reload`. The osu! game library that the rulesets build on is not updated. With
+`Basil:Updates:CheckOnStartup` on, the server logs a warning at startup when a newer ruleset version exists.
 
 ### scores
 

@@ -1,6 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
+using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
+using Basil.Infrastructure.Beatmaps.Services;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Logic;
 using Basil.Infrastructure.Beatmaps.Persistence;
@@ -11,6 +13,7 @@ using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps;
 
@@ -32,6 +35,11 @@ public static class DependencyInjection
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
 		services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
 		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
+		services.AddSingleton<RulesetStore>();
+		services.AddSingleton<IRulesetUpdater>(provider => new RulesetUpdater(
+			provider.GetRequiredService<RulesetStore>(), new HttpClient { Timeout = TimeSpan.FromMinutes(5) },
+			provider.GetRequiredService<ILogger<RulesetUpdater>>()));
+		services.AddSingleton<IBeatmapReloader, BeatmapReloader>();
 		services.AddOptions<AssetOptions>().PostConfigure<DataPaths>((options, paths) =>
 		{
 			if (string.IsNullOrWhiteSpace(options.CacheDirectory))

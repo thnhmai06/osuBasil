@@ -96,6 +96,7 @@ public static class RestHost
 		v1.MapBeatmaps();
 		v1.MapScores();
 		v1.MapContent();
+		v1.MapRulesets();
 		v1.MapMenu();
 		v1.MapAliases();
 		app.MapFallback(NoSuchRoute);

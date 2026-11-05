@@ -51,9 +51,9 @@ internal static class BeatmapScoreCommands
 		};
 		yield return new CommandDef
 		{
-			Pattern = "beatmapsets refresh", Offline = true,
-			Summary = "Scans Data/Beatmapsets as at startup: takes in sets added by hand and drops removed ones.",
-			Run = RefreshAsync
+			Pattern = "beatmapsets reload", Route = "POST /v1/beatmapsets/reload",
+			Summary = "Recomputes the metadata of every beatmap, star rating included, in the background.",
+			Run = ReloadAsync
 		};
 		yield return new CommandDef
 		{
@@ -150,11 +150,11 @@ internal static class BeatmapScoreCommands
 			: throw CommandException.Invalid("--status is not a beatmapset status.");
 	}
 
-	private static async Task<int> RefreshAsync(CommandCall call)
+	private static async Task<int> ReloadAsync(CommandCall call)
 	{
-		var result = await call.Get<Beatmapsets>().ScanAsync(call.CancellationToken);
-		call.Output.Ok($"Scanned: {result.Imported} taken in, {result.Updated} updated, {result.Forgotten} forgotten.");
-		return ExitCodes.Success;
+		return call.Report(
+			await call.Get<ISender>().Send(new ReloadBeatmaps(await call.ByAsync()), call.CancellationToken),
+			RulesetReplies.ReloadStarted);
 	}
 
 	private static async Task<int> DeleteSetAsync(CommandCall call)

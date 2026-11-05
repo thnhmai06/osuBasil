@@ -2,6 +2,7 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common.Events;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,10 @@ public static class DependencyInjection
 			sp.GetRequiredService<BeatmapsetContext>(),
 			sp.GetRequiredService<IBeatmapsetImporter>(),
 			sp.GetRequiredService<IBeatmapsetScanner>()));
+		services.AddSingleton<Rulesets>(sp => new Rulesets(
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<IRulesetUpdater>(),
+			sp.GetRequiredService<IBeatmapReloader>()));
 		return services;
 	}
 }

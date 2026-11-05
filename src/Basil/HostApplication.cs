@@ -15,6 +15,7 @@ using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Host.Shared.Documentation;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Caching;
@@ -76,6 +77,8 @@ public static class HostApplication
 		KestrelSetup.Configure(builder);
 
 		var app = builder.Build();
+		// Before any ruleset type is used: a staged version replaces the one shipped with Basil.
+		app.Services.GetRequiredService<RulesetStore>().LoadStaged();
 		app.Services.GetRequiredService<RuntimeSampler>().LogsDropped = () => drops.Dropped;
 		app.UseRequestMetrics();
 		app.UseTrustedProxies();

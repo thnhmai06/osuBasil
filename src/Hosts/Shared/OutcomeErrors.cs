@@ -94,6 +94,7 @@ public static class OutcomeErrors
 				_ => ErrorKind.Invalid
 			},
 			BeatmapsetOutcome => ErrorKind.Locked,
+			RulesetOutcome => ErrorKind.Conflict,
 			ConnectionOutcome connection => connection == ConnectionOutcome.Rejected
 				? ErrorKind.Invalid
 				: ErrorKind.Conflict,

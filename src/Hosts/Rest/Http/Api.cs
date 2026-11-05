@@ -60,6 +60,12 @@ public static class Api
 		return Respond(StatusCodes.Status201Created, message, data, null, null);
 	}
 
+	/// <summary>Answers 202 for work that continues in the background.</summary>
+	public static IResult Accepted(string message)
+	{
+		return Respond<object>(StatusCodes.Status202Accepted, message, null, null, null);
+	}
+
 	/// <summary>Answers 200 with a page of items.</summary>
 	public static IResult Paged<T>(Page<T> page, PageRequest request)
 	{

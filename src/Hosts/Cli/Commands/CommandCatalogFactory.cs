@@ -13,6 +13,7 @@ public static class CommandCatalogFactory
 		commands.AddRange(ChannelRoomCommands.Create());
 		commands.AddRange(BeatmapScoreCommands.Create());
 		commands.AddRange(ContentCommands.Create());
+		commands.AddRange(RulesetCommands.Create());
 		return catalog = new CommandCatalog(commands);
 	}
 }

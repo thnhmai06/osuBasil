@@ -1,4 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Host.Cli.Commands;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Beatmaps;
@@ -81,12 +82,28 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Beatmapsets_Refresh_ScansTheStorageAndSaysWhatChanged()
+	public async Task Beatmapsets_Reload_StartsTheReload_AndRefreshIsNoLongerACommand()
 	{
-		var (code, text) = await fixture.RunAsync("beatmapsets refresh");
+		var (code, text) = await fixture.RunAsync("beatmapsets reload");
+		var (refresh, _) = await fixture.RunAsync("beatmapsets refresh");
 
 		Assert.Equal(0, code);
-		Assert.Matches(@"Scanned: \d+ taken in, \d+ updated, \d+ forgotten\.", text);
+		Assert.Contains(RulesetReplies.ReloadStarted, text);
+		Assert.NotEqual(0, refresh);
+	}
+
+	[Fact]
+	public async Task Version_PrintsTheAppAndTheRulesetVersion_AndRulesetVersionShowsNoStagedVersion()
+	{
+		var (code, text) = await fixture.RunAsync("version");
+		var (rulesetCode, rulesetText) = await fixture.RunAsync("ruleset version");
+
+		Assert.Equal(0, code);
+		Assert.Contains("version:", text);
+		Assert.Contains("ruleset:", text);
+		Assert.Equal(0, rulesetCode);
+		Assert.Contains("active:", rulesetText);
+		Assert.Contains("staged:", rulesetText);
 	}
 
 	[Fact]
