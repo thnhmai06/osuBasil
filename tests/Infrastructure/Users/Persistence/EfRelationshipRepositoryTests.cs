@@ -23,7 +23,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 			(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
 			{
 				["id"] = id, ["name"] = "bulk" + id, ["normalized_name"] = "bulk" + id, ["active_name"] = "bulk" + id,
-				["country"] = 0, ["permissions"] = 0L
+				["country"] = (int)actor.Value.Country, ["permissions"] = 0L
 			}), TestContext.Current.CancellationToken);
 		// Each of those accounts is a target, one more than the ceiling.
 		var stored = await StoredRows.InsertAsync(ConnectionString, "relationships", targets.Select(id =>
