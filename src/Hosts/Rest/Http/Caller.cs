@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using System.Net;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
@@ -84,7 +85,14 @@ public static class TokenExtensions
 	public static TBuilder Sse<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder
 	{
 		builder.Add(endpoint => endpoint.Metadata.Add(SseRoute.Instance));
-		return builder;
+		return builder.Admitted(WorkClass.Live);
+	}
+
+	/// <summary>Declares the kind of work the route does, which chooses its concurrency cap and place in the shed order.</summary>
+	public static TBuilder Admitted<TBuilder>(this TBuilder builder, WorkClass workClass)
+		where TBuilder : IEndpointConventionBuilder
+	{
+		return builder.WithMetadata(new AdmissionPolicyAttribute { Class = workClass });
 	}
 }
 

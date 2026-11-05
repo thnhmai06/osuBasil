@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Mediator;
 using Basil.Application.Servers.Messages;
 using System.Text.Json;
@@ -29,7 +30,7 @@ internal static class ContentRoutes
 			.WithDescription("An empty or absent `to` announces to everyone online.");
 
 		var screenshots = v1.MapGroup("/screenshots").WithTags("Screenshots").RequireToken();
-		screenshots.MapGet("/", ListScreenshotsAsync).WithSummary("List the stored screenshots.");
+		screenshots.MapGet("/", ListScreenshotsAsync).Admitted(WorkClass.Listing).WithSummary("List the stored screenshots.");
 		screenshots.MapDelete("/{id}", DeleteScreenshotAsync).WithSummary("Delete a screenshot.");
 	}
 

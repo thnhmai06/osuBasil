@@ -1,3 +1,4 @@
+using Basil.Gateway;
 using Mediator;
 using Basil.Application.Multiplayer.Messages;
 using System.Text.Json;
@@ -15,7 +16,7 @@ internal static class MatchRoutes
 	public static void MapMatches(this RouteGroupBuilder v1)
 	{
 		var matches = v1.MapGroup("/matches").WithTags("Matches");
-		matches.MapGet("/", ListAsync).RequireToken().WithSummary("List matches.")
+		matches.MapGet("/", ListAsync).Admitted(WorkClass.Listing).RequireToken().WithSummary("List matches.")
 			.WithDescription(
 				"For room managers only. `query` filters with `ended:` and `private:`. Paged with `offset` and `limit`.");
 		matches.MapGet("/{id:int}", ReportAsync).Sse().WithSummary("Watch the report of a match.")

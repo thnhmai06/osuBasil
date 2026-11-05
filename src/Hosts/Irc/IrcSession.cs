@@ -34,6 +34,9 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 	/// <summary>Gets the address of the socket; the only address the server uses and never shows.</summary>
 	public IPAddress Address { get; } = address;
 
+	/// <summary>Gets a name for the socket alone, which the gateway counts a client that is not signed in under.</summary>
+	public string Label { get; } = Guid.NewGuid().ToString("N");
+
 	/// <summary>Gets the connection the client signed in as, or <see langword="null" /> before.</summary>
 	public Connection? Connection { get; set; }
 

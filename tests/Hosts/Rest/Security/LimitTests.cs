@@ -1,6 +1,7 @@
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Sse;
+using Basil.Host.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Security;
@@ -91,6 +92,32 @@ public sealed class LimitTests(RestHostFixture fixture)
 
 		Assert.Equal([200, 200, 429], statuses);
 		Assert.Equal(200, withToken);
+	}
+
+	[Fact]
+	public async Task Requests_BeyondTheAdmissionAllowanceOfAnAddress_Answer429WithRetryAfter_ButHealthStillAnswers()
+	{
+		await using var host = await BasilHost.StartAsync(fixture.Database);
+		await ChangeAsync(host, s => s with
+		{
+			RateLimits = s.RateLimits with
+			{
+				Admission = new ServerSettings.AdmissionLimitSettings(2, TimeSpan.FromMinutes(1), 4, 256, 32, 8, 1024,
+					0.5, 0.7, 0.9, TimeSpan.FromSeconds(5))
+			}
+		});
+		using var anon = new RestClient(host.Url, host.Domain);
+
+		var statuses = new List<int>();
+		for (var i = 0; i < 3; i++) statuses.Add((await anon.CallAsync(HttpMethod.Get, "/v1/users/1")).Status);
+		using var limited = await anon.SendAsync(HttpMethod.Get, "/v1/users/1");
+		var health = (await anon.CallAsync(HttpMethod.Get, "/health")).Status;
+
+		Assert.Equal(429, statuses[2]);
+		Assert.NotEqual(429, statuses[0]);
+		Assert.Equal("60", limited.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ToString("0"));
+		Assert.Contains(AdmissionRefusals.RateLimitedCode, await limited.Content.ReadAsStringAsync());
+		Assert.Equal(200, health);
 	}
 
 	[Fact]

@@ -4,6 +4,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
+using Basil.Gateway;
 using Basil.Host.Stable.Tests.Support;
 using Basil.Host.Stable.Web;
 using Basil.Testing.Clients;
@@ -23,6 +24,25 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		var client = await Host.NewClientAsync(name);
 		await client.LoginAsync();
 		return client;
+	}
+
+	[Fact]
+	public async Task WebEndpoint_WhileTheServerIsOverloaded_Answers503()
+	{
+		using var client = await OnlineAsync("WebShed");
+		var load = Host.Services.GetRequiredService<LoadSignal>();
+		load.Report(95, 100);
+
+		try
+		{
+			var (status, _) = await client.GetFriendsAsync();
+
+			Assert.Equal(HttpStatusCode.ServiceUnavailable, status);
+		}
+		finally
+		{
+			load.Report(0, 100);
+		}
 	}
 
 	[Fact]

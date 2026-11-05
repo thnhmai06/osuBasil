@@ -63,7 +63,7 @@ public static class StableRoutes
 	internal static void MapStable(this IEndpointRouteBuilder app)
 	{
 		var cho = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Game server")
-			.WithMetadata(new AdmissionPolicyAttribute());
+			.WithMetadata(new AdmissionPolicyAttribute()).AddEndpointFilter<StableAdmission>();
 		cho.MapGet("/", () => "cho").WithSummary("Say that the game server of the osu! client is there.");
 		cho.MapPost("/", ExchangeAsync)
 			.WithSummary("Log in, or exchange packets.")
