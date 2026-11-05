@@ -81,24 +81,11 @@ public readonly struct ScopedLobby
 		if (source is RoomSource.Game && Actor is not StableConnection)
 			throw new ArgumentException("A room opened in game needs the creator's osu! client.");
 
-		var now = Lobby.Context.Clock.GetUtcNow();
 		if (await OpenRefusalAsync(source, cancellationToken) is { } refusal) return (null, refusal);
 
-		var creator = Actor.Record;
-		var seat = SeatFor(source, now);
-		if (source is RoomSource.Game && Lobby.RoomOf(seat!) is not null) return (null, RoomOutcome.AlreadyInRoom);
-
-		if (!MatchData.IsValidName(name)) return (null, RoomOutcome.InvalidSettings);
-
-		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
-		if (Lobby.Reserve() is not { } id) return (null, RoomOutcome.NoRoomId);
-
-		var match = await CreateMatchAsync(id, name, creator, isPrivate, now, cancellationToken);
-		var room = Establish(id, match, settings, password, seat);
-
-		var closesAt = ScheduleEmptyClosing(room);
-		Lobby.Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
-		return (room, RoomOutcome.Ok);
+		var seat = SeatFor(source);
+		return await Lobby.OpenRoomAsync(Actor.Record, seat, source is RoomSource.Game, name, password, isPrivate,
+			settings, cancellationToken);
 	}
 
 	private async Task<Result<RoomOutcome>?> OpenRefusalAsync(RoomSource source, CancellationToken cancellationToken)
@@ -108,7 +95,7 @@ public readonly struct ScopedLobby
 			: UserPermissions.RoomCreate | UserPermissions.RoomJoin;
 		if (Require(required) is { } missingPermissions) return Result<RoomOutcome>.Denied(missingPermissions);
 
-		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Rooms) &&
+		if (await Lobby.IsRoomCreationLockedAsync(cancellationToken) &&
 		    Require(UserPermissions.RoomManageAny) is not null)
 			return RoomOutcome.Locked;
 
@@ -118,67 +105,15 @@ public readonly struct ScopedLobby
 		return null;
 	}
 
-	private StableConnection? SeatFor(RoomSource source, DateTimeOffset now)
+	private StableConnection? SeatFor(RoomSource source)
 	{
 		// A room opened in game seats its creator; a room opened through the API seats the creator's osu! client when it may join.
 		return source is RoomSource.Api
 			? Actor.User.Stable is { IsOpen: true } stable &&
-			  stable.User.EffectivePermissions(now).Allows(UserPermissions.RoomJoin)
+			  stable.User.EffectivePermissions(Lobby.Context.Clock.GetUtcNow()).Allows(UserPermissions.RoomJoin)
 				? stable
 				: null
 			: (StableConnection)Actor;
-	}
-
-	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
-		DateTimeOffset now, CancellationToken cancellationToken)
-	{
-		try
-		{
-			return await Lobby.Context.Matches.CreateAsync(new MatchData
-			{
-				Name = name,
-				StartedAt = now,
-				EndedAt = null,
-				Creator = creator,
-				IsPrivate = isPrivate
-			}, cancellationToken);
-		}
-		catch
-		{
-			Lobby.Release(id);
-			throw;
-		}
-	}
-
-	private Room Establish(int id, MatchRecord match, MatchSettings? settings, string password,
-		StableConnection? seat)
-	{
-		Room room;
-		using (Lobby.Enter())
-		{
-			var context = new RoomContext(Lobby.Context.Clock, Lobby.Context.RoomEvents, Lobby, Lobby.Context.Users,
-				Lobby.Context.Settings);
-			room = new Room(id, match, settings ?? new MatchSettings(), context);
-			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
-			if (seat is not null && Lobby.RoomOf(seat) is null && Lobby.TryClaim(seat, room))
-				try
-				{
-					Lobby.SeatCreator(room, seat);
-				}
-				finally
-				{
-					Lobby.Release(seat, room);
-				}
-
-			Lobby.Add(room);
-		}
-
-		return room;
-	}
-
-	private DateTimeOffset? ScheduleEmptyClosing(Room room)
-	{
-		return !room.Slots.Any(slot => slot.Player is not null) ? Lobby.StartEmptyClock(room) : null;
 	}
 
 	/// <summary>Lists the matches that were or are being played.</summary>
@@ -218,28 +153,14 @@ public readonly struct ScopedLobby
 
 		// An open room is judged by its live privacy: the copy of the flag in a caller's record or in the store can lag
 		// behind a change. Participants who left an open room see it again once it closes.
-		if (OpenRoomOf(match) is { } room)
+		if (Lobby.OpenRoomOf(match) is { } room)
 			return !room.Settings.IsPrivate
 			       || Require(UserPermissions.RoomManageViewPrivate) is null
-			       || TakesPartInOpenRoom(match);
+			       || room.Involves(Actor.Record);
 
 		return !match.Value.IsPrivate
 		       || Require(UserPermissions.RoomManageViewPrivate) is null
-		       || TakesPartInOpenRoom(match)
 		       || await Lobby.Context.Matches.IsVisibleToAsync(match, Actor.Record, cancellationToken);
-	}
-
-	/// <summary>Tells whether the user manages the match's open room or sits in it, which the stored history may not show yet.</summary>
-	private bool TakesPartInOpenRoom(MatchRecord match)
-	{
-		return OpenRoomOf(match) is { } room
-		       && (room.Authority.IsManagedBy(Actor.Record) || room.Slots.Find(Actor.Record) is not null);
-	}
-
-	/// <summary>Finds the open room that runs a match: a room's id is not its match's id.</summary>
-	private Room? OpenRoomOf(MatchRecord match)
-	{
-		return Lobby.Rooms.Values.FirstOrDefault(room => !room.IsClosed && room.Match.Id == match.Id);
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>
@@ -249,7 +170,7 @@ public readonly struct ScopedLobby
 		if (Actor is not StableConnection stable)
 			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
 
-		if (Lobby.MutableWatchers.Add(stable)) Lobby.Context.Events.Publish(new LobbyWatcherJoined(stable));
+		Lobby.Watch(stable);
 	}
 
 	/// <summary>Stops watching the multiplayer lobby; doing it again does nothing.</summary>

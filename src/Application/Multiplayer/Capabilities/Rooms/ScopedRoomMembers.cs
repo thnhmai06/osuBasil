@@ -28,30 +28,9 @@ public readonly struct ScopedRoomMembers
 	/// </returns>
 	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
 	{
-		var room = _scoped.Room;
 		return Task.FromResult(_scoped.Actor is StableConnection actor
-			? Claiming(actor, () => room.Join(actor, password))
+			? _scoped.Room.JoinClaiming(actor, password)
 			: RoomOutcome.NotInRoom);
-	}
-
-	/// <summary>Runs a seating of a player while the lobby knows that this room is about to seat them.</summary>
-	/// <param name="player">The player to be seated.</param>
-	/// <param name="seat">The seating.</param>
-	/// <returns>InAnotherRoom when another room is seating the same player right now; otherwise the seating's result.</returns>
-	private Result<RoomOutcome> Claiming(StableConnection player, Func<Result<RoomOutcome>> seat)
-	{
-		var room = _scoped.Room;
-		var lobby = room.Context.Lobby;
-		if (!lobby.TryClaim(player, room)) return RoomOutcome.InAnotherRoom;
-
-		try
-		{
-			return seat();
-		}
-		finally
-		{
-			lobby.Release(player, room);
-		}
 	}
 
 	/// <summary>Removes the caller from the room.</summary>

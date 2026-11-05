@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Basil.Application.Common;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Persistence;
@@ -8,6 +10,7 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Common;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Registry;
@@ -293,6 +296,105 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	internal bool TooManyRooms(UserRecord creator)
 	{
 		return _rooms.Values.Count(room => creator.Equals(room.Authority.Creator)) >= MaxRoomsPerCreator;
+	}
+
+	/// <summary>Gets whether opening rooms is locked.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns><see langword="true" /> while room creation is locked.</returns>
+	internal async Task<bool> IsRoomCreationLockedAsync(CancellationToken cancellationToken)
+	{
+		return (await Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Rooms);
+	}
+
+	/// <summary>Opens a room for a new match and registers it.</summary>
+	/// <param name="creator">The user who creates the room.</param>
+	/// <param name="seat">The creator's osu! client to seat as host, or <see langword="null" /> to seat nobody.</param>
+	/// <param name="name">The room's name.</param>
+	/// <param name="password">The room's password, or an empty string for none.</param>
+	/// <param name="isPrivate">Whether the room is private.</param>
+	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
+	/// <param name="seatsFromGame">Whether the room is opened in game, which fails when the client already plays in a room.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The opened room and Ok; otherwise no room and AlreadyInRoom, InvalidSettings or NoRoomId.</returns>
+	internal async Task<(Room? Room, RoomOutcome Outcome)> OpenRoomAsync(UserRecord creator, StableConnection? seat,
+		bool seatsFromGame, string name, string password, bool isPrivate, MatchSettings? settings,
+		CancellationToken cancellationToken)
+	{
+		var now = Context.Clock.GetUtcNow();
+		if (seatsFromGame && RoomOf(seat!) is not null) return (null, RoomOutcome.AlreadyInRoom);
+
+		if (!MatchData.IsValidName(name)) return (null, RoomOutcome.InvalidSettings);
+
+		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
+		if (Reserve() is not { } id) return (null, RoomOutcome.NoRoomId);
+
+		var match = await CreateMatchAsync(id, name, creator, isPrivate, now, cancellationToken);
+		var room = Establish(id, match, settings, password, seat);
+
+		var closesAt = !room.Slots.Any(slot => slot.Player is not null) ? StartEmptyClock(room) : (DateTimeOffset?)null;
+		Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
+		return (room, RoomOutcome.Ok);
+	}
+
+	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
+		DateTimeOffset now, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return await Context.Matches.CreateAsync(new MatchData
+			{
+				Name = name,
+				StartedAt = now,
+				EndedAt = null,
+				Creator = creator,
+				IsPrivate = isPrivate
+			}, cancellationToken);
+		}
+		catch
+		{
+			Release(id);
+			throw;
+		}
+	}
+
+	private Room Establish(int id, MatchRecord match, MatchSettings? settings, string password,
+		StableConnection? seat)
+	{
+		Room room;
+		using (Enter())
+		{
+			var context = new RoomContext(Context.Clock, Context.RoomEvents, this, Context.Users, Context.Settings);
+			room = new Room(id, match, settings ?? new MatchSettings(), context);
+			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
+			if (seat is not null && RoomOf(seat) is null && TryClaim(seat, room))
+				try
+				{
+					SeatCreator(room, seat);
+				}
+				finally
+				{
+					Release(seat, room);
+				}
+
+			Add(room);
+		}
+
+		return room;
+	}
+
+	/// <summary>Finds the open room that runs a match: a room's id is not its match's id.</summary>
+	/// <param name="match">The match.</param>
+	/// <returns>The open room, or <see langword="null" /> when the match has no open room.</returns>
+	internal Room? OpenRoomOf(MatchRecord match)
+	{
+		return Rooms.Values.FirstOrDefault(room => !room.IsClosed && room.Match.Id == match.Id);
+	}
+
+	/// <summary>Starts watching the lobby for an osu! client.</summary>
+	/// <param name="connection">The client that watches.</param>
+	internal void Watch(StableConnection connection)
+	{
+		if (MutableWatchers.Add(connection)) Context.Events.Publish(new LobbyWatcherJoined(connection));
 	}
 
 	/// <summary>Seats an online creator in a room and makes them its host.</summary>

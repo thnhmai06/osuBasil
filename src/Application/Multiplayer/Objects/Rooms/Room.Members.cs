@@ -9,6 +9,33 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 /// <content>Joining, seating, removing and banning players, and inviting users, as the actor's transitions.</content>
 public sealed partial class Room
 {
+	/// <summary>Tells whether a user manages the room or sits in it.</summary>
+	/// <param name="user">The user.</param>
+	/// <returns><see langword="true" /> when the user manages the room or has a seat.</returns>
+	internal bool Involves(UserRecord user)
+	{
+		return Authority.IsManagedBy(user) || Slots.Find(user) is not null;
+	}
+
+	/// <summary>Seats a connection that asked to join while holding its place in the lobby.</summary>
+	/// <param name="actor">The connection joining.</param>
+	/// <param name="password">The password the player supplied.</param>
+	/// <returns>InAnotherRoom when the connection is already being seated in a room; otherwise what <see cref="Join" /> returns.</returns>
+	internal Result<RoomOutcome> JoinClaiming(StableConnection actor, string password)
+	{
+		var lobby = Context.Lobby;
+		if (!lobby.TryClaim(actor, this)) return RoomOutcome.InAnotherRoom;
+
+		try
+		{
+			return Join(actor, password);
+		}
+		finally
+		{
+			lobby.Release(actor, this);
+		}
+	}
+
 	/// <summary>Seats a connection that asked to join, after the room's own checks.</summary>
 	/// <param name="actor">The connection joining.</param>
 	/// <param name="password">The password the player supplied.</param>
