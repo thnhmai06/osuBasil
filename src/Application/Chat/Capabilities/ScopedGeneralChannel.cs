@@ -52,24 +52,7 @@ public readonly struct ScopedGeneralChannel
 	{
 		if (Require(UserPermissions.ChatManageChannels) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
-		using (Channel.Enter())
-		{
-			if (Channel.IsClosed) return ChannelOutcome.Closed;
-			var target = Channel.Record.Value;
-
-			Validate(change);
-			Apply(target, change);
-
-			var now = Channel.Context.Clock.GetUtcNow();
-			var channel = Channel;
-			var removed = channel.Members.Where(member => !channel.CanRead(member, now)).ToArray();
-			foreach (var member in removed)
-				Channel.MutableMembers.Remove(member);
-			Channel.Context.Events.Publish(new ChannelConfigured(Channel, change, removed));
-		}
-
-		await Channel.Context.Channels.CreateOrUpdateAsync(Channel.Record, cancellationToken);
-		return ChannelOutcome.Ok;
+		return await Channel.ConfigureAsync(change, cancellationToken);
 	}
 
 	/// <summary>Closes and deletes this general channel.</summary>
@@ -80,24 +63,6 @@ public readonly struct ScopedGeneralChannel
 	{
 		if (Require(UserPermissions.ChatManageChannels) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
-		Channel.Close();
-		await Channel.Context.Channels.DeleteAsync(Channel.Record, cancellationToken);
-		return ChannelOutcome.Ok;
-	}
-
-	private static void Validate(GeneralChannelChange change)
-	{
-		if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfUndefined();
-		if (change.WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfUndefined();
-		change.Topic?.ThrowIfHasNul();
-	}
-
-	private static void Apply(GeneralChannelData target, GeneralChannelChange change)
-	{
-		if (change.Topic is { } topic) target.Topic = topic;
-		if (change.ReadPrivileges is { } read) target.ReadPrivileges = read;
-		if (change.WritePrivileges is { } write) target.WritePrivileges = write;
-		if (change.AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;
-		if (change.Visible is { } visible) target.Visible = visible;
+		return await Channel.DeleteAsync(cancellationToken);
 	}
 }

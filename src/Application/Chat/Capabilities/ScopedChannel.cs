@@ -49,27 +49,7 @@ public readonly struct ScopedChannel
 	/// </remarks>
 	public Result<ChannelOutcome> Join()
 	{
-		using var scope = Channel.Enter();
-		if (Channel.IsClosed) return ChannelOutcome.Closed;
-		if (!Channel.CanRead(Actor, Channel.Context.Clock.GetUtcNow())) return ChannelOutcome.AccessDenied;
-		if (Channel.Members.Contains(Actor)) return ChannelOutcome.AlreadyMember;
-
-		Connection? replaced = null;
-		if (Actor.Type.ReplacesOnJoin())
-		{
-			var self = Actor;
-			replaced = Channel.Members.FirstOrDefault(member =>
-				member.Record.Equals(self.Record) && member.Type == self.Type);
-			if (replaced is not null)
-			{
-				if (replaced.IsOpen) return ChannelOutcome.AlreadyMember;
-				Channel.MutableMembers.Remove(replaced);
-			}
-		}
-
-		Channel.MutableMembers.Add(Actor);
-		Channel.Context.Events.Publish(new ChannelMemberJoined(Channel, Actor, replaced));
-		return ChannelOutcome.Ok;
+		return Channel.Join(Actor);
 	}
 
 	/// <summary>Removes the scoped connection from the channel.</summary>
@@ -77,10 +57,7 @@ public readonly struct ScopedChannel
 	/// <remarks>A successful part announces <see cref="ChannelMemberParted" />.</remarks>
 	public Result<ChannelOutcome> Part()
 	{
-		using var scope = Channel.Enter();
-		if (!Channel.MutableMembers.Remove(Actor)) return ChannelOutcome.NotMember;
-		Channel.Context.Events.Publish(new ChannelMemberParted(Channel, Actor, false));
-		return ChannelOutcome.Ok;
+		return Channel.Part(Actor);
 	}
 
 	/// <summary>Posts a message to the channel.</summary>
@@ -107,40 +84,7 @@ public readonly struct ScopedChannel
 		if (Require(Channel is PmChannel ? UserPermissions.ChatPostPrivate : UserPermissions.ChatPost) is { } missing)
 			return Result<ChannelOutcome>.Denied(missing);
 
-		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
-		if (!Message.IsValidContent(text)) return ChannelOutcome.InvalidText;
-		if (Channel is not PmChannel && !Channel.Members.Contains(Actor)) return ChannelOutcome.NotMember;
-
-		var now = Channel.Context.Clock.GetUtcNow();
-		if (!Channel.CanWrite(Actor, now)) return ChannelOutcome.AccessDenied;
-
-		if (Channel is PmChannel pm && await PrivateMessageRefusalAsync(pm, now, cancellationToken) is { } refusal)
-			return refusal;
-
-		if (Channel.IsClosed) return ChannelOutcome.Closed;
-
-		Channel.PostMessage(Actor.Record, text, notice, now, Actor);
-		return ChannelOutcome.Ok;
-	}
-
-	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		if (!Rights.Allows(UserPermissions.ChatManageMessageAnyone))
-		{
-			var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
-			var self = Actor.Record;
-			var blocked = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Block && relationship.Target.Equals(self));
-			var friend = relationships.Any(relationship =>
-				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(self));
-			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
-		}
-
-		if (!pm.Owner.Record.IsFriendOfEveryone() &&
-		    !pm.Owner.EffectivePermissions(now).Allows(UserPermissions.ChatPostPrivate))
-			return ChannelOutcome.TargetSilenced;
-
-		return null;
+		return await Channel.PostAsync(Actor, text, notice, Rights.Allows(UserPermissions.ChatManageMessageAnyone),
+			cancellationToken);
 	}
 }

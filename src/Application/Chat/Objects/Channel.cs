@@ -134,6 +134,93 @@ public abstract class Channel
 		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, actor));
 	}
 
+	/// <summary>Adds a connection to the channel's members.</summary>
+	/// <param name="connection">The connection that joins.</param>
+	/// <returns>Ok, Closed, AccessDenied or AlreadyMember.</returns>
+	internal ChannelOutcome Join(Connection connection)
+	{
+		using var scope = Enter();
+		if (IsClosed) return ChannelOutcome.Closed;
+		if (!CanRead(connection, Context.Clock.GetUtcNow())) return ChannelOutcome.AccessDenied;
+		if (Members.Contains(connection)) return ChannelOutcome.AlreadyMember;
+
+		Connection? replaced = null;
+		if (connection.Type.ReplacesOnJoin())
+		{
+			replaced = Members.FirstOrDefault(member =>
+				member.Record.Equals(connection.Record) && member.Type == connection.Type);
+			if (replaced is not null)
+			{
+				if (replaced.IsOpen) return ChannelOutcome.AlreadyMember;
+				MutableMembers.Remove(replaced);
+			}
+		}
+
+		MutableMembers.Add(connection);
+		Context.Events.Publish(new ChannelMemberJoined(this, connection, replaced));
+		return ChannelOutcome.Ok;
+	}
+
+	/// <summary>Removes a connection from the channel's members.</summary>
+	/// <param name="connection">The connection that leaves.</param>
+	/// <returns>Ok, or NotMember when it was not a member.</returns>
+	internal ChannelOutcome Part(Connection connection)
+	{
+		using var scope = Enter();
+		if (!MutableMembers.Remove(connection)) return ChannelOutcome.NotMember;
+		Context.Events.Publish(new ChannelMemberParted(this, connection, false));
+		return ChannelOutcome.Ok;
+	}
+
+	/// <summary>Posts a message from a connection to the channel.</summary>
+	/// <param name="actor">The connection that posts.</param>
+	/// <param name="text">The message text.</param>
+	/// <param name="notice">Whether the message is a notice.</param>
+	/// <param name="mayMessageAnyone">Whether the poster may message a private-message recipient who blocks or restricts them.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, Closed, Empty, InvalidText, NotMember, AccessDenied, Blocked or TargetSilenced.</returns>
+	internal async Task<ChannelOutcome> PostAsync(Connection actor, string text, bool notice, bool mayMessageAnyone,
+		CancellationToken cancellationToken)
+	{
+		if (IsClosed) return ChannelOutcome.Closed;
+		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
+		if (!Message.IsValidContent(text)) return ChannelOutcome.InvalidText;
+		if (this is not PmChannel && !Members.Contains(actor)) return ChannelOutcome.NotMember;
+
+		var now = Context.Clock.GetUtcNow();
+		if (!CanWrite(actor, now)) return ChannelOutcome.AccessDenied;
+
+		if (this is PmChannel pm &&
+		    await PrivateMessageRefusalAsync(pm, actor, mayMessageAnyone, now, cancellationToken) is { } refusal)
+			return refusal;
+
+		if (IsClosed) return ChannelOutcome.Closed;
+
+		PostMessage(actor.Record, text, notice, now, actor);
+		return ChannelOutcome.Ok;
+	}
+
+	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, Connection actor,
+		bool mayMessageAnyone, DateTimeOffset now, CancellationToken cancellationToken)
+	{
+		if (!mayMessageAnyone)
+		{
+			var relationships = await Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
+			var self = actor.Record;
+			var blocked = relationships.Any(relationship =>
+				relationship.Type == RelationshipType.Block && relationship.Target.Equals(self));
+			var friend = relationships.Any(relationship =>
+				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(self));
+			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
+		}
+
+		if (!pm.Owner.Record.IsFriendOfEveryone() &&
+		    !pm.Owner.EffectivePermissions(now).Allows(UserPermissions.ChatPostPrivate))
+			return ChannelOutcome.TargetSilenced;
+
+		return null;
+	}
+
 	/// <summary>Closes this channel and removes every member.</summary>
 	internal void Close()
 	{
