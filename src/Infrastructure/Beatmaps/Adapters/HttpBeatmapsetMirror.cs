@@ -138,25 +138,16 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 		};
 	}
 
-	// Filled by the JSON serializer: the setters must stay.
-	// Filled by the JSON serializer: the setters must stay.
-	// Filled by the JSON serializer: the properties stay settable (init) although the IDE suggests get-only.
-	private sealed class RawSet
-	{
-		public string Artist { get; } = "";
-		public string Title { get; } = "";
-		public string Creator { get; } = "";
-		public string LastUpdate { get; } = "";
-		public int SetId { get; init; }
-		public JsonElement HasVideo { get; init; }
-		public List<RawBeatmap>? ChildrenBeatmaps { get; init; }
-	}
+	// Positional records, which the serializer fills through the constructor: an IDE cleanup cannot turn their
+	// properties into get-only ones, as it did with settable classes.
+	private sealed record RawSet(
+		int SetId = 0,
+		string Artist = "",
+		string Title = "",
+		string Creator = "",
+		string LastUpdate = "",
+		JsonElement HasVideo = default,
+		List<RawBeatmap>? ChildrenBeatmaps = null);
 
-	private sealed class RawBeatmap
-	{
-		public int BeatmapId { get; init; }
-		public string DiffName { get; } = "";
-		public double DifficultyRating { get; init; }
-		public int Mode { get; init; }
-	}
+	private sealed record RawBeatmap(int BeatmapId = 0, string DiffName = "", double DifficultyRating = 0, int Mode = 0);
 }
