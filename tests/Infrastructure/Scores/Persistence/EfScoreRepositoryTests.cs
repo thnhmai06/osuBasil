@@ -55,6 +55,69 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
+	public async Task A_score_and_its_play_are_stored_together()
+	{
+		var player = await CreatePlayerAsync("played_once");
+
+		var (score, stats) = await Scores.CreateWithPlayAsync(
+			StoredScores.Data(player, StoredScores.Hash("beatmap_one"), 1000, First), 700,
+			TestContext.Current.CancellationToken);
+
+		Assert.NotNull(await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken));
+		Assert.Equal((1, 1000, 700), (stats.PlayCount, stats.TotalScore, stats.RankedScore));
+	}
+
+	[Fact]
+	public async Task A_score_is_not_stored_when_its_play_cannot_be_added_to_the_statistics()
+	{
+		var player = await CreatePlayerAsync("at_the_limit");
+		var data = StoredScores.Data(player, StoredScores.Hash("beatmap_one"), 1000, First);
+		await Get<IUserStatsRepository>().CreateOrUpdateAsync(
+			new UserStats { UserId = player.Id, Mode = data.Mode, TotalScore = long.MaxValue },
+			TestContext.Current.CancellationToken);
+
+		await Assert.ThrowsAnyAsync<Exception>(() =>
+			Scores.CreateWithPlayAsync(data, 0, TestContext.Current.CancellationToken));
+
+		var stored = await Scores.ListAsync(new ScoreQuery(player), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
+		Assert.Empty(stored.Items);
+	}
+
+	[Fact]
+	public async Task Scores_are_got_by_their_ids_in_ascending_order_and_unknown_ids_are_left_out()
+	{
+		var player = await CreatePlayerAsync("got_many");
+		var first = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
+		var second = await CreateScoreAsync(player, StoredScores.Hash("beatmap_two"), 2000, Second);
+
+		var got = await Scores.GetManyAsync([second.Id, 99_999_999, first.Id], TestContext.Current.CancellationToken);
+
+		Assert.Equal(new[] { first.Id, second.Id }, got.Select(score => score.Id));
+	}
+
+	[Fact]
+	public async Task Getting_many_scores_reads_no_more_than_the_ceiling()
+	{
+		var player = await CreatePlayerAsync("got_ceiling");
+		var original = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select * from scores where id = @id",
+			new Dictionary<string, object?> { ["@id"] = original.Id }, TestContext.Current.CancellationToken);
+		var ids = Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g => 100_000_000 + g).ToArray();
+		await StoredRows.InsertAsync(ConnectionString, "scores", ids.Select(id =>
+		{
+			var copy = new Dictionary<string, object?>(rows[0].Values);
+			copy["id"] = id;
+			copy["checksum"] = id.ToString("x32");
+			return (IReadOnlyDictionary<string, object?>)copy;
+		}), TestContext.Current.CancellationToken);
+
+		var got = await Scores.GetManyAsync(ids, TestContext.Current.CancellationToken);
+
+		Assert.Equal(ListLimits.Ceiling, got.Count);
+	}
+
+	[Fact]
 	public async Task A_score_whose_checksum_another_score_has_is_refused()
 	{
 		var player = await CreatePlayerAsync("checksum_player");

@@ -20,7 +20,6 @@ public class LayeringTests
 		["Basil.Host", "Basil.Configuration", "Basil.Documentation", "Basil.Lifetime", "Basil.Logging"];
 
 	private const string Protocol = "Basil.Protocol";
-	private const string Bot = "Basil.Bot";
 	private const string Persistence = @"^Basil\.Application\.\w+\.Persistence";
 	private const string Capabilities = @"^Basil\.Application\.\w+\.Capabilities";
 	private const string Ports = @"^Basil\.Application\.\w+\.Ports";
@@ -33,7 +32,8 @@ public class LayeringTests
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolStable = typeof(Protocol.Stable.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
-	private static readonly Assembly BotAssembly = Assembly.Load(Bot);
+	private static readonly Assembly BotApplication = Assembly.Load("Basil.Application.Bot");
+	private static readonly Assembly BotInfrastructure = Assembly.Load("Basil.Infrastructure.Bot");
 
 	private static readonly string[] ModuleRoots =
 	[
@@ -48,7 +48,7 @@ public class LayeringTests
 	{
 		AssertNoDependency(DomainAssembly,
 		[
-			.. ModuleRoots, .. Host, Protocol, Bot, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore",
+			.. ModuleRoots, .. Host, Protocol, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore",
 			"Npgsql", "Dapper"
 		]);
 	}
@@ -56,7 +56,7 @@ public class LayeringTests
 	[Fact]
 	public void ProtocolStable_DependsOnDomainOnly()
 	{
-		AssertNoDependency(ProtocolStable, [.. ModuleRoots, .. Host, Bot]);
+		AssertNoDependency(ProtocolStable, [.. ModuleRoots, .. Host]);
 	}
 
 	[Fact]
@@ -70,7 +70,7 @@ public class LayeringTests
 	[Fact]
 	public void ProtocolIrc_DependsOnNoOtherProject()
 	{
-		AssertNoDependency(ProtocolIrc, ["Basil.Domain", .. ModuleRoots, .. Host, Bot]);
+		AssertNoDependency(ProtocolIrc, ["Basil.Domain", .. ModuleRoots, .. Host]);
 	}
 
 	[Fact]
@@ -80,7 +80,7 @@ public class LayeringTests
 			.ShouldNot().HaveDependencyOnAny(
 			[
 				.. ObjectNamespaces(), .. ReactionNamespaces(), .. CapabilityNamespaces(), Storage,
-				.. InfrastructureNamespaces(), .. Host, Protocol, Bot
+				.. InfrastructureNamespaces(), .. Host, Protocol
 			]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -168,7 +168,7 @@ public class LayeringTests
 	{
 		foreach (var assembly in ModuleAssemblies.Applications)
 			AssertNoDependency(assembly,
-				["Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. Host, Protocol, Bot]);
+				["Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. Host, Protocol]);
 	}
 
 	[Fact]
@@ -181,22 +181,22 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureProjects_OutsideWorkersAndHandlersDoNotSeeApplicationObjectsHostsOrBot()
+	public void InfrastructureProjects_OutsideWorkersAndHandlersDoNotSeeApplicationObjectsOrHosts()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.DoNotResideInNamespaceMatching(InfrastructureWorkers).And()
 			.DoNotResideInNamespaceMatching(InfrastructureHandlers).ShouldNot()
-			.HaveDependencyOnAny([.. ObjectNamespaces(), .. Host, Protocol, Bot]).GetResult();
+			.HaveDependencyOnAny([.. ObjectNamespaces(), .. Host, Protocol]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
 	[Fact]
-	public void InfrastructureHandlers_DoNotSeeTheHostsOrBot()
+	public void InfrastructureHandlers_DoNotSeeTheHosts()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.ResideInNamespaceMatching(InfrastructureHandlers).ShouldNot()
-			.HaveDependencyOnAny([.. Host, Protocol, Bot]).GetResult();
+			.HaveDependencyOnAny([.. Host, Protocol]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
@@ -239,7 +239,7 @@ public class LayeringTests
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.ResideInNamespaceMatching(InfrastructureWorkers).ShouldNot()
-			.HaveDependencyOnAny([.. CapabilityNamespaces(), .. Host, Protocol, Bot]).GetResult();
+			.HaveDependencyOnAny([.. CapabilityNamespaces(), .. Host, Protocol]).GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
@@ -255,9 +255,9 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void Bot_DoesNotSeeInfrastructureHostsOrUnscopedCapabilities()
+	public void BotApplication_DoesNotSeeInfrastructureHostsOrUnscopedCapabilities()
 	{
-		AssertNoDependency(BotAssembly,
+		AssertNoDependency(BotApplication,
 		[
 			"Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. NonScopedCapabilityTypeNames(), .. Host,
 			Protocol
@@ -265,11 +265,22 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void Bot_DoesDependOnTheMessagesOfApplication_PositiveControl()
+	public void BotInfrastructure_DoesNotSeeTheInfrastructureOfOtherModulesHostsOrUnscopedCapabilities()
+	{
+		AssertNoDependency(BotInfrastructure,
+		[
+			"Basil.Infrastructure.Common",
+			.. ModuleAssemblies.Modules.Where(module => module != "Bot").Select(module => $"Basil.Infrastructure.{module}"),
+			.. NonScopedCapabilityTypeNames(), .. Host, Protocol
+		]);
+	}
+
+	[Fact]
+	public void BotInfrastructure_DoesDependOnTheMessagesOfApplication_PositiveControl()
 	{
 		var startRound = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Single(type => type.Name == "StartRound");
-		var result = Types.InAssembly(BotAssembly).Should().NotHaveDependencyOnAny(startRound.FullName!).GetResult();
+		var result = Types.InAssembly(BotInfrastructure).Should().NotHaveDependencyOnAny(startRound.FullName!).GetResult();
 
 		Assert.False(result.IsSuccessful);
 	}
@@ -342,7 +353,8 @@ public class LayeringTests
 	/// <summary>The sources whose entry points only send messages: they never scope an object themselves.</summary>
 	private static readonly string[] MessageOnlyHosts =
 		[Path.Combine("Hosts", "Irc"), Path.Combine("Hosts", "Stable"), Path.Combine("Hosts", "Rest"),
-		 Path.Combine("Hosts", "Cli"), Path.Combine("Hosts", "Shared"), "Bot"];
+		 Path.Combine("Hosts", "Cli"), Path.Combine("Hosts", "Shared"),
+		 Path.Combine("Application", "Bot"), Path.Combine("Infrastructure", "Bot")];
 
 	[Fact]
 	public void MessageOnlyHosts_DoNotCallScopeTo()

@@ -37,7 +37,8 @@
 		<ProjectReference Include="..\Hosts\Irc\Basil.Host.Irc.csproj"/>
 		<ProjectReference Include="..\Hosts\Rest\Basil.Host.Rest.csproj"/>
 		<ProjectReference Include="..\Hosts\Cli\Basil.Host.Cli.csproj"/>
-		<ProjectReference Include="..\Bot\Basil.Bot.csproj"/>
+		<ProjectReference Include="..\Application\Bot\Basil.Application.Bot.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Bot\Basil.Infrastructure.Bot.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Anticheat\Basil.Infrastructure.Anticheat.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Authentication\Basil.Infrastructure.Authentication.csproj"/>
 		<ProjectReference Include="..\Infrastructure\Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>

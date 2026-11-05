@@ -23,7 +23,8 @@
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Common\Basil.Application.Common.csproj"/>
 		<ProjectReference Include="..\..\..\src\Basil\Basil.csproj"/>
-		<ProjectReference Include="..\..\..\src\Bot\Basil.Bot.csproj"/>
+		<ProjectReference Include="..\..\..\src\Application\Bot\Basil.Application.Bot.csproj"/>
+		<ProjectReference Include="..\..\..\src\Infrastructure\Bot\Basil.Infrastructure.Bot.csproj"/>
 	</ItemGroup>
 
 </Project>

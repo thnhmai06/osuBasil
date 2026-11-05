@@ -1,5 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
@@ -42,7 +43,7 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 			User = user,
 			Permissions = RestrictionData.Silence,
 			StartsAt = Moment
-		}, TestContext.Current.CancellationToken);
+		}, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.True(restriction.Id >= 1);
 	}
@@ -90,7 +91,7 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 		var created = await CreateAsync(user, Moment);
 		created.Value.Permissions = RestrictionData.Restricted;
 
-		await Restrictions.UpdateAsync(created, TestContext.Current.CancellationToken);
+		await Restrictions.UpdateAsync(created, cancellationToken: TestContext.Current.CancellationToken);
 
 		var found = await Restrictions.GetAsync(created.Id, TestContext.Current.CancellationToken);
 		Assert.Equal(RestrictionData.Restricted, found!.Value.Permissions);
@@ -104,7 +105,7 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 		var created = await CreateAsync(user, Moment);
 		created.Value.EndsAt = Moment.AddHours(2);
 
-		await Restrictions.UpdateAsync(created, TestContext.Current.CancellationToken);
+		await Restrictions.UpdateAsync(created, cancellationToken: TestContext.Current.CancellationToken);
 
 		var found = await Restrictions.GetAsync(created.Id, TestContext.Current.CancellationToken);
 		Assert.Equal(Moment.AddHours(2), found!.Value.EndsAt);
@@ -118,7 +119,7 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 		var created = await CreateAsync(user, Moment);
 		created.Value.EndsAt = Moment.AddHours(2);
 		created.Value.Permissions = RestrictionData.Restricted;
-		await Restrictions.UpdateAsync(created, TestContext.Current.CancellationToken);
+		await Restrictions.UpdateAsync(created, cancellationToken: TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select permissions, ends_at from restrictions where id = @id",
@@ -136,7 +137,7 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		var created = await CreateAsync(user, Moment);
 
-		await Restrictions.DeleteAsync(created, TestContext.Current.CancellationToken);
+		await Restrictions.DeleteAsync(created, cancellationToken: TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select id from restrictions where id = @id",
@@ -174,6 +175,59 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 		Assert.Equal(new[] { first.Id, second.Id }, listed.Select(restriction => restriction.Id));
 	}
 
+	[Fact]
+	public async Task A_restriction_is_not_stored_when_its_moderation_entry_is_refused()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Restrictions.CreateAsync(
+			new RestrictionData { User = user, Permissions = RestrictionData.Silence, StartsAt = Moment },
+			UnstorableEntry(user), TestContext.Current.CancellationToken));
+
+		Assert.Empty(await Restrictions.ListAsync(user, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task A_restriction_is_not_changed_when_its_moderation_entry_is_refused()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var created = await CreateAsync(user, Moment);
+		created.Value.EndsAt = Moment.AddHours(1);
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Restrictions.UpdateAsync(created, UnstorableEntry(user),
+			TestContext.Current.CancellationToken));
+
+		var stored = await Restrictions.GetAsync(created.Id, TestContext.Current.CancellationToken);
+		Assert.Null(stored!.Value.EndsAt);
+	}
+
+	[Fact]
+	public async Task A_restriction_is_not_removed_when_its_moderation_entry_is_refused()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var created = await CreateAsync(user, Moment);
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Restrictions.DeleteAsync(created, UnstorableEntry(user),
+			TestContext.Current.CancellationToken));
+
+		Assert.NotNull(await Restrictions.GetAsync(created.Id, TestContext.Current.CancellationToken));
+	}
+
+	/// <summary>An entry the database refuses, because the account that acted is not stored.</summary>
+	private static ModerationData UnstorableEntry(UserRecord target)
+	{
+		return new ModerationData
+		{
+			Action = ModerationAction.Restrict,
+			Actor = new UserRecord { Id = 4242, Value = new UserData { Name = "not_stored" } },
+			Target = target,
+			Timestamp = Moment
+		};
+	}
+
 	/// <summary>Creates a restriction of an account.</summary>
 	/// <param name="user">The restricted account.</param>
 	/// <param name="startsAt">The moment the restriction starts.</param>
@@ -184,6 +238,6 @@ public sealed class EfRestrictionRepositoryTests(PersistenceFixture container) :
 			User = user,
 			Permissions = RestrictionData.Silence,
 			StartsAt = startsAt
-		}, TestContext.Current.CancellationToken);
+		}, cancellationToken: TestContext.Current.CancellationToken);
 	}
 }

@@ -2,12 +2,12 @@
 	<Folder Name="/Sources/">
 		<Project Path="src/Domain/Basil.Domain.csproj"/>
 		<Project Path="src/Basil/Basil.csproj"/>
-		<Project Path="src/Bot/Basil.Bot.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Application/">
 		<Project Path="src/Application/Anticheat/Basil.Application.Anticheat.csproj"/>
 		<Project Path="src/Application/Authentication/Basil.Application.Authentication.csproj"/>
 		<Project Path="src/Application/Beatmaps/Basil.Application.Beatmaps.csproj"/>
+		<Project Path="src/Application/Bot/Basil.Application.Bot.csproj"/>
 		<Project Path="src/Application/Chat/Basil.Application.Chat.csproj"/>
 		<Project Path="src/Application/Common/Basil.Application.Common.csproj"/>
 		<Project Path="src/Application/Content/Basil.Application.Content.csproj"/>
@@ -21,6 +21,7 @@
 		<Project Path="src/Infrastructure/Anticheat/Basil.Infrastructure.Anticheat.csproj"/>
 		<Project Path="src/Infrastructure/Authentication/Basil.Infrastructure.Authentication.csproj"/>
 		<Project Path="src/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.csproj"/>
+		<Project Path="src/Infrastructure/Bot/Basil.Infrastructure.Bot.csproj"/>
 		<Project Path="src/Infrastructure/Chat/Basil.Infrastructure.Chat.csproj"/>
 		<Project Path="src/Infrastructure/Common/Basil.Infrastructure.Common.csproj"/>
 		<Project Path="src/Infrastructure/Content/Basil.Infrastructure.Content.csproj"/>
@@ -56,6 +57,7 @@
 	</Folder>
 	<Folder Name="/Tests/Application/">
 		<Project Path="tests/Application/Beatmaps/Basil.Application.Beatmaps.Tests.csproj"/>
+		<Project Path="tests/Application/Bot/Basil.Application.Bot.Tests.csproj"/>
 		<Project Path="tests/Application/Chat/Basil.Application.Chat.Tests.csproj"/>
 		<Project Path="tests/Application/Common/Basil.Application.Common.Tests.csproj"/>
 		<Project Path="tests/Application/Content/Basil.Application.Content.Tests.csproj"/>
@@ -79,6 +81,7 @@
 		<Project Path="tests/Infrastructure/Anticheat/Basil.Infrastructure.Anticheat.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Authentication/Basil.Infrastructure.Authentication.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Beatmaps/Basil.Infrastructure.Beatmaps.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Bot/Basil.Infrastructure.Bot.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Chat/Basil.Infrastructure.Chat.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Common/Basil.Infrastructure.Common.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Content/Basil.Infrastructure.Content.Tests.csproj"/>
@@ -86,9 +89,6 @@
 		<Project Path="tests/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Scores/Basil.Infrastructure.Scores.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Users/Basil.Infrastructure.Users.Tests.csproj"/>
-	</Folder>
-	<Folder Name="/Tests/Bot/">
-		<Project Path="tests/Bot/Basil.Bot.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Domain/">
 		<Project Path="tests/Domain/Basil.Domain.Tests.csproj"/>

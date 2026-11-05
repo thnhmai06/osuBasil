@@ -1,5 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace Basil.Infrastructure.Users.Persistence;
 internal sealed class EfRestrictionRepository(DatabaseSession database) : IRestrictionRepository
 {
 	/// <inheritdoc />
-	public async Task<UserRestriction> CreateAsync(RestrictionData data,
+	public async Task<UserRestriction> CreateAsync(RestrictionData data, ModerationData? log = null,
 		CancellationToken cancellationToken = default)
 	{
 		var row = new RestrictionRow
@@ -20,35 +21,44 @@ internal sealed class EfRestrictionRepository(DatabaseSession database) : IRestr
 			StartsAt = data.StartsAt.ToUniversalTime(),
 			EndsAt = data.EndsAt?.ToUniversalTime()
 		};
-		await database.WriteAsync(async (UsersDbContext context, CancellationToken token) =>
+		await database.TransactAsync(async (UsersDbContext context, CancellationToken token) =>
 		{
 			row.Id = (int)await IdCounters.NextAsync(context, "restriction", token);
 			context.Restrictions.Add(row);
+			if (log is not null) await EfModerationLogRepository.AddAsync(context, log, token);
 		}, cancellationToken);
 
 		return new UserRestriction { Id = row.Id, Value = data };
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(UserRestriction restriction, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(UserRestriction restriction, ModerationData? log = null,
+		CancellationToken cancellationToken = default)
 	{
 		var id = restriction.Id;
 		var permissions = (long)restriction.Value.Permissions;
 		var endsAt = restriction.Value.EndsAt?.ToUniversalTime();
-		return database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Restrictions
-			.Where(row => row.Id == id)
-			.ExecuteUpdateAsync(set => set
-				.SetProperty(row => row.Permissions, permissions)
-				.SetProperty(row => row.EndsAt, endsAt), token), cancellationToken);
+		return database.TransactAsync(async (UsersDbContext context, CancellationToken token) =>
+		{
+			await context.Restrictions
+				.Where(row => row.Id == id)
+				.ExecuteUpdateAsync(set => set
+					.SetProperty(row => row.Permissions, permissions)
+					.SetProperty(row => row.EndsAt, endsAt), token);
+			if (log is not null) await EfModerationLogRepository.AddAsync(context, log, token);
+		}, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(UserRestriction restriction, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(UserRestriction restriction, ModerationData? log = null,
+		CancellationToken cancellationToken = default)
 	{
 		var id = restriction.Id;
-		return database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Restrictions
-			.Where(row => row.Id == id)
-			.ExecuteDeleteAsync(token), cancellationToken);
+		return database.TransactAsync(async (UsersDbContext context, CancellationToken token) =>
+		{
+			await context.Restrictions.Where(row => row.Id == id).ExecuteDeleteAsync(token);
+			if (log is not null) await EfModerationLogRepository.AddAsync(context, log, token);
+		}, cancellationToken);
 	}
 
 	/// <inheritdoc />

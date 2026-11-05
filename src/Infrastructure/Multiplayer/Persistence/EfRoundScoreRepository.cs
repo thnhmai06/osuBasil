@@ -37,10 +37,9 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 			.Take(ListLimits.Ceiling)
 			.ToListAsync(cancellationToken), cancellationToken);
 
-		var result = new List<RoundScore>(rows.Count);
-		foreach (var row in rows)
-			if (await scores.GetAsync(row.ScoreId, cancellationToken) is { } score)
-				result.Add(new RoundScore(score, round, row.Team is { } team ? (GameTeam)team : null));
-		return result;
+		var found = (await scores.GetManyAsync([.. rows.Select(row => row.ScoreId)], cancellationToken))
+			.ToDictionary(score => score.Id);
+		return [.. rows.Where(row => found.ContainsKey(row.ScoreId)).Select(row =>
+			new RoundScore(found[row.ScoreId], round, row.Team is { } team ? (GameTeam)team : null))];
 	}
 }

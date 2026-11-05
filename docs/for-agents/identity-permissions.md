@@ -50,8 +50,8 @@ touching users, connections, permissions, restrictions or the bot.
   account the server creates and the one id it chooses. The bot is a friend of everybody. Nobody can sign in as it or
   act for it (no login, no presentable token, no delegation); its record is fixed (not deleted, restricted, given
   permissions or a password, or disconnected), while its metadata (name, country, avatar) is editable. It never passes a
-  rights check because it never asks for anything; its privileges only decide how a client shows it. It is a module (`Basil.Bot`; target
-  `Application.Bot` and `Infrastructure.Bot`) bound to user id 1. It is online with exactly one Stable and one Irc
+  rights check because it never asks for anything; its privileges only decide how a client shows it. It is a module (`Application.Bot` and
+  `Infrastructure.Bot`) bound to user id 1. It is online with exactly one Stable and one Irc
   connection, opened by the server with no transport behind them, and has no connection type of its own: they are an
   ordinary `StableConnection` and `IrcConnection` that `Connection.IsServerOwned` marks (the connection of bot id 1).
   A server-owned connection is not a game client (`User.Stable` stays `null`), is never indexed by token, never idle-closed
