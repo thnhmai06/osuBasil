@@ -41,11 +41,8 @@ public readonly struct ScopedBeatmapset
 	public async Task<Result<BeatmapsetOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
 		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
-		if (Beatmapset.Record.Locked) return BeatmapsetOutcome.Locked;
 
-		await Beatmapset.Context.Storage.DeleteAsync(Beatmapset.Record, cancellationToken);
-		await Beatmapset.ForgetAsync(cancellationToken);
-		return BeatmapsetOutcome.Ok;
+		return await Beatmapset.DeleteAsync(cancellationToken);
 	}
 
 	/// <summary>Changes whether this beatmapset is shown in public listings.</summary>
@@ -56,11 +53,8 @@ public readonly struct ScopedBeatmapset
 		CancellationToken cancellationToken = default)
 	{
 		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
-		if (Beatmapset.Record.Visible == visible) return BeatmapsetOutcome.Ok;
 
-		Beatmapset.Record.Visible = visible;
-		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
-		return BeatmapsetOutcome.Ok;
+		return await Beatmapset.SetVisibleAsync(visible, cancellationToken);
 	}
 
 	/// <summary>Changes whether this beatmapset is write-locked.</summary>
@@ -71,11 +65,8 @@ public readonly struct ScopedBeatmapset
 		CancellationToken cancellationToken = default)
 	{
 		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
-		if (Beatmapset.Record.Locked == locked) return BeatmapsetOutcome.Ok;
 
-		Beatmapset.Record.Locked = locked;
-		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
-		return BeatmapsetOutcome.Ok;
+		return await Beatmapset.SetLockedAsync(locked, cancellationToken);
 	}
 
 	/// <summary>Changes the ranked status the beatmapset is reported with.</summary>
@@ -86,10 +77,7 @@ public readonly struct ScopedBeatmapset
 		CancellationToken cancellationToken = default)
 	{
 		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
-		if (Beatmapset.Record.Status == status) return BeatmapsetOutcome.Ok;
 
-		Beatmapset.Record.Status = status;
-		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
-		return BeatmapsetOutcome.Ok;
+		return await Beatmapset.SetStatusAsync(status, cancellationToken);
 	}
 }
