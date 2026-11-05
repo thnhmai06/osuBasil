@@ -2,7 +2,6 @@ using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
@@ -103,16 +102,6 @@ public readonly struct ScopedUser
 	public async Task<Result<UserOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
 		if (Guard(UserPermissions.UserManage, true) is { } denied) return denied;
-		if (User.Record.Value.DeletedAt is not null) return UserOutcome.Ok;
-
-		var now = User.Context.Clock.GetUtcNow();
-		await User.StoreChangeAsync(data =>
-		{
-			data.DeletedAt = now;
-			data.Permissions = UserPermissions.None;
-		}, cancellationToken);
-		User.Grants.MarkDeleted(now);
-		User.Context.Registry.CloseAll(User.Record, SessionEndReason.Deleted);
-		return UserOutcome.Ok;
+		return await User.DeleteAsync(cancellationToken);
 	}
 }

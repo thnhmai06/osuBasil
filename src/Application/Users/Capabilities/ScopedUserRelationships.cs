@@ -22,14 +22,7 @@ public readonly struct ScopedUserRelationships
 	/// <returns>The outcome of adding the friend.</returns>
 	public async Task<Result<UserOutcome>> AddFriendAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserOutcome.Self;
-
-		var target = _scoped.User.Record;
-		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
-
-		await _scoped.Actor.User.Relationships.SetAsync(target, RelationshipType.Friend, cancellationToken);
-		return UserOutcome.Ok;
+		return await _scoped.Actor.User.Relationships.AddFriendAsync(_scoped.User.Record, cancellationToken);
 	}
 
 	/// <summary>Removes the target as a friend.</summary>
@@ -37,13 +30,7 @@ public readonly struct ScopedUserRelationships
 	/// <returns>The outcome of removing the friend.</returns>
 	public async Task<Result<UserOutcome>> RemoveFriendAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserOutcome.Self;
-
-		var target = _scoped.User.Record;
-		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
-
-		await _scoped.Actor.User.Relationships.RemoveAsync(target, RelationshipType.Friend, cancellationToken);
-		return UserOutcome.Ok;
+		return await _scoped.Actor.User.Relationships.RemoveFriendAsync(_scoped.User.Record, cancellationToken);
 	}
 
 	/// <summary>Blocks the target.</summary>
@@ -51,14 +38,7 @@ public readonly struct ScopedUserRelationships
 	/// <returns>The outcome of blocking the target.</returns>
 	public async Task<Result<UserOutcome>> BlockAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserOutcome.Self;
-
-		var target = _scoped.User.Record;
-		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
-
-		await _scoped.Actor.User.Relationships.SetAsync(target, RelationshipType.Block, cancellationToken);
-		return UserOutcome.Ok;
+		return await _scoped.Actor.User.Relationships.BlockAsync(_scoped.User.Record, cancellationToken);
 	}
 
 	/// <summary>Removes a block on the target.</summary>
@@ -66,13 +46,7 @@ public readonly struct ScopedUserRelationships
 	/// <returns>The outcome of removing the block.</returns>
 	public async Task<Result<UserOutcome>> UnblockAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserOutcome.Self;
-
-		var target = _scoped.User.Record;
-		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
-
-		await _scoped.Actor.User.Relationships.RemoveAsync(target, RelationshipType.Block, cancellationToken);
-		return UserOutcome.Ok;
+		return await _scoped.Actor.User.Relationships.UnblockAsync(_scoped.User.Record, cancellationToken);
 	}
 
 	/// <summary>Lists the users this account has friended.</summary>
@@ -99,7 +73,6 @@ public readonly struct ScopedUserRelationships
 		// The operator reads any account's lists; everyone else reads their own.
 		if (_scoped is { IsSelf: false, Actor: not OperatorConnection }) return (UserOutcome.NotSelf, []);
 
-		var relationships = await _scoped.User.Relationships.ListAsync(type, cancellationToken);
-		return (UserOutcome.Ok, relationships.Select(relationship => relationship.Target).ToList());
+		return (UserOutcome.Ok, await _scoped.User.Relationships.TargetsAsync(type, cancellationToken));
 	}
 }

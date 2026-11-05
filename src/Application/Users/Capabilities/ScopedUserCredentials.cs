@@ -1,10 +1,7 @@
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Authentication;
 using Basil.Domain.Common;
-using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
@@ -33,45 +30,8 @@ public readonly struct ScopedUserCredentials(ScopedUser scoped)
 		if (scoped.User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPermissions.UserManage, cancellationToken))
 			return UserOutcome.Locked;
-
-		var user = scoped.User;
-		var unchanged = false;
-		if (scoped.IsSelf)
-		{
-			if (currentPasswordHash is not { } current ||
-			    !await user.Credentials.IsPasswordAsync(current, cancellationToken))
-				return UserOutcome.WrongPassword;
-
-			unchanged = current == newPasswordHash;
-		}
-		else if (scoped.Guard(UserPermissions.UserManage, false) is { } denied)
-		{
-			return denied;
-		}
-
-		await user.Credentials.ReplaceAsync(newPasswordHash, cancellationToken);
-		if (unchanged) return UserOutcome.Ok;
-
-		await ScopedUserSessions.CloseCore(user, null, SessionToKeep(includeCurrent),
-			SessionEndReason.CredentialsChanged, cancellationToken);
-		if (!scoped.IsSelf) await LogChangeAsync(user, cancellationToken);
-
-		return UserOutcome.Ok;
-	}
-
-	private Guid? SessionToKeep(bool includeCurrent)
-	{
-		return scoped.IsSelf && !includeCurrent && scoped.Actor is ApiConnection api ? api.Session.Id : null;
-	}
-
-	private async Task LogChangeAsync(User user, CancellationToken cancellationToken)
-	{
-		await user.Context.ModerationLog.AppendAsync(new ModerationData
-		{
-			Action = ModerationAction.ChangePassword,
-			Actor = scoped.Actor.Record,
-			Target = user.Record,
-			Timestamp = user.Context.Clock.GetUtcNow()
-		}, cancellationToken);
+		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
+		return await scoped.User.Credentials.ChangeAsync(newPasswordHash, currentPasswordHash, scoped.Actor,
+			includeCurrent, cancellationToken);
 	}
 }

@@ -1,6 +1,5 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 
@@ -47,7 +46,7 @@ public readonly struct ScopedUserRestrictions
 	/// <returns>The restriction history, oldest first.</returns>
 	public Task<IReadOnlyList<UserRestriction>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return _scoped.User.Context.Restrictions.ListAsync(_scoped.User.Record, cancellationToken);
+		return _scoped.User.Restrictions.ListAsync(cancellationToken);
 	}
 
 	/// <summary>Ends a restriction now.</summary>
@@ -59,29 +58,7 @@ public readonly struct ScopedUserRestrictions
 		CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Guard(UserPermissions.UserManageRestrict, false) is { } denied) return denied;
-		if (!restriction.Value.User.Equals(_scoped.User.Record)) return UserOutcome.NotFound;
-
-		var stored = await _scoped.User.Context.Restrictions.GetAsync(restriction.Id, cancellationToken);
-		if (stored is null || !stored.Value.User.Equals(_scoped.User.Record)) return UserOutcome.NotFound;
-
-		var now = _scoped.User.Context.Clock.GetUtcNow();
-		if (stored.Value.EndsAt is { } endsAt && endsAt <= now) return UserOutcome.Ok;
-
-		var log = new ModerationData
-		{
-			Action = ModerationAction.Lift,
-			Actor = _scoped.Actor.Record,
-			Target = _scoped.User.Record,
-			Reason = reason,
-			Timestamp = now
-		};
-
-		stored.Value.EndsAt = now;
-		await _scoped.User.Context.Restrictions.UpdateAsync(stored, log, cancellationToken);
-		_scoped.User.Context.Registry.Online.GetValueOrDefault(_scoped.User.Record)
-			?.Restrictions.Remove(stored);
-		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, stored));
-		return UserOutcome.Ok;
+		return await _scoped.User.Restrictions.LiftAsync(restriction, reason, _scoped.Actor.Record, cancellationToken);
 	}
 
 	/// <summary>Removes a restriction from this account's history.</summary>
@@ -93,66 +70,14 @@ public readonly struct ScopedUserRestrictions
 		CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
-		if (!restriction.Value.User.Equals(_scoped.User.Record)) return UserOutcome.NotFound;
-
-		var stored = await _scoped.User.Context.Restrictions.GetAsync(restriction.Id, cancellationToken);
-		if (stored is null || !stored.Value.User.Equals(_scoped.User.Record)) return UserOutcome.NotFound;
-
-		var now = _scoped.User.Context.Clock.GetUtcNow();
-		var active = stored.Value.EndsAt is null || stored.Value.EndsAt > now;
-		var context = _scoped.User.Context;
-		await context.Restrictions.DeleteAsync(stored, new ModerationData
-		{
-			Action = ModerationAction.Delete,
-			Actor = _scoped.Actor.Record,
-			Target = _scoped.User.Record,
-			Reason = reason,
-			Timestamp = now
-		}, cancellationToken);
-
-		if (active && context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
-		{
-			user.Restrictions.Remove(stored);
-			context.Registry.CloseDisallowed(user);
-		}
-
-		context.Events.Publish(new UserRestrictionDeleted(_scoped.User.Record, stored));
-		return UserOutcome.Ok;
+		return await _scoped.User.Restrictions.DeleteAsync(restriction, reason, _scoped.Actor.Record, cancellationToken);
 	}
 
 	private async Task<(Result<UserOutcome> Result, UserRestriction? Restriction)> ImposeAsync(UserPermissions needed,
 		UserPermissions permissions, DateTimeOffset? endsAt, string? reason, CancellationToken cancellationToken)
 	{
 		if (_scoped.Guard(needed, false) is { } denied) return (denied, null);
-
-		var now = _scoped.User.Context.Clock.GetUtcNow();
-		if (permissions == UserPermissions.None || (endsAt is { } end && end <= now))
-			return (UserOutcome.InvalidRestriction, null);
-
-		var log = new ModerationData
-		{
-			Action = ModerationAction.Restrict,
-			Actor = _scoped.Actor.Record,
-			Target = _scoped.User.Record,
-			Reason = reason,
-			Timestamp = now
-		};
-		var data = new RestrictionData
-		{
-			User = _scoped.User.Record,
-			Permissions = permissions,
-			StartsAt = now,
-			EndsAt = endsAt
-		};
-		var context = _scoped.User.Context;
-		var restriction = await context.Restrictions.CreateAsync(data, log, cancellationToken);
-		if (context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
-		{
-			user.Restrictions.Add(restriction);
-			context.Registry.CloseDisallowed(user);
-		}
-
-		context.Events.Publish(new UserRestricted(_scoped.User.Record, restriction));
-		return (UserOutcome.Ok, restriction);
+		var (outcome, restriction) = await _scoped.User.Restrictions.ImposeAsync(permissions, endsAt, reason, _scoped.Actor.Record, cancellationToken);
+		return (outcome, restriction);
 	}
 }

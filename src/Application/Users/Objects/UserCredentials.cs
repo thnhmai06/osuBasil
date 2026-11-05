@@ -52,8 +52,6 @@ public sealed class UserCredentials
 	internal async Task<UserOutcome> ChangeAsync(Md5 newPasswordHash, Md5? currentPasswordHash, Connection actor,
 		bool includeCurrent, CancellationToken cancellationToken)
 	{
-		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
-
 		var isSelf = actor.Record.Equals(_user.Record);
 		var unchanged = false;
 		if (isSelf)

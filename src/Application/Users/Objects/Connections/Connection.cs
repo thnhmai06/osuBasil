@@ -2,6 +2,7 @@ using Basil.Application.Common;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
