@@ -155,8 +155,8 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	{
 		var refused = new GeneralChannelRecord
 		{
-			Name = "#osu",
-			Value = new GeneralChannelData { Topic = "A topic with a lone surrogate \uD800." }
+			Name = "#" + new string('x', 300),
+			Value = new GeneralChannelData { Topic = "A channel whose name no column can hold." }
 		};
 
 		await Assert.ThrowsAnyAsync<Exception>(() =>
