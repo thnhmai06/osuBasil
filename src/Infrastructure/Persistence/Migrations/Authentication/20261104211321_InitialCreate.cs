@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -16,8 +15,8 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                 name: "credentials",
                 columns: table => new
                 {
-                    user_id = table.Column<int>(type: "integer", nullable: false),
-                    password_hash = table.Column<string>(type: "text", nullable: false)
+                    user_id = table.Column<int>(nullable: false),
+                    password_hash = table.Column<string>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -34,25 +33,25 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                 name: "sessions",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<int>(type: "integer", nullable: false),
-                    type = table.Column<byte>(type: "smallint", nullable: false),
-                    ip = table.Column<IPAddress>(type: "inet", nullable: false),
-                    client_info = table.Column<string>(type: "text", nullable: true),
-                    started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    last_active_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    ended_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    end_reason = table.Column<byte>(type: "smallint", nullable: true),
-                    token_hash = table.Column<byte[]>(type: "bytea", nullable: true),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    client_date = table.Column<string>(type: "text", nullable: true),
-                    client_revision = table.Column<int>(type: "integer", nullable: true),
-                    client_stream = table.Column<int>(type: "integer", nullable: true),
-                    osu_path_hash = table.Column<string>(type: "text", nullable: true),
-                    network_adapters = table.Column<string>(type: "text", nullable: true),
-                    network_adapters_hash = table.Column<string>(type: "text", nullable: true),
-                    uninstall_hash = table.Column<string>(type: "text", nullable: true),
-                    disk_signature_hash = table.Column<string>(type: "text", nullable: true)
+                    id = table.Column<Guid>(nullable: false),
+                    user_id = table.Column<int>(nullable: false),
+                    type = table.Column<byte>(nullable: false),
+                    ip = table.Column<string>(maxLength: 45, nullable: false),
+                    client_info = table.Column<string>(nullable: true),
+                    started_at = table.Column<DateTimeOffset>(nullable: false),
+                    last_active_at = table.Column<DateTimeOffset>(nullable: false),
+                    ended_at = table.Column<DateTimeOffset>(nullable: true),
+                    end_reason = table.Column<byte>(nullable: true),
+                    token_hash = table.Column<byte[]>(maxLength: 64, nullable: true),
+                    expires_at = table.Column<DateTimeOffset>(nullable: true),
+                    client_date = table.Column<string>(nullable: true),
+                    client_revision = table.Column<int>(nullable: true),
+                    client_stream = table.Column<int>(nullable: true),
+                    osu_path_hash = table.Column<string>(nullable: true),
+                    network_adapters = table.Column<string>(nullable: true),
+                    network_adapters_hash = table.Column<string>(nullable: true),
+                    uninstall_hash = table.Column<string>(nullable: true),
+                    disk_signature_hash = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {

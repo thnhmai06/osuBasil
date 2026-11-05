@@ -224,6 +224,8 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			Od = difficulty.Od,
 			Hp = difficulty.Hp,
 			Objects = JsonSerializer.SerializeToElement(beatmap.Metadata.Objects, StoredJson),
+			Circles = (beatmap.Metadata.Objects as OsuObjects)?.Circles,
+			Sliders = (beatmap.Metadata.Objects as OsuObjects)?.Sliders,
 			Background = beatmap.Assets.BackgroundFile,
 			Audio = beatmap.Assets.AudioFile,
 			Video = beatmap.Assets.VideoFile,

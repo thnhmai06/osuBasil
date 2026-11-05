@@ -4,7 +4,6 @@ using Basil.Infrastructure.Content.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -17,32 +16,26 @@ namespace Basil.Infrastructure.Persistence.Migrations.Content
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+                .HasAnnotation("ProductVersion", "10.0.14");
 
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Content.Persistence.MenuBannerRow).FullName!, b =>
                 {
                     b.Property<string>("Image")
-                        .HasColumnType("text")
+                        .HasMaxLength(255)
                         .HasColumnName("image");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<DateTimeOffset?>("EndsAt")
-                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("ends_at");
 
                     b.Property<DateTimeOffset?>("StartsAt")
-                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("starts_at");
 
                     b.Property<string>("Url")
                         .IsRequired()
-                        .HasColumnType("text")
                         .HasColumnName("url");
 
                     b.HasKey("Image")
@@ -54,11 +47,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Content
             modelBuilder.Entity(typeof(Basil.Infrastructure.Content.Persistence.SettingRow).FullName!, b =>
                 {
                     b.Property<string>("Name")
-                        .HasColumnType("text")
+                        .HasMaxLength(255)
                         .HasColumnName("name");
 
                     b.Property<string>("Value")
-                        .HasColumnType("text")
                         .HasColumnName("value");
 
                     b.HasKey("Name")

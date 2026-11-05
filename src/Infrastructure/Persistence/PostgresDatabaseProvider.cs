@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
@@ -23,8 +24,10 @@ public sealed class PostgresDatabaseProvider : IDatabaseProvider
 	/// <inheritdoc />
 	public void Configure(DbContextOptionsBuilder builder, IDatabaseSource source, string historyTable)
 	{
+		// The migrations carry no store types or provider annotations, so their snapshot never equals the provider's model.
 		builder.UseNpgsql(((Source)source).DataSource, postgres => Migrations(postgres, historyTable))
-			.UseSnakeCaseNamingConvention();
+			.UseSnakeCaseNamingConvention()
+			.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
 	}
 
 	/// <inheritdoc />

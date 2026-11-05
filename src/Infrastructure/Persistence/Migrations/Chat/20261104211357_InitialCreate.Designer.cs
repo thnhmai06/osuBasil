@@ -4,14 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace Basil.Infrastructure.Persistence.Migrations.Chat
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20261104153108_InitialCreate")]
+    [Migration("20261104211357_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -19,36 +18,29 @@ namespace Basil.Infrastructure.Persistence.Migrations.Chat
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+                .HasAnnotation("ProductVersion", "10.0.14");
 
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Chat.Persistence.ChannelRow).FullName!, b =>
                 {
                     b.Property<string>("Name")
-                        .HasColumnType("text")
+                        .HasMaxLength(255)
                         .HasColumnName("name");
 
                     b.Property<bool>("AutoJoin")
-                        .HasColumnType("boolean")
                         .HasColumnName("auto_join");
 
                     b.Property<int>("ReadPrivileges")
-                        .HasColumnType("integer")
                         .HasColumnName("read_privileges");
 
                     b.Property<string>("Topic")
                         .IsRequired()
-                        .HasColumnType("text")
                         .HasColumnName("topic");
 
                     b.Property<bool>("Visible")
-                        .HasColumnType("boolean")
                         .HasColumnName("visible");
 
                     b.Property<int>("WritePrivileges")
-                        .HasColumnType("integer")
                         .HasColumnName("write_privileges");
 
                     b.HasKey("Name")

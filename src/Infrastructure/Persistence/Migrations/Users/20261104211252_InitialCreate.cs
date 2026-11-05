@@ -1,8 +1,9 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
+
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
 namespace Basil.Infrastructure.Persistence.Migrations.Users
 {
@@ -12,20 +13,29 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateSequence<int>(
-                name: "user_ids",
-                startValue: 2L);
+            migrationBuilder.CreateTable(
+                name: "user_id_counters",
+                columns: table => new
+                {
+                    name = table.Column<string>(maxLength: 64, nullable: false),
+                    next = table.Column<long>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_user_id_counters", x => x.name);
+                });
 
             migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false, defaultValueSql: "nextval('user_ids')"),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    normalized_name = table.Column<string>(type: "text", nullable: false),
-                    country = table.Column<int>(type: "integer", nullable: false),
-                    permissions = table.Column<long>(type: "bigint", nullable: false),
-                    deleted_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                    id = table.Column<int>(nullable: false),
+                    name = table.Column<string>(nullable: false),
+                    normalized_name = table.Column<string>(maxLength: 255, nullable: false),
+                    active_name = table.Column<string>(maxLength: 255, nullable: true),
+                    country = table.Column<int>(nullable: false),
+                    permissions = table.Column<long>(nullable: false),
+                    deleted_at = table.Column<DateTimeOffset>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -37,13 +47,12 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 name: "moderation_log",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    action = table.Column<int>(type: "integer", nullable: false),
-                    by_id = table.Column<int>(type: "integer", nullable: false),
-                    target_id = table.Column<int>(type: "integer", nullable: false),
-                    reason = table.Column<string>(type: "text", nullable: true),
-                    timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<long>(nullable: false),
+                    action = table.Column<int>(nullable: false),
+                    by_id = table.Column<int>(nullable: false),
+                    target_id = table.Column<int>(nullable: false),
+                    reason = table.Column<string>(nullable: true),
+                    timestamp = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -64,10 +73,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 name: "relationships",
                 columns: table => new
                 {
-                    actor_id = table.Column<int>(type: "integer", nullable: false),
-                    target_id = table.Column<int>(type: "integer", nullable: false),
-                    type = table.Column<int>(type: "integer", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    actor_id = table.Column<int>(nullable: false),
+                    target_id = table.Column<int>(nullable: false),
+                    type = table.Column<int>(nullable: false),
+                    created_at = table.Column<DateTimeOffset>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -88,12 +97,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 name: "restrictions",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<int>(type: "integer", nullable: false),
-                    permissions = table.Column<long>(type: "bigint", nullable: false),
-                    starts_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    ends_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                    id = table.Column<int>(nullable: false),
+                    user_id = table.Column<int>(nullable: false),
+                    permissions = table.Column<long>(nullable: false),
+                    starts_at = table.Column<DateTimeOffset>(nullable: false),
+                    ends_at = table.Column<DateTimeOffset>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -105,6 +113,16 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.InsertData(
+                table: "user_id_counters",
+                columns: new[] { "name", "next" },
+                values: new object[,]
+                {
+                    { "moderation_log", 1L },
+                    { "restriction", 1L },
+                    { "user", 2L }
                 });
 
             migrationBuilder.CreateIndex(
@@ -129,11 +147,15 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_users_active_name",
+                table: "users",
+                column: "active_name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_users_normalized_name",
                 table: "users",
-                column: "normalized_name",
-                unique: true,
-                filter: "deleted_at is null");
+                column: "normalized_name");
         }
 
         /// <inheritdoc />
@@ -149,10 +171,10 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 name: "restrictions");
 
             migrationBuilder.DropTable(
-                name: "users");
+                name: "user_id_counters");
 
-            migrationBuilder.DropSequence(
-                name: "user_ids");
+            migrationBuilder.DropTable(
+                name: "users");
         }
     }
 }

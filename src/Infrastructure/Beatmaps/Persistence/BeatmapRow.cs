@@ -23,6 +23,13 @@ internal sealed class BeatmapRow
 	public double Od { get; set; }
 	public double Hp { get; set; }
 	public JsonElement Objects { get; set; }
+
+	/// <summary>The number of circles in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing can filter by it.</summary>
+	public int? Circles { get; set; }
+
+	/// <summary>The number of sliders in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing can filter by it.</summary>
+	public int? Sliders { get; set; }
+
 	public string? Background { get; set; }
 	public string? Audio { get; set; }
 	public string? Video { get; set; }

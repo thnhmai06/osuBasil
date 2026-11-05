@@ -55,8 +55,11 @@ internal static class BeatmapQueryFilter
 
 		// Length: the query is in seconds, the column stores milliseconds.
 		beatmaps = Within(beatmaps, row => row.Length / 1000.0, query.Length);
-		beatmaps = Within(beatmaps, row => row.Objects.GetProperty("Circles").GetInt32(), query.Circles);
-		beatmaps = Within(beatmaps, row => row.Objects.GetProperty("Sliders").GetInt32(), query.Sliders);
+		// Only standard beatmaps count circles and sliders.
+		if (query.Circles is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Circles != null), row => row.Circles!.Value, query.Circles);
+		if (query.Sliders is not null)
+			beatmaps = Within(beatmaps.Where(row => row.Sliders != null), row => row.Sliders!.Value, query.Sliders);
 
 		// Created at / Updated at: the query bounds are UTC instants.
 		beatmaps = Within(beatmaps, row => row.Set.CreatedAt, query.Created,

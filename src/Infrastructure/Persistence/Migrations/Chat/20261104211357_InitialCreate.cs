@@ -16,12 +16,12 @@ namespace Basil.Infrastructure.Persistence.Migrations.Chat
                 name: "channels",
                 columns: table => new
                 {
-                    name = table.Column<string>(type: "text", nullable: false),
-                    topic = table.Column<string>(type: "text", nullable: false),
-                    read_privileges = table.Column<int>(type: "integer", nullable: false),
-                    write_privileges = table.Column<int>(type: "integer", nullable: false),
-                    auto_join = table.Column<bool>(type: "boolean", nullable: false),
-                    visible = table.Column<bool>(type: "boolean", nullable: false)
+                    name = table.Column<string>(maxLength: 255, nullable: false),
+                    topic = table.Column<string>(nullable: false),
+                    read_privileges = table.Column<int>(nullable: false),
+                    write_privileges = table.Column<int>(nullable: false),
+                    auto_join = table.Column<bool>(nullable: false),
+                    visible = table.Column<bool>(nullable: false)
                 },
                 constraints: table =>
                 {
