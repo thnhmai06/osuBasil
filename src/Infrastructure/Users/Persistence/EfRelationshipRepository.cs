@@ -22,7 +22,7 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 			CreatedAt = relationship.CreatedAt.ToUniversalTime()
 		};
 		return database.WriteAsync((UsersDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId, token),
+				context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId, token),
 			cancellationToken);
 	}
 
@@ -42,11 +42,12 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 	{
 		var actorId = actor.Id;
 		var rows = await database.ReadAsync((UsersDbContext context) =>
-			(from relationship in context.Relationships
-				where relationship.ActorId == actorId
-				join target in context.Users on relationship.TargetId equals target.Id
-				orderby relationship.CreatedAt, relationship.TargetId
-				select new { relationship, target }).Take(ListLimits.Ceiling).ToListAsync(cancellationToken), cancellationToken);
+				(from relationship in context.Relationships
+					where relationship.ActorId == actorId
+					join target in context.Users on relationship.TargetId equals target.Id
+					orderby relationship.CreatedAt, relationship.TargetId
+					select new { relationship, target }).Take(ListLimits.Ceiling).ToListAsync(cancellationToken),
+			cancellationToken);
 
 		return
 		[

@@ -19,7 +19,9 @@ public static class OsuFingerprintExtensions
 	/// </exception>
 	public static OsuFingerprint Parse(string text)
 	{
-		return TryParse(text, out var fingerprint) ? fingerprint : throw new FormatException("The client hash is malformed.");
+		return TryParse(text, out var fingerprint)
+			? fingerprint
+			: throw new FormatException("The client hash is malformed.");
 	}
 
 	/// <summary>Reads a client fingerprint from its wire text without throwing.</summary>

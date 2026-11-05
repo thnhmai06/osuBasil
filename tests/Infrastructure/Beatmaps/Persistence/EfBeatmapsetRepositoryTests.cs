@@ -2,8 +2,6 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
-using Basil.Infrastructure.Beatmaps.Persistence;
-using Basil.Infrastructure.Common.Persistence;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;

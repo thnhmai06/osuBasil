@@ -1,7 +1,7 @@
-using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Domain.Multiplayer;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;

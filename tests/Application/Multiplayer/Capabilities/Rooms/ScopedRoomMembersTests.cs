@@ -1,4 +1,3 @@
-using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Registry;
@@ -125,7 +124,8 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var other = await RoomFixture.PlayerAsync(app, "Other");
 		var (otherRoom, opened) = await app.Lobby.ScopeTo(setup.Creator)
-			.OpenRoomAsync("other room", "", RoomSource.Api, false, cancellationToken: TestContext.Current.CancellationToken);
+			.OpenRoomAsync("other room", "", RoomSource.Api, false,
+				cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		Assert.True((await otherRoom!.ScopeTo(other).Members.JoinAsync("",
 			TestContext.Current.CancellationToken)).IsOk);

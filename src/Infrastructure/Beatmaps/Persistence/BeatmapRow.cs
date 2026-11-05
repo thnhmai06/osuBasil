@@ -24,10 +24,16 @@ internal sealed class BeatmapRow
 	public double Hp { get; set; }
 	public JsonElement Objects { get; set; }
 
-	/// <summary>The number of circles in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing can filter by it.</summary>
+	/// <summary>
+	///     The number of circles in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing
+	///     can filter by it.
+	/// </summary>
 	public int? Circles { get; set; }
 
-	/// <summary>The number of sliders in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing can filter by it.</summary>
+	/// <summary>
+	///     The number of sliders in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing
+	///     can filter by it.
+	/// </summary>
 	public int? Sliders { get; set; }
 
 	public string? Background { get; set; }
@@ -50,7 +56,8 @@ internal sealed class BeatmapRowConfiguration : IEntityTypeConfiguration<Beatmap
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).ValueGeneratedNever();
 		builder.Property(row => row.Objects).HasConversion(
-			objects => objects.GetRawText(), json => JsonSerializer.Deserialize<JsonElement>(json, (JsonSerializerOptions?)null));
+			objects => objects.GetRawText(),
+			json => JsonSerializer.Deserialize<JsonElement>(json, (JsonSerializerOptions?)null));
 		builder.Property(row => row.Hash).HasMaxLength(128);
 		builder.HasIndex(row => row.Hash).IsUnique();
 		builder.HasIndex(row => row.BeatmapsetId);

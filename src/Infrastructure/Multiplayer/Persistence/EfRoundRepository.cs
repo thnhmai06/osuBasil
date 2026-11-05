@@ -17,7 +17,7 @@ internal sealed class EfRoundRepository(DatabaseSession database) : IRoundReposi
 	{
 		var row = ToRow(round);
 		return database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number, token),
+				context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number, token),
 			cancellationToken);
 	}
 

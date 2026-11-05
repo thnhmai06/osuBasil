@@ -1,6 +1,7 @@
 using System.Diagnostics.Metrics;
 using System.Reflection;
 using Basil.Application.Common.Diagnostics;
+using Basil.ArchitectureTests.Handlers;
 using Mediator;
 
 namespace Basil.ArchitectureTests;
@@ -16,7 +17,8 @@ public class DiagnosticsContributionTests
 
 	private static IEnumerable<Assembly> ModuleInfrastructures()
 	{
-		return ModuleAssemblies.Infrastructures.Where(assembly => assembly.GetName().Name != "Basil.Infrastructure.Common");
+		return ModuleAssemblies.Infrastructures.Where(assembly =>
+			assembly.GetName().Name != "Basil.Infrastructure.Common");
 	}
 
 	[Fact]
@@ -41,10 +43,10 @@ public class DiagnosticsContributionTests
 	public void TheCheckReportsAModuleThatLacksEither_PositiveControl()
 	{
 		Assert.Equal(new[] { "Fake has no meter named Basil.Fake", "Fake has no handler of CollectDiagnostics" },
-			Missing("Fake", [typeof(Handlers.OnlyAHandlerOfSomethingElse)]).ToArray());
+			Missing("Fake", [typeof(OnlyAHandlerOfSomethingElse)]).ToArray());
 		Assert.Equal(new[] { "Fake has no handler of CollectDiagnostics" },
-			Missing("Fake", [typeof(Handlers.OnlyAHandlerOfSomethingElse), typeof(FakeMeter)]).ToArray());
-		Assert.Empty(Missing("Fake", [typeof(FakeMeter), typeof(Handlers.Answering)]));
+			Missing("Fake", [typeof(OnlyAHandlerOfSomethingElse), typeof(FakeMeter)]).ToArray());
+		Assert.Empty(Missing("Fake", [typeof(FakeMeter), typeof(Answering)]));
 		Assert.Empty(Missing("Fake", [typeof(FakeMeter)]));
 	}
 

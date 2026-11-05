@@ -1,4 +1,3 @@
-using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Common.Storage;
 using Basil.Testing.Persistence;

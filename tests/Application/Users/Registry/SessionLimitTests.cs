@@ -1,5 +1,5 @@
-using System.Net;
 using System.Diagnostics.Metrics;
+using System.Net;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
@@ -36,8 +36,10 @@ public sealed class SessionLimitTests
 		var max = new ServerSettings().Sessions.MaxPerUser;
 
 		Assert.Equal([1, 10, 5, 10],
-			[max.For(SessionType.Stable), max.For(SessionType.StableTourney), max.For(SessionType.Irc),
-				max.For(SessionType.Api)]);
+		[
+			max.For(SessionType.Stable), max.For(SessionType.StableTourney), max.For(SessionType.Irc),
+			max.For(SessionType.Api)
+		]);
 	}
 
 	[Theory]

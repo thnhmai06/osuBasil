@@ -13,4 +13,9 @@ namespace Basil.Application.Users.Messages;
 /// <param name="NewPasswordHash">The hash of the new password.</param>
 /// <param name="CurrentPasswordHash">The hash of the current password, when the caller knows it.</param>
 /// <param name="IncludeCurrent">True to record the current password in the moderation log.</param>
-public sealed record ChangeUserPassword(Connection Actor, UserRecord Target, Md5 NewPasswordHash, Md5? CurrentPasswordHash, bool IncludeCurrent) : IRequest<Result<UserOutcome>>;
+public sealed record ChangeUserPassword(
+	Connection Actor,
+	UserRecord Target,
+	Md5 NewPasswordHash,
+	Md5? CurrentPasswordHash,
+	bool IncludeCurrent) : IRequest<Result<UserOutcome>>;

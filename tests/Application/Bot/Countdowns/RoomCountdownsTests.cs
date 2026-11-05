@@ -261,7 +261,8 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		if (running) Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false)).IsOk);
+		if (running)
+			Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false)).IsOk);
 
 		var result = await CancelAsync(bot, staff.Player, staff.Room);
 
@@ -355,7 +356,7 @@ public sealed class RoomCountdownsTests
 		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), true)).IsOk);
 
 		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Name: "Renamed"), Token)).IsOk);
+			new RoomSettingsChange("Renamed"), Token)).IsOk);
 
 		Assert.True(IsRunning(bot, staff.Room));
 	}

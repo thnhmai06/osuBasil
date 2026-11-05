@@ -41,22 +41,6 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		}
 	}
 
-	private async Task<(ScoreRecord Score, UserStats Stats)> StoreAsync(ScoreData data, long rankedScore,
-		CancellationToken cancellationToken)
-	{
-		var row = ToRow(0, data);
-		UserStats stats = null!;
-		await database.TransactAsync(async (ScoresDbContext context, CancellationToken token) =>
-		{
-			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
-			context.Scores.Add(row);
-			await IdCounters.AddAsync(context, ScoresDbContext.ScoreRows, 1, token);
-			stats = await EfUserStatsRepository.AddPlayAsync(context, data.UserId!.Value, data.Mode,
-				data.LastState.TotalScore, rankedScore, token);
-		}, cancellationToken);
-		return (new ScoreRecord { Id = row.Id, Value = data }, stats);
-	}
-
 	/// <inheritdoc />
 	public async ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
@@ -110,6 +94,22 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		}, cancellationToken);
 
 		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), total);
+	}
+
+	private async Task<(ScoreRecord Score, UserStats Stats)> StoreAsync(ScoreData data, long rankedScore,
+		CancellationToken cancellationToken)
+	{
+		var row = ToRow(0, data);
+		UserStats stats = null!;
+		await database.TransactAsync(async (ScoresDbContext context, CancellationToken token) =>
+		{
+			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
+			context.Scores.Add(row);
+			await IdCounters.AddAsync(context, ScoresDbContext.ScoreRows, 1, token);
+			stats = await EfUserStatsRepository.AddPlayAsync(context, data.UserId!.Value, data.Mode,
+				data.LastState.TotalScore, rankedScore, token);
+		}, cancellationToken);
+		return (new ScoreRecord { Id = row.Id, Value = data }, stats);
 	}
 
 	private static IQueryable<ScoreRow> BuildFilter(IQueryable<ScoreRow> q, ScoreQuery scoreQuery)

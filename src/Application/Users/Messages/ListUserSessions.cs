@@ -14,4 +14,9 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Page">The page to read.</param>
 /// <param name="State">Which sessions to list.</param>
 /// <param name="Types">The kinds of session to list, or null for all kinds.</param>
-public sealed record ListUserSessions(Connection Actor, UserRecord Target, PageRequest Page, SessionState State, IReadOnlyList<SessionType>? Types) : IRequest<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)>;
+public sealed record ListUserSessions(
+	Connection Actor,
+	UserRecord Target,
+	PageRequest Page,
+	SessionState State,
+	IReadOnlyList<SessionType>? Types) : IRequest<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)>;

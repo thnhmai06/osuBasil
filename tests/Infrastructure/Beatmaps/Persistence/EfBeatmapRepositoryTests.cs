@@ -26,7 +26,8 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 			[StoredBeatmaps.Difficulty(null, OtherHash, "Easy")]));
 		var set = await Sets.GetAsync(43, TestContext.Current.CancellationToken);
 		Assert.NotNull(set);
-		var template = (await StoredRows.ReadAsync(ConnectionString, "select * from beatmaps where beatmapset_id = @set",
+		var template = (await StoredRows.ReadAsync(ConnectionString,
+			"select * from beatmaps where beatmapset_id = @set",
 			new Dictionary<string, object?> { ["@set"] = 43 }, TestContext.Current.CancellationToken)).Single();
 		await StoredRows.InsertAsync(ConnectionString, "beatmaps", Enumerable.Range(1, ListLimits.Ceiling).Select(g =>
 		{

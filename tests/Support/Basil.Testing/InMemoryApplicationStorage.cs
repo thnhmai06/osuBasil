@@ -16,6 +16,9 @@ internal sealed class InMemoryUserRepository : IUserRepository
 	private readonly Dictionary<int, UserRecord> _users = [];
 	private int _nextId = 2;
 
+	/// <summary>Gets or sets the failure the next updates throw, or <see langword="null" /> to accept them.</summary>
+	public Exception? UpdateFailure { get; set; }
+
 	public Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -35,9 +38,6 @@ internal sealed class InMemoryUserRepository : IUserRepository
 
 		return Task.FromResult(Seed(data, id));
 	}
-
-	/// <summary>Gets or sets the failure the next updates throw, or <see langword="null" /> to accept them.</summary>
-	public Exception? UpdateFailure { get; set; }
 
 	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
@@ -133,7 +133,8 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 	}
 }
 
-internal sealed class InMemoryRestrictionRepository(InMemoryModerationLogRepository moderationLog) : IRestrictionRepository
+internal sealed class InMemoryRestrictionRepository(InMemoryModerationLogRepository moderationLog)
+	: IRestrictionRepository
 {
 	private readonly Dictionary<int, List<UserRestriction>> _restrictions = [];
 	private int _nextId = 1;

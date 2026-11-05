@@ -1,6 +1,6 @@
 using System.Text;
-using Basil.Host.Cli;
 using Basil.Configuration;
+using Basil.Host.Cli;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Configuration;

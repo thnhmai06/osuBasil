@@ -23,7 +23,8 @@ public static class TestServer
 	/// <returns>The open connection.</returns>
 	public static async ValueTask<DbConnection> OpenAsync(string connectionString, CancellationToken cancellationToken)
 	{
-		DbConnection connection = IsMySql ? new MySqlConnection(connectionString) : new NpgsqlConnection(connectionString);
+		DbConnection connection =
+			IsMySql ? new MySqlConnection(connectionString) : new NpgsqlConnection(connectionString);
 		await connection.OpenAsync(cancellationToken);
 		return connection;
 	}

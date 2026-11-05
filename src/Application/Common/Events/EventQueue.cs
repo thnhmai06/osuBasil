@@ -56,7 +56,6 @@ public sealed class EventQueue
 	public async Task DrainAsync(CancellationToken cancellationToken = default)
 	{
 		while (true)
-		{
 			if (_deliveries.Reader.TryRead(out var delivery))
 				await DeliverAsync(delivery, cancellationToken);
 			else if (Outstanding == 0)
@@ -64,7 +63,6 @@ public sealed class EventQueue
 			else
 				// A delivery taken by the running loop is not finished yet; wait for it.
 				await Task.Delay(TimeSpan.FromMilliseconds(1), cancellationToken);
-		}
 	}
 
 	private async Task DeliverAsync(IEventDelivery delivery, CancellationToken cancellationToken)

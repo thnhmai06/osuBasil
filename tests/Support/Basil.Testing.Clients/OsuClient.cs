@@ -22,9 +22,9 @@ public sealed class OsuClient : IDisposable
 	private const string BuildDate = "20260101";
 
 	private readonly HttpClient _http;
-	private readonly string _stableHost;
 	private readonly string _osuVersion;
 	private readonly List<ServerPacket> _received = [];
+	private readonly string _stableHost;
 	private readonly string _webHost;
 
 	private OsuClient(Uri address, string password, string name, bool tourney, string domain)

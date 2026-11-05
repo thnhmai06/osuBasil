@@ -1,5 +1,4 @@
 using Basil.Application.Common;
-using Basil.Application.Common.Events;
 using Basil.Application.Common.Storage;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;

@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Basil.Application.Beatmaps.Services;
 using Basil.Infrastructure.Beatmaps.Storage;
@@ -44,9 +45,11 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 				var id = (RulesetStore.PackagePrefix + ruleset).ToLowerInvariant();
 				var expected = await ExpectedHashAsync(id, version, cancellationToken);
 				var file = Path.Combine(work, id + ".nupkg");
-				await DownloadAsync($"{Feed}-flatcontainer/{id}/{version}/{id}.{version}.nupkg", file, cancellationToken);
+				await DownloadAsync($"{Feed}-flatcontainer/{id}/{version}/{id}.{version}.nupkg", file,
+					cancellationToken);
 				if (!await HashMatchesAsync(file, expected, cancellationToken))
-					throw new RulesetUpdateException($"The package {id} {version} does not match the hash the feed publishes.");
+					throw new RulesetUpdateException(
+						$"The package {id} {version} does not match the hash the feed publishes.");
 
 				packages.Add((ruleset, file));
 			}
@@ -113,8 +116,8 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 	{
 		await using var stream = File.OpenRead(file);
 		var actual = Convert.ToBase64String(await SHA512.HashDataAsync(stream, cancellationToken));
-		return CryptographicOperations.FixedTimeEquals(System.Text.Encoding.ASCII.GetBytes(actual),
-			System.Text.Encoding.ASCII.GetBytes(expected));
+		return CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(actual),
+			Encoding.ASCII.GetBytes(expected));
 	}
 
 	/// <summary>Extracts only the library of the newest target framework of a package.</summary>
@@ -123,16 +126,16 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 		using var archive = ZipFile.OpenRead(package);
 		var name = RulesetStore.LibraryName(ruleset);
 		var entry = archive.Entries
-			.Where(e => e.FullName.EndsWith("/" + name, StringComparison.Ordinal))
-			.Select(e => (Entry: e, Framework: FrameworkOf(e.FullName)))
-			.Where(candidate => candidate.Framework is not null)
-			.MaxBy(candidate => candidate.Framework).Entry
-			?? throw new RulesetUpdateException($"The package of {ruleset} holds no {name}.");
+			            .Where(e => e.FullName.EndsWith("/" + name, StringComparison.Ordinal))
+			            .Select(e => (Entry: e, Framework: FrameworkOf(e.FullName)))
+			            .Where(candidate => candidate.Framework is not null)
+			            .MaxBy(candidate => candidate.Framework).Entry
+		            ?? throw new RulesetUpdateException($"The package of {ruleset} holds no {name}.");
 		entry.ExtractToFile(Path.Combine(folder, name));
 	}
 
 	/// <summary>Reads the version of a <c>lib/netX.Y/...</c> entry; other frameworks give <see langword="null" />.</summary>
-	private static System.Version? FrameworkOf(string entryName)
+	private static Version? FrameworkOf(string entryName)
 	{
 		var parts = entryName.Split('/');
 		return parts is ["lib", var folder, _] && folder.StartsWith("net", StringComparison.Ordinal) &&

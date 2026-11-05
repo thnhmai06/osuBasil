@@ -11,8 +11,8 @@ namespace Basil.Infrastructure.Diagnostics.Services;
 /// </summary>
 internal sealed class DiagnosticsFeed : IDiagnosticsFeed
 {
-	private readonly List<Watcher> _watchers = [];
 	private readonly Lock _sync = new();
+	private readonly List<Watcher> _watchers = [];
 
 	/// <summary>Gets how many watchers are following the feed.</summary>
 	internal int Watchers

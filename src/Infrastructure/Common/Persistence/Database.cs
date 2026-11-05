@@ -7,8 +7,8 @@ namespace Basil.Infrastructure.Common.Persistence;
 /// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 public sealed class Database : IAsyncDisposable
 {
-	private readonly ConcurrentDictionary<Type, object> _readOptions = new();
 	private readonly DatabaseProviders _providers;
+	private readonly ConcurrentDictionary<Type, object> _readOptions = new();
 	private readonly IDatabaseSource _readSource;
 	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
 	private readonly IDatabaseSource _synchronousSource;
@@ -26,6 +26,12 @@ public sealed class Database : IAsyncDisposable
 		_synchronousSource = providers.Write.CreateSource(write, settings.WritePoolSize);
 	}
 
+	public async ValueTask DisposeAsync()
+	{
+		await _readSource.DisposeAsync();
+		await _synchronousSource.DisposeAsync();
+	}
+
 	/// <summary>Tells whether a write failed because a value that must be unique is already stored.</summary>
 	internal bool IsUniqueViolation(Exception exception)
 	{
@@ -36,12 +42,6 @@ public sealed class Database : IAsyncDisposable
 	internal bool IsConnectionFailure(Exception exception)
 	{
 		return _providers.Read.IsConnectionFailure(exception) || _providers.Write.IsConnectionFailure(exception);
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		await _readSource.DisposeAsync();
-		await _synchronousSource.DisposeAsync();
 	}
 
 	/// <summary>Makes a context for reading, on the connections meant for reads.</summary>
@@ -61,7 +61,8 @@ public sealed class Database : IAsyncDisposable
 	private DbContextOptions<TContext> OptionsFor<TContext>(ConcurrentDictionary<Type, object> cache,
 		IDatabaseProvider provider, IDatabaseSource source) where TContext : DbContext, IDatabaseContext<TContext>
 	{
-		return (DbContextOptions<TContext>)cache.GetOrAdd(typeof(TContext), _ => CreateOptions<TContext>(provider, source));
+		return (DbContextOptions<TContext>)cache.GetOrAdd(typeof(TContext),
+			_ => CreateOptions<TContext>(provider, source));
 	}
 
 	private DbContextOptions<TContext> CreateOptions<TContext>(IDatabaseProvider provider, IDatabaseSource source)

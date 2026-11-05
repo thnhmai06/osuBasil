@@ -1,5 +1,4 @@
 using Basil.Application.Content.Persistence;
-using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Scores.Objects.Events;
@@ -8,6 +7,7 @@ using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Objects.Rooms;

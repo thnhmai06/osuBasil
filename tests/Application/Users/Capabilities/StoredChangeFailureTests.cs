@@ -43,7 +43,8 @@ public sealed class StoredChangeFailureTests
 	public async Task DeleteAsync_WhenTheStoreRefuses_ThrowsAndLeavesTheAccountUndeletedSoItCanBeRetried()
 	{
 		using var app = new TestApplication();
-		var staff = await app.LoginAsync(await app.CreateUserAsync("DeleteStaff", "password", UserPermissionsGroups.All));
+		var staff = await app.LoginAsync(
+			await app.CreateUserAsync("DeleteStaff", "password", UserPermissionsGroups.All));
 		var target = await app.CreateUserAsync("DeleteRefused", "password");
 		var scoped = app.Users.Of(target).ScopeTo(staff);
 		app.UserUpdateFailure = new InvalidOperationException("refused");
@@ -62,7 +63,8 @@ public sealed class StoredChangeFailureTests
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("AuditTarget", "password");
 		await app.LoginAsync(target);
-		var staff = await app.LoginAsync(await app.CreateUserAsync("AuditStaff", "password", UserPermissionsGroups.All));
+		var staff = await app.LoginAsync(await app.CreateUserAsync("AuditStaff", "password",
+			UserPermissionsGroups.All));
 		app.ModerationLogFailure = new InvalidOperationException("refused");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>

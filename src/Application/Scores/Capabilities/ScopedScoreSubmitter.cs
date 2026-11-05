@@ -1,6 +1,5 @@
 using Basil.Application.Common;
 using Basil.Application.Scores.Objects;
-using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Scores;

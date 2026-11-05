@@ -51,52 +51,13 @@ public sealed class RulesetUpdaterTests : IDisposable
 		return Convert.ToBase64String(SHA512.HashData(bytes));
 	}
 
-	/// <summary>A feed that offers <see cref="NewVersion" />; <paramref name="corrupt" /> publishes a wrong hash for one package.</summary>
+	/// <summary>
+	///     A feed that offers <see cref="NewVersion" />; <paramref name="corrupt" /> publishes a wrong hash for one
+	///     package.
+	/// </summary>
 	private static HttpClient Feed(string latest, string? corrupt = null)
 	{
 		return new HttpClient(new FeedHandler(latest, corrupt));
-	}
-
-	private sealed class FeedHandler(string latest, string? corrupt) : HttpMessageHandler
-	{
-		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-			CancellationToken cancellationToken)
-		{
-			var path = request.RequestUri!.AbsolutePath;
-			var text = path switch
-			{
-				_ when path.EndsWith("/index.json") => JsonSerializer.Serialize(new { versions = new[] { "2020.1.0", latest, $"{latest}-beta" } }),
-				_ when path.Contains("/registration5-gz-semver2/") =>
-					JsonSerializer.Serialize(new { catalogEntry = "https://feed.test/catalog/" + path.Split('/')[^2] }),
-				_ when path.StartsWith("/catalog/") => JsonSerializer.Serialize(new
-				{
-					packageHash = RulesetOf(path) == corrupt ? "AAAA" : Sha512(Package(RulesetOf(path))),
-					packageHashAlgorithm = "SHA512"
-				}),
-				_ => null
-			};
-			if (text is not null)
-				return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(text) });
-
-			var bytes = Package(RulesetFrom(path));
-			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) });
-		}
-
-		private static string RulesetOf(string path)
-		{
-			return Capitalize(path.Split('/')[^1]);
-		}
-
-		private static string RulesetFrom(string path)
-		{
-			return Capitalize(path.Split('/')[^3]);
-		}
-
-		private static string Capitalize(string id)
-		{
-			var name = id.Replace(".json", "").Split('.')[^1];
-			return char.ToUpperInvariant(name[0]) + name[1..];
-		}
 	}
 
 	[Fact]
@@ -160,5 +121,50 @@ public sealed class RulesetUpdaterTests : IDisposable
 		var check = await updater.CheckAsync();
 
 		Assert.False(check.UpdateAvailable);
+	}
+
+	private sealed class FeedHandler(string latest, string? corrupt) : HttpMessageHandler
+	{
+		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+			CancellationToken cancellationToken)
+		{
+			var path = request.RequestUri!.AbsolutePath;
+			var text = path switch
+			{
+				_ when path.EndsWith("/index.json") => JsonSerializer.Serialize(new
+					{ versions = new[] { "2020.1.0", latest, $"{latest}-beta" } }),
+				_ when path.Contains("/registration5-gz-semver2/") =>
+					JsonSerializer.Serialize(new { catalogEntry = "https://feed.test/catalog/" + path.Split('/')[^2] }),
+				_ when path.StartsWith("/catalog/") => JsonSerializer.Serialize(new
+				{
+					packageHash = RulesetOf(path) == corrupt ? "AAAA" : Sha512(Package(RulesetOf(path))),
+					packageHashAlgorithm = "SHA512"
+				}),
+				_ => null
+			};
+			if (text is not null)
+				return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+					{ Content = new StringContent(text) });
+
+			var bytes = Package(RulesetFrom(path));
+			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+				{ Content = new ByteArrayContent(bytes) });
+		}
+
+		private static string RulesetOf(string path)
+		{
+			return Capitalize(path.Split('/')[^1]);
+		}
+
+		private static string RulesetFrom(string path)
+		{
+			return Capitalize(path.Split('/')[^3]);
+		}
+
+		private static string Capitalize(string id)
+		{
+			var name = id.Replace(".json", "").Split('.')[^1];
+			return char.ToUpperInvariant(name[0]) + name[1..];
+		}
 	}
 }

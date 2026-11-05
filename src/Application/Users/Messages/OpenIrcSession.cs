@@ -11,4 +11,5 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="Label">The label of the new session.</param>
-public sealed record OpenIrcSession(Connection Actor, UserRecord Target, string Label) : IRequest<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)>;
+public sealed record OpenIrcSession(Connection Actor, UserRecord Target, string Label)
+	: IRequest<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)>;

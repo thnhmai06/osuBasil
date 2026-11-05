@@ -1,7 +1,7 @@
-using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 

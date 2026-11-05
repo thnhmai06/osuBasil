@@ -11,7 +11,8 @@ internal sealed class AuthenticationDbContext(DbContextOptions<AuthenticationDbC
 
 	static string IDatabaseContext<AuthenticationDbContext>.HistoryTable => "__ef_migrations_auth";
 
-	static AuthenticationDbContext IDatabaseContext<AuthenticationDbContext>.Create(DbContextOptions<AuthenticationDbContext> options)
+	static AuthenticationDbContext IDatabaseContext<AuthenticationDbContext>.Create(
+		DbContextOptions<AuthenticationDbContext> options)
 	{
 		return new AuthenticationDbContext(options);
 	}

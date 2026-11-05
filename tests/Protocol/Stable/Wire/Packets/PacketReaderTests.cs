@@ -1,6 +1,6 @@
-using Basil.Domain.Scores;
 using System.Drawing;
 using Basil.Domain.Client;
+using Basil.Domain.Scores;
 using Basil.Protocol.Stable.Models.Chat;
 using Basil.Protocol.Stable.Wire.Packets;
 
@@ -38,7 +38,8 @@ public class PacketReaderTests
 		var frame = Reader("629500001c400130000200200008000300688307007a00270000f50000").ReadScoreFrame();
 
 		Assert.Equal(
-			new ScoreFrame(Time: TimeSpan.FromMilliseconds(38242), Id: 28, State: new ScoreState(new HitCounts(Num300: 320, Num100: 48, Num50: 2, NumGeki: 32, NumKatu: 8, NumMiss: 3), 492_392, 122, 39, false), Health: 245, TagByte: 0, Sv2Portion: null), frame);
+			new ScoreFrame(TimeSpan.FromMilliseconds(38242), 28,
+				new ScoreState(new HitCounts(320, 48, 2, 32, 8, 3), 492_392, 122, 39, false), 245, 0, null), frame);
 	}
 
 	[Fact]
@@ -60,7 +61,9 @@ public class PacketReaderTests
 	{
 		var frame = Reader("050000004841000060c064000000").ReadReplayFrame();
 
-		Assert.Equal(new ReplayFrame(KeyState.Left1 | KeyState.Left2, TaikoDrumState.None, new PointF(12.5f, -3.5f), TimeSpan.FromMilliseconds(100)), frame);
+		Assert.Equal(
+			new ReplayFrame(KeyState.Left1 | KeyState.Left2, TaikoDrumState.None, new PointF(12.5f, -3.5f),
+				TimeSpan.FromMilliseconds(100)), frame);
 	}
 
 	[Fact]
@@ -76,11 +79,17 @@ public class PacketReaderTests
 		Assert.Equal(SpectatorAction.Standard, bundle.Action);
 		var frames = bundle.ReplayFrames.ToArray();
 		Assert.Equal(2, frames.Length);
-		Assert.Equal(new ReplayFrame(KeyState.Left1 | KeyState.Left2, TaikoDrumState.None, new PointF(100.5f, 200.25f), TimeSpan.FromMilliseconds(1000)),
-			frames[0]);
-		Assert.Equal(new ReplayFrame(KeyState.None, TaikoDrumState.None, new PointF(150.0f, 250.0f), TimeSpan.FromMilliseconds(1016)), frames[1]);
 		Assert.Equal(
-			new ScoreFrame(Time: TimeSpan.FromMilliseconds(1016), Id: 0, State: new ScoreState(new HitCounts(Num300: 10, Num100: 2, Num50: 1, NumGeki: 0, NumKatu: 0, NumMiss: 0), 123456, 50, 12, true), Health: 100, TagByte: 0, Sv2Portion: null), bundle.ScoreFrame);
+			new ReplayFrame(KeyState.Left1 | KeyState.Left2, TaikoDrumState.None, new PointF(100.5f, 200.25f),
+				TimeSpan.FromMilliseconds(1000)),
+			frames[0]);
+		Assert.Equal(
+			new ReplayFrame(KeyState.None, TaikoDrumState.None, new PointF(150.0f, 250.0f),
+				TimeSpan.FromMilliseconds(1016)), frames[1]);
+		Assert.Equal(
+			new ScoreFrame(TimeSpan.FromMilliseconds(1016), 0,
+				new ScoreState(new HitCounts(10, 2, 1, 0, 0, 0), 123456, 50, 12, true), 100, 0, null),
+			bundle.ScoreFrame);
 	}
 
 	[Fact]

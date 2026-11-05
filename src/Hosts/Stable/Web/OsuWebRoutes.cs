@@ -1,4 +1,3 @@
-using Basil.Application.Servers.Messages;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -11,6 +10,7 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
+using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Connections;
@@ -23,12 +23,12 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Gateway;
-using Mediator;
 using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Client;
 using Basil.Protocol.Stable.Models.Scores;
 using Basil.Protocol.Stable.Wire.Security;
+using Mediator;
 
 namespace Basil.Host.Stable.Web;
 
@@ -238,7 +238,8 @@ internal static class OsuWebRoutes
 	{
 		var score = new ScoreData(null, beatmapHash, WireMap.Known<GameMode>(data.Mode) ?? GameMode.Standard,
 			WireMap.Mods(data.Mods),
-			new ScoreState(new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
+			new ScoreState(
+				new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
 				data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), data.Perfect),
 			ParseGrade(data.Grade), data.IsPassed, data.Timestamp);
 		return new Submission

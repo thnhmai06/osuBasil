@@ -20,7 +20,10 @@ public sealed partial class Room
 	/// <summary>Seats a connection that asked to join while holding its place in the lobby.</summary>
 	/// <param name="actor">The connection joining.</param>
 	/// <param name="password">The password the player supplied.</param>
-	/// <returns>InAnotherRoom when the connection is already being seated in a room; otherwise what <see cref="Join" /> returns.</returns>
+	/// <returns>
+	///     InAnotherRoom when the connection is already being seated in a room; otherwise what <see cref="Join" />
+	///     returns.
+	/// </returns>
 	internal Result<RoomOutcome> JoinClaiming(StableConnection actor, string password)
 	{
 		var lobby = Context.Lobby;

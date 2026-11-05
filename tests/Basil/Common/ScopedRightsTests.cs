@@ -59,5 +59,4 @@ public class ScopedRightsTests
 
 		Assert.Equal(met ? null : required, missing);
 	}
-
 }

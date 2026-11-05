@@ -14,8 +14,8 @@ public class SessionRecordTests
 	public void Equals_SameId_IsTrueWhateverTheDataIs()
 	{
 		var id = Guid.NewGuid();
-		var first = Make(id: id);
-		var later = Make(id: id, lastActiveAt: Start.AddHours(1), tokenHash: [1, 2, 3]);
+		var first = Make(id);
+		var later = Make(id, lastActiveAt: Start.AddHours(1), tokenHash: [1, 2, 3]);
 
 		Assert.Equal(first, later);
 		Assert.Equal(first.GetHashCode(), later.GetHashCode());
@@ -24,13 +24,13 @@ public class SessionRecordTests
 	[Fact]
 	public void Equals_DifferentId_IsFalseWhateverTheDataIs()
 	{
-		Assert.NotEqual(Make(id: Guid.NewGuid()), Make(id: Guid.NewGuid()));
+		Assert.NotEqual(Make(Guid.NewGuid()), Make(Guid.NewGuid()));
 	}
 
 	[Fact]
 	public void New_EmptyId_Throws()
 	{
-		Assert.Throws<ArgumentException>(() => Make(id: Guid.Empty));
+		Assert.Throws<ArgumentException>(() => Make(Guid.Empty));
 	}
 
 	[Fact]

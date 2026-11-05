@@ -1,5 +1,5 @@
-using Basil.Domain.Scores;
 using Basil.Domain.Client;
+using Basil.Domain.Scores;
 using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
@@ -25,7 +25,8 @@ public class PacketReaderScoreFrameTests
 	private static readonly string V2Hex = V1Hex[..^2] + "01" + "000000000000e03f" + "000000000000d03f";
 
 	/// <summary>The frame those fixture bytes describe, for <see cref="ScoreFrame" /> record equality.</summary>
-	private static ScoreFrame V1Frame => new(Time: TimeSpan.FromMilliseconds(1000), Id: 5, State: new ScoreState(new HitCounts(Num300: 2, Num100: 3, Num50: 4, NumGeki: 5, NumKatu: 6, NumMiss: 7), 287_454_020, 300, 11, false), Health: 142, TagByte: 9, Sv2Portion: null);
+	private static ScoreFrame V1Frame => new(TimeSpan.FromMilliseconds(1000), 5,
+		new ScoreState(new HitCounts(2, 3, 4, 5, 6, 7), 287_454_020, 300, 11, false), 142, 9, null);
 
 	private static ScoreFrame V2Frame => V1Frame with
 	{

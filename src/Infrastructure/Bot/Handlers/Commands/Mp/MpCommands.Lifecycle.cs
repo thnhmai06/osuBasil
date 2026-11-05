@@ -19,7 +19,8 @@ internal sealed partial class MpCommands
 			: context.Replies.Text(MpReplies.DefaultRoomName, new { name = context.Sender.Value.Name });
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var (room, outcome) = await sender.Send(new OpenRoom(actor, name, "", RoomSource.Api, isPrivate), cancellationToken);
+		var (room, outcome) =
+			await sender.Send(new OpenRoom(actor, name, "", RoomSource.Api, isPrivate), cancellationToken);
 		if (!outcome.IsOk || room is null)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

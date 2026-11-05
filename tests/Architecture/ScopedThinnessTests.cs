@@ -11,6 +11,12 @@ public sealed partial class ScopedThinnessTests
 	/// <summary>The most lines (not blank, not comment) a method body of a Scoped type may hold.</summary>
 	private const int MaxBodyLines = 12;
 
+	/// <summary>
+	///     The Scoped files whose methods still hold the logic of their object; each is listed until it is thinned, and
+	///     <see cref="TheListOfFilesNotThinnedYet_HoldsOnlyFilesThatAreStillTooLong" /> removes it from the list.
+	/// </summary>
+	private static readonly HashSet<string> NotThinnedYet = new(StringComparer.Ordinal);
+
 	[Fact]
 	public void ScopedTypes_DeclareNoNestedTypes()
 	{
@@ -19,12 +25,6 @@ public sealed partial class ScopedThinnessTests
 
 		Assert.True(offenders.Count == 0, "A Scoped type declares no nested type: " + string.Join("; ", offenders));
 	}
-
-	/// <summary>
-	///     The Scoped files whose methods still hold the logic of their object; each is listed until it is thinned, and
-	///     <see cref="TheListOfFilesNotThinnedYet_HoldsOnlyFilesThatAreStillTooLong" /> removes it from the list.
-	/// </summary>
-	private static readonly HashSet<string> NotThinnedYet = new(StringComparer.Ordinal);
 
 	[Fact]
 	public void ScopedMethods_StayWithinTheBodyLimit()
@@ -68,7 +68,8 @@ public sealed partial class ScopedThinnessTests
 	[Fact]
 	public void NestedTypes_IgnoresATypeAtTheTopOfTheFile()
 	{
-		Assert.Empty(NestedTypes("namespace A;\npublic readonly struct ScopedX\n{\n\tpublic int M()\n\t{\n\t\treturn 1;\n\t}\n}\n"));
+		Assert.Empty(NestedTypes(
+			"namespace A;\npublic readonly struct ScopedX\n{\n\tpublic int M()\n\t{\n\t\treturn 1;\n\t}\n}\n"));
 	}
 
 	[Fact]
@@ -145,6 +146,7 @@ public sealed partial class ScopedThinnessTests
 		return directory?.FullName ?? throw new DirectoryNotFoundException("Basil.slnx was not found.");
 	}
 
-	[GeneratedRegex(@"^\s*(public |internal |private |protected )?(sealed |static |readonly |abstract )*(class|struct|enum|record|interface)\s+\w+")]
+	[GeneratedRegex(
+		@"^\s*(public |internal |private |protected )?(sealed |static |readonly |abstract )*(class|struct|enum|record|interface)\s+\w+")]
 	private static partial Regex NestedTypeDeclaration();
 }

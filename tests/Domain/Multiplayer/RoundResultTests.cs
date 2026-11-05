@@ -38,7 +38,8 @@ public class RoundResultTests
 		var score = new ScoreRecord
 		{
 			Id = id,
-			Value = new ScoreData(userId, null, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(1, 0, 0, 0, 0, 0),
+			Value = new ScoreData(userId, null, GameMode.Standard, GameMods.NoMod, new ScoreState(
+				new HitCounts(1, 0, 0, 0, 0, 0),
 				totalScore, 1, 1, false), Grade.A, passed, DateTimeOffset.UnixEpoch)
 		};
 		return new RoundScore(score, round, team);

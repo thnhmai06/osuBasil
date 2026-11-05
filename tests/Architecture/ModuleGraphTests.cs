@@ -8,14 +8,19 @@ namespace Basil.ArchitectureTests;
 ///     <c>src</c> (except the hosts, which are migrated separately) and fails on an edge outside the allowed graph or on a
 ///     cycle. Domain is shared by every project; the module Application projects follow
 ///     <c>Users -&gt; Authentication, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
-///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c>, <c>Diagnostics -&gt; Users</c> and
-///     <c>Servers</c> on top of all of them, and <c>Bot</c> on top of <c>Servers</c>; a module Infrastructure project references only its own Application project
+///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c>,
+///     <c>Diagnostics -&gt; Users</c> and
+///     <c>Servers</c> on top of all of them, and <c>Bot</c> on top of <c>Servers</c>; a module Infrastructure project
+///     references only its own Application project
 ///     and the Common projects; <c>Basil</c> sits above every module and nothing references it.
 /// </summary>
 public class ModuleGraphTests
 {
 	private static readonly string[] Modules =
-		["Anticheat", "Authentication", "Beatmaps", "Bot", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Servers", "Users"];
+	[
+		"Anticheat", "Authentication", "Beatmaps", "Bot", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores",
+		"Servers", "Users"
+	];
 
 	private static readonly Dictionary<string, string[]> ModuleDependencies = new()
 	{
@@ -30,7 +35,8 @@ public class ModuleGraphTests
 		["Diagnostics"] = ["Users"],
 		["Servers"] =
 		[
-			"Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores", "Users"
+			"Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores",
+			"Users"
 		],
 		["Bot"] = ["Anticheat", "Beatmaps", "Chat", "Multiplayer", "Scores", "Servers", "Users"]
 	};
@@ -102,7 +108,8 @@ public class ModuleGraphTests
 	private static bool IsKnown(string name)
 	{
 		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
-			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Protocol.Stable" or "Basil.Protocol.Irc"
+			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Protocol.Stable"
+			       or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                name == $"Basil.Infrastructure.{module}");
 	}
@@ -117,7 +124,8 @@ public class ModuleGraphTests
 		if (from == "Basil.Application.Common") return false;
 		if (from == "Basil.Infrastructure.Common") return to == "Basil.Application.Common";
 		if (from == "Basil.Infrastructure.Persistence")
-			return to == "Basil.Infrastructure.Common" || IsModuleProject(to) && to.StartsWith("Basil.Infrastructure.", StringComparison.Ordinal);
+			return to == "Basil.Infrastructure.Common" ||
+			       (IsModuleProject(to) && to.StartsWith("Basil.Infrastructure.", StringComparison.Ordinal));
 		if (to == "Basil.Application.Common") return true;
 		if (from == "Basil")
 			return IsModuleProject(to) || to is "Basil.Infrastructure.Common" or "Basil.Infrastructure.Persistence";

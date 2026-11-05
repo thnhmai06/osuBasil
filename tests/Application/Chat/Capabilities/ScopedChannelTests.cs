@@ -532,7 +532,8 @@ public sealed class ScopedChannelTests
 		var channel = await OpenChannelAsync(app);
 		var connection = await app.LoginAsync(await app.CreateUserAsync("NotAllowed", "password"));
 
-		var result = await channel.ScopeTo(connection).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
+		var result =
+			await channel.ScopeTo(connection).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
 		Assert.False(channel.IsClosed);

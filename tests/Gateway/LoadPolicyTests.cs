@@ -44,7 +44,7 @@ public sealed class LoadPolicyTests
 		var admission = NewAdmission();
 		for (var i = 0; i < 3; i++) admission.Admit(Subject, WorkClass.Listing);
 
-		Assert.True(admission.Admit(Subject, WorkClass.Interactive).Allowed);
+		Assert.True(admission.Admit(Subject).Allowed);
 	}
 
 	[Fact]
@@ -125,7 +125,7 @@ public sealed class LoadPolicyTests
 		var admission = NewAdmission(load);
 		load.Report(8, 10);
 
-		Assert.True(admission.Admit(Subject, WorkClass.Interactive).Allowed);
+		Assert.True(admission.Admit(Subject).Allowed);
 	}
 
 	[Theory]

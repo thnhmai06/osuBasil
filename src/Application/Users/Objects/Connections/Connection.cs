@@ -44,11 +44,11 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	/// <summary>Gets how the session ended, or <see langword="null" /> while it remains active.</summary>
 	public SessionEnd? End => Volatile.Read(ref _end);
 
-	/// <summary>Gets the user who owns this connection.</summary>
-	public UserRecord Record => Session.User;
-
 	/// <summary>Gets a value that indicates whether the server opened this connection for BasilBot, with no client behind it.</summary>
 	public bool IsServerOwned => Record.IsBasilBot();
+
+	/// <summary>Gets the user who owns this connection.</summary>
+	public UserRecord Record => Session.User;
 
 	/// <inheritdoc />
 	public virtual UserPermissions EffectivePermissions(DateTimeOffset now)

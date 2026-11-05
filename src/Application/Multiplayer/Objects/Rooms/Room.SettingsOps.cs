@@ -68,7 +68,7 @@ public sealed partial class Room
 	private static bool AreValid(RoomSettingsChange change)
 	{
 		return !((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
-		         change.Size is < 1 or > RoomRules.MaxPlayers||
+		         change.Size is < 1 or > RoomRules.MaxPlayers ||
 		         change is { ClearBeatmap: true, Beatmap: not null } ||
 		         (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
 		         (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||

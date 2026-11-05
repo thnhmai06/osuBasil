@@ -18,10 +18,10 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		try
 		{
 			await database.WriteAsync(async (UsersDbContext context, CancellationToken token) =>
-		{
-			row.Id = (int)await IdCounters.NextAsync(context, "user", token);
-			context.Users.Add(row);
-		}, cancellationToken);
+			{
+				row.Id = (int)await IdCounters.NextAsync(context, "user", token);
+				context.Users.Add(row);
+			}, cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
@@ -57,13 +57,14 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		var deletedAt = user.Value.DeletedAt?.ToUniversalTime();
 		// A deletion is permanent: a record that does not know it must not take it back.
 		return database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Users
-			.Where(row => row.Id == id)
-			.ExecuteUpdateAsync(set => set
-				.SetProperty(row => row.Country, country)
-				.SetProperty(row => row.Permissions, permissions)
-				.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt)
-				.SetProperty(row => row.ActiveName,
-					row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null), token), cancellationToken);
+				.Where(row => row.Id == id)
+				.ExecuteUpdateAsync(set => set
+					.SetProperty(row => row.Country, country)
+					.SetProperty(row => row.Permissions, permissions)
+					.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt)
+					.SetProperty(row => row.ActiveName,
+						row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null), token),
+			cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -86,11 +87,11 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		try
 		{
 			await database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Users
-				.Where(row => row.Id == id)
-				.ExecuteUpdateAsync(set => set
-					.SetProperty(row => row.Name, name)
-					.SetProperty(row => row.NormalizedName, normalized)
-					.SetProperty(row => row.ActiveName, row => row.DeletedAt == null ? normalized : null), token),
+					.Where(row => row.Id == id)
+					.ExecuteUpdateAsync(set => set
+						.SetProperty(row => row.Name, name)
+						.SetProperty(row => row.NormalizedName, normalized)
+						.SetProperty(row => row.ActiveName, row => row.DeletedAt == null ? normalized : null), token),
 				cancellationToken);
 		}
 		catch (AlreadyExistsException)

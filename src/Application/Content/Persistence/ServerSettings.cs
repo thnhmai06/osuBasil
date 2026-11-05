@@ -1,7 +1,7 @@
+using System.Text.Json.Serialization;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
-using System.Text.Json.Serialization;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Content.Persistence;

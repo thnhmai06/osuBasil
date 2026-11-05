@@ -1,7 +1,6 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Services;
 using Basil.Host.Rest.Http;
-using Basil.Host.Shared;
 using Mediator;
 
 namespace Basil.Host.Rest.Routes;

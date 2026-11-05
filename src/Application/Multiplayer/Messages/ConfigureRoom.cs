@@ -11,4 +11,5 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Room">The room it acts on.</param>
 /// <param name="Change">The settings to change.</param>
 /// <remarks>The answer is what the operation answers for the actor's permissions and the room's state.</remarks>
-public sealed record ConfigureRoom(Connection Actor, Room Room, RoomSettingsChange Change) : IRequest<Result<RoomOutcome>>;
+public sealed record ConfigureRoom(Connection Actor, Room Room, RoomSettingsChange Change)
+	: IRequest<Result<RoomOutcome>>;

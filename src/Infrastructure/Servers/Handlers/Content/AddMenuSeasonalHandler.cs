@@ -7,10 +7,12 @@ using Mediator;
 namespace Basil.Infrastructure.Servers.Handlers;
 
 /// <summary>Handles <see cref="AddMenuSeasonal" /> with the rights of the sending connection.</summary>
-internal sealed class AddMenuSeasonalHandler(Server server) : IRequestHandler<AddMenuSeasonal, (Result<ServerOutcome> Result, ContentReference? Image)>
+internal sealed class AddMenuSeasonalHandler(Server server)
+	: IRequestHandler<AddMenuSeasonal, (Result<ServerOutcome> Result, ContentReference? Image)>
 {
 	/// <inheritdoc />
-	public async ValueTask<(Result<ServerOutcome> Result, ContentReference? Image)> Handle(AddMenuSeasonal request, CancellationToken ct)
+	public async ValueTask<(Result<ServerOutcome> Result, ContentReference? Image)> Handle(AddMenuSeasonal request,
+		CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Content.AddSeasonalAsync(request.Name, request.Image, ct);
 	}

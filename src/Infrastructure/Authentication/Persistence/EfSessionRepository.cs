@@ -149,7 +149,8 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 		var version = new OsuVersion(DateOnly.ParseExact(row.ClientDate, "yyyy-MM-dd", CultureInfo.InvariantCulture),
 			row.ClientRevision, (OsuVersionStream)row.ClientStream!.Value);
-		var adapters = new NetworkAdapters { Adapters = row.NetworkAdapters!, Hash = new Md5(row.NetworkAdaptersHash!) };
+		var adapters = new NetworkAdapters
+			{ Adapters = row.NetworkAdapters!, Hash = new Md5(row.NetworkAdaptersHash!) };
 		return new OsuClient(version,
 			new OsuFingerprint(new Md5(row.OsuPathHash!), new Md5(row.UninstallHash!), new Md5(row.DiskSignatureHash!),
 				adapters));

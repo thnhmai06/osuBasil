@@ -1,6 +1,6 @@
-using Basil.Infrastructure.Users.Handlers;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 

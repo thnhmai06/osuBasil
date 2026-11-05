@@ -10,4 +10,5 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="SessionId">The session to close.</param>
-public sealed record CloseUserSession(Connection Actor, UserRecord Target, Guid SessionId) : IRequest<Result<UserOutcome>>;
+public sealed record CloseUserSession(Connection Actor, UserRecord Target, Guid SessionId)
+	: IRequest<Result<UserOutcome>>;

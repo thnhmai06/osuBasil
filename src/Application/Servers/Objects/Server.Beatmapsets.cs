@@ -1,6 +1,5 @@
-using Basil.Application.Content.Persistence;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Domain.Users;
+using Basil.Application.Content.Persistence;
 
 namespace Basil.Application.Servers.Objects;
 

@@ -116,19 +116,6 @@ public sealed class EventQueueTests
 		await running.WaitAsync(Patience, Token);
 	}
 
-	/// <summary>Announces that it started, then waits until it is released.</summary>
-	private sealed class GatedDelivery(TaskCompletionSource started, TaskCompletionSource release, Action finish)
-		: IEventDelivery
-	{
-		/// <inheritdoc />
-		public async ValueTask DeliverAsync(CancellationToken cancellationToken)
-		{
-			started.SetResult();
-			await release.Task;
-			finish();
-		}
-	}
-
 	private static async Task<IReadOnlyList<T>> ReadAsync<T>(ChannelReader<T> reader, int count)
 	{
 		var values = new List<T>(count);
@@ -150,6 +137,19 @@ public sealed class EventQueueTests
 		await queue.DrainAsync(Token);
 
 		Assert.Equal(0, queue.Outstanding);
+	}
+
+	/// <summary>Announces that it started, then waits until it is released.</summary>
+	private sealed class GatedDelivery(TaskCompletionSource started, TaskCompletionSource release, Action finish)
+		: IEventDelivery
+	{
+		/// <inheritdoc />
+		public async ValueTask DeliverAsync(CancellationToken cancellationToken)
+		{
+			started.SetResult();
+			await release.Task;
+			finish();
+		}
 	}
 
 	/// <summary>Reports its name when it runs.</summary>

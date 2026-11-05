@@ -4,10 +4,10 @@ using Basil.Host.Rest;
 using Basil.Host.Stable;
 using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Web;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -19,8 +19,6 @@ namespace Basil.ArchitectureTests;
 /// </summary>
 public sealed class AdmissionPolicyTests
 {
-	private sealed record EntryPoint(string Host, string Name, IReadOnlyList<object> Metadata);
-
 	private static IEnumerable<EntryPoint> Undeclared(IEnumerable<EntryPoint> entryPoints)
 	{
 		return entryPoints.Where(entry => !entry.Metadata.OfType<AdmissionPolicyAttribute>().Any());
@@ -51,7 +49,8 @@ public sealed class AdmissionPolicyTests
 	{
 		var routes = Routes("Stable", StableRoutes.MapStable);
 		routes.AddRange(Routes("Stable", OsuWebRoutes.MapOsuWeb));
-		routes.AddRange(PacketHandlers.EntryPoints.Select(entry => new EntryPoint("Stable", entry.Name, entry.Metadata)));
+		routes.AddRange(
+			PacketHandlers.EntryPoints.Select(entry => new EntryPoint("Stable", entry.Name, entry.Metadata)));
 		return routes;
 	}
 
@@ -106,4 +105,6 @@ public sealed class AdmissionPolicyTests
 		Assert.True(commands.Count > 20, $"only {commands.Count} IRC commands were enumerated");
 		Assert.Empty(Undeclared(commands));
 	}
+
+	private sealed record EntryPoint(string Host, string Name, IReadOnlyList<object> Metadata);
 }

@@ -16,11 +16,11 @@ public sealed class BeatmapReloaderTests
 {
 	private const double NewStar = 7.25;
 	private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
+	private readonly IBeatmapAnalyser _analyser = Substitute.For<IBeatmapAnalyser>();
 
 	private readonly IBeatmapRepository _beatmaps = Substitute.For<IBeatmapRepository>();
 	private readonly IBeatmapsetRepository _sets = Substitute.For<IBeatmapsetRepository>();
 	private readonly IBeatmapsetStorage _storage = Substitute.For<IBeatmapsetStorage>();
-	private readonly IBeatmapAnalyser _analyser = Substitute.For<IBeatmapAnalyser>();
 
 	private BeatmapReloader NewReloader()
 	{
@@ -33,9 +33,11 @@ public sealed class BeatmapReloaderTests
 	{
 		var set = AssetBeatmaps.Set();
 		var beatmap = AssetBeatmaps.Beatmap(set);
-		_sets.ListAsync(Arg.Any<BeatmapQuery>(), Arg.Is<PageRequest>(page => page.Offset == 0), Arg.Any<CancellationToken>())
+		_sets.ListAsync(Arg.Any<BeatmapQuery>(), Arg.Is<PageRequest>(page => page.Offset == 0),
+				Arg.Any<CancellationToken>())
 			.Returns(new Page<BeatmapsetRecord>([set], 1));
-		_sets.ListAsync(Arg.Any<BeatmapQuery>(), Arg.Is<PageRequest>(page => page.Offset > 0), Arg.Any<CancellationToken>())
+		_sets.ListAsync(Arg.Any<BeatmapQuery>(), Arg.Is<PageRequest>(page => page.Offset > 0),
+				Arg.Any<CancellationToken>())
 			.Returns(new Page<BeatmapsetRecord>([], 1));
 		_beatmaps.ListAsync(set, Arg.Any<CancellationToken>()).Returns([beatmap]);
 		return beatmap;
@@ -45,7 +47,8 @@ public sealed class BeatmapReloaderTests
 	public async Task Reload_StoresTheStarRatingTheRulesetsNowCompute()
 	{
 		var beatmap = OneSetWithABeatmap();
-		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu", Arg.Any<CancellationToken>())
+		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
+				Arg.Any<CancellationToken>())
 			.Returns(new MemoryStream([1]));
 		var difficulty = beatmap.Metadata.Difficulty with { Star = NewStar };
 		_analyser.Analyze(Arg.Any<Stream>(), GameMode.Standard, GameMods.NoMod)
@@ -54,7 +57,8 @@ public sealed class BeatmapReloaderTests
 		var (done, failed) = await NewReloader().ReloadAllAsync(Token);
 
 		Assert.Equal((1, 0), (done, failed));
-		await _beatmaps.Received(1).UpdateAsync(Arg.Is<BeatmapRecord>(stored => stored.Metadata.Difficulty.Star == NewStar),
+		await _beatmaps.Received(1).UpdateAsync(
+			Arg.Is<BeatmapRecord>(stored => stored.Metadata.Difficulty.Star == NewStar),
 			Arg.Any<CancellationToken>());
 	}
 
@@ -62,7 +66,8 @@ public sealed class BeatmapReloaderTests
 	public async Task Reload_ABeatmapWhoseFileIsMissing_KeepsItsStoredValues()
 	{
 		var beatmap = OneSetWithABeatmap();
-		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu", Arg.Any<CancellationToken>())
+		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
+				Arg.Any<CancellationToken>())
 			.Returns((Stream?)null);
 
 		var (done, failed) = await NewReloader().ReloadAllAsync(Token);
@@ -75,7 +80,8 @@ public sealed class BeatmapReloaderTests
 	public async Task Reload_ABeatmapThatCannotBeAnalysed_KeepsItsStoredValues_AndTheOthersStillReload()
 	{
 		var beatmap = OneSetWithABeatmap();
-		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu", Arg.Any<CancellationToken>())
+		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
+				Arg.Any<CancellationToken>())
 			.Returns(new MemoryStream([1]));
 		_analyser.Analyze(Arg.Any<Stream>(), Arg.Any<GameMode>(), Arg.Any<GameMods>())
 			.Returns(_ => throw new InvalidDataException());

@@ -91,7 +91,8 @@ internal sealed class RoomCountdowns(
 				.. RoomCountdown.MarksFor(length, startsRound).Select(mark =>
 					clock.CreateTimer(InBackground(() => TickAsync(room, running, mark)), null, length - mark,
 						Timeout.InfiniteTimeSpan)),
-				clock.CreateTimer(InBackground(() => ElapseAsync(room, running)), null, length, Timeout.InfiniteTimeSpan)
+				clock.CreateTimer(InBackground(() => ElapseAsync(room, running)), null, length,
+					Timeout.InfiniteTimeSpan)
 			];
 		}
 

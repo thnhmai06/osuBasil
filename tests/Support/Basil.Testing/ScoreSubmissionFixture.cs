@@ -167,7 +167,8 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	/// <returns>The score.</returns>
 	public static ScoreData PassedScore()
 	{
-		return new ScoreData(null, Beatmap, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, true), Grade.S, true, PlayedAt);
+		return new ScoreData(null, Beatmap, GameMode.Standard, GameMods.NoMod,
+			new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, true), Grade.S, true, PlayedAt);
 	}
 
 	/// <summary>Wraps a score in a submission whose checksum is the one a genuine client computes.</summary>

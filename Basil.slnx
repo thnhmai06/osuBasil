@@ -1,6 +1,7 @@
 <Solution>
 	<Folder Name="/Sources/">
 		<Project Path="src/Domain/Basil.Domain.csproj"/>
+		<Project Path="src/Gateway/Basil.Gateway.csproj"/>
 		<Project Path="src/Basil/Basil.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Application/">
@@ -32,9 +33,6 @@
 		<Project Path="src/Infrastructure/Servers/Basil.Infrastructure.Servers.csproj"/>
 		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj"/>
 	</Folder>
-	<Folder Name="/Sources/Gateway/">
-		<Project Path="src/Gateway/Basil.Gateway.csproj"/>
-	</Folder>
 	<Folder Name="/Sources/Hosts/">
 		<Project Path="src/Hosts/Stable/Basil.Host.Stable.csproj"/>
 		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
@@ -47,7 +45,9 @@
 		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/">
+		<Project Path="tests/Domain/Basil.Domain.Tests.csproj"/>
 		<Project Path="tests/Architecture/Basil.ArchitectureTests.csproj"/>
+		<Project Path="tests/Gateway/Basil.Gateway.Tests.csproj"/>
 		<Project Path="tests/Basil/Basil.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Support/">
@@ -66,9 +66,6 @@
 		<Project Path="tests/Application/Scores/Basil.Application.Scores.Tests.csproj"/>
 		<Project Path="tests/Application/Servers/Basil.Application.Servers.Tests.csproj"/>
 		<Project Path="tests/Application/Users/Basil.Application.Users.Tests.csproj"/>
-	</Folder>
-	<Folder Name="/Tests/Gateway/">
-		<Project Path="tests/Gateway/Basil.Gateway.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Hosts/">
 		<Project Path="tests/Hosts/Stable/Basil.Host.Stable.Tests.csproj"/>
@@ -89,9 +86,6 @@
 		<Project Path="tests/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Scores/Basil.Infrastructure.Scores.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Users/Basil.Infrastructure.Users.Tests.csproj"/>
-	</Folder>
-	<Folder Name="/Tests/Domain/">
-		<Project Path="tests/Domain/Basil.Domain.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Protocol/">
 		<Project Path="tests/Protocol/Stable/Basil.Protocol.Stable.Tests.csproj"/>

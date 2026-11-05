@@ -1,6 +1,5 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Objects;
-using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
@@ -70,14 +69,16 @@ public readonly struct ScopedUserRestrictions
 		CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
-		return await _scoped.User.Restrictions.DeleteAsync(restriction, reason, _scoped.Actor.Record, cancellationToken);
+		return await _scoped.User.Restrictions.DeleteAsync(restriction, reason, _scoped.Actor.Record,
+			cancellationToken);
 	}
 
 	private async Task<(Result<UserOutcome> Result, UserRestriction? Restriction)> ImposeAsync(UserPermissions needed,
 		UserPermissions permissions, DateTimeOffset? endsAt, string? reason, CancellationToken cancellationToken)
 	{
 		if (_scoped.Guard(needed, false) is { } denied) return (denied, null);
-		var (outcome, restriction) = await _scoped.User.Restrictions.ImposeAsync(permissions, endsAt, reason, _scoped.Actor.Record, cancellationToken);
+		var (outcome, restriction) = await _scoped.User.Restrictions.ImposeAsync(permissions, endsAt, reason,
+			_scoped.Actor.Record, cancellationToken);
 		return (outcome, restriction);
 	}
 }

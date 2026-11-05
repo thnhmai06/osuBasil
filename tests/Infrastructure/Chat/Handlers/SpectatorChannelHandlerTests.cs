@@ -1,9 +1,9 @@
-using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 

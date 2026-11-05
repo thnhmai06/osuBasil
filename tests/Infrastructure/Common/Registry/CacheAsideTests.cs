@@ -10,6 +10,7 @@ public sealed class CacheAsideTests
 	{
 		var cache = new CacheAside<int, string>();
 		var loads = 0;
+
 		Task<string?> Load()
 		{
 			loads++;
@@ -28,6 +29,7 @@ public sealed class CacheAsideTests
 	{
 		var cache = new CacheAside<int, string>();
 		var loads = 0;
+
 		Task<string?> Load()
 		{
 			loads++;

@@ -2,9 +2,9 @@ using Basil.Application.Common.Events;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc;
-using Basil.Logging;
-using Basil.Host.Stable.Support;
 using Basil.Host.Rest.Sse;
+using Basil.Host.Stable.Support;
+using Basil.Logging;
 
 namespace Basil.Lifetime;
 

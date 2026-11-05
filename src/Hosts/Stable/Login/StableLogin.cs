@@ -1,10 +1,9 @@
-using Basil.Application.Users.Messages;
-using Mediator;
 using System.Net;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
@@ -17,6 +16,7 @@ using Basil.Domain.Users;
 using Basil.Gateway;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Authentication;
+using Mediator;
 
 namespace Basil.Host.Stable.Login;
 

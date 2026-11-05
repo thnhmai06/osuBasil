@@ -8,7 +8,10 @@ namespace Basil.Infrastructure.Persistence;
 /// <summary>Registers the database engines of the server.</summary>
 public static class DependencyInjection
 {
-	/// <summary>The names of the database engines <c>Basil:Database:Read:Provider</c> and <c>Basil:Database:Write:Provider</c> accept.</summary>
+	/// <summary>
+	///     The names of the database engines <c>Basil:Database:Read:Provider</c> and <c>Basil:Database:Write:Provider</c>
+	///     accept.
+	/// </summary>
 	public static readonly IReadOnlyList<string> ProviderNames = ["PostgreSQL", "MySql"];
 
 	/// <summary>Adds the database engine of each endpoint, chosen by name in the database settings.</summary>

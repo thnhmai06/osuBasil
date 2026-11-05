@@ -6,7 +6,8 @@ namespace Basil.Host.Rest.Tests.Content;
 [Collection("REST host")]
 public sealed class RulesetTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.ServerManageSettings;
+	private static readonly UserPermissions Manager =
+		UserPermissionsGroups.Default | UserPermissions.ServerManageSettings;
 
 	[Fact]
 	public async Task Version_IsPublic_AndNamesTheAppAndTheRulesetVersion()

@@ -1,14 +1,13 @@
-using Basil.Gateway;
-using Mediator;
-using Basil.Application.Servers.Messages;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Servers.Objects;
+using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
+using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -30,7 +29,8 @@ internal static class ContentRoutes
 			.WithDescription("An empty or absent `to` announces to everyone online.");
 
 		var screenshots = v1.MapGroup("/screenshots").WithTags("Screenshots").RequireToken();
-		screenshots.MapGet("/", ListScreenshotsAsync).Admitted(WorkClass.Listing).WithSummary("List the stored screenshots.");
+		screenshots.MapGet("/", ListScreenshotsAsync).Admitted(WorkClass.Listing)
+			.WithSummary("List the stored screenshots.");
 		screenshots.MapDelete("/{id}", DeleteScreenshotAsync).WithSummary("Delete a screenshot.");
 	}
 

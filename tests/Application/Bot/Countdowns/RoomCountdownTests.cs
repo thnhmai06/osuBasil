@@ -1,4 +1,3 @@
-
 using Basil.Application.Bot.Objects;
 
 namespace Basil.Application.Bot.Tests.Countdowns;

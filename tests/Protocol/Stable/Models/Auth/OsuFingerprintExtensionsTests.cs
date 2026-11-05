@@ -80,14 +80,15 @@ public class OsuFingerprintExtensionsTests
 	{
 		var text = $"{Path}:{adapters}:{AdaptersHash}:{Uninstall}:{Disk}:";
 
-		Assert.Equal(text, OsuFingerprintExtensions.ToText(OsuFingerprintExtensions.Parse(text)));
+		Assert.Equal(text, OsuFingerprintExtensions.Parse(text).ToText());
 	}
 
 	[Fact]
 	public void ToText_UppercaseHashes_AreWrittenInLowercase()
 	{
-		var fingerprint = OsuFingerprintExtensions.Parse($"{Path.ToUpperInvariant()}:1.:{AdaptersHash}:{Uninstall}:{Disk}:");
+		var fingerprint =
+			OsuFingerprintExtensions.Parse($"{Path.ToUpperInvariant()}:1.:{AdaptersHash}:{Uninstall}:{Disk}:");
 
-		Assert.Equal($"{Path}:1.:{AdaptersHash}:{Uninstall}:{Disk}:", OsuFingerprintExtensions.ToText(fingerprint));
+		Assert.Equal($"{Path}:1.:{AdaptersHash}:{Uninstall}:{Disk}:", fingerprint.ToText());
 	}
 }

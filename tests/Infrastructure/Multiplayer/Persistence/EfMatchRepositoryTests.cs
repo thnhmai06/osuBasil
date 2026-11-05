@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
@@ -80,7 +81,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	[Fact]
 	public async Task The_table_refuses_a_match_without_a_creator()
 	{
-		await Assert.ThrowsAnyAsync<System.Data.Common.DbException>(() => StoredRows.InsertAsync(ConnectionString,
+		await Assert.ThrowsAnyAsync<DbException>(() => StoredRows.InsertAsync(ConnectionString,
 			"matches", [
 				new Dictionary<string, object?>
 				{

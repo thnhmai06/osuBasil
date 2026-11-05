@@ -37,7 +37,7 @@ public sealed class CollectDiagnosticsHandlerTests
 		using var app = new TestApplication();
 		await app.LoginAsync(await app.CreateUserAsync("Osu", "password"), SessionType.Stable);
 		await app.LoginAsync(await app.CreateUserAsync("Chatter", "password"), SessionType.Irc);
-		await app.LoginAsync(await app.CreateUserAsync("Api", "password"), SessionType.Api);
+		await app.LoginAsync(await app.CreateUserAsync("Api", "password"));
 
 		var counts = await CollectAsync(app);
 

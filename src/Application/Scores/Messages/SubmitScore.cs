@@ -12,7 +12,10 @@ namespace Basil.Application.Scores.Messages;
 /// <param name="Submission">The parsed submission.</param>
 /// <param name="Beatmap">The beatmap the server knows for the submission, or <see langword="null" /> when it has none.</param>
 /// <param name="Client">The osu! client information sent with the submission.</param>
-/// <param name="Replay">The seekable replay stream at its start, left open by the answer, or <see langword="null" /> for a failed play.</param>
+/// <param name="Replay">
+///     The seekable replay stream at its start, left open by the answer, or <see langword="null" /> for a
+///     failed play.
+/// </param>
 /// <remarks>The answer is ok when the score was stored; otherwise rejected with the reason, or denied.</remarks>
 public sealed record SubmitScore(
 	StableConnection Actor,

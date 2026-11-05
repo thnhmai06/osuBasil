@@ -19,7 +19,9 @@ internal static class DiagnosticsRoutes
 	public static void MapDiagnostics(this RouteGroupBuilder v1)
 	{
 		var diagnostics = v1.MapGroup("/diagnostics").WithTags("Diagnostics").RequireToken();
-		diagnostics.MapGet("/", (HttpContext c, ISender sender, IDiagnosticsIntake intake) => StreamAsync(c, sender, intake, null)).Sse()
+		diagnostics.MapGet("/",
+				(HttpContext c, ISender sender, IDiagnosticsIntake intake) => StreamAsync(c, sender, intake, null))
+			.Sse()
 			.WithSummary("Watch every diagnostics category.")
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample. Data is up to about one second old.

@@ -10,4 +10,5 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="Restriction">The restriction to delete.</param>
-public sealed record DeleteRestriction(Connection Actor, UserRecord Target, UserRestriction Restriction) : IRequest<Result<UserOutcome>>;
+public sealed record DeleteRestriction(Connection Actor, UserRecord Target, UserRestriction Restriction)
+	: IRequest<Result<UserOutcome>>;

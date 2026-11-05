@@ -1,5 +1,5 @@
-using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Chat.Persistence;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;

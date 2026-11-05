@@ -21,7 +21,8 @@ internal sealed class RequestMetricsMiddleware(RequestDelegate next, IOptions<Re
 			var label = HostLabels.Resolve(context.Request.Host.Host, _domain);
 			RestMeter.HttpDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds,
 				new KeyValuePair<string, object?>(DiagnosticsMetrics.HostTag, label),
-				new KeyValuePair<string, object?>(DiagnosticsMetrics.StatusTag, $"{context.Response.StatusCode / 100}xx"));
+				new KeyValuePair<string, object?>(DiagnosticsMetrics.StatusTag,
+					$"{context.Response.StatusCode / 100}xx"));
 		}
 	}
 }

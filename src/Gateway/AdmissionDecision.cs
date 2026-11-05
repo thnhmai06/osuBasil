@@ -17,7 +17,10 @@ public enum AdmissionDenial
 /// <param name="Allowed">Whether the request may proceed.</param>
 /// <param name="Reason">Why it was refused; <see langword="null" /> when allowed.</param>
 /// <param name="RetryAfter">How long the caller should wait before trying again, when a delay is known.</param>
-public readonly record struct AdmissionDecision(bool Allowed, AdmissionDenial? Reason = null, TimeSpan? RetryAfter = null)
+public readonly record struct AdmissionDecision(
+	bool Allowed,
+	AdmissionDenial? Reason = null,
+	TimeSpan? RetryAfter = null)
 {
 	/// <summary>Gets the decision to let the request proceed.</summary>
 	public static AdmissionDecision Allow { get; } = new(true);

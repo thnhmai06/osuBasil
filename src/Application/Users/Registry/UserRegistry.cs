@@ -24,7 +24,8 @@ public sealed class UserRegistry
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
-	private static readonly OsuClient ServerClient = new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
+	private static readonly OsuClient ServerClient =
+		new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
 
 	private readonly IAccountRules _accounts;
 	private readonly ConcurrentDictionary<Guid, Connection> _activity = new();
@@ -481,7 +482,8 @@ public sealed class UserRegistry
 			    .Allows(UserPermissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
 
-		if (_online.GetValueOrDefault(connection.Record) is { } holder && MakeRoomFor(holder, connection) is { } refusal)
+		if (_online.GetValueOrDefault(connection.Record) is { } holder &&
+		    MakeRoomFor(holder, connection) is { } refusal)
 			return refusal;
 
 		// Making room may have closed the user's last connection and taken them offline.
@@ -559,9 +561,7 @@ public sealed class UserRegistry
 			         .Where(connection => connection.IsOpen && connection.Session.Id != except &&
 			                              (only is null || connection.Session.Id == only))
 			         .OrderByDescending(connection => connection.Type).ToList())
-		{
 			Close(connection, reason);
-		}
 	}
 
 	/// <summary>Stores the activity of the token sessions that were used since the last time.</summary>

@@ -10,4 +10,5 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="Permissions">The new permissions.</param>
-public sealed record SetUserPermissions(Connection Actor, UserRecord Target, UserPermissions Permissions) : IRequest<Result<UserOutcome>>;
+public sealed record SetUserPermissions(Connection Actor, UserRecord Target, UserPermissions Permissions)
+	: IRequest<Result<UserOutcome>>;

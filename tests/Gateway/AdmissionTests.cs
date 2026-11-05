@@ -3,14 +3,22 @@ using Microsoft.Extensions.Time.Testing;
 namespace Basil.Gateway.Tests;
 
 /// <summary>
-///     Tier 2 admits a subject up to its allowance per window: <c>Requests</c> for Standard, <c>Requests *
-///     ElevatedMultiplier</c> for Elevated; the next request is denied with a retry delay.
+///     Tier 2 admits a subject up to its allowance per window: <c>Requests</c> for Standard,
+///     <c>
+///         Requests *
+///         ElevatedMultiplier
+///     </c>
+///     for Elevated; the next request is denied with a retry delay.
 /// </summary>
 public sealed class AdmissionTests
 {
-	private static readonly GatewayLimits Small = new() { Requests = 3, Window = TimeSpan.FromMinutes(1), ElevatedMultiplier = 2 };
+	private static readonly GatewayLimits Small = new()
+		{ Requests = 3, Window = TimeSpan.FromMinutes(1), ElevatedMultiplier = 2 };
 
-	private static AdmissionSubject Standard(string key) => new(key, AdmissionTier.Standard);
+	private static AdmissionSubject Standard(string key)
+	{
+		return new AdmissionSubject(key, AdmissionTier.Standard);
+	}
 
 	[Fact]
 	public void RequestsUnderTheLimit_AreAllowed()

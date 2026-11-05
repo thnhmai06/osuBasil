@@ -14,6 +14,8 @@ namespace Basil.Application.Multiplayer.Tests.Registry;
 /// </summary>
 public sealed class LobbyTests
 {
+	private static readonly TimeSpan OneSecond = TimeSpan.FromSeconds(1);
+
 	[Fact]
 	public async Task ReleaseAsync_ForAPlayerSeatedInARoom_RemovesThemFromTheRoom()
 	{
@@ -201,8 +203,6 @@ public sealed class LobbyTests
 			UserPermissions.RoomJoin, null, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(result.IsOk);
 	}
-
-	private static readonly TimeSpan OneSecond = TimeSpan.FromSeconds(1);
 
 	[Theory]
 	[InlineData(RoomSource.Game)]

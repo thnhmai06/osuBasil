@@ -16,9 +16,6 @@ namespace Basil.ArchitectureTests;
 /// <remarks>The hosts are not covered yet: they are migrated after the tests.</remarks>
 public class LayeringTests
 {
-	private static readonly string[] Host =
-		["Basil.Host", "Basil.Configuration", "Basil.Documentation", "Basil.Lifetime", "Basil.Logging"];
-
 	private const string Protocol = "Basil.Protocol";
 	private const string Persistence = @"^Basil\.Application\.\w+\.Persistence";
 	private const string Capabilities = @"^Basil\.Application\.\w+\.Capabilities";
@@ -29,6 +26,10 @@ public class LayeringTests
 	private const string Storage = @"^Basil\.Application\.\w+\.Storage";
 	private const string InfrastructureWorkers = @"^Basil\.Infrastructure\.\w+\.Workers";
 	private const string InfrastructureHandlers = @"^Basil\.Infrastructure\.\w+\.(Handlers|Services)";
+
+	private static readonly string[] Host =
+		["Basil.Host", "Basil.Configuration", "Basil.Documentation", "Basil.Lifetime", "Basil.Logging"];
+
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolStable = typeof(Protocol.Stable.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
@@ -41,6 +42,14 @@ public class LayeringTests
 			.SelectMany(module => new[] { $"Basil.Application.{module}", $"Basil.Infrastructure.{module}" }),
 
 		"Basil.Application.Common", "Basil.Infrastructure.Common"
+	];
+
+	/// <summary>The sources whose entry points only send messages: they never scope an object themselves.</summary>
+	private static readonly string[] MessageOnlyHosts =
+	[
+		Path.Combine("Hosts", "Irc"), Path.Combine("Hosts", "Stable"), Path.Combine("Hosts", "Rest"),
+		Path.Combine("Hosts", "Cli"), Path.Combine("Hosts", "Shared"),
+		Path.Combine("Application", "Bot"), Path.Combine("Infrastructure", "Bot")
 	];
 
 	[Fact]
@@ -270,7 +279,8 @@ public class LayeringTests
 		AssertNoDependency(BotInfrastructure,
 		[
 			"Basil.Infrastructure.Common",
-			.. ModuleAssemblies.Modules.Where(module => module != "Bot").Select(module => $"Basil.Infrastructure.{module}"),
+			.. ModuleAssemblies.Modules.Where(module => module != "Bot")
+				.Select(module => $"Basil.Infrastructure.{module}"),
 			.. NonScopedCapabilityTypeNames(), .. Host, Protocol
 		]);
 	}
@@ -280,7 +290,8 @@ public class LayeringTests
 	{
 		var startRound = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Single(type => type.Name == "StartRound");
-		var result = Types.InAssembly(BotInfrastructure).Should().NotHaveDependencyOnAny(startRound.FullName!).GetResult();
+		var result = Types.InAssembly(BotInfrastructure).Should().NotHaveDependencyOnAny(startRound.FullName!)
+			.GetResult();
 
 		Assert.False(result.IsSuccessful);
 	}
@@ -350,18 +361,13 @@ public class LayeringTests
 		return File.ReadAllText(path).Contains("MemoryStream", StringComparison.Ordinal);
 	}
 
-	/// <summary>The sources whose entry points only send messages: they never scope an object themselves.</summary>
-	private static readonly string[] MessageOnlyHosts =
-		[Path.Combine("Hosts", "Irc"), Path.Combine("Hosts", "Stable"), Path.Combine("Hosts", "Rest"),
-		 Path.Combine("Hosts", "Cli"), Path.Combine("Hosts", "Shared"),
-		 Path.Combine("Application", "Bot"), Path.Combine("Infrastructure", "Bot")];
-
 	[Fact]
 	public void MessageOnlyHosts_DoNotCallScopeTo()
 	{
 		var offenders = MessageOnlyHosts.SelectMany(SourcesOfHost).Where(HasScopeTo).ToList();
 
-		Assert.True(offenders.Count == 0, "A host sends messages and does not scope objects: " + string.Join(", ", offenders));
+		Assert.True(offenders.Count == 0,
+			"A host sends messages and does not scope objects: " + string.Join(", ", offenders));
 	}
 
 	[Fact]

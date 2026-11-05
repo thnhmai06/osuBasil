@@ -11,4 +11,5 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="SessionId">The session to read.</param>
-public sealed record GetUserSession(Connection Actor, UserRecord Target, Guid SessionId) : IRequest<(Result<UserOutcome> Result, SessionRecord? Session)>;
+public sealed record GetUserSession(Connection Actor, UserRecord Target, Guid SessionId)
+	: IRequest<(Result<UserOutcome> Result, SessionRecord? Session)>;

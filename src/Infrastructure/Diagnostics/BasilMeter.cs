@@ -13,5 +13,6 @@ internal static class BasilMeter
 
 	/// <summary>Message duration in milliseconds, tagged with the type of the message.</summary>
 	internal static readonly Histogram<double> MessageDuration =
-		Instance.CreateHistogram<double>("basil.mediator.message.duration", "ms", "Time a message takes to be handled.");
+		Instance.CreateHistogram<double>("basil.mediator.message.duration", "ms",
+			"Time a message takes to be handled.");
 }

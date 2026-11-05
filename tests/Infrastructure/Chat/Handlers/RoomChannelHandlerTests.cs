@@ -1,9 +1,9 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;

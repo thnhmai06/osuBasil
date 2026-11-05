@@ -88,7 +88,8 @@ public static class RoomCommands
 		Command<object?>("close", "Close the room.", (r, _, _, ct) => r.Ask(new CloseRoom(r.Actor, r.Room), ct)),
 		Command<object?>("lock", "Lock the room so nobody else can join.",
 			(r, _, _, ct) => r.Ask(new SetRoomLocked(r.Actor, r.Room, true), ct)),
-		Command<object?>("unlock", "Unlock the room.", (r, _, _, ct) => r.Ask(new SetRoomLocked(r.Actor, r.Room, false), ct)),
+		Command<object?>("unlock", "Unlock the room.",
+			(r, _, _, ct) => r.Ask(new SetRoomLocked(r.Actor, r.Room, false), ct)),
 		Command<SizeRequest>("size", "Change the number of usable slots.", (r, b, _, ct) =>
 			b.Size is < 1 or > MaxRoomSize
 				? Refuse(RoomOutcome.InvalidSettings)
@@ -107,7 +108,8 @@ public static class RoomCommands
 				r.Ask(new ConfigureRoom(r.Actor, r.Room,
 					new RoomSettingsChange(Password: b.Password ?? string.Empty)), ct)),
 		Command<PrivateRequest>("private", "Make the room private or public.",
-			(r, b, _, ct) => r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(IsPrivate: b.Private)), ct)),
+			(r, b, _, ct) => r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(IsPrivate: b.Private)),
+				ct)),
 		Command<MapRequest>("map", "Select the beatmap of the room.", MapAsync),
 		Command<ModsRequest>("mods", "Set the mods of the room, or free mods.", (r, b, _, ct) =>
 		{
@@ -116,7 +118,8 @@ public static class RoomCommands
 				if (!token.Equals("None", StringComparison.OrdinalIgnoreCase))
 					mods |= ModsExtensions.FromModString(token);
 
-			return r.Ask(new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Mods: mods, Freemods: b.Freemod ?? false)),
+			return r.Ask(
+				new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Mods: mods, Freemods: b.Freemod ?? false)),
 				ct);
 		}),
 		Command<MoveRequest>("move", "Move a player to a slot.", (r, b, s, ct) => WithUser(s, b.User, ct,
@@ -128,9 +131,12 @@ public static class RoomCommands
 		Command<UserRequest>("host", "Give the host to a player.", (r, b, s, ct) => WithUser(s, b.User, ct, u =>
 		{
 			var host = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u)?.Stable;
-			return host is { IsOpen: true } ? r.Ask(new SetRoomHost(r.Actor, r.Room, host), ct) : Refuse(RoomOutcome.TargetOffline);
+			return host is { IsOpen: true }
+				? r.Ask(new SetRoomHost(r.Actor, r.Room, host), ct)
+				: Refuse(RoomOutcome.TargetOffline);
 		})),
-		Command<object?>("clearhost", "Remove the host.", (r, _, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, null), ct)),
+		Command<object?>("clearhost", "Remove the host.",
+			(r, _, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, null), ct)),
 		Command<UserRequest>("kick", "Remove a player from the room.",
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new KickPlayer(r.Actor, r.Room, u), ct))),
 		Command<UserRequest>("ban", "Ban a player from the room.",
@@ -141,19 +147,24 @@ public static class RoomCommands
 			u =>
 			{
 				var target = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u);
-				return target is null ? Refuse(RoomOutcome.TargetOffline) : r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct);
+				return target is null
+					? Refuse(RoomOutcome.TargetOffline)
+					: r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct);
 			})),
 		Command<UserRequest>("addref", "Make a player a referee.",
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new AddReferee(r.Actor, r.Room, u), ct))),
 		Command<UserRequest>("removeref", "Remove a referee.",
 			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new RemoveReferee(r.Actor, r.Room, u), ct))),
 		Command<CountdownRequest>("start", "Start the round, or start it after a countdown.", (r, b, _, ct) =>
-			b.Seconds is { } seconds and > 0 ? Countdown(r, seconds, true, ct) : r.Ask(new StartRound(r.Actor, r.Room), ct)),
+			b.Seconds is { } seconds and > 0
+				? Countdown(r, seconds, true, ct)
+				: r.Ask(new StartRound(r.Actor, r.Room), ct)),
 		Command<CountdownRequest>("timer", "Start a countdown of 30 seconds or the given length.",
 			(r, b, _, ct) => Countdown(r, b.Seconds ?? 30, false, ct)),
 		Command<object?>("aborttimer", "Cancel the running countdown.",
 			(r, _, _, ct) => r.Ask(new CancelRoomCountdown(r.Actor, r.Room), ct)),
-		Command<object?>("abort", "Abort the round in progress.", (r, _, _, ct) => r.Ask(new AbortRound(r.Actor, r.Room), ct))
+		Command<object?>("abort", "Abort the round in progress.",
+			(r, _, _, ct) => r.Ask(new AbortRound(r.Actor, r.Room), ct))
 	];
 
 	/// <summary>Cuts a room name to the longest length.</summary>

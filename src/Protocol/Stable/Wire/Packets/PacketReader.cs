@@ -122,10 +122,10 @@ public sealed class PacketReader(Stream stream)
 		if (scoreV2)
 			scoreV2Portion = new ScoreV2Portion(_reader.ReadDouble(), _reader.ReadDouble());
 
-		return new ScoreFrame(Time: TimeSpan.FromMilliseconds(time), Id: id,
-			State: new ScoreState(new HitCounts(num300, num100, num50, numGeki, numKatu, numMiss), totalScore, maxCombo,
+		return new ScoreFrame(TimeSpan.FromMilliseconds(time), id,
+			new ScoreState(new HitCounts(num300, num100, num50, numGeki, numKatu, numMiss), totalScore, maxCombo,
 				currentCombo, perfect),
-			Health: currentHp, TagByte: tagByte, Sv2Portion: scoreV2Portion);
+			currentHp, tagByte, scoreV2Portion);
 	}
 
 	/// <summary>Reads a single replay frame from the buffer.</summary>

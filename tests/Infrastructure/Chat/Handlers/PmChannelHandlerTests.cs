@@ -1,7 +1,7 @@
-using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;

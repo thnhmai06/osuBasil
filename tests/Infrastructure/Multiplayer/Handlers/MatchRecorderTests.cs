@@ -1,8 +1,8 @@
-using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Multiplayer;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
 using NSubstitute;
 

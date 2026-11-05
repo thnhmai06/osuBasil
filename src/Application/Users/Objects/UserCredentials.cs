@@ -1,10 +1,9 @@
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects;
 

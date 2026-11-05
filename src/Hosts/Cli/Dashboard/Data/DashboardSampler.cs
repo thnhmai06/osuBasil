@@ -23,7 +23,8 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		var registry = services.GetRequiredService<UserRegistry>();
 		var lobby = services.GetRequiredService<Lobby>();
 		// The intake answers without waiting for anything, so the frame loop can take the sample where it stands.
-		var sample = services.GetRequiredService<IDiagnosticsIntake>().TakeSampleAsync().AsTask().GetAwaiter().GetResult();
+		var sample = services.GetRequiredService<IDiagnosticsIntake>().TakeSampleAsync().AsTask().GetAwaiter()
+			.GetResult();
 		var json = JsonSerializer.SerializeToNode(sample.All, ApiJson.Options)!.AsObject();
 
 		model.Version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown";
@@ -64,13 +65,14 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 	{
 		return
 		[
-			.. registry.Online.Values.Where(user => !user.Record.IsBasilBot()).OrderBy(user => user.Record.Id).Select(user =>
-				new UserRow(
-					user.Record.Id, user.Record.Value.Name,
-					string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
-					user.Stable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
-					now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
-					(ulong)user.EffectivePermissions(now)))
+			.. registry.Online.Values.Where(user => !user.Record.IsBasilBot()).OrderBy(user => user.Record.Id)
+				.Select(user =>
+					new UserRow(
+						user.Record.Id, user.Record.Value.Name,
+						string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
+						user.Stable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
+						now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
+						(ulong)user.EffectivePermissions(now)))
 		];
 	}
 

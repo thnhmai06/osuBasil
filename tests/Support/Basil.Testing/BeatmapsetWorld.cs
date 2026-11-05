@@ -149,6 +149,9 @@ public sealed class BeatmapsetWorld
 		/// <summary>Gets the sources placed in the storage by hand and not yet taken in.</summary>
 		public IReadOnlyList<BeatmapsetSource> Waiting => _waiting;
 
+		/// <summary>Gets the uploaded archives that were kept in quarantine.</summary>
+		public List<MemoryArchive> Quarantined { get; } = [];
+
 		/// <inheritdoc />
 		public Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken cancellationToken = default)
 		{
@@ -255,9 +258,6 @@ public sealed class BeatmapsetWorld
 			Stored.Remove(set.Id);
 			return Task.CompletedTask;
 		}
-
-		/// <summary>Gets the uploaded archives that were kept in quarantine.</summary>
-		public List<MemoryArchive> Quarantined { get; } = [];
 
 		/// <inheritdoc />
 		public Task QuarantineAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)

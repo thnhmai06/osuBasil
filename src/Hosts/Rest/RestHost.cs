@@ -84,7 +84,8 @@ public static class RestHost
 		app.MapGet("/health", (Admission admission) => Api.Ok(admission.Health.ToString().ToLowerInvariant()))
 			.WithTags("Operations")
 			.WithSummary("Check that the server answers and how well it keeps up.")
-			.WithDescription("The state is `healthy`, `degraded` when the server is busier than usual, or `shedding` when it is overloaded and refuses the least valuable work.");
+			.WithDescription(
+				"The state is `healthy`, `degraded` when the server is busier than usual, or `shedding` when it is overloaded and refuses the least valuable work.");
 		app.MapDocs();
 		app.MapGuides();
 		var v1 = app.MapGroup("/v1");

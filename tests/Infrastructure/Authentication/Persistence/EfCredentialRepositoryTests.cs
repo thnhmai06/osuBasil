@@ -1,6 +1,5 @@
 using System.Text;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Common;
 using Basil.Domain.Users;

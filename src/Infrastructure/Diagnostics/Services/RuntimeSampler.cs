@@ -50,6 +50,14 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 	public Func<long> LogsDropped { get; set; } = () => 0;
 
 	/// <inheritdoc />
+	public void Reset()
+	{
+		Interlocked.Exchange(ref _exceptions, 0);
+		_lastExceptions = 0;
+		_recent.Clear();
+	}
+
+	/// <inheritdoc />
 	public void Dispose()
 	{
 		AppDomain.CurrentDomain.FirstChanceException -= OnException;
@@ -116,14 +124,6 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 			_lastSample = now;
 			return _cache = result;
 		}
-	}
-
-	/// <inheritdoc />
-	public void Reset()
-	{
-		Interlocked.Exchange(ref _exceptions, 0);
-		_lastExceptions = 0;
-		_recent.Clear();
 	}
 
 	private void OnException(object? sender, FirstChanceExceptionEventArgs args)

@@ -87,7 +87,9 @@ public readonly struct ScopedServer
 
 	private Result<ServerOutcome>? Denied()
 	{
-		return Require(UserPermissions.ChatManageAnnounce) is { } missing ? Result<ServerOutcome>.Denied(missing) : null;
+		return Require(UserPermissions.ChatManageAnnounce) is { } missing
+			? Result<ServerOutcome>.Denied(missing)
+			: null;
 	}
 
 	/// <summary>Checks whether the caller holds the permissions an action on this server needs.</summary>

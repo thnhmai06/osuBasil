@@ -2,7 +2,6 @@ using System.Text.Json;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Bot.Replies;
-using Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 using Basil.Infrastructure.Bot.Services;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;

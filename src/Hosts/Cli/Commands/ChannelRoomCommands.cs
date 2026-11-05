@@ -1,17 +1,16 @@
-using Basil.Application.Servers.Messages.Channels;
-using Mediator;
-using Basil.Application.Multiplayer.Messages;
-using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common;
+using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Servers.Objects;
+using Basil.Application.Servers.Messages.Channels;
 using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 

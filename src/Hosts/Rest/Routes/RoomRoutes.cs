@@ -1,14 +1,14 @@
-using Basil.Gateway;
-using Mediator;
-using Basil.Application.Multiplayer.Messages;
 using System.Text.Json;
 using Basil.Application.Common;
+using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -70,7 +70,8 @@ internal static class RoomRoutes
 			: null;
 	}
 
-	private static async Task<IResult> ListAsync(HttpContext context, Lobby lobby, ISender sender, int? offset, int? limit)
+	private static async Task<IResult> ListAsync(HttpContext context, Lobby lobby, ISender sender, int? offset,
+		int? limit)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
@@ -86,7 +87,9 @@ internal static class RoomRoutes
 
 	private static async Task<IResult> GetAsync(HttpContext context, Lobby lobby, ISender sender, int id)
 	{
-		return await Find(context, lobby, sender, id) is { } room ? Api.Ok(RoomView.Of(room)) : Api.NotFound("No such room.");
+		return await Find(context, lobby, sender, id) is { } room
+			? Api.Ok(RoomView.Of(room))
+			: Api.NotFound("No such room.");
 	}
 
 	private static async Task<IResult> LiveAsync(HttpContext context, Lobby lobby, ISender sender, int id)
@@ -115,7 +118,8 @@ internal static class RoomRoutes
 		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
 
 		var (room, result) = await sender.Send(new OpenRoom(context.Connection(),
-			RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, RoomSource.Api, request.IsPrivate ?? false),
+				RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, RoomSource.Api,
+				request.IsPrivate ?? false),
 			context.RequestAborted);
 		return result.IsOk ? Api.Created(RoomView.Of(room!)) : result.Refusal();
 	}

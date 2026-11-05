@@ -39,7 +39,10 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 
 		var found = (await scores.GetManyAsync([.. rows.Select(row => row.ScoreId)], cancellationToken))
 			.ToDictionary(score => score.Id);
-		return [.. rows.Where(row => found.ContainsKey(row.ScoreId)).Select(row =>
-			new RoundScore(found[row.ScoreId], round, row.Team is { } team ? (GameTeam)team : null))];
+		return
+		[
+			.. rows.Where(row => found.ContainsKey(row.ScoreId)).Select(row =>
+				new RoundScore(found[row.ScoreId], round, row.Team is { } team ? (GameTeam)team : null))
+		];
 	}
 }

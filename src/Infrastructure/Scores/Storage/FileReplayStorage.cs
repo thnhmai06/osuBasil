@@ -50,7 +50,8 @@ internal sealed class FileReplayStorage(
 	{
 		if (await OpenAsync(score, cancellationToken) is not { } file) return null;
 
-		if (ReplayFile.TryFindFrames(file, out var offset, out var length)) return new SliceStream(file, offset, length);
+		if (ReplayFile.TryFindFrames(file, out var offset, out var length))
+			return new SliceStream(file, offset, length);
 
 		await file.DisposeAsync();
 		return null;

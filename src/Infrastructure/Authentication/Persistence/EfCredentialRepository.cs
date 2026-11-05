@@ -37,7 +37,8 @@ internal sealed class EfCredentialRepository(DatabaseSession database) : ICreden
 	{
 		var row = new CredentialRow
 		{
-			UserId = credentials.User.Id, PasswordHash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue)
+			UserId = credentials.User.Id,
+			PasswordHash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue)
 		};
 		await database.WriteAsync((AuthenticationDbContext context, CancellationToken token) =>
 			context.UpsertAsync(row, stored => stored.UserId == row.UserId, token), cancellationToken);

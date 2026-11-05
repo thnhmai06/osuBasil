@@ -71,12 +71,16 @@ internal static class SpectateRoutes
 		return new
 		{
 			type = "frames", action = bundle.Action, sequence = bundle.Sequence,
-			frames = bundle.ReplayFrames.Select(f => new object[] { (byte)f.Keys, (byte)f.Drum, f.Position.X, f.Position.Y, (int)f.Time.TotalMilliseconds }),
+			frames = bundle.ReplayFrames.Select(f => new object[]
+				{ (byte)f.Keys, (byte)f.Drum, f.Position.X, f.Position.Y, (int)f.Time.TotalMilliseconds }),
 			score = new
 			{
-				time = (int)bundle.ScoreFrame.Time.TotalMilliseconds, total = bundle.ScoreFrame.State.TotalScore, combo = bundle.ScoreFrame.State.CurrentCombo,
-				maxCombo = bundle.ScoreFrame.State.MaxCombo, n300 = bundle.ScoreFrame.State.HitCounts.Num300, n100 = bundle.ScoreFrame.State.HitCounts.Num100,
-				n50 = bundle.ScoreFrame.State.HitCounts.Num50, geki = bundle.ScoreFrame.State.HitCounts.NumGeki, katu = bundle.ScoreFrame.State.HitCounts.NumKatu,
+				time = (int)bundle.ScoreFrame.Time.TotalMilliseconds, total = bundle.ScoreFrame.State.TotalScore,
+				combo = bundle.ScoreFrame.State.CurrentCombo,
+				maxCombo = bundle.ScoreFrame.State.MaxCombo, n300 = bundle.ScoreFrame.State.HitCounts.Num300,
+				n100 = bundle.ScoreFrame.State.HitCounts.Num100,
+				n50 = bundle.ScoreFrame.State.HitCounts.Num50, geki = bundle.ScoreFrame.State.HitCounts.NumGeki,
+				katu = bundle.ScoreFrame.State.HitCounts.NumKatu,
 				miss = bundle.ScoreFrame.State.HitCounts.NumMiss, hp = bundle.ScoreFrame.Health
 			}
 		};

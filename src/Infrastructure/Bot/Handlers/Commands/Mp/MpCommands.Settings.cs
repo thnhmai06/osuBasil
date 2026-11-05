@@ -129,7 +129,9 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(IsPrivate: args[0] == "1")), cancellationToken);
+		var outcome =
+			await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(IsPrivate: args[0] == "1")),
+				cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -152,7 +154,8 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(Size: size)), cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(Size: size)),
+			cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -177,7 +180,8 @@ internal sealed partial class MpCommands
 		var name = string.Join(' ', args);
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(name)), cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(name)),
+			cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -193,7 +197,8 @@ internal sealed partial class MpCommands
 	{
 		var actor = context.Actor;
 		var password = args.Count == 0 ? string.Empty : string.Join(' ', args);
-		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Password: password)), cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Password: password)),
+			cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -298,7 +303,11 @@ internal sealed partial class MpCommands
 
 		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name,
 			beatmap.Metadata.Difficulty.Mode, beatmap);
-		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode))), cancellationToken);
+		var outcome =
+			await sender.Send(
+				new ConfigureRoom(context.Actor, room,
+					new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode))),
+				cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
@@ -354,7 +363,9 @@ internal sealed partial class MpCommands
 
 		// Combinations the current mode does not allow are dropped (HT with DT keeps HT), not refused.
 		mods = mods.RemoveInvalidMods(room.Settings.MatchSettings.Mode);
-		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Mods: mods, Freemods: freemod)), cancellationToken);
+		var outcome =
+			await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Mods: mods, Freemods: freemod)),
+				cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

@@ -1,7 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
-using Basil.Domain.Content;
 using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;

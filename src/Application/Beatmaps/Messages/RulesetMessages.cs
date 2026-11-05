@@ -12,7 +12,10 @@ public sealed record GetRulesetVersion(IActor Actor)
 
 /// <summary>Asks Beatmaps to download and stage the newest ruleset version on behalf of an actor.</summary>
 /// <param name="Actor">The actor acting.</param>
-/// <remarks>The request fails with <see cref="RulesetUpdateException" /> when the feed cannot be read or a package fails verification.</remarks>
+/// <remarks>
+///     The request fails with <see cref="RulesetUpdateException" /> when the feed cannot be read or a package fails
+///     verification.
+/// </remarks>
 public sealed record UpdateRulesets(IActor Actor)
 	: IRequest<(Result<RulesetOutcome> Result, RulesetStageResult? Stage)>;
 

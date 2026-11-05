@@ -15,7 +15,8 @@ public sealed class SettingsGatewayLimitsTests
 		{
 			RateLimits = new ServerSettings.RateLimitSettings
 			{
-				Admission = new ServerSettings.AdmissionLimitSettings(requests, TimeSpan.FromMinutes(1), 4, 256, 32, 8, 1024, 0.5,
+				Admission = new ServerSettings.AdmissionLimitSettings(requests, TimeSpan.FromMinutes(1), 4, 256, 32, 8,
+					1024, 0.5,
 					0.7, 0.9, TimeSpan.FromSeconds(5))
 			}
 		};

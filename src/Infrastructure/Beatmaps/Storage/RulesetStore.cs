@@ -20,16 +20,16 @@ internal sealed class RulesetStore(DataPaths paths)
 
 	private string Pointer => Path.Combine(Root, "current");
 
+	/// <summary>Gets the version in use: the staged one when it was loaded at startup, else the one shipped with Basil.</summary>
+	public string Active =>
+		_loaded ?? Clean(FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, LibraryName("Osu")))
+			.ProductVersion);
+
 	/// <summary>Gets the library file name of a ruleset.</summary>
 	public static string LibraryName(string ruleset)
 	{
 		return $"osu.Game.Rulesets.{ruleset}.dll";
 	}
-
-	/// <summary>Gets the version in use: the staged one when it was loaded at startup, else the one shipped with Basil.</summary>
-	public string Active =>
-		_loaded ?? Clean(FileVersionInfo.GetVersionInfo(Path.Combine(AppContext.BaseDirectory, LibraryName("Osu")))
-			.ProductVersion);
 
 	/// <summary>Gets the version staged for the next start, or <see langword="null" /> when it is the active one.</summary>
 	public string? Staged()

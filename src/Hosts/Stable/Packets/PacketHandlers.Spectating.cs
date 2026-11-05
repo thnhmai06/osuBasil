@@ -18,7 +18,8 @@ internal sealed partial class PacketHandlers
 
 	private async Task StopSpectatingAsync(StableConnection osu, CancellationToken cancellationToken)
 	{
-		if (registry.FindSpectating(osu) is { } host) await sender.Send(new StopSpectating(osu, host), cancellationToken);
+		if (registry.FindSpectating(osu) is { } host)
+			await sender.Send(new StopSpectating(osu, host), cancellationToken);
 	}
 
 	private async Task ReportSpectatingFailedAsync(StableConnection osu, CancellationToken cancellationToken)

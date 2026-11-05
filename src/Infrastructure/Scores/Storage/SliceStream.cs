@@ -5,10 +5,12 @@ internal sealed class SliceStream : Stream
 {
 	private readonly Stream _inner;
 	private readonly long _start;
-	private readonly long _length;
 	private long _position;
 
-	/// <summary>Creates a view of <paramref name="length" /> bytes of <paramref name="inner" /> from <paramref name="start" />.</summary>
+	/// <summary>
+	///     Creates a view of <paramref name="length" /> bytes of <paramref name="inner" /> from <paramref name="start" />
+	///     .
+	/// </summary>
 	/// <param name="inner">The seekable stream to read from; it belongs to the view afterwards.</param>
 	/// <param name="start">Where the part starts in <paramref name="inner" />.</param>
 	/// <param name="length">How many bytes the part takes.</param>
@@ -16,13 +18,13 @@ internal sealed class SliceStream : Stream
 	{
 		_inner = inner;
 		_start = start;
-		_length = length;
+		Length = length;
 	}
 
 	public override bool CanRead => true;
 	public override bool CanSeek => true;
 	public override bool CanWrite => false;
-	public override long Length => _length;
+	public override long Length { get; }
 
 	public override long Position
 	{
@@ -72,7 +74,7 @@ internal sealed class SliceStream : Stream
 		{
 			SeekOrigin.Begin => offset,
 			SeekOrigin.Current => _position + offset,
-			SeekOrigin.End => _length + offset,
+			SeekOrigin.End => Length + offset,
 			_ => throw new ArgumentOutOfRangeException(nameof(origin), origin, null)
 		};
 		return _position;
@@ -106,6 +108,6 @@ internal sealed class SliceStream : Stream
 	/// <summary>How many bytes of a read of <paramref name="wanted" /> bytes still lie inside the part.</summary>
 	private int Window(int wanted)
 	{
-		return (int)Math.Clamp(_length - _position, 0, wanted);
+		return (int)Math.Clamp(Length - _position, 0, wanted);
 	}
 }

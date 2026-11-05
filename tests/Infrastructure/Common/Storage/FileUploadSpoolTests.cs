@@ -4,7 +4,10 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Common.Tests.Storage;
 
-/// <summary>Contract tests of the upload spool: an upload waits in a file, is cut past its limit and is quarantined when refused.</summary>
+/// <summary>
+///     Contract tests of the upload spool: an upload waits in a file, is cut past its limit and is quarantined when
+///     refused.
+/// </summary>
 public sealed class FileUploadSpoolTests : IDisposable
 {
 	private static readonly CancellationToken Cancel = TestContext.Current.CancellationToken;

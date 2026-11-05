@@ -9,7 +9,9 @@ namespace Basil.Configuration;
 ///     Looks for a newer release of Basil and of the osu! rulesets when the server starts and reports it in the log; it
 ///     never installs anything.
 /// </summary>
-internal sealed class UpdateChecker(IOptionsMonitor<UpdateOptions> options, IRulesetUpdater rulesets,
+internal sealed class UpdateChecker(
+	IOptionsMonitor<UpdateOptions> options,
+	IRulesetUpdater rulesets,
 	ILogger<UpdateChecker> logger)
 	: BackgroundService
 {

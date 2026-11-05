@@ -21,7 +21,7 @@ public sealed class RoomSettingsChangeTests
 	public static TheoryData<RoomSettingsChange> OtherChanges => new()
 	{
 		new RoomSettingsChange(),
-		new RoomSettingsChange(Name: "Renamed"),
+		new RoomSettingsChange("Renamed"),
 		new RoomSettingsChange(Password: "secret"),
 		new RoomSettingsChange(Size: 8),
 		new RoomSettingsChange(IsPrivate: true)

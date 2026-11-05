@@ -12,4 +12,9 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Permissions">The permissions to take away.</param>
 /// <param name="EndsAt">When the restriction ends, or null for never.</param>
 /// <param name="Reason">Why the account is restricted, if known.</param>
-public sealed record RestrictUser(Connection Actor, UserRecord Target, UserPermissions Permissions, DateTimeOffset? EndsAt, string? Reason) : IRequest<(Result<UserOutcome> Result, UserRestriction? Restriction)>;
+public sealed record RestrictUser(
+	Connection Actor,
+	UserRecord Target,
+	UserPermissions Permissions,
+	DateTimeOffset? EndsAt,
+	string? Reason) : IRequest<(Result<UserOutcome> Result, UserRestriction? Restriction)>;

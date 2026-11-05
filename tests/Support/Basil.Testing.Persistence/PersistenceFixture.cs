@@ -1,5 +1,4 @@
 using System.Data.Common;
-using Npgsql;
 using Testcontainers.MySql;
 using Testcontainers.PostgreSql;
 
@@ -13,8 +12,8 @@ namespace Basil.Testing.Persistence;
 /// </summary>
 public sealed class PersistenceFixture : IAsyncLifetime
 {
-	private readonly PostgreSqlContainer? _postgres;
 	private readonly MySqlContainer? _mysql;
+	private readonly PostgreSqlContainer? _postgres;
 	private readonly string? _server;
 
 	public PersistenceFixture()
@@ -59,7 +58,9 @@ public sealed class PersistenceFixture : IAsyncLifetime
 	{
 		await using var connection = await TestServer.OpenAsync(ServerConnectionString, CancellationToken.None);
 		await Run(connection,
-			TestServer.IsMySql ? $"drop database if exists `{name}`" : $"drop database if exists \"{name}\" with (force)");
+			TestServer.IsMySql
+				? $"drop database if exists `{name}`"
+				: $"drop database if exists \"{name}\" with (force)");
 	}
 
 	private static async Task Run(DbConnection connection, string sql)

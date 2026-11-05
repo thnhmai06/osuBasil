@@ -1,4 +1,3 @@
-
 using Basil.Infrastructure.Bot.Handlers.Commands;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands;

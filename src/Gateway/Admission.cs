@@ -2,7 +2,10 @@ namespace Basil.Gateway;
 
 /// <summary>The second admission tier: decides, per authenticated subject and kind of work, whether a request may enter.</summary>
 /// <param name="clock">The clock the rate window is measured with.</param>
-/// <param name="source">Supplies the limits in force; it is asked for each decision, so a change applies to the next request.</param>
+/// <param name="source">
+///     Supplies the limits in force; it is asked for each decision, so a change applies to the next
+///     request.
+/// </param>
 /// <param name="load">The load of the server; an idle server when omitted.</param>
 public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, LoadSignal? load = null)
 {

@@ -6,7 +6,6 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Persistence;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;

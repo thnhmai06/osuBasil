@@ -1,6 +1,5 @@
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
@@ -11,6 +10,7 @@ internal sealed class SetUserPmPrivateHandler(UserRegistry registry) : IRequestH
 	/// <inheritdoc />
 	public ValueTask<bool> Handle(SetUserPmPrivate request, CancellationToken cancellationToken)
 	{
-		return ValueTask.FromResult(registry.Of(request.Target).ScopeTo(request.Actor).Profile.SetPmPrivate(request.PmPrivate));
+		return ValueTask.FromResult(registry.Of(request.Target).ScopeTo(request.Actor).Profile
+			.SetPmPrivate(request.PmPrivate));
 	}
 }

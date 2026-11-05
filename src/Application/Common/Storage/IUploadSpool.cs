@@ -1,6 +1,9 @@
 namespace Basil.Application.Common.Storage;
 
-/// <summary>Takes an upload off the request into a file, so that it can be checked and read again without being held in memory.</summary>
+/// <summary>
+///     Takes an upload off the request into a file, so that it can be checked and read again without being held in
+///     memory.
+/// </summary>
 public interface IUploadSpool
 {
 	/// <summary>Reads an upload into a file, stopping one byte past the limit.</summary>

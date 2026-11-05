@@ -8,4 +8,5 @@ namespace Basil.Application.Servers.Messages;
 
 /// <summary>Asks Servers to add a seasonal background; an invalid name raises <see cref="ArgumentException" />.</summary>
 /// <param name="Actor">The connection acting.</param>
-public sealed record AddMenuSeasonal(Connection Actor, string Name, Stream Image) : IRequest<(Result<ServerOutcome> Result, ContentReference? Image)>;
+public sealed record AddMenuSeasonal(Connection Actor, string Name, Stream Image)
+	: IRequest<(Result<ServerOutcome> Result, ContentReference? Image)>;

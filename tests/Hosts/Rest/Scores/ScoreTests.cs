@@ -13,7 +13,10 @@ public sealed class ScoreTests(RestHostFixture fixture)
 {
 	private async Task<ScoreRecord> StoreAsync(int userId, int totalScore)
 	{
-		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId, null, GameMode.Standard, GameMods.NoMod, new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), totalScore, 100, 100, true), Grade.S, true, new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
+		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId,
+			null, GameMode.Standard, GameMods.NoMod,
+			new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), totalScore, 100, 100, true), Grade.S, true,
+			new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
 	}
 
 	[Fact]
@@ -91,7 +94,8 @@ public sealed class ScoreTests(RestHostFixture fixture)
 	{
 		var user = await fixture.Host.CreateUserAsync("ScoreHasRep");
 		var score = await StoreAsync(user.Id, 6);
-		await fixture.Host.Services.GetRequiredService<IReplayStorage>().SaveAsync(score, new OsuVersion(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable), new MemoryStream([9, 8, 7]));
+		await fixture.Host.Services.GetRequiredService<IReplayStorage>().SaveAsync(score,
+			new OsuVersion(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable), new MemoryStream([9, 8, 7]));
 		var (client, _) = await fixture.SignInAsync("ScoreWatcher");
 		using (client)
 		{

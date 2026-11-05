@@ -8,7 +8,10 @@ public static class ConnectionRules
 	/// <param name="type">The kind of connection.</param>
 	extension(SessionType type)
 	{
-		/// <summary>Gets a value that indicates whether a new connection of a kind takes the place of the user's closed one in a channel.</summary>
+		/// <summary>
+		///     Gets a value that indicates whether a new connection of a kind takes the place of the user's closed one in a
+		///     channel.
+		/// </summary>
 		/// <returns><see langword="true" /> for osu! game clients, which hold one place per user.</returns>
 		public bool ReplacesOnJoin()
 		{

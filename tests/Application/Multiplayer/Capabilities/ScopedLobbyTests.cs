@@ -148,9 +148,7 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		for (var index = 0; index < 4; index++)
-		{
 			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
-		}
 
 		var (room, result) = await OpenAsync(app, creator, "room 4");
 

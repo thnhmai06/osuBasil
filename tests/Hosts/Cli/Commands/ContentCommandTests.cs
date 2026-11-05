@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Host.Cli.Commands;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Beatmaps;
+using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;

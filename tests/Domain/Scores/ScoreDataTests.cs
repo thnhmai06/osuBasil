@@ -9,7 +9,8 @@ public class ScoreDataTests
 	private static ScoreData Make(int? userId = null, GameMode mode = GameMode.Standard, Grade grade = Grade.S,
 		int totalScore = 1000, ushort maxCombo = 10, ushort currentCombo = 10)
 	{
-		return new ScoreData(userId, null, mode, GameMods.NoMod, new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), totalScore,
+		return new ScoreData(userId, null, mode, GameMods.NoMod, new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0),
+			totalScore,
 			maxCombo, currentCombo, false), grade, true, DateTimeOffset.UnixEpoch);
 	}
 
@@ -24,7 +25,8 @@ public class ScoreDataTests
 	{
 		var score = Make();
 
-		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { LastState = score.LastState with { TotalScore = -1 } });
+		Assert.Throws<ArgumentOutOfRangeException>(() =>
+			_ = score with { LastState = score.LastState with { TotalScore = -1 } });
 	}
 
 	[Fact]

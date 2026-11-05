@@ -13,7 +13,7 @@ internal sealed class JoinChannelHandler(ChannelDirectory directory)
 	/// <inheritdoc />
 	public ValueTask<Result<ChannelOutcome>> Handle(JoinChannel request, CancellationToken cancellationToken)
 	{
-		Result<ChannelOutcome> result = directory.Find(request.Target, request.Actor) is { } channel
+		var result = directory.Find(request.Target, request.Actor) is { } channel
 			? channel.ScopeTo(request.Actor).Join()
 			: ChannelOutcome.NotFound;
 		return ValueTask.FromResult(result);

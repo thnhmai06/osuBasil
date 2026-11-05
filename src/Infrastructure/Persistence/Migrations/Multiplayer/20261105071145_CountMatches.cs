@@ -1,28 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
+namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer;
+
+/// <inheritdoc />
+public partial class CountMatches : Migration
 {
-    /// <inheritdoc />
-    public partial class CountMatches : Migration
-    {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.InsertData(
-                table: "multiplayer_id_counters",
-                columns: new[] { "name", "next" },
-                values: new object[] { "match_rows", 0L });
-        }
+	/// <inheritdoc />
+	protected override void Up(MigrationBuilder migrationBuilder)
+	{
+		migrationBuilder.InsertData(
+			"multiplayer_id_counters",
+			new[] { "name", "next" },
+			new object[] { "match_rows", 0L });
+	}
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DeleteData(
-                table: "multiplayer_id_counters",
-                keyColumn: "name",
-                keyValue: "match_rows");
-        }
-    }
+	/// <inheritdoc />
+	protected override void Down(MigrationBuilder migrationBuilder)
+	{
+		migrationBuilder.DeleteData(
+			"multiplayer_id_counters",
+			"name",
+			"match_rows");
+	}
 }

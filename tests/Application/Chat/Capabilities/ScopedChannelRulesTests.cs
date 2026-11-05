@@ -1,5 +1,4 @@
 using Basil.Application.Chat.Capabilities;
-using Basil.Infrastructure.Chat.Handlers;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
@@ -9,6 +8,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -556,8 +556,9 @@ public sealed class ScopedChannelRulesTests
 		var channel = await OpenChannelAsync(app);
 		var admin = await AdminAsync(app);
 
-		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => channel.ScopeTo(admin).General!.Value.ConfigureAsync(
-			new GeneralChannelChange("Half applied", (UserPrivileges)0x80), TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+			channel.ScopeTo(admin).General!.Value.ConfigureAsync(
+				new GeneralChannelChange("Half applied", (UserPrivileges)0x80), TestContext.Current.CancellationToken));
 
 		Assert.NotEqual("Half applied", channel.Topic);
 		Assert.Equal(UserPrivileges.None, channel.Record.Value.ReadPrivileges);
@@ -570,9 +571,10 @@ public sealed class ScopedChannelRulesTests
 		var channel = await OpenChannelAsync(app);
 		var admin = await AdminAsync(app);
 
-		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => channel.ScopeTo(admin).General!.Value.ConfigureAsync(
-			new GeneralChannelChange("Half applied", WritePrivileges: (UserPrivileges)0x80),
-			TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+			channel.ScopeTo(admin).General!.Value.ConfigureAsync(
+				new GeneralChannelChange("Half applied", WritePrivileges: (UserPrivileges)0x80),
+				TestContext.Current.CancellationToken));
 
 		Assert.NotEqual("Half applied", channel.Topic);
 	}
@@ -614,7 +616,8 @@ public sealed class ScopedChannelRulesTests
 		app.AddRestriction(user, UserPermissions.ChatManageChannels);
 		var connection = await app.LoginAsync(user);
 
-		var result = await channel.ScopeTo(connection).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
+		var result =
+			await channel.ScopeTo(connection).General!.Value.DeleteAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
 		Assert.False(channel.IsClosed);

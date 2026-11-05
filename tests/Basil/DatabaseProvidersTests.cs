@@ -1,7 +1,8 @@
+using System.Reflection;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 
 namespace Basil.Tests;
 
@@ -22,7 +23,7 @@ public sealed class DatabaseProvidersTests
 	[Fact]
 	public void AReadEngineDifferentFromTheWriteEngineIsValid()
 	{
-		var providers = Basil.Infrastructure.Persistence.DependencyInjection.Providers(Options("MySql", "PostgreSQL"));
+		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options("MySql", "PostgreSQL"));
 
 		Assert.IsType<MySqlDatabaseProvider>(providers.Read);
 		Assert.IsType<PostgresDatabaseProvider>(providers.Write);
@@ -31,7 +32,7 @@ public sealed class DatabaseProvidersTests
 	[Fact]
 	public void TheReadEngineFallsBackToTheWriteEngine()
 	{
-		var providers = Basil.Infrastructure.Persistence.DependencyInjection.Providers(Options(null, "MySql"));
+		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options(null, "MySql"));
 
 		Assert.IsType<MySqlDatabaseProvider>(providers.Read);
 		Assert.IsType<MySqlDatabaseProvider>(providers.Write);
@@ -40,7 +41,7 @@ public sealed class DatabaseProvidersTests
 	[Fact]
 	public void TheWriteEngineDefaultsToPostgreSql()
 	{
-		var providers = Basil.Infrastructure.Persistence.DependencyInjection.Providers(Options(null, null));
+		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options(null, null));
 
 		Assert.IsType<PostgresDatabaseProvider>(providers.Write);
 	}
@@ -48,7 +49,7 @@ public sealed class DatabaseProvidersTests
 	[Fact]
 	public void TheNamesAreNotCaseSensitive()
 	{
-		var providers = Basil.Infrastructure.Persistence.DependencyInjection.Providers(Options("mysql", "postgresql"));
+		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options("mysql", "postgresql"));
 
 		Assert.IsType<MySqlDatabaseProvider>(providers.Read);
 	}
@@ -57,10 +58,10 @@ public sealed class DatabaseProvidersTests
 	public void AnUnknownEngineStopsTheServerNamingTheAllowedValues()
 	{
 		var exception = Assert.Throws<InvalidOperationException>(() =>
-			Basil.Infrastructure.Persistence.DependencyInjection.Providers(Options("Oracle", "PostgreSQL")));
+			Infrastructure.Persistence.DependencyInjection.Providers(Options("Oracle", "PostgreSQL")));
 
 		Assert.Contains("Basil:Database:Read:Provider", exception.Message);
-		foreach (var name in Basil.Infrastructure.Persistence.DependencyInjection.ProviderNames)
+		foreach (var name in Infrastructure.Persistence.DependencyInjection.ProviderNames)
 			Assert.Contains(name, exception.Message);
 	}
 
@@ -69,13 +70,14 @@ public sealed class DatabaseProvidersTests
 	{
 		var options = Options("MySql", "PostgreSQL");
 		options.ReadConnectionString = "Server=replica;Database=basil;User ID=u;Password=p";
-		await using var database = new Database(Basil.Infrastructure.Persistence.DependencyInjection.Providers(options), Microsoft.Extensions.Options.Options.Create(options));
+		await using var database = new Database(Infrastructure.Persistence.DependencyInjection.Providers(options),
+			Microsoft.Extensions.Options.Options.Create(options));
 
-		var chat = System.Reflection.Assembly.Load("Basil.Infrastructure.Chat").GetTypes()
+		var chat = Assembly.Load("Basil.Infrastructure.Chat").GetTypes()
 			.Single(type => type.Name == "ChatDbContext");
-		await using var read = (Microsoft.EntityFrameworkCore.DbContext)typeof(Database)
+		await using var read = (DbContext)typeof(Database)
 			.GetMethod(nameof(Database.CreateReadContext))!.MakeGenericMethod(chat).Invoke(database, null)!;
-		await using var write = (Microsoft.EntityFrameworkCore.DbContext)typeof(Database)
+		await using var write = (DbContext)typeof(Database)
 			.GetMethod(nameof(Database.CreateConfirmedContext))!.MakeGenericMethod(chat).Invoke(database, null)!;
 
 		Assert.Contains("MySQL", read.Database.ProviderName, StringComparison.OrdinalIgnoreCase);

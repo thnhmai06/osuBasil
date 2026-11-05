@@ -1,5 +1,4 @@
 using Basil.Application.Common;
-using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
@@ -12,6 +11,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -199,7 +199,10 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var genuine = f.Genuine(ScoreSubmissionFixture.PassedScore());
-		var tampered = genuine with { Score = genuine.Score with { LastState = genuine.Score.LastState with { TotalScore = 999_999 } } };
+		var tampered = genuine with
+		{
+			Score = genuine.Score with { LastState = genuine.Score.LastState with { TotalScore = 999_999 } }
+		};
 
 		var (_, rejection) = await SubmitAsync(f, tampered);
 

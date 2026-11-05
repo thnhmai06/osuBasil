@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using Fakes.Basil.Application.Fake.Capabilities;
 
 namespace Basil.ArchitectureTests;
 
@@ -71,6 +72,6 @@ public class ScopedLifetimeTests
 
 	private sealed class Holder
 	{
-		public Fakes.Basil.Application.Fake.Capabilities.ScopedFake Kept;
+		public ScopedFake Kept;
 	}
 }

@@ -6,6 +6,10 @@ using Mediator;
 
 namespace Basil.Application.Servers.Messages;
 
-/// <summary>Asks Servers to upload a beatmapset archive as a new beatmapset; the archive is read from its position and not disposed.</summary>
+/// <summary>
+///     Asks Servers to upload a beatmapset archive as a new beatmapset; the archive is read from its position and not
+///     disposed.
+/// </summary>
 /// <param name="Actor">The connection acting.</param>
-public sealed record UploadBeatmapset(Connection Actor, Stream Archive) : IRequest<(Result<ServerOutcome> Result, BeatmapsetImportResult? Import)>;
+public sealed record UploadBeatmapset(Connection Actor, Stream Archive)
+	: IRequest<(Result<ServerOutcome> Result, BeatmapsetImportResult? Import)>;

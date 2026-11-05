@@ -1,6 +1,6 @@
-using Basil.Domain.Scores;
 using System.Drawing;
 using Basil.Domain.Client;
+using Basil.Domain.Scores;
 using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
@@ -22,7 +22,8 @@ public class PacketReaderReplayFrameBundleTests
 	private const string V1Hex = "e8030000" + "05" + "0200" + "0300" + "0400" + "0500" + "0600" + "0700"
 	                             + "44332211" + "2c01" + "0b00" + "00" + "8e" + "09" + "00";
 
-	private static ScoreFrame V1Frame => new(Time: TimeSpan.FromMilliseconds(1000), Id: 5, State: new ScoreState(new HitCounts(Num300: 2, Num100: 3, Num50: 4, NumGeki: 5, NumKatu: 6, NumMiss: 7), 287_454_020, 300, 11, false), Health: 142, TagByte: 9, Sv2Portion: null);
+	private static ScoreFrame V1Frame => new(TimeSpan.FromMilliseconds(1000), 5,
+		new ScoreState(new HitCounts(2, 3, 4, 5, 6, 7), 287_454_020, 300, 11, false), 142, 9, null);
 
 	/// <summary>
 	///     Builds a SpectateFrames payload per the osu! wire format: extra i32, u16 frame count, then
@@ -90,9 +91,12 @@ public class PacketReaderReplayFrameBundleTests
 		var bundle = new PacketReader(new MemoryStream(Bundle(65_535))).ReadReplayFrameBundle();
 
 		Assert.Equal(65_535, bundle.ReplayFrames.Count);
-		Assert.Equal(new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f), TimeSpan.FromMilliseconds(0)), bundle.ReplayFrames.First());
 		Assert.Equal(
-			new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f), TimeSpan.FromMilliseconds(8 * 65_534)),
+			new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f), TimeSpan.FromMilliseconds(0)),
+			bundle.ReplayFrames.First());
+		Assert.Equal(
+			new ReplayFrame(KeyState.Left1, TaikoDrumState.None, new PointF(1.5f, -2.5f),
+				TimeSpan.FromMilliseconds(8 * 65_534)),
 			bundle.ReplayFrames.Last());
 	}
 

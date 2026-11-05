@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Tests;
 
@@ -74,12 +75,12 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		}
 	}
 
-	private static async Task<string[]> Schema(System.Reflection.MethodInfo create, string module, string provider,
+	private static async Task<string[]> Schema(MethodInfo create, string module, string provider,
 		string connectionString)
 	{
 		var options = new DatabaseOptions { WriteConnectionString = connectionString, WriteProvider = provider };
 		await using var database = new Database(Infrastructure.Persistence.DependencyInjection.Providers(options),
-			Microsoft.Extensions.Options.Options.Create(options));
+			Options.Create(options));
 		using var context = (DbContext)create.MakeGenericMethod(Context(module)).Invoke(database, null)!;
 		return context.GetService<IDesignTimeModel>().Model.GetRelationalModel().Tables
 			.SelectMany(table => table.Columns.Select(column => $"{table.Name}.{column.Name}"))

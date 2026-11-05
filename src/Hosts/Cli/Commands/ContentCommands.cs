@@ -1,19 +1,18 @@
-using Basil.Application.Users.Objects.Connections;
-using Mediator;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
+using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Servers.Messages;
-using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Host.Shared;
-using Basil.Application.Diagnostics.Messages;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 
@@ -475,6 +474,7 @@ internal static class ContentCommands
 			.FirstOrDefault();
 		return match is null
 			? call.NotFound("screenshot")
-			: call.Report(await SendAsync(call, actor => new DeleteScreenshot(actor, match.Value)), "Screenshot deleted.");
+			: call.Report(await SendAsync(call, actor => new DeleteScreenshot(actor, match.Value)),
+				"Screenshot deleted.");
 	}
 }

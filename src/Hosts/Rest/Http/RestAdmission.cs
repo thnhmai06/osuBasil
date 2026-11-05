@@ -1,5 +1,4 @@
 using Basil.Gateway;
-using Basil.Host.Shared;
 
 namespace Basil.Host.Rest.Http;
 

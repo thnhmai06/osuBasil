@@ -212,7 +212,8 @@ internal static class UserCommands
 		var ct = call.CancellationToken;
 		var sender = call.Get<ISender>();
 		var actor = await call.ByAsync();
-		if (call.Text("username") is { } name && await sender.Send(new RenameUser(actor, target, name), ct) is { IsOk: false } renamed)
+		if (call.Text("username") is { } name && await sender.Send(new RenameUser(actor, target, name), ct) is
+			    { IsOk: false } renamed)
 			return call.Refuse(renamed);
 
 		if (call.Text("country") is { } code)
@@ -223,7 +224,8 @@ internal static class UserCommands
 				return call.Refuse(changed);
 		}
 
-		if (call.Text("away") is { } away) await sender.Send(new SetUserAway(actor, target, away.Length == 0 ? null : away), ct);
+		if (call.Text("away") is { } away)
+			await sender.Send(new SetUserAway(actor, target, away.Length == 0 ? null : away), ct);
 		if (call.Bool("pmPrivate") is { } pm) await sender.Send(new SetUserPmPrivate(actor, target, pm), ct);
 		return null;
 	}
@@ -234,7 +236,8 @@ internal static class UserCommands
 		var sender = call.Get<ISender>();
 		var actor = await call.ByAsync();
 		if (call.Mask("permissions") is { } permissions &&
-		    await sender.Send(new SetUserPermissions(actor, target, (UserPermissions)permissions), ct) is { IsOk: false } set)
+		    await sender.Send(new SetUserPermissions(actor, target, (UserPermissions)permissions), ct) is
+			    { IsOk: false } set)
 			return call.Refuse(set);
 
 		if (call.Text("password") is { } password &&
@@ -250,14 +253,19 @@ internal static class UserCommands
 		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
 		await using var stream = File.OpenRead(call.Required("file"));
-		return call.Report(await call.Get<ISender>().Send(new SetUserAvatar(await call.ByAsync(), target, stream), call.CancellationToken), "Avatar set.");
+		return call.Report(
+			await call.Get<ISender>()
+				.Send(new SetUserAvatar(await call.ByAsync(), target, stream), call.CancellationToken), "Avatar set.");
 	}
 
 	private static async Task<int> RemoveAvatarAsync(CommandCall call)
 	{
 		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await call.Get<ISender>().Send(new RemoveUserAvatar(await call.ByAsync(), target), call.CancellationToken), "Avatar removed.");
+			: call.Report(
+				await call.Get<ISender>()
+					.Send(new RemoveUserAvatar(await call.ByAsync(), target), call.CancellationToken),
+				"Avatar removed.");
 	}
 
 	private static async Task<int> RelationsAsync(CommandCall call, RelationshipType type)
@@ -304,7 +312,9 @@ internal static class UserCommands
 		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
 			{ } restriction
 			? call.NotFound("restriction")
-			: call.Report(await call.Get<ISender>().Send(new LiftRestriction(await call.ByAsync(), target, restriction), call.CancellationToken),
+			: call.Report(
+				await call.Get<ISender>().Send(new LiftRestriction(await call.ByAsync(), target, restriction),
+					call.CancellationToken),
 				"Restriction lifted.");
 	}
 
@@ -315,7 +325,9 @@ internal static class UserCommands
 		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
 			{ } restriction
 			? call.NotFound("restriction")
-			: call.Report(await call.Get<ISender>().Send(new DeleteRestriction(await call.ByAsync(), target, restriction), call.CancellationToken),
+			: call.Report(
+				await call.Get<ISender>().Send(new DeleteRestriction(await call.ByAsync(), target, restriction),
+					call.CancellationToken),
 				"Restriction deleted.");
 	}
 
@@ -334,7 +346,8 @@ internal static class UserCommands
 			: null;
 		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
-		var (result, sessions) = await call.Get<ISender>().Send(new ListUserSessions(await call.ByAsync(), target, page, state, kinds), call.CancellationToken);
+		var (result, sessions) = await call.Get<ISender>()
+			.Send(new ListUserSessions(await call.ByAsync(), target, page, state, kinds), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.PrintPage(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
@@ -346,7 +359,9 @@ internal static class UserCommands
 	{
 		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
-		var (result, session) = await call.Get<ISender>().Send(new GetUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))), call.CancellationToken);
+		var (result, session) = await call.Get<ISender>()
+			.Send(new GetUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))),
+				call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Formatter.Print(call.Output, SessionView.Of(session!));
@@ -357,7 +372,10 @@ internal static class UserCommands
 	{
 		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await call.Get<ISender>().Send(new CloseUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))), call.CancellationToken),
+			: call.Report(
+				await call.Get<ISender>()
+					.Send(new CloseUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))),
+						call.CancellationToken),
 				"Session closed.");
 	}
 
@@ -365,13 +383,17 @@ internal static class UserCommands
 	{
 		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await call.Get<ISender>().Send(new CloseUserSessions(await call.ByAsync(), target, false), call.CancellationToken), "Sessions closed.");
+			: call.Report(
+				await call.Get<ISender>().Send(new CloseUserSessions(await call.ByAsync(), target, false),
+					call.CancellationToken), "Sessions closed.");
 	}
 
 	private static async Task<int> DeleteAsync(CommandCall call)
 	{
 		return await call.FindUserAsync() is not { } target
 			? call.NotFound(NoUser)
-			: call.Report(await call.Get<ISender>().Send(new DeleteUser(await call.ByAsync(), target), call.CancellationToken), "User deleted.");
+			: call.Report(
+				await call.Get<ISender>().Send(new DeleteUser(await call.ByAsync(), target), call.CancellationToken),
+				"User deleted.");
 	}
 }

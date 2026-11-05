@@ -1,5 +1,5 @@
-using Basil.Domain.Scores;
 using Basil.Domain.Client;
+using Basil.Domain.Scores;
 using Basil.Protocol.Stable.Models.Multiplayer;
 using Basil.Protocol.Stable.Wire.Packets;
 
@@ -263,7 +263,8 @@ public class ServerPacketWriterTests
 	[Fact]
 	public void MatchScoreUpdate_WithValues()
 	{
-		var frame = new ScoreFrame(Time: TimeSpan.FromMilliseconds(38242), Id: 28, State: new ScoreState(new HitCounts(Num300: 320, Num100: 48, Num50: 2, NumGeki: 32, NumKatu: 8, NumMiss: 3), 492_392, 122, 39, false), Health: 245, TagByte: 0, Sv2Portion: null);
+		var frame = new ScoreFrame(TimeSpan.FromMilliseconds(38242), 28,
+			new ScoreState(new HitCounts(320, 48, 2, 32, 8, 3), 492_392, 122, 39, false), 245, 0, null);
 		var expected = Hex("3000001d000000629500001c400130000200200008000300688307007a00270000f50000");
 		Assert.Equal(expected, WritePacket(writer => writer.MatchScoreUpdate(frame)));
 	}
@@ -271,7 +272,8 @@ public class ServerPacketWriterTests
 	[Fact]
 	public void MatchScoreUpdate_AllZero()
 	{
-		var frame = new ScoreFrame(Time: TimeSpan.FromMilliseconds(0), Id: 0, State: new ScoreState(new HitCounts(Num300: 0, Num100: 0, Num50: 0, NumGeki: 0, NumKatu: 0, NumMiss: 0), 0, 0, 0, false), Health: 0, TagByte: 0, Sv2Portion: null);
+		var frame = new ScoreFrame(TimeSpan.FromMilliseconds(0), 0,
+			new ScoreState(new HitCounts(0, 0, 0, 0, 0, 0), 0, 0, 0, false), 0, 0, null);
 		var expected = Hex("3000001d0000000000000000000000000000000000000000000000000000000000000000");
 		Assert.Equal(expected, WritePacket(writer => writer.MatchScoreUpdate(frame)));
 	}

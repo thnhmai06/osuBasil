@@ -34,13 +34,14 @@ public class GatewayGraphTests
 	public void TheMeasureSeesTheGatewayProject()
 	{
 		Assert.Contains(GatewayProject().Descendants(), element => element.Name.LocalName == "RootNamespace" &&
-		                                                          element.Value == "Basil.Gateway");
+		                                                           element.Value == "Basil.Gateway");
 	}
 
 	private static IEnumerable<string> Violations(XDocument project)
 	{
 		return project.Descendants()
-			.Where(element => element.Name.LocalName is "ProjectReference" or "FrameworkReference" or "PackageReference")
+			.Where(element =>
+				element.Name.LocalName is "ProjectReference" or "FrameworkReference" or "PackageReference")
 			.Where(element => element.Name.LocalName == "ProjectReference" ||
 			                  element.Attribute("Include")!.Value.StartsWith("Microsoft.AspNetCore",
 				                  StringComparison.Ordinal))

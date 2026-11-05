@@ -1,13 +1,12 @@
-using Basil.Gateway;
-using Mediator;
-using Basil.Application.Servers.Messages;
 using System.Globalization;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
-using Basil.Application.Servers.Objects;
+using Basil.Application.Servers.Messages;
 using Basil.Domain.Content;
+using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -29,7 +28,8 @@ internal static class MenuRoutes
 		faqs.MapDelete("/{entry}", DeleteFaqAsync).RequireToken().WithSummary("Delete a FAQ entry.");
 
 		var menu = v1.MapGroup("/menu").WithTags("Menu");
-		menu.MapGet("/banners", ListBannersAsync).Admitted(WorkClass.Listing).WithSummary("List the main-menu banners.");
+		menu.MapGet("/banners", ListBannersAsync).Admitted(WorkClass.Listing)
+			.WithSummary("List the main-menu banners.");
 		menu.MapPost("/banners", AddBannerAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
 			.WithSummary("Add a main-menu banner from an image in the `image` field and the address in `url`.")
 			.WithDescription(

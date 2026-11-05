@@ -13,7 +13,7 @@ internal sealed class PartChannelHandler(ChannelDirectory directory)
 	/// <inheritdoc />
 	public ValueTask<Result<ChannelOutcome>> Handle(PartChannel request, CancellationToken cancellationToken)
 	{
-		Result<ChannelOutcome> result = directory.Find(request.Target, request.Actor) is { } channel
+		var result = directory.Find(request.Target, request.Actor) is { } channel
 			? channel.ScopeTo(request.Actor).Part()
 			: ChannelOutcome.NotFound;
 		return ValueTask.FromResult(result);

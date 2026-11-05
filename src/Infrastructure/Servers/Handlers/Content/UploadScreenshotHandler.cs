@@ -7,10 +7,12 @@ using Mediator;
 namespace Basil.Infrastructure.Servers.Handlers;
 
 /// <summary>Handles <see cref="UploadScreenshot" /> with the rights of the sending connection.</summary>
-internal sealed class UploadScreenshotHandler(Server server) : IRequestHandler<UploadScreenshot, (ContentReference? Screenshot, Result<ServerOutcome> Result)>
+internal sealed class UploadScreenshotHandler(Server server)
+	: IRequestHandler<UploadScreenshot, (ContentReference? Screenshot, Result<ServerOutcome> Result)>
 {
 	/// <inheritdoc />
-	public async ValueTask<(ContentReference? Screenshot, Result<ServerOutcome> Result)> Handle(UploadScreenshot request, CancellationToken ct)
+	public async ValueTask<(ContentReference? Screenshot, Result<ServerOutcome> Result)> Handle(
+		UploadScreenshot request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Screenshots.UploadAsync(request.Image, ct);
 	}

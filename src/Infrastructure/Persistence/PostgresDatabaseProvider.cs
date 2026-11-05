@@ -7,7 +7,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 namespace Basil.Infrastructure.Persistence;
 
-/// <summary>The PostgreSQL engine of the server: pooled Npgsql connections, snake_case names and the migrations of this assembly.</summary>
+/// <summary>
+///     The PostgreSQL engine of the server: pooled Npgsql connections, snake_case names and the migrations of this
+///     assembly.
+/// </summary>
 public sealed class PostgresDatabaseProvider : IDatabaseProvider
 {
 	private const string ServerOption = "-c idle_in_transaction_session_timeout=30s";

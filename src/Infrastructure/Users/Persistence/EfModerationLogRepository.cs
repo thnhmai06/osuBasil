@@ -17,21 +17,6 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 			cancellationToken);
 	}
 
-	/// <summary>Adds an entry to a context, to be stored with the other changes of that context.</summary>
-	internal static async Task AddAsync(UsersDbContext context, ModerationData entry, CancellationToken cancellationToken)
-	{
-		var row = new ModerationLogRow
-		{
-			Action = (int)entry.Action,
-			ById = entry.Actor.Id,
-			TargetId = entry.Target.Id,
-			Reason = entry.Reason,
-			Timestamp = entry.Timestamp.ToUniversalTime()
-		};
-		row.Id = await IdCounters.NextAsync(context, "moderation_log", cancellationToken);
-		context.ModerationLog.Add(row);
-	}
-
 	/// <inheritdoc />
 	public async ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken cancellationToken = default)
@@ -81,5 +66,21 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 				}
 			})
 		], total);
+	}
+
+	/// <summary>Adds an entry to a context, to be stored with the other changes of that context.</summary>
+	internal static async Task AddAsync(UsersDbContext context, ModerationData entry,
+		CancellationToken cancellationToken)
+	{
+		var row = new ModerationLogRow
+		{
+			Action = (int)entry.Action,
+			ById = entry.Actor.Id,
+			TargetId = entry.Target.Id,
+			Reason = entry.Reason,
+			Timestamp = entry.Timestamp.ToUniversalTime()
+		};
+		row.Id = await IdCounters.NextAsync(context, "moderation_log", cancellationToken);
+		context.ModerationLog.Add(row);
 	}
 }

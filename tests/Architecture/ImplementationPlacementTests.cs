@@ -12,7 +12,9 @@ public class ImplementationPlacementTests
 	private static readonly string[] ImplementationFolders = ["Handlers", "Logic", "Workers"];
 
 	private static readonly string[] ImplementationInterfaces =
-		["Mediator.INotificationHandler`1", "Mediator.IRequestHandler`2", "Microsoft.Extensions.Hosting.IHostedService"];
+	[
+		"Mediator.INotificationHandler`1", "Mediator.IRequestHandler`2", "Microsoft.Extensions.Hosting.IHostedService"
+	];
 
 	private static readonly IReadOnlyList<Assembly> ModuleInfrastructures =
 		ModuleAssemblies.Infrastructures.Where(assembly => assembly.GetName().Name != "Basil.Infrastructure.Common")
@@ -49,7 +51,8 @@ public class ImplementationPlacementTests
 	public void InfrastructureProjects_ShowOnlyTheirRegistrationPublicly()
 	{
 		var exposed = ModuleInfrastructures.SelectMany(assembly => assembly.GetExportedTypes())
-			.Where(type => !IsRegistration(type) && !IsMigration(type) && !type.Name.EndsWith("Options", StringComparison.Ordinal))
+			.Where(type => !IsRegistration(type) && !IsMigration(type) &&
+			               !type.Name.EndsWith("Options", StringComparison.Ordinal))
 			.Select(type => type.FullName);
 
 		Assert.Empty(exposed);
@@ -88,7 +91,8 @@ public class ImplementationPlacementTests
 	private static bool IsImplementation(Type type)
 	{
 		return !type.IsAbstract && !type.IsInterface && type.GetInterfaces().Any(contract =>
-			ImplementationInterfaces.Contains((contract.IsGenericType ? contract.GetGenericTypeDefinition() : contract).FullName));
+			ImplementationInterfaces.Contains((contract.IsGenericType ? contract.GetGenericTypeDefinition() : contract)
+				.FullName));
 	}
 
 	private static bool IsRegistration(Type type)

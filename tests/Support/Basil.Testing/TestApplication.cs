@@ -29,19 +29,19 @@ using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Anticheat;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Bot;
+using Basil.Infrastructure.Common.Storage;
 using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Users;
 using Basil.Infrastructure.Users.Handlers;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Time.Testing;
-using Mediator;
-using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
 namespace Basil.Testing;
@@ -79,7 +79,6 @@ public sealed class TestApplication : IDisposable
 	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemorySettingsRepository _settings;
 
-	private readonly string _spoolRoot;
 	private readonly InMemoryUserRepository _users;
 
 	/// <summary>Creates the application and resolves its public roots.</summary>
@@ -102,9 +101,9 @@ public sealed class TestApplication : IDisposable
 		services.AddLogging();
 		services.AddSingleton<TimeProvider>(Clock);
 		RegisterStoragePorts(services);
-		_spoolRoot = Path.Combine(Path.GetTempPath(), "basil-test-" + Guid.NewGuid().ToString("N"));
+		UploadsRoot = Path.Combine(Path.GetTempPath(), "basil-test-" + Guid.NewGuid().ToString("N"));
 		services.AddSingleton<IUploadSpool>(new FileUploadSpool(
-			new DataPaths(Options.Create(new StorageOptions { Location = _spoolRoot })), Clock));
+			new DataPaths(Options.Create(new StorageOptions { Location = UploadsRoot })), Clock));
 		services.AddSingleton<IUserRepository>(_users);
 		services.AddSingleton<ICredentialRepository>(_credentials);
 		services.AddSingleton<IRestrictionRepository>(_restrictions);
@@ -232,7 +231,10 @@ public sealed class TestApplication : IDisposable
 		set => _users.UpdateFailure = value;
 	}
 
-	/// <summary>Gets or sets the failure that appending to the moderation history throws, or <see langword="null" /> to accept it.</summary>
+	/// <summary>
+	///     Gets or sets the failure that appending to the moderation history throws, or <see langword="null" /> to accept
+	///     it.
+	/// </summary>
 	public Exception? ModerationLogFailure
 	{
 		get => _moderationLog.AppendFailure;
@@ -242,15 +244,15 @@ public sealed class TestApplication : IDisposable
 	/// <summary>Gets the moderation history written by the application.</summary>
 	public IReadOnlyList<ModerationData> ModerationEntries => _moderationLog.Entries;
 
+	/// <summary>Gets the directory where the spool and the quarantine of uploads are kept.</summary>
+	public string UploadsRoot { get; }
+
 	/// <inheritdoc />
 	public void Dispose()
 	{
 		Provider.Dispose();
-		if (Directory.Exists(_spoolRoot)) Directory.Delete(_spoolRoot, true);
+		if (Directory.Exists(UploadsRoot)) Directory.Delete(UploadsRoot, true);
 	}
-
-	/// <summary>Gets the directory where the spool and the quarantine of uploads are kept.</summary>
-	public string UploadsRoot => _spoolRoot;
 
 	/// <summary>Drops a session from the store while its client stays online, as before its record is written.</summary>
 	/// <param name="id">The session.</param>

@@ -42,7 +42,10 @@ public sealed class UserGrants
 		_user.Change(data => data.Permissions = permissions);
 	}
 
-	/// <summary>Replaces the permissions granted to the account, signs out sessions that no longer have the right, and announces it.</summary>
+	/// <summary>
+	///     Replaces the permissions granted to the account, signs out sessions that no longer have the right, and
+	///     announces it.
+	/// </summary>
 	/// <param name="permissions">The permissions to grant.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of replacing the permissions.</returns>

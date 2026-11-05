@@ -54,7 +54,10 @@ public sealed class ScoreRecord : IEquatable<ScoreRecord>
 /// <param name="BeatmapHash">The MD5 checksum of the beatmap played, when known.</param>
 /// <param name="Mode">The game mode the play used.</param>
 /// <param name="Mods">The mods applied to the play.</param>
-/// <param name="LastState">The score at the end of the play: hit counts, total score, combos and whether it was a full combo.</param>
+/// <param name="LastState">
+///     The score at the end of the play: hit counts, total score, combos and whether it was a full
+///     combo.
+/// </param>
 /// <param name="Grade">The grade earned.</param>
 /// <param name="IsPassed">Whether the play was passed.</param>
 /// <param name="Timestamp">The date and time when the play occurred.</param>
@@ -115,7 +118,8 @@ public sealed record ScoreData(
 	{
 		return value.TotalScore >= 0
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value.TotalScore, "The total score must not be negative.");
+			: throw new ArgumentOutOfRangeException(nameof(value), value.TotalScore,
+				"The total score must not be negative.");
 	}
 
 	private static int? CheckUserId(int? value)

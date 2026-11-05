@@ -3,7 +3,6 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Infrastructure.Bot.Handlers;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;

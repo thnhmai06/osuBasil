@@ -173,7 +173,8 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_saved_replay_opens_as_a_complete_file_that_records_the_client_version_and_ends_with_the_score_id()
+	public async Task
+		A_saved_replay_opens_as_a_complete_file_that_records_the_client_version_and_ends_with_the_score_id()
 	{
 		await _replays.SaveAsync(Score(), Version, Bytes("frames"), TestContext.Current.CancellationToken);
 
@@ -252,7 +253,9 @@ public sealed class FileReplayStorageTests : IDisposable
 		return new ScoreRecord
 		{
 			Id = id,
-			Value = new ScoreData(8, new Md5("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod, new ScoreState(new HitCounts(100, 10, 2, 1, 3, 0), 51_000, 500, 312, false), Grade.A, true, new DateTimeOffset(2026, 3, 5, 12, 0, 0, TimeSpan.Zero))
+			Value = new ScoreData(8, new Md5("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod,
+				new ScoreState(new HitCounts(100, 10, 2, 1, 3, 0), 51_000, 500, 312, false), Grade.A, true,
+				new DateTimeOffset(2026, 3, 5, 12, 0, 0, TimeSpan.Zero))
 		};
 	}
 

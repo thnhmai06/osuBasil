@@ -23,7 +23,10 @@ public interface IUserRepository
 	/// <summary>Removes a user that was stored a moment ago and never used.</summary>
 	/// <param name="user">The user to remove; nothing else refers to it yet.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <remarks>This undoes <see cref="CreateAsync" /> when the rest of creating an account failed; a user who has been in use is deleted, not discarded.</remarks>
+	/// <remarks>
+	///     This undoes <see cref="CreateAsync" /> when the rest of creating an account failed; a user who has been in use
+	///     is deleted, not discarded.
+	/// </remarks>
 	Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores a user under a given id, replacing the user that holds the id or creating it.</summary>

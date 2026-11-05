@@ -1,8 +1,8 @@
 using Basil.Application.Common.Events;
 using Basil.Application.Scores.Capabilities;
-using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Ports;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Scores;
 

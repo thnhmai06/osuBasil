@@ -183,7 +183,8 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		await CreateScoreAsync(player, StoredScores.Hash("count_two"), 2000, Second);
 		await CreateScoreAsync(other, StoredScores.Hash("count_three"), 3000, Second);
 
-		var all = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 1), TestContext.Current.CancellationToken);
+		var all = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 1),
+			TestContext.Current.CancellationToken);
 		var mine = await Scores.ListAsync(new ScoreQuery(player), new PageRequest(0, 1),
 			TestContext.Current.CancellationToken);
 

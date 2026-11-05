@@ -1,5 +1,5 @@
-using Basil.Domain.Scores;
 using Basil.Domain.Client;
+using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests.Client;
 
@@ -10,7 +10,9 @@ namespace Basil.Domain.Tests.Client;
 /// </summary>
 public class ScoreFrameTests
 {
-	private static ScoreFrame Frame => new(Time: TimeSpan.FromMilliseconds(1000), Id: 5, State: new ScoreState(new HitCounts(Num300: 2, Num100: 3, Num50: 4, NumGeki: 5, NumKatu: 6, NumMiss: 7), 287_454_020, 300, 11, false), Health: 142, TagByte: 9, Sv2Portion: new ScoreV2Portion(0.5, 0.25));
+	private static ScoreFrame Frame => new(TimeSpan.FromMilliseconds(1000), 5,
+		new ScoreState(new HitCounts(2, 3, 4, 5, 6, 7), 287_454_020, 300, 11, false), 142, 9,
+		new ScoreV2Portion(0.5, 0.25));
 
 	[Fact]
 	public void ScoreFrame_TwoInstancesWithEqualPropertyValues_AreEqual()

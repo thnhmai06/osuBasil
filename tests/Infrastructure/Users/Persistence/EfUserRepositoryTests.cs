@@ -276,7 +276,8 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		var user = await Users.CreateAsync(new UserData { Name = "stale_record" },
 			TestContext.Current.CancellationToken);
 		await DeleteAsync(user);
-		var stale = new UserRecord { Id = user.Id, Value = new UserData { Name = "stale_record", Country = Country.De } };
+		var stale = new UserRecord
+			{ Id = user.Id, Value = new UserData { Name = "stale_record", Country = Country.De } };
 
 		await Users.UpdateAsync(stale, TestContext.Current.CancellationToken);
 

@@ -1,5 +1,6 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Infrastructure.Multiplayer.Workers;
 using Basil.Testing;
@@ -38,7 +39,7 @@ public sealed class EmptyRoomCloserTests
 		Assert.Null(close.Actor);
 	}
 
-	private static Task<LobbyRoomClosed> NextClose(TestApplication app, Basil.Application.Multiplayer.Objects.Rooms.Room room)
+	private static Task<LobbyRoomClosed> NextClose(TestApplication app, Room room)
 	{
 		var closed = new TaskCompletionSource<LobbyRoomClosed>(TaskCreationOptions.RunContinuationsAsynchronously);
 		app.LobbyEvents.Recorded += @event =>
