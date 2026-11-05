@@ -12,7 +12,9 @@ public static class TestDatabase
 	/// <returns>The database; no connection is opened until a context uses it.</returns>
 	public static Database Create(string connectionString)
 	{
-		return new Database(new DatabaseProviders(new PostgresDatabaseProvider(), new PostgresDatabaseProvider()),
+		return new Database(
+			Infrastructure.Persistence.DependencyInjection.Providers(new DatabaseOptions
+				{ WriteConnectionString = connectionString, WriteProvider = TestServer.ProviderName }),
 			Options.Create(new DatabaseOptions { WriteConnectionString = connectionString }));
 	}
 }

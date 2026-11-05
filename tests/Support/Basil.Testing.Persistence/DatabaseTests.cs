@@ -35,7 +35,7 @@ public abstract class DatabaseTests(PersistenceFixture container) : IAsyncLifeti
 		services.AddBasilStorage();
 		services.AddLogging();
 		services.AddSingleton(Options.Create(new StorageOptions { Location = _root }));
-		services.AddSingleton(Options.Create(new DatabaseOptions { WriteConnectionString = connection }));
+		services.AddSingleton(Options.Create(new DatabaseOptions { WriteConnectionString = connection, WriteProvider = TestServer.ProviderName }));
 		_provider = services.BuildServiceProvider();
 
 		foreach (var hosted in _provider.GetServices<IHostedService>())

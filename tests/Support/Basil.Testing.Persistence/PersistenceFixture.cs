@@ -1,35 +1,46 @@
+using System.Data.Common;
 using Npgsql;
+using Testcontainers.MySql;
 using Testcontainers.PostgreSql;
 
 namespace Basil.Testing.Persistence;
 
 /// <summary>
-///     Gives the PostgreSQL server of the test run, where tests create their own database: the server named by the
-///     <c>BASIL_TEST_POSTGRES</c> connection string when it is set, otherwise a container started for the run.
+///     Gives the database server of the test run, where tests create their own database. The engine is chosen by
+///     <c>BASIL_TEST_PROVIDER</c> (<c>PostgreSQL</c>, the default, or <c>MySql</c>); the server is the one named by
+///     <c>BASIL_TEST_POSTGRES</c> or <c>BASIL_TEST_MYSQL</c> (a connection string) when it is set, otherwise a container
+///     started for the run.
 /// </summary>
 public sealed class PersistenceFixture : IAsyncLifetime
 {
-	private readonly PostgreSqlContainer? _container;
-	private readonly string? _server = Environment.GetEnvironmentVariable("BASIL_TEST_POSTGRES");
+	private readonly PostgreSqlContainer? _postgres;
+	private readonly MySqlContainer? _mysql;
+	private readonly string? _server;
 
 	public PersistenceFixture()
 	{
-		if (string.IsNullOrEmpty(_server))
-			_container = new PostgreSqlBuilder("postgres:16-alpine").Build();
+		_server = Environment.GetEnvironmentVariable(TestServer.IsMySql ? "BASIL_TEST_MYSQL" : "BASIL_TEST_POSTGRES");
+		if (!string.IsNullOrEmpty(_server)) return;
+
+		if (TestServer.IsMySql)
+			_mysql = new MySqlBuilder("mysql:8").WithUsername("root").WithPassword("basil").Build();
+		else
+			_postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 	}
 
-	private string ServerConnectionString => _server ?? _container!.GetConnectionString();
+	private string ServerConnectionString => !string.IsNullOrEmpty(_server) ? _server
+		: _mysql is not null ? _mysql.GetConnectionString() : _postgres!.GetConnectionString();
 
 	public async ValueTask InitializeAsync()
 	{
-		if (_container is not null)
-			await _container.StartAsync();
+		if (_postgres is not null) await _postgres.StartAsync();
+		if (_mysql is not null) await _mysql.StartAsync();
 	}
 
 	public async ValueTask DisposeAsync()
 	{
-		if (_container is not null)
-			await _container.DisposeAsync();
+		if (_postgres is not null) await _postgres.DisposeAsync();
+		if (_mysql is not null) await _mysql.DisposeAsync();
 	}
 
 	/// <summary>Creates an empty database and returns how to reach it.</summary>
@@ -37,28 +48,24 @@ public sealed class PersistenceFixture : IAsyncLifetime
 	/// <returns>The connection string of the new database.</returns>
 	public async ValueTask<string> CreateDatabaseAsync(string name)
 	{
-		await using var connection = await OpenRootConnectionAsync();
-		await using var create = new NpgsqlCommand($"create database \"{name}\"", connection);
-		await create.ExecuteNonQueryAsync();
-
-		var builder = new NpgsqlConnectionStringBuilder(ServerConnectionString);
-		builder.Database = name;
-		return builder.ConnectionString;
+		await using var connection = await TestServer.OpenAsync(ServerConnectionString, CancellationToken.None);
+		await Run(connection, TestServer.IsMySql ? $"create database `{name}`" : $"create database \"{name}\"");
+		return TestServer.WithDatabase(ServerConnectionString, name);
 	}
 
 	/// <summary>Deletes a database created for a test class.</summary>
 	/// <param name="name">The database's name.</param>
 	public async ValueTask DropDatabaseAsync(string name)
 	{
-		await using var connection = await OpenRootConnectionAsync();
-		await using var drop = new NpgsqlCommand($"drop database if exists \"{name}\" with (force)", connection);
-		await drop.ExecuteNonQueryAsync();
+		await using var connection = await TestServer.OpenAsync(ServerConnectionString, CancellationToken.None);
+		await Run(connection,
+			TestServer.IsMySql ? $"drop database if exists `{name}`" : $"drop database if exists \"{name}\" with (force)");
 	}
 
-	private async ValueTask<NpgsqlConnection> OpenRootConnectionAsync()
+	private static async Task Run(DbConnection connection, string sql)
 	{
-		var connection = new NpgsqlConnection(ServerConnectionString);
-		await connection.OpenAsync();
-		return connection;
+		await using var command = connection.CreateCommand();
+		command.CommandText = sql;
+		await command.ExecuteNonQueryAsync();
 	}
 }
