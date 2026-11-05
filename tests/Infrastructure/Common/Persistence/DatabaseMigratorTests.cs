@@ -38,13 +38,13 @@ public sealed class DatabaseMigratorTests(PersistenceFixture container) : Databa
 	private async Task<IReadOnlyList<string>> AppliedMigrationsAsync()
 	{
 		var rows = await StoredRows.ReadAsync(ConnectionString, """
-		                                                        SELECT migration_id, product_version FROM "__ef_migrations_users"
-		                                                        UNION ALL SELECT migration_id, product_version FROM "__ef_migrations_auth"
-		                                                        UNION ALL SELECT migration_id, product_version FROM "__ef_migrations_beatmaps"
-		                                                        UNION ALL SELECT migration_id, product_version FROM "__ef_migrations_content"
-		                                                        UNION ALL SELECT migration_id, product_version FROM "__ef_migrations_scores"
-		                                                        UNION ALL SELECT migration_id, product_version FROM "__ef_migrations_multiplayer"
-		                                                        UNION ALL SELECT migration_id, product_version FROM "__ef_migrations_chat"
+		                                                        SELECT migration_id, product_version FROM __ef_migrations_users
+		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_auth
+		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_beatmaps
+		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_content
+		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_scores
+		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_multiplayer
+		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_chat
 		                                                        ORDER BY migration_id
 		                                                        """, null, TestContext.Current.CancellationToken);
 		return rows.Select(row => string.Join("|", row.Values.Values.Select(value => value?.ToString()))).ToList();
