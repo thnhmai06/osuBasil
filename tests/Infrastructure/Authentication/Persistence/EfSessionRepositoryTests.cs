@@ -209,9 +209,9 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 		await Assert.ThrowsAnyAsync<Exception>(() => RecordTokenAsync(user, SecondId, SessionType.Api, Hash, Third));
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString, "select id::text from sessions", null,
+		var rows = await StoredRows.WaitForAsync(ConnectionString, "select id from sessions", null,
 			rows => rows.Count >= 1, "the first session", TestContext.Current.CancellationToken);
-		Assert.Equal(FirstId.ToString(), Assert.Single(rows).Text("id"));
+		Assert.Equal(FirstId.ToString(), Assert.Single(rows)["id"]!.ToString());
 	}
 
 	[Fact]
