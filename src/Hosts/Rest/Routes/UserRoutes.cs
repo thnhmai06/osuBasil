@@ -1,5 +1,6 @@
 using Basil.Gateway;
 using System.Text;
+using System.Text.Json;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
@@ -71,7 +72,8 @@ internal static class UserRoutes
 			.WithDescription(
 				"Closing an osu! session only disconnects the client, which can sign in again with its password; change the password to keep the client out.");
 		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Close every session of an account.");
-		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).WithSummary("Create an IRC key for one device.")
+		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).Accepts<IrcKeyRequest>(true, "application/json", "*/*")
+			.WithSummary("Create an IRC key for one device.")
 			.WithDescription("The key is shown only in this response. Close the key's session to revoke it.");
 
 		token.MapGet("/{id:int}/friends", FriendsAsync).Admitted(WorkClass.Listing).WithSummary("List the friends of the calling account.");
@@ -276,8 +278,20 @@ internal static class UserRoutes
 				new CloseUserSessions(context.Connection(), target, request?.KeepCurrent ?? true), context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> OpenIrcAsync(HttpContext context, int id, IrcKeyRequest request)
+	private static async Task<IResult> OpenIrcAsync(HttpContext context, int id)
 	{
+		if (!context.Request.HasJsonContentType()) return Api.Invalid("A JSON body is required.");
+		IrcKeyRequest? request;
+		try
+		{
+			request = await context.Request.ReadFromJsonAsync<IrcKeyRequest>(Api.Json, context.RequestAborted);
+		}
+		catch (JsonException)
+		{
+			return Api.Invalid("The body is not valid.");
+		}
+
+		if (request is null) return Api.Invalid("A body is required.");
 		if (string.IsNullOrWhiteSpace(request.Label)) return Api.Invalid("label is required.");
 		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 

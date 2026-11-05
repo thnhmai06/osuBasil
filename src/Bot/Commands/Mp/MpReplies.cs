@@ -290,9 +290,6 @@ internal static class MpReplies
 	/// <summary>Reply when no countdown is running.</summary>
 	public static readonly Reply NoCountdownRunning = new("mp.noCountdownRunning", "No countdown is running.");
 
-	/// <summary>Reply after aborting a countdown.</summary>
-	public static readonly Reply CountdownAborted = new("mp.countdownAborted", "Countdown aborted");
-
 	/// <summary>Reply when the match is not in progress.</summary>
 	public static readonly Reply MatchNotInProgress = new("mp.matchNotInProgress", "Match is not in progress.");
 

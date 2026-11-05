@@ -146,6 +146,18 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Whois_OfANameWithASpace_NamesTheAccountAsOneParameter()
+	{
+		using var asker = await Host.SignInAsync("WsSpaceAsker");
+		using var other = await Host.SignInAsync("Ws Spaced");
+
+		await asker.SendAsync("WHOIS Ws_Spaced");
+
+		Assert.Equal(":irc.basil.test 330 WsSpaceAsker Ws_Spaced Ws_Spaced :is logged in as",
+			await asker.ExpectAsync("330"));
+	}
+
+	[Fact]
 	public async Task Whois_AwayUser_Shows301()
 	{
 		using var asker = await Host.SignInAsync("WsAwayAsker");

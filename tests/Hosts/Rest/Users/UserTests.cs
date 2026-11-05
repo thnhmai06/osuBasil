@@ -221,6 +221,19 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task IrcKey_WithoutABody_Answers422AJsonBodyIsRequired()
+	{
+		var (client, id) = await fixture.SignInAsync("IrcKeyNoBody");
+		using (client)
+		{
+			var (status, envelope) = await client.CallAsync(HttpMethod.Post, $"/v1/users/{id}/sessions/irc");
+
+			Assert.Equal(422, status);
+			Assert.Equal("A JSON body is required.", (string)envelope!["message"]!);
+		}
+	}
+
+	[Fact]
 	public async Task Sessions_ListOfAnotherUserWithoutPermission_Answers403_AndOwnIsListed()
 	{
 		var (client, id) = await fixture.SignInAsync("SessList");
