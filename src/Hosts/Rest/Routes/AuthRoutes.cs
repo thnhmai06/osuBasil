@@ -5,6 +5,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
 
@@ -30,7 +31,7 @@ internal static class AuthRoutes
 			{
 				var connection = context.Connection();
 				var session = connection.Session;
-				return Api.Ok(new SessionView(session.Id, session.User.Id, session.StartedAt, connection.ExpiresAt));
+				return Api.Ok(new SessionView(session.TokenHash, session.User.Id, session.CreatedAt, connection.ExpiresAt));
 			}).RequireToken()
 			.WithSummary("Retrieve the current session, which names the signed-in user.");
 	}
@@ -65,7 +66,7 @@ internal static class AuthRoutes
 		}
 
 		var session = connection.Session;
-		return Api.Created(new LoginResponse(connection.Token, session.User.Id, session.Id, connection.ExpiresAt),
+		return Api.Created(new LoginResponse(connection.Token, session.User.Id, session.TokenHash, connection.ExpiresAt),
 			"Signed in");
 	}
 
@@ -73,7 +74,7 @@ internal static class AuthRoutes
 	{
 		var connection = context.Connection();
 		var result = await context.Sender().Send(
-			new CloseUserSession(connection, connection.User.Record, connection.Session.Id), cancellationToken);
+			new CloseUserSession(connection, connection.User.Record, connection.Session.TokenHash), cancellationToken);
 		return result.Answer();
 	}
 

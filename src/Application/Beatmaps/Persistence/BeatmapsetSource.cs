@@ -1,5 +1,6 @@
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Cryptography;
 
 namespace Basil.Application.Beatmaps.Persistence;
 

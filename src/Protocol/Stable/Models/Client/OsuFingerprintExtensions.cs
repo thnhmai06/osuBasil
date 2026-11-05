@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 
 namespace Basil.Protocol.Stable.Models.Client;
 

@@ -2,6 +2,7 @@ using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;

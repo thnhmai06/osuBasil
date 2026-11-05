@@ -2,6 +2,7 @@ using System.Globalization;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
 using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Domain.Content;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;

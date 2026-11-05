@@ -1,3 +1,5 @@
+using Basil.Application.Authentication.Models;
+using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Authentication.Persistence;

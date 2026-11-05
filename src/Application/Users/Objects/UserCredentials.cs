@@ -1,8 +1,10 @@
+using Basil.Application.Authentication.Models;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
 
 namespace Basil.Application.Users.Objects;
@@ -64,7 +66,7 @@ public sealed class UserCredentials
 		await ReplaceAsync(newPasswordHash, cancellationToken);
 		if (unchanged) return UserOutcome.Ok;
 
-		var keep = isSelf && !includeCurrent && actor is ApiConnection api ? api.Session.Id : (Guid?)null;
+		var keep = isSelf && !includeCurrent && actor is ApiConnection api ? api.Session.TokenHash : (Guid?)null;
 		await _user.Sessions.CloseAsync(null, keep, SessionEndReason.CredentialsChanged, cancellationToken);
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationData

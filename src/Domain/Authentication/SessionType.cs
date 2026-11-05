@@ -4,14 +4,22 @@ namespace Basil.Domain.Authentication;
 public enum SessionType : byte
 {
 	/// <summary>An osu! (stable) game client.</summary>
-	Stable = 1 << 0,
+	Stable,
 
 	/// <summary>An osu!tourney (stable) spectator client.</summary>
-	StableTourney = 1 << 1,
+	StableTourney,
 
 	/// <summary>An IRC client.</summary>
-	Irc = 1 << 2,
+	Irc,
 
 	/// <summary>A client of the HTTP API.</summary>
-	Api = 1 << 3
+	Api
+}
+
+public static class SessionTypeExtensions
+{
+	public static bool IsOsuSession(this SessionType type)
+	{
+		return type is SessionType.Stable or SessionType.StableTourney;
+	}
 }

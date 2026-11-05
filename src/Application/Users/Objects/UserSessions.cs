@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using Basil.Application.Authentication.Models;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Users.Objects.Connections;
@@ -90,7 +91,7 @@ public sealed class UserSessions
 				Timestamp = now
 			}, cancellationToken);
 
-		return await _user.Context.Sessions.ListAsync(_user.Record, new SessionFilter(state, types, now), page,
+		return await _user.Context.Sessions.ListAsync(_user.Record, new SessionQuery(state, types, now), page,
 			cancellationToken);
 	}
 
@@ -134,7 +135,7 @@ public sealed class UserSessions
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
-		if (!Connections.Any(connection => connection.Session.Id == id) &&
+		if (!Connections.Any(connection => connection.Session.TokenHash == id) &&
 		    await _user.Context.Sessions.GetAsync(_user.Record, id, cancellationToken) is null)
 			return UserOutcome.NotFound;
 
@@ -156,7 +157,7 @@ public sealed class UserSessions
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 
 		var isSelf = actor.Record.Equals(_user.Record);
-		Guid? keep = isSelf && keepCurrent && actor is ApiConnection api ? api.Session.Id : null;
+		Guid? keep = isSelf && keepCurrent && actor is ApiConnection api ? api.Session.TokenHash : null;
 		// The sessions live in another module's database, so no transaction covers both: log first, so an action is never unrecorded.
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationData
@@ -191,8 +192,8 @@ public sealed class UserSessions
 
 		var key = UserRegistry.NewToken();
 		var now = _user.Context.Clock.GetUtcNow();
-		var session = new SessionRecord(Guid.NewGuid(), _user.Record, SessionType.Irc, now,
-			new SessionData(new SessionDevice(actor.Session.Value.Device.Ip, ClientInfo: label),
+		var session = new SessionRecord(_user.Record, Guid.NewGuid(), SessionType.Irc,
+			now, new SessionData(new SessionFingerprint(actor.Session.Value.Device.Ip, ClientInfo: label),
 				new SessionCredential(UserRegistry.HashToken(key)), now));
 		await _user.Context.Sessions.RecordAsync(session, cancellationToken);
 		return (UserOutcome.Ok, key, session);

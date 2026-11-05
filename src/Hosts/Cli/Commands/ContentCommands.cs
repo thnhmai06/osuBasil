@@ -6,6 +6,7 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;

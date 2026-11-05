@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using Basil.Application.Authentication.Models;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
@@ -355,7 +356,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 			new PageRequest(0, 10), cancel);
 		var ended = await Sessions.ListAsync(user, new SessionFilter(SessionState.Ended, null, now),
 			new PageRequest(0, 10), cancel);
-		var apiOnly = await Sessions.ListAsync(user, new SessionFilter(SessionState.Any, [SessionType.Api], now),
+		var apiOnly = await Sessions.ListAsync(user, new SessionFiltery(SessionState.Any, [SessionType.Api], now),
 			new PageRequest(0, 10), cancel);
 
 		Assert.Equal([FirstId], active.Items.Select(entry => entry.Id));

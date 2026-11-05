@@ -1,4 +1,5 @@
 using System.Globalization;
+using Basil.Application.Authentication.Models;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Domain.Authentication;
@@ -34,16 +35,16 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<Page<SessionRecord>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
+	public async ValueTask<Page<SessionRecord>> ListAsync(UserRecord user, SessionQuery sessionQuery, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var types = filter.Types;
-		var now = filter.Now.ToUniversalTime();
+		var types = sessionQuery.Types;
+		var now = sessionQuery.Now.ToUniversalTime();
 		var (total, rows) = await database.ReadAsync(async (AuthenticationDbContext context) =>
 		{
 			var query = context.Sessions.Where(row => row.UserId == user.Id);
 			if (types is not null) query = query.Where(row => types.Contains(row.Type));
-			query = filter.State switch
+			query = sessionQuery.State switch
 			{
 				SessionState.Active => query.Where(row =>
 					row.EndedAt == null && (row.ExpiresAt == null || row.ExpiresAt > now)),

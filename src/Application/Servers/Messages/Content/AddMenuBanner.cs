@@ -4,7 +4,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Content;
 using Mediator;
 
-namespace Basil.Application.Servers.Messages;
+namespace Basil.Application.Servers.Messages.Content;
 
 /// <summary>
 ///     Asks Servers to add a main-menu banner whose image is uploaded; an invalid name raises

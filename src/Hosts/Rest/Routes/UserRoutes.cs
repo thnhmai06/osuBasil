@@ -10,6 +10,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
@@ -316,7 +317,7 @@ internal static class UserRoutes
 
 		var (result, key, session) = await context.Sender()
 			.Send(new OpenIrcSession(context.Connection(), target, request.Label), context.RequestAborted);
-		return result.IsOk ? Api.Created(new IrcKeyResponse(session!.Id, key!)) : result.Refusal();
+		return result.IsOk ? Api.Created(new IrcKeyResponse(session!.TokenHash, key!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> FriendsAsync(HttpContext context, int id)

@@ -4,7 +4,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Content;
 using Mediator;
 
-namespace Basil.Application.Servers.Messages;
+namespace Basil.Application.Servers.Messages.Content;
 
 /// <summary>Asks Servers to delete a main-menu banner and its image.</summary>
 /// <param name="Actor">The connection acting.</param>

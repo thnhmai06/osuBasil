@@ -4,7 +4,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
 using Mediator;
 
-namespace Basil.Application.Servers.Messages;
+namespace Basil.Application.Servers.Messages.Content;
 
 /// <summary>Asks Servers to notify the open osu! clients of the given users.</summary>
 /// <param name="Actor">The connection acting.</param>

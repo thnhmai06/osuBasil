@@ -62,7 +62,7 @@ public sealed record SessionView(
 	public static SessionView Of(SessionRecord s)
 	{
 		var (device, _, lastActiveAt, end) = s.Value;
-		return new SessionView(s.Id, s.Type, device.Ip.ToString(), device.ClientInfo, s.StartedAt, lastActiveAt,
+		return new SessionView(s.TokenHash, s.Type, device.Ip.ToString(), device.ClientInfo, s.CreatedAt, lastActiveAt,
 			end?.At, end?.Reason);
 	}
 }

@@ -4,7 +4,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Content;
 using Mediator;
 
-namespace Basil.Application.Servers.Messages;
+namespace Basil.Application.Servers.Messages.Content;
 
 /// <summary>Asks Servers for the stored screenshots.</summary>
 /// <param name="Actor">The connection acting.</param>

@@ -4,6 +4,7 @@ using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Messages.Content;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 using Basil.Gateway;

@@ -1,5 +1,10 @@
 namespace Basil.Domain.Authentication;
 
+/// <summary>How a session ended.</summary>
+/// <param name="At">The moment the session ended.</param>
+/// <param name="Reason">Why the session ended.</param>
+public sealed record SessionEndStatus(DateTimeOffset At, SessionEndReason Reason);
+
 /// <summary>Why a client session stopped being active.</summary>
 public enum SessionEndReason : byte
 {

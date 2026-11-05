@@ -10,6 +10,7 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 

@@ -11,6 +11,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Gateway;

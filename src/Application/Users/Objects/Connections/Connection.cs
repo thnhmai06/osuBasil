@@ -13,7 +13,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 {
 	// UTC ticks, written and read atomically: a connection and the activity flush touch them from different threads.
 	private const long None = long.MinValue;
-	private SessionEnd? _end;
+	private SessionEndStatus? _end;
 	private long _expiresTicks = login.Value.Credential.ExpiresAt?.UtcTicks ?? None;
 	private long _lastActiveTicks = login.Value.LastActiveAt.UtcTicks;
 
@@ -42,7 +42,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 			: null;
 
 	/// <summary>Gets how the session ended, or <see langword="null" /> while it remains active.</summary>
-	public SessionEnd? End => Volatile.Read(ref _end);
+	public SessionEndStatus? End => Volatile.Read(ref _end);
 
 	/// <summary>Gets a value that indicates whether the server opened this connection for BasilBot, with no client behind it.</summary>
 	public bool IsServerOwned => Record.IsBasilBot();
@@ -61,8 +61,8 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	public SessionRecord Snapshot()
 	{
 		var value = Session.Value;
-		return new SessionRecord(Session.Id, Session.User, Session.Type, Session.StartedAt,
-			value with
+		return new SessionRecord(Session.User, Session.TokenHash, Session.Type,
+			Session.CreatedAt, value with
 			{
 				Credential = value.Credential with { ExpiresAt = ExpiresAt },
 				LastActiveAt = LastActiveAt,
@@ -90,7 +90,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	/// <param name="reason">Why the session ended.</param>
 	internal void EndSession(DateTimeOffset at, SessionEndReason reason)
 	{
-		Interlocked.CompareExchange(ref _end, new SessionEnd(at, reason), null);
+		Interlocked.CompareExchange(ref _end, new SessionEndStatus(at, reason), null);
 	}
 
 	/// <summary>Tells whether this connection's authority is above an account's permissions.</summary>
