@@ -2,7 +2,7 @@
 
 ## Overview
 
-Basil keeps its records in PostgreSQL. Live objects (users online, rooms, channels) are held by their registries and are
+Basil keeps its records in PostgreSQL or MySQL, chosen per endpoint. Live objects (users online, rooms, channels) are held by their registries and are
 the truth of the running server; the database keeps what must survive a restart. Repositories await their reads and
 writes, and a write that fails reaches the caller. Small, hot records may be cached aside (`CacheAside`), and the cache
 entry is dropped only after the awaited write succeeded. The storage rules are in
@@ -29,7 +29,7 @@ earlier SQLite file to write in parallel, so a deployment needs a database serve
 |--------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Accounts     | `users`, `credentials`, `restrictions`, `relationships`, `logins`           | `logins` is append-only history                                       |
 | Server       | `settings` (one row per setting), `channels`, `menu_banners`               | resident: loaded at startup, never released                           |
-| Beatmaps     | `beatmapsets`, `beatmaps`, sequences `local_beatmapset_ids`, `local_beatmap_ids` | mirror the stored beatmapset files; local ids start at 1 000 000 000 |
+| Beatmaps     | `beatmapsets`, `beatmaps`, counters `local_beatmapset`, `local_beatmap` | mirror the stored beatmapset files; local ids start at 1 000 000 000 |
 | Multiplayer  | `matches`, `rounds`, `match_events`, `round_scores`                         | `match_events` is append-only history                                 |
 | Scores       | `scores`, `user_stats`                                                      | a score belongs to its player                                         |
 
@@ -98,7 +98,7 @@ reference another's, the principal is not the other module's row type: `ContextM
 `HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
 At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Users, Authentication, Beatmaps, Content,
-Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The beatmap id sequences belong to Beatmaps, the user id sequence (accounts start at 2; id 1 is BasilBot) to Users, and the seeded channels to Chat. Persistence holds no SQL
+Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
 
 ### PostgreSQL provider and where the migrations live
