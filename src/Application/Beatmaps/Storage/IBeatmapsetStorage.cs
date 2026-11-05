@@ -39,6 +39,13 @@ public interface IBeatmapsetStorage
 	/// </remarks>
 	Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive, CancellationToken cancellationToken = default);
 
+	/// <summary>Keeps an uploaded archive that could not be read in quarantine, for the operator to look at.</summary>
+	/// <param name="archive">An archive returned by <see cref="SaveAsync(Stream, CancellationToken)" />.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>The archive is no longer readable afterwards. Quarantined files older than seven days are deleted.</remarks>
+	/// <exception cref="ArgumentException">The archive was not uploaded to this storage.</exception>
+	Task QuarantineAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default);
+
 	/// <summary>Packs a folder of loose files into an archive that waits to be taken in.</summary>
 	/// <param name="folder">The folder; its files are left as they are until the archive is taken in.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

@@ -1,3 +1,4 @@
+using Basil.Application.Common.Storage;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Persistence;
@@ -17,6 +18,7 @@ namespace Basil.Application.Servers.Objects;
 /// <param name="RoomChannels">The channels of open multiplayer rooms.</param>
 /// <param name="PmChannels">The private-message channels of online users.</param>
 /// <param name="Inspector">Identifies uploaded picture formats and dimensions.</param>
+/// <param name="Spool">Takes uploads off the request into files while they are checked.</param>
 /// <param name="Screenshots">The stored screenshots.</param>
 /// <param name="Lobby">The open multiplayer rooms.</param>
 /// <param name="Channels">The stored general channels.</param>
@@ -34,6 +36,7 @@ internal sealed record ServerContext(
 	RoomChannels RoomChannels,
 	PmChannels PmChannels,
 	IScreenshotInspector Inspector,
+	IUploadSpool Spool,
 	IScreenshotStorage Screenshots,
 	Lobby Lobby,
 	IChannelRepository Channels,

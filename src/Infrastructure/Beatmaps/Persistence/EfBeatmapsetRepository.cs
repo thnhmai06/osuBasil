@@ -65,6 +65,16 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		return new Page<BeatmapsetRecord>([.. rows.Select(row => row.ToRecord())], total);
 	}
 
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken cancellationToken = default)
+	{
+		return await database.ReadAsync(async (BeatmapsDbContext context) => await context.Beatmapsets
+			.OrderByDescending(set => set.Id)
+			.Select(set => set.Id)
+			.Take(ListLimits.Ceiling)
+			.ToListAsync(cancellationToken), cancellationToken);
+	}
+
 	/// <summary>Stores every change in one transaction, keeping what a replaced beatmapset was stored with.</summary>
 	/// <param name="changes">The beatmapsets to store and to remove.</param>
 	/// <param name="context">The EF context the transaction runs on.</param>

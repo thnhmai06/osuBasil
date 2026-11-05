@@ -647,7 +647,10 @@ Data reaches its consumer directly.
 * A database read is bounded (a limit, a page), loaded, the connection released, and only then sent to a client.
 * Every upload is spooled to a temporary file, validated, then moved atomically into place; no part of an uploaded name
   becomes a path.
-* Application does not buffer a payload in a `MemoryStream` or a `byte[]` copy.
+* Application does not buffer a payload in a `MemoryStream` or a `byte[]` copy; an upload it must check goes through
+  `IUploadSpool` (a file, not memory), and a refused one is kept in `<Data>/Quarantine/<guid>` for seven days.
+* A stored file is written once: the writer streams into the storage's temporary file (`DataStorage.SaveAsync` with a
+  writer), then the move is atomic. A replay is never copied through memory on its way to disk.
 * Large payloads (replays, `.osz` archives, images) never pass through a cache.
 
 #### No pp in gameplay
@@ -854,7 +857,7 @@ Proposals from the modular-monolith redesign, for the owner to merge into the sk
   Order them Service > Ports > Registry | Repository | Storage > Objects, use direct injection across levels and a
   mediator between peers.
 * **Never await a notification under a lock.** Objects enqueue events while they hold their lock; a dispatcher publishes
-  outside it. Give the queue a ceiling.
+  outside it.
 * **A translation layer is a language, not a service.** Protocol is the vocabulary of a wire; the host translates and
   dispatches, and the message type (not the host) chooses the handler. The actor travels in the message as an
   unforgeable object created by one module only.
@@ -864,6 +867,13 @@ Proposals from the modular-monolith redesign, for the owner to merge into the sk
   objects, and a large payload never passes through a cache.
 * **Streaming is a rule, not an optimization.** Spool uploads to a temporary file, validate, move atomically; no
   `MemoryStream` in the application layer.
+* **An architecture test over source text needs a positive control.** The ban on `MemoryStream` in Application scans
+  `src/Application/**/*.cs` (reflection cannot see a local variable) and a temporary file that contains it proves the
+  scan can fail.
+* **Keep what validation refused, briefly.** A refused upload moves to a quarantine under a name of the server's own
+  and is swept after a week, so an operator can look at it and the disk cannot fill with it.
+* **A listing that only decides "seen or not" asks for ids.** The scanner lists ids bounded by the list ceiling and
+  loads only the few rows it forgets.
 
 ## Agent skills
 

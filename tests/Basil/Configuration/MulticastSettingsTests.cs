@@ -2,7 +2,7 @@ using Basil.Configuration;
 
 namespace Basil.Tests.Configuration;
 
-/// <summary>The multicast DNS answers are off by default, and a group address or port the responder cannot use is refused.</summary>
+/// <summary>The multicast DNS answers are off by default.</summary>
 public sealed class MulticastSettingsTests
 {
 	[Fact]
@@ -12,39 +12,29 @@ public sealed class MulticastSettingsTests
 	}
 
 	[Fact]
-	public void TheStandardGroupsAndPortAreAccepted()
+	public void BothFamiliesAreOnByDefault()
 	{
-		LanAdvertiser.Validate(new ServerOptions.MulticastSettings());
+		using var service = LanAdvertiser.NewService(new ServerOptions.MulticastSettings());
+
+		Assert.True(service.UseIpv4);
+		Assert.True(service.UseIpv6);
 	}
 
 	[Fact]
-	public void AnEmptyFamilyIsAccepted()
+	public void UseIPv4FalseSwitchesIpv4Off()
 	{
-		LanAdvertiser.Validate(new ServerOptions.MulticastSettings { IPv4 = "", IPv6 = null });
+		using var service = LanAdvertiser.NewService(new ServerOptions.MulticastSettings { UseIPv4 = false });
+
+		Assert.False(service.UseIpv4);
+		Assert.True(service.UseIpv6);
 	}
 
 	[Fact]
-	public void TheIpv6GroupIsComparedAsAnAddressNotAsText()
+	public void UseIPv6FalseSwitchesIpv6Off()
 	{
-		LanAdvertiser.Validate(new ServerOptions.MulticastSettings { IPv6 = "ff02:0:0:0:0:0:0:fb" });
-	}
+		using var service = LanAdvertiser.NewService(new ServerOptions.MulticastSettings { UseIPv6 = false });
 
-	[Theory]
-	[InlineData("IPv4", "239.1.1.1")]
-	[InlineData("IPv6", "FF02::1")]
-	[InlineData("Port", "5454")]
-	public void AnUnsupportedGroupOrPortIsRefusedInsteadOfIgnored(string setting, string value)
-	{
-		var multicast = new ServerOptions.MulticastSettings();
-		switch (setting)
-		{
-			case "IPv4": multicast.IPv4 = value; break;
-			case "IPv6": multicast.IPv6 = value; break;
-			default: multicast.Port = int.Parse(value); break;
-		}
-
-		var exception = Assert.Throws<InvalidOperationException>(() => LanAdvertiser.Validate(multicast));
-
-		Assert.Contains("Multicast:" + setting, exception.Message);
+		Assert.True(service.UseIpv4);
+		Assert.False(service.UseIpv6);
 	}
 }

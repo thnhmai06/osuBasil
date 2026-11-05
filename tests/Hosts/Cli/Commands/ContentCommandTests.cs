@@ -117,6 +117,20 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
+	public async Task Settings_Set_ChangesAnAdmissionLimit()
+	{
+		var before = await Get<ISettingsRepository>().GetAsync();
+
+		var (code, _) = await fixture.RunAsync("settings rateLimits set --admission.requests 77");
+		var after = await Get<ISettingsRepository>().GetAsync();
+		await fixture.RunAsync($"settings rateLimits set --admission.requests {before.RateLimits.Admission.Requests}");
+
+		Assert.Equal(0, code);
+		Assert.Equal(77, after.RateLimits.Admission.Requests);
+		Assert.Equal(before.RateLimits.Admission.Window, after.RateLimits.Admission.Window);
+	}
+
+	[Fact]
 	public async Task Settings_Set_ChangesANestedFieldAndKeepsTheRest()
 	{
 		var before = await Get<ISettingsRepository>().GetAsync();

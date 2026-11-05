@@ -1,6 +1,7 @@
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using System.Text.Json.Serialization;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Content.Persistence;
@@ -64,6 +65,13 @@ public sealed record ServerSettings
 		return value > 0
 			? value
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "The number must be positive.");
+	}
+
+	private static double Fraction(double value)
+	{
+		return value is > 0 and <= 1
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The load must be above 0 and at most 1.");
 	}
 
 	private static long Positive(long value)
@@ -209,6 +217,89 @@ public sealed record ServerSettings
 
 		/// <summary>Gets the flood limit on chat messages.</summary>
 		public Limit Chat { get; init; } = new(10, TimeSpan.FromSeconds(5));
+
+		/// <summary>Gets the limits on authenticated requests and the load at which the server refuses work.</summary>
+		public AdmissionLimitSettings Admission { get; init; } = new();
+	}
+
+	/// <summary>The limits on authenticated requests and the load at which the server refuses work.</summary>
+	public sealed record AdmissionLimitSettings
+	{
+		/// <summary>Creates the limits.</summary>
+		/// <param name="requests">How many requests a standard subject may make in the window.</param>
+		/// <param name="window">The length of the window.</param>
+		/// <param name="elevatedMultiplier">The factor applied to <paramref name="requests" /> for an elevated subject.</param>
+		/// <param name="interactiveConcurrency">How many interactive requests may run at once.</param>
+		/// <param name="listingConcurrency">How many listing requests may run at once.</param>
+		/// <param name="uploadConcurrency">How many upload requests may run at once.</param>
+		/// <param name="liveConcurrency">How many live-stream requests may run at once.</param>
+		/// <param name="degradedAbove">The load from which the server reports itself degraded.</param>
+		/// <param name="shedAbove">The load from which listing work is refused.</param>
+		/// <param name="hardShedAbove">The load from which every kind of work is refused.</param>
+		/// <param name="busyRetryAfter">How long a caller refused for load or a full work class is told to wait.</param>
+		/// <exception cref="ArgumentOutOfRangeException">
+		///     A number or duration is not positive, or the loads are not ordered
+		///     0 &lt; degraded &lt; shed &lt; hard shed &lt;= 1.
+		/// </exception>
+		[JsonConstructor]
+		public AdmissionLimitSettings(int requests, TimeSpan window, int elevatedMultiplier,
+			int interactiveConcurrency, int listingConcurrency, int uploadConcurrency, int liveConcurrency,
+			double degradedAbove, double shedAbove, double hardShedAbove, TimeSpan busyRetryAfter)
+		{
+			Requests = Positive(requests);
+			Window = Positive(window);
+			ElevatedMultiplier = Positive(elevatedMultiplier);
+			InteractiveConcurrency = Positive(interactiveConcurrency);
+			ListingConcurrency = Positive(listingConcurrency);
+			UploadConcurrency = Positive(uploadConcurrency);
+			LiveConcurrency = Positive(liveConcurrency);
+			DegradedAbove = Fraction(degradedAbove);
+			ShedAbove = Fraction(shedAbove);
+			HardShedAbove = Fraction(hardShedAbove);
+			BusyRetryAfter = Positive(busyRetryAfter);
+			if (!(DegradedAbove < ShedAbove && ShedAbove < HardShedAbove))
+				throw new ArgumentOutOfRangeException(nameof(shedAbove), shedAbove,
+					"The loads must be ordered degraded < shed < hard shed.");
+		}
+
+		/// <summary>Creates the default limits.</summary>
+		public AdmissionLimitSettings() : this(120, TimeSpan.FromMinutes(1), 4, 256, 32, 8, 1024, 0.5, 0.7, 0.9,
+			TimeSpan.FromSeconds(5))
+		{
+		}
+
+		/// <summary>Gets how many requests a standard subject may make in the window.</summary>
+		public int Requests { get; }
+
+		/// <summary>Gets the length of the window.</summary>
+		public TimeSpan Window { get; }
+
+		/// <summary>Gets the factor applied to <see cref="Requests" /> for an elevated subject.</summary>
+		public int ElevatedMultiplier { get; }
+
+		/// <summary>Gets how many interactive requests may run at once.</summary>
+		public int InteractiveConcurrency { get; }
+
+		/// <summary>Gets how many listing requests may run at once.</summary>
+		public int ListingConcurrency { get; }
+
+		/// <summary>Gets how many upload requests may run at once.</summary>
+		public int UploadConcurrency { get; }
+
+		/// <summary>Gets how many live-stream requests may run at once.</summary>
+		public int LiveConcurrency { get; }
+
+		/// <summary>Gets the load, above 0 and at most 1, from which the server reports itself degraded.</summary>
+		public double DegradedAbove { get; }
+
+		/// <summary>Gets the load from which listing work is refused.</summary>
+		public double ShedAbove { get; }
+
+		/// <summary>Gets the load from which every kind of work is refused.</summary>
+		public double HardShedAbove { get; }
+
+		/// <summary>Gets how long a caller refused for load or a full work class is told to wait.</summary>
+		public TimeSpan BusyRetryAfter { get; }
 	}
 
 	/// <summary>The limit on failed login attempts.</summary>

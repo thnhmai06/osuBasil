@@ -73,23 +73,12 @@ Taken from well-known cloud design patterns, limited to what this single process
 | `Interactive` | gameplay, chat, rooms, accounts | 256 | 0.90 |
 | `Live` | SSE streams | 1024 | 0.90 |
 
-Health is `Healthy` below 0.50, `Degraded` from 0.50 and `Shedding` from 0.70. Every threshold and cap is a field of
-`GatewayLimits` and is swapped at runtime with `Admission.Apply`. The load is the fill of the event queue
-(`Outstanding / Ceiling`), reported once a second.
-
-#### The event queue ceiling
-
-`EventQueue` holds at most `Basil:Events:Ceiling` deliveries (default 100,000). `TryEnqueue` never waits: at the ceiling
-it drops the delivery, returns `false` and counts `basil.events.rejected`. Events are published under the locks of the
-objects, so a drop is the only way to stay non-blocking; a dropped event loses its notification (live fan-out, chat
-lines) and, for the recorders of a match, its history row. To keep that rare:
-
-* The last tenth of the ceiling is reserved. `IEventPublisher<T>.HasRoom` is false once the queue is nine tenths full.
-* An entry point whose events have durable consequences checks `HasRoom` before it changes state and refuses with an
-  existing outcome. Today the only one is opening a room (`ScopedLobby.OpenRoomAsync` returns `Locked`), because a match is
-  recorded by the events of its room. Operations on a room that is already open are not refused midway: their events
-  use the reserved tenth.
-* The only caller of `TryEnqueue` is the notification publisher, so every event of the application passes the same check.
+Health is `Healthy` below 0.50, `Degraded` from 0.50 and `Shedding` from 0.70. Every threshold and cap is a server setting
+stored in the database (`rateLimits.admission`, changed through `PATCH /v1/settings/rateLimits` or the console); the
+composition root hands `Admission` a snapshot of it from memory, so a change applies to the next request without a restart.
+The Gateway itself knows only `GatewayLimits`. A value must be positive, and the loads ordered
+0 < degraded < shed < hard shed <= 1. No load source feeds `LoadSignal` yet, so `/health`
+reports `healthy` until one exists.
 
 #### Audit of the queues for rebuildable work
 

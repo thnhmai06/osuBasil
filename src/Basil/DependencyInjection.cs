@@ -15,6 +15,8 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Events;
+using Basil.Configuration;
+using Basil.Gateway;
 using Basil.Host.Cli;
 using Basil.Host.Irc;
 using Basil.Host.Stable;
@@ -52,6 +54,7 @@ public static class DependencyInjection
 		services.AddMultiplayerBackgroundWork();
 		services.AddBeatmapsBackgroundWork();
 		services.AddBeatmapMirrorSettings();
+		services.AddGatewayLimits();
 		return services.AddBasilApplication();
 	}
 
@@ -96,6 +99,15 @@ public static class DependencyInjection
 		services.AddChatApplication();
 		services.AddServersApplication();
 		services.AddDiagnosticsApplication();
+		return services;
+	}
+
+	/// <summary>Registers the second admission tier, which reads its limits from the server settings.</summary>
+	internal static IServiceCollection AddGatewayLimits(this IServiceCollection services)
+	{
+		services.AddSingleton<SettingsGatewayLimits>();
+		services.AddSingleton(sp => new Admission(sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<SettingsGatewayLimits>().Current, sp.GetRequiredService<LoadSignal>()));
 		return services;
 	}
 

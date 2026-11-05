@@ -25,6 +25,12 @@ public interface IBeatmapsetRepository
 	Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default);
 
+	/// <summary>Lists the ids of the stored beatmapsets, newest first.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The ids.</returns>
+	/// <remarks>At most <see cref="ListLimits.Ceiling" /> ids are returned.</remarks>
+	Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken cancellationToken = default);
+
 	/// <summary>Stores what one scan or import changes, all at once.</summary>
 	/// <param name="changes">The beatmapsets to store and to remove.</param>
 	/// <param name="cancellationToken">A token that cancels the wait for its turn.</param>

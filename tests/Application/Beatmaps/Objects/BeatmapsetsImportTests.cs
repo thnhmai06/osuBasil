@@ -190,6 +190,17 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
+	public async Task ImportAsync_WithAnArchiveThatIsNotReadable_KeepsItInQuarantine()
+	{
+		var world = new BeatmapsetWorld();
+		using var app = world.CreateApplication();
+
+		await ImportAsync(app, [1, 2, 3, 4]);
+
+		Assert.Single(world.Storage.Quarantined);
+	}
+
+	[Fact]
 	public async Task ImportAsync_WithAnEmptyArchive_IsRejectedAsUnreadable()
 	{
 		var world = new BeatmapsetWorld();

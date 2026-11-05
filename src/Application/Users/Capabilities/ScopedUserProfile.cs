@@ -91,27 +91,24 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 		var context = scoped.User.Context;
 		var limits = (await context.Settings.GetAsync(cancellationToken)).Uploads;
 
-		using var memory = new MemoryStream();
-		var buffer = new byte[81920];
-		while (true)
+		await using var upload = await context.Spool.SpoolAsync(image, limits.AvatarMaxSize, cancellationToken);
+		if (upload.TooLarge) return UserOutcome.TooLarge;
+
+		var info = await context.Inspector.InspectAsync(upload.Content, cancellationToken);
+		if (info is null || info.Width < 1 || info.Height < 1)
 		{
-			var allowance = (int)Math.Min(buffer.Length, limits.AvatarMaxSize + 1 - memory.Length);
-			if (allowance == 0) break;
-			var read = await image.ReadAsync(buffer.AsMemory(0, allowance), cancellationToken);
-			if (read == 0) break;
-			memory.Write(buffer, 0, read);
+			await upload.QuarantineAsync(cancellationToken);
+			return UserOutcome.InvalidImage;
 		}
 
-		if (memory.Length > limits.AvatarMaxSize) return UserOutcome.TooLarge;
-
-		memory.Position = 0;
-		var info = await context.Inspector.InspectAsync(memory, cancellationToken);
-		if (info is null || info.Width < 1 || info.Height < 1) return UserOutcome.InvalidImage;
 		if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
+		{
+			await upload.QuarantineAsync(cancellationToken);
 			return UserOutcome.DimensionsTooLarge;
+		}
 
-		memory.Position = 0;
-		await context.Avatars.SaveAsync(scoped.User.Record, memory, cancellationToken);
+		upload.Content.Position = 0;
+		await context.Avatars.SaveAsync(scoped.User.Record, upload.Content, cancellationToken);
 		return UserOutcome.Ok;
 	}
 

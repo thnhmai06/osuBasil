@@ -240,6 +240,19 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
+	public async Task A_quarantined_upload_leaves_the_storage_and_is_kept_in_the_quarantine()
+	{
+		var bytes = Osz(("a.osu", "x"));
+		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
+
+		await _storage.QuarantineAsync(archive, TestContext.Current.CancellationToken);
+
+		Assert.Empty(Directory.GetFileSystemEntries(Sets));
+		var kept = Assert.Single(Directory.GetFiles(_data.Paths.Quarantine));
+		Assert.Equal(bytes, await File.ReadAllBytesAsync(kept, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
 	public async Task A_taken_in_upload_becomes_the_archive_of_a_set_folder_named_after_the_set()
 	{
 		var bytes = Osz(("a.osu", "x"));

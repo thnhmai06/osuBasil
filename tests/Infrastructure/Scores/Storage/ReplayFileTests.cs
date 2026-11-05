@@ -21,10 +21,17 @@ public sealed class ReplayFileTests
 	private static readonly OsuVersion Version = new(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable);
 	private static readonly byte[] Frames = [.. Enumerable.Range(0, 30).Select(i => (byte)i)];
 
+	private static byte[] Build(ScoreRecord score, string playerName, OsuVersion version, byte[] frames)
+	{
+		using var output = new MemoryStream();
+		ReplayFile.WriteAsync(output, score, playerName, version, new MemoryStream(frames)).GetAwaiter().GetResult();
+		return output.ToArray();
+	}
+
 	[Fact]
 	public void Build_writes_the_header_the_frames_and_the_score_id_in_the_order_of_the_format()
 	{
-		var file = ReplayFile.Build(Score(), "cookiezi", Version, Frames);
+		var file = Build(Score(), "cookiezi", Version, Frames);
 
 		Assert.Equal(Convert.FromHexString(Oracle), file);
 	}
@@ -32,9 +39,9 @@ public sealed class ReplayFileTests
 	[Fact]
 	public void Build_adds_the_extra_value_of_target_practice_after_the_score_id()
 	{
-		var plain = ReplayFile.Build(Score(), "cookiezi", Version, Frames);
+		var plain = Build(Score(), "cookiezi", Version, Frames);
 
-		var target = ReplayFile.Build(Score(GameMods.Target), "cookiezi", Version, Frames);
+		var target = Build(Score(GameMods.Target), "cookiezi", Version, Frames);
 
 		Assert.Equal(plain.Length + sizeof(double), target.Length);
 		Assert.Equal(new byte[sizeof(double)], target[^sizeof(double)..]);
@@ -45,7 +52,7 @@ public sealed class ReplayFileTests
 	{
 		var counts = new HitCounts(70_000, 5, 3, 100, 2, 1);
 
-		var file = ReplayFile.Build(Score(counts: counts), "cookiezi", Version, Frames);
+		var file = Build(Score(counts: counts), "cookiezi", Version, Frames);
 
 		Assert.Equal(ushort.MaxValue, BitConverter.ToUInt16(file, HitCountsOffset));
 	}
@@ -53,7 +60,7 @@ public sealed class ReplayFileTests
 	[Fact]
 	public void TryFindFrames_finds_the_frames_a_built_file_carries()
 	{
-		var file = ReplayFile.Build(Score(), "cookiezi", Version, Frames);
+		var file = Build(Score(), "cookiezi", Version, Frames);
 
 		Assert.True(ReplayFile.TryFindFrames(new MemoryStream(file), out var offset, out var length));
 		Assert.Equal(Frames, file[(int)offset..(int)(offset + length)]);
@@ -67,7 +74,7 @@ public sealed class ReplayFileTests
 			Id = 1,
 			Value = Score().Value with { BeatmapHash = null }
 		};
-		var file = ReplayFile.Build(score, string.Empty, Version, Frames);
+		var file = Build(score, string.Empty, Version, Frames);
 
 		Assert.True(ReplayFile.TryFindFrames(new MemoryStream(file), out var offset, out var length));
 		Assert.Equal(Frames, file[(int)offset..(int)(offset + length)]);
@@ -82,7 +89,7 @@ public sealed class ReplayFileTests
 	[Fact]
 	public void TryFindFrames_refuses_a_file_cut_inside_its_header_or_its_frames()
 	{
-		var file = ReplayFile.Build(Score(), "cookiezi", Version, Frames);
+		var file = Build(Score(), "cookiezi", Version, Frames);
 
 		Assert.False(ReplayFile.TryFindFrames(new MemoryStream(file[..100]), out _, out _));
 		Assert.False(ReplayFile.TryFindFrames(new MemoryStream(file[..130]), out _, out _));

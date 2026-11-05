@@ -30,6 +30,12 @@ public sealed class DataPaths
 	/// <summary>Gets the directory that holds every stored file.</summary>
 	public string Root { get; }
 
+	/// <summary>Gets the directory where uploads wait while they are checked.</summary>
+	public string Spool => Path.Combine(Root, "Spool");
+
+	/// <summary>Gets the directory that keeps the uploads that failed validation.</summary>
+	public string Quarantine => Path.Combine(Root, "Quarantine");
+
 	/// <summary>Gets the files of stored beatmapsets, one directory per set.</summary>
 	public DataStorage Beatmapsets { get; }
 
@@ -61,6 +67,8 @@ public sealed class DataPaths
 	public void CreateDirectories()
 	{
 		Directory.CreateDirectory(Root);
+		Directory.CreateDirectory(Spool);
+		Directory.CreateDirectory(Quarantine);
 		foreach (var storage in new[]
 		         {
 			         Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache

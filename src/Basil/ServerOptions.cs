@@ -31,26 +31,14 @@ public sealed class ServerOptions
 	/// <summary>The settings of the multicast DNS answers.</summary>
 	public sealed class MulticastSettings
 	{
-		/// <summary>The standard multicast DNS group address of IPv4.</summary>
-		public const string StandardIPv4 = "224.0.0.251";
-
-		/// <summary>The standard multicast DNS group address of IPv6.</summary>
-		public const string StandardIPv6 = "FF02::FB";
-
-		/// <summary>The standard multicast DNS port.</summary>
-		public const int StandardPort = 5353;
-
 		/// <summary>Gets a value that indicates whether the server answers multicast DNS queries for its domain.</summary>
 		public bool Enabled { get; set; }
 
-		/// <summary>Gets the IPv4 group address to answer on; empty switches IPv4 off. Only the standard address is supported.</summary>
-		public string? IPv4 { get; set; } = StandardIPv4;
+		/// <summary>Gets a value that indicates whether the server answers on IPv4; <see langword="false" /> switches the family off.</summary>
+		public bool UseIPv4 { get; set; } = true;
 
-		/// <summary>Gets the IPv6 group address to answer on; empty switches IPv6 off. Only the standard address is supported.</summary>
-		public string? IPv6 { get; set; } = StandardIPv6;
-
-		/// <summary>Gets the UDP port to answer on. Only the standard port is supported.</summary>
-		public int Port { get; set; } = StandardPort;
+		/// <summary>Gets a value that indicates whether the server answers on IPv6; <see langword="false" /> switches the family off.</summary>
+		public bool UseIPv6 { get; set; } = true;
 
 		/// <summary>Gets how many seconds a client may keep an answer.</summary>
 		public int DnsTtl { get; set; } = 120;
