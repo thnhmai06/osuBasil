@@ -1,5 +1,3 @@
-using Basil.Bot;
-using Basil.Bot.Replies;
 using Basil.Host.Cli;
 using Basil.Host.Cli.Socket;
 using Basil.Configuration;
@@ -11,6 +9,7 @@ using Basil.Host.Stable;
 using Basil.Host.Rest;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Images;
+using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Host.Shared.Documentation;
 using Basil.Infrastructure.Common;
@@ -48,7 +47,7 @@ public static class HostApplication
 		builder.Services.AddHostedService<LanAdvertiser>();
 		builder.Services.AddHostedService<UpdateChecker>();
 		builder.Services.AddBasil();
-		builder.Services.AddBot(builder.Configuration);
+		builder.Services.AddBotInfrastructureOptions(builder.Configuration);
 		builder.Services.AddSingleton<IDocumentPage, BotReferencePage>();
 		builder.Services.AddIrcListener(builder.Configuration);
 		builder.Services.AddRestApi(builder.Configuration);

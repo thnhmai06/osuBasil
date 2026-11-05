@@ -6,7 +6,6 @@ using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Web;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using Basil.Bot;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +34,6 @@ public sealed class AdmissionPolicyTests
 		builder.Services.AddSingleton(
 			Options.Create(new DatabaseOptions { WriteConnectionString = "Host=localhost;Database=basil" }));
 		builder.Services.AddBasil();
-		builder.Services.AddBot();
 		builder.Services.AddRestApi(builder.Configuration);
 		using var app = builder.Build();
 		map(app);
