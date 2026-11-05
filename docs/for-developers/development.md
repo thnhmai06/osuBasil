@@ -160,7 +160,7 @@ connection. Forwarding headers (`X-Forwarded-For`, `X-Real-IP`) are honoured onl
 ## Run tests
 
 The test tree mirrors `src/`: one test project per source project, `tests/{Application,Infrastructure}/<Module>` for
-the modules, `tests/Domain/`, `tests/Protocol/`, `tests/Bot/`, `tests/Hosts/<Host>` for the hosts, `tests/Architecture/`
+the modules, `tests/Domain/`, `tests/Protocol/`, `tests/Hosts/<Host>` for the hosts, `tests/Architecture/`
 (the project graph, the host graph and the container check) and `tests/Support/` for the shared fixtures and simulated
 clients. Run the project you changed first:
 

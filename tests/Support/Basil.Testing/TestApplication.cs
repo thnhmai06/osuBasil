@@ -24,12 +24,12 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Bot;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Anticheat;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Diagnostics;
@@ -92,10 +92,10 @@ public sealed class TestApplication : IDisposable
 		Clock = new FakeTimeProvider(Start);
 		_users = new InMemoryUserRepository();
 		_credentials = new InMemoryCredentialRepository();
-		_restrictions = new InMemoryRestrictionRepository();
 		_sessions = new InMemorySessionRepository();
 		var relationships = new InMemoryRelationshipRepository();
 		_moderationLog = new InMemoryModerationLogRepository();
+		_restrictions = new InMemoryRestrictionRepository(_moderationLog);
 		_settings = new InMemorySettingsRepository();
 
 		var services = new ServiceCollection();
@@ -126,7 +126,7 @@ public sealed class TestApplication : IDisposable
 		services.AddDiagnosticsInfrastructure();
 		services.AddBasilApplication();
 		// The host registers the bot's handlers with the others, so a container built like the host needs the bot's services too.
-		services.AddBot();
+		services.AddBotInfrastructure();
 		services.AddSingleton<IEventPublisher<UserEvent>>(UserEvents);
 		services.AddSingleton<IEventPublisher<RoomEvent>>(RoomEvents);
 		services.AddSingleton<IEventPublisher<LobbyEvent>>(LobbyEvents);

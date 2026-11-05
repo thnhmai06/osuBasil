@@ -17,8 +17,7 @@ namespace Basil.Infrastructure.Scores.Logic;
 /// </summary>
 internal sealed class ScoreRecorder(
 	IScoreRepository scores,
-	IReplayStorage replays,
-	IUserStatsRepository stats) : IScoreRecorder
+	IReplayStorage replays) : IScoreRecorder
 {
 	/// <summary>The shortest replay, in bytes, that is kept.</summary>
 	internal const int MinReplayLength = 24;
@@ -36,11 +35,14 @@ internal sealed class ScoreRecorder(
 		if (Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client) is { } rejection)
 			return new ScoreOutcome(rejection, null, null);
 
+		// Every passed score counts toward ranked score, whatever status the beatmapset is reported with.
 		ScoreRecord score;
+		UserStats current;
 		try
 		{
-			score = await scores.CreateAsync(
-				submission.Score with { UserId = player.Id, Checksum = submission.HashByClient }, cancellationToken);
+			(score, current) = await scores.CreateWithPlayAsync(
+				submission.Score with { UserId = player.Id, Checksum = submission.HashByClient },
+				submission.Score.IsPassed ? submission.Score.LastState.TotalScore : 0, cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
@@ -49,10 +51,6 @@ internal sealed class ScoreRecorder(
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
 			await replays.SaveAsync(score, loginClient.Version, replay, cancellationToken);
-
-		// Every passed score counts toward ranked score, whatever status the beatmapset is reported with.
-		var current = await stats.AddPlayAsync(player, submission.Score.Mode, submission.Score.LastState.TotalScore,
-			submission.Score.IsPassed ? submission.Score.LastState.TotalScore : 0, cancellationToken);
 
 		return new ScoreOutcome(null, score, current);
 	}

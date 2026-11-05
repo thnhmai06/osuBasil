@@ -56,10 +56,9 @@ public sealed class ScoreSubmissionTests
 	public async Task SubmitScoreAsync_WhenTheStatisticsCannotBeStored_ReachesTheCallerAndPublishesNothing()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
-		f.App.Provider.GetRequiredService<IUserStatsRepository>()
-			.AddPlayAsync(Arg.Any<UserRecord>(), Arg.Any<GameMode>(), Arg.Any<long>(), Arg.Any<long>(),
-				Arg.Any<CancellationToken>())
-			.Returns(_ => ValueTask.FromException<UserStats>(new InvalidOperationException("store down")));
+		f.App.Provider.GetRequiredService<IScoreRepository>()
+			.CreateWithPlayAsync(Arg.Any<ScoreData>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+			.Returns(_ => Task.FromException<(ScoreRecord, UserStats)>(new InvalidOperationException("store down")));
 		var score = ScoreSubmissionFixture.PassedScore();
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() => SubmitAsync(f, f.Genuine(score)));

@@ -136,7 +136,7 @@ A player is in at most one room. A room's own check cannot see another room's se
 * [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs): room rights
 * [`CheckRoundStart.cs`](../../src/Application/Multiplayer/Messages/CheckRoundStart.cs): asks whether a connection may start rounds, without starting one
 * [`StartRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/StartRoomCountdown.cs), [`CancelRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/CancelRoomCountdown.cs): the countdown requests, answered by BasilBot
-* [`RoomCountdowns.cs`](../../src/Bot/Countdowns/RoomCountdowns.cs), [`RoomCountdown.cs`](../../src/Bot/Countdowns/RoomCountdown.cs): the countdown timers and their marks
+* [`RoomCountdowns.cs`](../../src/Application/Bot/Registry/RoomCountdowns.cs), [`RoomCountdown.cs`](../../src/Application/Bot/Objects/RoomCountdown.cs): the countdown timers and their marks
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Multiplayer/Capabilities/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 
 ## See also
