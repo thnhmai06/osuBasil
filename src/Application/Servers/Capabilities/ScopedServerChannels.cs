@@ -29,10 +29,7 @@ public readonly struct ScopedServerChannels
 		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		var chat = _scoped.Server.Context.Chat;
-		if (_scoped.Server.OpenChannel(record) is null) return ServerOutcome.NameTaken;
-		await chat.Channels.CreateOrUpdateAsync(record, cancellationToken);
-		return ServerOutcome.Ok;
+		return await _scoped.Server.CreateChannelAsync(record, cancellationToken);
 	}
 
 	/// <summary>Finds the general channel to manage under a name.</summary>
@@ -49,8 +46,6 @@ public readonly struct ScopedServerChannels
 		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing)
 			return (Result<ChannelOutcome>.Denied(missing), null);
 
-		return _scoped.Server.Context.Chat.Registry.Find(name) is { } channel
-			? (ChannelOutcome.Ok, channel)
-			: (ChannelOutcome.NotFound, null);
+		return _scoped.Server.FindGeneralChannel(name);
 	}
 }

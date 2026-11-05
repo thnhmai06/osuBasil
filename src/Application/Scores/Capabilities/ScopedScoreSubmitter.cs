@@ -66,18 +66,6 @@ public readonly struct ScopedScoreSubmitter
 		if (Require(UserPermissions.ScoreSubmit) is { } missing)
 			return (Result<ScoreSubmissionOutcome>.Denied(missing), null);
 
-		var checkedBeatmap = beatmap ??
-		                     (_submitter.Acceptance.AcceptsUnknown(Actor.Record, client.BeatmapHash)
-			                     ? new BeatmapChecksums(client.BeatmapHash, null)
-			                     : null);
-		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, ScoreRejectionReason.UnknownBeatmap);
-
-		var outcome = await _submitter.Recorder.ValidateAndRecordAsync(
-			Actor.Record, Actor.Session.Value.Device.Client!, submission, checkedBeatmap, client, replay,
-			cancellationToken);
-		if (outcome.Rejection is { } rejection) return (ScoreSubmissionOutcome.Rejected, rejection);
-
-		_submitter.Events.Publish(new ScoreSubmitted(Actor.Record, outcome.Score!, outcome.Stats!));
-		return (ScoreSubmissionOutcome.Ok, null);
+		return await _submitter.SubmitAsync(Actor, submission, beatmap, client, replay, cancellationToken);
 	}
 }

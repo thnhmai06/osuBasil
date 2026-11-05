@@ -27,4 +27,11 @@ public sealed class Rulesets
 	{
 		return new ScopedRulesets(this, actor);
 	}
+
+	/// <summary>Starts recomputing every stored beatmap with the rulesets in use, in the background.</summary>
+	/// <returns>Ok when it started; Busy when a reload is already running.</returns>
+	internal RulesetOutcome Reload()
+	{
+		return Reloader.TryStart() ? RulesetOutcome.Ok : RulesetOutcome.Busy;
+	}
 }

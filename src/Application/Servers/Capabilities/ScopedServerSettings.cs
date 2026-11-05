@@ -24,7 +24,7 @@ public readonly struct ScopedServerSettings
 	{
 		return _scoped.Needs(UserPermissions.ServerManageSettings) is { } missing
 			? (Result<ServerOutcome>.Denied(missing), null)
-			: (ServerOutcome.Ok, await _scoped.Server.Context.Settings.GetAsync(cancellationToken));
+			: (ServerOutcome.Ok, await _scoped.Server.GetSettingsAsync(cancellationToken));
 	}
 
 	/// <summary>Replaces the settings; the change applies at once and survives a restart.</summary>
@@ -41,12 +41,11 @@ public readonly struct ScopedServerSettings
 		if (_scoped.Needs(UserPermissions.ServerManageSettings) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		var current = await _scoped.Server.Context.Settings.GetAsync(cancellationToken);
+		var current = await _scoped.Server.GetSettingsAsync(cancellationToken);
 		if (settings.Accounts.DefaultPermissions != current.Accounts.DefaultPermissions &&
 		    _scoped.Needs(settings.Accounts.DefaultPermissions) is { } ungrantable)
 			return Result<ServerOutcome>.Denied(ungrantable);
 
-		await _scoped.Server.Context.Settings.CreateOrUpdateAsync(settings, cancellationToken);
-		return ServerOutcome.Ok;
+		return await _scoped.Server.UpdateSettingsAsync(settings, cancellationToken);
 	}
 }

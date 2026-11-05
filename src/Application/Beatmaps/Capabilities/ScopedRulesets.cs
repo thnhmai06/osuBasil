@@ -50,6 +50,6 @@ public readonly struct ScopedRulesets
 	{
 		return Require() is { } missing
 			? Result<RulesetOutcome>.Denied(missing)
-			: _rulesets.Reloader.TryStart() ? RulesetOutcome.Ok : RulesetOutcome.Busy;
+			: _rulesets.Reload();
 	}
 }
