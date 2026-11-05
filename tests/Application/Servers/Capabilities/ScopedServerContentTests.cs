@@ -1,0 +1,36 @@
+using Basil.Application.Content.Persistence;
+using Basil.Application.Content.Storage;
+using Basil.Domain.Content;
+using Basil.Domain.Users;
+using Basil.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
+
+namespace Basil.Application.Servers.Tests.Capabilities;
+
+/// <summary>Adding a main-menu banner leaves nothing behind when it cannot be stored.</summary>
+public sealed class ScopedServerContentTests
+{
+	[Fact]
+	public async Task AddBannerAsync_WhenStoringTheBannerFails_DeletesTheStoredImageAndRethrows()
+	{
+		var image = new ContentReference("banners/a.png");
+		var images = Substitute.For<IMenuBannerStorage>();
+		images.SaveAsync("a.png", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(image);
+		var banners = Substitute.For<IMenuBannerRepository>();
+		banners.CreateOrUpdateAsync(Arg.Any<MenuBanner>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromException(new IOException("disk full")));
+		using var app = new TestApplication(services =>
+		{
+			services.AddSingleton(images);
+			services.AddSingleton(banners);
+		});
+		var manager = await RoomFixture.PlayerAsync(app, "Boss",
+			UserPermissionsGroups.Default | UserPermissions.ServerManageContent);
+
+		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Content.AddBannerAsync("a.png",
+			new MemoryStream(), new Uri("https://example.org"), null, null, TestContext.Current.CancellationToken));
+
+		await images.Received(1).DeleteAsync(image, Arg.Any<CancellationToken>());
+	}
+}

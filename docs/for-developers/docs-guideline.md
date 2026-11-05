@@ -41,7 +41,7 @@ Use:
 * **Basil**
 * **osu! stable client**
 * **osu! lazer**
-* **Bancho protocol**
+* **osu! (stable) protocol**
 * **API**
 * **beatmap**
 * **player**
@@ -83,8 +83,8 @@ Use inline code for technical identifiers, including:
 
 For example:
 
-* [`ServerOptions`](../../src/Basil.Application/Configurations/ServerOptions.cs)
-* `PUT /adminkey`
+* [`ServerOptions`](../../src/Basil/ServerOptions.cs)
+* `PATCH /v1/settings/{category}`
 * `appsettings.json`
 
 ## Cross-references
@@ -170,8 +170,8 @@ Use the exact configuration keys and API routes from the current implementation.
 For example:
 
 ```text
-Basil:Mirror:DownloadEndpoint
-Basil:Mirror:SearchEndpoint
+Basil:Server:Domain
+Basil:Bot:Replies:Path
 ```
 
 Do not replace implementation names with informal descriptions when readers need to locate the corresponding configuration or code.

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Infrastructure.Content</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Persistence"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Content.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\Common\Basil.Infrastructure.Common.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\Application\Content\Basil.Application.Content.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="SixLabors.ImageSharp"/>
+	</ItemGroup>
+</Project>

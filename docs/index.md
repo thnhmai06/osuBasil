@@ -4,7 +4,7 @@ Basil's documentation is organized by **audience**. Start with the folder that m
 
 | Audience                                                   | Documentation                                         | Start here                                                   |
 | ---------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
-| Player or tool using the HTTP API, bancho protocol, or SSE | [`for-client/`](for-client/bancho/getting-started.md) | [`getting-started.md`](for-client/bancho/getting-started.md) |
+| Player or tool using the HTTP API, osu-stable protocol, or SSE | [`for-client/`](for-client/osu-stable/getting-started.md) | [`getting-started.md`](for-client/osu-stable/getting-started.md) |
 | Tournament or server operator                              | [`for-technicians/`](for-technicians/deployment.md)   | [`deployment.md`](for-technicians/deployment.md)             |
 | Contributor working on the codebase                        | [`for-developers/`](for-developers/architecture.md)   | [`architecture.md`](for-developers/architecture.md)          |
 | Agent or automated tooling                                 | [`for-agents/`](for-agents/guidelines.md)             | [`guidelines.md`](for-agents/guidelines.md)                  |
@@ -17,12 +17,12 @@ Use this section when interacting with a running Basil instance as a client or e
 
 It covers:
 
-* bancho protocol usage
+* osu-stable protocol usage
 * HTTP API usage
 * SSE
 * client-facing setup and behavior
 
-Start with [`getting-started.md`](for-client/bancho/getting-started.md).
+Start with [`getting-started.md`](for-client/osu-stable/getting-started.md).
 
 ### `for-technicians/`
 
@@ -59,27 +59,30 @@ Use this section when working on Basil through an automated coding agent or simi
 
 It contains guidance for navigating the repository, respecting architectural boundaries, and making changes safely.
 
-The authoritative agent instructions remain in [`CLAUDE.md`](../CLAUDE.md). `for-agents/guidelines.md` explains how those instructions relate to the documentation layout.
+The authoritative agent instructions remain in [`AGENTS.md`](../AGENTS.md). `for-agents/guidelines.md` explains how those instructions relate to the documentation layout.
 
 ## API and command reference
 
-The complete machine-readable HTTP API and BasilBot command reference is generated from the running application.
+The references are generated from the running application, each by the part of the server it describes. A running
+instance serves them on its `api.` host:
 
-For a running instance, it is available at:
+| Reference | Address | Format |
+| --- | --- | --- |
+| HTTP API | `/docs/v1` | Scalar, from `/openapi/v1.json` |
+| Endpoints the osu! (stable) client calls, and its packet ids | `/docs/osu-stable` | Scalar, from `/openapi/osu-stable.json` |
+| BasilBot commands | `/guides/bot` | page; Markdown at `/guides/bot.md` |
+| IRC | `/guides/irc` | page; Markdown at `/guides/irc.md` |
 
-```text
-https://api.<domain>/docs/
-```
-
-A published copy is also available on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
+The same references are published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
 
 These generated references are the source for the detailed:
 
 * HTTP routes
 * request and response schemas
 * status codes
+* the endpoints and packets of the osu! (stable) client
 * BasilBot commands
-* protocol reference exposed through the generated documentation
+* the commands and capabilities of the IRC server
 
 The Markdown documentation does **not** duplicate the generated reference.
 
@@ -102,11 +105,31 @@ When two documents disagree, the authoritative document wins.
 | Topic                                                  | Authoritative document             |
 | ------------------------------------------------------ | ---------------------------------- |
 | Scope decisions: what exists and what was removed      | [`for-developers/working-scopes.md`](for-developers/working-scopes.md) |
-| Configuration surface, admin key, and data directories | [`for-technicians/configuration.md`](for-technicians/configuration.md) |
+| Configuration surface and data directories              | [`for-technicians/configuration.md`](for-technicians/configuration.md) |
 | HTTPS and certificates                                 | [`for-technicians/https.md`](for-technicians/https.md)                 |
+| Console commands, local socket, exit codes            | [`for-technicians/console.md`](for-technicians/console.md)             |
 | Privilege flags and their meanings                     | [`for-developers/privileges.md`](for-developers/privileges.md)         |
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
+| Admission control (rate, size, concurrency, load)      | [`for-developers/gateway.md`](for-developers/gateway.md)               |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
+| Diagnostics (intake, feed, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
+| osu! (stable) protocol (client and server)                     | [`for-developers/osu-stable.md`](for-developers/osu-stable.md)                 |
+| IRC protocol                                           | [`for-developers/irc.md`](for-developers/irc.md)                       |
+| Chat channels and their rules                          | [`for-developers/chat.md`](for-developers/chat.md)                     |
+| Beatmap ingestion                                      | [`for-developers/beatmap-ingestion.md`](for-developers/beatmap-ingestion.md) |
+| Multiplayer behavior                                   | [`for-developers/multiplayer.md`](for-developers/multiplayer.md)       |
+| Database and persistence                               | [`for-developers/database.md`](for-developers/database.md)             |
+| API response envelope (client wire format)             | [`for-client/api/response-envelope.md`](for-client/api/response-envelope.md) |
+| API response envelope (server implementation)          | [`for-developers/response-envelope.md`](for-developers/response-envelope.md) |
+| Live HTTP streams (SSE) for clients                    | [`for-client/api/sse.md`](for-client/api/sse.md)                       |
+| Live HTTP streams (SSE) server design                  | [`for-developers/sse.md`](for-developers/sse.md)                       |
+| Testing policy                                         | [`for-developers/testing.md`](for-developers/testing.md)               |
+| Logging                                                | [`for-developers/logging.md`](for-developers/logging.md)               |
+| Development workflow                                   | [`for-developers/development.md`](for-developers/development.md)       |
+| Documentation rules                                    | [`for-developers/docs-guideline.md`](for-developers/docs-guideline.md) |
+| Deployment                                             | [`for-technicians/deployment.md`](for-technicians/deployment.md)       |
+| Docker deployment                                      | [`for-technicians/docker.md`](for-technicians/docker.md)               |
+| Troubleshooting                                        | [`for-technicians/troubleshooting.md`](for-technicians/troubleshooting.md) |
 
 Other documents may link to or summarize these topics, but they must not silently establish a conflicting definition.
 
@@ -140,8 +163,10 @@ This prevents the documentation from developing multiple competing versions of t
 
 * [`for-developers/architecture.md`](for-developers/architecture.md): system architecture and dependency direction
 * [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and ImageSharp.Web image serving
+* [`for-developers/gateway.md`](for-developers/gateway.md): the admission policies every request passes before it reaches a module
+* [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the diagnostics module's intake and feed, live streams, and shared per-tick collection
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality
 * [`for-technicians/configuration.md`](for-technicians/configuration.md): server configuration
 * [`for-technicians/https.md`](for-technicians/https.md): TLS requirements
 * [`for-agents/guidelines.md`](for-agents/guidelines.md): documentation and repository guidance for agents
-* [`CLAUDE.md`](../CLAUDE.md): authoritative instructions for coding agents
+* [`AGENTS.md`](../AGENTS.md): authoritative instructions for coding agents

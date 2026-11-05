@@ -4,12 +4,12 @@
 
 This folder contains documentation for AI agents and automated development workflows working on Basil.
 
-The repository's root [`CLAUDE.md`](../../CLAUDE.md) is the **authoritative instruction source for agents**. This page
+The repository's root [`AGENTS.md`](../../AGENTS.md) is the **authoritative instruction source for agents**. This page
 does not replace it.
 
 Before making code changes:
 
-1. Read [`CLAUDE.md`](../../CLAUDE.md).
+1. Read [`AGENTS.md`](../../AGENTS.md).
 2. Read the relevant documentation listed below.
 3. Check the existing implementation and tests.
 4. Follow the documented scope and architectural constraints.
@@ -77,14 +77,16 @@ corresponding tests and documentation.
 The dependency rule is enforced by architecture tests:
 
 ```text
-Domain      → nothing
-Protocol    → nothing
-Application → Domain, Protocol
-Infrastructure → Application
-Web         → Domain, Protocol, Application, Infrastructure
+Domain                  → nothing
+Application.<Module>    → Domain, Application.Common, the modules it uses
+Infrastructure.<Module> → its own Application, Infrastructure.Common
+Protocol.Stable         → Domain, external libraries
+Protocol.Irc            → external libraries only
+Host.* (transports)     → Host.Shared, their Application and Protocol projects
+Host                    → everything
 ```
 
-`Basil.ArchitectureTests` enforces these boundaries in CI.
+`tests/Architecture` (`ModuleGraphTests`, `HostGraphTests`) enforces these boundaries in CI. The module graph is in [`AGENTS.md`](../../AGENTS.md).
 
 Do not introduce a dependency that points inward across these boundaries simply because it is convenient.
 
@@ -92,10 +94,10 @@ See [`architecture.md`](../for-developers/architecture.md).
 
 ### Multiplayer mutations
 
-Multiplayer state mutations must hold [`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs).
+Multiplayer state mutations must hold the room's own lock (see [`Room`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs)).
 
-Any handler, command, or route that performs a read-then-mutate operation on match slots must hold the per-match
-semaphore across the complete operation:
+Any handler, command, or route that performs a read-then-mutate operation on match slots is a synchronous method of `Room`
+that holds the room's lock across the complete operation and never awaits under it:
 
 ```text
 read → mutate → broadcast
@@ -103,7 +105,7 @@ read → mutate → broadcast
 
 Do not release the lock between these steps.
 
-See [`bancho.md`](../for-developers/bancho.md) and [`multiplayer.md`](../for-developers/multiplayer.md).
+See [`osu-stable.md`](../for-developers/osu-stable.md) and [`multiplayer.md`](../for-developers/multiplayer.md).
 
 ### One source of truth
 
@@ -222,7 +224,7 @@ documentation must remain consistent.
 
 ## See also
 
-* [`CLAUDE.md`](../../CLAUDE.md): authoritative agent instructions
+* [`AGENTS.md`](../../AGENTS.md): authoritative agent instructions
 * [`domain.md`](domain.md): domain documentation and modelling workflow
 * [`issue-tracker.md`](issue-tracker.md): GitHub Issues workflow
 * [`architecture.md`](../for-developers/architecture.md): architecture and dependency rules

@@ -1,0 +1,157 @@
+using System.Security.Cryptography;
+using System.Text;
+using Basil.Application.Users.Objects.Events;
+using Basil.Domain.Authentication;
+using Basil.Testing;
+
+namespace Basil.Application.Users.Tests.Objects.Connections;
+
+public sealed class ConnectionTests
+{
+	[Fact]
+	public async Task Close_MultipleConnections_GoesOfflineOnlyAfterLast()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("TwoConnections", "password");
+		var first = await app.LoginAsync(user);
+		var second = await app.LoginAsync(user);
+
+		app.Users.Close(first, SessionEndReason.LoggedOut);
+		var firstClosed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]);
+		app.Users.Close(second, SessionEndReason.LoggedOut);
+		var secondClosed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]);
+
+		Assert.False(firstClosed.WentOffline);
+		Assert.True(secondClosed.WentOffline);
+		Assert.False(app.Users.Online.ContainsKey(user));
+	}
+
+	[Fact]
+	public async Task Close_LoggedOutWithinOneSecondOfStableLogin_LeavesConnectionOpen()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("EarlyLogout", "password");
+		var connection = await app.LoginAsync(user, SessionType.Stable);
+
+		app.Users.Close(connection, SessionEndReason.LoggedOut);
+
+		Assert.True(connection.IsOpen);
+		Assert.DoesNotContain(app.UserEvents.Events, @event => @event is UserConnectionClosed);
+	}
+
+	[Theory]
+	[InlineData(SessionType.Stable, 300)]
+	[InlineData(SessionType.Api, 300)]
+	public async Task CloseIdle_AtTimeoutBoundary_LeavesConnectionOpen(SessionType type, int timeoutSeconds)
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync($"Boundary{(int)type}", "password");
+		var connection = await app.LoginAsync(user, type);
+		app.Clock.Advance(TimeSpan.FromSeconds(timeoutSeconds));
+
+		var closedCount = app.Users.CloseIdle();
+
+		Assert.Equal(0, closedCount);
+		Assert.True(connection.IsOpen);
+	}
+
+	[Theory]
+	[InlineData(SessionType.Stable, 300)]
+	[InlineData(SessionType.Api, 300)]
+	public async Task CloseIdle_OneSecondPastTimeout_ClosesConnection(SessionType type, int timeoutSeconds)
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync($"Expired{(int)type}", "password");
+		var connection = await app.LoginAsync(user, type);
+		app.Clock.Advance(TimeSpan.FromSeconds(timeoutSeconds + 1));
+
+		var closedCount = app.Users.CloseIdle();
+
+		Assert.Equal(1, closedCount);
+		Assert.False(connection.IsOpen);
+		Assert.Equal(SessionEndReason.TimedOut,
+			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]).Reason);
+	}
+
+	[Fact]
+	public async Task CloseIdle_AfterMarkActive_UsesActivityTime()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("ActiveAgain", "password");
+		var connection = await app.LoginAsync(user);
+		app.Clock.Advance(TimeSpan.FromMinutes(4));
+		app.Users.MarkActive(connection);
+		app.Clock.Advance(TimeSpan.FromMinutes(4));
+
+		Assert.Equal(0, app.Users.CloseIdle());
+		Assert.True(connection.IsOpen);
+
+		app.Clock.Advance(TimeSpan.FromMinutes(1).Add(TimeSpan.FromSeconds(1)));
+
+		Assert.Equal(1, app.Users.CloseIdle());
+		Assert.False(connection.IsOpen);
+	}
+
+	[Fact]
+	public async Task CloseIdle_BotConnections_RemainOpen()
+	{
+		using var app = new TestApplication();
+		await app.SeedBotAsync();
+		var bot = await app.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
+		app.Clock.Advance(TimeSpan.FromDays(1));
+
+		Assert.NotNull(bot);
+		Assert.Equal(0, app.Users.CloseIdle());
+		Assert.All(bot.Connections, connection => Assert.True(connection.IsOpen));
+	}
+
+	[Fact]
+	public async Task Find_OpenConnectionAndBotTokens_ReturnsOnlyClientConnection()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("TokenUser", "password");
+		var connection = await app.LoginAsync(user);
+		await app.SeedBotAsync();
+		var bot = await app.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
+
+		Assert.Same(connection, app.Users.Find(connection.Token));
+		Assert.NotNull(bot);
+		Assert.All(bot.Connections, botConnection => Assert.Null(app.Users.Find(botConnection.Token)));
+	}
+
+	[Fact]
+	public async Task Login_ApiSessionStoresOnlyTokenHashAndSlidesExpiry()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("ApiSession", "password");
+		var connection = await app.LoginAsync(user);
+		var session = connection.Session;
+
+		Assert.Equal(SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), session.Value.Credential.TokenHash);
+		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), connection.ExpiresAt);
+
+		app.Clock.Advance(TimeSpan.FromDays(1));
+		app.Users.MarkActive(connection);
+
+		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), connection.ExpiresAt);
+	}
+
+	[Fact]
+	public async Task EndSession_RecordsEndAndStopsFurtherActivity()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("EndedSession", "password");
+		var connection = await app.LoginAsync(user);
+		var activeAt = app.Clock.GetUtcNow().AddMinutes(5);
+		var endedAt = activeAt.AddMinutes(1);
+
+		connection.MarkActive(activeAt);
+		connection.EndSession(endedAt, SessionEndReason.LoggedOut);
+		connection.EndSession(endedAt.AddMinutes(1), SessionEndReason.Revoked);
+		connection.MarkActive(endedAt.AddMinutes(1));
+
+		Assert.Equal(activeAt, connection.LastActiveAt);
+		Assert.Equal(new SessionEnd(endedAt, SessionEndReason.LoggedOut), connection.End);
+		Assert.Equal(connection.End, connection.Snapshot().Value.End);
+	}
+}

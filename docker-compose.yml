@@ -1,13 +1,38 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: basil
+      POSTGRES_USER: basil
+      POSTGRES_PASSWORD: basil # change it, and change it in the connection string below too
+    volumes:
+      - ./docker-data/Postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U basil -d basil" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   basil:
     build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "443:443" # HTTPS
       - "6667:6667" # IRC no TLS
     volumes:
       - ./docker-data/Data:/app/Data
       - ./docker-data/Logs:/app/Logs
-      - ./src/Basil.Web/appsettings.json:/app/appsettings.json:ro
+      - ./docker-data/Templates:/app/Configurations/Templates
+      - ./src/Basil/Configurations/appsettings.json:/app/Configurations/appsettings.json:ro
+    # A command-line setting wins over appsettings.json; the host name is the service name above.
+    command:
+      - "--ConnectionStrings:Write=Host=postgres;Port=5432;Database=basil;Username=basil;Password=basil"
+      - "--ConnectionStrings:Read=Host=postgres;Port=5432;Database=basil;Username=basil;Password=basil"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+    # The graceful shutdown can take up to 75 s (drain, flush queued writes); Docker's default of 10 s would kill it midway.
+    stop_grace_period: 90s
     restart: unless-stopped

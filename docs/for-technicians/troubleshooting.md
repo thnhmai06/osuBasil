@@ -17,12 +17,13 @@ Common causes include:
 * an invalid configuration value;
 * an invalid TLS certificate or certificate password;
 * the configured port is already in use;
+* the PostgreSQL database named by `ConnectionStrings:Write` (or `Read`) cannot be reached or refuses the role;
 * the process does not have permission to access required files or bind to the configured port.
 
-If Basil exits immediately after a configuration change, check the most recent entries in:
+If Basil exits immediately after a configuration change, check the most recent entries of the log file of the day:
 
 ```text
-Logs/latest.log
+Logs/basil-YYYYMMDD.log
 ```
 
 For Docker:
@@ -38,8 +39,8 @@ docker compose logs --no-color
 If Basil exits during startup after changing the certificate configuration, check:
 
 ```text
-Basil:Server:CertPath
-Basil:Server:CertPassword
+Kestrel:Certificates:Default:Path
+Kestrel:Certificates:Default:Password
 ```
 
 Verify that:
@@ -87,59 +88,43 @@ docker compose logs -f
 First check whether the beatmapset exists in:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
 Basil supports both local storage and optional external mirrors.
 
 ### Local-only mode
 
-If:
-
-```text
-Basil:Mirror:DownloadEndpoint
-```
-
-is not configured, Basil uses local storage.
+If `mirror.downloadEndpoint` of `GET /v1/settings/beatmaps` is unset, Basil uses local storage only.
 
 Check that:
 
-* the `.osz` was added to `Data/Mapsets/`;
+* the `.osz` was added to `Data/Beatmapsets/`;
 * Basil had time to ingest it;
 * the beatmapset appears after restarting Basil if it was added while the server was offline.
 
-Basil watches the mapset directory while running and also performs a full reconciliation during startup.
+Basil watches the beatmapset directory while running and also performs a full reconciliation during startup.
 
 ### Mirror mode
 
-If `Basil:Mirror:DownloadEndpoint` is configured, Basil can redirect requests for missing beatmapsets to the configured mirror.
+If `mirror.downloadEndpoint` is set, Basil can redirect requests for missing beatmapsets to the configured mirror.
 
-If you do not want external downloads, clear this setting, set `null` and restart Basil.
+If you do not want external downloads, clear it with `PATCH /v1/settings/beatmaps` (or the console command
+`settings beatmaps set`) — no restart required. See [`configuration.md`](configuration.md).
 
 ---
 
-## Basil reports that it is running in bypass mode
+## Nobody can sign in, or no account can manage the server
 
-A fresh database has no admin key.
+The server never creates an account by itself, so a fresh database has no administrator. Create one with the console,
+which works on the storage whether the server is running or not:
 
-In this state, Basil runs in **bypass mode**:
-
-* admin-protected API operations do not require a key;
-* in-game registration does not require the admin key.
-
-This is expected for a new installation, but it is unsafe for an exposed server.
-
-Set an admin key through:
-
-```text
-PUT /adminkey
+```bash
+./Basil users create --username admin --password change-me --admin
 ```
 
-on the `api.<domain>` host.
-
-The new key takes effect immediately. A restart is not required.
-
-See [`configuration.md`](configuration.md).
+`--admin` gives the account every permission. If an existing administrator lost their password, set a new one with
+`users <id> set --password <new>` (every session of that account is closed). See [`console.md`](console.md).
 
 ---
 
@@ -165,7 +150,7 @@ the client must connect to `basil.local` and its corresponding Basil subdomains.
 
 ```shell
 osu! -devserver basil.local
-````
+```
 
 If the client is configured to use a different domain, it may fail to connect even when Basil itself is running correctly.
 
@@ -186,6 +171,7 @@ osu.<domain>
 b.<domain>
 a.<domain>
 api.<domain>
+assets.<domain>
 ```
 
 For a self-signed certificate, make sure the certificate is trusted on the client machine.
@@ -202,7 +188,7 @@ A single missing hostname can prevent the osu! client from connecting correctly.
 
 For LAN deployments, check the client's hosts file.
 
-See [`getting-started.md`](../for-client/bancho/getting-started.md).
+See [`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
 ### 4. Check port 443
 
@@ -212,21 +198,17 @@ Check:
 
 * the Basil server's firewall;
 * any network firewall between the client and server;
-* the configured `Basil:Server:Port`.
+* the port of the configured `Kestrel:Endpoints:Https:Url`.
 
-### 5. Check Basil's connectivity endpoint
+### 5. Check that the server answers
 
 From the client or another machine that can reach the server:
 
 ```bash
-curl -k https://osu.<domain>/web/bancho_connect.php
+curl -k https://api.<domain>/v1/users/1
 ```
 
-A working server should return:
-
-```text
-200 OK
-```
+A working server should return `200 OK` with the account of BasilBot.
 
 If this fails, fix the server/network problem before troubleshooting the osu! client.
 
@@ -239,7 +221,7 @@ Basil IRC uses a separate TCP port.
 The default is:
 
 ```text
-Basil:Irc:Port = 6667
+Basil:Server:Irc:Port = 6667
 ```
 
 Check:
@@ -282,27 +264,26 @@ See [`irc.md`](../for-developers/irc.md) for multiplayer IRC behaviour.
 
 ---
 
-## In-game registration fails with a key error
+## In-game registration is refused
 
-In-game registration uses the Basil admin key as the **Email** value in osu!'s registration form.
+The registration form of the osu! client sends the username and the password; the email field is not used. A
+registration is refused when:
 
-Check that:
+1. The username is not valid or is already taken.
+2. The **accounts** lock is on: while it is, only an account manager can create accounts (`GET /v1/settings/locks`).
+3. The registration rate limit of the address or of the whole server is reached (`rateLimits` settings).
 
-1. An admin key has been configured.
-2. The key entered in the Email field matches the current key.
-3. The client is connecting to the correct Basil server.
-
-If the server is in bypass mode because no admin key has been configured, the registration key is not required.
-
+Create the account with the console instead if it must exist now: `users create --username <name> --password <word>`.
 See [`configuration.md`](configuration.md).
 
 ---
 
 ## Client repeatedly shows `Unknown token, reconnecting`
 
-Basil session state is stored in memory.
+An osu! client's connection is held in memory.
 
-A server restart therefore invalidates existing client sessions. Clients reconnecting after a restart is expected behaviour.
+A server restart therefore ends the connections of the osu! clients, and they reconnect. This is expected behaviour. API
+tokens and IRC keys are stored and survive a restart.
 
 If clients repeatedly reconnect **without a server restart**, check:
 
@@ -317,9 +298,11 @@ If the problem affects only IRC clients, troubleshoot the IRC TCP connection sep
 
 ## Changes to `appsettings.json` have no effect
 
-Basil reads configuration when the process starts.
+Basil reads most deployment configuration when the process starts; only `Logging` and `Updates` apply while it runs.
+Policy settings (locks, rate limits, upload limits and the like) are stored in the database and apply at once when
+changed through the API or the console.
 
-After changing [`appsettings.json`](../../src/Basil.Web/appsettings.json):
+After changing [`Configurations/appsettings.json`](../../src/Basil/Configurations/appsettings.json):
 
 1. Save the file.
 2. Stop Basil.
@@ -333,7 +316,9 @@ For Docker:
 docker compose restart
 ```
 
-Basil does not support overriding its application settings through environment variables. Edit `appsettings.json` instead.
+Basil also reads settings from environment variables (`Basil__Server__Domain`, where a double underscore stands for
+`:`) and from command-line arguments (`--Basil:Server:Domain=...`). Both win over `appsettings.json`; edit the file
+instead when you want a persistent change.
 
 See [`configuration.md`](configuration.md).
 
@@ -351,18 +336,15 @@ For Docker, check the host directory mounted to:
 /app/Data
 ```
 
-The database is:
+The database is the PostgreSQL server configured by `ConnectionStrings:Write`. Basil creates its tables and applies
+migrations on startup.
 
-```text
-Data/Basil.db
-```
-
-Do not replace or delete this file unless you intentionally want to create a new Basil installation.
+Do not drop or replace that database unless you intentionally want to create a new Basil installation.
 
 For beatmaps, check:
 
 ```text
-Data/Mapsets/
+Data/Beatmapsets/
 ```
 
 For other data locations, see [`configuration.md`](configuration.md).
@@ -397,9 +379,9 @@ Temporarily increase the log level:
 
 ```json
 {
-  "Basil": {
-    "Logging": {
-      "MinimumLevel": "Debug"
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
     }
   }
 }
@@ -426,4 +408,4 @@ See [`logging.md`](logging.md).
 * [`configuration.md`](configuration.md): configuration and persistent data
 * [`https.md`](https.md): TLS and certificate requirements
 * [`docker.md`](docker.md): Docker deployment
-* [`getting-started.md`](../for-client/bancho/getting-started.md): configuring an osu! client
+* [`getting-started.md`](../for-client/osu-stable/getting-started.md): configuring an osu! client
