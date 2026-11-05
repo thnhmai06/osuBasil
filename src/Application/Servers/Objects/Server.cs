@@ -9,7 +9,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Servers.Objects;
 
 /// <summary>The server-wide operations and resources that do not belong to one account or room.</summary>
-public sealed class Server
+public sealed partial class Server
 {
 	/// <summary>Creates the server and its runtime dependencies.</summary>
 	/// <param name="context">The ports through which the server performs its behaviour.</param>

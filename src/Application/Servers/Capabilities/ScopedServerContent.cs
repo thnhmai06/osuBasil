@@ -17,7 +17,7 @@ public readonly struct ScopedServerContent
 		_scoped = scoped;
 	}
 
-	private ServerContext Context => _scoped.Server.Context;
+	private Server Server => _scoped.Server;
 
 	private Result<ServerOutcome>? Denied()
 	{
@@ -37,10 +37,7 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return denied;
 
-		await using var writer = await Context.Faqs.CreateOrUpdateAsync(entry, cancellationToken);
-		await writer.WriteAsync(text);
-		writer.Commit();
-		return ServerOutcome.Ok;
+		return await Server.SaveFaqAsync(entry, text, cancellationToken);
 	}
 
 	/// <summary>Deletes a FAQ entry.</summary>
@@ -52,8 +49,7 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return denied;
 
-		await Context.Faqs.DeleteAsync(entry, cancellationToken);
-		return ServerOutcome.Ok;
+		return await Server.DeleteFaqAsync(entry, cancellationToken);
 	}
 
 	/// <summary>Adds a main-menu banner whose image is uploaded.</summary>
@@ -70,16 +66,7 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return (denied, null);
 
-		var banner = new MenuBanner
-		{
-			Image = await Context.BannerImages.SaveAsync(name, image, cancellationToken),
-			Url = url,
-			StartsAt = startsAt,
-			EndsAt = endsAt,
-			CreatedAt = _scoped.Server.Context.Connections.Clock.GetUtcNow()
-		};
-		await Context.Banners.CreateOrUpdateAsync(banner, cancellationToken);
-		return (ServerOutcome.Ok, banner);
+		return await Server.AddBannerAsync(name, image, url, startsAt, endsAt, cancellationToken);
 	}
 
 	/// <summary>Deletes a main-menu banner and its image.</summary>
@@ -91,9 +78,7 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return denied;
 
-		await Context.Banners.DeleteAsync(banner, cancellationToken);
-		await Context.BannerImages.DeleteAsync(banner.Image, cancellationToken);
-		return ServerOutcome.Ok;
+		return await Server.DeleteBannerAsync(banner, cancellationToken);
 	}
 
 	/// <summary>Adds a seasonal background.</summary>
@@ -107,7 +92,7 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return (denied, null);
 
-		return (ServerOutcome.Ok, await Context.Seasonals.SaveAsync(name, image, cancellationToken));
+		return await Server.AddSeasonalAsync(name, image, cancellationToken);
 	}
 
 	/// <summary>Deletes a seasonal background.</summary>
@@ -119,8 +104,7 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return denied;
 
-		await Context.Seasonals.DeleteAsync(image, cancellationToken);
-		return ServerOutcome.Ok;
+		return await Server.DeleteSeasonalAsync(image, cancellationToken);
 	}
 
 	/// <summary>Sets the main-menu icon: its image, the address it links to, or both.</summary>
@@ -135,14 +119,7 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return denied;
 
-		var settings = await Context.Settings.GetAsync(cancellationToken);
-		var reference = name is not null && image is not null
-			? await Context.Icon.SaveAsync(name, image, cancellationToken)
-			: settings.MenuIcon.Image;
-		await Context.Settings.CreateOrUpdateAsync(
-			settings with { MenuIcon = new ServerSettings.MenuIconSettings { Url = url, Image = reference } },
-			cancellationToken);
-		return ServerOutcome.Ok;
+		return await Server.SetIconAsync(name, image, url, cancellationToken);
 	}
 
 	/// <summary>Removes the main-menu icon.</summary>
@@ -152,10 +129,6 @@ public readonly struct ScopedServerContent
 	{
 		if (Denied() is { } denied) return denied;
 
-		await Context.Icon.DeleteAsync(cancellationToken);
-		var settings = await Context.Settings.GetAsync(cancellationToken);
-		await Context.Settings.CreateOrUpdateAsync(settings with { MenuIcon = new ServerSettings.MenuIconSettings() },
-			cancellationToken);
-		return ServerOutcome.Ok;
+		return await Server.ClearIconAsync(cancellationToken);
 	}
 }

@@ -18,6 +18,7 @@
 		<InternalsVisibleTo Include="Basil.Infrastructure.Chat"/>
 		<InternalsVisibleTo Include="Basil.Infrastructure.Chat.Tests"/>
 		<InternalsVisibleTo Include="Basil.Application.Chat.Tests"/>
+		<InternalsVisibleTo Include="Basil.Application.Servers"/>
 	</ItemGroup>
 
 	<ItemGroup>

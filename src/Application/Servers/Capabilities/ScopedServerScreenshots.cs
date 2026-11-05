@@ -32,28 +32,7 @@ public readonly struct ScopedServerScreenshots
 		if (_scoped.Needs(UserPermissions.ScreenshotUpload) is { } missing)
 			return (null, Result<ServerOutcome>.Denied(missing));
 
-		var context = _scoped.Server.Context;
-		var limits = (await context.Settings.GetAsync(cancellationToken)).Uploads;
-
-		await using var upload = await context.Spool.SpoolAsync(content, limits.ScreenshotMaxSize, cancellationToken);
-		if (upload.TooLarge) return (null, ServerOutcome.TooLarge);
-
-		var info = await context.Inspector.InspectAsync(upload.Content, cancellationToken);
-		if (info is null || info.Width < 1 || info.Height < 1)
-		{
-			await upload.QuarantineAsync(cancellationToken);
-			return (null, ServerOutcome.InvalidImage);
-		}
-
-		if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
-		{
-			await upload.QuarantineAsync(cancellationToken);
-			return (null, ServerOutcome.DimensionsTooLarge);
-		}
-
-		upload.Content.Position = 0;
-		var reference = await context.Screenshots.SaveAsync(upload.Content, info.Extension, cancellationToken);
-		return (reference, ServerOutcome.Ok);
+		return await _scoped.Server.UploadScreenshotAsync(content, cancellationToken);
 	}
 
 	/// <summary>Lists the stored screenshots.</summary>
@@ -66,8 +45,7 @@ public readonly struct ScopedServerScreenshots
 		if (_scoped.Needs(UserPermissions.ScreenshotManage) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), []);
 
-		return (ServerOutcome.Ok,
-			[.. await _scoped.Server.Context.Screenshots.ListAsync(cancellationToken)]);
+		return (ServerOutcome.Ok, await _scoped.Server.ListScreenshotsAsync(cancellationToken));
 	}
 
 	/// <summary>Deletes a stored screenshot.</summary>
@@ -81,7 +59,6 @@ public readonly struct ScopedServerScreenshots
 		if (_scoped.Needs(UserPermissions.ScreenshotManage) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		await _scoped.Server.Context.Screenshots.DeleteAsync(screenshot, cancellationToken);
-		return ServerOutcome.Ok;
+		return await _scoped.Server.DeleteScreenshotAsync(screenshot, cancellationToken);
 	}
 }
