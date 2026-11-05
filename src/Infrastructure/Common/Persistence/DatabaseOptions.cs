@@ -12,6 +12,12 @@ public sealed class DatabaseOptions
 	/// </summary>
 	public string? ReadConnectionString { get; set; }
 
+	/// <summary>Gets or sets the name of the database engine the write connection reaches; PostgreSQL when unset.</summary>
+	public string? WriteProvider { get; set; }
+
+	/// <summary>Gets or sets the name of the database engine the read connection reaches; the write engine when unset.</summary>
+	public string? ReadProvider { get; set; }
+
 	/// <summary>Gets or sets how many connections the reading pool holds at most; 0 keeps the driver's default.</summary>
 	public int ReadPoolSize { get; set; }
 

@@ -37,9 +37,54 @@ public sealed class PersistenceBoundaryTests
 		Assert.Contains(Packages(persistence), IsNpgsql);
 	}
 
+	[Fact]
+	public void NoMigrationNamesAProviderOrAStoreType()
+	{
+		var offenders = MigrationFiles().Where(Offends).Select(Path.GetFileName);
+
+		Assert.Empty(offenders);
+	}
+
+	[Fact]
+	public void TheMeasureSeesAProviderAndAStoreTypeInAMigration_PositiveControl()
+	{
+		var directory = Directory.CreateTempSubdirectory();
+		try
+		{
+			var provider = Path.Combine(directory.FullName, "A.cs");
+			var storeType = Path.Combine(directory.FullName, "B.cs");
+			File.WriteAllText(provider, "using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;");
+			File.WriteAllText(storeType, "table.Column<int>(type: \"integer\", nullable: false)");
+
+			Assert.True(Offends(provider));
+			Assert.True(Offends(storeType));
+		}
+		finally
+		{
+			directory.Delete(true);
+		}
+	}
+
+	private static bool Offends(string file)
+	{
+		var text = File.ReadAllText(file);
+		return text.Contains("Npgsql", StringComparison.Ordinal) || text.Contains("MySql", StringComparison.Ordinal) ||
+		       text.Contains("type:", StringComparison.Ordinal) ||
+		       text.Contains(".HasColumnType(", StringComparison.Ordinal);
+	}
+
+	private static string[] MigrationFiles()
+	{
+		var migrations = Path.Combine(RepositoryRoot(), "src", "Infrastructure", "Persistence", "Migrations");
+		var files = Directory.GetFiles(migrations, "*.cs", SearchOption.AllDirectories);
+		Assert.NotEmpty(files);
+		return files;
+	}
+
 	private static bool IsNpgsql(string package)
 	{
-		return package.StartsWith("Npgsql", StringComparison.Ordinal);
+		return package.StartsWith("Npgsql", StringComparison.Ordinal) ||
+		       package.StartsWith("MySql", StringComparison.Ordinal);
 	}
 
 	private static string[] Projects()

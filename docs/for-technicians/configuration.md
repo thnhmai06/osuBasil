@@ -66,7 +66,7 @@ under `Basil`.
 | `Basil:Server:Multicast:Enabled`, `UseIPv4`, `UseIPv6`, `DnsTtl` | answer multicast DNS for the domain and its subdomains (off unless enabled), on the standard mDNS groups and port 5353; `UseIPv4` and `UseIPv6` (default `true`) switch one address family off when `false`; `DnsTtl` is how many seconds a client may keep an answer |
 | `Basil:Storage:Location` | directory that holds stored files, default `Data` |
 | `Basil:Assets:CacheDirectory`, `FfmpegFolder` | the directory for the temporary files made while audio previews are built (default `Cache/Previews` under the storage location), and the folder of the ffmpeg executable (default: found on the PATH) |
-| `Basil:Database:Read:PoolSize`, `Write:PoolSize` | the database is always PostgreSQL; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
+| `Basil:Database:Read:Provider`, `Write:Provider`, `Read:PoolSize`, `Write:PoolSize` | `Provider` is `PostgreSQL` or `MySql` per endpoint (`Read:Provider` empty uses the write engine; any other value stops the server at start), so reads and writes can run on different engines; the connection strings are in `ConnectionStrings:Read` and `Write`; migrations run against the write endpoint; `Read:PoolSize` caps the reading pool (`0` keeps the driver's default), `Write:PoolSize` is the number of simultaneous writing connections, default `8` |
 | `Basil:Updates:CheckOnStartup`, `Source`, `Channel` | startup update check, its feed, and the release channel (`stable`, or the name of another published channel) |
 | `Basil:Bot:Replies:Path` | path of the replies file, default `Configurations/Templates/replies.json` |
 

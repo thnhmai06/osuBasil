@@ -111,23 +111,29 @@ Npgsql and snake_case names, owns the design-time factories and holds the migrat
 project and calls `AddPersistenceInfrastructure()`; module Infrastructure projects see their `DbContext` types through
 `InternalsVisibleTo`.
 
-Add a migration from the repository root (the project is also the startup project, and the output folder and namespace are
-named so the files stay in that module's folder):
+Each endpoint names its engine: `Basil:Database:Read:Provider` and `Basil:Database:Write:Provider` (`PostgreSQL` or `MySql`;
+the read engine defaults to the write engine, an unknown name stops the server at start naming the allowed values), so reads
+and writes can run on different engines. Migrations run against the write endpoint with the write engine.
+
+### Provider neutral migrations
+
+The migrations name no engine. Every Row maps through EF Core methods only: no `HasColumnType`, no sequences or
+identity columns (ids come from the counter tables of `IdCounters`), JSON and addresses are stored as text through value
+converters, key and index strings have a `HasMaxLength`, and a unique name among the live accounts is a nullable unique
+`active_name` column instead of a filtered index. `dotnet ef` still runs on the Npgsql design-time factory, so a generated
+migration carries `type: "..."` arguments, store-type lines in the snapshot and Npgsql annotations. `tools/normalize-migrations.sh`
+removes them and turns entity-name strings into `typeof(Row).FullName!`; `PersistenceBoundaryTests` fails when a migration
+file still contains `Npgsql`, `MySql`, `type:` or `.HasColumnType(`. Add a migration with:
 
 ```bash
-dotnet ef migrations add <Name> --project src/Infrastructure/Persistence --startup-project src/Infrastructure/Persistence \
-  --context <Module>DbContext --output-dir Migrations/<Module> --namespace Basil.Infrastructure.Persistence.Migrations.<Module>
+tools/add-migration.sh <Module> <Name>     # runs dotnet ef, moves the snapshot, normalizes the files
 ```
 
-The generated snapshot may land in a nested `Basil/...` folder; move it next to the migration. Replace the entity-name
-string literals of generated files with `typeof(Row).FullName!`.
-
-### Regenerated once
-
-The module `InitialCreate` migrations were regenerated once when the write tickets (and the empty common context that
-held them) were removed and the Npgsql-specific mappings became portable. The system is not in production, so
-development databases are recreated; a database created by the earlier migrations cannot be upgraded in place.
-`ModuleMigrationTests` fails when a context's model differs from its migrations.
+To regenerate everything from scratch (development databases are recreated), delete
+`src/Infrastructure/Persistence/Migrations`, then run the script with `InitialCreate` for Users, Authentication, Beatmaps,
+Content, Scores, Multiplayer and Chat in that order. The runtime ignores `PendingModelChangesWarning`, because a neutral
+snapshot never equals a provider's model; `ModuleMigrationTests` checks the model against the migrations with the provider's
+own differ instead.
 
 ## Related code
 

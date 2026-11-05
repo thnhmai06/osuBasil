@@ -20,6 +20,8 @@ public static class DatabaseSetup
 		{
 			WriteConnectionString = write,
 			ReadConnectionString = configuration.GetConnectionString("Read"),
+			ReadProvider = string.IsNullOrWhiteSpace(settings.Read.Provider) ? null : settings.Read.Provider,
+			WriteProvider = string.IsNullOrWhiteSpace(settings.Write.Provider) ? null : settings.Write.Provider,
 			ReadPoolSize = settings.Read.PoolSize,
 			WritePoolSize = settings.Write.PoolSize
 		};
@@ -34,5 +36,6 @@ public static class DatabaseSetup
 	private sealed class Endpoint
 	{
 		public int PoolSize { get; set; }
+		public string? Provider { get; set; }
 	}
 }

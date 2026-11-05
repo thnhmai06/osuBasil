@@ -5,6 +5,11 @@ namespace Basil.Infrastructure.Common.Persistence;
 /// <summary>A pool of connections to the database, created by the provider and released when the server stops.</summary>
 public interface IDatabaseSource : IAsyncDisposable;
 
+/// <summary>The engines of the two endpoints: the one that serves reads and the one that stores changes and migrates.</summary>
+/// <param name="Read">The engine the read endpoint reaches.</param>
+/// <param name="Write">The engine the write endpoint reaches.</param>
+public sealed record DatabaseProviders(IDatabaseProvider Read, IDatabaseProvider Write);
+
 /// <summary>The database engine behind the server: how contexts connect to it and how its failures are told apart.</summary>
 public interface IDatabaseProvider
 {

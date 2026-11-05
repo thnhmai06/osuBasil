@@ -11,6 +11,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="SharpZipLib" Version="1.4.2" />
     <!-- Event handlers: found at compile time by the source generator. -->
     <PackageVersion Include="Mediator.Abstractions" Version="3.0.2" />
