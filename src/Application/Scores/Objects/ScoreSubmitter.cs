@@ -2,7 +2,9 @@ using Basil.Application.Common.Events;
 using Basil.Application.Scores.Capabilities;
 using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Scores.Objects;
 
@@ -40,5 +42,32 @@ public sealed class ScoreSubmitter
 	public ScopedScoreSubmitter ScopeTo(StableConnection actor)
 	{
 		return new ScopedScoreSubmitter(this, actor, actor.EffectivePermissions(_clock.GetUtcNow()));
+	}
+
+	/// <summary>Validates and records a score a game client submitted, then publishes <see cref="ScoreSubmitted" />.</summary>
+	/// <param name="actor">The game client that submits.</param>
+	/// <param name="submission">The parsed submission.</param>
+	/// <param name="beatmap">The beatmap the server knows for the submission, or <see langword="null" />.</param>
+	/// <param name="client">The osu! client information sent with the submission.</param>
+	/// <param name="replay">The seekable replay stream, or <see langword="null" /> for a failed play.</param>
+	/// <param name="cancellationToken">A token that cancels the submission.</param>
+	/// <returns>Ok when the score was stored; otherwise Rejected with the rejection.</returns>
+	internal async Task<(ScoreSubmissionOutcome Outcome, ScoreRejectionReason? Rejection)> SubmitAsync(
+		StableConnection actor, Submission submission, BeatmapChecksums? beatmap, SubmittedClient client,
+		Stream? replay, CancellationToken cancellationToken)
+	{
+		var checkedBeatmap = beatmap ??
+		                     (Acceptance.AcceptsUnknown(actor.Record, client.BeatmapHash)
+			                     ? new BeatmapChecksums(client.BeatmapHash, null)
+			                     : null);
+		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, ScoreRejectionReason.UnknownBeatmap);
+
+		var outcome = await Recorder.ValidateAndRecordAsync(
+			actor.Record, actor.Session.Value.Device.Client!, submission, checkedBeatmap, client, replay,
+			cancellationToken);
+		if (outcome.Rejection is { } rejection) return (ScoreSubmissionOutcome.Rejected, rejection);
+
+		Events.Publish(new ScoreSubmitted(actor.Record, outcome.Score!, outcome.Stats!));
+		return (ScoreSubmissionOutcome.Ok, null);
 	}
 }
