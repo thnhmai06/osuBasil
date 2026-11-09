@@ -123,6 +123,12 @@ public readonly struct ScopedRoom
 		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomOutcome.RoleDenied;
 	}
 
+	/// <summary>
+	///     Gets whether the connection takes part in the room: it is seated or observing, it manages the room while
+	///     allowed to join rooms, or it manages every room.
+	/// </summary>
+	public bool Involves => Room.Involves(Actor, _global);
+
 	/// <summary>Checks whether the connection may join rooms.</summary>
 	/// <returns><see langword="null" /> when allowed, otherwise a denial naming the missing permission.</returns>
 	internal Result<RoomOutcome>? RequireJoin()

@@ -28,8 +28,8 @@ public readonly struct ScopedRoomMembers
 	/// </returns>
 	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection actor
-			? _scoped.Room.JoinClaiming(actor, password)
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection actor
+			? _scoped.RequireJoin() ?? _scoped.Room.JoinClaiming(actor, password, _scoped.ManagesAnyRoom)
 			: RoomOutcome.NotInRoom);
 	}
 
@@ -38,7 +38,7 @@ public readonly struct ScopedRoomMembers
 	/// <returns>Ok, NotInRoom or RoomClosed; leaving again returns NotInRoom.</returns>
 	public Task<Result<RoomOutcome>> LeaveAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection actor
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection actor
 			? _scoped.Room.Leave(actor)
 			: RoomOutcome.NotInRoom);
 	}
@@ -93,7 +93,7 @@ public readonly struct ScopedRoomMembers
 	/// <returns>Ok, IsPlayer or RoomClosed when called by a tournament connection; otherwise NotObserver.</returns>
 	public Task<Result<RoomOutcome>> ObserverJoinAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is TourneyConnection actor
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is TourneyConnection actor
 			? _scoped.Room.ObserverJoin(actor)
 			: RoomOutcome.NotObserver);
 	}
@@ -103,7 +103,7 @@ public readonly struct ScopedRoomMembers
 	/// <returns>Ok, NotObserver or RoomClosed.</returns>
 	public Task<Result<RoomOutcome>> ObserverLeaveAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is TourneyConnection actor
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is TourneyConnection actor
 			? _scoped.Room.ObserverLeave(actor)
 			: RoomOutcome.NotObserver);
 	}

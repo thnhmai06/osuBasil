@@ -11,7 +11,7 @@ public sealed partial class Room
 {
 	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
 	/// <returns>Ok or RoomClosed; setting the current state again returns Ok and does nothing.</returns>
-	internal Result<RoomOutcome> SetLocked(bool locked)
+	internal RoomOutcome SetLocked(bool locked)
 	{
 		lock (_sync)
 		{
@@ -28,7 +28,7 @@ public sealed partial class Room
 	/// <param name="actor">The connection that changes them.</param>
 	/// <param name="change">The settings to change.</param>
 	/// <returns>Ok, InProgress, InvalidSettings, InvalidMods or RoomClosed.</returns>
-	internal Result<RoomOutcome> Configure(Connection actor, RoomSettingsChange change)
+	internal RoomOutcome Configure(Connection actor, RoomSettingsChange change)
 	{
 		lock (_sync)
 		{

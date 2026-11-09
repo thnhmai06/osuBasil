@@ -20,18 +20,19 @@ public sealed partial class Room
 	/// <summary>Seats a connection that asked to join while holding its place in the lobby.</summary>
 	/// <param name="actor">The connection joining.</param>
 	/// <param name="password">The password the player supplied.</param>
+	/// <param name="managesAnyRoom">Whether the player manages every room, which needs no password.</param>
 	/// <returns>
 	///     InAnotherRoom when the connection is already being seated in a room; otherwise what <see cref="Join" />
 	///     returns.
 	/// </returns>
-	internal Result<RoomOutcome> JoinClaiming(StableConnection actor, string password)
+	internal RoomOutcome JoinClaiming(StableConnection actor, string password, bool managesAnyRoom)
 	{
 		var lobby = Context.Lobby;
 		if (!lobby.TryClaim(actor, this)) return RoomOutcome.InAnotherRoom;
 
 		try
 		{
-			return Join(actor, password);
+			return Join(actor, password, managesAnyRoom);
 		}
 		finally
 		{
@@ -42,15 +43,12 @@ public sealed partial class Room
 	/// <summary>Seats a connection that asked to join, after the room's own checks.</summary>
 	/// <param name="actor">The connection joining.</param>
 	/// <param name="password">The password the player supplied.</param>
+	/// <param name="managesAnyRoom">Whether the player manages every room, which needs no password.</param>
 	/// <returns>
-	///     Ok, AlreadySeated, Banned, a denial naming the permission to join rooms, InAnotherRoom, IsObserver,
-	///     WrongPassword, Full or RoomClosed.
+	///     Ok, AlreadySeated, Banned, InAnotherRoom, IsObserver, WrongPassword, Full or RoomClosed.
 	/// </returns>
-	/// <remarks>
-	///     What the actor may do is asked of the actor's connection, not handed in: a player who may not join rooms is
-	///     refused, and one who manages every room does not need the password.
-	/// </remarks>
-	internal Result<RoomOutcome> Join(StableConnection actor, string password)
+	/// <remarks>Whether the player may join rooms at all is decided before the room is asked.</remarks>
+	internal RoomOutcome Join(StableConnection actor, string password, bool managesAnyRoom)
 	{
 		lock (_sync)
 		{
@@ -59,21 +57,19 @@ public sealed partial class Room
 			var stale = Slots.Find(actor.Record)?.Player;
 			if (stale is not null && (ReferenceEquals(stale, actor) || stale.IsOpen)) return RoomOutcome.AlreadySeated;
 
-			if (JoinRefusal(actor, password) is { } refusal) return refusal;
+			if (JoinRefusal(actor, password, managesAnyRoom) is { } refusal) return refusal;
 
 			return TakeSeat(actor, stale);
 		}
 	}
 
-	private Result<RoomOutcome>? JoinRefusal(StableConnection actor, string password)
+	private RoomOutcome? JoinRefusal(StableConnection actor, string password, bool managesAnyRoom)
 	{
-		var rights = actor.EffectivePermissions(Context.Clock.GetUtcNow());
 		if (Members.Banned.Contains(actor.Record)) return RoomOutcome.Banned;
-		if (!rights.Allows(UserPermissions.RoomJoin)) return Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
 
 		if (RoomOf(actor) is { } other && !ReferenceEquals(other, this)) return RoomOutcome.InAnotherRoom;
 		if (Members.Observers.Any(observer => observer.Record.Equals(actor.Record))) return RoomOutcome.IsObserver;
-		if (WrongPassword(password, rights.Allows(UserPermissions.RoomManageAny))) return RoomOutcome.WrongPassword;
+		if (WrongPassword(password, managesAnyRoom)) return RoomOutcome.WrongPassword;
 
 		return null;
 	}
@@ -86,7 +82,7 @@ public sealed partial class Room
 	/// <summary>Removes a seated player on their own request.</summary>
 	/// <param name="actor">The player's game connection.</param>
 	/// <returns>Ok, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> Leave(StableConnection actor)
+	internal RoomOutcome Leave(StableConnection actor)
 	{
 		lock (_sync)
 		{
@@ -98,7 +94,7 @@ public sealed partial class Room
 	/// <param name="actor">The manager.</param>
 	/// <param name="player">The user to remove.</param>
 	/// <returns>Ok, IsManager, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> Kick(UserRecord actor, UserRecord player)
+	internal RoomOutcome Kick(UserRecord actor, UserRecord player)
 	{
 		lock (_sync)
 		{
@@ -118,7 +114,7 @@ public sealed partial class Room
 	/// <param name="actor">The manager.</param>
 	/// <param name="player">The user to ban.</param>
 	/// <returns>Ok, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
-	internal Result<RoomOutcome> Ban(UserRecord actor, UserRecord player)
+	internal RoomOutcome Ban(UserRecord actor, UserRecord player)
 	{
 		lock (_sync)
 		{
@@ -146,7 +142,7 @@ public sealed partial class Room
 	/// <summary>Lifts a user's ban from the room.</summary>
 	/// <param name="player">The user to unban.</param>
 	/// <returns>Ok, NotBanned or RoomClosed.</returns>
-	internal Result<RoomOutcome> Unban(UserRecord player)
+	internal RoomOutcome Unban(UserRecord player)
 	{
 		lock (_sync)
 		{
@@ -162,7 +158,7 @@ public sealed partial class Room
 	/// <param name="actor">The manager inviting.</param>
 	/// <param name="target">The invited user.</param>
 	/// <returns>Ok, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> Invite(UserRecord actor, User target)
+	internal RoomOutcome Invite(UserRecord actor, User target)
 	{
 		lock (_sync)
 		{
@@ -178,7 +174,7 @@ public sealed partial class Room
 	/// <summary>Adds a tournament connection as an observer.</summary>
 	/// <param name="actor">The tournament connection observing.</param>
 	/// <returns>Ok, IsPlayer or RoomClosed.</returns>
-	internal Result<RoomOutcome> ObserverJoin(TourneyConnection actor)
+	internal RoomOutcome ObserverJoin(TourneyConnection actor)
 	{
 		lock (_sync)
 		{
@@ -194,7 +190,7 @@ public sealed partial class Room
 	/// <summary>Removes a tournament connection from the room's observers.</summary>
 	/// <param name="actor">The tournament connection leaving.</param>
 	/// <returns>Ok, NotObserver or RoomClosed.</returns>
-	internal Result<RoomOutcome> ObserverLeave(TourneyConnection actor)
+	internal RoomOutcome ObserverLeave(TourneyConnection actor)
 	{
 		lock (_sync)
 		{
@@ -209,7 +205,7 @@ public sealed partial class Room
 	/// <summary>Closes the room, evicting its players and ending its round.</summary>
 	/// <param name="actor">The user who closes the room, or <see langword="null" /> when the server closes it.</param>
 	/// <returns>Ok; a room that has closed already returns Ok and does nothing.</returns>
-	internal Result<RoomOutcome> Close(UserRecord? actor)
+	internal RoomOutcome Close(UserRecord? actor)
 	{
 		lock (_sync)
 		{

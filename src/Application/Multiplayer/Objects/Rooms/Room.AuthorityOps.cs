@@ -10,7 +10,7 @@ public sealed partial class Room
 {
 	/// <summary>Makes a user a referee.</summary>
 	/// <returns>Ok, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed.</returns>
-	internal Result<RoomOutcome> AddReferee(UserRecord actor, UserRecord user)
+	internal RoomOutcome AddReferee(UserRecord actor, UserRecord user)
 	{
 		lock (_sync)
 		{
@@ -27,7 +27,7 @@ public sealed partial class Room
 
 	/// <summary>Removes a user from the referees.</summary>
 	/// <returns>Ok, NotReferee or RoomClosed.</returns>
-	internal Result<RoomOutcome> RemoveReferee(UserRecord actor, UserRecord user)
+	internal RoomOutcome RemoveReferee(UserRecord actor, UserRecord user)
 	{
 		lock (_sync)
 		{
@@ -41,7 +41,7 @@ public sealed partial class Room
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>
 	/// <returns>Ok, NotInRoom or RoomClosed; giving host to the current host does nothing.</returns>
-	internal Result<RoomOutcome> SetHost(UserRecord actor, StableConnection? host)
+	internal RoomOutcome SetHost(UserRecord actor, StableConnection? host)
 	{
 		lock (_sync)
 		{

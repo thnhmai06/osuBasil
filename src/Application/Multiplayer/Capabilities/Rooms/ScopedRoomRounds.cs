@@ -51,7 +51,7 @@ public readonly struct ScopedRoomRounds
 	/// </remarks>
 	public Task<Result<RoomOutcome>> MarkLoadedAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.MarkLoaded(_scoped.Actor));
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.MarkLoaded(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller wants to skip the intro.</summary>
@@ -63,7 +63,7 @@ public readonly struct ScopedRoomRounds
 	/// </remarks>
 	public Task<Result<RoomOutcome>> SkipAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.SkipIntro(_scoped.Actor));
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.SkipIntro(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller failed; the player keeps playing until completion.</summary>
@@ -71,7 +71,7 @@ public readonly struct ScopedRoomRounds
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> FailAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.ReportFailed(_scoped.Actor));
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.ReportFailed(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller completed the beatmap.</summary>
@@ -83,6 +83,6 @@ public readonly struct ScopedRoomRounds
 	/// </remarks>
 	public Task<Result<RoomOutcome>> CompleteAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Room.ReportCompleted(_scoped.Actor));
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.ReportCompleted(_scoped.Actor));
 	}
 }

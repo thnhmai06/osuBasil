@@ -56,7 +56,7 @@ public sealed class RoomScoringTests
 
 		var result = setup.Room.ReceiveScore(ScoreOf(1, setup.Player), setup.Player.Record);
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		var taken = Assert.IsType<RoomRoundScoreSubmitted>(app.RoomEvents.Events[^1]);
 		Assert.Equal(setup.Room.Rounds.LastRound, taken.Round);
 		Assert.Equal(setup.Player.Record, taken.Player);
@@ -85,7 +85,7 @@ public sealed class RoomScoringTests
 
 		var result = setup.Room.ReceiveScore(other, setup.Player.Record);
 
-		Assert.Equal(RoomOutcome.RoundMismatch, result.Outcome);
+		Assert.Equal(RoomOutcome.RoundMismatch, result);
 	}
 
 	[Fact]
@@ -96,7 +96,7 @@ public sealed class RoomScoringTests
 
 		var result = setup.Room.ReceiveScore(ScoreOf(1, setup.Outsider), setup.Outsider.Record);
 
-		Assert.Equal(RoomOutcome.RoundMismatch, result.Outcome);
+		Assert.Equal(RoomOutcome.RoundMismatch, result);
 	}
 
 	[Fact]
@@ -108,7 +108,7 @@ public sealed class RoomScoringTests
 
 		var result = setup.Room.ReceiveScore(ScoreOf(2, setup.Player), setup.Player.Record);
 
-		Assert.Equal(RoomOutcome.RoundMismatch, result.Outcome);
+		Assert.Equal(RoomOutcome.RoundMismatch, result);
 	}
 
 	[Fact]
@@ -260,7 +260,7 @@ public sealed class RoomScoringTests
 		var late = setup.Room.ReceiveScore(ScoreOf(2, setup.Host), setup.Host.Record);
 
 		Assert.Empty(app.RoomEvents.Events.OfType<RoomRoundDecided>());
-		Assert.Equal(RoomOutcome.RoundMismatch, late.Outcome);
+		Assert.Equal(RoomOutcome.RoundMismatch, late);
 	}
 
 	[Fact]
@@ -273,7 +273,7 @@ public sealed class RoomScoringTests
 
 		var late = setup.Room.ReceiveScore(ScoreOf(1, setup.Player), setup.Player.Record);
 
-		Assert.Equal(RoomOutcome.RoundMismatch, late.Outcome);
+		Assert.Equal(RoomOutcome.RoundMismatch, late);
 	}
 
 	[Fact]
@@ -290,7 +290,7 @@ public sealed class RoomScoringTests
 		var decided = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundDecided>());
 		Assert.Empty(decided.Missing);
 		Assert.Equal(RoomOutcome.RoundMismatch,
-			setup.Room.ReceiveScore(ScoreOf(3, setup.Player), setup.Player.Record).Outcome);
+			setup.Room.ReceiveScore(ScoreOf(3, setup.Player), setup.Player.Record));
 	}
 
 	[Fact]

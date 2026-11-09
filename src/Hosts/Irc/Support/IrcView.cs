@@ -46,7 +46,7 @@ internal static class IrcView
 		var (authority, voice) = channel switch
 		{
 			RoomChannel room => (room.Room.Authority.IsManagedBy(member.Record),
-				room.Room.Involves(member, now) || permissions.Allows(UserPermissions.ChatManagePostAnyRoom)),
+				room.Room.Involves(member, permissions) || permissions.Allows(UserPermissions.ChatManagePostAnyRoom)),
 			GeneralChannel general => (permissions.Allows(UserPermissions.ChatManageChannels),
 				permissions.Privileges.Allows(general.Record.Value.WritePrivileges)),
 			_ => (false, false)

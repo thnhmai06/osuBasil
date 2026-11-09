@@ -48,14 +48,14 @@ public sealed class RoomChannel : Channel
 	/// <inheritdoc />
 	internal override bool CanRead(Connection connection, DateTimeOffset now)
 	{
-		return Room.Involves(connection, now) ||
+		return Room.Involves(connection, connection.User.EffectivePermissions(now)) ||
 		       connection.User.EffectivePermissions(now).Allows(UserPermissions.RoomObserve);
 	}
 
 	/// <inheritdoc />
 	internal override bool CanWrite(Connection connection, DateTimeOffset now)
 	{
-		return Room.Involves(connection, now) ||
+		return Room.Involves(connection, connection.User.EffectivePermissions(now)) ||
 		       connection.User.EffectivePermissions(now).Allows(UserPermissions.ChatManagePostAnyRoom);
 	}
 }

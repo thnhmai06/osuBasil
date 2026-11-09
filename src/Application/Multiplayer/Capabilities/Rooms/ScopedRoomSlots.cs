@@ -26,7 +26,7 @@ public readonly struct ScopedRoomSlots
 	/// <remarks>Moving to the caller's own slot returns Ok and does nothing.</remarks>
 	public Task<Result<RoomOutcome>> ChangeAsync(int index, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.ChangeSlot(stable, index)
 			: RoomOutcome.NotInRoom);
 	}
@@ -65,7 +65,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> SetReadyAsync(bool ready, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetReady(stable, ready)
 			: RoomOutcome.NotInRoom);
 	}
@@ -80,7 +80,7 @@ public readonly struct ScopedRoomSlots
 	/// </remarks>
 	public Task<Result<RoomOutcome>> SetHasMapAsync(bool has, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetHasMap(stable, has)
 			: RoomOutcome.NotInRoom);
 	}
@@ -90,7 +90,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> ToggleTeamAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.ToggleTeam(stable)
 			: RoomOutcome.NotInRoom);
 	}
@@ -113,7 +113,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> SetModsAsync(GameMods mods, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetMods(stable, mods)
 			: RoomOutcome.NotInRoom);
 	}

@@ -50,18 +50,23 @@ public sealed partial class Room
 		return RoomOutcome.Ok;
 	}
 
+	/// <summary>Checks whether a connection is in the room: seated as a player or watching as an observer.</summary>
+	/// <param name="connection">The connection to check.</param>
+	public bool IsPresent(Connection connection)
+	{
+		return (connection is StableConnection player && Slots.Find(player) is not null)
+		       || (connection is TourneyConnection observer && Members.Observers.Contains(observer));
+	}
+
 	/// <summary>
-	///     Checks whether a connection takes part in the room: seated, observing, managing it while allowed to join rooms,
-	///     or managing every room.
+	///     Checks whether a connection takes part in the room: it is in the room, it manages the room while allowed to
+	///     join rooms, or it manages every room.
 	/// </summary>
 	/// <param name="connection">The connection to check.</param>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	public bool Involves(Connection connection, DateTimeOffset now)
+	/// <param name="permissions">The effective permissions of the connection's user, which the caller read.</param>
+	public bool Involves(Connection connection, UserPermissions permissions)
 	{
-		var permissions = connection.User.EffectivePermissions(now);
-
-		return (connection is StableConnection player && Slots.Find(player) is not null)
-		       || (connection is TourneyConnection observer && Members.Observers.Contains(observer))
+		return IsPresent(connection)
 		       || (Authority.IsManagedBy(connection.Record) && permissions.Allows(UserPermissions.RoomJoin))
 		       || permissions.Allows(UserPermissions.RoomManageAny);
 	}

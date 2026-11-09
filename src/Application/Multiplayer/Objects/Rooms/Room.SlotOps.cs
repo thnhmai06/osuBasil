@@ -12,7 +12,7 @@ public sealed partial class Room
 {
 	/// <summary>Moves a seated player to another open slot.</summary>
 	/// <returns>Ok, NotInRoom, RoomLocked, InProgress, SlotNotOpen or RoomClosed.</returns>
-	internal Result<RoomOutcome> ChangeSlot(StableConnection stable, int index)
+	internal RoomOutcome ChangeSlot(StableConnection stable, int index)
 	{
 		lock (_sync)
 		{
@@ -32,7 +32,7 @@ public sealed partial class Room
 
 	/// <summary>Moves a seated player to an empty, unlocked slot on a manager's order.</summary>
 	/// <returns>Ok, NotInRoom, SlotNotOpen or RoomClosed.</returns>
-	internal Result<RoomOutcome> MovePlayer(UserRecord player, int index)
+	internal RoomOutcome MovePlayer(UserRecord player, int index)
 	{
 		lock (_sync)
 		{
@@ -50,7 +50,7 @@ public sealed partial class Room
 
 	/// <summary>Arranges every slot of the room at once.</summary>
 	/// <returns>Ok, InProgress, InvalidSettings or RoomClosed.</returns>
-	internal Result<RoomOutcome> ArrangeSlots(IReadOnlyList<SlotArrangement> arrangement)
+	internal RoomOutcome ArrangeSlots(IReadOnlyList<SlotArrangement> arrangement)
 	{
 		lock (_sync)
 		{
@@ -97,7 +97,7 @@ public sealed partial class Room
 
 	/// <summary>Marks a seated player ready or not ready.</summary>
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed.</returns>
-	internal Result<RoomOutcome> SetReady(StableConnection stable, bool ready)
+	internal RoomOutcome SetReady(StableConnection stable, bool ready)
 	{
 		lock (_sync)
 		{
@@ -116,7 +116,7 @@ public sealed partial class Room
 
 	/// <summary>Records whether a seated player has the selected beatmap.</summary>
 	/// <returns>Ok, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> SetHasMap(StableConnection stable, bool has)
+	internal RoomOutcome SetHasMap(StableConnection stable, bool has)
 	{
 		lock (_sync)
 		{
@@ -136,7 +136,7 @@ public sealed partial class Room
 
 	/// <summary>Switches a seated player to the other team.</summary>
 	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked, InProgress or RoomClosed.</returns>
-	internal Result<RoomOutcome> ToggleTeam(StableConnection stable)
+	internal RoomOutcome ToggleTeam(StableConnection stable)
 	{
 		lock (_sync)
 		{
@@ -155,7 +155,7 @@ public sealed partial class Room
 
 	/// <summary>Puts a seated player on a team on a manager's order.</summary>
 	/// <returns>Ok, NoTeams, NotInRoom or RoomClosed.</returns>
-	internal Result<RoomOutcome> SetTeam(UserRecord player, GameTeam team)
+	internal RoomOutcome SetTeam(UserRecord player, GameTeam team)
 	{
 		lock (_sync)
 		{
@@ -172,7 +172,7 @@ public sealed partial class Room
 
 	/// <summary>Chooses a seated player's own mods while freemod is on.</summary>
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed.</returns>
-	internal Result<RoomOutcome> SetMods(StableConnection stable, GameMods mods)
+	internal RoomOutcome SetMods(StableConnection stable, GameMods mods)
 	{
 		lock (_sync)
 		{
@@ -192,7 +192,7 @@ public sealed partial class Room
 
 	/// <summary>Toggles whether a slot is locked, evicting a player seated in it.</summary>
 	/// <returns>Ok, SlotNotOpen, OwnSlot or RoomClosed.</returns>
-	internal Result<RoomOutcome> ToggleSlotLock(Connection actor, int index)
+	internal RoomOutcome ToggleSlotLock(Connection actor, int index)
 	{
 		lock (_sync)
 		{

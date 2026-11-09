@@ -17,7 +17,7 @@ internal sealed partial class IrcCommands
 			yield return channel;
 
 		foreach (var room in lobby.Rooms.Values)
-			if (!room.IsClosed && (room.Involves(actor, now) || permissions.Allows(UserPermissions.RoomObserve)))
+			if (!room.IsClosed && (room.Involves(actor, permissions) || permissions.Allows(UserPermissions.RoomObserve)))
 				yield return roomChannels.Of(room);
 	}
 

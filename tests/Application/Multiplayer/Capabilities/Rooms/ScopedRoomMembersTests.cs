@@ -426,6 +426,19 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
+	public async Task JoinAsync_ForAClosedRoom_IsDeniedNamingRoomJoin_ToAUserWhoMayNotJoinRooms()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
+
+		var result = await setup.Room.ScopeTo(setup.NoRoomJoin).Members.JoinAsync("",
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(UserPermissions.RoomJoin, result.Missing);
+	}
+
+	[Fact]
 	public async Task JoinAsync_ForANewConnectionOfTheSameUser_TakesOverTheSeatOfTheClosedOne()
 	{
 		using var app = new TestApplication();

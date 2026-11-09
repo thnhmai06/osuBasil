@@ -23,7 +23,7 @@ public sealed partial class Room
 	///     The round is decided as soon as it has ended and every player still awaited has a score; otherwise
 	///     the score wait of the server settings (10 seconds by default) after it ended, with the scores that came in.
 	/// </remarks>
-	internal Result<RoomOutcome> ReceiveScore(ScoreRecord score, UserRecord player)
+	internal RoomOutcome ReceiveScore(ScoreRecord score, UserRecord player)
 	{
 		lock (_sync)
 		{
