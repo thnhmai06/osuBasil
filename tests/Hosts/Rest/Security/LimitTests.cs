@@ -121,6 +121,34 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Images_BeyondThePictureAllowanceOfAnAddress_Answer429_ButTheApiAllowanceIsUntouched()
+	{
+		await using var host = await BasilHost.StartAsync(fixture.Database);
+		await ChangeAsync(host, s => s with
+		{
+			RateLimits = s.RateLimits with
+			{
+				Admission = new ServerSettings.AdmissionLimitSettings(120, TimeSpan.FromMinutes(1), 4, 256, 32, 8, 1024,
+					0.5, 0.7, 0.9, TimeSpan.FromSeconds(5), 64, 2)
+			}
+		});
+		using var anon = new RestClient(host.Url, host.Domain);
+
+		var images = new List<int>();
+		for (var i = 0; i < 3; i++)
+		{
+			using var response = await anon.GetFromAsync("a", "/1");
+			images.Add((int)response.StatusCode);
+		}
+
+		var api = (await anon.CallAsync(HttpMethod.Get, "/v1/users/1")).Status;
+
+		Assert.Equal(429, images[2]);
+		Assert.NotEqual(429, images[0]);
+		Assert.NotEqual(429, api);
+	}
+
+	[Fact]
 	public async Task OpenStreams_BeyondTheLimitPerAddress_Answer429()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);

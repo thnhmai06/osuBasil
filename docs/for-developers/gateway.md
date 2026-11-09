@@ -64,7 +64,9 @@ Taken from well-known cloud design patterns, limited to what this single process
   is `Interactive`. A saturated class is denied (`ClassSaturated`) without touching the others, and every allowed request
   must be matched by one `Admission.Release(class)` when it ends. A route declares its class with
   `AdmissionPolicyAttribute` (the most specific declaration wins): list and search routes are `Listing`, uploads are
-  `Upload`, `/live` streams are `Live`; everything else, packets and IRC lines included, is `Interactive`.
+  `Upload`, `/live` streams are `Live`; everything else, packets and IRC lines included, is `Interactive`. Pictures are middleware, not routes: the image
+  middleware admits each request as `Asset` per address. `Asset` has an allowance of its own (`assetRequests`, 1200 per
+  window) kept apart from `requests`, so fetching many pictures never spends the API budget; a `304` counts like any request.
 * **Priority shedding** under overload drops the least valuable work first. The decision is a pure function of the
   `LoadSignal` and the class (`GatewayLimits.Sheds`).
 * **Health** is derived from the same signal (`Admission.Health`) and read by `/health`, which answers `healthy`,
@@ -78,6 +80,7 @@ Taken from well-known cloud design patterns, limited to what this single process
 | `Upload` | replays, screenshots, avatars, beatmapsets | 8 | 0.90 |
 | `Interactive` | gameplay, chat, rooms, accounts | 256 | 0.90 |
 | `Live` | SSE streams | 1024 | 0.90 |
+| `Asset` | pictures on `a.`, `assets.`, `b.` and `osu.` `/ss` | 64 | 0.70 (with `Listing`) |
 
 Health is `Healthy` below 0.50, `Degraded` from 0.50 and `Shedding` from 0.70. Every threshold and cap is a server setting
 stored in the database (`rateLimits.admission`, changed through `PATCH /v1/settings/rateLimits` or the console); the
@@ -116,7 +119,7 @@ runtime-configurable.
   positive control proves an entry point without it is detected. The test enumerates every route of the Rest host and of
   the two osu! routers (as mapped endpoints), every packet type of the osu! client (the whole `ClientPacketType` enum) and
   every IRC command (the commands of the IRC reference). The attribute only declares; a policy that applies no limit
-  still counts as declared. The images served on `a.`/`assets.` are middleware, not routes, and are not enumerated.
+  still counts as declared. The images served on `a.`/`assets.` are middleware, not routes, and are not enumerated; `ImageAdmissionTests` covers them.
 * A denial is decided before business logic runs, and the refusal is the same whether or not the target exists.
 * Bans and restrictions are not gateway concerns.
 

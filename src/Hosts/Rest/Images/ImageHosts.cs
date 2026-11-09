@@ -1,6 +1,6 @@
-using Basil.Application.Content.Persistence;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
+using Basil.Host.Shared;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Web.DependencyInjection;
 
@@ -57,18 +57,18 @@ public static class ImageHosts
 	/// <returns><paramref name="app" />, for chaining.</returns>
 	public static IApplicationBuilder UseRestImages(this IApplicationBuilder app)
 	{
-		app.UseMiddleware<ImageRateLimitMiddleware>();
+		app.UseMiddleware<ImageAdmissionMiddleware>();
 		app.UseMiddleware<UndecodableImageMiddleware>();
 		return app.UseImageSharp();
 	}
 }
 
-/// <summary>Limits how many images one address can fetch; an answer of 304 costs nothing.</summary>
-internal sealed class ImageRateLimitMiddleware(RequestDelegate next)
+/// <summary>Asks the gateway whether an image request may enter, as picture work counted per address.</summary>
+internal sealed class ImageAdmissionMiddleware(RequestDelegate next)
 {
 	private static readonly HashSet<string> Labels = new(StringComparer.OrdinalIgnoreCase) { "a", "assets", "b" };
 
-	public async Task InvokeAsync(HttpContext context, ISettingsRepository settings, RateLimiter limiter)
+	public async Task InvokeAsync(HttpContext context, Admission admission)
 	{
 		var host = context.Request.Host.Host;
 		var label = host.Contains('.') ? host[..host.IndexOf('.')] : host;
@@ -80,18 +80,23 @@ internal sealed class ImageRateLimitMiddleware(RequestDelegate next)
 			return;
 		}
 
-		var limit = (await settings.GetAsync(context.RequestAborted)).RateLimits.Rest.Anonymous.Assets;
-		var key = $"rest-assets:{context.Ip()}";
-		if (limiter.Count(key, limit.Window) >= limit.Count)
+		var decision = admission.Admit(AdmissionRefusals.SubjectOf(context.Ip().ToString()), WorkClass.Asset);
+		if (!decision.Allowed)
 		{
-			context.Response.Headers.RetryAfter = ((int)limit.Window.TotalSeconds).ToString();
-			await Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many requests.")
-				.ExecuteAsync(context);
+			context.Response.Headers.RetryAfter = AdmissionRefusals.RetryAfterOf(decision);
+			await Api.Error(AdmissionRefusals.StatusOf(decision), AdmissionRefusals.CodeOf(decision),
+				AdmissionRefusals.MessageOf(decision)).ExecuteAsync(context);
 			return;
 		}
 
-		await next(context);
-		if (context.Response.StatusCode != StatusCodes.Status304NotModified) limiter.Record(key);
+		try
+		{
+			await next(context);
+		}
+		finally
+		{
+			admission.Release(WorkClass.Asset);
+		}
 	}
 }
 

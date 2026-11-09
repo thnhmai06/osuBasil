@@ -237,6 +237,8 @@ public sealed record ServerSettings
 		/// <param name="shedAbove">The load from which listing work is refused.</param>
 		/// <param name="hardShedAbove">The load from which every kind of work is refused.</param>
 		/// <param name="busyRetryAfter">How long a caller refused for load or a full work class is told to wait.</param>
+		/// <param name="assetConcurrency">How many picture requests may run at once.</param>
+		/// <param name="assetRequests">How many picture requests one address may make in the window.</param>
 		/// <exception cref="ArgumentOutOfRangeException">
 		///     A number or duration is not positive, or the loads are not ordered
 		///     0 &lt; degraded &lt; shed &lt; hard shed &lt;= 1.
@@ -244,7 +246,8 @@ public sealed record ServerSettings
 		[JsonConstructor]
 		public AdmissionLimitSettings(int requests, TimeSpan window, int elevatedMultiplier,
 			int interactiveConcurrency, int listingConcurrency, int uploadConcurrency, int liveConcurrency,
-			double degradedAbove, double shedAbove, double hardShedAbove, TimeSpan busyRetryAfter)
+			double degradedAbove, double shedAbove, double hardShedAbove, TimeSpan busyRetryAfter,
+			int assetConcurrency = 64, int assetRequests = 1200)
 		{
 			Requests = Positive(requests);
 			Window = Positive(window);
@@ -257,6 +260,8 @@ public sealed record ServerSettings
 			ShedAbove = Fraction(shedAbove);
 			HardShedAbove = Fraction(hardShedAbove);
 			BusyRetryAfter = Positive(busyRetryAfter);
+			AssetConcurrency = Positive(assetConcurrency);
+			AssetRequests = Positive(assetRequests);
 			if (!(DegradedAbove < ShedAbove && ShedAbove < HardShedAbove))
 				throw new ArgumentOutOfRangeException(nameof(shedAbove), shedAbove,
 					"The loads must be ordered degraded < shed < hard shed.");
@@ -292,7 +297,7 @@ public sealed record ServerSettings
 		/// <summary>Gets the load, above 0 and at most 1, from which the server reports itself degraded.</summary>
 		public double DegradedAbove { get; }
 
-		/// <summary>Gets the load from which listing work is refused.</summary>
+		/// <summary>Gets the load from which listing and picture work is refused.</summary>
 		public double ShedAbove { get; }
 
 		/// <summary>Gets the load from which every kind of work is refused.</summary>
@@ -300,6 +305,12 @@ public sealed record ServerSettings
 
 		/// <summary>Gets how long a caller refused for load or a full work class is told to wait.</summary>
 		public TimeSpan BusyRetryAfter { get; }
+
+		/// <summary>Gets how many picture requests may run at once.</summary>
+		public int AssetConcurrency { get; }
+
+		/// <summary>Gets how many picture requests one address may make in the window.</summary>
+		public int AssetRequests { get; }
 	}
 
 	/// <summary>The limit on failed login attempts.</summary>
@@ -363,9 +374,6 @@ public sealed record ServerSettings
 	{
 		/// <summary>Gets the limit per IP address.</summary>
 		public Limit PerIp { get; init; } = new(120, TimeSpan.FromMinutes(1));
-
-		/// <summary>Gets the limit per IP address for images.</summary>
-		public Limit Assets { get; init; } = new(1200, TimeSpan.FromMinutes(1));
 	}
 
 	/// <summary>The size limits of uploads.</summary>

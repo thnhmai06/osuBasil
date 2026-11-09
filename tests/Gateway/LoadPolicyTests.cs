@@ -10,7 +10,7 @@ public sealed class LoadPolicyTests
 {
 	private static readonly GatewayLimits Limits = new()
 	{
-		Requests = 1000, ListingConcurrency = 2, InteractiveConcurrency = 3, UploadConcurrency = 1, LiveConcurrency = 1,
+		Requests = 1000, ListingConcurrency = 2, InteractiveConcurrency = 3, UploadConcurrency = 1, LiveConcurrency = 1, AssetConcurrency = 2, AssetRequests = 3,
 		DegradedAbove = 0.5, ShedAbove = 0.7, HardShedAbove = 0.9
 	};
 
@@ -26,6 +26,7 @@ public sealed class LoadPolicyTests
 	[InlineData(WorkClass.Listing, 2)]
 	[InlineData(WorkClass.Upload, 1)]
 	[InlineData(WorkClass.Live, 1)]
+	[InlineData(WorkClass.Asset, 2)]
 	public void AClass_IsDeniedAsSaturatedPastItsCap(WorkClass workClass, int cap)
 	{
 		var admission = NewAdmission();
@@ -84,6 +85,18 @@ public sealed class LoadPolicyTests
 		Assert.True(admission.Admit(Subject, WorkClass.Upload).Allowed);
 	}
 
+	[Fact]
+	public void Assets_HaveTheirOwnAllowance_ApartFromTheRequestsOfTheSubject()
+	{
+		var admission = new Admission(new FakeTimeProvider(), Limits with { Requests = 1, AssetConcurrency = 10 });
+
+		var assets = Enumerable.Range(0, 4).Select(_ => admission.Admit(Subject, WorkClass.Asset)).ToArray();
+
+		Assert.Equal([true, true, true, false], assets.Select(decision => decision.Allowed));
+		Assert.Equal(AdmissionDenial.RateExceeded, assets[3].Reason);
+		Assert.True(admission.Admit(Subject).Allowed);
+	}
+
 	// Decision table of the shed order: [class, load, shed].
 	[Theory]
 	[InlineData(WorkClass.Listing, 0.0, false)]
@@ -95,6 +108,8 @@ public sealed class LoadPolicyTests
 	[InlineData(WorkClass.Interactive, 0.9, true)]
 	[InlineData(WorkClass.Live, 0.89, false)]
 	[InlineData(WorkClass.Live, 0.9, true)]
+	[InlineData(WorkClass.Asset, 0.69, false)]
+	[InlineData(WorkClass.Asset, 0.7, true)]
 	[InlineData(WorkClass.Upload, 0.89, false)]
 	[InlineData(WorkClass.Upload, 0.9, true)]
 	public void TheShedOrder_RefusesListingsFirstAndEverythingLater(WorkClass workClass, double load, bool shed)

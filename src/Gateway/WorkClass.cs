@@ -16,5 +16,8 @@ public enum WorkClass
 	Upload,
 
 	/// <summary>Long-lived live streams.</summary>
-	Live
+	Live,
+
+	/// <summary>Pictures served from the image hosts: avatars, menu images, screenshots and beatmap images.</summary>
+	Asset
 }

@@ -24,10 +24,19 @@ public sealed record GatewayLimits
 	/// <summary>Gets how many <see cref="WorkClass.Live" /> requests may run at once.</summary>
 	public int LiveConcurrency { get; init; } = 1024;
 
+	/// <summary>Gets how many <see cref="WorkClass.Asset" /> requests may run at once.</summary>
+	public int AssetConcurrency { get; init; } = 64;
+
+	/// <summary>
+	///     Gets how many <see cref="WorkClass.Asset" /> requests a subject may make in the window; pictures have an
+	///     allowance of their own, apart from <see cref="Requests" />.
+	/// </summary>
+	public int AssetRequests { get; init; } = 1200;
+
 	/// <summary>Gets the load from which the server reports <see cref="AdmissionHealth.Degraded" />.</summary>
 	public double DegradedAbove { get; init; } = 0.5;
 
-	/// <summary>Gets the load from which <see cref="WorkClass.Listing" /> work is refused.</summary>
+	/// <summary>Gets the load from which <see cref="WorkClass.Listing" /> and <see cref="WorkClass.Asset" /> work is refused.</summary>
 	public double ShedAbove { get; init; } = 0.7;
 
 	/// <summary>Gets the load from which every kind of work is refused.</summary>
@@ -54,6 +63,7 @@ public sealed record GatewayLimits
 			WorkClass.Listing => ListingConcurrency,
 			WorkClass.Upload => UploadConcurrency,
 			WorkClass.Live => LiveConcurrency,
+			WorkClass.Asset => AssetConcurrency,
 			_ => InteractiveConcurrency
 		};
 	}
@@ -64,7 +74,7 @@ public sealed record GatewayLimits
 	/// <returns><see langword="true" /> when the work is shed.</returns>
 	public bool Sheds(WorkClass workClass, double load)
 	{
-		return load >= (workClass == WorkClass.Listing ? ShedAbove : HardShedAbove);
+		return load >= (workClass is WorkClass.Listing or WorkClass.Asset ? ShedAbove : HardShedAbove);
 	}
 
 	/// <summary>Gets how the server is doing at the load.</summary>

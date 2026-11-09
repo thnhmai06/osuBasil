@@ -55,7 +55,10 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 			return AdmissionDecision.Deny(AdmissionDenial.ClassSaturated, current.BusyRetryAfter);
 		}
 
-		if (_rate.TryAcquire(subject.Key, current.AllowanceOf(subject.Tier), current.Window))
+		var isAsset = workClass == WorkClass.Asset;
+		var key = isAsset ? $"asset:{subject.Key}" : subject.Key;
+		var allowance = isAsset ? current.AssetRequests : current.AllowanceOf(subject.Tier);
+		if (_rate.TryAcquire(key, allowance, current.Window))
 			return AdmissionDecision.Allow;
 		Release(workClass);
 		return AdmissionDecision.Deny(AdmissionDenial.RateExceeded, current.Window);
