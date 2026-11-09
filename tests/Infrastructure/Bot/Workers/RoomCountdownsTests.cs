@@ -1,5 +1,5 @@
 using Basil.Application.Bot.Announcements;
-using Basil.Application.Bot.Registry;
+using Basil.Infrastructure.Bot.Workers;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
@@ -11,7 +11,7 @@ using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Basil.Application.Bot.Tests.Countdowns;
+namespace Basil.Infrastructure.Bot.Tests.Workers;
 
 /// <summary>
 ///     The countdowns BasilBot runs in rooms, driven through the messages the hosts send. The expected behaviour comes

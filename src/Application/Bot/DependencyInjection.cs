@@ -17,7 +17,6 @@ public static class DependencyInjection
 		services.TryAddSingleton(TimeProvider.System);
 		services.AddSingleton(_ => ReplyDefinitions.In(typeof(Reply).Assembly).AsEnumerable());
 		services.AddSingleton<MpTargets>();
-		services.AddSingleton<RoomCountdowns>();
 		return services;
 	}
 }

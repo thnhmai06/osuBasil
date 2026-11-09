@@ -1,4 +1,4 @@
-using Basil.Application.Bot.Registry;
+using Basil.Infrastructure.Bot.Workers;
 using Basil.Application.Multiplayer.Objects.Events;
 using Mediator;
 

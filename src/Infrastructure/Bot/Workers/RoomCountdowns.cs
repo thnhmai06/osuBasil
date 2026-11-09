@@ -10,7 +10,7 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;
 
-namespace Basil.Application.Bot.Registry;
+namespace Basil.Infrastructure.Bot.Workers;
 
 /// <summary>Why a running countdown was cancelled; decides what, if anything, BasilBot says in the room.</summary>
 internal enum CountdownCancelReason

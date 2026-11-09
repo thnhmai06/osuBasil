@@ -1,4 +1,4 @@
-using Basil.Application.Bot.Registry;
+using Basil.Infrastructure.Bot.Workers;
 using Basil.Application.Common.Diagnostics;
 using Mediator;
 
