@@ -140,7 +140,7 @@ For example:
   "meta": {
     "offset": 0,
     "limit": 20,
-    "total": 42
+    "hasNext": true
   },
   "errors": null,
   "timestamp": "2026-08-03T12:00:00Z"
@@ -149,7 +149,7 @@ For example:
 
 `data` contains the result items directly.
 
-The pagination fields are `offset`, `limit` and `total`. Lists take `offset` (default 0) and `limit` (default 25, at most 100; a larger value is answered with 422).
+The pagination fields are `offset`, `limit` and `hasNext`, which tells whether items follow this page; the total number of items is not reported. Lists take `offset` (default 0) and `limit` (default 25, at most 100; a larger value is answered with 422).
 
 ---
 

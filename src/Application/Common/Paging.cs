@@ -21,7 +21,7 @@ public static class Paging
 			cancellationToken.ThrowIfCancellationRequested();
 			var paged = await list(page);
 			all.AddRange(paged.Items);
-			if (paged.Items.Count < page.Limit)
+			if (!paged.HasNext)
 				break;
 			page = new PageRequest(page.Offset + page.Limit, page.Limit);
 		}

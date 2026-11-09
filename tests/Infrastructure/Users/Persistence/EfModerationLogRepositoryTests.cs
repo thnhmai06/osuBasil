@@ -75,7 +75,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 
 		var page = await Log.ListAsync(target, null, new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.Equal(3, page.Items.Count);
 		Assert.Equal(Third, page.Items[0].Value.Timestamp);
 		Assert.Equal(Second, page.Items[1].Value.Timestamp);
 		Assert.Equal(First, page.Items[2].Value.Timestamp);
@@ -113,7 +113,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 
 		var page = await Log.ListAsync(target, null, new PageRequest(1, 1), TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.True(page.HasNext);
 		Assert.Equal(Second, Assert.Single(page.Items).Value.Timestamp);
 	}
 
@@ -132,7 +132,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 		var page = await Log.ListAsync(target, new Interval<DateTimeOffset>(First, Third),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.Equal(3, page.Items.Count);
 	}
 
 	[Fact]
@@ -150,7 +150,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 		var page = await Log.ListAsync(target, new Interval<DateTimeOffset>(First, Third, false, false),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Total);
+		Assert.Equal(1, page.Items.Count);
 		Assert.Equal(Second, Assert.Single(page.Items).Value.Timestamp);
 	}
 
@@ -169,7 +169,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 		var page = await Log.ListAsync(target, new Interval<DateTimeOffset>(First, Third, true, false),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(2, page.Total);
+		Assert.Equal(2, page.Items.Count);
 	}
 
 	[Fact]
@@ -187,7 +187,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 
 		var page = await Log.ListAsync(target, null, new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Total);
+		Assert.Equal(1, page.Items.Count);
 	}
 
 	/// <summary>Records a moderation action against an account.</summary>

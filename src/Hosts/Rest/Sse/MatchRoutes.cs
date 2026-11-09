@@ -37,7 +37,7 @@ internal static class MatchRoutes
 			new ListMatches(context.Connection(), MatchQuery.Parse(query ?? string.Empty), page!),
 			context.RequestAborted);
 		return result.IsOk
-			? Api.Paged(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.Total), page!)
+			? Api.Paged(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.HasNext), page!)
 			: result.Refusal();
 	}
 

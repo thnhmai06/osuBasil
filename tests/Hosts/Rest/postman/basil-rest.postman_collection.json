@@ -390,7 +390,7 @@
 									"pm.test('envelope code equals the HTTP status', () => pm.expect(body.code).to.eql(pm.response.code));",
 									"pm.test('success is true below 400', () => pm.expect(body.success).to.eql(pm.response.code < 400));",
 									"",
-									"pm.test('meta has offset, limit and total', () => ['offset','limit','total'].forEach(k => pm.expect(body.meta).to.have.property(k)));"
+									"pm.test('meta has offset, limit and hasNext', () => ['offset','limit','hasNext'].forEach(k => pm.expect(body.meta).to.have.property(k)));"
 								]
 							}
 						}

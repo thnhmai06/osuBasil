@@ -138,7 +138,7 @@ internal static class BeatmapRoutes
 		var effective = context.Connection().EffectivePermissions(clock.GetUtcNow());
 		var found = await repository.ListAsync(BeatmapQuery.Parse(query ?? string.Empty).LimitTo(effective), page!,
 			context.RequestAborted);
-		return Api.Paged(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.Total), page!);
+		return Api.Paged(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.HasNext), page!);
 	}
 
 	private static async Task<IResult> GetSetAsync(HttpContext context, int id, IBeatmapsetRepository sets,

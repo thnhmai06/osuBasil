@@ -292,21 +292,23 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(1, 1),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.True(page.HasNext);
 		Assert.Equal(Second, Assert.Single(page.Items).Value.Timestamp);
 	}
 
 	[Fact]
-	public async Task A_listing_tells_how_many_scores_match()
+	public async Task A_listing_tells_whether_more_scores_follow_the_page()
 	{
 		var player = await CreatePlayerAsync("counted_player");
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_two"), 2000, Second);
 
-		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 1),
+		var partial = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 1),
+			TestContext.Current.CancellationToken);
+		var exact = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 2),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(2, page.Total);
+		Assert.Equal((true, 1, false, 2), (partial.HasNext, partial.Items.Count, exact.HasNext, exact.Items.Count));
 	}
 
 	[Fact]

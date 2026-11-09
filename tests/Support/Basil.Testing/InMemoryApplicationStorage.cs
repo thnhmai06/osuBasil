@@ -94,7 +94,7 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		return Task.FromResult(new Page<UserRecord>([], 0));
+		return Task.FromResult(new Page<UserRecord>([], false));
 	}
 
 	public UserRecord Seed(UserData data, int? id = null)
@@ -256,7 +256,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 			                                      _ => true
 		                                      }).Reverse().ToList();
 		return ValueTask.FromResult(new Page<SessionRecord>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
-			entries.Count));
+			page.Offset + page.Limit < entries.Count));
 	}
 
 	public Task<SessionRecord?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
@@ -400,7 +400,7 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 		                                      (within is null || within.Value.Contains(entry.Value.Timestamp)))
 			.Reverse().ToList();
 		return ValueTask.FromResult(new Page<ModerationLog>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
-			entries.Count));
+			page.Offset + page.Limit < entries.Count));
 	}
 }
 
@@ -441,7 +441,7 @@ internal sealed class InMemoryMatchRepository(InMemoryMatchEventRepository event
 			.OrderBy(match => match.Id)
 			.ToList();
 		return Task.FromResult(new Page<MatchRecord>(
-			matches.Skip(page.Offset).Take(page.Limit).ToList(), matches.Count));
+			matches.Skip(page.Offset).Take(page.Limit).ToList(), page.Offset + page.Limit < matches.Count));
 	}
 
 	public Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,

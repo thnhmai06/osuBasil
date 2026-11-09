@@ -35,10 +35,10 @@ public sealed class BeatmapReloaderTests
 		var beatmap = AssetBeatmaps.Beatmap(set);
 		_sets.ListAsync(Arg.Any<BeatmapQuery>(), Arg.Is<PageRequest>(page => page.Offset == 0),
 				Arg.Any<CancellationToken>())
-			.Returns(new Page<BeatmapsetRecord>([set], 1));
+			.Returns(new Page<BeatmapsetRecord>([set], false));
 		_sets.ListAsync(Arg.Any<BeatmapQuery>(), Arg.Is<PageRequest>(page => page.Offset > 0),
 				Arg.Any<CancellationToken>())
-			.Returns(new Page<BeatmapsetRecord>([], 1));
+			.Returns(new Page<BeatmapsetRecord>([], false));
 		_beatmaps.ListAsync(set, Arg.Any<CancellationToken>()).Returns([beatmap]);
 		return beatmap;
 	}
@@ -102,7 +102,7 @@ public sealed class BeatmapReloaderTests
 
 		var first = reloader.TryStart();
 		var second = reloader.TryStart();
-		release.SetResult(new Page<BeatmapsetRecord>([], 0));
+		release.SetResult(new Page<BeatmapsetRecord>([], false));
 
 		Assert.True(first);
 		Assert.False(second);

@@ -129,7 +129,7 @@ internal static class UserRoutes
 		var effective = context.Connection().EffectivePermissions(clock.GetUtcNow());
 		var found = await users.ListAsync(UserQuery.Parse(query ?? string.Empty).LimitTo(effective), page!,
 			cancellationToken);
-		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.Total),
+		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.HasNext),
 			page!);
 	}
 
@@ -265,7 +265,7 @@ internal static class UserRoutes
 				context.RequestAborted);
 		if (!result.IsOk) return result.Refusal();
 
-		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)], sessions.Total), page!);
+		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)], sessions.HasNext), page!);
 	}
 
 	private static async Task<IResult> GetSessionAsync(HttpContext context, int id, Guid sid)

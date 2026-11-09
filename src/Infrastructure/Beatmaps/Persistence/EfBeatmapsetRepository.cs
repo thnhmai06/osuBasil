@@ -48,21 +48,19 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 	public async Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await database.ReadAsync(async (BeatmapsDbContext context) =>
+		var fetched = await database.ReadAsync((BeatmapsDbContext context) =>
 		{
 			// A set matches when one of its difficulties does.
 			var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
-			var sets = context.Beatmapsets.Where(set => matching.Any(beatmap => beatmap.BeatmapsetId == set.Id));
-			var count = await sets.CountAsync(cancellationToken);
-			var rows = await sets
+			return context.Beatmapsets.Where(set => matching.Any(beatmap => beatmap.BeatmapsetId == set.Id))
 				.OrderByDescending(set => set.Id)
 				.Skip(page.Offset)
-				.Take(page.Limit)
+				.Take(page.Fetch)
 				.ToListAsync(cancellationToken);
-			return (count, rows);
 		}, cancellationToken);
 
-		return new Page<BeatmapsetRecord>([.. rows.Select(row => row.ToRecord())], total);
+		var (rows, hasNext) = page.Slice(fetched);
+		return new Page<BeatmapsetRecord>([.. rows.Select(row => row.ToRecord())], hasNext);
 	}
 
 	/// <inheritdoc />

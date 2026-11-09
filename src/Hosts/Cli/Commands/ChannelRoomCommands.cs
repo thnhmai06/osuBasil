@@ -206,7 +206,7 @@ internal static class ChannelRoomCommands
 		var page = call.Page();
 		var rooms = call.Get<Lobby>().Rooms.Values.OrderBy(room => room.Id).ToList();
 		call.PrintPage(new Page<RoomView>(
-			[.. rooms.Skip(page.Offset).Take(page.Limit).Select(RoomView.Of)], rooms.Count), page);
+			[.. rooms.Skip(page.Offset).Take(page.Limit).Select(RoomView.Of)], page.Offset + page.Limit < rooms.Count), page);
 		return Task.FromResult(ExitCodes.Success);
 	}
 
@@ -247,7 +247,7 @@ internal static class ChannelRoomCommands
 			call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
-		call.PrintPage(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.Total), page);
+		call.PrintPage(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.HasNext), page);
 		return ExitCodes.Success;
 	}
 

@@ -2,6 +2,6 @@ namespace Basil.Application.Common;
 
 /// <summary>One part of a listing.</summary>
 /// <param name="Items">The items in this part, in the listing's order.</param>
-/// <param name="Total">How many items the whole listing has.</param>
+/// <param name="HasNext">Whether the listing has items after this part.</param>
 /// <typeparam name="T">The type of the listed items.</typeparam>
-public sealed record Page<T>(IReadOnlyList<T> Items, int Total);
+public sealed record Page<T>(IReadOnlyList<T> Items, bool HasNext);

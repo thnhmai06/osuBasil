@@ -104,7 +104,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 
 		Assert.Equal(0, code);
 		Assert.Contains(name, text);
-		Assert.Contains("1 of 1 (offset 0, limit 5)", text);
+		Assert.Contains("shown: 1 (offset 0, limit 5)", text);
 	}
 
 	[Fact]

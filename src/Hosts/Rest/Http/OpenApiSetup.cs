@@ -58,7 +58,7 @@ internal static class OpenApiSetup
 							{
 								["offset"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
 								["limit"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-								["total"] = new OpenApiSchema { Type = JsonSchemaType.Integer }
+								["hasNext"] = new OpenApiSchema { Type = JsonSchemaType.Boolean }
 							}
 						},
 						["errors"] = new OpenApiSchema

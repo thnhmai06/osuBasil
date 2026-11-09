@@ -373,7 +373,7 @@ public sealed class BeatmapsetWorld
 		{
 			var all = Records.Values.OrderByDescending(set => set.Id).ToList();
 			return Task.FromResult(new Page<BeatmapsetRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(),
-				all.Count));
+				page.Offset + page.Limit < all.Count));
 		}
 
 		/// <inheritdoc />
@@ -476,7 +476,7 @@ public sealed class BeatmapsetWorld
 			CancellationToken cancellationToken = default)
 		{
 			var all = Records.Values.OrderByDescending(beatmap => beatmap.Beatmapset.Id).ToList();
-			return Task.FromResult(new Page<BeatmapRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(), all.Count));
+			return Task.FromResult(new Page<BeatmapRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(), page.Offset + page.Limit < all.Count));
 		}
 
 		/// <inheritdoc />

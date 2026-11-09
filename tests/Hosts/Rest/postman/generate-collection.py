@@ -72,7 +72,7 @@ pm.test('404 notFound', () => { pm.response.to.have.status(404); pm.expect(body.
 pm.test('422', () => pm.response.to.have.status(422));
 """),
     request("Paging meta on a list", "GET", "/v1/users", token="{{token}}", query="?limit=2", tests=ENVELOPE + """
-pm.test('meta has offset, limit and total', () => ['offset','limit','total'].forEach(k => pm.expect(body.meta).to.have.property(k)));
+pm.test('meta has offset, limit and hasNext', () => ['offset','limit','hasNext'].forEach(k => pm.expect(body.meta).to.have.property(k)));
 """),
     request("409 systemAccount for BasilBot", "DELETE", "/v1/users/1", token="{{token}}", tests=ENVELOPE + """
 pm.test('409 systemAccount', () => { pm.response.to.have.status(409); pm.expect(body.errors.code).to.eql('systemAccount'); });

@@ -39,7 +39,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	{
 		var types = filter.Types;
 		var now = filter.Now.ToUniversalTime();
-		var (total, rows) = await database.ReadAsync(async (AuthenticationDbContext context) =>
+		var fetched = await database.ReadAsync(async (AuthenticationDbContext context) =>
 		{
 			var query = context.Sessions.Where(row => row.UserId == user.Id);
 			if (types is not null) query = query.Where(row => types.Contains(row.Type));
@@ -51,17 +51,16 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 					row.EndedAt != null || (row.ExpiresAt != null && row.ExpiresAt <= now)),
 				_ => query
 			};
-			var count = await query.CountAsync(cancellationToken);
-			var rows = await query
+			return await query
 				.OrderByDescending(row => row.StartedAt)
 				.ThenByDescending(row => row.Id)
 				.Skip(page.Offset)
-				.Take(page.Limit)
+				.Take(page.Fetch)
 				.ToListAsync(cancellationToken);
-			return (count, rows);
 		}, cancellationToken);
 
-		return new Page<SessionRecord>(rows.Select(row => ToRecord(row, user)).ToList(), total);
+		var (rows, hasNext) = page.Slice(fetched);
+		return new Page<SessionRecord>(rows.Select(row => ToRecord(row, user)).ToList(), hasNext);
 	}
 
 	/// <inheritdoc />

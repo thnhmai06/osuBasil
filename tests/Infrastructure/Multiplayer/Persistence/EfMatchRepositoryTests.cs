@@ -224,12 +224,12 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(1, 1),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.True(page.HasNext);
 		Assert.Equal("second_match", Assert.Single(page.Items).Value.Name);
 	}
 
 	[Fact]
-	public async Task A_listing_tells_how_many_matches_match()
+	public async Task A_listing_tells_whether_more_matches_follow_the_page()
 	{
 		await CreateStoredMatchAsync("first_match", First);
 		await CreateStoredMatchAsync("second_match", Second);
@@ -237,6 +237,6 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(0, 1),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(2, page.Total);
+		Assert.True(page.HasNext);
 	}
 }

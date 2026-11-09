@@ -34,7 +34,8 @@ internal static class CommandHelpers
 	public static void PrintPage<T>(this CommandCall call, Page<T> page, PageRequest request) where T : class
 	{
 		call.Formatter.PrintTable(call.Output, [.. page.Items]);
-		call.Output.Line($"{page.Items.Count} of {page.Total} (offset {request.Offset}, limit {request.Limit})");
+		call.Output.Line(
+			$"shown: {page.Items.Count} (offset {request.Offset}, limit {request.Limit}){(page.HasNext ? ", more follow" : "")}");
 	}
 
 	/// <summary>Finds an account by id; the console may see deleted accounts too only through their own commands.</summary>

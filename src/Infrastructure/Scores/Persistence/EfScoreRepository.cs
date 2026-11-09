@@ -66,7 +66,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery scoreQuery, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await database.ReadAsync(async (ScoresDbContext context) =>
+		var fetched = await database.ReadAsync(async (ScoresDbContext context) =>
 		{
 			var matching = BuildFilter(context.Scores, scoreQuery);
 			// A player's best play is the highest score; the earlier play and then the lower id win a tie.
@@ -77,19 +77,18 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 				                                               (other.Timestamp < s.Timestamp ||
 				                                                (other.Timestamp == s.Timestamp && other.Id < s.Id))))))
 				: matching;
-			var count = await q.CountAsync(cancellationToken);
 			q = scoreQuery.BestPerPlayer || scoreQuery.BeatmapHash is not null
 				? q.OrderByDescending(s => s.TotalScore).ThenBy(s => s.Timestamp).ThenBy(s => s.Id)
 				: q.OrderByDescending(s => s.Timestamp).ThenByDescending(s => s.Id);
 
-			var rows = await q
+			return await q
 				.Skip(page.Offset)
-				.Take(page.Limit)
+				.Take(page.Fetch)
 				.ToListAsync(cancellationToken);
-			return (count, rows);
 		}, cancellationToken);
 
-		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), total);
+		var (rows, hasNext) = page.Slice(fetched);
+		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), hasNext);
 	}
 
 	private async Task<(ScoreRecord Score, UserStats Stats)> StoreAsync(ScoreData data, long rankedScore,

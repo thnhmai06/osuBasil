@@ -30,8 +30,8 @@ public sealed record ErrorBody(string Code, ulong? Missing = null);
 /// <summary>Pagination information of a list response.</summary>
 /// <param name="Offset">The index of the first item.</param>
 /// <param name="Limit">The page size asked for.</param>
-/// <param name="Total">How many items match in all.</param>
-public sealed record PageMeta(int Offset, int Limit, int Total);
+/// <param name="HasNext">Whether more items follow this page.</param>
+public sealed record PageMeta(int Offset, int Limit, bool HasNext);
 
 /// <summary>Builds the results of the API: always inside the envelope.</summary>
 public static class Api
@@ -70,7 +70,7 @@ public static class Api
 	public static IResult Paged<T>(Page<T> page, PageRequest request)
 	{
 		return Respond(StatusCodes.Status200OK, "Retrieval successful", page.Items,
-			new PageMeta(request.Offset, request.Limit, page.Total), null);
+			new PageMeta(request.Offset, request.Limit, page.HasNext), null);
 	}
 
 	/// <summary>Answers an error.</summary>

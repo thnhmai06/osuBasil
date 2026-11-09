@@ -225,7 +225,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Circles: new Interval<int>(100, 200)),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(expected, page.Total);
+		Assert.Equal(expected, page.Items.Count);
 	}
 
 	[Theory]
@@ -241,7 +241,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Length: new Interval<double>(120, 240)),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(expected, page.Total);
+		Assert.Equal(expected, page.Items.Count);
 	}
 
 	[Theory]
@@ -257,7 +257,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Cs: new Interval<double>(4, 5)),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(expected, page.Total);
+		Assert.Equal(expected, page.Items.Count);
 	}
 
 	[Theory]
@@ -273,7 +273,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Ar: new Interval<double>(9, 10)),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(expected, page.Total);
+		Assert.Equal(expected, page.Items.Count);
 	}
 
 	[Theory]
@@ -289,7 +289,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Od: new Interval<double>(8, 9)),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(expected, page.Total);
+		Assert.Equal(expected, page.Items.Count);
 	}
 
 	[Theory]
@@ -305,7 +305,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Hp: new Interval<double>(5, 6)),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(expected, page.Total);
+		Assert.Equal(expected, page.Items.Count);
 	}
 
 	[Fact]
@@ -333,7 +333,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Status: BeatmapsetStatus.Ranked),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(2, page.Total);
+		Assert.Equal(2, page.Items.Count);
 	}
 
 	[Fact]
@@ -345,7 +345,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Status: BeatmapsetStatus.Approved),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(0, page.Total);
+		Assert.Equal(0, page.Items.Count);
 	}
 
 	[Fact]
@@ -401,7 +401,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(), new PageRequest(0, 2),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.True(page.HasNext);
 		Assert.Equal(2, page.Items.Count);
 	}
 

@@ -126,15 +126,12 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 	public async Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await database.ReadAsync(async (UsersDbContext context) =>
-		{
-			var matching = Filter(context.Users, query);
-			return (await matching.CountAsync(cancellationToken),
-				await matching.OrderBy(row => row.Id).Skip(page.Offset).Take(page.Limit)
-					.ToListAsync(cancellationToken));
-		}, cancellationToken);
+		var fetched = await database.ReadAsync((UsersDbContext context) => Filter(context.Users, query)
+			.OrderBy(row => row.Id).Skip(page.Offset).Take(page.Fetch)
+			.ToListAsync(cancellationToken), cancellationToken);
 
-		return new Page<UserRecord>([.. rows.Select(ToUser)], total);
+		var (rows, hasNext) = page.Slice(fetched);
+		return new Page<UserRecord>([.. rows.Select(ToUser)], hasNext);
 	}
 
 	/// <summary>Narrows the users to the ones a query asks for.</summary>

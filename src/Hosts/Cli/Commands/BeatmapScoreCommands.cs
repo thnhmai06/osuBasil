@@ -86,7 +86,7 @@ internal static class BeatmapScoreCommands
 		var found = await call.Get<IBeatmapsetRepository>().ListAsync(
 			BeatmapQuery.Parse(call.Text("query") ?? string.Empty).LimitTo(UserPermissionsGroups.All), page,
 			call.CancellationToken);
-		call.PrintPage(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.Total), page);
+		call.PrintPage(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.HasNext), page);
 		return ExitCodes.Success;
 	}
 
@@ -190,7 +190,7 @@ internal static class BeatmapScoreCommands
 			return call.NotFound("user");
 
 		var found = await call.Get<IScoreRepository>().ListAsync(new ScoreQuery(player, hash), page, ct);
-		call.PrintPage(new Page<ScoreView>([.. found.Items.Select(ScoreView.Of)], found.Total), page);
+		call.PrintPage(new Page<ScoreView>([.. found.Items.Select(ScoreView.Of)], found.HasNext), page);
 		return ExitCodes.Success;
 	}
 

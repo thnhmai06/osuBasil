@@ -82,7 +82,7 @@ internal static class RoomRoutes
 				visible.Add(room);
 
 		return Api.Paged(new Page<RoomView>([.. visible.Skip(page!.Offset).Take(page.Limit).Select(RoomView.Of)],
-			visible.Count), page);
+			page.Offset + page.Limit < visible.Count), page);
 	}
 
 	private static async Task<IResult> GetAsync(HttpContext context, Lobby lobby, ISender sender, int id)

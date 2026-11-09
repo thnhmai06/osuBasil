@@ -151,7 +151,7 @@ internal static class UserCommands
 			page,
 			call.CancellationToken);
 		call.PrintPage(new Page<UserView>(
-			[.. found.Items.Select(user => UserView.Of(registry, user, clock))], found.Total), page);
+			[.. found.Items.Select(user => UserView.Of(registry, user, clock))], found.HasNext), page);
 		return ExitCodes.Success;
 	}
 
@@ -351,7 +351,7 @@ internal static class UserCommands
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.PrintPage(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
-			sessions.Total), page);
+			sessions.HasNext), page);
 		return ExitCodes.Success;
 	}
 

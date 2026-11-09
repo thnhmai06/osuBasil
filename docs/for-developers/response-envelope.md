@@ -35,7 +35,7 @@ API route
 `Envelope<T>` is `{ success, code, message, data, meta, errors, timestamp }`:
 
 * `success` is `true` below status 400 and `code` repeats the HTTP status.
-* `meta` is `{ offset, limit, total }` for a page (`Api.Paged`) and `null` otherwise.
+* `meta` is `{ offset, limit, hasNext }` for a page (`Api.Paged`) and `null` otherwise.
 * `errors` is `{ code, missing }` for a failure: `code` is a stable camelCase string, and `missing` is the permission mask
   the caller lacks when the refusal is for lack of permissions.
 * JSON is camelCase and enums are camelCase strings (`ApiJson.Options`).

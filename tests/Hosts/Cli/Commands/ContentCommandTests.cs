@@ -117,7 +117,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 		var (code, text) = await fixture.RunAsync("scores list");
 
 		Assert.Equal(0, code);
-		Assert.Contains("0 of 0", text);
+		Assert.Contains("shown: 0 (offset 0", text);
 	}
 
 	[Fact]
@@ -268,7 +268,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 		var (code, text) = await fixture.RunAsync("screenshots list");
 
 		Assert.Equal(0, code);
-		Assert.Contains("0 of 0", text);
+		Assert.Contains("shown: 0 (offset 0", text);
 		Assert.Equal(1, (await fixture.RunAsync("screenshots nothing.jpg delete")).Code);
 	}
 

@@ -9292,8 +9292,8 @@
 							"limit": {
 								"type": "integer"
 							},
-							"total": {
-								"type": "integer"
+							"hasNext": {
+								"type": "boolean"
 							}
 						}
 					},

@@ -25,7 +25,7 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 		var minTimestamp = within?.Min?.ToUniversalTime();
 		var maxTimestamp = within?.Max?.ToUniversalTime();
 
-		var (total, rows) = await database.ReadAsync(async (UsersDbContext context) =>
+		var fetched = await database.ReadAsync(async (UsersDbContext context) =>
 		{
 			var query = context.ModerationLog.Where(row => row.TargetId == targetId);
 
@@ -39,19 +39,18 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 					? query.Where(row => row.Timestamp <= max)
 					: query.Where(row => row.Timestamp < max);
 
-			var count = await query.CountAsync(cancellationToken);
 			var paged = query
 				.OrderByDescending(row => row.Timestamp)
 				.ThenByDescending(row => row.Id)
 				.Skip(page.Offset)
-				.Take(page.Limit);
-			var rows = await (from row in paged
+				.Take(page.Fetch);
+			return await (from row in paged
 				join actor in context.Users on row.ById equals actor.Id
 				orderby row.Timestamp descending, row.Id descending
 				select new { row, actor }).ToListAsync(cancellationToken);
-			return (count, rows);
 		}, cancellationToken);
 
+		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<ModerationLog>([
 			.. rows.Select(found => new ModerationLog
 			{
@@ -65,7 +64,7 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 					Timestamp = found.row.Timestamp
 				}
 			})
-		], total);
+		], hasNext);
 	}
 
 	/// <summary>Adds an entry to a context, to be stored with the other changes of that context.</summary>

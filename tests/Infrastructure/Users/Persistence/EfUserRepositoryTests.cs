@@ -432,7 +432,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(2, page.Total);
+		Assert.Equal(2, page.Items.Count);
 	}
 
 	[Fact]
@@ -443,7 +443,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		var page = await Users.ListAsync(new UserQuery(Deleted: false), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Total);
+		Assert.Equal(1, page.Items.Count);
 	}
 
 	[Fact]
@@ -454,7 +454,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		var page = await Users.ListAsync(new UserQuery(Deleted: true), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Total);
+		Assert.Equal(1, page.Items.Count);
 		Assert.NotNull(page.Items[0].Value.DeletedAt);
 	}
 
@@ -467,7 +467,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(1, 2), TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.False(page.HasNext);
 		Assert.Equal(2, page.Items.Count);
 	}
 
@@ -480,7 +480,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 2), TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.True(page.HasNext);
 		Assert.Equal(2, page.Items.Count);
 	}
 

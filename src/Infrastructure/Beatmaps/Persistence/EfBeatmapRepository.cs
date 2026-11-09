@@ -63,22 +63,18 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	public async Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await database.ReadAsync(async (BeatmapsDbContext context) =>
-		{
-			var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
-			var count = await matching.CountAsync(cancellationToken);
-			var rows = await matching
-				.Include(b => b.Set)
-				.OrderByDescending(b => b.BeatmapsetId)
-				.ThenBy(b => b.Star)
-				.ThenBy(b => b.Id)
-				.Skip(page.Offset)
-				.Take(page.Limit)
-				.ToListAsync(cancellationToken);
-			return (count, rows);
-		}, cancellationToken);
+		var fetched = await database.ReadAsync((BeatmapsDbContext context) => BeatmapQueryFilter
+			.Apply(context.Beatmaps, query)
+			.Include(b => b.Set)
+			.OrderByDescending(b => b.BeatmapsetId)
+			.ThenBy(b => b.Star)
+			.ThenBy(b => b.Id)
+			.Skip(page.Offset)
+			.Take(page.Fetch)
+			.ToListAsync(cancellationToken), cancellationToken);
 
-		return new Page<BeatmapRecord>([.. rows.Select(row => ToBeatmap(row, row.Set.ToRecord()))], total);
+		var (rows, hasNext) = page.Slice(fetched);
+		return new Page<BeatmapRecord>([.. rows.Select(row => ToBeatmap(row, row.Set.ToRecord()))], hasNext);
 	}
 
 	/// <inheritdoc />

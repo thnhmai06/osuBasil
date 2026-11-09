@@ -323,7 +323,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var page = await Sets.ListAsync(new BeatmapQuery(), new PageRequest(1, 1),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.True(page.HasNext);
 		Assert.Equal(22, Assert.Single(page.Items).Id);
 	}
 

@@ -43,7 +43,7 @@ internal static class ScoreRoutes
 			return Api.NotFound("No such user.");
 
 		var found = await scores.ListAsync(new ScoreQuery(player, hash), page!, ct);
-		return Api.Paged(new Page<ScoreView>([.. found.Items.Select(ScoreView.Of)], found.Total), page!);
+		return Api.Paged(new Page<ScoreView>([.. found.Items.Select(ScoreView.Of)], found.HasNext), page!);
 	}
 
 	private static async Task<IResult> GetAsync(HttpContext context, int id, IScoreRepository scores)

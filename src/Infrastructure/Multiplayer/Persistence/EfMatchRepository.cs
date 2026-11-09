@@ -66,24 +66,19 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 	public async Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await database.ReadAsync(async (MultiplayerDbContext context) =>
-		{
-			var matching = Filter(context, context.Matches, query);
-			var count = await matching.CountAsync(cancellationToken);
-			var rows = await matching
-				.OrderByDescending(row => row.StartedAt)
-				.ThenByDescending(row => row.Id)
-				.Skip(page.Offset)
-				.Take(page.Limit)
-				.ToListAsync(cancellationToken);
-			return (count, rows);
-		}, cancellationToken);
+		var fetched = await database.ReadAsync((MultiplayerDbContext context) => Filter(context, context.Matches, query)
+			.OrderByDescending(row => row.StartedAt)
+			.ThenByDescending(row => row.Id)
+			.Skip(page.Offset)
+			.Take(page.Fetch)
+			.ToListAsync(cancellationToken), cancellationToken);
 
+		var (rows, hasNext) = page.Slice(fetched);
 		var matches = new List<MatchRecord>();
 		foreach (var row in rows)
 			matches.Add(await ToMatchAsync(row, cancellationToken));
 
-		return new Page<MatchRecord>(matches, total);
+		return new Page<MatchRecord>(matches, hasNext);
 	}
 
 	/// <inheritdoc />

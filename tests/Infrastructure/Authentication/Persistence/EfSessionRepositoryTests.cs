@@ -106,7 +106,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 		var page = await Sessions.ListAsync(user, All, new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.False(page.HasNext);
 		Assert.Equal(ThirdId, page.Items[0].Id);
 		Assert.Equal(SessionType.Stable, page.Items[0].Type);
 		Assert.Equal(Third, page.Items[0].StartedAt);
@@ -126,7 +126,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 		var page = await Sessions.ListAsync(user, All, new PageRequest(1, 1), TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.True(page.HasNext);
 		Assert.Equal(Second, Assert.Single(page.Items).StartedAt);
 	}
 
@@ -360,7 +360,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 		Assert.Equal([FirstId], active.Items.Select(entry => entry.Id));
 		Assert.Equal([SecondId, ThirdId], ended.Items.Select(entry => entry.Id).Order());
-		Assert.Equal(2, apiOnly.Total);
+		Assert.Equal(2, apiOnly.Items.Count);
 	}
 
 	private static byte[] Sha(byte[] input)
