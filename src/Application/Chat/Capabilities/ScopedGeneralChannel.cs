@@ -50,7 +50,8 @@ public readonly struct ScopedGeneralChannel
 	{
 		if (Require(UserPermissions.ChatManageChannels) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
-		return await Channel.ConfigureAsync(change, cancellationToken);
+		var now = Channel.Context.Clock.GetUtcNow();
+		return await Channel.ConfigureAsync(change, member => member.EffectivePermissions(now), cancellationToken);
 	}
 
 	/// <summary>Closes and deletes this general channel.</summary>

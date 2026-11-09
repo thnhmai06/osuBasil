@@ -1,4 +1,5 @@
 using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Chat.Objects;
 
@@ -20,14 +21,14 @@ public sealed class SpectatorChannel : Channel
 	public override string Topic => $"{Host.Record.Value.Name}'s spectator channel";
 
 	/// <inheritdoc />
-	internal override bool CanRead(Connection connection, DateTimeOffset now)
+	internal override bool CanRead(Connection connection, UserPermissions permissions)
 	{
 		return ReferenceEquals(connection, Host) || Host.Spectators.Contains(connection);
 	}
 
 	/// <inheritdoc />
-	internal override bool CanWrite(Connection connection, DateTimeOffset now)
+	internal override bool CanWrite(Connection connection, UserPermissions permissions)
 	{
-		return CanRead(connection, now);
+		return CanRead(connection, permissions);
 	}
 }

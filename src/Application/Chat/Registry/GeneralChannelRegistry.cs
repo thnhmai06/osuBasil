@@ -49,10 +49,9 @@ public sealed class GeneralChannelRegistry
 	{
 		foreach (var channel in _channels.Values)
 		{
-			var now = channel.Context.Clock.GetUtcNow();
-			if (!channel.IsClosed && channel.CanRead(actor, now) &&
-			    (channel.Record.Value.Visible ||
-			     actor.EffectivePermissions(now).Allows(UserPermissions.ChatManageChannels)))
+			var permissions = actor.EffectivePermissions(channel.Context.Clock.GetUtcNow());
+			if (!channel.IsClosed && channel.CanRead(actor, permissions) &&
+			    (channel.Record.Value.Visible || permissions.Allows(UserPermissions.ChatManageChannels)))
 				yield return channel;
 		}
 	}

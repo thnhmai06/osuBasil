@@ -10,7 +10,7 @@ namespace Basil.ArchitectureTests;
 public sealed partial class ObjectsDoNotDecidePermissionsTests
 {
 	/// <summary>The modules whose objects follow the rule so far; a module joins when its objects are done.</summary>
-	private static readonly string[] Modules = ["Multiplayer"];
+	private static readonly string[] Modules = ["Multiplayer", "Chat"];
 
 	[Fact]
 	public void ObjectsOfTheListedModules_DoNotReadPermissionsOrAnswerWithADenial()

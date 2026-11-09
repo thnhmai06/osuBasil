@@ -47,7 +47,7 @@ public sealed class PmChannels
 
 		var now = _context.Clock.GetUtcNow();
 		foreach (var connection in owner.Connections.Where(connection =>
-			         connection.IsOpen && channel.CanRead(connection, now)))
+			         connection.IsOpen && channel.CanRead(connection, connection.EffectivePermissions(now))))
 			channel.ScopeTo(connection).Join();
 
 		return channel;

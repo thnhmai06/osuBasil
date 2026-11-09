@@ -54,13 +54,13 @@ public abstract class Channel
 
 	/// <summary>Checks whether a connection may read the channel and so join it.</summary>
 	/// <param name="connection">The connection to check.</param>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	internal abstract bool CanRead(Connection connection, DateTimeOffset now);
+	/// <param name="permissions">The effective permissions the connection holds.</param>
+	internal abstract bool CanRead(Connection connection, UserPermissions permissions);
 
 	/// <summary>Checks whether a connection may write to the channel.</summary>
 	/// <param name="connection">The connection to check.</param>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	internal abstract bool CanWrite(Connection connection, DateTimeOffset now);
+	/// <param name="permissions">The effective permissions the connection holds.</param>
+	internal abstract bool CanWrite(Connection connection, UserPermissions permissions);
 
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="actor">The connection acting on this channel.</param>
@@ -93,10 +93,7 @@ public abstract class Channel
 	{
 		var author = posted.Message.Author;
 		var members = Members.ToArray();
-		if (posted.Actor is not { } actor ||
-		    actor.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(UserPermissions.ChatManageMessageAnyone) ||
-		    this is PmChannel)
-			return members;
+		if (posted.Actor is null || posted.BypassesBlocks || this is PmChannel) return members;
 
 		var blockers = new HashSet<UserRecord>();
 		foreach (var user in members.Select(member => member.Record).Where(user => !user.Equals(author)).Distinct())
@@ -116,7 +113,9 @@ public abstract class Channel
 	/// <param name="notice">Whether the message is a notice.</param>
 	/// <param name="now">The time the message was posted.</param>
 	/// <param name="actor">The connection that posted the message, or <see langword="null" /> for the server.</param>
-	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Connection? actor)
+	/// <param name="bypassesBlocks">Whether the message reaches members who block the author.</param>
+	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Connection? actor,
+		bool bypassesBlocks = false)
 	{
 		var truncated = text.Length > MaxMessageLength;
 		var message = new Message
@@ -131,17 +130,18 @@ public abstract class Channel
 		    && !notice)
 			awayReply = new Message { Author = pmChannel.Owner.Record, Content = away, Timestamp = now };
 
-		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, actor));
+		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, actor, bypassesBlocks));
 	}
 
 	/// <summary>Adds a connection to the channel's members.</summary>
 	/// <param name="connection">The connection that joins.</param>
+	/// <param name="permissions">The effective permissions the connection holds.</param>
 	/// <returns>Ok, Closed, AccessDenied or AlreadyMember.</returns>
-	internal ChannelOutcome Join(Connection connection)
+	internal ChannelOutcome Join(Connection connection, UserPermissions permissions)
 	{
 		using var scope = Enter();
 		if (IsClosed) return ChannelOutcome.Closed;
-		if (!CanRead(connection, Context.Clock.GetUtcNow())) return ChannelOutcome.AccessDenied;
+		if (!CanRead(connection, permissions)) return ChannelOutcome.AccessDenied;
 		if (Members.Contains(connection)) return ChannelOutcome.AlreadyMember;
 
 		Connection? replaced = null;
@@ -174,13 +174,17 @@ public abstract class Channel
 
 	/// <summary>Posts a message from a connection to the channel.</summary>
 	/// <param name="actor">The connection that posts.</param>
+	/// <param name="permissions">The effective permissions the poster holds.</param>
+	/// <param name="recipientPermissions">
+	///     The effective permissions of the user who receives a private message; <see langword="null" /> for any
+	///     other channel.
+	/// </param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
-	/// <param name="mayMessageAnyone">Whether the poster may message a private-message recipient who blocks or restricts them.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, Closed, Empty, InvalidText, NotMember, AccessDenied, Blocked or TargetSilenced.</returns>
-	internal async Task<ChannelOutcome> PostAsync(Connection actor, string text, bool notice, bool mayMessageAnyone,
-		CancellationToken cancellationToken)
+	internal async Task<ChannelOutcome> PostAsync(Connection actor, UserPermissions permissions,
+		UserPermissions? recipientPermissions, string text, bool notice, CancellationToken cancellationToken)
 	{
 		if (IsClosed) return ChannelOutcome.Closed;
 		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
@@ -188,20 +192,21 @@ public abstract class Channel
 		if (this is not PmChannel && !Members.Contains(actor)) return ChannelOutcome.NotMember;
 
 		var now = Context.Clock.GetUtcNow();
-		if (!CanWrite(actor, now)) return ChannelOutcome.AccessDenied;
+		if (!CanWrite(actor, permissions)) return ChannelOutcome.AccessDenied;
 
-		if (this is PmChannel pm &&
-		    await PrivateMessageRefusalAsync(pm, actor, mayMessageAnyone, now, cancellationToken) is { } refusal)
+		var mayMessageAnyone = permissions.Allows(UserPermissions.ChatManageMessageAnyone);
+		if (this is PmChannel pm && recipientPermissions is { } recipient &&
+		    await PrivateMessageRefusalAsync(pm, actor, mayMessageAnyone, recipient, cancellationToken) is { } refusal)
 			return refusal;
 
 		if (IsClosed) return ChannelOutcome.Closed;
 
-		PostMessage(actor.Record, text, notice, now, actor);
+		PostMessage(actor.Record, text, notice, now, actor, mayMessageAnyone);
 		return ChannelOutcome.Ok;
 	}
 
 	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, Connection actor,
-		bool mayMessageAnyone, DateTimeOffset now, CancellationToken cancellationToken)
+		bool mayMessageAnyone, UserPermissions recipientPermissions, CancellationToken cancellationToken)
 	{
 		if (!mayMessageAnyone)
 		{
@@ -215,7 +220,7 @@ public abstract class Channel
 		}
 
 		if (!pm.Owner.Record.IsFriendOfEveryone() &&
-		    !pm.Owner.EffectivePermissions(now).Allows(UserPermissions.ChatPostPrivate))
+		    !recipientPermissions.Allows(UserPermissions.ChatPostPrivate))
 			return ChannelOutcome.TargetSilenced;
 
 		return null;

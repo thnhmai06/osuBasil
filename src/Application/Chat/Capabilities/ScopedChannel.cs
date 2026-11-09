@@ -48,7 +48,7 @@ public readonly struct ScopedChannel
 	/// </remarks>
 	public Result<ChannelOutcome> Join()
 	{
-		return Channel.Join(Actor);
+		return Channel.Join(Actor, Rights);
 	}
 
 	/// <summary>Removes the scoped connection from the channel.</summary>
@@ -83,7 +83,9 @@ public readonly struct ScopedChannel
 		if (Require(Channel is PmChannel ? UserPermissions.ChatPostPrivate : UserPermissions.ChatPost) is { } missing)
 			return Result<ChannelOutcome>.Denied(missing);
 
-		return await Channel.PostAsync(Actor, text, notice, Rights.Allows(UserPermissions.ChatManageMessageAnyone),
-			cancellationToken);
+		var recipientPermissions = Channel is PmChannel pm
+			? pm.Owner.EffectivePermissions(Channel.Context.Clock.GetUtcNow())
+			: (UserPermissions?)null;
+		return await Channel.PostAsync(Actor, Rights, recipientPermissions, text, notice, cancellationToken);
 	}
 }

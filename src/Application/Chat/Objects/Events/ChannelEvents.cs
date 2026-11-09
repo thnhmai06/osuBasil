@@ -49,12 +49,14 @@ public abstract record ChannelMessageEvent(Channel Channel) : ChannelEvent(Chann
 /// <param name="Actor">
 ///     The connection that posted the message, or <see langword="null" /> for a message the server itself said.
 /// </param>
+/// <param name="BypassesBlocks">Whether the message reaches members who block its author.</param>
 public sealed record ChannelMessagePosted(
 	Channel Channel,
 	Message Message,
 	bool Truncated,
 	Message? AwayReply,
-	Connection? Actor = null)
+	Connection? Actor = null,
+	bool BypassesBlocks = false)
 	: ChannelMessageEvent(Channel);
 
 /// <summary>A general channel's settings changed.</summary>
