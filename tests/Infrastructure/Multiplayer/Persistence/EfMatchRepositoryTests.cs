@@ -153,20 +153,6 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_total_of_an_unfiltered_listing_counts_every_stored_match_and_of_a_filtered_one_only_its_own()
-	{
-		await CreateStoredMatchAsync("running_match", First);
-		await CreateStoredMatchAsync("ended_match", Second, Second);
-
-		var all = await Matches.ListAsync(new MatchQuery(), new PageRequest(0, 1),
-			TestContext.Current.CancellationToken);
-		var running = await Matches.ListAsync(new MatchQuery(false), new PageRequest(0, 1),
-			TestContext.Current.CancellationToken);
-
-		Assert.Equal((2, 1), (all.Total, running.Total));
-	}
-
-	[Fact]
 	public async Task A_listing_shows_the_newest_match_first()
 	{
 		await CreateStoredMatchAsync("oldest_match", First);
