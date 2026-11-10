@@ -22,11 +22,11 @@ public sealed class SessionTests(RestHostFixture fixture)
 		using (client)
 		{
 			var (_, session) = await client.CallAsync(HttpMethod.Get, "/v1/auth/session");
-			var sid = (string)session!["data"]!["sessionId"]!;
+			var sid = (long)session!["data"]!["sessionId"]!;
 
 			var (own, view) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}/sessions/{sid}");
 			var (foreign, _) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{other.Id}/sessions/{sid}");
-			var (unknown, _) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}/sessions/{Guid.NewGuid()}");
+			var (unknown, _) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}/sessions/{long.MaxValue}");
 
 			Assert.Equal(200, own);
 			Assert.Equal("api", (string)view!["data"]!["type"]!);
@@ -83,7 +83,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 		{
 			var (_, session) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
 			var (one, _) = await first.CallAsync(HttpMethod.Delete,
-				$"/v1/users/{id}/sessions/{(string)session!["data"]!["sessionId"]!}");
+				$"/v1/users/{id}/sessions/{(long)session!["data"]!["sessionId"]!}");
 			var (secondGone, _) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
 			var (byStaff, _) = await staff.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions");
 			var (firstGone, _) = await first.CallAsync(HttpMethod.Get, "/v1/auth/session");

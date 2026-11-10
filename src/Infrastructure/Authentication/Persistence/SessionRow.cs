@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Authentication.Persistence;
 /// <summary>A stored row of the <c>sessions</c> table.</summary>
 internal sealed class SessionRow
 {
-	public Guid Id { get; set; }
+	public long Id { get; set; }
 	public int UserId { get; set; }
 	public SessionType Type { get; set; }
 	public IPAddress Ip { get; set; } = IPAddress.None;
@@ -18,7 +18,7 @@ internal sealed class SessionRow
 	public DateTimeOffset LastActiveAt { get; set; }
 	public DateTimeOffset? EndedAt { get; set; }
 	public SessionEndReason? EndReason { get; set; }
-	public byte[]? TokenHash { get; set; }
+	public byte[] TokenHash { get; set; } = [];
 	public DateTimeOffset? ExpiresAt { get; set; }
 	public string? ClientDate { get; set; }
 	public int? ClientRevision { get; set; }
@@ -39,7 +39,7 @@ internal sealed class SessionRowConfiguration : IEntityTypeConfiguration<Session
 		builder.Property(row => row.Id).ValueGeneratedNever();
 		builder.Property(row => row.Ip).HasConversion<string>().HasMaxLength(45);
 		builder.HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId");
-		builder.Property(row => row.TokenHash).HasMaxLength(64);
+		builder.Property(row => row.TokenHash).HasMaxLength(32);
 		builder.HasIndex(row => row.TokenHash).IsUnique();
 		builder.HasIndex(row => new { row.UserId, row.StartedAt }).IsDescending(false, true);
 	}

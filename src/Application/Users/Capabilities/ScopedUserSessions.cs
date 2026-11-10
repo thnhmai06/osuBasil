@@ -39,7 +39,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log. A session that
 	///     does not belong to this account is not found.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, SessionRecord? Session)> GetAsync(Guid id,
+	public async Task<(Result<UserOutcome> Result, SessionRecord? Session)> GetAsync(long id,
 		CancellationToken cancellationToken = default)
 	{
 		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
@@ -58,7 +58,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     osu! client is disconnected but can sign in again with its password. Closing another account's session needs
 	///     <see cref="UserPermissions.UserManage" /> and hierarchy.
 	/// </remarks>
-	public async Task<Result<UserOutcome>> CloseAsync(Guid id, CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> CloseAsync(long id, CancellationToken cancellationToken = default)
 	{
 		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
 		return await scoped.User.Sessions.CloseAsync(id, cancellationToken);

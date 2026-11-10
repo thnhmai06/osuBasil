@@ -14,7 +14,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	// UTC ticks, written and read atomically: a connection and the activity flush touch them from different threads.
 	private const long None = long.MinValue;
 	private SessionEnd? _end;
-	private long _expiresTicks = login.Value.Credential.ExpiresAt?.UtcTicks ?? None;
+	private long _expiresTicks = login.Value.ExpiresAt?.UtcTicks ?? None;
 	private long _lastActiveTicks = login.Value.LastActiveAt.UtcTicks;
 
 	/// <summary>Gets the online user this connection belongs to.</summary>
@@ -48,7 +48,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	public bool IsServerOwned => Record.IsBasilBot();
 
 	/// <summary>Gets the user who owns this connection.</summary>
-	public UserRecord Record => Session.User;
+	public UserRecord Record => Session.Value.User;
 
 	/// <inheritdoc />
 	public virtual UserPermissions EffectivePermissions(DateTimeOffset now)
@@ -61,13 +61,16 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	public SessionRecord Snapshot()
 	{
 		var value = Session.Value;
-		return new SessionRecord(Session.Id, Session.User, Session.Type, Session.StartedAt,
-			value with
+		return new SessionRecord
+		{
+			Id = Session.Id,
+			Value = value with
 			{
-				Credential = value.Credential with { ExpiresAt = ExpiresAt },
+				ExpiresAt = ExpiresAt,
 				LastActiveAt = LastActiveAt,
 				End = End
-			});
+			}
+		};
 	}
 
 	/// <summary>Records activity on this connection's session.</summary>

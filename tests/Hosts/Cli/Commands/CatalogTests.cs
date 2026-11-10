@@ -107,9 +107,9 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void A_session_id_must_be_a_guid()
+	public void A_session_id_must_be_a_number()
 	{
-		Assert.NotNull(Catalog.Parse(["users", "1", "sessions", Guid.NewGuid().ToString()]).Parsed);
+		Assert.NotNull(Catalog.Parse(["users", "1", "sessions", "12345"]).Parsed);
 		Assert.Null(Catalog.Parse(["users", "1", "sessions", "x"]).Parsed);
 	}
 

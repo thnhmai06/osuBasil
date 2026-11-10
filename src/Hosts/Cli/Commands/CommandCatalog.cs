@@ -181,7 +181,7 @@ public sealed class CommandCatalog
 				var fits = type switch
 				{
 					"int" => int.TryParse(words[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out _),
-					"guid" => Guid.TryParse(words[i], out _),
+					"long" => long.TryParse(words[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out _),
 					_ => true
 				};
 				if (!fits) return 0;

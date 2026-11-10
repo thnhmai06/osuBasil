@@ -65,7 +65,7 @@ public sealed class UserCredentials
 		await ReplaceAsync(newPasswordHash, cancellationToken);
 		if (unchanged) return UserOutcome.Ok;
 
-		var keep = isSelf && !includeCurrent && actor is ApiConnection api ? api.Session.Id : (Guid?)null;
+		var keep = isSelf && !includeCurrent && actor is ApiConnection api ? api.Session.Id : (long?)null;
 		await _user.Sessions.CloseAsync(null, keep, SessionEndReason.CredentialsChanged, cancellationToken);
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationData

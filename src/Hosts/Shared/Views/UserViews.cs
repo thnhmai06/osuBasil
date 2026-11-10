@@ -49,7 +49,7 @@ public sealed record RestrictionView(int Id, ulong Permissions, DateTimeOffset S
 
 /// <summary>A session as the API shows it.</summary>
 public sealed record SessionView(
-	Guid Id,
+	long Id,
 	SessionType Type,
 	string Ip,
 	string? ClientInfo,
@@ -61,8 +61,9 @@ public sealed record SessionView(
 	/// <summary>Describes a session.</summary>
 	public static SessionView Of(SessionRecord s)
 	{
-		var (device, _, lastActiveAt, end) = s.Value;
-		return new SessionView(s.Id, s.Type, device.Ip.ToString(), device.ClientInfo, s.StartedAt, lastActiveAt,
-			end?.At, end?.Reason);
+		var data = s.Value;
+		var device = data.Fingerprint;
+		return new SessionView(s.Id, data.Type, device.Ip.ToString(), device.ClientInfo, data.StartedAt,
+			data.LastActiveAt, data.End?.At, data.End?.Reason);
 	}
 }

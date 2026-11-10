@@ -31,7 +31,7 @@ internal static class AuthRoutes
 			{
 				var connection = context.Connection();
 				var session = connection.Session;
-				return Api.Ok(new SessionView(session.Id, session.User.Id, session.StartedAt, connection.ExpiresAt));
+				return Api.Ok(new SessionView(session.Id, session.Value.User.Id, session.Value.StartedAt, connection.ExpiresAt));
 			}).RequireToken()
 			.WithSummary("Retrieve the current session, which names the signed-in user.");
 	}
@@ -66,7 +66,7 @@ internal static class AuthRoutes
 		}
 
 		var session = connection.Session;
-		return Api.Created(new LoginResponse(connection.Token, session.User.Id, session.Id, connection.ExpiresAt),
+		return Api.Created(new LoginResponse(connection.Token, session.Value.User.Id, session.Id, connection.ExpiresAt),
 			"Signed in");
 	}
 
@@ -82,8 +82,8 @@ internal static class AuthRoutes
 	public sealed record LoginRequest(string? Username, string? Password);
 
 	/// <summary>The answer to a sign-in: the token is shown only here.</summary>
-	public sealed record LoginResponse(string Token, int UserId, Guid SessionId, DateTimeOffset? ExpiresAt);
+	public sealed record LoginResponse(string Token, int UserId, long SessionId, DateTimeOffset? ExpiresAt);
 
 	/// <summary>The session of the calling token.</summary>
-	public sealed record SessionView(Guid SessionId, int UserId, DateTimeOffset StartedAt, DateTimeOffset? ExpiresAt);
+	public sealed record SessionView(long SessionId, int UserId, DateTimeOffset StartedAt, DateTimeOffset? ExpiresAt);
 }

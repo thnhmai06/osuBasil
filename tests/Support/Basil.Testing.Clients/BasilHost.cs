@@ -38,7 +38,7 @@ public sealed class BasilHost : IAsyncDisposable
 
 	private readonly PersistenceFixture _database;
 	private readonly string _databaseName = "basil-host-" + Guid.NewGuid().ToString("N");
-	private readonly Dictionary<string, Guid> _keySessions = [];
+	private readonly Dictionary<string, long> _keySessions = [];
 	private readonly string _root = Path.Combine(Path.GetTempPath(), "basil-host-" + Guid.NewGuid().ToString("N"));
 	private WebApplication? _app;
 	private bool _stopped;

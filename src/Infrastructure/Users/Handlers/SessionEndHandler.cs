@@ -20,14 +20,14 @@ internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<Ses
 		var session = @event.Connection.Snapshot();
 		try
 		{
-			await sessions.UpdateAsync(session, cancellationToken);
+			await sessions.CreateOrUpdateAsync(session, cancellationToken);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !cancellationToken.IsCancellationRequested)
 		{
 			UpdateFailures.Add(1);
 			logger.LogError(exception, "Could not store the closing of session {SessionId} of user {UserId}",
-				session.Id, session.User.Id);
+				session.Id, session.Value.User.Id);
 		}
 	}
 }

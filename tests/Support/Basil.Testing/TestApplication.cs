@@ -257,7 +257,7 @@ public sealed class TestApplication : IDisposable
 
 	/// <summary>Drops a session from the store while its client stays online, as before its record is written.</summary>
 	/// <param name="id">The session.</param>
-	public void ForgetStoredSession(Guid id)
+	public void ForgetStoredSession(long id)
 	{
 		_sessions.Forget(id);
 	}
@@ -265,7 +265,7 @@ public sealed class TestApplication : IDisposable
 	/// <summary>Reads the stored expiry of a session's token.</summary>
 	/// <param name="id">The session.</param>
 	/// <returns>When the token expires, or <see langword="null" /> if it has no expiry.</returns>
-	public DateTimeOffset? TokenExpiryOf(Guid id)
+	public DateTimeOffset? TokenExpiryOf(long id)
 	{
 		return _sessions.ExpiryOf(id);
 	}
@@ -381,15 +381,20 @@ public sealed class TestApplication : IDisposable
 		return _settings.CreateOrUpdateAsync(settings);
 	}
 
+	private static long _sessionIds = 1_000_000;
+
 	private async Task<LoginResult> OpenIrcAsync(string username)
 	{
 		if (await _users.GetByNameAsync(username) is not { } record) return LoginResult.Fail(LoginFailure.UnknownUser);
 
 		var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 		var now = Clock.GetUtcNow();
-		await _sessions.RecordAsync(new SessionRecord(Guid.NewGuid(), record, SessionType.Irc, now,
-			new SessionData(new SessionFingerprint(IPAddress.Loopback),
-				new SessionCredential(new Sha256(Encoding.UTF8.GetBytes(key))), now)));
+		await _sessions.CreateOrUpdateAsync(new SessionRecord
+		{
+			Id = Interlocked.Increment(ref _sessionIds),
+			Value = new SessionData(record, SessionType.Irc, now, new SessionFingerprint(IPAddress.Loopback),
+				new Sha256(Encoding.UTF8.GetBytes(key)), null, now)
+		});
 		return await Users.LoginWithTokenAsync(SessionType.Irc, key, IPAddress.Loopback);
 	}
 

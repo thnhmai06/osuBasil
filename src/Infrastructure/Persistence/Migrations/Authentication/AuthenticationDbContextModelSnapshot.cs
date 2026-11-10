@@ -37,7 +37,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.SessionRow).FullName!, b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<long>("Id")
                         .HasColumnName("id");
 
                     b.Property<string>("ClientDate")
@@ -85,7 +85,8 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                         .HasColumnName("started_at");
 
                     b.Property<byte[]>("TokenHash")
-                        .HasMaxLength(64)
+                        .IsRequired()
+                        .HasMaxLength(32)
                         .HasColumnName("token_hash");
 
                     b.Property<byte>("Type")

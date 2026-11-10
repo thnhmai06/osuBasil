@@ -215,78 +215,68 @@ internal sealed class InMemoryRestrictionRepository(InMemoryModerationLogReposit
 internal sealed class InMemorySessionRepository : ISessionRepository
 {
 	private readonly List<SessionRecord> _entries = [];
-	private readonly Dictionary<Guid, (Sha256? Hash, DateTimeOffset? ExpiresAt)> _tokens = [];
 
 	public IReadOnlyList<SessionRecord> Entries => _entries;
 
 	/// <summary>Gets or sets the failure the next recordings throw, or <see langword="null" /> to accept them.</summary>
 	public Exception? RecordFailure { get; set; }
 
-	public Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		if (RecordFailure is { } failure) throw failure;
-		_entries.Add(login);
-		_tokens[login.Id] = (login.Value.Credential.TokenHash, login.Value.Credential.ExpiresAt);
-		return Task.CompletedTask;
-	}
-
-	public Task UpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		var index = _entries.FindIndex(entry => entry.Id == session.Id);
 		if (index >= 0)
 		{
 			_entries[index] = session;
-			_tokens[session.Id] = (session.Value.Credential.TokenHash, session.Value.Credential.ExpiresAt);
+			return Task.CompletedTask;
 		}
 
+		if (RecordFailure is { } failure) throw failure;
+		_entries.Add(session);
 		return Task.CompletedTask;
 	}
 
-	public ValueTask<Page<SessionRecord>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
+	public ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		var entries = _entries.Where(entry => entry.User.Equals(user) &&
-		                                      (filter.Types is null || filter.Types.Contains(entry.Type)) &&
-		                                      filter.State switch
+		var entries = _entries.Where(entry => entry.Value.User.Equals(query.User) &&
+		                                      (query.Types is null || query.Types.Contains(entry.Value.Type)) &&
+		                                      query.State switch
 		                                      {
-			                                      SessionState.Active => IsActive(entry, filter.Now),
-			                                      SessionState.Ended => !IsActive(entry, filter.Now),
+			                                      SessionState.Active => IsActive(entry, query.Now),
+			                                      SessionState.Ended => !IsActive(entry, query.Now),
 			                                      _ => true
 		                                      }).Reverse().ToList();
 		return ValueTask.FromResult(new Page<SessionRecord>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
 			page.Offset + page.Limit < entries.Count));
 	}
 
-	public Task<SessionRecord?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
+	public Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult(_entries.FirstOrDefault(entry => entry.Id == id && entry.User.Equals(user)));
+		return Task.FromResult(_entries.FirstOrDefault(entry => entry.Id == id && entry.Value.User.Equals(user)));
 	}
 
 	public Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
 		CancellationToken cancellationToken = default)
 	{
-		var found = _entries.FirstOrDefault(entry => entry.Type == type && entry.Value.End is null &&
-		                                             _tokens.GetValueOrDefault(entry.Id) is { Hash: { } hash } token &&
-		                                             hash == tokenHash &&
-		                                             (token.ExpiresAt is null || token.ExpiresAt > now));
+		var found = _entries.FirstOrDefault(entry => entry.Value.Type == type && entry.Value.End is null &&
+		                                             entry.Value.TokenHash == tokenHash &&
+		                                             (entry.Value.ExpiresAt is null || entry.Value.ExpiresAt > now));
 		return Task.FromResult(found is null
 			? null
-			: new StoredSession(found.Id, found.User.Id, found.Type, found.Value.Fingerprint.Ip,
-				found.Value.Fingerprint.ClientInfo, found.StartedAt,
-				_tokens[found.Id].ExpiresAt));
+			: new StoredSession(found.Id, found.Value.User.Id, found.Value.Type, found.Value.Fingerprint.Ip,
+				found.Value.Fingerprint.ClientInfo, found.Value.StartedAt, found.Value.ExpiresAt));
 	}
 
-	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types,
+	public Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types,
 		DateTimeOffset at, SessionEndReason reason, CancellationToken cancellationToken = default)
 	{
 		for (var index = 0; index < _entries.Count; index++)
 		{
 			var entry = _entries[index];
-			if (!entry.User.Equals(user) || !types.Contains(entry.Type) || (only is not null && entry.Id != only) ||
-			    entry.Id == except)
+			if (!entry.Value.User.Equals(user) || !types.Contains(entry.Value.Type) ||
+			    (only is not null && entry.Id != only) || entry.Id == except)
 				continue;
 
 			_entries[index] = With(entry, data => data with { End = data.End ?? new SessionEnd(at, reason) });
@@ -303,8 +293,8 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 			var index = _entries.FindIndex(entry => entry.Id == item.Id && entry.Value.End is null);
 			if (index < 0) continue;
 
-			_entries[index] = With(_entries[index], data => data with { LastActiveAt = item.LastActiveAt });
-			_tokens[item.Id] = (_tokens[item.Id].Hash, item.ExpiresAt);
+			_entries[index] = With(_entries[index],
+				data => data with { LastActiveAt = item.LastActiveAt, ExpiresAt = item.ExpiresAt });
 		}
 
 		return Task.CompletedTask;
@@ -313,34 +303,32 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
 	{
 		var deleted = _entries.RemoveAll(entry => entry.Value.End?.At < cutoff ||
-		                                          (entry.Value.End is null &&
-		                                           _tokens.GetValueOrDefault(entry.Id).ExpiresAt < cutoff));
+		                                          (entry.Value.End is null && entry.Value.ExpiresAt < cutoff));
 		return Task.FromResult(deleted);
 	}
 
 	/// <summary>Drops a stored session, as if its record had not reached the store yet.</summary>
-	public void Forget(Guid id)
+	public void Forget(long id)
 	{
 		_entries.RemoveAll(entry => entry.Id == id);
-		_tokens.Remove(id);
 	}
 
 	/// <summary>Reads the stored expiry of a session's token.</summary>
 	/// <param name="id">The session.</param>
 	/// <returns>When the token expires, or <see langword="null" /> if it has no expiry.</returns>
-	public DateTimeOffset? ExpiryOf(Guid id)
+	public DateTimeOffset? ExpiryOf(long id)
 	{
-		return _tokens.GetValueOrDefault(id).ExpiresAt;
+		return _entries.FirstOrDefault(entry => entry.Id == id)?.Value.ExpiresAt;
 	}
 
-	private bool IsActive(SessionRecord entry, DateTimeOffset now)
+	private static bool IsActive(SessionRecord entry, DateTimeOffset now)
 	{
-		return entry.Value.End is null && (ExpiryOf(entry.Id) is not { } expiresAt || expiresAt > now);
+		return entry.Value.End is null && (entry.Value.ExpiresAt is not { } expiresAt || expiresAt > now);
 	}
 
 	private static SessionRecord With(SessionRecord session, Func<SessionData, SessionData> change)
 	{
-		return new SessionRecord(session.Id, session.User, session.Type, session.StartedAt, change(session.Value));
+		return new SessionRecord { Id = session.Id, Value = change(session.Value) };
 	}
 }
 

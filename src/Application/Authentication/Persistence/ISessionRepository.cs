@@ -20,10 +20,12 @@ public enum SessionState : byte
 }
 
 /// <summary>Selects the sessions of a user a listing includes.</summary>
+/// <param name="User">The user whose sessions to list.</param>
 /// <param name="State">Whether to include active sessions, ended sessions, or both.</param>
 /// <param name="Types">The kinds of session to include, or <see langword="null" /> for every kind.</param>
 /// <param name="Now">The moment that decides whether a session has expired.</param>
-public sealed record SessionFilter(SessionState State, IReadOnlyList<SessionType>? Types, DateTimeOffset Now);
+public sealed record SessionQuery(UserRecord User, SessionState State, IReadOnlyList<SessionType>? Types,
+	DateTimeOffset Now);
 
 /// <summary>A session found by the token or key that opens it.</summary>
 /// <param name="Id">The session's public identifier.</param>
@@ -34,7 +36,7 @@ public sealed record SessionFilter(SessionState State, IReadOnlyList<SessionType
 /// <param name="StartedAt">When the session started.</param>
 /// <param name="ExpiresAt">When the token expires, or <see langword="null" /> if it never does.</param>
 public sealed record StoredSession(
-	Guid Id,
+	long Id,
 	int UserId,
 	SessionType Type,
 	IPAddress Ip,
@@ -46,7 +48,7 @@ public sealed record StoredSession(
 /// <param name="Id">The session's public identifier.</param>
 /// <param name="LastActiveAt">When the session was last used.</param>
 /// <param name="ExpiresAt">The new expiry of the session's token, or <see langword="null" /> if it has none.</param>
-public sealed record SessionActivity(Guid Id, DateTimeOffset LastActiveAt, DateTimeOffset? ExpiresAt);
+public sealed record SessionActivity(long Id, DateTimeOffset LastActiveAt, DateTimeOffset? ExpiresAt);
 
 /// <summary>Stores the sessions of users: their history, and the tokens and keys that open them.</summary>
 /// <remarks>
@@ -55,23 +57,17 @@ public sealed record SessionActivity(Guid Id, DateTimeOffset LastActiveAt, DateT
 /// </remarks>
 public interface ISessionRepository
 {
-	/// <summary>Records a new session.</summary>
-	/// <param name="login">The session to record.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default);
-
-	/// <summary>Updates the stored state of a session.</summary>
+	/// <summary>Stores a session: records it when it is new, and replaces its stored state when it is already there.</summary>
 	/// <param name="session">The session as it stands now, with its activity and end.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task UpdateAsync(SessionRecord session, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(SessionRecord session, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the sessions of a user, newest first.</summary>
-	/// <param name="user">The user whose sessions to list.</param>
-	/// <param name="filter">Which sessions to include.</param>
+	/// <param name="query">Whose sessions to list and which of them to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>One part of the user's sessions, newest first, with how many sessions match in total.</returns>
-	ValueTask<Page<SessionRecord>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
+	ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Gets one session of a user.</summary>
@@ -79,7 +75,7 @@ public interface ISessionRepository
 	/// <param name="id">The session's public identifier.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The session, or <see langword="null" /> when the user has no session with that id.</returns>
-	Task<SessionRecord?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default);
+	Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken cancellationToken = default);
 
 	/// <summary>Finds the session a token or key opens.</summary>
 	/// <param name="type">The kind of session the token or key is for.</param>
@@ -98,7 +94,7 @@ public interface ISessionRepository
 	/// <param name="at">When the sessions end.</param>
 	/// <param name="reason">Why the sessions end.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types, DateTimeOffset at,
+	Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types, DateTimeOffset at,
 		SessionEndReason reason, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores the latest activity of several sessions at once.</summary>

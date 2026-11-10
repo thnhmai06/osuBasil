@@ -60,7 +60,7 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 		var (_, sessions) = await rest.CallAsync(HttpMethod.Get, $"/v1/users/{playerId}/sessions?state=online");
 		var osuSession = sessions!["data"]!.AsArray().Single(session => (string)session!["type"]! == "stable");
 		var (closed, _) = await rest.CallAsync(HttpMethod.Delete,
-			$"/v1/users/{playerId}/sessions/{(Guid)osuSession!["id"]!}");
+			$"/v1/users/{playerId}/sessions/{(long)osuSession!["id"]!}");
 
 		await player.LoginAsync();
 

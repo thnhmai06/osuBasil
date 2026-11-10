@@ -200,7 +200,8 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 				var type = CommandDef.ParameterOf(pattern[i]).Type;
 				if (type == "int" && !int.TryParse(words[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
 					return false;
-				if (type == "guid" && !Guid.TryParse(words[i], out _)) return false;
+				if (type == "long" && !long.TryParse(words[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+					return false;
 			}
 			else if (!pattern[i].Equals(words[i], StringComparison.OrdinalIgnoreCase))
 			{

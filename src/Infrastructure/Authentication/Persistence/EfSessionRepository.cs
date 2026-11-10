@@ -15,44 +15,37 @@ namespace Basil.Infrastructure.Authentication.Persistence;
 internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRepository
 {
 	/// <inheritdoc />
-	public Task RecordAsync(SessionRecord login, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
 	{
-		var row = ToRow(login);
-
-		return database.WriteAsync((AuthenticationDbContext context, CancellationToken _) =>
+		var row = ToRow(session);
+		return database.WriteAsync(async (AuthenticationDbContext context, CancellationToken token) =>
 		{
-			context.Sessions.Add(row);
-			return Task.CompletedTask;
+			var stored = await context.Sessions.AsTracking().FirstOrDefaultAsync(item => item.Id == row.Id, token);
+			if (stored is null) context.Sessions.Add(row);
+			else context.Entry(stored).CurrentValues.SetValues(row);
 		}, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
-	{
-		var row = ToRow(session);
-		return database.WriteAsync((AuthenticationDbContext context, CancellationToken token) =>
-			context.ReplaceAsync(row, item => item.Id == row.Id, token), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public async ValueTask<Page<SessionRecord>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
+	public async ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var types = filter.Types;
-		var now = filter.Now.ToUniversalTime();
+		var user = query.User;
+		var types = query.Types;
+		var now = query.Now.ToUniversalTime();
 		var fetched = await database.ReadAsync(async (AuthenticationDbContext context) =>
 		{
-			var query = context.Sessions.Where(row => row.UserId == user.Id);
-			if (types is not null) query = query.Where(row => types.Contains(row.Type));
-			query = filter.State switch
+			var sessions = context.Sessions.Where(row => row.UserId == user.Id);
+			if (types is not null) sessions = sessions.Where(row => types.Contains(row.Type));
+			sessions = query.State switch
 			{
-				SessionState.Active => query.Where(row =>
+				SessionState.Active => sessions.Where(row =>
 					row.EndedAt == null && (row.ExpiresAt == null || row.ExpiresAt > now)),
-				SessionState.Ended => query.Where(row =>
+				SessionState.Ended => sessions.Where(row =>
 					row.EndedAt != null || (row.ExpiresAt != null && row.ExpiresAt <= now)),
-				_ => query
+				_ => sessions
 			};
-			return await query
+			return await sessions
 				.OrderByDescending(row => row.StartedAt)
 				.ThenByDescending(row => row.Id)
 				.Skip(page.Offset)
@@ -65,7 +58,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	}
 
 	/// <inheritdoc />
-	public async Task<SessionRecord?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
+	public async Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken cancellationToken = default)
 	{
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken),
@@ -89,7 +82,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	}
 
 	/// <inheritdoc />
-	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types,
+	public Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types,
 		DateTimeOffset at, SessionEndReason reason, CancellationToken cancellationToken = default)
 	{
 		var end = at.ToUniversalTime();
@@ -139,10 +132,13 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	private static SessionRecord ToRecord(SessionRow row, UserRecord user)
 	{
 		var end = row.EndedAt is { } at ? new SessionEnd(at, row.EndReason!.Value) : null;
-		return new SessionRecord(row.Id, user, row.Type, row.StartedAt,
-			new SessionData(new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
-				new SessionCredential(row.TokenHash is { } hash ? new Sha256(Convert.ToHexStringLower(hash)) : null, row.ExpiresAt),
-				row.LastActiveAt, end));
+		return new SessionRecord
+		{
+			Id = row.Id,
+			Value = new SessionData(user, row.Type, row.StartedAt,
+				new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
+				new Sha256(Convert.ToHexStringLower(row.TokenHash)), row.ExpiresAt, row.LastActiveAt, end)
+		};
 	}
 
 	private static OsuClient? ToClient(SessionRow row)
@@ -160,21 +156,22 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 	private static SessionRow ToRow(SessionRecord session)
 	{
-		var (device, credential, lastActiveAt, end) = session.Value;
+		var data = session.Value;
+		var device = data.Fingerprint;
 		var client = device.Client;
 		return new SessionRow
 		{
 			Id = session.Id,
-			UserId = session.User.Id,
-			Type = session.Type,
+			UserId = data.User.Id,
+			Type = data.Type,
 			Ip = device.Ip,
 			ClientInfo = device.ClientInfo,
-			StartedAt = session.StartedAt.ToUniversalTime(),
-			LastActiveAt = lastActiveAt.ToUniversalTime(),
-			EndedAt = end?.At.ToUniversalTime(),
-			EndReason = end?.Reason,
-			TokenHash = credential.TokenHash is { } hash ? Convert.FromHexString(hash.HashValue) : null,
-			ExpiresAt = credential.ExpiresAt?.ToUniversalTime(),
+			StartedAt = data.StartedAt.ToUniversalTime(),
+			LastActiveAt = data.LastActiveAt.ToUniversalTime(),
+			EndedAt = data.End?.At.ToUniversalTime(),
+			EndReason = data.End?.Reason,
+			TokenHash = Convert.FromHexString(data.TokenHash.HashValue),
+			ExpiresAt = data.ExpiresAt?.ToUniversalTime(),
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
 			ClientRevision = client?.Version.Revision,
 			ClientStream = client is null ? null : (int?)client.Version.Stream,

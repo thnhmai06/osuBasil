@@ -1,3 +1,4 @@
+using System.Globalization;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Users.Messages;
@@ -122,12 +123,12 @@ internal static class UserCommands
 		};
 		yield return new CommandDef
 		{
-			Pattern = "users <id:int> sessions <sid:guid>", Route = "GET /v1/users/{id}/sessions/{sid}", Offline = true,
+			Pattern = "users <id:int> sessions <sid:long>", Route = "GET /v1/users/{id}/sessions/{sid}", Offline = true,
 			Summary = "Shows one session.", Run = SessionAsync
 		};
 		yield return new CommandDef
 		{
-			Pattern = "users <id:int> sessions <sid:guid> delete", Route = "DELETE /v1/users/{id}/sessions/{sid}",
+			Pattern = "users <id:int> sessions <sid:long> delete", Route = "DELETE /v1/users/{id}/sessions/{sid}",
 			Offline = true, Summary = "Closes one session.", Run = CloseSessionAsync
 		};
 		yield return new CommandDef
@@ -360,7 +361,7 @@ internal static class UserCommands
 		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
 		var (result, session) = await call.Get<ISender>()
-			.Send(new GetUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))),
+			.Send(new GetUserSession(await call.ByAsync(), target, long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
 				call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
@@ -374,7 +375,7 @@ internal static class UserCommands
 			? call.NotFound(NoUser)
 			: call.Report(
 				await call.Get<ISender>()
-					.Send(new CloseUserSession(await call.ByAsync(), target, Guid.Parse(call.Word("sid"))),
+					.Send(new CloseUserSession(await call.ByAsync(), target, long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
 						call.CancellationToken),
 				"Session closed.");
 	}

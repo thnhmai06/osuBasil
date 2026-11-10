@@ -128,7 +128,7 @@ public sealed class ConnectionTests
 		var connection = await app.LoginAsync(user);
 		var session = connection.Session;
 
-		Assert.Equal(new Sha256(Encoding.UTF8.GetBytes(connection.Token)), session.Value.Credential.TokenHash);
+		Assert.Equal(new Sha256(Encoding.UTF8.GetBytes(connection.Token)), session.Value.TokenHash);
 		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), connection.ExpiresAt);
 
 		app.Clock.Advance(TimeSpan.FromDays(1));

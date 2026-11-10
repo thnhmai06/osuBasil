@@ -29,7 +29,7 @@ public sealed class UserRegistry
 		new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
 
 	private readonly IAccountRules _accounts;
-	private readonly ConcurrentDictionary<Guid, Connection> _activity = new();
+	private readonly ConcurrentDictionary<long, Connection> _activity = new();
 	private readonly ConnectionContext _connectionContext;
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
@@ -140,7 +140,7 @@ public sealed class UserRegistry
 
 		try
 		{
-			await _context.Sessions.RecordAsync(session, cancellationToken);
+			await _context.Sessions.CreateOrUpdateAsync(session, cancellationToken);
 		}
 		catch
 		{
@@ -167,11 +167,14 @@ public sealed class UserRegistry
 	private static SessionRecord NewLoginSession(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
 		DateTimeOffset now, TimeSpan lifetime, string token)
 	{
-		var credential = type is SessionType.Api
-			? new SessionCredential(HashToken(token), now + lifetime)
-			: new SessionCredential();
-		return new SessionRecord(Guid.NewGuid(), record, type, now,
-			new SessionData(new SessionFingerprint(ip, client), credential, now));
+		// Only an API token expires; an osu! session lasts as long as its connection.
+		DateTimeOffset? expiresAt = type is SessionType.Api ? now + lifetime : null;
+		return new SessionRecord
+		{
+			Id = NewSessionId(),
+			Value = new SessionData(record, type, now, new SessionFingerprint(ip, client), HashToken(token), expiresAt,
+				now)
+		};
 	}
 
 	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
@@ -244,9 +247,13 @@ public sealed class UserRegistry
 	private static SessionRecord ResumedSession(StoredSession stored, UserRecord record, SessionType type, IPAddress ip,
 		string token)
 	{
-		return new SessionRecord(stored.Id, record, type, stored.StartedAt,
-			new SessionData(new SessionFingerprint(ip, ClientInfo: stored.ClientInfo),
-				new SessionCredential(HashToken(token), stored.ExpiresAt), stored.StartedAt));
+		return new SessionRecord
+		{
+			Id = stored.Id,
+			Value = new SessionData(record, type, stored.StartedAt,
+				new SessionFingerprint(ip, ClientInfo: stored.ClientInfo), HashToken(token), stored.ExpiresAt,
+				stored.StartedAt)
+		};
 	}
 
 	private LoginResult? OpenUnlessRaced(string token, Connection connection,
@@ -266,7 +273,7 @@ public sealed class UserRegistry
 
 	private Connection NewConnection(SessionRecord session, string token, int utcOffset, TimeSpan lifetime)
 	{
-		return session.Type switch
+		return session.Value.Type switch
 		{
 			SessionType.Stable => new StableConnection(session, token, utcOffset, _connectionContext),
 			SessionType.StableTourney => new TourneyConnection(session, token),
@@ -328,7 +335,7 @@ public sealed class UserRegistry
 	public void Close(Connection connection, SessionEndReason reason)
 	{
 		if (reason is SessionEndReason.LoggedOut && connection is StableConnection &&
-		    _context.Clock.GetUtcNow() - connection.Session.StartedAt < IgnoreLogoutWithin)
+		    _context.Clock.GetUtcNow() - connection.Session.Value.StartedAt < IgnoreLogoutWithin)
 			return;
 
 		using var scope = Enter();
@@ -345,8 +352,7 @@ public sealed class UserRegistry
 			var now = _context.Clock.GetUtcNow();
 			connection.MarkActive(now);
 			if (connection is ApiConnection api) api.ExtendExpiry(now, api.TokenLifetime);
-			if (connection.Session.Value.Credential.TokenHash is not null)
-				_activity[connection.Session.Id] = connection;
+			if (OutlivesConnection(connection)) _activity[connection.Session.Id] = connection;
 		}
 	}
 
@@ -427,8 +433,9 @@ public sealed class UserRegistry
 	{
 		var bot = await _context.Users.GetAsync(BasilBot.Id, cancellationToken) ??
 		          await EnsureBotAsync(cancellationToken);
-		var login = NewServerSession(bot, SessionType.Api);
-		return new OperatorConnection(login, NewToken()) { User = Of(bot), IsOpen = true };
+		var token = NewToken();
+		var login = NewServerSession(bot, SessionType.Api, token);
+		return new OperatorConnection(login, token) { User = Of(bot), IsOpen = true };
 	}
 
 	/// <summary>Brings BasilBot online with one osu! game client connection and one IRC connection of its own.</summary>
@@ -450,10 +457,11 @@ public sealed class UserRegistry
 		{
 			if (_online.GetValueOrDefault(user)?[type].Any(open => open.IsOpen) is true) continue;
 
-			var login = NewServerSession(user, type);
+			var token = NewToken();
+			var login = NewServerSession(user, type, token);
 			Connection connection = type is SessionType.Stable
-				? new StableConnection(login, NewToken(), 0, _connectionContext)
-				: new IrcConnection(login, NewToken());
+				? new StableConnection(login, token, 0, _connectionContext)
+				: new IrcConnection(login, token);
 			if (Open(connection, []) is not null) return null;
 		}
 
@@ -531,13 +539,17 @@ public sealed class UserRegistry
 		return LoginFailure.TooManySessions;
 	}
 
-	private SessionRecord NewServerSession(UserRecord bot, SessionType type)
+	private SessionRecord NewServerSession(UserRecord bot, SessionType type, string token)
 	{
 		var now = _context.Clock.GetUtcNow();
 		// A game client session must report a client, and none stands behind the bot's.
 		var client = type is SessionType.Stable ? ServerClient : null;
-		return new SessionRecord(Guid.NewGuid(), bot, type, now,
-			new SessionData(new SessionFingerprint(IPAddress.Loopback, client), new SessionCredential(), now));
+		return new SessionRecord
+		{
+			Id = NewSessionId(),
+			Value = new SessionData(bot, type, now, new SessionFingerprint(IPAddress.Loopback, client),
+				HashToken(token), null, now)
+		};
 	}
 
 	/// <summary>Creates the token of a new connection.</summary>
@@ -552,7 +564,7 @@ public sealed class UserRegistry
 	/// <param name="reason">Why they are closed.</param>
 	/// <param name="except">A session whose connection stays open, or <see langword="null" /> to keep none.</param>
 	/// <param name="only">The one session to close, or <see langword="null" /> to close every session.</param>
-	internal void CloseAll(UserRecord user, SessionEndReason reason, Guid? except = null, Guid? only = null)
+	internal void CloseAll(UserRecord user, SessionEndReason reason, long? except = null, long? only = null)
 	{
 		var online = _online.GetValueOrDefault(user);
 		if (online is null) return;
@@ -631,8 +643,9 @@ public sealed class UserRegistry
 	{
 		if (!connection.IsOpen) return;
 
-		// A token or key outlives its connection: only revoking it, or logging out of the API, ends the session.
-		if (connection.Session.Value.Credential.TokenHash is null || EndsToken(connection.Type, reason))
+		// An API token or IRC key outlives its connection: only revoking it, or logging out of the API, ends the
+		// session. An osu! session lives as long as its connection.
+		if (!OutlivesConnection(connection) || EndsToken(connection.Type, reason))
 			connection.EndSession(_context.Clock.GetUtcNow(), reason);
 		_activity.TryRemove(connection.Session.Id, out _);
 		connection.IsOpen = false;
@@ -645,6 +658,21 @@ public sealed class UserRegistry
 		if (wentOffline) Remove(connection.User);
 
 		_context.Events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
+	}
+
+	private static bool OutlivesConnection(Connection connection)
+	{
+		return connection is { IsServerOwned: false, Type: SessionType.Api or SessionType.Irc };
+	}
+
+	/// <summary>Creates the identifier of a new session.</summary>
+	/// <returns>
+	///     A positive number a browser can hold without losing a digit; it marks the session on the API so that the hash
+	///     of its token is never shown.
+	/// </returns>
+	internal static long NewSessionId()
+	{
+		return RandomNumberGenerator.GetInt32(int.MaxValue) * 4194304L + RandomNumberGenerator.GetInt32(4194304) + 1;
 	}
 
 	private static bool EndsToken(SessionType type, SessionEndReason reason)

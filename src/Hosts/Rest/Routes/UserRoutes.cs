@@ -67,9 +67,9 @@ internal static class UserRoutes
 			.WithSummary("List the sessions of an account.")
 			.WithDescription(
 				"Filter by `state` (all, online, offline) and by `types`, a bitmask of the connection kinds.");
-		token.MapGet("/{id:int}/sessions/{sid:guid}", GetSessionAsync)
+		token.MapGet("/{id:int}/sessions/{sid:long}", GetSessionAsync)
 			.WithSummary("Retrieve one session of an account.");
-		token.MapDelete("/{id:int}/sessions/{sid:guid}", CloseSessionAsync)
+		token.MapDelete("/{id:int}/sessions/{sid:long}", CloseSessionAsync)
 			.WithSummary("Close one session of an account.")
 			.WithDescription(
 				"Closing an osu! session only disconnects the client, which can sign in again with its password; change the password to keep the client out.");
@@ -269,7 +269,7 @@ internal static class UserRoutes
 		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)], sessions.HasNext), page!);
 	}
 
-	private static async Task<IResult> GetSessionAsync(HttpContext context, int id, Guid sid)
+	private static async Task<IResult> GetSessionAsync(HttpContext context, int id, long sid)
 	{
 		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
@@ -278,7 +278,7 @@ internal static class UserRoutes
 		return result.IsOk ? Api.Ok(SessionView.Of(session!)) : result.Refusal();
 	}
 
-	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, Guid sid)
+	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, long sid)
 	{
 		return await context.FindAsync(id) is not { } target
 			? Api.NotFound("No such user.")
@@ -400,7 +400,7 @@ internal static class UserRoutes
 	public sealed record IrcKeyRequest(string? Label);
 
 	/// <summary>A new IRC key; the key is shown only here.</summary>
-	public sealed record IrcKeyResponse(Guid SessionId, string Key);
+	public sealed record IrcKeyResponse(long SessionId, string Key);
 
 	/// <summary>A new restriction.</summary>
 	public sealed record RestrictRequest(ulong Permissions, DateTimeOffset? EndsAt, string? Reason);

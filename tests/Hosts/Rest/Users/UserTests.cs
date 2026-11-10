@@ -256,7 +256,7 @@ public sealed class UserTests(RestHostFixture fixture)
 		var (client, id) = await fixture.SignInAsync("SessUnknown");
 		using (client)
 		{
-			var (status, _) = await client.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions/{Guid.NewGuid()}");
+			var (status, _) = await client.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions/{long.MaxValue}");
 
 			Assert.Equal(404, status);
 		}

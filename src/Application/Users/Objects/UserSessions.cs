@@ -90,7 +90,7 @@ public sealed class UserSessions
 				Timestamp = now
 			}, cancellationToken);
 
-		return await _user.Context.Sessions.ListAsync(_user.Record, new SessionFilter(state, types, now), page,
+		return await _user.Context.Sessions.ListAsync(new SessionQuery(_user.Record, state, types, now), page,
 			cancellationToken);
 	}
 
@@ -103,7 +103,7 @@ public sealed class UserSessions
 	///     Reading another account's session is recorded in the moderation log. A session that does not belong to this
 	///     account is not found.
 	/// </remarks>
-	internal async Task<(UserOutcome Outcome, SessionRecord? Session)> GetAsync(Connection viewer, Guid id,
+	internal async Task<(UserOutcome Outcome, SessionRecord? Session)> GetAsync(Connection viewer, long id,
 		CancellationToken cancellationToken)
 	{
 		var session = await _user.Context.Sessions.GetAsync(_user.Record, id, cancellationToken);
@@ -130,7 +130,7 @@ public sealed class UserSessions
 	///     osu! client is disconnected but can sign in again with its password. A session that does not belong to this
 	///     account is not found.
 	/// </remarks>
-	internal async Task<UserOutcome> CloseAsync(Guid id, CancellationToken cancellationToken)
+	internal async Task<UserOutcome> CloseAsync(long id, CancellationToken cancellationToken)
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
@@ -156,7 +156,7 @@ public sealed class UserSessions
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 
 		var isSelf = actor.Record.Equals(_user.Record);
-		Guid? keep = isSelf && keepCurrent && actor is ApiConnection api ? api.Session.Id : null;
+		long? keep = isSelf && keepCurrent && actor is ApiConnection api ? api.Session.Id : null;
 		// The sessions live in another module's database, so no transaction covers both: log first, so an action is never unrecorded.
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationData
@@ -191,10 +191,14 @@ public sealed class UserSessions
 
 		var key = UserRegistry.NewToken();
 		var now = _user.Context.Clock.GetUtcNow();
-		var session = new SessionRecord(Guid.NewGuid(), _user.Record, SessionType.Irc, now,
-			new SessionData(new SessionFingerprint(actor.Session.Value.Fingerprint.Ip, ClientInfo: label),
-				new SessionCredential(UserRegistry.HashToken(key)), now));
-		await _user.Context.Sessions.RecordAsync(session, cancellationToken);
+		var session = new SessionRecord
+		{
+			Id = UserRegistry.NewSessionId(),
+			Value = new SessionData(_user.Record, SessionType.Irc, now,
+				new SessionFingerprint(actor.Session.Value.Fingerprint.Ip, ClientInfo: label),
+				UserRegistry.HashToken(key), null, now)
+		};
+		await _user.Context.Sessions.CreateOrUpdateAsync(session, cancellationToken);
 		return (UserOutcome.Ok, key, session);
 	}
 
@@ -203,7 +207,7 @@ public sealed class UserSessions
 	/// <param name="except">A session that stays open, or <see langword="null" /> for none.</param>
 	/// <param name="reason">Why the sessions close.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	internal async Task CloseAsync(Guid? only, Guid? except, SessionEndReason reason,
+	internal async Task CloseAsync(long? only, long? except, SessionEndReason reason,
 		CancellationToken cancellationToken)
 	{
 		_user.Context.Registry.CloseAll(_user.Record, reason, except, only);

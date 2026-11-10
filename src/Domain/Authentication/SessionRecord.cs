@@ -6,53 +6,23 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Authentication;
 
-/// <summary>One client session as it exists in the stored history, whether or not the server is running.</summary>
+/// <summary>One client session as it exists in the stored history, identified by its id.</summary>
 public sealed class SessionRecord : IEquatable<SessionRecord>
 {
-	/// <summary>Initializes a session.</summary>
-	/// <param name="id">The public identifier of the session.</param>
-	/// <param name="user">The user who logged in.</param>
-	/// <param name="type">The kind of client that opened the session.</param>
-	/// <param name="startedAt">The moment the session started.</param>
-	/// <param name="value">The device, credential, activity and end of the session.</param>
-	/// <exception cref="ArgumentException">
-	///     <paramref name="id" /> is empty, or <paramref name="type" /> is an osu! kind and the device reports no client.
-	/// </exception>
-	/// <exception cref="ArgumentOutOfRangeException">
-	///     <paramref name="type" /> is not a defined kind, or the session was active before it started.
-	/// </exception>
-	public SessionRecord(Guid id, UserRecord user, SessionType type, DateTimeOffset startedAt, SessionData value)
+	/// <summary>
+	///     Gets the identifier of the session, which the API shows in place of the hash of its token; it marks the session
+	///     and opens nothing.
+	/// </summary>
+	public required long Id
 	{
-		ArgumentNullException.ThrowIfNull(user);
-		ArgumentNullException.ThrowIfNull(value);
-		if (id == Guid.Empty) throw new ArgumentException("A session needs an identifier.", nameof(id));
-		if (type is SessionType.Stable or SessionType.StableTourney && value.Fingerprint.Client is null)
-			throw new ArgumentException("An osu! session must report its client.", nameof(value));
-		if (value.LastActiveAt < startedAt)
-			throw new ArgumentOutOfRangeException(nameof(value), value.LastActiveAt,
-				"A session cannot be active before it starts.");
-
-		Id = id;
-		User = user;
-		Type = type.ThrowIfUndefined();
-		StartedAt = startedAt;
-		Value = value;
+		get;
+		init => field = value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Session id must be positive.");
 	}
 
-	/// <summary>Gets the public identifier of the session.</summary>
-	public Guid Id { get; }
-
-	/// <summary>Gets the user who logged in.</summary>
-	public UserRecord User { get; }
-
-	/// <summary>Gets the kind of client that opened the session.</summary>
-	public SessionType Type { get; }
-
-	/// <summary>Gets the moment the session started.</summary>
-	public DateTimeOffset StartedAt { get; }
-
-	/// <summary>Gets the device, credential, activity and end of the session.</summary>
-	public SessionData Value { get; }
+	/// <summary>Gets the session data this identity wraps.</summary>
+	public required SessionData Value { get; init; }
 
 	/// <summary>Determines whether another session is the same record.</summary>
 	/// <param name="other">The session to compare against, or <see langword="null" />.</param>
@@ -75,27 +45,75 @@ public sealed class SessionRecord : IEquatable<SessionRecord>
 	}
 }
 
-/// <summary>The data of a stored session, in the groups it is read and changed by.</summary>
-/// <param name="Fingerprint">Where the session came from.</param>
-/// <param name="Credential">The token or key that opens the session.</param>
-/// <param name="LastActiveAt">The most recent activity recorded for the session; the start for a session never used.</param>
-/// <param name="End">How the session ended, or <see langword="null" /> while it remains active.</param>
-public sealed record SessionData(
-	SessionFingerprint Fingerprint,
-	SessionCredential Credential,
-	DateTimeOffset LastActiveAt,
-	SessionEnd? End = null);
+/// <summary>The data of a session, without its identity: who logged in, from where, with what token, and how it ended.</summary>
+public sealed record SessionData
+{
+	/// <summary>Initializes the data of a session.</summary>
+	/// <param name="user">The user who logged in.</param>
+	/// <param name="type">The kind of client that opened the session.</param>
+	/// <param name="startedAt">The moment the session started.</param>
+	/// <param name="fingerprint">Where the session came from.</param>
+	/// <param name="tokenHash">The hash of the token or key that opens the session; it finds the session and is never shown.</param>
+	/// <param name="expiresAt">When the token expires, or <see langword="null" /> for a session that does not expire.</param>
+	/// <param name="lastActiveAt">The most recent activity recorded for the session; the start for a session never used.</param>
+	/// <param name="end">How the session ended, or <see langword="null" /> while it remains active.</param>
+	/// <exception cref="ArgumentException">
+	///     <paramref name="type" /> is an osu! kind and the fingerprint reports no client.
+	/// </exception>
+	/// <exception cref="ArgumentOutOfRangeException">
+	///     <paramref name="type" /> is not a defined kind, or the session was active before it started.
+	/// </exception>
+	public SessionData(UserRecord user, SessionType type, DateTimeOffset startedAt, SessionFingerprint fingerprint,
+		Sha256 tokenHash, DateTimeOffset? expiresAt, DateTimeOffset lastActiveAt, SessionEnd? end = null)
+	{
+		ArgumentNullException.ThrowIfNull(user);
+		ArgumentNullException.ThrowIfNull(fingerprint);
+		if (type is SessionType.Stable or SessionType.StableTourney && fingerprint.Client is null)
+			throw new ArgumentException("An osu! session must report its client.", nameof(fingerprint));
+		if (lastActiveAt < startedAt)
+			throw new ArgumentOutOfRangeException(nameof(lastActiveAt), lastActiveAt,
+				"A session cannot be active before it starts.");
+
+		User = user;
+		Type = type.ThrowIfUndefined();
+		StartedAt = startedAt;
+		Fingerprint = fingerprint;
+		TokenHash = tokenHash;
+		ExpiresAt = expiresAt;
+		LastActiveAt = lastActiveAt;
+		End = end;
+	}
+
+	/// <summary>Gets the user who logged in.</summary>
+	public UserRecord User { get; init; }
+
+	/// <summary>Gets the kind of client that opened the session.</summary>
+	public SessionType Type { get; init; }
+
+	/// <summary>Gets the moment the session started.</summary>
+	public DateTimeOffset StartedAt { get; init; }
+
+	/// <summary>Gets where the session came from.</summary>
+	public SessionFingerprint Fingerprint { get; init; }
+
+	/// <summary>Gets the hash of the token or key that opens the session; it finds the session and is never shown.</summary>
+	public Sha256 TokenHash { get; init; }
+
+	/// <summary>Gets when the token expires, or <see langword="null" /> for a session that does not expire.</summary>
+	public DateTimeOffset? ExpiresAt { get; init; }
+
+	/// <summary>Gets the most recent activity recorded for the session; the start for a session never used.</summary>
+	public DateTimeOffset LastActiveAt { get; init; }
+
+	/// <summary>Gets how the session ended, or <see langword="null" /> while it remains active.</summary>
+	public SessionEnd? End { get; init; }
+}
 
 /// <summary>The device a session came from.</summary>
 /// <param name="Ip">The IP address the session came from.</param>
 /// <param name="Client">The osu! client that logged in, or <see langword="null" /> for a login without an osu! client.</param>
 /// <param name="ClientInfo">Client information reported for the session, when available.</param>
 public sealed record SessionFingerprint(IPAddress Ip, OsuClient? Client = null, string? ClientInfo = null);
-
-/// <summary>The token or key associated with a session.</summary>
-/// <param name="TokenHash">The hash of an API token or IRC key, or <see langword="null" /> for a session without one.</param>
-/// <param name="ExpiresAt">When the token expires, or <see langword="null" /> for a non-expiring session.</param>
-public sealed record SessionCredential(Sha256? TokenHash = null, DateTimeOffset? ExpiresAt = null);
 
 /// <summary>How a session ended.</summary>
 /// <param name="At">The moment the session ended.</param>

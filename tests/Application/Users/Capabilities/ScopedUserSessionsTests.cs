@@ -121,7 +121,7 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var api = await app.LoginAsync(await app.CreateUserAsync("Lost", "password"));
 
-		var result = await app.Users.Of(api.Record).ScopeTo(api).Sessions.CloseAsync(Guid.NewGuid(), Token);
+		var result = await app.Users.Of(api.Record).ScopeTo(api).Sessions.CloseAsync(long.MaxValue, Token);
 
 		Assert.Equal(UserOutcome.NotFound, result.Outcome);
 	}
@@ -312,7 +312,7 @@ public sealed class ScopedUserSessionsTests
 		var result = await OpenWithTokenAsync(app, SessionType.Irc, key);
 
 		Assert.Equal("osu-ahr VPS", session.Value.Fingerprint.ClientInfo);
-		Assert.Equal(SessionType.Irc, session.Type);
+		Assert.Equal(SessionType.Irc, session.Value.Type);
 		Assert.True(result.Succeeded);
 		Assert.Equal(session.Id, result.Connection!.Session.Id);
 		Assert.IsType<IrcConnection>(result.Connection);
@@ -380,7 +380,7 @@ public sealed class ScopedUserSessionsTests
 		await app.Users.ConnectBotAsync(Token);
 		var scoped = app.Users.Of(bot).ScopeTo(admin).Sessions;
 
-		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAsync(Guid.NewGuid(), Token)).Outcome);
+		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAsync(long.MaxValue, Token)).Outcome);
 		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAllAsync(false, Token)).Outcome);
 		Assert.Equal(UserOutcome.SystemAccount, (await scoped.OpenIrcAsync("x", Token)).Result.Outcome);
 		Assert.All(app.Users.Online[bot].Connections, connection => Assert.True(connection.IsOpen));

@@ -14,7 +14,7 @@ public class SessionRecordTests
 	[Fact]
 	public void Equals_SameId_IsTrueWhateverTheDataIs()
 	{
-		var id = Guid.NewGuid();
+		var id = 7L;
 		var first = Make(id);
 		var later = Make(id, lastActiveAt: Start.AddHours(1), tokenHash: new Sha256("abc"u8.ToArray()));
 
@@ -25,13 +25,13 @@ public class SessionRecordTests
 	[Fact]
 	public void Equals_DifferentId_IsFalseWhateverTheDataIs()
 	{
-		Assert.NotEqual(Make(Guid.NewGuid()), Make(Guid.NewGuid()));
+		Assert.NotEqual(Make(1), Make(2));
 	}
 
 	[Fact]
-	public void New_EmptyId_Throws()
+	public void New_NonPositiveId_Throws()
 	{
-		Assert.Throws<ArgumentException>(() => Make(Guid.Empty));
+		Assert.Throws<ArgumentOutOfRangeException>(() => Make(0));
 	}
 
 	[Fact]
@@ -53,7 +53,7 @@ public class SessionRecordTests
 	[InlineData(SessionType.StableTourney)]
 	public void New_OsuKindWithClient_IsAccepted(SessionType type)
 	{
-		Assert.Equal(type, Make(type: type, client: Client()).Type);
+		Assert.Equal(type, Make(type: type, client: Client()).Value.Type);
 	}
 
 	[Theory]
@@ -61,7 +61,7 @@ public class SessionRecordTests
 	[InlineData(SessionType.Api)]
 	public void New_NonOsuKindWithoutClient_IsAccepted(SessionType type)
 	{
-		Assert.Equal(type, Make(type: type, client: null).Type);
+		Assert.Equal(type, Make(type: type, client: null).Value.Type);
 	}
 
 	[Fact]
@@ -76,13 +76,16 @@ public class SessionRecordTests
 		Assert.Equal(Start, Make(lastActiveAt: Start).Value.LastActiveAt);
 	}
 
-	private static SessionRecord Make(Guid? id = null, SessionType type = SessionType.Api, OsuClient? client = null,
+	private static SessionRecord Make(long? id = null, SessionType type = SessionType.Api, OsuClient? client = null,
 		DateTimeOffset? lastActiveAt = null, Sha256? tokenHash = null)
 	{
 		var user = new UserRecord { Id = 1, Value = new UserData { Name = "session_user" } };
-		return new SessionRecord(id ?? Guid.NewGuid(), user, type, Start,
-			new SessionData(new SessionFingerprint(IPAddress.Loopback, client), new SessionCredential(tokenHash),
-				lastActiveAt ?? Start));
+		return new SessionRecord
+		{
+			Id = id ?? 1,
+			Value = new SessionData(user, type, Start, new SessionFingerprint(IPAddress.Loopback, client),
+				tokenHash ?? new Sha256("token"u8.ToArray()), null, lastActiveAt ?? Start)
+		};
 	}
 
 	private static OsuClient Client()
