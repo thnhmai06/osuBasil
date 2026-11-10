@@ -46,7 +46,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 			TotalScore = 1234,
 			RankedScore = 1000,
 			PlayCount = 7
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var stats = await Stats.GetAsync(player, GameMode.Standard, TestContext.Current.CancellationToken);
 
@@ -66,7 +66,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 			TotalScore = 1234,
 			RankedScore = 1000,
 			PlayCount = 7
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select total_score, ranked_score, play_count from user_stats where user_id = @id and mode = @mode",
@@ -89,7 +89,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 			TotalScore = 1234,
 			RankedScore = 1000,
 			PlayCount = 7
-		}, TestContext.Current.CancellationToken);
+		});
 		await Stats.CreateOrUpdateAsync(new UserStats
 		{
 			UserId = player.Id,
@@ -97,7 +97,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 			TotalScore = 4321,
 			RankedScore = 4000,
 			PlayCount = 8
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var stats = await Stats.GetAsync(player, GameMode.Standard, TestContext.Current.CancellationToken);
 
@@ -116,7 +116,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 			TotalScore = 1234,
 			RankedScore = 1000,
 			PlayCount = 7
-		}, TestContext.Current.CancellationToken);
+		});
 		await Stats.CreateOrUpdateAsync(new UserStats
 		{
 			UserId = player.Id,
@@ -124,7 +124,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 			TotalScore = 4321,
 			RankedScore = 4000,
 			PlayCount = 8
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var stats = await Stats.GetAsync(player, GameMode.Taiko, TestContext.Current.CancellationToken);
 
@@ -142,7 +142,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 			TotalScore = 1234,
 			RankedScore = 1000,
 			PlayCount = 7
-		}, TestContext.Current.CancellationToken);
+		});
 		await StoredRows.WaitForAsync(ConnectionString, "select total_score from user_stats where user_id = @id",
 			new Dictionary<string, object?> { ["@id"] = player.Id },
 			rows => rows.Count == 1 && rows[0].Number("total_score") == 1234,
@@ -161,8 +161,8 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	{
 		var player = await CreatePlayerAsync("added_play");
 
-		await Stats.AddPlayAsync(player, GameMode.Standard, 300, 200, TestContext.Current.CancellationToken);
-		var stats = await Stats.AddPlayAsync(player, GameMode.Standard, 50, 0, TestContext.Current.CancellationToken);
+		await Stats.AddPlayAsync(player, GameMode.Standard, 300, 200);
+		var stats = await Stats.AddPlayAsync(player, GameMode.Standard, 50, 0);
 
 		Assert.Equal(2, stats.PlayCount);
 		Assert.Equal(350, stats.TotalScore);
@@ -178,7 +178,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 		await Parallel.ForEachAsync(Enumerable.Range(1, plays),
 			new ParallelOptions
 				{ MaxDegreeOfParallelism = 16, CancellationToken = TestContext.Current.CancellationToken },
-			async (score, token) => await Stats.AddPlayAsync(player, GameMode.Standard, score, score * 10L, token));
+			async (score, token) => await Stats.AddPlayAsync(player, GameMode.Standard, score, score * 10L));
 
 		var stats = await Stats.GetAsync(player, GameMode.Standard, TestContext.Current.CancellationToken);
 		Assert.Equal(plays, stats.PlayCount);

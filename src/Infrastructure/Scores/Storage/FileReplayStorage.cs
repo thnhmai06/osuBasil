@@ -25,16 +25,15 @@ internal sealed class FileReplayStorage(
 	private DataStorage Files => paths.Replays;
 
 	/// <inheritdoc />
-	public async Task SaveAsync(ScoreRecord score, OsuVersion clientVersion, Stream content,
-		CancellationToken cancellationToken = default)
+	public async Task SaveAsync(ScoreRecord score, OsuVersion clientVersion, Stream content)
 	{
-		var user = score.Value.UserId is { } userId ? await users.GetAsync(userId, cancellationToken) : null;
-		var beatmap = score.Value.BeatmapHash is { } hash ? await beatmaps.GetAsync(hash, cancellationToken) : null;
+		var user = score.Value.UserId is { } userId ? await users.GetAsync(userId) : null;
+		var beatmap = score.Value.BeatmapHash is { } hash ? await beatmaps.GetAsync(hash) : null;
 
 		var name = NameOf(score, user, beatmap);
 		await Files.SaveAsync(name,
 			(output, token) => ReplayFile.WriteAsync(output, score, user?.Value.Name ?? string.Empty, clientVersion,
-				content, token), cancellationToken);
+				content, token), CancellationToken.None);
 		foreach (var previous in Find(score.Id).Where(previous => previous != name).ToList())
 			Files.Delete(previous);
 	}

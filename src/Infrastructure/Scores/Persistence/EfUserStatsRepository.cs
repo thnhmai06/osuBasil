@@ -23,7 +23,7 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(UserStats stats, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(UserStats stats)
 	{
 		var row = new UserStatsRow
 		{
@@ -33,38 +33,35 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 			RankedScore = stats.RankedScore,
 			PlayCount = stats.PlayCount
 		};
-		return database.WriteAsync((ScoresDbContext context, CancellationToken token) =>
-				context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode),
-			cancellationToken);
+		return database.WriteAsync((ScoresDbContext context) =>
+				context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode));
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<UserStats> AddPlayAsync(UserRecord user, GameMode mode, long totalScore, long rankedScore,
-		CancellationToken cancellationToken = default)
+	public async ValueTask<UserStats> AddPlayAsync(UserRecord user, GameMode mode, long totalScore, long rankedScore)
 	{
 		try
 		{
-			return await IncrementAsync(user.Id, mode, totalScore, rankedScore, cancellationToken);
+			return await IncrementAsync(user.Id, mode, totalScore, rankedScore);
 		}
 		catch (AlreadyExistsException)
 		{
 			// Another first play of the same account and mode created the row between our update and our insert;
 			// the row exists now, so the increment finds it.
-			return await IncrementAsync(user.Id, mode, totalScore, rankedScore, cancellationToken);
+			return await IncrementAsync(user.Id, mode, totalScore, rankedScore);
 		}
 	}
 
 	/// <summary>Adds one play with column-level updates, or creates the row when the account has none yet.</summary>
-	private Task<UserStats> IncrementAsync(int userId, GameMode mode, long totalScore, long rankedScore,
-		CancellationToken cancellationToken)
+	private Task<UserStats> IncrementAsync(int userId, GameMode mode, long totalScore, long rankedScore)
 	{
-		return database.WriteAsync((ScoresDbContext context, CancellationToken token) =>
-			AddPlayAsync(context, userId, mode, totalScore, rankedScore, token), cancellationToken);
+		return database.WriteAsync((ScoresDbContext context) =>
+			AddPlayAsync(context, userId, mode, totalScore, rankedScore));
 	}
 
 	/// <summary>Adds one play on a context with column-level updates, or adds the row when the account has none yet.</summary>
 	internal static async Task<UserStats> AddPlayAsync(ScoresDbContext context, int userId, GameMode mode,
-		long totalScore, long rankedScore, CancellationToken token)
+		long totalScore, long rankedScore)
 	{
 		var storedMode = (int)mode;
 		var updated = await context.UserStats
@@ -72,7 +69,7 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 			.ExecuteUpdateAsync(set => set
 				.SetProperty(s => s.PlayCount, s => s.PlayCount + 1)
 				.SetProperty(s => s.TotalScore, s => s.TotalScore + totalScore)
-				.SetProperty(s => s.RankedScore, s => s.RankedScore + rankedScore), token);
+				.SetProperty(s => s.RankedScore, s => s.RankedScore + rankedScore));
 		if (updated == 0)
 		{
 			context.UserStats.Add(new UserStatsRow
@@ -90,7 +87,7 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 		}
 
 		var row = await context.UserStats.AsNoTracking()
-			.FirstAsync(s => s.UserId == userId && s.Mode == storedMode, token);
+			.FirstAsync(s => s.UserId == userId && s.Mode == storedMode);
 		return ToStats(row);
 	}
 

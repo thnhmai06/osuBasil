@@ -181,7 +181,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		DateTimeOffset timestamp)
 	{
 		var score = await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"),
-			totalScore, timestamp), TestContext.Current.CancellationToken);
+			totalScore, timestamp));
 		return await RoundScores.RecordAsync(new RoundScore(score, round, null),
 			TestContext.Current.CancellationToken);
 	}

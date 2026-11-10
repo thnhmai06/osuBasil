@@ -14,30 +14,29 @@ namespace Basil.Infrastructure.Scores.Persistence;
 internal sealed class EfScoreRepository(DatabaseSession database) : IScoreRepository
 {
 	/// <inheritdoc />
-	public async Task<ScoreRecord> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
+	public async Task<ScoreRecord> CreateAsync(ScoreData data)
 	{
 		var row = ToRow(0, data);
-		await database.WriteAsync(async (ScoresDbContext context, CancellationToken token) =>
+		await database.WriteAsync(async (ScoresDbContext context) =>
 		{
 			row.Id = (int)await IdCounters.NextAsync(context, "score");
 			context.Scores.Add(row);
-		}, cancellationToken);
+		});
 		return new ScoreRecord { Id = row.Id, Value = data };
 	}
 
 	/// <inheritdoc />
-	public async Task<(ScoreRecord Score, UserStats Stats)> CreateWithPlayAsync(ScoreData data, long rankedScore,
-		CancellationToken cancellationToken = default)
+	public async Task<(ScoreRecord Score, UserStats Stats)> CreateWithPlayAsync(ScoreData data, long rankedScore)
 	{
 		try
 		{
-			return await StoreAsync(data, rankedScore, cancellationToken);
+			return await StoreAsync(data, rankedScore);
 		}
 		catch (AlreadyExistsException)
 		{
 			// Either another first play of the same account and mode created the statistics row between our update
 			// and our insert, which a second attempt finds, or the score is a duplicate and the second attempt refuses it again.
-			return await StoreAsync(data, rankedScore, cancellationToken);
+			return await StoreAsync(data, rankedScore);
 		}
 	}
 
@@ -92,18 +91,17 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), hasNext);
 	}
 
-	private async Task<(ScoreRecord Score, UserStats Stats)> StoreAsync(ScoreData data, long rankedScore,
-		CancellationToken cancellationToken)
+	private async Task<(ScoreRecord Score, UserStats Stats)> StoreAsync(ScoreData data, long rankedScore)
 	{
 		var row = ToRow(0, data);
 		UserStats stats = null!;
-		await database.TransactAsync(async (ScoresDbContext context, CancellationToken token) =>
+		await database.TransactAsync(async (ScoresDbContext context) =>
 		{
 			row.Id = (int)await IdCounters.NextAsync(context, "score");
 			context.Scores.Add(row);
 			stats = await EfUserStatsRepository.AddPlayAsync(context, data.UserId!.Value, data.Mode,
-				data.LastState.TotalScore, rankedScore, token);
-		}, cancellationToken);
+				data.LastState.TotalScore, rankedScore);
+		});
 		return (new ScoreRecord { Id = row.Id, Value = data }, stats);
 	}
 

@@ -61,8 +61,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		var player = await CreatePlayerAsync("played_once");
 
 		var (score, stats) = await Scores.CreateWithPlayAsync(
-			StoredScores.Data(player, StoredScores.Hash("beatmap_one"), 1000, First), 700,
-			TestContext.Current.CancellationToken);
+			StoredScores.Data(player, StoredScores.Hash("beatmap_one"), 1000, First), 700);
 
 		Assert.NotNull(await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken));
 		Assert.Equal((1, 1000, 700), (stats.PlayCount, stats.TotalScore, stats.RankedScore));
@@ -74,11 +73,10 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		var player = await CreatePlayerAsync("at_the_limit");
 		var data = StoredScores.Data(player, StoredScores.Hash("beatmap_one"), 1000, First);
 		await Get<IUserStatsRepository>().CreateOrUpdateAsync(
-			new UserStats { UserId = player.Id, Mode = data.Mode, TotalScore = long.MaxValue },
-			TestContext.Current.CancellationToken);
+			new UserStats { UserId = player.Id, Mode = data.Mode, TotalScore = long.MaxValue });
 
 		await Assert.ThrowsAnyAsync<Exception>(() =>
-			Scores.CreateWithPlayAsync(data, 0, TestContext.Current.CancellationToken));
+			Scores.CreateWithPlayAsync(data, 0));
 
 		var stored = await Scores.ListAsync(new ScoreQuery(player), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -139,8 +137,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		await using var other = new StorageComposition(ConnectionString);
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
 			other.Get<IScoreRepository>().CreateAsync(
-				StoredScores.Data(player, StoredScores.Hash("beatmap_two"), 2000, Second, checksum),
-				TestContext.Current.CancellationToken));
+				StoredScores.Data(player, StoredScores.Hash("beatmap_two"), 2000, Second, checksum)));
 	}
 
 	[Fact]
@@ -362,8 +359,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 			{
 				return (object)await Scores.CreateAsync(
 					StoredScores.Data(player, StoredScores.Hash($"racing_beatmap_{index}"), 1000 + index, First,
-						checksum),
-					TestContext.Current.CancellationToken);
+						checksum));
 			}
 			catch (Exception exception)
 			{
@@ -404,7 +400,6 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	private async Task<ScoreRecord> CreateScoreAsync(UserRecord player, Md5 beatmapHash, int totalScore,
 		DateTimeOffset timestamp, Md5? checksum = null, GameMods mods = GameMods.NoMod)
 	{
-		return await Scores.CreateAsync(StoredScores.Data(player, beatmapHash, totalScore, timestamp, checksum, mods),
-			TestContext.Current.CancellationToken);
+		return await Scores.CreateAsync(StoredScores.Data(player, beatmapHash, totalScore, timestamp, checksum, mods));
 	}
 }

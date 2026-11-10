@@ -58,7 +58,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		f.App.Provider.GetRequiredService<IScoreRepository>()
-			.CreateWithPlayAsync(Arg.Any<ScoreData>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+			.CreateWithPlayAsync(Arg.Any<ScoreData>(), Arg.Any<long>())
 			.Returns(_ => Task.FromException<(ScoreRecord, UserStats)>(new InvalidOperationException("store down")));
 		var score = ScoreSubmissionFixture.PassedScore();
 

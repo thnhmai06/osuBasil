@@ -65,7 +65,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 		var provider = app.Provider;
 
 		provider.GetRequiredService<IScoreRepository>()
-			.CreateWithPlayAsync(Arg.Any<ScoreData>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+			.CreateWithPlayAsync(Arg.Any<ScoreData>(), Arg.Any<long>())
 			.Returns(call =>
 			{
 				var data = call.Arg<ScoreData>();
@@ -88,7 +88,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			.Returns(call => Task.FromResult(call.Arg<RoundScore>()));
 
 		provider.GetRequiredService<IReplayStorage>()
-			.SaveAsync(Arg.Any<ScoreRecord>(), Arg.Any<OsuVersion>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+			.SaveAsync(Arg.Any<ScoreRecord>(), Arg.Any<OsuVersion>(), Arg.Any<Stream>())
 			.Returns(call =>
 			{
 				using var copy = new MemoryStream();

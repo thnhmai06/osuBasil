@@ -278,6 +278,6 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	{
 		return await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"),
 			totalScore,
-			timestamp), TestContext.Current.CancellationToken);
+			timestamp));
 	}
 }

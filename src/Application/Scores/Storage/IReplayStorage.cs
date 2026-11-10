@@ -10,10 +10,8 @@ public interface IReplayStorage
 	/// <param name="score">The score the replay belongs to.</param>
 	/// <param name="clientVersion">The osu! client version that played the score.</param>
 	/// <param name="content">The frames of the replay exactly as the client submitted them.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The replay is kept as a complete <c>.osr</c> file, which <see cref="OpenAsync" /> returns.</remarks>
-	Task SaveAsync(ScoreRecord score, OsuVersion clientVersion, Stream content,
-		CancellationToken cancellationToken = default);
+	Task SaveAsync(ScoreRecord score, OsuVersion clientVersion, Stream content);
 
 	/// <summary>Opens the stored replay of a score as a complete <c>.osr</c> file.</summary>
 	/// <param name="score">The score the replay belongs to.</param>

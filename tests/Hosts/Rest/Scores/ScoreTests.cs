@@ -95,7 +95,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 		var user = await fixture.Host.CreateUserAsync("ScoreHasRep");
 		var score = await StoreAsync(user.Id, 6);
 		await fixture.Host.Services.GetRequiredService<IReplayStorage>().SaveAsync(score,
-			new OsuVersion(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable), new MemoryStream([9, 8, 7]), TestContext.Current.CancellationToken);
+			new OsuVersion(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable), new MemoryStream([9, 8, 7]));
 		var (client, _) = await fixture.SignInAsync("ScoreWatcher");
 		using (client)
 		{

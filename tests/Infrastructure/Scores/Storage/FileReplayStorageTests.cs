@@ -38,10 +38,10 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task ReplacedReplay_keeps_only_the_new_name()
 	{
-		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"));
 
 		_users.User = StoredUsers.Renamed;
-		await _replays.SaveAsync(Score(), Version, Bytes("second"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("second"));
 
 		Assert.Equal("second", await TextAsync());
 		Assert.Single(Directory.GetFiles(ReplayDirectory));
@@ -50,11 +50,11 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task FailedSaveAfterRename_keeps_the_previous_replay()
 	{
-		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"));
 
 		_users.User = StoredUsers.Renamed;
 		await Assert.ThrowsAsync<IOException>(() =>
-			_replays.SaveAsync(Score(), Version, new TestStreams.Failing(), TestContext.Current.CancellationToken));
+			_replays.SaveAsync(Score(), Version, new TestStreams.Failing()));
 
 		Assert.Equal("first", await TextAsync());
 		Assert.Single(Directory.GetFiles(ReplayDirectory));
@@ -69,7 +69,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task A_saved_replay_opens_with_the_bytes_it_was_saved_with()
 	{
-		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"));
 
 		Assert.Equal("first", await TextAsync());
 	}
@@ -77,7 +77,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task A_replay_is_named_like_an_osu_replay_export()
 	{
-		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"));
 
 		Assert.Equal(
 			["17 Regular - Camellia - Exit This Earth's Atomosphere [Primordial Nucleosynthesis] (2026-03-05) Osu.osr"],
@@ -91,7 +91,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[InlineData(GameMode.Mania, "OsuMania")]
 	public async Task A_replay_name_ends_with_the_name_osu_gives_the_game_mode(GameMode mode, string modeName)
 	{
-		await _replays.SaveAsync(Score(mode: mode), Version, Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(mode: mode), Version, Bytes("replay"));
 
 		var name = Path.GetFileName(Assert.Single(Directory.GetFiles(ReplayDirectory)));
 		Assert.EndsWith($" {modeName}.osr", name);
@@ -100,11 +100,11 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task A_replay_is_found_by_its_score_id_alone_and_not_by_a_longer_id_that_starts_with_it()
 	{
-		await _replays.SaveAsync(Score(170), Version, Bytes("longer id"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(170), Version, Bytes("longer id"));
 
 		Assert.Null(await _replays.OpenAsync(Score(), TestContext.Current.CancellationToken));
 
-		await _replays.SaveAsync(Score(), Version, Bytes("shorter id"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("shorter id"));
 
 		Assert.Equal("shorter id", await TextAsync());
 		Assert.Equal("longer id", await TextAsync(Score(170)));
@@ -115,7 +115,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	{
 		_users.User = null;
 
-		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"));
 
 		Assert.Equal("replay", await TextAsync());
 	}
@@ -125,7 +125,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	{
 		_beatmaps.Beatmap = null;
 
-		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"));
 
 		Assert.Equal("replay", await TextAsync());
 	}
@@ -135,7 +135,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	{
 		SetBeatmapNames("AC/DC", "What? \"Yes\" <no> | *maybe* : C:\\x");
 
-		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"));
 
 		var name = Path.GetFileName(Assert.Single(Directory.GetFiles(ReplayDirectory)));
 		Assert.DoesNotContain(name, character => "<>:\"/\\|?*".Contains(character));
@@ -150,7 +150,7 @@ public sealed class FileReplayStorageTests : IDisposable
 		// 100 emoji are 400 UTF-8 bytes in surrogate pairs, so the cut falls inside a character unless it is placed.
 		SetBeatmapNames("Camellia", string.Concat(Enumerable.Repeat("\U0001F600", 100)));
 
-		await _replays.SaveAsync(Score(), Version, Bytes("replay"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("replay"));
 
 		var name = Path.GetFileName(Assert.Single(Directory.GetFiles(ReplayDirectory)));
 		Assert.True(Encoding.UTF8.GetByteCount(name) <= 255,
@@ -165,9 +165,9 @@ public sealed class FileReplayStorageTests : IDisposable
 	public async Task A_replay_stored_under_a_shortened_name_is_replaced_by_the_next_save()
 	{
 		SetBeatmapNames("Camellia", new string('x', 400));
-		await _replays.SaveAsync(Score(), Version, Bytes("first"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("first"));
 
-		await _replays.SaveAsync(Score(), Version, Bytes("second"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("second"));
 
 		Assert.Equal("second", await TextAsync());
 		Assert.Single(Directory.GetFiles(ReplayDirectory));
@@ -177,7 +177,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	public async Task
 		A_saved_replay_opens_as_a_complete_file_that_records_the_client_version_and_ends_with_the_score_id()
 	{
-		await _replays.SaveAsync(Score(), Version, Bytes("frames"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("frames"));
 
 		var stream = await _replays.OpenAsync(Score(), TestContext.Current.CancellationToken);
 		Assert.NotNull(stream);
@@ -196,7 +196,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[Fact]
 	public async Task OpenFramesAsync_gives_a_seekable_stream_as_long_as_the_frames()
 	{
-		await _replays.SaveAsync(Score(), Version, Bytes("frames"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Version, Bytes("frames"));
 
 		var stream = await _replays.OpenFramesAsync(Score(), TestContext.Current.CancellationToken);
 

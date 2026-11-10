@@ -43,7 +43,7 @@ internal sealed class ScoreRecorder(
 		{
 			(score, current) = await scores.CreateWithPlayAsync(
 				submission.Score with { UserId = player.Id, Checksum = submission.HashByClient },
-				submission.Score.IsPassed ? submission.Score.LastState.TotalScore : 0, cancellationToken);
+				submission.Score.IsPassed ? submission.Score.LastState.TotalScore : 0);
 		}
 		catch (AlreadyExistsException)
 		{
@@ -51,7 +51,7 @@ internal sealed class ScoreRecorder(
 		}
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
-			await replays.SaveAsync(score, loginClient.Version, replay, cancellationToken);
+			await replays.SaveAsync(score, loginClient.Version, replay);
 
 		return new ScoreOutcome(null, score, current);
 	}
