@@ -35,7 +35,7 @@ public sealed class UserSessions
 		_connections.TryGetValue(type, out var set) ? set : ImmutableHashSet<Connection>.Empty;
 
 	/// <summary>Gets every open connection of the user.</summary>
-	public IEnumerable<Connection> Connections => _connections.Values.SelectMany(set => set);
+	public IEnumerable<Connection> Connections => _connections.SelectMany(pair => pair.Value);
 
 	/// <summary>Gets the user's osu! game client connection, if any.</summary>
 	/// <remarks>BasilBot's server-owned connection is not a game client, so the bot has none.</remarks>

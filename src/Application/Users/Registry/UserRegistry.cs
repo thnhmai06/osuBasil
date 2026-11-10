@@ -65,7 +65,7 @@ public sealed class UserRegistry
 	/// <returns>The open game clients.</returns>
 	public IEnumerable<StableConnection> OpenStableClients()
 	{
-		return _online.Keys.Select(OpenStableClient).OfType<StableConnection>();
+		return _online.Select(pair => OpenStableClient(pair.Key)).OfType<StableConnection>();
 	}
 
 	/// <summary>Finds the open connection a token identifies.</summary>
@@ -82,8 +82,8 @@ public sealed class UserRegistry
 	public StableConnection? FindSpectating(Connection connection)
 	{
 		// ponytail: scans every online osu! client; add an index if the online count grows large.
-		return _online.Values
-			.Select(user => user.Stable)
+		return _online
+			.Select(pair => pair.Value.Stable)
 			.FirstOrDefault(host => host is not null && host.Spectators.Contains(connection));
 	}
 
@@ -378,8 +378,8 @@ public sealed class UserRegistry
 	public int CloseIdle()
 	{
 		var now = _context.Clock.GetUtcNow();
-		var idleConnections = _online.Values
-			.SelectMany(user => user.Connections)
+		var idleConnections = _online
+			.SelectMany(pair => pair.Value.Connections)
 			.Where(connection => connection is { IsOpen: true, IsServerOwned: false } &&
 			                     now - connection.LastActiveAt > connection.Type.IdleTimeout())
 			.ToList();
@@ -585,7 +585,7 @@ public sealed class UserRegistry
 	{
 		var sessions = new List<SessionActivity>();
 		var connections = new List<ConnectionActivity>();
-		foreach (var id in _activity.Keys)
+		foreach (var (id, _) in _activity)
 			if (_activity.TryRemove(id, out var connection))
 			{
 				sessions.Add(new SessionActivity(id, connection.LastActiveAt, connection.ExpiresAt));

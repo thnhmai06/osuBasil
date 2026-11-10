@@ -75,7 +75,8 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </remarks>
 	public void CopyTo(T[] array, int arrayIndex)
 	{
-		_items.Keys.CopyTo(array, arrayIndex);
+		foreach (var item in this)
+			array[arrayIndex++] = item;
 	}
 
 	/// <summary>Adds every element of <paramref name="other" /> to the set.</summary>
@@ -108,7 +109,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	{
 		var otherSet = other.ToHashSet();
 
-		foreach (var item in _items.Keys)
+		foreach (var item in this)
 			if (!otherSet.Contains(item))
 				Remove(item);
 	}
@@ -136,7 +137,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </returns>
 	public bool IsSubsetOf(IEnumerable<T> other)
 	{
-		return _items.Keys.ToHashSet().IsSubsetOf(other);
+		return this.ToHashSet().IsSubsetOf(other);
 	}
 
 	/// <summary>
@@ -150,7 +151,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </returns>
 	public bool IsSupersetOf(IEnumerable<T> other)
 	{
-		return _items.Keys.ToHashSet().IsSupersetOf(other);
+		return this.ToHashSet().IsSupersetOf(other);
 	}
 
 	/// <summary>
@@ -165,7 +166,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </returns>
 	public bool IsProperSubsetOf(IEnumerable<T> other)
 	{
-		return _items.Keys.ToHashSet().IsProperSubsetOf(other);
+		return this.ToHashSet().IsProperSubsetOf(other);
 	}
 
 	/// <summary>
@@ -180,7 +181,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </returns>
 	public bool IsProperSupersetOf(IEnumerable<T> other)
 	{
-		return _items.Keys.ToHashSet().IsProperSupersetOf(other);
+		return this.ToHashSet().IsProperSupersetOf(other);
 	}
 
 	/// <summary>
@@ -194,7 +195,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </returns>
 	public bool Overlaps(IEnumerable<T> other)
 	{
-		return _items.Keys.ToHashSet().Overlaps(other);
+		return this.ToHashSet().Overlaps(other);
 	}
 
 	/// <summary>
@@ -208,7 +209,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </returns>
 	public bool SetEquals(IEnumerable<T> other)
 	{
-		return _items.Keys.ToHashSet().SetEquals(other);
+		return this.ToHashSet().SetEquals(other);
 	}
 
 	/// <summary>
@@ -221,7 +222,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	/// </remarks>
 	public IEnumerator<T> GetEnumerator()
 	{
-		return _items.Keys.GetEnumerator();
+		return _items.Select(pair => pair.Key).GetEnumerator();
 	}
 
 	IEnumerator IEnumerable.GetEnumerator()

@@ -79,7 +79,7 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 	public bool Quit { get; set; }
 
 	/// <summary>Gets the capabilities the client enabled.</summary>
-	public IEnumerable<string> Caps => _caps.Keys;
+	public IEnumerable<string> Caps => _caps.Select(pair => pair.Key);
 
 	/// <summary>Checks whether the client enabled a capability.</summary>
 	/// <param name="cap">The capability name.</param>

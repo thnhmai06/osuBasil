@@ -88,7 +88,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	bool IScoreBeatmapAcceptance.AcceptsUnknown(UserRecord player, Md5 beatmap)
 	{
-		return _rooms.Values.Any(room => room.AwaitsScore(player, beatmap));
+		return _rooms.Any(pair => pair.Value.AwaitsScore(player, beatmap));
 	}
 
 	/// <summary>Finds an open room by its id.</summary>
@@ -108,7 +108,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	public Room? RoomOf(StableConnection player)
 	{
 		// ponytail: scans every room; add a player index if room counts grow large.
-		return _rooms.Values.FirstOrDefault(room => room.Slots.Find(player) is not null);
+		return _rooms.Select(pair => pair.Value).FirstOrDefault(room => room.Slots.Find(player) is not null);
 	}
 
 	/// <summary>Reserves the lowest free room id so no other room takes it.</summary>
@@ -268,7 +268,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	public int CloseEmptyRooms()
 	{
 		var closed = 0;
-		foreach (var room in _rooms.Values.ToArray())
+		foreach (var room in _rooms.Select(pair => pair.Value).ToArray())
 		{
 			using var scope = room.Enter();
 			if (room.IsClosed || room.EmptySince is not { } since || room.Slots.Any(slot => slot.Player is not null))
@@ -296,7 +296,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <returns><see langword="true" /> when the creator has reached the limit.</returns>
 	internal bool TooManyRooms(UserRecord creator)
 	{
-		return _rooms.Values.Count(room => creator.Equals(room.Authority.Creator)) >= MaxRoomsPerCreator;
+		return _rooms.Count(pair => creator.Equals(pair.Value.Authority.Creator)) >= MaxRoomsPerCreator;
 	}
 
 	/// <summary>Gets whether opening rooms is locked.</summary>

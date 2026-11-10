@@ -82,7 +82,7 @@ internal sealed class IrcListener(
 	public void Announce(bool restarting)
 	{
 		state.AcceptingLogins = false;
-		foreach (var session in _sessions.Keys)
+		foreach (var (session, _) in _sessions)
 		{
 			session.Send(new IrcMessage("NOTICE", session.ServerName, session.Nick,
 				restarting ? IrcReplies.RestartingNotice : IrcReplies.ShuttingDownNotice));
@@ -96,7 +96,7 @@ internal sealed class IrcListener(
 		state.AcceptingLogins = false;
 		_listener?.Stop();
 		Announce(false);
-		await Task.WhenAny(Task.WhenAll(_sessions.Values), Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None));
+		await Task.WhenAny(Task.WhenAll(_sessions.Select(pair => pair.Value)), Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None));
 		await base.StopAsync(cancellationToken);
 	}
 

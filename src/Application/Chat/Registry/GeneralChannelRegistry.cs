@@ -47,7 +47,7 @@ public sealed class GeneralChannelRegistry
 	/// </returns>
 	public IEnumerable<GeneralChannel> VisibleTo(Connection actor)
 	{
-		foreach (var channel in _channels.Values)
+		foreach (var (_, channel) in _channels)
 		{
 			var privileges = actor.EffectivePrivileges(channel.Context.Clock.GetUtcNow());
 			if (!channel.IsClosed && channel.CanRead(actor, privileges) &&

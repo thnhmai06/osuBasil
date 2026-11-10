@@ -9,7 +9,7 @@ internal sealed class IrcClients
 	private readonly ConcurrentDictionary<string, IrcSession> _sessions = new(StringComparer.Ordinal);
 
 	/// <summary>Gets the open sockets.</summary>
-	public IEnumerable<IrcSession> All => _sessions.Values;
+	public IEnumerable<IrcSession> All => _sessions.Select(pair => pair.Value);
 
 	/// <summary>Claims a key for a socket before its login, so no event for the new connection is lost.</summary>
 	/// <param name="key">The IRC key.</param>
