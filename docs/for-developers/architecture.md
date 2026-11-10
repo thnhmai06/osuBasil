@@ -164,6 +164,16 @@ references another host; today hosts still call `ScopeTo` directly and the migra
 module. `Basil.Host.Shared` holds the views and the table that turns an outcome into an API error code; it holds no
 ASP.NET types.
 
+A host holds no repository and no storage: it does not take one by constructor, field or route parameter, and it does not
+ask the service provider for one. Every read a host needs is a query message answered in the owning module. A read that
+depends on the caller's rights carries the caller's `Connection`; a public read (images, beatmap downloads, the menu, the
+FAQ, scores, an account's public profile) carries no actor. The checks that admit a request (upload limits, rate limits, the
+allowed origins, the message of the day) have no exception: they send the public `ReadSettings` message, which the
+cache-aside settings repository answers from memory. A message names an account by a `UserReference` and a stored thing by
+its id (`int SetId`, `int MatchId`), so the answer to "does it exist" comes only after the module has checked the caller's
+rights. `tests/Architecture/HostGraphTests.cs` enforces the rule by reflection over the host assemblies and by a scan of
+`src/Hosts` for service lookups of a repository or a storage, each with a positive control.
+
 ### How the host knows whose request it is
 
 * **Which handler?** The host does not choose a handler. It chooses a **message type** from the wire (an HTTP route, a

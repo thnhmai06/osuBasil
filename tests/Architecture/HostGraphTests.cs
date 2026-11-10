@@ -1,4 +1,7 @@
+using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Basil.Application.Users.Persistence;
 
 namespace Basil.ArchitectureTests;
 
@@ -7,7 +10,7 @@ namespace Basil.ArchitectureTests;
 ///     independent of each other; the API and the console also stay independent of the Stable wire format. A transport
 ///     that breaks one of these edges is caught here, before the solution compiles against a wrong reference.
 /// </summary>
-public class HostGraphTests
+public partial class HostGraphTests
 {
 	private const string Shared = "Basil.Host.Shared";
 	private const string ProtocolStable = "Basil.Protocol.Stable";
@@ -58,6 +61,102 @@ public class HostGraphTests
 		Assert.False(NeedsStableProtocol("Basil.Host.Stable", ProtocolStable));
 		Assert.False(NeedsStableProtocol("Basil.Host.Irc", ProtocolStable));
 		Assert.False(ReferEachOther("Basil.Host.Stable", Shared));
+	}
+
+	[Fact]
+	public void HostsHoldNoRepositoryOrStorage()
+	{
+		var types = HostAssemblies().SelectMany(LoadableTypes).ToList();
+
+		Assert.Empty(Offenders(types));
+		Assert.NotEmpty(types);
+	}
+
+	[Fact]
+	public void HostsAskNoServiceProviderForARepositoryOrStorage()
+	{
+		var root = Path.Combine(RepositoryRoot(), "src", "Hosts");
+		var offenders = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+			.Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
+			               !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+			.Where(file => ResolvesAStore(File.ReadAllText(file)))
+			.Select(file => Path.GetRelativePath(root, file));
+
+		Assert.Empty(offenders);
+	}
+
+	[Fact]
+	public void TheStoreRulesSeeAStoreTheyShouldRefuse()
+	{
+		Assert.Equal([typeof(HostWithARepository).FullName], Offenders([typeof(HostWithARepository)]));
+		Assert.Equal([typeof(HostWithAStaticRouteHandler).FullName], Offenders([typeof(HostWithAStaticRouteHandler)]));
+		Assert.True(ResolvesAStore("var users = services.GetRequiredService<IUserRepository>();"));
+		Assert.True(ResolvesAStore("call.Get<IBeatmapsetStorage>()"));
+		Assert.False(ResolvesAStore("services.GetRequiredService<ISender>()"));
+	}
+
+	private static string[] HostAssemblies()
+	{
+		return ["Basil.Host.Rest", "Basil.Host.Stable", "Basil.Host.Irc", "Basil.Host.Cli", Shared];
+	}
+
+	private static IEnumerable<Type> LoadableTypes(string assemblyName)
+	{
+		var assembly = Assembly.Load(assemblyName);
+		try
+		{
+			return assembly.GetTypes();
+		}
+		catch (ReflectionTypeLoadException ex)
+		{
+			return ex.Types.OfType<Type>();
+		}
+	}
+
+	/// <summary>Names the types that hold a repository or a storage in a constructor, a field or a method parameter.</summary>
+	private static List<string?> Offenders(IEnumerable<Type> types)
+	{
+		const BindingFlags all = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance |
+		                         BindingFlags.Static | BindingFlags.DeclaredOnly;
+		return
+		[
+			.. types.Where(type =>
+					type.GetConstructors(all).SelectMany(constructor => constructor.GetParameters())
+						.Select(parameter => parameter.ParameterType)
+						.Concat(type.GetFields(all).Select(field => field.FieldType))
+						.Concat(type.GetMethods(all).SelectMany(method => method.GetParameters())
+							.Select(parameter => parameter.ParameterType))
+						.Any(IsStore))
+				.Select(type => type.FullName)
+		];
+	}
+
+	private static bool IsStore(Type type)
+	{
+		return (type.IsGenericType ? type.GetGenericArguments().Append(type) : [type])
+			.Any(candidate => candidate.Assembly.GetName().Name!.StartsWith("Basil.Application.") &&
+			                  (candidate.Name.EndsWith("Repository") || candidate.Name.EndsWith("Storage")));
+	}
+
+	private static bool ResolvesAStore(string source)
+	{
+		return StoreLookup().IsMatch(source);
+	}
+
+	[GeneratedRegex(@"\b(?:Get|GetService|GetRequiredService)<I\w+(?:Repository|Storage)>")]
+	private static partial Regex StoreLookup();
+
+	private sealed class HostWithARepository(IUserRepository users)
+	{
+		public IUserRepository Users { get; } = users;
+	}
+
+	private sealed class HostWithAStaticRouteHandler
+	{
+		public static Task Handle(IUserRepository users)
+		{
+			return Task.CompletedTask;
+		}
 	}
 
 	private static IEnumerable<string> MissingShared(IEnumerable<(string From, string To)> edges)
