@@ -443,7 +443,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		var page = await Users.ListAsync(new UserQuery(Deleted: false), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Items.Count);
+		Assert.Single(page.Items);
 	}
 
 	[Fact]
@@ -454,7 +454,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		var page = await Users.ListAsync(new UserQuery(Deleted: true), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Items.Count);
+		Assert.Single(page.Items);
 		Assert.NotNull(page.Items[0].Value.DeletedAt);
 	}
 

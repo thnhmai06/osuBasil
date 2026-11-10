@@ -31,11 +31,12 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 		Assert.Equal(201, created);
 		Assert.Equal(200, locked);
 
-		var (response, reader) = await rest.OpenStreamAsync($"/v1/rooms/{roomId}/live");
+		var (response, reader) = await rest.OpenStreamAsync($"/v1/rooms/{roomId}/live",
+			cancellationToken: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.NotNull(reader);
-			var snapshot = await reader.ReadAsync();
+			var snapshot = await reader.ReadAsync(TestContext.Current.CancellationToken);
 			Assert.Equal("snapshot", snapshot!.Value.Event);
 			Assert.True((bool)JsonNode.Parse(snapshot.Value.Data)!["locked"]!);
 
@@ -50,7 +51,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 			Assert.Equal("renamed", (string)JsonNode.Parse(bundle.Data)![0]!["room"]!["name"]!);
 			Assert.Equal(200, closed);
 			Assert.Equal("closed", (string)JsonNode.Parse(closedEvent.Data)![0]!["type"]!);
-			Assert.Null(await reader.ReadAsync());
+			Assert.Null(await reader.ReadAsync(TestContext.Current.CancellationToken));
 		}
 	}
 
@@ -65,12 +66,13 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 		var matchId = (int)room["data"]!["matchId"]!;
 		using var anon = new RestClient(Host.Url, Host.Domain);
 
-		var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}");
+		var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}",
+			cancellationToken: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 			Assert.NotNull(reader);
-			var snapshot = await reader.ReadAsync();
+			var snapshot = await reader.ReadAsync(TestContext.Current.CancellationToken);
 			Assert.Equal("snapshot", snapshot!.Value.Event);
 			Assert.Equal(matchId, (int)JsonNode.Parse(snapshot.Value.Data)!["match"]!["id"]!);
 
@@ -81,7 +83,8 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 
 			var lastId = reader.LastId;
 			Assert.NotNull(lastId);
-			var (again, none) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", lastId);
+			var (again, none) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", lastId,
+				TestContext.Current.CancellationToken);
 			using (again)
 			{
 				Assert.Equal(204, (int)again.StatusCode);
@@ -99,11 +102,12 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 		using var watcher = new RestClient(Host.Url, Host.Domain);
 		await watcher.LoginAsync("E2eSpecWatch");
 
-		var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{player.LoginCode}/spectate");
+		var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{player.LoginCode}/spectate",
+			cancellationToken: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.NotNull(reader);
-			var snapshot = await reader.ReadAsync();
+			var snapshot = await reader.ReadAsync(TestContext.Current.CancellationToken);
 			Assert.Equal("snapshot", snapshot!.Value.Event);
 			await player.WaitForAsync(OsuClient.In.SpectatorJoined);
 			var frames = ClientPacketWriter.FrameBundle(0, 7, ClientPacketWriter.ScoreFrame(500, 999, 3));

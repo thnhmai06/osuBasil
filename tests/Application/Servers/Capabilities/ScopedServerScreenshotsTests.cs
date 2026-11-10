@@ -342,7 +342,7 @@ public sealed class ScopedServerScreenshotsTests
 		await screenshots.UploadAsync(Bytes(MaxBytes + 1),
 			TestContext.Current.CancellationToken);
 
-		await f.Inspector.DidNotReceiveWithAnyArgs().InspectAsync(default!);
+		await f.Inspector.DidNotReceiveWithAnyArgs().InspectAsync(default!, TestContext.Current.CancellationToken);
 	}
 
 	#endregion
@@ -371,7 +371,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
-		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default);
+		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default, TestContext.Current.CancellationToken);
 	}
 
 	[Fact]

@@ -346,7 +346,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var page = await Beatmaps.ListAsync(new BeatmapQuery(Status: BeatmapsetStatus.Approved),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(0, page.Items.Count);
+		Assert.Empty(page.Items);
 	}
 
 	[Fact]

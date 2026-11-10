@@ -150,8 +150,8 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 		var page = await Log.ListAsync(target, new Interval<DateTimeOffset>(First, Third, false, false),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Items.Count);
-		Assert.Equal(Second, Assert.Single(page.Items).Value.Timestamp);
+		Assert.Single(page.Items);
+		Assert.Equal(Second,Assert.Single(page.Items).Value.Timestamp);
 	}
 
 	[Fact]
@@ -187,7 +187,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 
 		var page = await Log.ListAsync(target, null, new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(1, page.Items.Count);
+		Assert.Single(page.Items);
 	}
 
 	/// <summary>Records a moderation action against an account.</summary>

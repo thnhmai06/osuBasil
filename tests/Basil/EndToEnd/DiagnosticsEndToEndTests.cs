@@ -19,11 +19,12 @@ public sealed class DiagnosticsEndToEndTests(HostEndToEndFixture fixture)
 		await fixture.Host.CreateUserAsync("E2eDiag", "password", Staff);
 		using var rest = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 		await rest.LoginAsync("E2eDiag");
-		var (response, reader) = await rest.OpenStreamAsync("/v1/diagnostics/application");
+		var (response, reader) = await rest.OpenStreamAsync("/v1/diagnostics/application",
+			cancellationToken: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.NotNull(reader);
-			var snapshot = JsonNode.Parse((await reader.ReadAsync())!.Value.Data)!;
+			var snapshot = JsonNode.Parse((await reader.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
 			var model = fixture.Host.Services.GetRequiredService<DashboardModel>();
 
 			fixture.Host.Services.GetRequiredService<DashboardSampler>().Sample();

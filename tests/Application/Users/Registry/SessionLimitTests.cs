@@ -189,7 +189,8 @@ public sealed class SessionLimitTests
 		var evictedAt = app.Clock.GetUtcNow();
 
 		await app.AttemptLoginAsync(user.Value.Name, "password");
-		var reused = await app.Users.LoginWithTokenAsync(SessionType.Api, first.Token, IPAddress.Loopback);
+		var reused = await app.Users.LoginWithTokenAsync(SessionType.Api, first.Token, IPAddress.Loopback,
+			cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(new SessionEnd(evictedAt, SessionEndReason.Replaced), first.End);
 		Assert.Null(reused.Connection);

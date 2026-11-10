@@ -319,7 +319,7 @@ public sealed class BeatmapsetsImportTests
 
 		Assert.Equal(BeatmapsetImportFailure.Locked, second.Failure);
 		Assert.Null(second.Set);
-		Assert.Equal(1, world.Beatmaps.Records.Count);
+		Assert.Single(world.Beatmaps.Records);
 		Assert.Single(app.BeatmapsetEvents.Events);
 		Assert.Empty(world.Storage.Uploaded);
 	}

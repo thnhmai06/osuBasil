@@ -53,6 +53,7 @@ public sealed class BotConnectionsTests
 		var again = await app.Users.ConnectBotAsync(Token);
 
 		Assert.Same(bot, again);
+		Assert.NotNull(again);
 		Assert.Equal(before, again.Connections.ToList());
 	}
 

@@ -65,7 +65,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 	{
 		var updater = new RulesetUpdater(NewStore(), Feed(NewVersion), NullLogger<RulesetUpdater>.Instance);
 
-		var check = await updater.CheckAsync();
+		var check = await updater.CheckAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(NewVersion, check.Latest);
 		Assert.True(check.UpdateAvailable);
@@ -77,7 +77,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 		var store = NewStore();
 		var updater = new RulesetUpdater(store, Feed(NewVersion), NullLogger<RulesetUpdater>.Instance);
 
-		var staged = await updater.StageAsync();
+		var staged = await updater.StageAsync(TestContext.Current.CancellationToken);
 
 		Assert.True(staged.Staged);
 		Assert.Equal(NewVersion, updater.Version().Staged);
@@ -93,7 +93,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 		var store = NewStore();
 		var updater = new RulesetUpdater(store, Feed(NewVersion, "Mania"), NullLogger<RulesetUpdater>.Instance);
 
-		await Assert.ThrowsAsync<RulesetUpdateException>(() => updater.StageAsync());
+		await Assert.ThrowsAsync<RulesetUpdateException>(() => updater.StageAsync(TestContext.Current.CancellationToken));
 
 		Assert.Null(updater.Version().Staged);
 		Assert.False(Directory.Exists(store.FolderOf(NewVersion)));
@@ -106,7 +106,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 		var store = NewStore();
 		var updater = new RulesetUpdater(store, Feed(store.Active), NullLogger<RulesetUpdater>.Instance);
 
-		var staged = await updater.StageAsync();
+		var staged = await updater.StageAsync(TestContext.Current.CancellationToken);
 
 		Assert.False(staged.Staged);
 		Assert.Null(updater.Version().Staged);
@@ -116,9 +116,9 @@ public sealed class RulesetUpdaterTests : IDisposable
 	public async Task Check_AfterStaging_DoesNotOfferTheStagedVersionAgain()
 	{
 		var updater = new RulesetUpdater(NewStore(), Feed(NewVersion), NullLogger<RulesetUpdater>.Instance);
-		await updater.StageAsync();
+		await updater.StageAsync(TestContext.Current.CancellationToken);
 
-		var check = await updater.CheckAsync();
+		var check = await updater.CheckAsync(TestContext.Current.CancellationToken);
 
 		Assert.False(check.UpdateAvailable);
 	}

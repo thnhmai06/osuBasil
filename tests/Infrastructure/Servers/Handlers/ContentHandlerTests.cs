@@ -93,7 +93,8 @@ public sealed class ContentHandlerTests
 		using var app = new TestApplication();
 
 		var (result, banner) = await new AddMenuBannerHandler(app.Server)
-			.Handle(new AddMenuBanner(await PlainAsync(app), "banner", new MemoryStream(), null, null, null), Token);
+			.Handle(new AddMenuBanner(await PlainAsync(app), "banner", new MemoryStream(),
+				new Uri("https://example.test/banner.png"), null, null), Token);
 
 		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.Null(banner);

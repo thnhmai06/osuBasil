@@ -85,7 +85,7 @@ public sealed class RoomConcurrencyTests
 
 		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Ok));
 		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.InProgress));
-		Assert.Equal(1, app.RoomEvents.Events.OfType<RoomRoundStarted>().Count());
+		Assert.Single(app.RoomEvents.Events.OfType<RoomRoundStarted>());
 	}
 
 	[Fact]
