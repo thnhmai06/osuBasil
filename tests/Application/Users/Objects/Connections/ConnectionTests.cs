@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
+using Basil.Domain.Cryptography;
 using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Objects.Connections;
@@ -127,7 +128,7 @@ public sealed class ConnectionTests
 		var connection = await app.LoginAsync(user);
 		var session = connection.Session;
 
-		Assert.Equal(SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), session.Value.Credential.TokenHash);
+		Assert.Equal(new Sha256(Encoding.UTF8.GetBytes(connection.Token)), session.Value.Credential.TokenHash);
 		Assert.Equal(app.Clock.GetUtcNow().AddDays(7), connection.ExpiresAt);
 
 		app.Clock.Advance(TimeSpan.FromDays(1));

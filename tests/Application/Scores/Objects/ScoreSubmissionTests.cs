@@ -7,6 +7,7 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;

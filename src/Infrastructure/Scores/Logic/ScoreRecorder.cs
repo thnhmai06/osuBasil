@@ -7,6 +7,7 @@ using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Storage;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 

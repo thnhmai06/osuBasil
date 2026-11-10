@@ -3,6 +3,7 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Cryptography;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 

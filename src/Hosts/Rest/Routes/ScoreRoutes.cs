@@ -4,6 +4,7 @@ using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;

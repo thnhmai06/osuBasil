@@ -1,4 +1,5 @@
 ﻿using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Scores;

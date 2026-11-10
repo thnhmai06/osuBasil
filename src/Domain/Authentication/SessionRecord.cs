@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Authentication;
@@ -25,7 +26,7 @@ public sealed class SessionRecord : IEquatable<SessionRecord>
 		ArgumentNullException.ThrowIfNull(user);
 		ArgumentNullException.ThrowIfNull(value);
 		if (id == Guid.Empty) throw new ArgumentException("A session needs an identifier.", nameof(id));
-		if (type is SessionType.Stable or SessionType.StableTourney && value.Device.Client is null)
+		if (type is SessionType.Stable or SessionType.StableTourney && value.Fingerprint.Client is null)
 			throw new ArgumentException("An osu! session must report its client.", nameof(value));
 		if (value.LastActiveAt < startedAt)
 			throw new ArgumentOutOfRangeException(nameof(value), value.LastActiveAt,
@@ -75,12 +76,12 @@ public sealed class SessionRecord : IEquatable<SessionRecord>
 }
 
 /// <summary>The data of a stored session, in the groups it is read and changed by.</summary>
-/// <param name="Device">Where the session came from.</param>
+/// <param name="Fingerprint">Where the session came from.</param>
 /// <param name="Credential">The token or key that opens the session.</param>
 /// <param name="LastActiveAt">The most recent activity recorded for the session; the start for a session never used.</param>
 /// <param name="End">How the session ended, or <see langword="null" /> while it remains active.</param>
 public sealed record SessionData(
-	SessionDevice Device,
+	SessionFingerprint Fingerprint,
 	SessionCredential Credential,
 	DateTimeOffset LastActiveAt,
 	SessionEnd? End = null);
@@ -89,12 +90,12 @@ public sealed record SessionData(
 /// <param name="Ip">The IP address the session came from.</param>
 /// <param name="Client">The osu! client that logged in, or <see langword="null" /> for a login without an osu! client.</param>
 /// <param name="ClientInfo">Client information reported for the session, when available.</param>
-public sealed record SessionDevice(IPAddress Ip, OsuClient? Client = null, string? ClientInfo = null);
+public sealed record SessionFingerprint(IPAddress Ip, OsuClient? Client = null, string? ClientInfo = null);
 
 /// <summary>The token or key associated with a session.</summary>
 /// <param name="TokenHash">The hash of an API token or IRC key, or <see langword="null" /> for a session without one.</param>
 /// <param name="ExpiresAt">When the token expires, or <see langword="null" /> for a non-expiring session.</param>
-public sealed record SessionCredential(byte[]? TokenHash = null, DateTimeOffset? ExpiresAt = null);
+public sealed record SessionCredential(Sha256? TokenHash = null, DateTimeOffset? ExpiresAt = null);
 
 /// <summary>How a session ended.</summary>
 /// <param name="At">The moment the session ended.</param>

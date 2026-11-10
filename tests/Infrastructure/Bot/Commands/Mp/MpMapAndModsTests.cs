@@ -4,6 +4,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;

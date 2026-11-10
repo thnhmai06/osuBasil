@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace Basil.Domain.Common;
+namespace Basil.Domain.Cryptography;
 
 /// <summary>An MD5 digest, kept as 32 lower-case hexadecimal characters.</summary>
 public readonly record struct Md5

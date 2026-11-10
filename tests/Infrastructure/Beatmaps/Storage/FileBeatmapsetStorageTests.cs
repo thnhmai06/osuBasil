@@ -5,6 +5,7 @@ using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Cryptography;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;

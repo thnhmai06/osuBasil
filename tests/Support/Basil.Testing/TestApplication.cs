@@ -27,6 +27,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Anticheat;
@@ -387,8 +388,8 @@ public sealed class TestApplication : IDisposable
 		var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 		var now = Clock.GetUtcNow();
 		await _sessions.RecordAsync(new SessionRecord(Guid.NewGuid(), record, SessionType.Irc, now,
-			new SessionData(new SessionDevice(IPAddress.Loopback),
-				new SessionCredential(SHA256.HashData(Encoding.UTF8.GetBytes(key))), now)));
+			new SessionData(new SessionFingerprint(IPAddress.Loopback),
+				new SessionCredential(new Sha256(Encoding.UTF8.GetBytes(key))), now)));
 		return await Users.LoginWithTokenAsync(SessionType.Irc, key, IPAddress.Loopback);
 	}
 

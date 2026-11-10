@@ -1,6 +1,7 @@
 using Basil.Application.Users.Objects;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Testing;
 

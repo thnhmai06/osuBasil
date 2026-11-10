@@ -13,6 +13,7 @@ using Basil.Domain.Authentication;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Chat;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Host.Irc;
 using Basil.Testing.Persistence;

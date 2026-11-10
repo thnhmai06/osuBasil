@@ -5,6 +5,7 @@ using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Testing;
 

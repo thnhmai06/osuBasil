@@ -2,6 +2,7 @@ using System.Text.Json;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Common.Persistence;

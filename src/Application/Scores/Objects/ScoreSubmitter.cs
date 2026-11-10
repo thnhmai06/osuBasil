@@ -63,7 +63,7 @@ public sealed class ScoreSubmitter
 		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, ScoreRejectionReason.UnknownBeatmap);
 
 		var outcome = await Recorder.ValidateAndRecordAsync(
-			actor.Record, actor.Session.Value.Device.Client!, submission, checkedBeatmap, client, replay,
+			actor.Record, actor.Session.Value.Fingerprint.Client!, submission, checkedBeatmap, client, replay,
 			cancellationToken);
 		if (outcome.Rejection is { } rejection) return (ScoreSubmissionOutcome.Rejected, rejection);
 

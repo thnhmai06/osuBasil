@@ -311,7 +311,7 @@ public sealed class ScopedUserSessionsTests
 		var (key, session) = await OpenIrcAsync(app, api, "osu-ahr VPS");
 		var result = await OpenWithTokenAsync(app, SessionType.Irc, key);
 
-		Assert.Equal("osu-ahr VPS", session.Value.Device.ClientInfo);
+		Assert.Equal("osu-ahr VPS", session.Value.Fingerprint.ClientInfo);
 		Assert.Equal(SessionType.Irc, session.Type);
 		Assert.True(result.Succeeded);
 		Assert.Equal(session.Id, result.Connection!.Session.Id);

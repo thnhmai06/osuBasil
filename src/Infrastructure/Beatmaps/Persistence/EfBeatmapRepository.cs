@@ -4,6 +4,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;

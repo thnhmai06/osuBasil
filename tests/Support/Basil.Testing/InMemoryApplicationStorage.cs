@@ -5,6 +5,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -214,7 +215,7 @@ internal sealed class InMemoryRestrictionRepository(InMemoryModerationLogReposit
 internal sealed class InMemorySessionRepository : ISessionRepository
 {
 	private readonly List<SessionRecord> _entries = [];
-	private readonly Dictionary<Guid, (byte[]? Hash, DateTimeOffset? ExpiresAt)> _tokens = [];
+	private readonly Dictionary<Guid, (Sha256? Hash, DateTimeOffset? ExpiresAt)> _tokens = [];
 
 	public IReadOnlyList<SessionRecord> Entries => _entries;
 
@@ -264,17 +265,17 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.FromResult(_entries.FirstOrDefault(entry => entry.Id == id && entry.User.Equals(user)));
 	}
 
-	public Task<StoredSession?> FindByTokenAsync(SessionType type, byte[] tokenHash, DateTimeOffset now,
+	public Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
 		CancellationToken cancellationToken = default)
 	{
 		var found = _entries.FirstOrDefault(entry => entry.Type == type && entry.Value.End is null &&
 		                                             _tokens.GetValueOrDefault(entry.Id) is { Hash: { } hash } token &&
-		                                             hash.AsSpan().SequenceEqual(tokenHash) &&
+		                                             hash == tokenHash &&
 		                                             (token.ExpiresAt is null || token.ExpiresAt > now));
 		return Task.FromResult(found is null
 			? null
-			: new StoredSession(found.Id, found.User.Id, found.Type, found.Value.Device.Ip,
-				found.Value.Device.ClientInfo, found.StartedAt,
+			: new StoredSession(found.Id, found.User.Id, found.Type, found.Value.Fingerprint.Ip,
+				found.Value.Fingerprint.ClientInfo, found.StartedAt,
 				_tokens[found.Id].ExpiresAt));
 	}
 

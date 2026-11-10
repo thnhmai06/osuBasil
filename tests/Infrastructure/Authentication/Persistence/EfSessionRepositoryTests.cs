@@ -6,6 +6,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
@@ -24,7 +25,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 	private static readonly SessionFilter All = new(SessionState.Any, null, Third);
 
-	private static readonly byte[] Hash = SHA256.HashData("token"u8);
+	private static readonly Sha256 Hash = new("token"u8.ToArray());
 
 	private ISessionRepository Sessions => Get<ISessionRepository>();
 
@@ -35,7 +36,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 
 		await Sessions.RecordAsync(new SessionRecord(FirstId, user, SessionType.Stable, First,
-				new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential(),
+				new SessionData(new SessionFingerprint(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential(),
 					First)),
 			TestContext.Current.CancellationToken);
 
@@ -75,7 +76,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 
 		await Sessions.RecordAsync(new SessionRecord(FirstId, user, SessionType.Api, First,
-				new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.11")), new SessionCredential(), First)),
+				new SessionData(new SessionFingerprint(IPAddress.Parse("192.0.2.11")), new SessionCredential(), First)),
 			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
@@ -136,7 +137,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "closed_session" }, TestContext.Current.CancellationToken);
 		var session = new SessionRecord(FirstId, user, SessionType.Api, First,
-			new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.12")), new SessionCredential(), First));
+			new SessionData(new SessionFingerprint(IPAddress.Parse("192.0.2.12")), new SessionCredential(), First));
 		await Sessions.RecordAsync(session, TestContext.Current.CancellationToken);
 		var ended = new SessionRecord(session.Id, user, session.Type, session.StartedAt,
 			session.Value with { LastActiveAt = Second, End = new SessionEnd(Third, SessionEndReason.Revoked) });
@@ -162,7 +163,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 		var session = await Sessions.GetAsync(user, FirstId, TestContext.Current.CancellationToken);
 
-		var client = Assert.IsType<OsuClient>(session!.Value.Device.Client);
+		var client = Assert.IsType<OsuClient>(session!.Value.Fingerprint.Client);
 		Assert.Equal(Client().Version, client.Version);
 		Assert.Equal(Client().Fingerprint.PathHash, client.Fingerprint.PathHash);
 		Assert.Equal(Client().Fingerprint.UninstallHash, client.Fingerprint.UninstallHash);
@@ -182,7 +183,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 		Assert.Equal(Hash, session!.Value.Credential.TokenHash);
 		Assert.Equal(Third, session.Value.Credential.ExpiresAt);
-		Assert.Null(session.Value.Device.Client);
+		Assert.Null(session.Value.Fingerprint.Client);
 	}
 
 	private async Task<UserRecord> UserAsync(string name = "token_user")
@@ -191,11 +192,11 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
 	}
 
-	private Task RecordTokenAsync(UserRecord user, Guid id, SessionType type, byte[]? hash,
+	private Task RecordTokenAsync(UserRecord user, Guid id, SessionType type, Sha256? hash,
 		DateTimeOffset? expiresAt = null)
 	{
 		return Sessions.RecordAsync(new SessionRecord(id, user, type, First,
-				new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.20"), ClientInfo: "label"),
+				new SessionData(new SessionFingerprint(IPAddress.Parse("192.0.2.20"), ClientInfo: "label"),
 					new SessionCredential(hash, expiresAt), First)),
 			TestContext.Current.CancellationToken);
 	}
@@ -239,7 +240,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 
 		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, Hash, Second, cancel));
 		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Irc, Hash, First, cancel));
-		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, [1, 2, 3], First, cancel));
+		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, Sha("unknown"u8.ToArray()), First, cancel));
 
 		await Sessions.EndAsync(user, null, null, [SessionType.Api], Second, SessionEndReason.Revoked, cancel);
 		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, Hash, First, cancel));
@@ -363,9 +364,9 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		Assert.Equal(2, apiOnly.Items.Count);
 	}
 
-	private static byte[] Sha(byte[] input)
+	private static Sha256 Sha(byte[] input)
 	{
-		return SHA256.HashData(input);
+		return new Sha256(input);
 	}
 
 	/// <summary>Records a session of an account.</summary>
@@ -374,7 +375,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	private async Task RecordAsync(UserRecord user, DateTimeOffset timestamp, Guid id)
 	{
 		await Sessions.RecordAsync(new SessionRecord(id, user, SessionType.Stable, timestamp,
-				new SessionData(new SessionDevice(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential(),
+				new SessionData(new SessionFingerprint(IPAddress.Parse("192.0.2.10"), Client()), new SessionCredential(),
 					timestamp)),
 			TestContext.Current.CancellationToken);
 	}

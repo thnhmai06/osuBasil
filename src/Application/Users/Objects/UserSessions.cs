@@ -192,7 +192,7 @@ public sealed class UserSessions
 		var key = UserRegistry.NewToken();
 		var now = _user.Context.Clock.GetUtcNow();
 		var session = new SessionRecord(Guid.NewGuid(), _user.Record, SessionType.Irc, now,
-			new SessionData(new SessionDevice(actor.Session.Value.Device.Ip, ClientInfo: label),
+			new SessionData(new SessionFingerprint(actor.Session.Value.Fingerprint.Ip, ClientInfo: label),
 				new SessionCredential(UserRegistry.HashToken(key)), now));
 		await _user.Context.Sessions.RecordAsync(session, cancellationToken);
 		return (UserOutcome.Ok, key, session);

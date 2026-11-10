@@ -4,6 +4,7 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;
 

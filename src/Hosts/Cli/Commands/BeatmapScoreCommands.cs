@@ -6,6 +6,7 @@ using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Views;
 using Mediator;

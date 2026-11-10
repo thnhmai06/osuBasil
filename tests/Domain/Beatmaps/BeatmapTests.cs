@@ -1,6 +1,7 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests.Beatmaps;

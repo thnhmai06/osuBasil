@@ -2,6 +2,7 @@ using System.Net;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Authentication;
@@ -15,7 +16,7 @@ public class SessionRecordTests
 	{
 		var id = Guid.NewGuid();
 		var first = Make(id);
-		var later = Make(id, lastActiveAt: Start.AddHours(1), tokenHash: [1, 2, 3]);
+		var later = Make(id, lastActiveAt: Start.AddHours(1), tokenHash: new Sha256("abc"u8.ToArray()));
 
 		Assert.Equal(first, later);
 		Assert.Equal(first.GetHashCode(), later.GetHashCode());
@@ -76,11 +77,11 @@ public class SessionRecordTests
 	}
 
 	private static SessionRecord Make(Guid? id = null, SessionType type = SessionType.Api, OsuClient? client = null,
-		DateTimeOffset? lastActiveAt = null, byte[]? tokenHash = null)
+		DateTimeOffset? lastActiveAt = null, Sha256? tokenHash = null)
 	{
 		var user = new UserRecord { Id = 1, Value = new UserData { Name = "session_user" } };
 		return new SessionRecord(id ?? Guid.NewGuid(), user, type, Start,
-			new SessionData(new SessionDevice(IPAddress.Loopback, client), new SessionCredential(tokenHash),
+			new SessionData(new SessionFingerprint(IPAddress.Loopback, client), new SessionCredential(tokenHash),
 				lastActiveAt ?? Start));
 	}
 

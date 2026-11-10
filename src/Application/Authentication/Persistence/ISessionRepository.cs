@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Application.Common;
 using Basil.Domain.Authentication;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Authentication.Persistence;
@@ -86,7 +87,7 @@ public interface ISessionRepository
 	/// <param name="now">The moment that decides whether the token has expired.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The session, or <see langword="null" /> when none is active and unexpired with that hash.</returns>
-	Task<StoredSession?> FindByTokenAsync(SessionType type, byte[] tokenHash, DateTimeOffset now,
+	Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Ends the unended sessions of a user that match a selection.</summary>

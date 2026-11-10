@@ -4,6 +4,7 @@ using Basil.Application.Common;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -73,12 +74,13 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	}
 
 	/// <inheritdoc />
-	public async Task<StoredSession?> FindByTokenAsync(SessionType type, byte[] tokenHash, DateTimeOffset now,
+	public async Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
 		CancellationToken cancellationToken = default)
 	{
 		var at = now.ToUniversalTime();
+		var hash = Convert.FromHexString(tokenHash.HashValue);
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
-				.FirstOrDefaultAsync(item => item.TokenHash == tokenHash && item.Type == type && item.EndedAt == null &&
+				.FirstOrDefaultAsync(item => item.TokenHash == hash && item.Type == type && item.EndedAt == null &&
 				                             (item.ExpiresAt == null || item.ExpiresAt > at), cancellationToken),
 			cancellationToken);
 		return row is null
@@ -138,8 +140,9 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	{
 		var end = row.EndedAt is { } at ? new SessionEnd(at, row.EndReason!.Value) : null;
 		return new SessionRecord(row.Id, user, row.Type, row.StartedAt,
-			new SessionData(new SessionDevice(row.Ip, ToClient(row), row.ClientInfo),
-				new SessionCredential(row.TokenHash, row.ExpiresAt), row.LastActiveAt, end));
+			new SessionData(new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
+				new SessionCredential(row.TokenHash is { } hash ? new Sha256(Convert.ToHexStringLower(hash)) : null, row.ExpiresAt),
+				row.LastActiveAt, end));
 	}
 
 	private static OsuClient? ToClient(SessionRow row)
@@ -170,7 +173,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			LastActiveAt = lastActiveAt.ToUniversalTime(),
 			EndedAt = end?.At.ToUniversalTime(),
 			EndReason = end?.Reason,
-			TokenHash = credential.TokenHash is null ? null : [.. credential.TokenHash],
+			TokenHash = credential.TokenHash is { } hash ? Convert.FromHexString(hash.HashValue) : null,
 			ExpiresAt = credential.ExpiresAt?.ToUniversalTime(),
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
 			ClientRevision = client?.Version.Revision,

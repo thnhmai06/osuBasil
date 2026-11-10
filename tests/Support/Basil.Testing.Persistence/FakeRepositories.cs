@@ -3,6 +3,7 @@ using Basil.Application.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 
 namespace Basil.Testing.Persistence;

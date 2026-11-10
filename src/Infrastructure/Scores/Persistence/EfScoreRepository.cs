@@ -1,6 +1,7 @@
 using Basil.Application.Common;
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

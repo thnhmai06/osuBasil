@@ -14,6 +14,7 @@ using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Registry;
@@ -170,7 +171,7 @@ public sealed class UserRegistry
 			? new SessionCredential(HashToken(token), now + lifetime)
 			: new SessionCredential();
 		return new SessionRecord(Guid.NewGuid(), record, type, now,
-			new SessionData(new SessionDevice(ip, client), credential, now));
+			new SessionData(new SessionFingerprint(ip, client), credential, now));
 	}
 
 	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
@@ -244,7 +245,7 @@ public sealed class UserRegistry
 		string token)
 	{
 		return new SessionRecord(stored.Id, record, type, stored.StartedAt,
-			new SessionData(new SessionDevice(ip, ClientInfo: stored.ClientInfo),
+			new SessionData(new SessionFingerprint(ip, ClientInfo: stored.ClientInfo),
 				new SessionCredential(HashToken(token), stored.ExpiresAt), stored.StartedAt));
 	}
 
@@ -286,9 +287,9 @@ public sealed class UserRegistry
 	/// <summary>Creates the stored form of a token or key.</summary>
 	/// <param name="token">The token or key.</param>
 	/// <returns>The SHA-256 hash of the token.</returns>
-	internal static byte[] HashToken(string token)
+	internal static Sha256 HashToken(string token)
 	{
-		return SHA256.HashData(Encoding.UTF8.GetBytes(token));
+		return new Sha256(Encoding.UTF8.GetBytes(token));
 	}
 
 	/// <summary>Checks a registration attempt without creating the account.</summary>
@@ -536,7 +537,7 @@ public sealed class UserRegistry
 		// A game client session must report a client, and none stands behind the bot's.
 		var client = type is SessionType.Stable ? ServerClient : null;
 		return new SessionRecord(Guid.NewGuid(), bot, type, now,
-			new SessionData(new SessionDevice(IPAddress.Loopback, client), new SessionCredential(), now));
+			new SessionData(new SessionFingerprint(IPAddress.Loopback, client), new SessionCredential(), now));
 	}
 
 	/// <summary>Creates the token of a new connection.</summary>

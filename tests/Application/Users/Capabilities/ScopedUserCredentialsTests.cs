@@ -6,6 +6,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Testing;

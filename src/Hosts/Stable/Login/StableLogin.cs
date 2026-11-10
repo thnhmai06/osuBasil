@@ -11,6 +11,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Gateway;
@@ -101,7 +102,7 @@ internal sealed class StableLogin(
 	{
 		return registry.Online.Values.SelectMany(user => user.Connections)
 			.Count(connection => connection is { IsOpen: true, IsServerOwned: false } &&
-			                     Equals(connection.Session.Value.Device.Ip, ip));
+			                     Equals(connection.Session.Value.Fingerprint.Ip, ip));
 	}
 
 	private static (string Token, byte[] Reply) FailureReply(LoginFailure? failure)

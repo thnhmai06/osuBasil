@@ -6,6 +6,7 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,12 +52,9 @@ public sealed class ApiTokenTests
 		var sessions = app.Provider.GetRequiredService<ISessionRepository>();
 
 		var byHash = await sessions.FindByTokenAsync(SessionType.Api,
-			SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), app.Clock.GetUtcNow(), Token);
-		var byPlainToken = await sessions.FindByTokenAsync(SessionType.Api,
-			Encoding.UTF8.GetBytes(connection.Token), app.Clock.GetUtcNow(), Token);
+			new Sha256(Encoding.UTF8.GetBytes(connection.Token)), app.Clock.GetUtcNow(), Token);
 
 		Assert.Equal(connection.Session.Id, byHash!.Id);
-		Assert.Null(byPlainToken);
 	}
 
 	[Fact]

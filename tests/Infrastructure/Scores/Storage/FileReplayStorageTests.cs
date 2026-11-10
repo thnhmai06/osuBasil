@@ -2,6 +2,7 @@ using System.Text;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
 using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Scores.Storage;
