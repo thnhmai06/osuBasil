@@ -23,7 +23,7 @@ public sealed class ChannelHandlerTests
 			.Handle(new CreateGeneralChannel(admin, Record("#new")), Token);
 
 		Assert.True(result.IsOk);
-		Assert.NotNull(app.Server.ScopeTo(admin).Channels.Find("#new").Channel);
+		Assert.NotNull(app.Server.ScopeTo(admin).Channels.FindGeneral("#new").Channel);
 	}
 
 	[Fact]
@@ -37,7 +37,7 @@ public sealed class ChannelHandlerTests
 			.Handle(new CreateGeneralChannel(plain, Record("#new")), Token);
 
 		Assert.NotNull(result.Missing);
-		Assert.Null(app.Server.ScopeTo(admin).Channels.Find("#new").Channel);
+		Assert.Null(app.Server.ScopeTo(admin).Channels.FindGeneral("#new").Channel);
 	}
 
 	[Fact]
@@ -77,7 +77,7 @@ public sealed class ChannelHandlerTests
 		var answer = await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#gone"), Token);
 
 		Assert.True(answer.Result.IsOk);
-		Assert.Null(app.Server.ScopeTo(admin).Channels.Find("#gone").Channel);
+		Assert.Null(app.Server.ScopeTo(admin).Channels.FindGeneral("#gone").Channel);
 	}
 
 	[Fact]

@@ -33,12 +33,12 @@ public readonly struct ScopedServerBeatmapsets
 		CancellationToken ct = default)
 	{
 		var server = _scoped.Server;
-		if (await server.IsLockedAsync(Locks.Beatmapsets, ct) &&
+		if (await server.Beatmapsets.IsLockedAsync(Locks.Beatmapsets, ct) &&
 		    _scoped.Needs(UserPrivileges.Tournament) is not null)
 			return (ServerOutcome.Locked, null);
 		if (_scoped.Needs(UserPrivileges.Player) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), null);
 
-		return await server.UploadBeatmapsetAsync(archive, ct);
+		return await server.Beatmapsets.UploadAsync(archive, ct);
 	}
 }

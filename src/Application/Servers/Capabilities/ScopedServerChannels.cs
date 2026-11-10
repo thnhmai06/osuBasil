@@ -27,7 +27,7 @@ public readonly struct ScopedServerChannels
 		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		return await _scoped.Server.CreateChannelAsync(record);
+		return await _scoped.Server.Channels.CreateAsync(record);
 	}
 
 	/// <summary>Finds the general channel to manage under a name.</summary>
@@ -39,11 +39,11 @@ public readonly struct ScopedServerChannels
 	///     Requires <see cref="UserPrivileges.Moderator" />. The name is looked up only after the right is met,
 	///     so a connection without it is refused the same way whether or not the channel exists.
 	/// </remarks>
-	public (Result<ChannelOutcome> Result, GeneralChannel? Channel) Find(string name)
+	public (Result<ChannelOutcome> Result, GeneralChannel? Channel) FindGeneral(string name)
 	{
 		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return (Result<ChannelOutcome>.Denied(missing), null);
 
-		return _scoped.Server.FindGeneralChannel(name);
+		return _scoped.Server.Channels.FindGeneral(name);
 	}
 }
