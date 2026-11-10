@@ -15,6 +15,6 @@ internal sealed class ListFriendsHandler(UserRegistry registry)
 	public async ValueTask<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> Handle(ListFriends request,
 		CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.FriendsAsync(ct);
+		return await registry.ScopeTo(request.Actor, request.Target).Relationships.FriendsAsync(ct);
 	}
 }

@@ -3,7 +3,6 @@ using Basil.Application.Common;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
@@ -16,7 +15,7 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Types">The kinds of session to list, or null for all kinds.</param>
 public sealed record ListUserSessions(
 	Connection Actor,
-	UserRecord Target,
+	UserReference Target,
 	PageRequest Page,
 	SessionState State,
 	IReadOnlyList<SessionType>? Types) : IRequest<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)>;

@@ -13,7 +13,7 @@ internal sealed class ChangeUserPasswordHandler(UserRegistry registry)
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(ChangeUserPassword request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Credentials
+		return await registry.ScopeTo(request.Actor, request.Target).Credentials
 			.ChangePasswordAsync(request.NewPasswordHash, request.CurrentPasswordHash, request.IncludeCurrent);
 	}
 }

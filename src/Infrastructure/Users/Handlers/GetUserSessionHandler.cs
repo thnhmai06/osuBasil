@@ -15,7 +15,7 @@ internal sealed class GetUserSessionHandler(UserRegistry registry)
 	public async ValueTask<(Result<UserOutcome> Result, SessionRecord? Session)> Handle(GetUserSession request,
 		CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
+		return await registry.ScopeTo(request.Actor, request.Target).Sessions
 			.GetAsync(request.SessionId, ct);
 	}
 }

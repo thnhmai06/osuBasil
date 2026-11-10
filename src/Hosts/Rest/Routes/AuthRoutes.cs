@@ -1,6 +1,7 @@
 using System.Text;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -74,7 +75,7 @@ internal static class AuthRoutes
 	{
 		var connection = context.Connection();
 		var result = await context.Sender().Send(
-			new CloseUserSession(connection, connection.User.Record, connection.Session.Id), ct);
+			new CloseUserSession(connection, UserReference.ById(connection.Record.Id), connection.Session.Id), ct);
 		return result.Answer();
 	}
 

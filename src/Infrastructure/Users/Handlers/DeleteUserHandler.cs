@@ -12,6 +12,6 @@ internal sealed class DeleteUserHandler(UserRegistry registry) : IRequestHandler
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(DeleteUser request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).DeleteAsync();
+		return await registry.ScopeTo(request.Actor, request.Target).DeleteAsync();
 	}
 }

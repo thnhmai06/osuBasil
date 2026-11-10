@@ -3,7 +3,6 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Common;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
@@ -16,7 +15,7 @@ namespace Basil.Application.Users.Messages;
 /// <param name="IncludeCurrent">True to record the current password in the moderation log.</param>
 public sealed record ChangeUserPassword(
 	Connection Actor,
-	UserRecord Target,
+	UserReference Target,
 	Md5 NewPasswordHash,
 	Md5? CurrentPasswordHash,
 	bool IncludeCurrent) : IRequest<Result<UserOutcome>>;

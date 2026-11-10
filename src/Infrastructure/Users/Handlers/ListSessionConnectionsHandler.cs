@@ -15,7 +15,7 @@ internal sealed class ListSessionConnectionsHandler(UserRegistry registry)
 	public async ValueTask<(Result<UserOutcome> Result, Page<ConnectionRecord>? Connections)> Handle(
 		ListSessionConnections request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
+		return await registry.ScopeTo(request.Actor, request.Target).Sessions
 			.ListConnectionsAsync(request.SessionId, request.Page, ct);
 	}
 }

@@ -15,7 +15,7 @@ internal sealed class OpenIrcSessionHandler(UserRegistry registry)
 	public async ValueTask<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)> Handle(
 		OpenIrcSession request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
+		return await registry.ScopeTo(request.Actor, request.Target).Sessions
 			.OpenIrcAsync(request.Label);
 	}
 }

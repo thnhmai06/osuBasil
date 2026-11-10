@@ -13,7 +13,7 @@ internal sealed class UnsilenceUserHandler(UserRegistry registry)
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(UnsilenceUser request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Silence
+		return await registry.ScopeTo(request.Actor, request.Target).Silence
 			.LiftAsync(request.Reason);
 	}
 }

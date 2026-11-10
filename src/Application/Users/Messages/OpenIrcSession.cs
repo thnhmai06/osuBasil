@@ -2,7 +2,6 @@ using Basil.Application.Common;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
@@ -11,5 +10,5 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="Label">The label of the new session.</param>
-public sealed record OpenIrcSession(Connection Actor, UserRecord Target, string Label)
+public sealed record OpenIrcSession(Connection Actor, UserReference Target, string Label)
 	: IRequest<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)>;

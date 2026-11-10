@@ -15,6 +15,6 @@ internal sealed class ListBlocksHandler(UserRegistry registry)
 	public async ValueTask<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> Handle(ListBlocks request,
 		CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.BlocksAsync(ct);
+		return await registry.ScopeTo(request.Actor, request.Target).Relationships.BlocksAsync(ct);
 	}
 }

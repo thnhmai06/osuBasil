@@ -13,7 +13,7 @@ internal sealed class CloseUserSessionsHandler(UserRegistry registry)
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(CloseUserSessions request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
+		return await registry.ScopeTo(request.Actor, request.Target).Sessions
 			.CloseAllAsync(request.KeepCurrent);
 	}
 }

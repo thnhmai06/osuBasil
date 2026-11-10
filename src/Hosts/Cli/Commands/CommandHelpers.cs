@@ -1,5 +1,6 @@
 using System.Text;
 using Basil.Application.Common;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Common;
 using Basil.Domain.Cryptography;
@@ -7,7 +8,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>Pieces that several commands share: paging, finding an account and printing lists.</summary>
+/// <summary>Pieces that several commands share: paging, naming an account and printing lists.</summary>
 internal static class CommandHelpers
 {
 	/// <summary>The most items a page may hold, as in the API.</summary>
@@ -37,6 +38,12 @@ internal static class CommandHelpers
 		call.Formatter.PrintTable(call.Output, [.. page.Items]);
 		call.Output.Line(
 			$"shown: {page.Items.Count} (offset {request.Offset}, limit {request.Limit}){(page.HasNext ? ", more follow" : "")}");
+	}
+
+	/// <summary>Reads the account a command names by <c>--id</c>.</summary>
+	public static UserReference UserOf(this CommandCall call, string name = "id")
+	{
+		return UserReference.ById(call.Id(name));
 	}
 
 	/// <summary>Finds an account by id; the console may see deleted accounts too only through their own commands.</summary>

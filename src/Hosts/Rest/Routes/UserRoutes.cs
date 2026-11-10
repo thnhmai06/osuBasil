@@ -139,18 +139,21 @@ internal static class UserRoutes
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchUserRequest request,
-		UserRegistry registry, TimeProvider clock)
+		IUserRepository users, UserRegistry registry, TimeProvider clock)
 	{
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var ct = context.RequestAborted;
 		if (await PatchNameAndCountryAsync(context, target, request, ct) is { } refusal) return refusal;
 		if (await PatchSelfAndPrivilegesAsync(context, target, request, ct) is { } denied) return denied;
 
-		return Api.Ok(UserView.Of(registry, registry.Of(target).Record, clock), "Updated successfully");
+		var record = await users.GetAsync(id, ct);
+		return record is null || record.Value.DeletedAt is not null
+			? Api.NotFound("No such user.")
+			: Api.Ok(UserView.Of(registry, registry.Of(record).Record, clock), "Updated successfully");
 	}
 
-	private static async Task<IResult?> PatchNameAndCountryAsync(HttpContext context, UserRecord target,
+	private static async Task<IResult?> PatchNameAndCountryAsync(HttpContext context, UserReference target,
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Name is not null &&
@@ -167,7 +170,7 @@ internal static class UserRoutes
 			: null;
 	}
 
-	private static async Task<IResult?> PatchSelfAndPrivilegesAsync(HttpContext context, UserRecord target,
+	private static async Task<IResult?> PatchSelfAndPrivilegesAsync(HttpContext context, UserReference target,
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Away is not null && !await context.Sender().Send(
@@ -188,7 +191,7 @@ internal static class UserRoutes
 	private static async Task<IResult> PasswordAsync(HttpContext context, int id, PasswordRequest request)
 	{
 		if (string.IsNullOrEmpty(request.New)) return Api.Invalid("new is required.");
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var current = request.Current is null ? (Md5?)null : new Md5(Encoding.UTF8.GetBytes(request.Current));
 		return (await context.Sender().Send(new ChangeUserPassword(context.Connection(), target,
@@ -198,10 +201,8 @@ internal static class UserRoutes
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, int id)
 	{
-		return await context.FindAsync(id) is not { } target
-			? Api.NotFound("No such user.")
-			: (await context.Sender().Send(new DeleteUser(context.Connection(), target), context.RequestAborted))
-			.Answer();
+		return (await context.Sender().Send(new DeleteUser(context.Connection(), UserReference.ById(id)),
+			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> PutAvatarAsync(HttpContext context, int id, ISettingsRepository settings)
@@ -213,7 +214,7 @@ internal static class UserRoutes
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
 		if (file.Length > (await settings.GetAsync(context.RequestAborted)).Uploads.AvatarMaxSize)
 			return Api.Invalid("The avatar is too large.", "tooLarge");
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		await using var stream = file.OpenReadStream();
 		return (await context.Sender()
@@ -222,10 +223,8 @@ internal static class UserRoutes
 
 	private static async Task<IResult> DeleteAvatarAsync(HttpContext context, int id)
 	{
-		return await context.FindAsync(id) is not { } target
-			? Api.NotFound("No such user.")
-			: (await context.Sender().Send(new RemoveUserAvatar(context.Connection(), target), context.RequestAborted))
-			.Answer();
+		return (await context.Sender().Send(new RemoveUserAvatar(context.Connection(), UserReference.ById(id)),
+			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> ListSessionsAsync(HttpContext context, int id, string? state, int? types,
@@ -246,7 +245,7 @@ internal static class UserRoutes
 		var kinds = types is null
 			? null
 			: Enum.GetValues<SessionType>().Where(t => (types.Value & (int)t) != 0).ToList();
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var (result, sessions) =
 			await context.Sender().Send(
@@ -259,7 +258,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> GetSessionAsync(HttpContext context, int id, long sid)
 	{
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var (result, session) = await context.Sender()
 			.Send(new GetUserSession(context.Connection(), target, sid), context.RequestAborted);
@@ -272,7 +271,7 @@ internal static class UserRoutes
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var (result, connections) = await context.Sender()
 			.Send(new ListSessionConnections(context.Connection(), target, sid, page!), context.RequestAborted);
@@ -284,10 +283,8 @@ internal static class UserRoutes
 
 	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, long sid)
 	{
-		return await context.FindAsync(id) is not { } target
-			? Api.NotFound("No such user.")
-			: (await context.Sender().Send(new CloseUserSession(context.Connection(), target, sid),
-				context.RequestAborted)).Answer();
+		return (await context.Sender().Send(new CloseUserSession(context.Connection(), UserReference.ById(id), sid),
+			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> CloseSessionsAsync(HttpContext context, int id)
@@ -295,11 +292,9 @@ internal static class UserRoutes
 		var (request, refusal) = await context.OptionalBodyAsync<CloseSessionsRequest>();
 		if (refusal is not null) return refusal;
 
-		return await context.FindAsync(id) is not { } target
-			? Api.NotFound("No such user.")
-			: (await context.Sender().Send(
-				new CloseUserSessions(context.Connection(), target, request?.KeepCurrent ?? true),
-				context.RequestAborted)).Answer();
+		return (await context.Sender().Send(
+			new CloseUserSessions(context.Connection(), UserReference.ById(id), request?.KeepCurrent ?? true),
+			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> OpenIrcAsync(HttpContext context, int id)
@@ -317,7 +312,7 @@ internal static class UserRoutes
 
 		if (request is null) return Api.Invalid("A body is required.");
 		if (string.IsNullOrWhiteSpace(request.Label)) return Api.Invalid("label is required.");
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var (result, key, session) = await context.Sender()
 			.Send(new OpenIrcSession(context.Connection(), target, request.Label), context.RequestAborted);
@@ -326,7 +321,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> FriendsAsync(HttpContext context, int id)
 	{
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var (result, list) =
 			await context.Sender().Send(new ListFriends(context.Connection(), target), context.RequestAborted);
@@ -335,7 +330,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> BlocksAsync(HttpContext context, int id)
 	{
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		var (result, list) =
 			await context.Sender().Send(new ListBlocks(context.Connection(), target), context.RequestAborted);
@@ -343,19 +338,18 @@ internal static class UserRoutes
 	}
 
 	private static async Task<IResult> RelationAsync(HttpContext context, int id, int otherId,
-		Func<Connection, UserRecord, IRequest<Result<UserOutcome>>> ask)
+		Func<Connection, UserReference, IRequest<Result<UserOutcome>>> ask)
 	{
 		if (id != context.Connection().Record.Id)
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
 
-		return await context.FindAsync(otherId) is not { } target
-			? Api.NotFound("No such user.")
-			: (await context.Sender().Send(ask(context.Connection(), target), context.RequestAborted)).Answer();
+		return (await context.Sender().Send(ask(context.Connection(), UserReference.ById(otherId)),
+			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> SilenceAsync(HttpContext context, int id, SilenceRequest request)
 	{
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		return (await context.Sender().Send(new SilenceUser(context.Connection(), target, request.EndsAt,
 			request.Reason), context.RequestAborted)).Answer();
@@ -363,7 +357,7 @@ internal static class UserRoutes
 
 	private static async Task<IResult> UnsilenceAsync(HttpContext context, int id)
 	{
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
+		var target = UserReference.ById(id);
 
 		return (await context.Sender().Send(new UnsilenceUser(context.Connection(), target, null),
 			context.RequestAborted)).Answer();

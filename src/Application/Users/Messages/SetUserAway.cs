@@ -1,5 +1,5 @@
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
@@ -8,4 +8,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="Message">The away message, or null to clear it.</param>
-public sealed record SetUserAway(Connection Actor, UserRecord Target, string? Message) : IRequest<bool>;
+public sealed record SetUserAway(Connection Actor, UserReference Target, string? Message) : IRequest<bool>;

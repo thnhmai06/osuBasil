@@ -125,7 +125,7 @@ internal sealed class StableLogin(
 		var roles = StableView.Roles(effective);
 		var privileges = (int)roles;
 		var motd = (await settings.GetAsync(ct)).General.Motd;
-		var friends = (await sender.Send(new ListFriends(connection, user.Record), ct)).Users;
+		var friends = (await sender.Send(new ListFriends(connection, UserReference.ById(user.Record.Id)), ct)).Users;
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
 			? (int)(user.Record.Value.SilencedUntil!.Value - now).TotalSeconds
 			: 0;

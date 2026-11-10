@@ -8,9 +8,8 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class SetUserAwayHandler(UserRegistry registry) : IRequestHandler<SetUserAway, bool>
 {
 	/// <inheritdoc />
-	public ValueTask<bool> Handle(SetUserAway request, CancellationToken ct)
+	public async ValueTask<bool> Handle(SetUserAway request, CancellationToken ct)
 	{
-		return ValueTask.FromResult(registry.Of(request.Target).ScopeTo(request.Actor).Profile
-			.SetAway(request.Message));
+		return await registry.ScopeTo(request.Actor, request.Target).Profile.SetAwayAsync(request.Message);
 	}
 }

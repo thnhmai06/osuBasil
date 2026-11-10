@@ -12,7 +12,7 @@ internal sealed class RenameUserHandler(UserRegistry registry) : IRequestHandler
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(RenameUser request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile
+		return await registry.ScopeTo(request.Actor, request.Target).Profile
 			.RenameAsync(request.Name);
 	}
 }

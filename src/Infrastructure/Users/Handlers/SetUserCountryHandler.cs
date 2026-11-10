@@ -13,7 +13,7 @@ internal sealed class SetUserCountryHandler(UserRegistry registry)
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(SetUserCountry request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile
+		return await registry.ScopeTo(request.Actor, request.Target).Profile
 			.SetCountryAsync(request.Country);
 	}
 }

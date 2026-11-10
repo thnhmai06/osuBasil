@@ -2,6 +2,7 @@ using System.Globalization;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Users.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -189,8 +190,7 @@ internal static class UserCommands
 
 	private static async Task<int> SetAsync(CommandCall call)
 	{
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
+		var target = call.UserOf();
 		if (await SetProfileAsync(call, target) is { } profileRefusal) return profileRefusal;
 		if (await SetCredentialsAsync(call, target) is { } credentialsRefusal) return credentialsRefusal;
 
@@ -198,7 +198,7 @@ internal static class UserCommands
 		return ExitCodes.Success;
 	}
 
-	private static async Task<int?> SetProfileAsync(CommandCall call, UserRecord target)
+	private static async Task<int?> SetProfileAsync(CommandCall call, UserReference target)
 	{
 		var ct = call.CancellationToken;
 		var sender = call.Get<ISender>();
@@ -221,7 +221,7 @@ internal static class UserCommands
 		return null;
 	}
 
-	private static async Task<int?> SetCredentialsAsync(CommandCall call, UserRecord target)
+	private static async Task<int?> SetCredentialsAsync(CommandCall call, UserReference target)
 	{
 		var ct = call.CancellationToken;
 		var sender = call.Get<ISender>();
@@ -241,28 +241,24 @@ internal static class UserCommands
 
 	private static async Task<int> SetAvatarAsync(CommandCall call)
 	{
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
 		await using var stream = File.OpenRead(call.Required("file"));
 		return call.Report(
 			await call.Get<ISender>()
-				.Send(new SetUserAvatar(await call.ByAsync(), target, stream), call.CancellationToken), "Avatar set.");
+				.Send(new SetUserAvatar(await call.ByAsync(), call.UserOf(), stream), call.CancellationToken),
+			"Avatar set.");
 	}
 
 	private static async Task<int> RemoveAvatarAsync(CommandCall call)
 	{
-		return await call.FindUserAsync() is not { } target
-			? call.NotFound(NoUser)
-			: call.Report(
-				await call.Get<ISender>()
-					.Send(new RemoveUserAvatar(await call.ByAsync(), target), call.CancellationToken),
-				"Avatar removed.");
+		return call.Report(
+			await call.Get<ISender>()
+				.Send(new RemoveUserAvatar(await call.ByAsync(), call.UserOf()), call.CancellationToken),
+			"Avatar removed.");
 	}
 
 	private static async Task<int> RelationsAsync(CommandCall call, RelationshipType type)
 	{
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
+		var target = call.UserOf();
 		var (result, users) = type == RelationshipType.Friend
 			? await call.Get<ISender>().Send(new ListFriends(await call.ByAsync(), target), call.CancellationToken)
 			: await call.Get<ISender>().Send(new ListBlocks(await call.ByAsync(), target), call.CancellationToken);
@@ -274,20 +270,16 @@ internal static class UserCommands
 
 	private static async Task<int> SilenceAsync(CommandCall call)
 	{
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
 		var endsAt = call.Get<TimeProvider>().GetUtcNow() + call.Duration("duration")!.Value;
 		return call.Report(await call.Get<ISender>().Send(
-			new SilenceUser(await call.ByAsync(), target, endsAt, call.Text("reason")), call.CancellationToken),
+			new SilenceUser(await call.ByAsync(), call.UserOf(), endsAt, call.Text("reason")), call.CancellationToken),
 			"Silenced.");
 	}
 
 	private static async Task<int> UnsilenceAsync(CommandCall call)
 	{
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
 		return call.Report(await call.Get<ISender>().Send(
-			new UnsilenceUser(await call.ByAsync(), target, null), call.CancellationToken), "Silence lifted.");
+			new UnsilenceUser(await call.ByAsync(), call.UserOf(), null), call.CancellationToken), "Silence lifted.");
 	}
 
 	private static async Task<int> SessionsAsync(CommandCall call)
@@ -303,10 +295,8 @@ internal static class UserCommands
 		var kinds = call.Mask("types") is { } types
 			? Enum.GetValues<SessionType>().Where(type => (types & (ulong)type) != 0).ToList()
 			: null;
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
 		var (result, sessions) = await call.Get<ISender>()
-			.Send(new ListUserSessions(await call.ByAsync(), target, page, state, kinds), call.CancellationToken);
+			.Send(new ListUserSessions(await call.ByAsync(), call.UserOf(), page, state, kinds), call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.PrintPage(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
@@ -316,10 +306,8 @@ internal static class UserCommands
 
 	private static async Task<int> SessionAsync(CommandCall call)
 	{
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
 		var (result, session) = await call.Get<ISender>()
-			.Send(new GetUserSession(await call.ByAsync(), target, long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
+			.Send(new GetUserSession(await call.ByAsync(), call.UserOf(), long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
 				call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
@@ -330,10 +318,8 @@ internal static class UserCommands
 	private static async Task<int> SessionConnectionsAsync(CommandCall call)
 	{
 		var page = call.Page();
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
 		var (result, connections) = await call.Get<ISender>()
-			.Send(new ListSessionConnections(await call.ByAsync(), target,
+			.Send(new ListSessionConnections(await call.ByAsync(), call.UserOf(),
 					long.Parse(call.Word("sid"), CultureInfo.InvariantCulture), page),
 				call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
@@ -345,30 +331,25 @@ internal static class UserCommands
 
 	private static async Task<int> CloseSessionAsync(CommandCall call)
 	{
-		return await call.FindUserAsync() is not { } target
-			? call.NotFound(NoUser)
-			: call.Report(
-				await call.Get<ISender>()
-					.Send(new CloseUserSession(await call.ByAsync(), target, long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
-						call.CancellationToken),
-				"Session closed.");
+		return call.Report(
+			await call.Get<ISender>()
+				.Send(new CloseUserSession(await call.ByAsync(), call.UserOf(),
+						long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
+					call.CancellationToken),
+			"Session closed.");
 	}
 
 	private static async Task<int> CloseSessionsAsync(CommandCall call)
 	{
-		return await call.FindUserAsync() is not { } target
-			? call.NotFound(NoUser)
-			: call.Report(
-				await call.Get<ISender>().Send(new CloseUserSessions(await call.ByAsync(), target, false),
-					call.CancellationToken), "Sessions closed.");
+		return call.Report(
+			await call.Get<ISender>().Send(new CloseUserSessions(await call.ByAsync(), call.UserOf(), false),
+				call.CancellationToken), "Sessions closed.");
 	}
 
 	private static async Task<int> DeleteAsync(CommandCall call)
 	{
-		return await call.FindUserAsync() is not { } target
-			? call.NotFound(NoUser)
-			: call.Report(
-				await call.Get<ISender>().Send(new DeleteUser(await call.ByAsync(), target), call.CancellationToken),
-				"User deleted.");
+		return call.Report(
+			await call.Get<ISender>().Send(new DeleteUser(await call.ByAsync(), call.UserOf()), call.CancellationToken),
+			"User deleted.");
 	}
 }

@@ -8,9 +8,8 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class SetUserPmPrivateHandler(UserRegistry registry) : IRequestHandler<SetUserPmPrivate, bool>
 {
 	/// <inheritdoc />
-	public ValueTask<bool> Handle(SetUserPmPrivate request, CancellationToken ct)
+	public async ValueTask<bool> Handle(SetUserPmPrivate request, CancellationToken ct)
 	{
-		return ValueTask.FromResult(registry.Of(request.Target).ScopeTo(request.Actor).Profile
-			.SetPmPrivate(request.PmPrivate));
+		return await registry.ScopeTo(request.Actor, request.Target).Profile.SetPmPrivateAsync(request.PmPrivate);
 	}
 }

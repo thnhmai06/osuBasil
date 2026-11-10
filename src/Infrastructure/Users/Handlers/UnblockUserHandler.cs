@@ -12,6 +12,6 @@ internal sealed class UnblockUserHandler(UserRegistry registry) : IRequestHandle
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(UnblockUser request, CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.UnblockAsync();
+		return await registry.ScopeTo(request.Actor, request.Target).Relationships.UnblockAsync();
 	}
 }
