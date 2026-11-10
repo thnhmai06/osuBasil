@@ -1,6 +1,5 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Common;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Messages;
@@ -28,7 +27,6 @@ internal sealed partial class PacketHandlers(
 	UserRegistry registry,
 	Lobby lobby,
 	ISender sender,
-	ISettingsRepository settings,
 	Outbox outbox,
 	RateLimiter limiter,
 	TimeProvider clock)

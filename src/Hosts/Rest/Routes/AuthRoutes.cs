@@ -1,5 +1,6 @@
+using Basil.Application.Content.Messages;
+using Mediator;
 using System.Text;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
@@ -38,14 +39,14 @@ internal static class AuthRoutes
 	}
 
 	private static async Task<IResult> LoginAsync(HttpContext context, LoginRequest request, UserRegistry registry,
-		ISettingsRepository settings, LoginAttemptGuard attempts)
+		ISender sender, LoginAttemptGuard attempts)
 	{
 		if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
 			return Api.Invalid("username and password are required.");
 
 		context.Response.Headers.CacheControl = "no-store";
 
-		var rules = (await settings.GetAsync(context.RequestAborted)).RateLimits.Login;
+		var rules = (await sender.Send(new ReadSettings(), context.RequestAborted)).RateLimits.Login;
 		var ip = context.Ip();
 		var ipKey = $"login-fail:{ip}";
 		var pairKey = $"{ipKey}:{request.Username.ToLowerInvariant()}";

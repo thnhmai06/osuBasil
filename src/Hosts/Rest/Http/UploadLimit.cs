@@ -1,4 +1,5 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Content.Messages;
+using Mediator;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Basil.Host.Rest.Http;
@@ -8,10 +9,10 @@ internal static class UploadLimit
 {
 	/// <summary>Allows the request body to be as large as the largest upload the server accepts.</summary>
 	/// <param name="context">The request, before its body is read.</param>
-	/// <param name="settings">The runtime settings that hold the upload limits.</param>
-	public static async Task AllowAsync(HttpContext context, ISettingsRepository settings)
+	/// <param name="sender">Asks for the runtime settings that hold the upload limits.</param>
+	public static async Task AllowAsync(HttpContext context, ISender sender)
 	{
-		var limit = (await settings.GetAsync(context.RequestAborted)).Uploads.OszMaxSize;
+		var limit = (await sender.Send(new ReadSettings(), context.RequestAborted)).Uploads.OszMaxSize;
 		Allow(context, limit);
 	}
 

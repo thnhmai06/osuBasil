@@ -1,6 +1,7 @@
+using Basil.Application.Content.Messages;
+using Mediator;
 using System.Globalization;
 using System.Text.Json;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Gateway;
 using Basil.Host.Rest.Sse;
@@ -18,7 +19,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 	internal const string RetryAfterWhileStopping = "5";
 
 	/// <summary>Runs the steps for one request.</summary>
-	public async Task InvokeAsync(HttpContext context, UserRegistry registry, ISettingsRepository settings,
+	public async Task InvokeAsync(HttpContext context, UserRegistry registry, ISender sender,
 		RateLimiter limiter, SseHub hub, ILogger<RestPipeline> logger)
 	{
 		if (hub.Stopping)
@@ -32,7 +33,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 		try
 		{
 			var authenticated = await context.AuthenticateAsync(registry);
-			if (await RateLimitedAsync(context, authenticated, settings, limiter)) return;
+			if (await RateLimitedAsync(context, authenticated, sender, limiter)) return;
 
 			await next(context);
 		}
@@ -47,10 +48,10 @@ internal sealed class RestPipeline(RequestDelegate next)
 	}
 
 	private static async Task<bool> RateLimitedAsync(HttpContext context, bool authenticated,
-		ISettingsRepository settings,
+		ISender sender,
 		RateLimiter limiter)
 	{
-		var limits = (await settings.GetAsync(context.RequestAborted)).RateLimits.Rest;
+		var limits = (await sender.Send(new ReadSettings(), context.RequestAborted)).RateLimits.Rest;
 		var mutation = !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) &&
 		               !HttpMethods.IsOptions(context.Request.Method);
 		if (authenticated && mutation)
@@ -99,12 +100,12 @@ internal sealed class RestPipeline(RequestDelegate next)
 }
 
 /// <summary>Reads the allowed origins from the server settings on each request, so a change applies at once.</summary>
-internal sealed class SettingsCorsPolicyProvider(ISettingsRepository settings) : ICorsPolicyProvider
+internal sealed class SettingsCorsPolicyProvider(ISender sender) : ICorsPolicyProvider
 {
 	/// <inheritdoc />
 	public async Task<CorsPolicy?> GetPolicyAsync(HttpContext context, string? policyName)
 	{
-		var origins = (await settings.GetAsync(context.RequestAborted)).Cors.AllowedOrigins;
+		var origins = (await sender.Send(new ReadSettings(), context.RequestAborted)).Cors.AllowedOrigins;
 		return new CorsPolicyBuilder().WithOrigins(origins).AllowAnyMethod()
 			.WithHeaders("Authorization", "Content-Type", "Last-Event-ID").Build();
 	}

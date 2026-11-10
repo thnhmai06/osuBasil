@@ -1,7 +1,7 @@
+using Basil.Application.Content.Messages;
 using System.Net;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
@@ -25,7 +25,6 @@ namespace Basil.Host.Stable.Login;
 internal sealed class StableLogin(
 	UserRegistry registry,
 	GeneralChannelRegistry channels,
-	ISettingsRepository settings,
 	Outbox outbox,
 	LoginAttemptGuard attempts,
 	StableState state,
@@ -42,7 +41,7 @@ internal sealed class StableLogin(
 	public async Task<(string Token, byte[] Reply)> LoginAsync(HttpContext context, byte[] body,
 		CancellationToken ct)
 	{
-		var rules = (await settings.GetAsync(ct)).RateLimits;
+		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits;
 		var ip = ClientAddress.Resolve(context);
 		if (!state.AcceptingLogins) return Fail(LoginFailureReason.ErrorOccurred, StableReplies.ServerStopping);
 
@@ -123,7 +122,7 @@ internal sealed class StableLogin(
 		var effective = user.EffectivePrivileges(now);
 		var roles = StableView.Roles(effective);
 		var privileges = (int)roles;
-		var motd = (await settings.GetAsync(ct)).General.Motd;
+		var motd = (await sender.Send(new ReadSettings(), ct)).General.Motd;
 		var friends = (await sender.Send(new ListFriends(connection, UserReference.ById(user.Record.Id)), ct)).Users;
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
 			? (int)(user.Record.Value.SilencedUntil!.Value - now).TotalSeconds

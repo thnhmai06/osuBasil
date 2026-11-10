@@ -7,6 +7,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Common;
+using Basil.Application.Content.Messages;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Persistence;
@@ -190,11 +191,11 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> SubmitAsync(HttpContext context, UserRegistry registry, ISender sender,
-		IAnticheatReporter anticheat, WebAuthentication auth, ISettingsRepository settings,
+		IAnticheatReporter anticheat, WebAuthentication auth,
 		CancellationToken ct)
 	{
 		// A score submission carries a replay, which is far below the screenshot limit.
-		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
+		await UploadLimit.AllowAsync(context, sender, uploads => uploads.ScreenshotMaxSize);
 		try
 		{
 			var form = await context.Request.ReadFormAsync(ct);
@@ -263,9 +264,9 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> ScreenshotAsync(HttpContext context, WebAuthentication auth, ISender sender,
-		ISettingsRepository settings, CancellationToken ct)
+		CancellationToken ct)
 	{
-		await UploadLimit.AllowAsync(context, settings, uploads => uploads.ScreenshotMaxSize);
+		await UploadLimit.AllowAsync(context, sender, uploads => uploads.ScreenshotMaxSize);
 		IFormCollection form;
 		try
 		{
@@ -351,7 +352,7 @@ internal static class OsuWebRoutes
 	}
 
 	private static async Task<IResult> RegisterAsync(HttpContext context, UserRegistry registry,
-		ISettingsRepository settings,
+		ISender sender,
 		RateLimiter limiter, CancellationToken ct)
 	{
 		IFormCollection form;
@@ -367,7 +368,7 @@ internal static class OsuWebRoutes
 		var name = form["user[username]"].ToString();
 		var password = form["user[password]"].ToString();
 		var checkOnly = form["check"] != "0";
-		var rules = (await settings.GetAsync(ct)).RateLimits.Registration;
+		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Registration;
 		var ip = ClientAddress.Resolve(context);
 		if (checkOnly &&
 		    !limiter.TryAcquire($"register-check:{ip}", RegistrationChecksPerWindow, RegistrationCheckWindow))

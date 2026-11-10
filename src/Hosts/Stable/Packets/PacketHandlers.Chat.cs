@@ -1,3 +1,4 @@
+using Basil.Application.Content.Messages;
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Messages;
@@ -26,7 +27,7 @@ internal sealed partial class PacketHandlers
 
 	private async Task<bool> MayChatAsync(StableConnection osu, CancellationToken ct)
 	{
-		var limit = (await settings.GetAsync(ct)).RateLimits.Chat;
+		var limit = (await sender.Send(new ReadSettings(), ct)).RateLimits.Chat;
 		if (limiter.TryAcquire($"chat:{osu.Record.Id}", limit.Count, limit.Window)) return true;
 		outbox.Send(osu, writer => writer.Notification(StableReplies.ChatTooFast));
 		return false;

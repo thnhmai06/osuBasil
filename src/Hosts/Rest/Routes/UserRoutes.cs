@@ -1,8 +1,8 @@
+using Basil.Application.Content.Messages;
 using System.Text;
 using System.Text.Json;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -204,14 +204,14 @@ internal static class UserRoutes
 			context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> PutAvatarAsync(HttpContext context, int id, ISettingsRepository settings)
+	private static async Task<IResult> PutAvatarAsync(HttpContext context, int id, ISender sender)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form with a file field is required.");
 
-		await UploadLimit.AllowAsync(context, settings);
+		await UploadLimit.AllowAsync(context, sender);
 		var form = await context.Request.ReadFormAsync(context.RequestAborted);
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
-		if (file.Length > (await settings.GetAsync(context.RequestAborted)).Uploads.AvatarMaxSize)
+		if (file.Length > (await sender.Send(new ReadSettings(), context.RequestAborted)).Uploads.AvatarMaxSize)
 			return Api.Invalid("The avatar is too large.", "tooLarge");
 		var target = UserReference.ById(id);
 

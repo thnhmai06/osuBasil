@@ -1,9 +1,10 @@
+using Basil.Application.Content.Messages;
+using Mediator;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Http;
@@ -83,7 +84,7 @@ public sealed class SseStream
 ///     The one engine of every SSE route: roots collect events, and once a second the hub bundles what each root
 ///     collected, serializes it once and hands the same bytes to every stream that follows the root.
 /// </summary>
-public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsRepository settings) : IHostedService
+public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender sender) : IHostedService
 {
 	private static readonly byte[] KeepAlive = ": keep-alive\n\n"u8.ToArray();
 	private readonly ConcurrentDictionary<string, int> _open = new();
@@ -194,7 +195,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	{
 		if (_stopping) return (null, null, ShuttingDown());
 
-		var current = await settings.GetAsync(ct);
+		var current = await sender.Send(new ReadSettings(), ct);
 		var limit = current.RateLimits.Connections.PerIp;
 		var addressKey = "ip:" + ip;
 		var userKey = connection is null ? null : "user:" + connection.Record.Id;

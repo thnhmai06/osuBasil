@@ -1,8 +1,8 @@
+using Basil.Application.Content.Messages;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
@@ -21,7 +21,6 @@ internal sealed class WebAuthentication(
 	UserRegistry registry,
 	ISender sender,
 	ICredentialRepository credentials,
-	ISettingsRepository settings,
 	LoginAttemptGuard attempts,
 	TimeProvider clock)
 {
@@ -59,7 +58,7 @@ internal sealed class WebAuthentication(
 		if (await sender.Send(new GetUser(UserReference.ByName(username)), ct) is not { } record) return null;
 		var online = registry.Of(record);
 		if (online.Stable is not { IsOpen: true } client) return null;
-		var rules = (await settings.GetAsync(ct)).RateLimits.Login;
+		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits.Login;
 		var ipKey = $"login-fail:{ClientAddress.Resolve(context)}";
 		var pairKey = $"{ipKey}:{normalized}";
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.MaxAttempts, rules.Window);

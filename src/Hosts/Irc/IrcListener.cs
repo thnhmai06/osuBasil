@@ -1,8 +1,9 @@
+using Basil.Application.Content.Messages;
+using Mediator;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Gateway;
@@ -21,7 +22,7 @@ internal sealed class IrcListener(
 	IrcState state,
 	Admission admission,
 	UserRegistry registry,
-	ISettingsRepository settings,
+	ISender sender,
 	TimeProvider clock,
 	ILogger<IrcListener> logger) : BackgroundService
 {
@@ -112,7 +113,7 @@ internal sealed class IrcListener(
 		}, RegistrationDeadline, KeepAlive);
 		try
 		{
-			var perIp = (await settings.GetAsync(stoppingToken)).RateLimits.Connections.PerIp;
+			var perIp = (await sender.Send(new ReadSettings(), stoppingToken)).RateLimits.Connections.PerIp;
 			RejectIfOverLimit(session, counted, perIp);
 
 			await foreach (var text in IrcLines.ReadAsync(stream, stoppingToken))

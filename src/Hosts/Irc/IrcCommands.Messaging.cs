@@ -1,3 +1,4 @@
+using Basil.Application.Content.Messages;
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Common;
@@ -62,7 +63,7 @@ internal sealed partial class IrcCommands
 	private async Task<bool> MayChatAsync(IrcSession session, Connection actor, string command, string target,
 		CancellationToken ct)
 	{
-		var limit = (await settings.GetAsync(ct)).RateLimits.Chat;
+		var limit = (await sender.Send(new ReadSettings(), ct)).RateLimits.Chat;
 		if (limiter.TryAcquire($"chat:{actor.Record.Id}", limit.Count, limit.Window)) return true;
 
 		if (session.Has("standard-replies"))

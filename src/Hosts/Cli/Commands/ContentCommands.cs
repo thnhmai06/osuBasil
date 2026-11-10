@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Content.Storage;
+using Basil.Application.Content.Messages;
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Objects.Connections;
@@ -190,7 +190,7 @@ internal static class ContentCommands
 	private static async Task<int> ListBannersAsync(CommandCall call)
 	{
 		var now = call.Get<TimeProvider>().GetUtcNow();
-		var banners = await call.Get<IMenuBannerRepository>().ListAsync(call.CancellationToken);
+		var banners = await call.Get<ISender>().Send(new ListBanners(), call.CancellationToken);
 		call.Formatter.PrintTable(call.Output, [.. banners.Select(object (banner) => BannerView.Of(banner, now))]);
 		return ExitCodes.Success;
 	}
@@ -225,7 +225,7 @@ internal static class ContentCommands
 	private static async Task<int> DeleteBannerAsync(CommandCall call)
 	{
 		var image = call.Word("image");
-		var banner = (await call.Get<IMenuBannerRepository>().ListAsync(call.CancellationToken))
+		var banner = (await call.Get<ISender>().Send(new ListBanners(), call.CancellationToken))
 			.FirstOrDefault(b => Path.GetFileName(b.Image.Value) == image);
 		return banner is null
 			? call.NotFound("banner")
@@ -235,7 +235,7 @@ internal static class ContentCommands
 
 	private static async Task<int> ListSeasonalsAsync(CommandCall call)
 	{
-		foreach (var reference in await call.Get<IMenuSeasonalsStorage>().ListAsync(call.CancellationToken))
+		foreach (var reference in await call.Get<ISender>().Send(new ListSeasonals(), call.CancellationToken))
 			call.Output.Line(Path.GetFileName(reference.Value));
 		return ExitCodes.Success;
 	}
@@ -255,7 +255,7 @@ internal static class ContentCommands
 	private static async Task<int> DeleteSeasonalAsync(CommandCall call)
 	{
 		var image = call.Word("image");
-		var reference = (await call.Get<IMenuSeasonalsStorage>().ListAsync(call.CancellationToken))
+		var reference = (await call.Get<ISender>().Send(new ListSeasonals(), call.CancellationToken))
 			.Cast<ContentReference?>()
 			.FirstOrDefault(r => Path.GetFileName(r!.Value.Value) == image);
 		return reference is null
@@ -267,7 +267,7 @@ internal static class ContentCommands
 
 	private static async Task<int> ShowIconAsync(CommandCall call)
 	{
-		var icon = (await call.Get<ISettingsRepository>().GetAsync(call.CancellationToken)).MenuIcon;
+		var icon = (await call.Get<ISender>().Send(new ReadSettings(), call.CancellationToken)).MenuIcon;
 		call.Formatter.Print(call.Output,
 			new IconView(icon.Image is { } image ? Path.GetFileName(image.Value) : null, icon.Url?.AbsoluteUri));
 		return ExitCodes.Success;
@@ -288,7 +288,8 @@ internal static class ContentCommands
 
 	private static async Task<int> ListFaqsAsync(CommandCall call)
 	{
-		foreach (var entry in await call.Get<IFaqStorage>().ListAsync(call.CancellationToken)) call.Output.Line(entry);
+		foreach (var entry in await call.Get<ISender>().Send(new ListFaqs(), call.CancellationToken))
+			call.Output.Line(entry);
 		return ExitCodes.Success;
 	}
 
@@ -296,10 +297,10 @@ internal static class ContentCommands
 	{
 		try
 		{
-			using var reader = await call.Get<IFaqStorage>().ReadAsync(call.Word("entry"), call.CancellationToken);
-			if (reader is null) return call.NotFound("entry");
+			if (await call.Get<ISender>().Send(new ReadFaq(call.Word("entry")), call.CancellationToken) is not { } text)
+				return call.NotFound("entry");
 
-			call.Output.Line(await reader.ReadToEndAsync(call.CancellationToken));
+			call.Output.Line(text);
 			return ExitCodes.Success;
 		}
 		catch (ArgumentException)

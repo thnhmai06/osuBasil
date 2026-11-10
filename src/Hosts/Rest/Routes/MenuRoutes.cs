@@ -1,6 +1,5 @@
 using System.Globalization;
-using Basil.Application.Content.Persistence;
-using Basil.Application.Content.Storage;
+using Basil.Application.Content.Messages;
 using Basil.Application.Servers.Messages;
 using Basil.Domain.Content;
 using Basil.Gateway;
@@ -19,7 +18,7 @@ internal static class MenuRoutes
 	{
 		var faqs = v1.MapGroup("/faqs").WithTags("Faqs");
 		faqs.MapGet("/",
-				async (IFaqStorage storage, CancellationToken ct) => Api.Ok((await storage.ListAsync(ct)).ToList()))
+				async (ISender sender, CancellationToken ct) => Api.Ok(await sender.Send(new ListFaqs(), ct)))
 			.Admitted(WorkClass.Listing)
 			.WithSummary("List the FAQ entries.")
 			.WithDescription("A folder inside the entry names is written with `:`.");
@@ -35,17 +34,17 @@ internal static class MenuRoutes
 			.WithDescription(
 				"`begins` and `expires` are optional ISO 8601 times; a banner without them is always current.");
 		menu.MapDelete("/banners/{image}", DeleteBannerAsync).RequireToken().WithSummary("Delete a main-menu banner.");
-		menu.MapGet("/seasonals", async (IMenuSeasonalsStorage storage, CancellationToken ct) =>
-				Api.Ok((await storage.ListAsync(ct)).Select(r => Path.GetFileName(r.Value)).ToList()))
+		menu.MapGet("/seasonals", async (ISender sender, CancellationToken ct) =>
+				Api.Ok((await sender.Send(new ListSeasonals(), ct)).Select(r => Path.GetFileName(r.Value)).ToList()))
 			.Admitted(WorkClass.Listing)
 			.WithSummary("List the seasonal backgrounds.");
 		menu.MapPost("/seasonals", AddSeasonalAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
 			.WithSummary("Create a seasonal background from an image in the `image` field.");
 		menu.MapDelete("/seasonals/{image}", DeleteSeasonalAsync).RequireToken()
 			.WithSummary("Delete a seasonal background.");
-		menu.MapGet("/icon", async (ISettingsRepository settings, CancellationToken ct) =>
+		menu.MapGet("/icon", async (ISender sender, CancellationToken ct) =>
 		{
-			var icon = (await settings.GetAsync(ct)).MenuIcon;
+			var icon = (await sender.Send(new ReadSettings(), ct)).MenuIcon;
 			return Api.Ok(new IconView(icon.Image is { } image ? Path.GetFileName(image.Value) : null,
 				icon.Url?.AbsoluteUri));
 		}).WithSummary("Get the main-menu icon.");
@@ -57,14 +56,13 @@ internal static class MenuRoutes
 			.RequireToken().WithSummary("Delete the main-menu icon.");
 	}
 
-	private static async Task<IResult> GetFaqAsync(string entry, IFaqStorage storage, CancellationToken ct)
+	private static async Task<IResult> GetFaqAsync(string entry, ISender sender, CancellationToken ct)
 	{
 		try
 		{
-			using var reader = await storage.ReadAsync(entry, ct);
-			return reader is null
-				? Api.NotFound("No such entry.")
-				: Api.Ok(new FaqView(entry, await reader.ReadToEndAsync(ct)));
+			return await sender.Send(new ReadFaq(entry), ct) is { } text
+				? Api.Ok(new FaqView(entry, text))
+				: Api.NotFound("No such entry.");
 		}
 		catch (ArgumentException)
 		{
@@ -100,11 +98,11 @@ internal static class MenuRoutes
 		}
 	}
 
-	private static async Task<IResult> ListBannersAsync(IMenuBannerRepository banners, TimeProvider clock,
+	private static async Task<IResult> ListBannersAsync(ISender sender, TimeProvider clock,
 		CancellationToken ct)
 	{
 		var now = clock.GetUtcNow();
-		return Api.Ok((await banners.ListAsync(ct)).Select(b =>
+		return Api.Ok((await sender.Send(new ListBanners(), ct)).Select(b =>
 			BannerView.Of(b, now)).ToList());
 	}
 
@@ -117,12 +115,11 @@ internal static class MenuRoutes
 		return file.Length > MaxImageBytes ? (null, Api.Invalid("The image is too large.", "tooLarge")) : (file, null);
 	}
 
-	private static async Task<IResult> AddBannerAsync(HttpContext context, ISender sender,
-		ISettingsRepository settings)
+	private static async Task<IResult> AddBannerAsync(HttpContext context, ISender sender)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
 
-		await UploadLimit.AllowAsync(context, settings);
+		await UploadLimit.AllowAsync(context, sender);
 
 		var form = await context.Request.ReadFormAsync(context.RequestAborted);
 		var (file, error) = await ImageAsync(context, form);
@@ -160,11 +157,10 @@ internal static class MenuRoutes
 		return ok;
 	}
 
-	private static async Task<IResult> DeleteBannerAsync(HttpContext context, string image,
-		IMenuBannerRepository banners, ISender sender)
+	private static async Task<IResult> DeleteBannerAsync(HttpContext context, string image, ISender sender)
 	{
 		var banner =
-			(await banners.ListAsync(context.RequestAborted)).FirstOrDefault(b =>
+			(await sender.Send(new ListBanners(), context.RequestAborted)).FirstOrDefault(b =>
 				Path.GetFileName(b.Image.Value) == image);
 		return banner is null
 			? Api.NotFound("No such banner.")
@@ -192,10 +188,9 @@ internal static class MenuRoutes
 		}
 	}
 
-	private static async Task<IResult> DeleteSeasonalAsync(HttpContext context, string image,
-		IMenuSeasonalsStorage seasonals, ISender sender)
+	private static async Task<IResult> DeleteSeasonalAsync(HttpContext context, string image, ISender sender)
 	{
-		var reference = (await seasonals.ListAsync(context.RequestAborted)).Cast<ContentReference?>()
+		var reference = (await sender.Send(new ListSeasonals(), context.RequestAborted)).Cast<ContentReference?>()
 			.FirstOrDefault(r => Path.GetFileName(r!.Value.Value) == image);
 		return reference is null
 			? Api.NotFound("No such background.")
@@ -203,12 +198,11 @@ internal static class MenuRoutes
 			.Answer();
 	}
 
-	private static async Task<IResult> SetIconAsync(HttpContext context, ISender sender,
-		ISettingsRepository settings)
+	private static async Task<IResult> SetIconAsync(HttpContext context, ISender sender)
 	{
 		if (!context.Request.HasFormContentType) return Api.Invalid("A multipart form is required.");
 
-		await UploadLimit.AllowAsync(context, settings);
+		await UploadLimit.AllowAsync(context, sender);
 
 		var form = await context.Request.ReadFormAsync(context.RequestAborted);
 		Uri? url = null;

@@ -1,26 +1,21 @@
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Messages;
-using Basil.Application.Content.Storage;
-using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Storage;
-using Basil.Domain.Content;
+using Basil.Application.Content.Messages;
+using Basil.Application.Users.Messages;
 using Mediator;
 
 namespace Basil.Host.Rest.Images;
 
 /// <summary>Avatars on <c>a.&lt;domain&gt;/{userId}</c>; a user without one shows the default avatar.</summary>
-public sealed partial class AvatarProvider(IUserRepository users, IUserAvatarStorage avatars)
+public sealed partial class AvatarProvider(ISender sender)
 	: StreamImageProvider("a", path => AvatarPath().IsMatch(path.Value ?? ""))
 {
 	/// <inheritdoc />
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var id = int.Parse(AvatarPath().Match(path.Value!).Groups[1].Value);
-		if (await users.GetAsync(id, ct) is { } user &&
-		    await avatars.OpenAsync(user, ct) is { } own)
-			return own;
-
-		return typeof(AvatarProvider).Assembly.GetManifestResourceStream("Avatars.default.png");
+		return await sender.Send(new OpenUserAvatar(id), ct) ??
+		       typeof(AvatarProvider).Assembly.GetManifestResourceStream("Avatars.default.png");
 	}
 
 	[GeneratedRegex(@"^/(\d+)$")]
@@ -28,34 +23,21 @@ public sealed partial class AvatarProvider(IUserRepository users, IUserAvatarSto
 }
 
 /// <summary>Menu banners, seasonal backgrounds and the icon on <c>assets.&lt;domain&gt;/menu/...</c>.</summary>
-public sealed partial class MenuImageProvider(
-	IMenuBannerStorage banners,
-	IMenuSeasonalsStorage seasonals,
-	IMenuIconStorage icon) : StreamImageProvider("assets", path => MenuPath().IsMatch(path.Value ?? ""))
+public sealed partial class MenuImageProvider(ISender sender)
+	: StreamImageProvider("assets", path => MenuPath().IsMatch(path.Value ?? ""))
 {
 	/// <inheritdoc />
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var match = MenuPath().Match(path.Value!);
 		var name = match.Groups["name"].Value;
-		return match.Groups["kind"].Value switch
+		var kind = match.Groups["kind"].Value switch
 		{
-			"icon" => (await icon.OpenAsync(ct))?.Content,
-			"banners" => await OpenNamedAsync(await banners.ListAsync(ct), name, banners.OpenAsync,
-				ct),
-			_ => await OpenNamedAsync(await seasonals.ListAsync(ct), name, seasonals.OpenAsync,
-				ct)
+			"icon" => ContentImageKind.Icon,
+			"banners" => ContentImageKind.Banner,
+			_ => ContentImageKind.Seasonal
 		};
-	}
-
-	internal static async Task<Stream?> OpenNamedAsync(IEnumerable<ContentReference> list, string name,
-		Func<ContentReference, CancellationToken, Task<Stream?>> open, CancellationToken ct)
-	{
-		foreach (var reference in list)
-			if (Path.GetFileName(reference.Value).Equals(name, StringComparison.OrdinalIgnoreCase))
-				return await open(reference, ct);
-
-		return null;
+		return await sender.Send(new OpenContentImage(kind, name), ct);
 	}
 
 	[GeneratedRegex(@"^/menu/(?:(?<kind>banners|seasonals)/(?<name>[^/]+)|(?<kind>icon))$")]
@@ -63,20 +45,14 @@ public sealed partial class MenuImageProvider(
 }
 
 /// <summary>Screenshots on <c>osu.&lt;domain&gt;/ss/{id}.{ext}</c>, which the game opens in a browser after an upload.</summary>
-public sealed partial class ScreenshotProvider(IScreenshotStorage screenshots)
+public sealed partial class ScreenshotProvider(ISender sender)
 	: StreamImageProvider("osu", path => ScreenshotPath().IsMatch(path.Value ?? ""))
 {
 	/// <inheritdoc />
-	protected override Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
+	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var name = ScreenshotPath().Match(path.Value!).Groups["name"].Value;
-		return OpenByName(name, ct);
-	}
-
-	private async Task<Stream?> OpenByName(string name, CancellationToken ct)
-	{
-		return await MenuImageProvider.OpenNamedAsync(await screenshots.ListAsync(ct), name,
-			screenshots.OpenAsync, ct);
+		return await sender.Send(new OpenContentImage(ContentImageKind.Screenshot, name), ct);
 	}
 
 	[GeneratedRegex(@"^/ss/(?<name>[0-9a-fA-F-]+\.[A-Za-z0-9]{1,8})$")]

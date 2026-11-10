@@ -1,6 +1,6 @@
+using Basil.Application.Content.Messages;
 using System.Text;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -24,7 +24,6 @@ internal sealed partial class IrcCommands(
 	Lobby lobby,
 	RoomChannels roomChannels,
 	ISender sender,
-	ISettingsRepository settings,
 	RateLimiter limiter,
 	LoginAttemptGuard attempts,
 	IrcClients clients,
@@ -142,7 +141,7 @@ internal sealed partial class IrcCommands(
 	private async Task<string?> SignInAsync(IrcSession session, string key, string claimed,
 		CancellationToken ct)
 	{
-		var rules = (await settings.GetAsync(ct)).RateLimits;
+		var rules = (await sender.Send(new ReadSettings(), ct)).RateLimits;
 		var ipKey = $"irc-login-fail:{session.Address}";
 		var pairKey = $"{ipKey}:{claimed.ToLowerInvariant()}";
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
@@ -185,7 +184,7 @@ internal sealed partial class IrcCommands(
 
 		var serverName = Options.ServerName;
 		var mask = IrcView.Mask(connection.Record, Options.Domain);
-		var motd = (await settings.GetAsync(ct)).General.Motd;
+		var motd = (await sender.Send(new ReadSettings(), ct)).General.Motd;
 		session.Registered = true;
 		session.Numeric(IrcNumericReply.RplWelcome, $"Welcome to the {IrcReplies.Network} IRC network, {mask}");
 		session.Numeric(IrcNumericReply.RplYourHost,
@@ -255,7 +254,7 @@ internal sealed partial class IrcCommands(
 				Mode(session, connection, message);
 				break;
 			case "MOTD":
-				SendMotd(session, (await settings.GetAsync(ct)).General.Motd);
+				SendMotd(session, (await sender.Send(new ReadSettings(), ct)).General.Motd);
 				break;
 			case "KICK" or "INVITE":
 				Management(session, message);
