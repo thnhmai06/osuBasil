@@ -17,7 +17,7 @@ public sealed class RelationshipHandlerTests
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
 
-		var result = await new AddFriendHandler(app.Users).Handle(new AddFriend(actor, target.Record), Token);
+		var result = await new AddFriendHandler(app.Users).Handle(new AddFriend(actor, UserReference.ById(target.Record.Id)), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Equal([target.Record.Value.Name], await NamesAsync(new ListFriendsHandler(app.Users), actor));
@@ -28,9 +28,9 @@ public sealed class RelationshipHandlerTests
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
-		await new AddFriendHandler(app.Users).Handle(new AddFriend(actor, target.Record), Token);
+		await new AddFriendHandler(app.Users).Handle(new AddFriend(actor, UserReference.ById(target.Record.Id)), Token);
 
-		var result = await new RemoveFriendHandler(app.Users).Handle(new RemoveFriend(actor, target.Record), Token);
+		var result = await new RemoveFriendHandler(app.Users).Handle(new RemoveFriend(actor, UserReference.ById(target.Record.Id)), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Empty(await NamesAsync(new ListFriendsHandler(app.Users), actor));
@@ -42,7 +42,7 @@ public sealed class RelationshipHandlerTests
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
 
-		var result = await new BlockUserHandler(app.Users).Handle(new BlockUser(actor, target.Record), Token);
+		var result = await new BlockUserHandler(app.Users).Handle(new BlockUser(actor, UserReference.ById(target.Record.Id)), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Equal([target.Record.Value.Name], await NamesAsync(new ListBlocksHandler(app.Users), actor));
@@ -53,9 +53,9 @@ public sealed class RelationshipHandlerTests
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
-		await new BlockUserHandler(app.Users).Handle(new BlockUser(actor, target.Record), Token);
+		await new BlockUserHandler(app.Users).Handle(new BlockUser(actor, UserReference.ById(target.Record.Id)), Token);
 
-		var result = await new UnblockUserHandler(app.Users).Handle(new UnblockUser(actor, target.Record), Token);
+		var result = await new UnblockUserHandler(app.Users).Handle(new UnblockUser(actor, UserReference.ById(target.Record.Id)), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Empty(await NamesAsync(new ListBlocksHandler(app.Users), actor));
@@ -67,7 +67,7 @@ public sealed class RelationshipHandlerTests
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
 
-		var (result, users) = await new ListFriendsHandler(app.Users).Handle(new ListFriends(actor, target.Record), Token);
+		var (result, users) = await new ListFriendsHandler(app.Users).Handle(new ListFriends(actor, UserReference.ById(target.Record.Id)), Token);
 
 		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
 		Assert.Empty(users);
@@ -79,7 +79,7 @@ public sealed class RelationshipHandlerTests
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
 
-		var (result, users) = await new ListBlocksHandler(app.Users).Handle(new ListBlocks(actor, target.Record), Token);
+		var (result, users) = await new ListBlocksHandler(app.Users).Handle(new ListBlocks(actor, UserReference.ById(target.Record.Id)), Token);
 
 		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
 		Assert.Empty(users);
@@ -96,14 +96,14 @@ public sealed class RelationshipHandlerTests
 	private static async Task<IReadOnlyList<string>> NamesAsync(ListFriendsHandler handler,
 		Connection actor)
 	{
-		var (_, users) = await handler.Handle(new ListFriends(actor, actor.Record), Token);
+		var (_, users) = await handler.Handle(new ListFriends(actor, UserReference.ById(actor.Record.Id)), Token);
 		return [.. users.Select(user => user.Value.Name)];
 	}
 
 	private static async Task<IReadOnlyList<string>> NamesAsync(ListBlocksHandler handler,
 		Connection actor)
 	{
-		var (_, users) = await handler.Handle(new ListBlocks(actor, actor.Record), Token);
+		var (_, users) = await handler.Handle(new ListBlocks(actor, UserReference.ById(actor.Record.Id)), Token);
 		return [.. users.Select(user => user.Value.Name)];
 	}
 }

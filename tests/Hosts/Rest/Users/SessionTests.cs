@@ -225,4 +225,19 @@ public sealed class SessionTests(RestHostFixture fixture)
 		Assert.Equal(409, status);
 		Assert.Equal("locked", (string)envelope!["errors"]!["code"]!);
 	}
+
+	[Fact]
+	public async Task ListSessions_OfAnUnknownUserWithoutThePrivilege_Is403LikeAnExistingOne()
+	{
+		var (client, _) = await fixture.SignInAsync("SesUnknownUser");
+		var other = await fixture.Host.CreateUserAsync("SesUnknownOther");
+		using (client)
+		{
+			var (existing, _) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{other.Id}/sessions");
+			var (unknown, _) = await client.CallAsync(HttpMethod.Get, "/v1/users/9999999/sessions");
+
+			Assert.Equal(403, existing);
+			Assert.Equal(403, unknown);
+		}
+	}
 }

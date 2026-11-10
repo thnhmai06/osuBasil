@@ -38,10 +38,10 @@ public sealed class ScopedUserTests
 		var otherConnection = await app.LoginAsync(other);
 		var user = app.Users.Of(owner);
 
-		Assert.True(user.ScopeTo(ownerConnection).Profile.SetAway("away"));
-		Assert.True(user.ScopeTo(ownerConnection).Profile.SetPmPrivate(true));
-		Assert.False(user.ScopeTo(otherConnection).Profile.SetAway("intruder"));
-		Assert.False(user.ScopeTo(otherConnection).Profile.SetPmPrivate(false));
+		Assert.True(await user.ScopeTo(ownerConnection).Profile.SetAwayAsync("away"));
+		Assert.True(await user.ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
+		Assert.False(await user.ScopeTo(otherConnection).Profile.SetAwayAsync("intruder"));
+		Assert.False(await user.ScopeTo(otherConnection).Profile.SetPmPrivateAsync(false));
 
 		Assert.Equal("away", user.AwayMessage);
 		Assert.True(user.PmPrivate);

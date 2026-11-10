@@ -326,7 +326,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("AwayOwner", "password");
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
-		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAway("brb"));
+		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAwayAsync("brb"));
 		var sender = await app.LoginAsync(await app.CreateUserAsync("AwaySender", "password"));
 
 		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
@@ -343,7 +343,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("NoticeOwner", "password");
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
-		app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAway("brb");
+		await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAwayAsync("brb");
 		var sender = await app.LoginAsync(await app.CreateUserAsync("NoticeSender", "password"));
 
 		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
@@ -409,7 +409,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOnly", "password");
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
-		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivate(true));
+		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
 		var friendRecord = await app.CreateUserAsync("TheFriend", "password");
 		var friend = await app.LoginAsync(friendRecord);
 		var stranger = await app.LoginAsync(await app.CreateUserAsync("TheStranger", "password"));

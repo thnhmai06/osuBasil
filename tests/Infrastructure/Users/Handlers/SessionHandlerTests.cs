@@ -20,7 +20,7 @@ public sealed class SessionHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Reader", "password"));
 
 		var (result, session) = await new GetUserSessionHandler(app.Users)
-			.Handle(new GetUserSession(actor, actor.Record, actor.Session.Id), Token);
+			.Handle(new GetUserSession(actor, UserReference.ById(actor.Record.Id), actor.Session.Id), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Equal(actor.Session.Id, session!.Id);
@@ -34,7 +34,7 @@ public sealed class SessionHandlerTests
 		var other = await app.LoginAsync(await app.CreateUserAsync("Other", "password"));
 
 		var (result, session) = await new GetUserSessionHandler(app.Users)
-			.Handle(new GetUserSession(actor, other.Record, other.Session.Id), Token);
+			.Handle(new GetUserSession(actor, UserReference.ById(other.Record.Id), other.Session.Id), Token);
 
 		Assert.NotEqual(UserOutcome.Ok, result.Outcome);
 		Assert.Null(session);
@@ -47,7 +47,7 @@ public sealed class SessionHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Lister", "password"));
 
 		var (result, sessions) = await new ListUserSessionsHandler(app.Users).Handle(
-			new ListUserSessions(actor, actor.Record, new PageRequest(0, 10), SessionState.Any, null), Token);
+			new ListUserSessions(actor, UserReference.ById(actor.Record.Id), new PageRequest(0, 10), SessionState.Any, null), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Contains(actor.Session.Id, sessions!.Items.Select(session => session.Id));
@@ -61,7 +61,7 @@ public sealed class SessionHandlerTests
 		var other = await app.LoginAsync(await app.CreateUserAsync("Other", "password"));
 
 		var (result, sessions) = await new ListUserSessionsHandler(app.Users).Handle(
-			new ListUserSessions(actor, other.Record, new PageRequest(0, 10), SessionState.Any, null), Token);
+			new ListUserSessions(actor, UserReference.ById(other.Record.Id), new PageRequest(0, 10), SessionState.Any, null), Token);
 
 		Assert.NotEqual(UserOutcome.Ok, result.Outcome);
 		Assert.Null(sessions);
@@ -76,7 +76,7 @@ public sealed class SessionHandlerTests
 		var actor = await app.LoginAsync(user);
 
 		var result = await new CloseUserSessionHandler(app.Users)
-			.Handle(new CloseUserSession(actor, user, closing.Session.Id), Token);
+			.Handle(new CloseUserSession(actor, UserReference.ById(user.Id), closing.Session.Id), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.False(closing.IsOpen);
@@ -91,7 +91,7 @@ public sealed class SessionHandlerTests
 		var other = await app.LoginAsync(await app.CreateUserAsync("Other", "password"), SessionType.Stable);
 
 		var result = await new CloseUserSessionHandler(app.Users)
-			.Handle(new CloseUserSession(actor, other.Record, other.Session.Id), Token);
+			.Handle(new CloseUserSession(actor, UserReference.ById(other.Record.Id), other.Session.Id), Token);
 
 		Assert.NotEqual(UserOutcome.Ok, result.Outcome);
 		Assert.True(other.IsOpen);
@@ -106,7 +106,7 @@ public sealed class SessionHandlerTests
 		var actor = await app.LoginAsync(user);
 
 		var result = await new CloseUserSessionsHandler(app.Users)
-			.Handle(new CloseUserSessions(actor, user, true), Token);
+			.Handle(new CloseUserSessions(actor, UserReference.ById(user.Id), true), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.False(other.IsOpen);
@@ -121,7 +121,7 @@ public sealed class SessionHandlerTests
 		var actor = await app.LoginAsync(user);
 
 		var result = await new CloseUserSessionsHandler(app.Users)
-			.Handle(new CloseUserSessions(actor, user, false), Token);
+			.Handle(new CloseUserSessions(actor, UserReference.ById(user.Id), false), Token);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.False(actor.IsOpen);

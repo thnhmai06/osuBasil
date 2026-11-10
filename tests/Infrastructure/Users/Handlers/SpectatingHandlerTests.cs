@@ -109,7 +109,7 @@ public sealed class SpectatingHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Irc", "password"));
 
 		var (result, key, session) = await new OpenIrcSessionHandler(app.Users)
-			.Handle(new OpenIrcSession(actor, actor.Record, "laptop"), Token);
+			.Handle(new OpenIrcSession(actor, UserReference.ById(actor.Record.Id), "laptop"), Token);
 
 		Assert.True(result.IsOk);
 		Assert.False(string.IsNullOrEmpty(key));
@@ -124,7 +124,7 @@ public sealed class SpectatingHandlerTests
 		var other = await app.CreateUserAsync("Other", "password");
 
 		var (result, key, session) = await new OpenIrcSessionHandler(app.Users)
-			.Handle(new OpenIrcSession(actor, other, "laptop"), Token);
+			.Handle(new OpenIrcSession(actor, UserReference.ById(other.Id), "laptop"), Token);
 
 		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
 		Assert.Null(key);

@@ -311,7 +311,7 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOwner", "password");
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
-		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivate(true));
+		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
 		var staff = await app.LoginAsync(await app.CreateUserAsync("StaffSender", "password",
 			UserPrivilegesExtensions.Default | UserPrivileges.Moderator));
 
@@ -344,7 +344,7 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("TalksToSelf", "password");
 		var connection = await app.LoginAsync(owner, SessionType.Irc);
-		app.Users.Of(owner).ScopeTo(connection).Profile.SetAway("brb");
+		await app.Users.Of(owner).ScopeTo(connection).Profile.SetAwayAsync("brb");
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(connection)
 			.PostAsync("note to self", ct: TestContext.Current.CancellationToken);
