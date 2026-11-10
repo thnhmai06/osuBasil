@@ -9,6 +9,7 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Bot.Workers;
 
@@ -38,7 +39,8 @@ internal sealed class RoomCountdowns(
 	ISender sender,
 	Server server,
 	RoomChannels channels,
-	IReplies replies)
+	IReplies replies,
+	ILogger<RoomCountdowns> logger)
 {
 	private readonly Dictionary<Room, Running> _running = [];
 	private readonly Lock _sync = new();
@@ -159,9 +161,9 @@ internal sealed class RoomCountdowns(
 				? replies.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds })
 				: replies.Text(AnnouncementReplies.CountdownTicked, new { seconds }), CancellationToken.None);
 		}
-		catch (Exception)
+		catch (Exception exception)
 		{
-			// A timer has nothing to report to; the countdown just does not tick.
+			logger.LogWarning(exception, "The countdown of room {RoomId} could not tick", room.Id);
 		}
 	}
 
@@ -201,9 +203,9 @@ internal sealed class RoomCountdowns(
 				};
 			if (reply is not null) await SayAsync(room, replies.Text(reply), CancellationToken.None);
 		}
-		catch (Exception)
+		catch (Exception exception)
 		{
-			// A timer has nothing to report to; the countdown just does not finish.
+			logger.LogWarning(exception, "The countdown of room {RoomId} could not finish", room.Id);
 		}
 	}
 

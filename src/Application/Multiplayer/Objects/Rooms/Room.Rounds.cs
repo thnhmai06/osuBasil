@@ -17,7 +17,8 @@ public sealed partial class Room
 		}
 		catch (Exception)
 		{
-			// A timer that fails has nothing to report to.
+			// A timer has no caller to report to; the failure is counted.
+			RoomMetrics.TimerFailed.Add(1);
 		}
 	}
 
