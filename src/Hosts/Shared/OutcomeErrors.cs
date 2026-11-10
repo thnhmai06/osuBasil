@@ -93,7 +93,9 @@ public static class OutcomeErrors
 				ServerOutcome.NameTaken => ErrorKind.Conflict,
 				_ => ErrorKind.Invalid
 			},
-			BeatmapsetOutcome => ErrorKind.Locked,
+			BeatmapsetOutcome beatmapset => beatmapset == BeatmapsetOutcome.NotFound
+				? ErrorKind.NotFound
+				: ErrorKind.Locked,
 			RulesetOutcome => ErrorKind.Conflict,
 			ConnectionOutcome connection => connection == ConnectionOutcome.Rejected
 				? ErrorKind.Invalid

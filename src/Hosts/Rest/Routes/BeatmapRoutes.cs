@@ -51,76 +51,47 @@ internal static class BeatmapRoutes
 			.WithDescription(
 				"Changing the status can change how clients submit scores and replays; use a status with a leaderboard (ranked, approved, qualified, loved) so those functions keep working.");
 
-		sets.MapGet("/{id:int}/audiopreview",
-				(HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b, IBeatmapsetStorage s) =>
-					SetFileAsync(c, id, r, b, s, BeatmapsetFileType.Preview, m => m.Assets.AudioFile))
+		sets.MapGet("/{id:int}/audiopreview", (HttpContext c, int id, ISender s) =>
+				SetFileAsync(c, id, s, BeatmapsetFileType.Preview))
 			.WithSummary("Get the preview clip of a beatmapset.");
-		sets.MapGet("/{id:int}/storyboard", (HttpContext c, int id, IBeatmapsetRepository r, IBeatmapsetStorage s) =>
-			StoryboardAsync(c, id, r, s)).RequireToken().WithSummary("Download the storyboard of a beatmapset.");
+		sets.MapGet("/{id:int}/storyboard", (HttpContext c, int id, ISender s) =>
+			SetFileAsync(c, id, s, BeatmapsetFileType.Storyboard)).RequireToken()
+			.WithSummary("Download the storyboard of a beatmapset.");
 		sets.MapGet("/{id:int}/download", DownloadAsync).RequireToken()
 			.WithSummary("Download a beatmapset as an .osz archive.")
 			.WithDescription("`noVideo=1` leaves the video out.");
 		foreach (var (name, token) in new[] { ("audio", true), ("video", true), ("background", false) })
 		{
 			var route = sets.MapGet("/{id:int}/" + name,
-					(HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b) =>
-						RedirectToLowestAsync(c, id, name, r, b))
+					(HttpContext c, int id, ISender s) => RedirectToLowestAsync(c, id, name, s))
 				.WithSummary($"Get the {name} of the lowest beatmap of the set.");
 			if (token) route.RequireToken();
 		}
 
-		AssetRoute(maps, "audio", BeatmapsetFileType.Audio, m => m.Assets.AudioFile, true);
-		AssetRoute(maps, "video", BeatmapsetFileType.Video, m => m.Assets.VideoFile, true);
-		AssetRoute(maps, "background", BeatmapsetFileType.Background, m => m.Assets.BackgroundFile, false);
+		AssetRoute(maps, "audio", BeatmapsetFileType.Audio, true);
+		AssetRoute(maps, "video", BeatmapsetFileType.Video, true);
+		AssetRoute(maps, "background", BeatmapsetFileType.Background, false);
 	}
 
-	private static void AssetRoute(RouteGroupBuilder maps, string name, BeatmapsetFileType type,
-		Func<BeatmapRecord, string?> file, bool token)
+	private static void AssetRoute(RouteGroupBuilder maps, string name, BeatmapsetFileType type, bool token)
 	{
-		var route = maps.MapGet("/{id:int}/" + name, async (HttpContext c, int id, IBeatmapRepository beatmaps,
-			IBeatmapsetStorage storage) =>
-		{
-			var beatmap = await beatmaps.GetAsync(id, c.RequestAborted);
-			if (beatmap is null || !CanView(c, beatmap) || file(beatmap) is not { } fileName)
-				return Api.NotFound("No such file.");
-
-			return await Serve(c, storage, beatmap.Beatmapset, type, fileName);
-		}).WithSummary($"Download the {name} of a beatmap.");
+		var route = maps.MapGet("/{id:int}/" + name, async (HttpContext c, int id, ISender sender) =>
+			Serve(c, await sender.Send(new OpenBeatmapFile(c.ConnectionOrNull(), id, type), c.RequestAborted),
+				type, "No such file.")).WithSummary($"Download the {name} of a beatmap.");
 		if (token) route.RequireToken();
 	}
 
-	private static bool CanView(HttpContext context, BeatmapsetRecord set)
+	private static IResult Serve(HttpContext context, BeatmapFile? file, BeatmapsetFileType type, string missing)
 	{
-		return set.Visible || MayViewHidden(context);
-	}
-
-	/// <summary>A beatmap is hidden when it or its set is; the same privilege shows both.</summary>
-	private static bool CanView(HttpContext context, BeatmapRecord map)
-	{
-		return map.IsVisible() || MayViewHidden(context);
-	}
-
-	private static bool MayViewHidden(HttpContext context)
-	{
-		var connection = context.ConnectionOrNull();
-		var clock = context.RequestServices.GetRequiredService<TimeProvider>();
-		return connection?.EffectivePrivileges(clock.GetUtcNow()).Allows(UserPrivileges.Tournament) ==
-		       true;
-	}
-
-	private static async Task<IResult> Serve(HttpContext context, IBeatmapsetStorage storage, BeatmapsetRecord set,
-		BeatmapsetFileType type, string name)
-	{
-		var stream = await storage.OpenAsync(set, type, name, context.RequestAborted);
-		if (stream is null) return Api.NotFound("No such file.");
+		if (file is null) return Api.NotFound(missing);
 
 		// A file name comes from an uploaded archive, so it never decides the type beyond the allowlist of its kind.
 		var contentType = AllowedTypes.TryGetValue(type, out var allowed) &&
-		                  allowed.TryGetValue(Path.GetExtension(name), out var known)
+		                  allowed.TryGetValue(Path.GetExtension(file.Name), out var known)
 			? known
 			: OpaqueType;
 		context.Response.Headers.XContentTypeOptions = "nosniff";
-		return Results.Stream(stream, contentType, enableRangeProcessing: true);
+		return Results.Stream(file.Content, contentType, enableRangeProcessing: true);
 	}
 
 	private static IResult NoSniff(HttpContext context, IResult result)
@@ -130,34 +101,29 @@ internal static class BeatmapRoutes
 	}
 
 	private static async Task<IResult> SearchAsync(HttpContext context, string? query, int? offset, int? limit,
-		IBeatmapsetRepository repository, TimeProvider clock)
+		ISender sender)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var effective = context.Connection().EffectivePrivileges(clock.GetUtcNow());
-		var found = await repository.ListAsync(BeatmapQuery.Parse(query ?? string.Empty).LimitTo(effective), page!,
-			context.RequestAborted);
+		var found = await sender.Send(new SearchBeatmapsets(context.Connection(),
+			BeatmapQuery.Parse(query ?? string.Empty), page!), context.RequestAborted);
 		return Api.Paged(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.HasNext), page!);
 	}
 
-	private static async Task<IResult> GetSetAsync(HttpContext context, int id, IBeatmapsetRepository sets,
-		IBeatmapRepository beatmaps)
+	private static async Task<IResult> GetSetAsync(HttpContext context, int id, ISender sender)
 	{
-		var set = await sets.GetAsync(id, context.RequestAborted);
-		if (set is null || !CanView(context, set)) return Api.NotFound("No such beatmapset.");
-
-		var list = await beatmaps.ListAsync(set, context.RequestAborted);
-		return Api.Ok(new SetDetailView(SetView.Of(set),
-			[.. list.Where(b => CanView(context, b)).OrderBy(b => b.Id).Select(b => BeatmapView.Of(b, false))]));
+		var detail = await sender.Send(new GetBeatmapset(context.ConnectionOrNull(), id), context.RequestAborted);
+		return detail is null
+			? Api.NotFound("No such beatmapset.")
+			: Api.Ok(new SetDetailView(SetView.Of(detail.Set),
+				[.. detail.Beatmaps.Select(b => BeatmapView.Of(b, false))]));
 	}
 
-	private static async Task<IResult> GetBeatmapAsync(HttpContext context, int id, IBeatmapRepository beatmaps)
+	private static async Task<IResult> GetBeatmapAsync(HttpContext context, int id, ISender sender)
 	{
-		var map = await beatmaps.GetAsync(id, context.RequestAborted);
-		return map is null || !CanView(context, map)
-			? Api.NotFound("No such beatmap.")
-			: Api.Ok(BeatmapView.Of(map, true));
+		var map = await sender.Send(new GetBeatmap(context.ConnectionOrNull(), id), context.RequestAborted);
+		return map is null ? Api.NotFound("No such beatmap.") : Api.Ok(BeatmapView.Of(map, true));
 	}
 
 	private static async Task<IResult> UploadAsync(HttpContext context, ISender sender, ISettingsRepository settings)
@@ -186,73 +152,55 @@ internal static class BeatmapRoutes
 		};
 	}
 
-	private static async Task<IResult> DeleteAsync(HttpContext context, int id, IBeatmapsetRepository sets,
-		ISender sender)
+	private static async Task<IResult> DeleteAsync(HttpContext context, int id, ISender sender)
 	{
-		return await sets.GetAsync(id, context.RequestAborted) is not { } set
-			? Api.NotFound("No such beatmapset.")
-			: (await sender.Send(new DeleteBeatmapset(context.Connection(), set), context.RequestAborted)).Answer();
+		return (await sender.Send(new DeleteBeatmapset(context.Connection(), id), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchSetRequest request,
-		IBeatmapsetRepository sets, ISender sender)
+		ISender sender)
 	{
-		if (await sets.GetAsync(id, context.RequestAborted) is not { } set) return Api.NotFound("No such beatmapset.");
 		if (request.Status is { } status && !Enum.IsDefined(status)) return Api.Invalid("status is not valid.");
 
 		var result = await sender.Send(
-			new PatchBeatmapset(context.Connection(), set, request.Status, request.Visible, request.Locked),
+			new PatchBeatmapset(context.Connection(), id, request.Status, request.Visible, request.Locked),
 			context.RequestAborted);
-		return result.IsOk ? Api.Ok(SetView.Of(set), "Updated successfully") : result.Refusal();
+		if (!result.IsOk) return result.Refusal();
+
+		var detail = await sender.Send(new GetBeatmapset(context.Connection(), id), context.RequestAborted);
+		return detail is null
+			? Api.NotFound("No such beatmapset.")
+			: Api.Ok(SetView.Of(detail.Set), "Updated successfully");
 	}
 
-	private static async Task<IResult> SetFileAsync(HttpContext context, int id, IBeatmapsetRepository sets,
-		IBeatmapRepository beatmaps, IBeatmapsetStorage storage, BeatmapsetFileType type,
-		Func<BeatmapRecord, string?> file)
+	private static async Task<IResult> SetFileAsync(HttpContext context, int id, ISender sender,
+		BeatmapsetFileType type)
 	{
-		var set = await sets.GetAsync(id, context.RequestAborted);
-		if (set is null || !CanView(context, set)) return Api.NotFound("No such beatmapset.");
-
-		var map = (await beatmaps.ListAsync(set, context.RequestAborted)).OrderBy(b => b.Id)
-			.FirstOrDefault(b => CanView(context, b) && file(b) is not null);
-		return map is null ? Api.NotFound("No such file.") : await Serve(context, storage, set, type, file(map)!);
+		return Serve(context,
+			await sender.Send(new OpenBeatmapsetFile(context.ConnectionOrNull(), id, type), context.RequestAborted),
+			type, "No such file.");
 	}
 
-	private static async Task<IResult> StoryboardAsync(HttpContext context, int id, IBeatmapsetRepository sets,
-		IBeatmapsetStorage storage)
+	private static async Task<IResult> DownloadAsync(HttpContext context, int id, ISender sender, string? noVideo)
 	{
-		var set = await sets.GetAsync(id, context.RequestAborted);
-		// shortcut: the stored name is the fixed storyboard name of the importer; read it from there if it ever varies.
-		return set is null || !CanView(context, set) || !set.Assets.HasStoryboard
-			? Api.NotFound("No such file.")
-			: await Serve(context, storage, set, BeatmapsetFileType.Storyboard, "storyboard.osb");
-	}
-
-	private static async Task<IResult> DownloadAsync(HttpContext context, int id, IBeatmapsetRepository sets,
-		IBeatmapsetStorage storage, string? noVideo)
-	{
-		var set = await sets.GetAsync(id, context.RequestAborted);
-		if (set is null || !CanView(context, set)) return Api.NotFound("No such beatmapset.");
-
 		var leavesVideoOut = noVideo is not null &&
 		                     (noVideo == "1" || (bool.TryParse(noVideo, out var parsed) && parsed));
-		var archive = await storage.OpenArchiveAsync(set, !leavesVideoOut, context.RequestAborted);
+		var archive = await sender.Send(new OpenBeatmapsetArchive(context.ConnectionOrNull(), id, !leavesVideoOut),
+			context.RequestAborted);
 		return archive is null
 			? Api.NotFound("No such file.")
-			: NoSniff(context, Results.Stream(archive, "application/x-osu-beatmap-archive", $"{set.Id}.osz"));
+			: NoSniff(context, Results.Stream(archive, "application/x-osu-beatmap-archive", $"{id}.osz"));
 	}
 
 	private static async Task<IResult> RedirectToLowestAsync(HttpContext context, int id, string name,
-		IBeatmapsetRepository sets, IBeatmapRepository beatmaps)
+		ISender sender)
 	{
-		var set = await sets.GetAsync(id, context.RequestAborted);
-		if (set is null || !CanView(context, set)) return Api.NotFound("No such beatmapset.");
+		var detail = await sender.Send(new GetBeatmapset(context.ConnectionOrNull(), id), context.RequestAborted);
+		if (detail is null) return Api.NotFound("No such beatmapset.");
 
-		var lowest = (await beatmaps.ListAsync(set, context.RequestAborted)).OrderBy(b => b.Id)
-			.FirstOrDefault(b => CanView(context, b));
-		return lowest is null
+		return detail.Beatmaps.Count == 0
 			? Api.NotFound("The beatmapset has no beatmaps.")
-			: Results.Redirect($"/v1/beatmaps/{lowest.Id}/{name}", false, true);
+			: Results.Redirect($"/v1/beatmaps/{detail.Beatmaps[0].Id}/{name}", false, true);
 	}
 
 	/// <summary>The management properties of a set that can change; the content never changes.</summary>

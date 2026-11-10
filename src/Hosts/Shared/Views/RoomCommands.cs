@@ -1,4 +1,4 @@
-using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
@@ -190,7 +190,7 @@ public static class RoomCommands
 	private static async Task<Result<RoomOutcome>> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
 		CancellationToken ct)
 	{
-		var beatmap = await services.GetRequiredService<IBeatmapRepository>().GetAsync(body.Beatmap, ct);
+		var beatmap = await services.GetRequiredService<ISender>().Send(new FindBeatmap(body.Beatmap), ct);
 		if (beatmap is null) return RoomOutcome.NoBeatmap;
 
 		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name, beatmap.Metadata.Difficulty.Mode,

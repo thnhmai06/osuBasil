@@ -84,21 +84,20 @@ internal static class BeatmapScoreCommands
 	private static async Task<int> ListSetsAsync(CommandCall call)
 	{
 		var page = call.Page();
-		var found = await call.Get<IBeatmapsetRepository>().ListAsync(
-			BeatmapQuery.Parse(call.Text("query") ?? string.Empty).LimitTo(UserPrivilegesExtensions.All), page,
-			call.CancellationToken);
+		var found = await call.Get<ISender>().Send(new SearchBeatmapsets(await call.ByAsync(),
+			BeatmapQuery.Parse(call.Text("query") ?? string.Empty), page), call.CancellationToken);
 		call.PrintPage(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.HasNext), page);
 		return ExitCodes.Success;
 	}
 
 	private static async Task<int> ShowSetAsync(CommandCall call)
 	{
-		if (await call.Get<IBeatmapsetRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } set)
+		if (await call.Get<ISender>().Send(new GetBeatmapset(await call.ByAsync(), call.Id("id")),
+			    call.CancellationToken) is not { } detail)
 			return call.NotFound("beatmapset");
 
-		var list = await call.Get<IBeatmapRepository>().ListAsync(set, call.CancellationToken);
 		call.Formatter.Print(call.Output,
-			new SetDetailView(SetView.Of(set), [.. list.OrderBy(b => b.Id).Select(b => BeatmapView.Of(b, false))]));
+			new SetDetailView(SetView.Of(detail.Set), [.. detail.Beatmaps.Select(b => BeatmapView.Of(b, false))]));
 		return ExitCodes.Success;
 	}
 
@@ -128,13 +127,10 @@ internal static class BeatmapScoreCommands
 
 	private static async Task<int> PatchSetAsync(CommandCall call)
 	{
-		if (await call.Get<IBeatmapsetRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } set)
-			return call.NotFound("beatmapset");
-
 		var status = call.Text("status") is { } text ? ParseStatus(text) : (BeatmapsetStatus?)null;
 
 		var result = await call.Get<ISender>().Send(
-			new PatchBeatmapset(await call.ByAsync(), set, status, call.Bool("visible"), call.Bool("locked")),
+			new PatchBeatmapset(await call.ByAsync(), call.Id("id"), status, call.Bool("visible"), call.Bool("locked")),
 			call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
@@ -158,16 +154,15 @@ internal static class BeatmapScoreCommands
 
 	private static async Task<int> DeleteSetAsync(CommandCall call)
 	{
-		return await call.Get<IBeatmapsetRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } set
-			? call.NotFound("beatmapset")
-			: call.Report(
-				await call.Get<ISender>().Send(new DeleteBeatmapset(await call.ByAsync(), set), call.CancellationToken),
-				"Beatmapset deleted.");
+		return call.Report(
+			await call.Get<ISender>().Send(new DeleteBeatmapset(await call.ByAsync(), call.Id("id")),
+				call.CancellationToken), "Beatmapset deleted.");
 	}
 
 	private static async Task<int> ShowBeatmapAsync(CommandCall call)
 	{
-		if (await call.Get<IBeatmapRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } map)
+		if (await call.Get<ISender>().Send(new GetBeatmap(await call.ByAsync(), call.Id("id")),
+			    call.CancellationToken) is not { } map)
 			return call.NotFound("beatmap");
 
 		call.Formatter.Print(call.Output, BeatmapView.Of(map, true));
@@ -181,7 +176,7 @@ internal static class BeatmapScoreCommands
 		Md5? hash = null;
 		if (call.Int("beatmap") is { } beatmapId)
 		{
-			if (await call.Get<IBeatmapRepository>().GetAsync(beatmapId, ct) is not { } map)
+			if (await call.Get<ISender>().Send(new FindBeatmap(beatmapId), ct) is not { } map)
 				return call.NotFound("beatmap");
 			hash = map.Hash;
 		}

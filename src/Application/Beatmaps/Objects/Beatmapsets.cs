@@ -1,6 +1,8 @@
+using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
+using Basil.Application.Common;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Beatmaps.Objects;
@@ -22,6 +24,15 @@ public sealed class Beatmapsets
 		_context = context;
 		_importer = importer;
 		_scanner = scanner;
+	}
+
+	/// <summary>Scopes a beatmapset that is only referenced by its id to an actor and its authority.</summary>
+	/// <param name="actor">The actor acting.</param>
+	/// <param name="setId">The id of the beatmapset the caller refers to.</param>
+	/// <returns>A short-lived scope that reads the beatmapset only once the actor's right to act has been checked.</returns>
+	public ScopedBeatmapset ScopeTo(IActor actor, int setId)
+	{
+		return new ScopedBeatmapset(_context, setId, actor);
 	}
 
 	/// <summary>Gets the beatmapset object through which a stored set's behaviour is reached.</summary>

@@ -31,7 +31,7 @@ public sealed class BeatmapsetHandlerTests
 		var (app, world, set, actor) = await SetupAsync(Manager);
 		using var _ = app;
 
-		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(new DeleteBeatmapset(actor, set),
+		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(new DeleteBeatmapset(actor, set.Id),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
@@ -44,7 +44,7 @@ public sealed class BeatmapsetHandlerTests
 		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
-		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(new DeleteBeatmapset(actor, set),
+		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(new DeleteBeatmapset(actor, set.Id),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPrivileges.Tournament, result.Missing);
@@ -58,7 +58,7 @@ public sealed class BeatmapsetHandlerTests
 		using var _ = app;
 
 		var result = await new PatchBeatmapsetHandler(app.Beatmapsets).Handle(
-			new PatchBeatmapset(actor, set, BeatmapsetStatus.Loved, false, true),
+			new PatchBeatmapset(actor, set.Id, BeatmapsetStatus.Loved, false, true),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
@@ -74,7 +74,7 @@ public sealed class BeatmapsetHandlerTests
 		using var _ = app;
 
 		var result = await new PatchBeatmapsetHandler(app.Beatmapsets).Handle(
-			new PatchBeatmapset(actor, set, null, null, null), TestContext.Current.CancellationToken);
+			new PatchBeatmapset(actor, set.Id, null, null, null), TestContext.Current.CancellationToken);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Status);
@@ -87,11 +87,38 @@ public sealed class BeatmapsetHandlerTests
 		using var _ = app;
 
 		var result = await new PatchBeatmapsetHandler(app.Beatmapsets).Handle(
-			new PatchBeatmapset(actor, set, BeatmapsetStatus.Loved, false, null),
+			new PatchBeatmapset(actor, set.Id, BeatmapsetStatus.Loved, false, null),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Status);
 		Assert.True(set.Visible);
+	}
+
+	[Fact]
+	public async Task Delete_OfAnUnknownSetByAManager_IsNotFound()
+	{
+		var (app, _, _, actor) = await SetupAsync(Manager);
+		using var _ = app;
+
+		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(
+			new DeleteBeatmapset(actor, int.MaxValue), TestContext.Current.CancellationToken);
+
+		Assert.Equal(BeatmapsetOutcome.NotFound, result.Outcome);
+	}
+
+	[Fact]
+	public async Task Delete_OfAnUnknownSetWithoutTheRight_IsDeniedAsForAKnownSet()
+	{
+		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
+		using var _ = app;
+		var handler = new DeleteBeatmapsetHandler(app.Beatmapsets);
+
+		var known = await handler.Handle(new DeleteBeatmapset(actor, set.Id), TestContext.Current.CancellationToken);
+		var unknown = await handler.Handle(new DeleteBeatmapset(actor, int.MaxValue),
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(UserPrivileges.Tournament, unknown.Missing);
+		Assert.Equal(known.Missing, unknown.Missing);
 	}
 }

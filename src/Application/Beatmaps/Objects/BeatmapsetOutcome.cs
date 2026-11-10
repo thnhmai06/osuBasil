@@ -7,5 +7,8 @@ public enum BeatmapsetOutcome : byte
 	Ok = 1,
 
 	/// <summary>The set is write-locked and cannot be deleted.</summary>
-	Locked
+	Locked,
+
+	/// <summary>No beatmapset has the id.</summary>
+	NotFound
 }

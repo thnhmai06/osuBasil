@@ -29,11 +29,38 @@ public readonly struct ScopedBeatmapset
 	{
 		Actor = actor;
 		Rights = actor.EffectivePrivileges(beatmapset.Context.Clock.GetUtcNow());
+		_context = beatmapset.Context;
+		_setId = beatmapset.Record.Id;
 		Beatmapset = beatmapset;
 	}
 
-	/// <summary>Gets the beatmapset this scope is over.</summary>
-	public Beatmapset Beatmapset { get; }
+	/// <summary>Creates a scoped beatmapset that is only referenced by its id.</summary>
+	/// <param name="context">The context the beatmapset is read through.</param>
+	/// <param name="setId">The id of the beatmapset the caller refers to.</param>
+	/// <param name="actor">The actor acting on the beatmapset.</param>
+	internal ScopedBeatmapset(BeatmapsetContext context, int setId, IActor actor)
+	{
+		Actor = actor;
+		Rights = actor.EffectivePrivileges(context.Clock.GetUtcNow());
+		_context = context;
+		_setId = setId;
+		Beatmapset = null;
+	}
+
+	private readonly BeatmapsetContext _context;
+	private readonly int _setId;
+
+	/// <summary>Gets the beatmapset this scope is over, or <see langword="null" /> when the scope only references it by id.</summary>
+	public Beatmapset? Beatmapset { get; }
+
+	/// <summary>Gets the beatmapset this scope is over; the stored beatmapset is read only now.</summary>
+	/// <returns>The beatmapset, or <see langword="null" /> when no beatmapset has the id.</returns>
+	private async Task<Beatmapset?> ResolveAsync()
+	{
+		if (Beatmapset is { } resolved) return resolved;
+
+		return await _context.Repository.GetAsync(_setId) is { } record ? new Beatmapset(record, _context) : null;
+	}
 
 	/// <summary>Deletes this beatmapset and its files.</summary>
 	/// <returns>The outcome of deleting the beatmapset; a locked set is not deleted.</returns>
@@ -41,7 +68,9 @@ public readonly struct ScopedBeatmapset
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.DeleteAsync();
+		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+
+		return await set.DeleteAsync();
 	}
 
 	/// <summary>Changes whether this beatmapset is shown in public listings.</summary>
@@ -51,7 +80,9 @@ public readonly struct ScopedBeatmapset
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.SetVisibleAsync(visible);
+		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+
+		return await set.SetVisibleAsync(visible);
 	}
 
 	/// <summary>Changes whether this beatmapset is write-locked.</summary>
@@ -61,7 +92,9 @@ public readonly struct ScopedBeatmapset
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.SetLockedAsync(locked);
+		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+
+		return await set.SetLockedAsync(locked);
 	}
 
 	/// <summary>Changes the ranked status the beatmapset is reported with.</summary>
@@ -71,6 +104,8 @@ public readonly struct ScopedBeatmapset
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.SetStatusAsync(status);
+		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
+
+		return await set.SetStatusAsync(status);
 	}
 }

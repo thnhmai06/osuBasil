@@ -79,6 +79,7 @@ public sealed class OutcomeErrorsTests
 		foreach (var (k, v) in Servers) rows.Add("Server:" + k, v.ToString());
 		foreach (var (k, v) in Connections) rows.Add("Connection:" + k, v.ToString());
 		rows.Add("Beatmapset:Locked", Locked.ToString());
+		rows.Add("Beatmapset:NotFound", NotFound.ToString());
 		return rows;
 	}
 

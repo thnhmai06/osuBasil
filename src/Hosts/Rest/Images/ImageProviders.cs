@@ -1,10 +1,10 @@
 using System.Text.RegularExpressions;
-using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Beatmaps.Storage;
+using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Content.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Storage;
 using Basil.Domain.Content;
+using Mediator;
 
 namespace Basil.Host.Rest.Images;
 
@@ -84,10 +84,7 @@ public sealed partial class ScreenshotProvider(IScreenshotStorage screenshots)
 }
 
 /// <summary>Beatmapset thumbnails and covers; a hidden set shows nothing, because every image is public.</summary>
-public sealed partial class BeatmapImageProvider(
-	IBeatmapsetRepository sets,
-	IBeatmapRepository beatmaps,
-	IBeatmapsetStorage storage) : StreamImageProvider("assets", path => CoverPath().IsMatch(path.Value ?? ""))
+public sealed partial class BeatmapImageProvider(ISender sender) : StreamImageProvider("assets", path => CoverPath().IsMatch(path.Value ?? ""))
 {
 	private static readonly Dictionary<string, (int Width, int Height)> Variants = new()
 	{
@@ -117,15 +114,7 @@ public sealed partial class BeatmapImageProvider(
 	{
 		var match = CoverPath().Match(path.Value!);
 		if (!Variants.ContainsKey(match.Groups["variant"].Value)) return null;
-		if (await sets.GetAsync(int.Parse(match.Groups["id"].Value), ct) is not { Visible: true } set)
-			return null;
-
-		var map = (await beatmaps.ListAsync(set, ct)).OrderBy(b => b.Id)
-			.FirstOrDefault(b => b is { Visible: true, Assets.BackgroundFile: not null });
-		return map is null
-			? null
-			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,
-				ct);
+		return await sender.Send(new OpenBeatmapsetCover(int.Parse(match.Groups["id"].Value)), ct);
 	}
 
 	[GeneratedRegex(@"^/beatmapsets/(?<id>\d+)/covers/(?<variant>[a-z]+)\.jpg$")]
@@ -133,10 +122,7 @@ public sealed partial class BeatmapImageProvider(
 }
 
 /// <summary>Beatmapset thumbnails on <c>b.&lt;domain&gt;/thumb/{id}.jpg</c>, the fixed paths of the game client.</summary>
-public sealed partial class BeatmapThumbnailProvider(
-	IBeatmapsetRepository sets,
-	IBeatmapRepository beatmaps,
-	IBeatmapsetStorage storage) : StreamImageProvider("b", path => ThumbPath().IsMatch(path.Value ?? ""))
+public sealed partial class BeatmapThumbnailProvider(ISender sender) : StreamImageProvider("b", path => ThumbPath().IsMatch(path.Value ?? ""))
 {
 	/// <summary>Finds the crop size a thumbnail path asks for.</summary>
 	/// <param name="path">The request path.</param>
@@ -154,14 +140,7 @@ public sealed partial class BeatmapThumbnailProvider(
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var id = int.Parse(ThumbPath().Match(path.Value!).Groups["id"].Value);
-		if (await sets.GetAsync(id, ct) is not { Visible: true } set) return null;
-
-		var map = (await beatmaps.ListAsync(set, ct)).OrderBy(b => b.Id)
-			.FirstOrDefault(b => b is { Visible: true, Assets.BackgroundFile: not null });
-		return map is null
-			? null
-			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,
-				ct);
+		return await sender.Send(new OpenBeatmapsetCover(id), ct);
 	}
 
 	[GeneratedRegex(@"^/thumb/(?<id>\d+)(?<large>l)?\.jpg$")]
