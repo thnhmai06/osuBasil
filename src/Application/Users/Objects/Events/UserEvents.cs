@@ -67,5 +67,8 @@ public sealed record UserSpectatorLeft(StableConnection Host, Connection Spectat
 /// <param name="Bundle">The frames.</param>
 public sealed record UserSpectatorFramesReceived(StableConnection Host, SpectatorBundle Bundle) : UserEvent;
 
+/// <summary>A connection spectating an osu! client reported that it cannot keep up with it.</summary>
+/// <param name="Host">The osu! client being spectated.</param>
+/// <param name="Spectator">The spectating connection that reported the failure.</param>
 public sealed record UserSpectatorFailed(StableConnection Host, Connection Spectator)
 	: UserSpectatorEvent(Host, Spectator);

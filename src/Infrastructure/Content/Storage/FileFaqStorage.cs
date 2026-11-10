@@ -85,12 +85,14 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 			return WriteAsync(text);
 		}
 
+		/// <summary>Opens a writer for the entry at a path, creating its folder.</summary>
 		public static EntryWriter Create(string path)
 		{
 			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 			return new EntryWriter(path, TempFiles.Name(path));
 		}
 
+		/// <inheritdoc />
 		protected override void Dispose(bool disposing)
 		{
 			if (!disposing || !_committed) base.Dispose(disposing);

@@ -21,11 +21,11 @@ public interface IBeatmapsetStorage
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     The stored archive, which becomes a set's archive through
-	///     <see cref="SaveAsync(BeatmapsetRecord, BeatmapsetArchive, CancellationToken)" />.
+	///     <see cref="SaveAsync(BeatmapsetRecord, BeatmapsetArchive)" />.
 	/// </returns>
 	/// <remarks>
 	///     It is neither listed nor watched. One that is not taken in is removed by
-	///     <see cref="DeleteAsync(BeatmapsetArchive, CancellationToken)" />, or when the server starts again.
+	///     <see cref="DeleteAsync(BeatmapsetArchive)" />, or when the server starts again.
 	/// </remarks>
 	Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken ct = default);
 
@@ -53,7 +53,7 @@ public interface IBeatmapsetStorage
 	/// </returns>
 	/// <remarks>
 	///     The loose files are removed once the packed archive is taken in by
-	///     <see cref="SaveAsync(BeatmapsetRecord, BeatmapsetArchive, CancellationToken)" />.
+	///     <see cref="SaveAsync(BeatmapsetRecord, BeatmapsetArchive)" />.
 	/// </remarks>
 	Task<BeatmapsetArchive?> PackAsync(BeatmapsetFolder folder,
 		CancellationToken ct = default);

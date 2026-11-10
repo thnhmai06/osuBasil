@@ -6,7 +6,9 @@ namespace Basil.Infrastructure.Content.Persistence;
 internal sealed class ContentDbContext(DbContextOptions<ContentDbContext> options) : DbContext(options),
 	IDatabaseContext<ContentDbContext>
 {
+	/// <summary>The stored settings.</summary>
 	public DbSet<SettingRow> Settings => Set<SettingRow>();
+	/// <summary>The stored menu banners.</summary>
 	public DbSet<MenuBannerRow> MenuBanners => Set<MenuBannerRow>();
 
 	static string IDatabaseContext<ContentDbContext>.HistoryTable => "__ef_migrations_content";
@@ -16,6 +18,7 @@ internal sealed class ContentDbContext(DbContextOptions<ContentDbContext> option
 		return new ContentDbContext(options);
 	}
 
+	/// <inheritdoc />
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<ContentDbContext>(modelBuilder);

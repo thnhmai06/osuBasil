@@ -12,7 +12,9 @@ namespace Basil.Host.Stable.Support;
 /// <summary>Translates the server's objects into what osu! clients show.</summary>
 internal static class StableView
 {
+	/// <summary>The name osu! clients show for the room channel the player is in.</summary>
 	public const string MultiplayerAlias = "#multiplayer";
+	/// <summary>The name osu! clients show for the channel of the player's spectators.</summary>
 	public const string SpectatorAlias = "#spectator";
 
 	/// <summary>Gets the name a client uses for a channel.</summary>

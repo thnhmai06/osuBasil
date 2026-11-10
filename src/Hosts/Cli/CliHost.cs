@@ -85,6 +85,7 @@ public sealed record CliModeSetting(CliMode Mode);
 internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, GeneralChannelRegistry channels)
 	: ISuggestionSource
 {
+	/// <summary>Lists the ids that exist for a resource kind.</summary>
 	public IEnumerable<string> Ids(string resource)
 	{
 		return resource.ToLowerInvariant() switch
@@ -100,6 +101,7 @@ internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, Genera
 /// <summary>Lets time pass for the Ctrl+C rules once a second.</summary>
 internal sealed class ShutdownTicker(ShutdownController controller, TimeProvider clock) : BackgroundService
 {
+	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1), clock);
@@ -127,6 +129,7 @@ internal sealed class DisplayService(
 	private readonly CancellationTokenSource _stopped = new();
 	private Thread? _thread;
 
+	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
 		if (setting.Mode == CliMode.NoGui)
@@ -156,6 +159,7 @@ internal sealed class DisplayService(
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
 	public Task StopAsync(CancellationToken ct)
 	{
 		shutdown.Message -= Log;

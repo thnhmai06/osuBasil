@@ -16,6 +16,7 @@ namespace Basil.Host.Cli.Commands;
 /// <summary>The <c>beatmapsets</c>, <c>beatmaps</c> and <c>scores</c> commands.</summary>
 internal static class BeatmapScoreCommands
 {
+	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef

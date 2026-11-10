@@ -119,12 +119,14 @@ internal sealed class EfSettingsRepository(
 
 	private sealed class ContentReferenceConverter : JsonConverter<ContentReference>
 	{
+		/// <inheritdoc />
 		public override ContentReference Read(ref Utf8JsonReader reader, Type typeToConvert,
 			JsonSerializerOptions options)
 		{
 			return ContentReference.Parse(reader.GetString() ?? throw new JsonException(), null);
 		}
 
+		/// <inheritdoc />
 		public override void Write(Utf8JsonWriter writer, ContentReference value, JsonSerializerOptions options)
 		{
 			writer.WriteStringValue(value.ToString());

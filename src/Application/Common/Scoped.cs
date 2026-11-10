@@ -37,6 +37,7 @@ public static class ScopedRights
 
 	private static class Flags<TRights> where TRights : struct, Enum
 	{
+		/// <summary>Whether the rights type is a flags enum.</summary>
 		public static readonly bool IsFlags = typeof(TRights).GetCustomAttribute<FlagsAttribute>() is not null;
 	}
 }

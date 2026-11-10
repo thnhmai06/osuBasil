@@ -49,6 +49,7 @@ internal sealed class ScoreRow
 
 internal sealed class ScoreRowConfiguration : IEntityTypeConfiguration<ScoreRow>
 {
+	/// <inheritdoc />
 	public void Configure(EntityTypeBuilder<ScoreRow> builder)
 	{
 		builder.ToTable("scores", table => table.HasCheckConstraint("scores_id_check", "id >= 1"));

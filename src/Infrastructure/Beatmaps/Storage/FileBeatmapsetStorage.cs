@@ -578,15 +578,19 @@ internal sealed class FileBeatmapsetStorage(
 	/// <summary>The turn on one beatmapset, forgotten once nobody waits for it.</summary>
 	private sealed class SetLock(FileBeatmapsetStorage storage, int id)
 	{
+		/// <summary>The turn itself.</summary>
 		public SemaphoreSlim Semaphore { get; } = new(1, 1);
+		/// <summary>How many callers hold or wait for the turn.</summary>
 		public int Users { get; set; }
 
+		/// <summary>Gives the turn back.</summary>
 		public void Release()
 		{
 			Semaphore.Release();
 			Forget();
 		}
 
+		/// <summary>Forgets the turn once nobody waits for it.</summary>
 		public void Forget()
 		{
 			lock (storage._setLocks)

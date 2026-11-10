@@ -23,6 +23,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Accounts, their sessions, friends, blocks and silences.</summary>
 internal static class UserRoutes
 {
+	/// <summary>Maps the Users routes.</summary>
 	public static void MapUsers(this RouteGroupBuilder v1)
 	{
 		var users = v1.MapGroup("/users").WithTags("Users");

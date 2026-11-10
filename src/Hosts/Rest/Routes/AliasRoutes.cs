@@ -5,6 +5,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>The aliases of the caller's own account: answered with a redirect that keeps the method and the body.</summary>
 internal static class AliasRoutes
 {
+	/// <summary>Maps the Aliases routes.</summary>
 	public static void MapAliases(this RouteGroupBuilder v1)
 	{
 		MapAlias(v1, "/me", id => $"/v1/users/{id}");

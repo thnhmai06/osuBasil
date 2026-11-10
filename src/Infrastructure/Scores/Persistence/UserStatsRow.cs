@@ -21,6 +21,7 @@ internal sealed class UserStatsRow
 
 internal sealed class UserStatsRowConfiguration : IEntityTypeConfiguration<UserStatsRow>
 {
+	/// <inheritdoc />
 	public void Configure(EntityTypeBuilder<UserStatsRow> builder)
 	{
 		builder.ToTable("user_stats");

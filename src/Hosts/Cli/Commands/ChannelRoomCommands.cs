@@ -25,6 +25,7 @@ internal static class ChannelRoomCommands
 		new("visible", "Whether it is listed.", OptionKind.Bool)
 	];
 
+	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef

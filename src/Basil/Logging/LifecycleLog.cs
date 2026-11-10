@@ -7,6 +7,7 @@ namespace Basil.Logging;
 /// <summary>Logs a connection that opened: a login.</summary>
 internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<UserConnectionOpened>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionOpened notification, CancellationToken ct)
 	{
 		var connection = notification.Connection;
@@ -19,6 +20,7 @@ internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<
 /// <summary>Logs a connection that closed: a logout.</summary>
 internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandler<UserConnectionClosed>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Connection;
@@ -32,6 +34,7 @@ internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandle
 /// <summary>Logs a room that opened.</summary>
 internal sealed class RoomOpenedLog(ILogger<RoomOpenedLog> logger) : INotificationHandler<LobbyRoomOpened>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(LobbyRoomOpened notification, CancellationToken ct)
 	{
 		logger.LogInformation("Room {RoomId} opened", notification.Room.Id);
@@ -42,6 +45,7 @@ internal sealed class RoomOpenedLog(ILogger<RoomOpenedLog> logger) : INotificati
 /// <summary>Logs a room that closed.</summary>
 internal sealed class RoomClosedLog(ILogger<RoomClosedLog> logger) : INotificationHandler<LobbyRoomClosed>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(LobbyRoomClosed notification, CancellationToken ct)
 	{
 		logger.LogInformation("Room {RoomId} closed", notification.Room.Id);
@@ -52,6 +56,7 @@ internal sealed class RoomClosedLog(ILogger<RoomClosedLog> logger) : INotificati
 /// <summary>Logs a round that started.</summary>
 internal sealed class RoundStartedLog(ILogger<RoundStartedLog> logger) : INotificationHandler<RoomRoundStarted>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(RoomRoundStarted notification, CancellationToken ct)
 	{
 		logger.LogInformation("Round {Round} started in room {RoomId} with {PlayerCount} players",
@@ -64,6 +69,7 @@ internal sealed class RoundStartedLog(ILogger<RoundStartedLog> logger) : INotifi
 /// <summary>Logs a round that ended.</summary>
 internal sealed class RoundEndedLog(ILogger<RoundEndedLog> logger) : INotificationHandler<RoomRoundEnded>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(RoomRoundEnded notification, CancellationToken ct)
 	{
 		logger.LogInformation("Round {Round} ended in room {RoomId}", notification.Round.Index, notification.Room.Id);
@@ -74,6 +80,7 @@ internal sealed class RoundEndedLog(ILogger<RoundEndedLog> logger) : INotificati
 /// <summary>Logs a silence: a moderation action.</summary>
 internal sealed class SilenceLog(ILogger<SilenceLog> logger) : INotificationHandler<UserSilenced>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(UserSilenced notification, CancellationToken ct)
 	{
 		logger.LogInformation("User {UserId} was silenced", notification.User.Id);

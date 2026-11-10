@@ -13,6 +13,7 @@ namespace Basil.Host.Rest.Sse;
 /// <summary>Match reports: the list for managers and the live report of one match.</summary>
 internal static class MatchRoutes
 {
+	/// <summary>Maps the Matches routes.</summary>
 	public static void MapMatches(this RouteGroupBuilder v1)
 	{
 		var matches = v1.MapGroup("/matches").WithTags("Matches");

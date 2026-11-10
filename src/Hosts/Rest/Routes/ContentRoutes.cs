@@ -15,6 +15,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>The server settings, announcements and screenshots.</summary>
 internal static class ContentRoutes
 {
+	/// <summary>Maps the Content routes.</summary>
 	public static void MapContent(this RouteGroupBuilder v1)
 	{
 		var settings = v1.MapGroup("/settings").WithTags("Settings").RequireToken();

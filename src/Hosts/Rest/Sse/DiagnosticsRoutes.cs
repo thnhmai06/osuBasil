@@ -16,6 +16,7 @@ internal static class DiagnosticsRoutes
 
 	private static readonly string[] Actions = ["gc/collect", "caches/clear", "exceptions/reset"];
 
+	/// <summary>Maps the Diagnostics routes.</summary>
 	public static void MapDiagnostics(this RouteGroupBuilder v1)
 	{
 		var diagnostics = v1.MapGroup("/diagnostics").WithTags("Diagnostics").RequireToken();

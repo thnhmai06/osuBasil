@@ -30,6 +30,7 @@ internal static class BeatmapRoutes
 			{ [".mp4"] = "video/mp4", [".avi"] = "video/x-msvideo", [".flv"] = "video/x-flv", [".webm"] = "video/webm" }
 	};
 
+	/// <summary>Maps the Beatmaps routes.</summary>
 	public static void MapBeatmaps(this RouteGroupBuilder v1)
 	{
 		var sets = v1.MapGroup("/beatmapsets").WithTags("Beatmapsets");

@@ -31,6 +31,7 @@ internal static class ContentCommands
 		new("begins", "An ISO 8601 time the banner starts."), new("expires", "An ISO 8601 time the banner ends.")
 	];
 
+	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef

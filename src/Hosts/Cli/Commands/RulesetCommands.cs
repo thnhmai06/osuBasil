@@ -25,6 +25,7 @@ public static class RulesetReplies
 /// <summary>The <c>version</c> and <c>ruleset</c> commands.</summary>
 internal static class RulesetCommands
 {
+	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef

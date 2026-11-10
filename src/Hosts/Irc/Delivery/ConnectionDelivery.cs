@@ -10,6 +10,7 @@ namespace Basil.Host.Irc.Delivery;
 internal sealed class ConnectionClosedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
 	: INotificationHandler<UserConnectionClosed>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Connection;

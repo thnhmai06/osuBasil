@@ -13,6 +13,7 @@ internal sealed class EmptyRoomCloser(
 	/// <summary>The interval between two checks of the open rooms.</summary>
 	internal static readonly TimeSpan Period = TimeSpan.FromSeconds(30);
 
+	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(Period, time);

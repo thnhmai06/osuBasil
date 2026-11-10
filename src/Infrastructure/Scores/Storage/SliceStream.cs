@@ -113,6 +113,7 @@ internal sealed class SliceStream : Stream
 		return _inner.DisposeAsync();
 	}
 
+	/// <inheritdoc />
 	protected override void Dispose(bool disposing)
 	{
 		if (disposing) _inner.Dispose();

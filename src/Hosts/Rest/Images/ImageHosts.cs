@@ -68,6 +68,7 @@ internal sealed class ImageAdmissionMiddleware(RequestDelegate next)
 {
 	private static readonly HashSet<string> Labels = new(StringComparer.OrdinalIgnoreCase) { "a", "assets", "b" };
 
+	/// <summary>Applies the admission policy to a request for a picture.</summary>
 	public async Task InvokeAsync(HttpContext context, Admission admission)
 	{
 		var host = context.Request.Host.Host;
@@ -103,6 +104,7 @@ internal sealed class ImageAdmissionMiddleware(RequestDelegate next)
 /// <summary>Answers 404 for a stored picture that cannot be decoded, because there is no image to serve.</summary>
 internal sealed class UndecodableImageMiddleware(RequestDelegate next)
 {
+	/// <summary>Answers 404 when the picture cannot be decoded.</summary>
 	public async Task InvokeAsync(HttpContext context)
 	{
 		try

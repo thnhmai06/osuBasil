@@ -35,6 +35,7 @@ public interface IThemeControl
 /// </summary>
 internal static class MetaCommands
 {
+	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create(Func<CommandCatalog> catalog)
 	{
 		yield return new CommandDef

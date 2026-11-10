@@ -22,6 +22,7 @@ public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<Queued
 		TNotification notification,
 		ILogger logger) : IEventDelivery where TNotification : INotification
 	{
+		/// <inheritdoc />
 		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
 			foreach (var handler in handlers)

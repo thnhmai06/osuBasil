@@ -17,6 +17,7 @@ internal sealed class UpdateChecker(
 {
 	private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
+	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		var update = options.CurrentValue;

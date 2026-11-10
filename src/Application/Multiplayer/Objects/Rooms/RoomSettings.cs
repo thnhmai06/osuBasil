@@ -39,16 +39,22 @@ public sealed class RoomSettings
 	/// <summary>A live, read-only view of the room's settings; it cannot be turned back into the editable settings.</summary>
 	private sealed class MatchSettingsView(MatchSettings settings) : IMatchSettings
 	{
+		/// <summary>The game mode.</summary>
 		public GameMode Mode => settings.Mode;
 
+		/// <summary>The mods.</summary>
 		public GameMods Mods => settings.Mods;
 
+		/// <summary>Whether players pick their own mods.</summary>
 		public bool Freemods => settings.Freemods;
 
+		/// <summary>The team type.</summary>
 		public GameTeamType TeamType => settings.TeamType;
 
+		/// <summary>The win condition.</summary>
 		public GameWinCondition WinCondition => settings.WinCondition;
 
+		/// <summary>The random seed.</summary>
 		public int Seed => settings.Seed;
 	}
 }

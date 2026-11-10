@@ -11,6 +11,7 @@ namespace Basil.Host.Irc.Delivery;
 internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberJoined>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
@@ -34,6 +35,7 @@ internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence pres
 internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberParted>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(ChannelMemberParted notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
@@ -66,6 +68,7 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence presence)
 	: INotificationHandler<ChannelClosed>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(ChannelClosed notification, CancellationToken ct)
 	{
 		presence.Remove(notification.Channel);
@@ -78,6 +81,7 @@ internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence pres
 /// <summary>Tells the IRC clients that a channel's new read rules removed them from it.</summary>
 internal sealed class ChannelConfiguredDelivery(IrcClients clients) : INotificationHandler<ChannelConfigured>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(ChannelConfigured notification, CancellationToken ct)
 	{
 		foreach (var session in clients.Of(notification.Removed))

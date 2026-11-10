@@ -8,6 +8,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>The application version, the osu! rulesets that compute star ratings, and reloading beatmaps with them.</summary>
 internal static class RulesetRoutes
 {
+	/// <summary>Maps the Rulesets routes.</summary>
 	public static void MapRulesets(this RouteGroupBuilder v1)
 	{
 		v1.MapGet("/version", VersionAsync).WithTags("Version")

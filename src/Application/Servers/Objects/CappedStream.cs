@@ -8,25 +8,32 @@ internal sealed class CappedStream(Stream inner, long limit) : Stream
 {
 	private long _read;
 
+	/// <inheritdoc />
 	public override bool CanRead => true;
 
+	/// <inheritdoc />
 	public override bool CanSeek => false;
 
+	/// <inheritdoc />
 	public override bool CanWrite => false;
 
+	/// <inheritdoc />
 	public override long Length => throw new NotSupportedException();
 
+	/// <inheritdoc />
 	public override long Position
 	{
 		get => throw new NotSupportedException();
 		set => throw new NotSupportedException();
 	}
 
+	/// <inheritdoc />
 	public override int Read(byte[] buffer, int offset, int count)
 	{
 		return Counted(inner.Read(buffer, offset, count));
 	}
 
+	/// <inheritdoc />
 	public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
 		CancellationToken ct = default)
 	{
@@ -39,20 +46,24 @@ internal sealed class CappedStream(Stream inner, long limit) : Stream
 		return _read > limit ? throw new ArchiveTooLargeException() : read;
 	}
 
+	/// <inheritdoc />
 	public override void Flush()
 	{
 	}
 
+	/// <inheritdoc />
 	public override long Seek(long offset, SeekOrigin origin)
 	{
 		throw new NotSupportedException();
 	}
 
+	/// <inheritdoc />
 	public override void SetLength(long value)
 	{
 		throw new NotSupportedException();
 	}
 
+	/// <inheritdoc />
 	public override void Write(byte[] buffer, int offset, int count)
 	{
 		throw new NotSupportedException();

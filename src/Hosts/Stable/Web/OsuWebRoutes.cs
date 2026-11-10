@@ -396,12 +396,14 @@ internal static class OsuWebRoutes
 
 	private sealed record BeatmapInfoBody
 	{
+		/// <summary>The file names of the beatmaps being asked about.</summary>
 		public string[] Filenames { get; init; } = [];
 	}
 }
 
 internal static class Md5Text
 {
+	/// <summary>Parses a hash from text; <see langword="false" /> when the text is not a valid hash.</summary>
 	public static bool TryParse(string? text, out Md5 hash)
 	{
 		hash = default;

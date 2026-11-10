@@ -9,6 +9,7 @@ namespace Basil.Host.Stable.Delivery;
 /// <summary>Tells a client that it joined a channel.</summary>
 internal sealed class ChannelJoinedDelivery(Outbox outbox) : INotificationHandler<ChannelMemberJoined>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
@@ -23,6 +24,7 @@ internal sealed class ChannelJoinedDelivery(Outbox outbox) : INotificationHandle
 /// <summary>Tells a client that the server removed it from a channel.</summary>
 internal sealed class ChannelPartedDelivery(Outbox outbox) : INotificationHandler<ChannelMemberParted>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(ChannelMemberParted notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
@@ -37,6 +39,7 @@ internal sealed class ChannelPartedDelivery(Outbox outbox) : INotificationHandle
 /// <summary>Tells the members of a channel that it closed.</summary>
 internal sealed class ChannelClosedDelivery(Outbox outbox) : INotificationHandler<ChannelClosed>
 {
+	/// <inheritdoc />
 	public ValueTask Handle(ChannelClosed notification, CancellationToken ct)
 	{
 		if (notification.Channel is PmChannel) return ValueTask.CompletedTask;
@@ -49,6 +52,7 @@ internal sealed class ChannelClosedDelivery(Outbox outbox) : INotificationHandle
 /// <summary>Delivers a posted message to the osu! clients that may receive it.</summary>
 internal sealed class MessageDelivery(Outbox outbox) : INotificationHandler<ChannelMessagePosted>
 {
+	/// <inheritdoc />
 	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken ct)
 	{
 		var (channel, message) = (notification.Channel, notification.Message);

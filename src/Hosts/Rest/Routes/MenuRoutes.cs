@@ -14,6 +14,7 @@ internal static class MenuRoutes
 {
 	private const long MaxImageBytes = 10L * 1024 * 1024;
 
+	/// <summary>Maps the Menu routes.</summary>
 	public static void MapMenu(this RouteGroupBuilder v1)
 	{
 		var faqs = v1.MapGroup("/faqs").WithTags("Faqs");

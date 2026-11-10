@@ -16,12 +16,14 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 
 	private MulticastService? _service;
 
+	/// <inheritdoc />
 	public void Dispose()
 	{
 		_service?.Dispose();
 		_service = null;
 	}
 
+	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
 		var server = options.Value;
@@ -59,6 +61,7 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
 	public Task StopAsync(CancellationToken ct)
 	{
 		Dispose();

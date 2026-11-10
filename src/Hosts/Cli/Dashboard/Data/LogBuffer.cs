@@ -58,16 +58,19 @@ public sealed class LogBuffer : ILoggerProvider
 
 	private sealed class BufferLogger(LogBuffer buffer, string category, TimeProvider clock) : ILogger
 	{
+		/// <inheritdoc />
 		public IDisposable? BeginScope<TState>(TState state) where TState : notnull
 		{
 			return null;
 		}
 
+		/// <inheritdoc />
 		public bool IsEnabled(LogLevel logLevel)
 		{
 			return logLevel != LogLevel.None;
 		}
 
+		/// <inheritdoc />
 		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
 			Func<TState, Exception?, string> formatter)
 		{

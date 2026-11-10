@@ -157,6 +157,7 @@ public static class DependencyInjection
 
 	private sealed class BeatmapMirrorSettingsReader(ISettingsRepository settings) : IBeatmapMirrorSettings
 	{
+		/// <summary>Reads the configured beatmap mirror endpoints, or <see langword="null" /> for one that is not set.</summary>
 		public async Task<(Uri? SearchEndpoint, Uri? DownloadEndpoint)> GetAsync(
 			CancellationToken ct = default)
 		{

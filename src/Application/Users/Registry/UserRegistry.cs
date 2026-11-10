@@ -744,7 +744,9 @@ public sealed class UserRegistry
 	/// <summary>The lock of one account, shared by every scope that is open on it and dropped when the last one ends.</summary>
 	internal sealed class AccountGate
 	{
+		/// <summary>The lock guarding the account.</summary>
 		public readonly Lock Lock = new();
+		/// <summary>How many scopes are open on the account.</summary>
 		public int Users;
 	}
 

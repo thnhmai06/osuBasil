@@ -16,6 +16,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>The current session: sign in, sign out and who am I.</summary>
 internal static class AuthRoutes
 {
+	/// <summary>Maps the Auth routes.</summary>
 	public static void MapAuth(this RouteGroupBuilder v1)
 	{
 		var auth = v1.MapGroup("/auth").WithTags("Auth");

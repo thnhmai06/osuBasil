@@ -210,10 +210,13 @@ internal sealed class RoomCountdowns(
 	/// <summary>A countdown and the timers that announce its marks and its end.</summary>
 	private sealed class Running(RoomCountdown countdown) : IDisposable
 	{
+		/// <summary>The countdown.</summary>
 		public RoomCountdown Countdown { get; } = countdown;
 
+		/// <summary>The timers that announce the marks and the end.</summary>
 		public ITimer[] Timers { get; set; } = [];
 
+		/// <inheritdoc />
 		public void Dispose()
 		{
 			foreach (var timer in Timers) timer.Dispose();

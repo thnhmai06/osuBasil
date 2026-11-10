@@ -17,6 +17,7 @@ internal static class UserCommands
 {
 	private const string NoUser = "user";
 
+	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef

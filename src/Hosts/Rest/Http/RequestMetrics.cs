@@ -9,6 +9,7 @@ internal sealed class RequestMetricsMiddleware(RequestDelegate next, IOptions<Re
 {
 	private readonly string _domain = options.Value.Domain;
 
+	/// <summary>Counts the request and times how long it took to answer.</summary>
 	public async Task InvokeAsync(HttpContext context)
 	{
 		var started = Stopwatch.GetTimestamp();

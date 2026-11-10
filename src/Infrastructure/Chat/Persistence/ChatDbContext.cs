@@ -6,6 +6,7 @@ namespace Basil.Infrastructure.Chat.Persistence;
 internal sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContext(options),
 	IDatabaseContext<ChatDbContext>
 {
+	/// <summary>The stored channels.</summary>
 	public DbSet<ChannelRow> Channels => Set<ChannelRow>();
 
 	static string IDatabaseContext<ChatDbContext>.HistoryTable => "__ef_migrations_chat";
@@ -15,6 +16,7 @@ internal sealed class ChatDbContext(DbContextOptions<ChatDbContext> options) : D
 		return new ChatDbContext(options);
 	}
 
+	/// <inheritdoc />
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<ChatDbContext>(modelBuilder);

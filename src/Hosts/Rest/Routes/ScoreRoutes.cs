@@ -10,6 +10,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Scores and their replays.</summary>
 internal static class ScoreRoutes
 {
+	/// <summary>Maps the Scores routes.</summary>
 	public static void MapScores(this RouteGroupBuilder v1)
 	{
 		var scores = v1.MapGroup("/scores").WithTags("Scores");

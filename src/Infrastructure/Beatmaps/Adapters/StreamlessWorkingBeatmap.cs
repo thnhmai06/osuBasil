@@ -13,26 +13,31 @@ namespace Basil.Infrastructure.Beatmaps.Adapters;
 internal sealed class StreamlessWorkingBeatmap(Beatmap beatmap)
 	: WorkingBeatmap(beatmap.BeatmapInfo, null)
 {
+	/// <inheritdoc />
 	protected override IBeatmap GetBeatmap()
 	{
 		return beatmap;
 	}
 
+	/// <inheritdoc />
 	public override Texture? GetBackground()
 	{
 		return null;
 	}
 
+	/// <inheritdoc />
 	protected override Track? GetBeatmapTrack()
 	{
 		return null;
 	}
 
+	/// <inheritdoc />
 	protected override ISkin? GetSkin()
 	{
 		return null;
 	}
 
+	/// <inheritdoc />
 	public override Stream? GetStream(string storagePath)
 	{
 		return null;

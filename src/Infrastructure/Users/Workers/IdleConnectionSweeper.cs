@@ -10,6 +10,7 @@ internal sealed class IdleConnectionSweeper(
 	TimeProvider time,
 	ILogger<IdleConnectionSweeper> logger) : BackgroundService
 {
+	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(100), time);

@@ -357,6 +357,7 @@ public sealed class DashboardApp
 
 	private sealed class ModelOutput(DashboardModel model, TerminalApp? app) : ICommandOutput
 	{
+		/// <inheritdoc />
 		public void Write(OutputLine line)
 		{
 			foreach (var part in line.Text.Split('\n')) model.AddOutput(line with { Text = part });

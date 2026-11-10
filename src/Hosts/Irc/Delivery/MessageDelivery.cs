@@ -12,6 +12,7 @@ namespace Basil.Host.Irc.Delivery;
 internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMessagePosted>
 {
+	/// <inheritdoc />
 	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken ct)
 	{
 		var prefix = IrcView.Mask(notification.Message.Author, options.Value.Domain).ToString();

@@ -15,6 +15,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Multiplayer rooms: reading them and one route for each room command of <c>!mp</c>.</summary>
 internal static class RoomRoutes
 {
+	/// <summary>Maps the Rooms routes.</summary>
 	public static void MapRooms(this RouteGroupBuilder v1)
 	{
 		var rooms = v1.MapGroup("/rooms").WithTags("Rooms").RequireToken();

@@ -55,6 +55,7 @@ public abstract class StreamImageProvider : IImageProvider
 
 	private sealed class BufferedResolver(byte[] content) : IImageResolver
 	{
+		/// <inheritdoc />
 		public Task<ImageMetadata> GetMetaDataAsync()
 		{
 			// shortcut: the storages give no modification time, so the content's hash stands in for it and
@@ -64,6 +65,7 @@ public abstract class StreamImageProvider : IImageProvider
 			return Task.FromResult(new ImageMetadata(DateTime.UnixEpoch.AddSeconds(seconds), content.Length));
 		}
 
+		/// <inheritdoc />
 		public Task<Stream> OpenReadAsync()
 		{
 			return Task.FromResult<Stream>(new MemoryStream(content, false));

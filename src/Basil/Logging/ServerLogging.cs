@@ -123,11 +123,13 @@ public static class ServerLogging
 	{
 		private readonly Lazy<Logger> _logger = new(create);
 
+		/// <inheritdoc />
 		public void Dispose()
 		{
 			if (_logger.IsValueCreated) _logger.Value.Dispose();
 		}
 
+		/// <inheritdoc />
 		public void Emit(LogEvent logEvent)
 		{
 			_logger.Value.Write(logEvent);

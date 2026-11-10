@@ -23,6 +23,7 @@ internal static class OpenApiSetup
 	                                **Guides.** The chat commands of BasilBot and the IRC server are described at [`/guides`](/guides).
 	                                """;
 
+	/// <summary>Adds the generated OpenAPI documents of the server.</summary>
 	public static IServiceCollection AddBasilOpenApi(this IServiceCollection services)
 	{
 		services.AddOpenApi("v1", options =>
@@ -153,6 +154,7 @@ internal static class OpenApiSetup
 		return services;
 	}
 
+	/// <summary>Maps the reference pages generated from the OpenAPI documents.</summary>
 	public static void MapDocs(this IEndpointRouteBuilder app)
 	{
 		app.MapOpenApi().ExcludeFromDescription();

@@ -349,10 +349,13 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		private string? _snapshotId;
 		private long _snapshotTick = -1;
 
+		/// <summary>Reads the stream's next snapshot, if the stream is polled.</summary>
 		public Func<CancellationToken, Task<SsePoll>>? Poll { get; init; }
 
+		/// <summary>The events waiting to be sent.</summary>
 		public ConcurrentQueue<SseEvent> Buffer { get; } = new();
 
+		/// <summary>How many streams are open.</summary>
 		public int Count
 		{
 			get
@@ -376,6 +379,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 			}
 		}
 
+		/// <summary>Closes a stream and forgets it.</summary>
 		public bool Remove(SseStream stream)
 		{
 			lock (_streams)
@@ -396,6 +400,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 			}
 		}
 
+		/// <summary>The streams that are open now.</summary>
 		public SseStream[] Snapshot()
 		{
 			lock (_streams)

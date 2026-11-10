@@ -222,6 +222,7 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 
 	private sealed class SocketOutput(StreamWriter writer) : ICommandOutput
 	{
+		/// <inheritdoc />
 		public void Write(OutputLine line)
 		{
 			foreach (var framed in ControlSocket.FrameOutput(line.Text)) writer.WriteLine(framed);

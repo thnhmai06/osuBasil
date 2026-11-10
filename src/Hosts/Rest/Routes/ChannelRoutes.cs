@@ -13,6 +13,7 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Management of the general channels; chat itself is not part of this API.</summary>
 internal static class ChannelRoutes
 {
+	/// <summary>Maps the Channels routes.</summary>
 	public static void MapChannels(this RouteGroupBuilder v1)
 	{
 		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
