@@ -77,6 +77,7 @@ public sealed class TestApplication : IDisposable
 	private readonly InMemoryCredentialRepository _credentials;
 	private readonly InMemoryModerationLogRepository _moderationLog;
 	private readonly InMemoryRestrictionRepository _restrictions;
+	private readonly InMemoryConnectionRepository _connections;
 	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemorySettingsRepository _settings;
 
@@ -93,6 +94,7 @@ public sealed class TestApplication : IDisposable
 		_users = new InMemoryUserRepository();
 		_credentials = new InMemoryCredentialRepository();
 		_sessions = new InMemorySessionRepository();
+		_connections = new InMemoryConnectionRepository();
 		var relationships = new InMemoryRelationshipRepository();
 		_moderationLog = new InMemoryModerationLogRepository();
 		_restrictions = new InMemoryRestrictionRepository(_moderationLog);
@@ -109,6 +111,7 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<ICredentialRepository>(_credentials);
 		services.AddSingleton<IRestrictionRepository>(_restrictions);
 		services.AddSingleton<ISessionRepository>(_sessions);
+		services.AddSingleton<IConnectionRepository>(_connections);
 		services.AddSingleton<IRelationshipRepository>(relationships);
 		services.AddSingleton<IModerationLogRepository>(_moderationLog);
 		services.AddSingleton<ISettingsRepository>(_settings);
@@ -142,9 +145,14 @@ public sealed class TestApplication : IDisposable
 		});
 		// The host delivers events to the handlers; this fixture runs the one that stores a closed session.
 		var sessionEnd = new SessionEndHandler(_sessions, NullLogger<SessionEndHandler>.Instance);
+		var connectionClosed = new ConnectionClosedHandler(_connections, Clock,
+			NullLogger<ConnectionClosedHandler>.Instance);
 		UserEvents.Recorded += @event =>
 		{
-			if (@event is UserConnectionClosed closed) _ = sessionEnd.Handle(closed, CancellationToken.None);
+			if (@event is not UserConnectionClosed closed) return;
+
+			_ = sessionEnd.Handle(closed, CancellationToken.None);
+			_ = connectionClosed.Handle(closed, CancellationToken.None);
 		};
 		Users = Provider.GetRequiredService<UserRegistry>();
 		Lobby = Provider.GetRequiredService<Lobby>();
@@ -217,6 +225,9 @@ public sealed class TestApplication : IDisposable
 
 	/// <summary>Gets the login history written by the application.</summary>
 	public IReadOnlyList<SessionRecord> StoredSessions => _sessions.Entries;
+
+	/// <summary>Gets the trail of connections written by the application.</summary>
+	public IReadOnlyList<ConnectionRecord> StoredConnections => _connections.Entries;
 
 	/// <summary>Gets or sets the failure that recording a session throws, or <see langword="null" /> to accept it.</summary>
 	public Exception? SessionRecordFailure
@@ -408,7 +419,7 @@ public sealed class TestApplication : IDisposable
 		var inMemoryPortTypes = new HashSet<Type>
 		{
 			typeof(IUserRepository), typeof(ICredentialRepository), typeof(IRestrictionRepository),
-			typeof(ISessionRepository), typeof(IRelationshipRepository), typeof(IModerationLogRepository),
+			typeof(ISessionRepository), typeof(IConnectionRepository), typeof(IRelationshipRepository), typeof(IModerationLogRepository),
 			typeof(ISettingsRepository)
 		};
 		var portAssemblies = new[]

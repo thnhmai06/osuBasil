@@ -99,6 +99,17 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	}
 
 	/// <inheritdoc />
+	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason,
+		CancellationToken cancellationToken = default)
+	{
+		return database.WriteAsync((AuthenticationDbContext context, CancellationToken token) => context.Sessions
+			.Where(row => row.EndedAt == null && types.Contains(row.Type))
+			.ExecuteUpdateAsync(setters => setters
+				.SetProperty(row => row.EndedAt, row => row.LastActiveAt)
+				.SetProperty(row => row.EndReason, reason), token), cancellationToken);
+	}
+
+	/// <inheritdoc />
 	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity,
 		CancellationToken cancellationToken = default)
 	{

@@ -36,6 +36,53 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Connections_OfOwnSession_ListTheSignInsAndAnotherUserIs403_AndAnUnknownSessionIs404()
+	{
+		var (client, id) = await fixture.SignInAsync("SesTrail");
+		var other = await fixture.Host.CreateUserAsync("SesTrailOther");
+		using (client)
+		{
+			var (_, session) = await client.CallAsync(HttpMethod.Get, "/v1/auth/session");
+			var sid = (long)session!["data"]!["sessionId"]!;
+
+			var (own, trail) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}/sessions/{sid}/connections");
+			var (foreign, _) = await client.CallAsync(HttpMethod.Get,
+				$"/v1/users/{other.Id}/sessions/{sid}/connections");
+			var (unknown, _) = await client.CallAsync(HttpMethod.Get,
+				$"/v1/users/{id}/sessions/{long.MaxValue}/connections");
+
+			Assert.Equal(200, own);
+			var connection = Assert.Single(trail!["data"]!.AsArray());
+			Assert.NotNull(connection!["ip"]);
+			Assert.NotNull(connection["openedAt"]);
+			Assert.Null(connection["closedAt"]);
+			Assert.Null(connection["closeReason"]);
+			Assert.False((bool)trail["meta"]!["hasNext"]!);
+			Assert.Equal(403, foreign);
+			Assert.Equal(404, unknown);
+		}
+	}
+
+	[Fact]
+	public async Task Connections_OfAClosedSession_ShowWhyTheConnectionEnded()
+	{
+		var (first, id) = await fixture.SignInAsync("SesTrailEnd");
+		using var second = await SecondClientAsync("SesTrailEnd");
+		using (first)
+		{
+			var (_, session) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
+			var sid = (long)session!["data"]!["sessionId"]!;
+			await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions/{sid}");
+
+			var (_, trail) = await first.CallAsync(HttpMethod.Get, $"/v1/users/{id}/sessions/{sid}/connections");
+
+			var connection = Assert.Single(trail!["data"]!.AsArray());
+			Assert.NotNull(connection!["closedAt"]);
+			Assert.NotNull(connection["closeReason"]);
+		}
+	}
+
+	[Fact]
 	public async Task CloseAll_KeepsTheCurrentSessionByDefault_AndClosesItWhenAsked()
 	{
 		var (first, id) = await fixture.SignInAsync("SesAll");

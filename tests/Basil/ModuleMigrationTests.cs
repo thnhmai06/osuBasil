@@ -18,7 +18,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	private static readonly (string Module, string[] Tables)[] Modules =
 	[
 		("Users", ["users", "restrictions", "moderation_log", "relationships", "user_id_counters"]),
-		("Authentication", ["credentials", "sessions"]),
+		("Authentication", ["credentials", "sessions", "connections", "connection_id_counters"]),
 		("Beatmaps", ["beatmapsets", "beatmaps", "beatmap_id_counters"]),
 		("Content", ["settings", "menu_banners"]),
 		("Scores", ["scores", "user_stats", "score_id_counters"]),
@@ -115,6 +115,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		string[] expected =
 		[
 			"fk_beatmaps_beatmapsets_beatmapset_id",
+			"fk_connections_sessions_session_id",
 			"fk_credentials_users_user_id",
 			"fk_match_events_matches_match_id",
 			"fk_match_events_users_actor_id",

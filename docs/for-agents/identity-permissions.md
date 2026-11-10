@@ -83,7 +83,13 @@ touching users, connections, permissions, restrictions or the bot.
   the first time it is used, then kept in memory while its connection is used. An IRC key belongs to one device, is
   issued by `POST /v1/users/{id}/sessions/irc`, and is the only credential IRC accepts. osu! signs in with username and
   password every time. A connection that has sent nothing for its transport's idle timeout leaves memory; the session stays valid
-  and the next use opens a new connection. Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by
+  and the next use opens a new connection. Every connection leaves an entry in the session's trail (`connections`: address,
+  opening, last activity, closing and why), written when the client connects and updated when it leaves; a client that
+  comes back from the same address within five minutes of leaving continues its last entry instead of adding one. A
+  start after the server stopped closes the entries left open at their last activity with `ServerStopped` and ends the
+  osu! sessions the same way, as the room recovery ends the matches left running; API tokens and IRC keys stay valid.
+  Reading the trail needs the same right as reading the sessions and is logged the same way. Ended sessions, with
+  their trail, are deleted after `Sessions.RetentionPeriod` (90 days by
   default).
 * **Concurrent sessions per user are limited per connection type.** The Users module enforces the limit in
   `UserRegistry.Open`, under the registry's lock, from the runtime setting `Sessions.MaxPerUser` (positive numbers;

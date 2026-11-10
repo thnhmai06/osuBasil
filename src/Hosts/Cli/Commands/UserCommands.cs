@@ -128,6 +128,13 @@ internal static class UserCommands
 		};
 		yield return new CommandDef
 		{
+			Pattern = "users <id:int> sessions <sid:long> connections",
+			Route = "GET /v1/users/{id}/sessions/{sid}/connections", Offline = true,
+			Summary = "Lists the connections of one session.", Options = [.. CommandHelpers.Paging],
+			Run = SessionConnectionsAsync
+		};
+		yield return new CommandDef
+		{
 			Pattern = "users <id:int> sessions <sid:long> delete", Route = "DELETE /v1/users/{id}/sessions/{sid}",
 			Offline = true, Summary = "Closes one session.", Run = CloseSessionAsync
 		};
@@ -366,6 +373,22 @@ internal static class UserCommands
 		if (!result.IsOk) return call.Refuse(result);
 
 		call.Formatter.Print(call.Output, SessionView.Of(session!));
+		return ExitCodes.Success;
+	}
+
+	private static async Task<int> SessionConnectionsAsync(CommandCall call)
+	{
+		var page = call.Page();
+		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
+
+		var (result, connections) = await call.Get<ISender>()
+			.Send(new ListSessionConnections(await call.ByAsync(), target,
+					long.Parse(call.Word("sid"), CultureInfo.InvariantCulture), page),
+				call.CancellationToken);
+		if (!result.IsOk) return call.Refuse(result);
+
+		call.PrintPage(new Page<ConnectionView>([.. connections!.Items.Select(ConnectionView.Of)],
+			connections.HasNext), page);
 		return ExitCodes.Success;
 	}
 

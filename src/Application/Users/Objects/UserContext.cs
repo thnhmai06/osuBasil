@@ -19,6 +19,7 @@ namespace Basil.Application.Users.Objects;
 /// <param name="ModerationLog">The recorded moderation history.</param>
 /// <param name="Relationships">The friends and blocks users set toward each other.</param>
 /// <param name="Sessions">The recorded sessions.</param>
+/// <param name="Connections">The trail of connections of the sessions.</param>
 /// <param name="Credentials">The stored passwords.</param>
 /// <param name="Avatars">The stored avatar images.</param>
 /// <param name="Inspector">Identifies the format and dimensions of uploaded pictures.</param>
@@ -33,6 +34,7 @@ internal sealed record UserContext(
 	IModerationLogRepository ModerationLog,
 	IRelationshipRepository Relationships,
 	ISessionRepository Sessions,
+	IConnectionRepository Connections,
 	ICredentialRepository Credentials,
 	IUserAvatarStorage Avatars,
 	IScreenshotInspector Inspector,

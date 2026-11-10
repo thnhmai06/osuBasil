@@ -25,6 +25,9 @@ public sealed class UserRegistry
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
+	/// <summary>A client that comes back from the same address this soon after its connection closed is the same connection.</summary>
+	internal static readonly TimeSpan ReopenWithin = TimeSpan.FromMinutes(5);
+
 	private static readonly OsuClient ServerClient =
 		new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
 
@@ -141,6 +144,7 @@ public sealed class UserRegistry
 		try
 		{
 			await _context.Sessions.CreateOrUpdateAsync(session, cancellationToken);
+			await RecordConnectionAsync(connection, cancellationToken);
 		}
 		catch
 		{
@@ -150,6 +154,15 @@ public sealed class UserRegistry
 		}
 
 		return LoginResult.Success(connection);
+	}
+
+	private Task RecordConnectionAsync(Connection connection, CancellationToken cancellationToken)
+	{
+		if (connection.IsServerOwned) return Task.CompletedTask;
+
+		var device = connection.Session.Value.Fingerprint;
+		return _context.Connections.OpenAsync(connection.Session.Id, device.Ip, device.ClientInfo,
+			_context.Clock.GetUtcNow(), ReopenWithin, cancellationToken);
 	}
 
 	private static void ThrowIfInvalidLogin(SessionType type, OsuClient? client)
@@ -213,6 +226,17 @@ public sealed class UserRegistry
 
 		var restrictions = await ActiveRestrictionsAsync(record!, cancellationToken);
 		if (OpenUnlessRaced(token, connection, restrictions) is { } settled) return settled;
+
+		try
+		{
+			await RecordConnectionAsync(connection, cancellationToken);
+		}
+		catch
+		{
+			// A connection that could not be recorded does not stay open.
+			Close(connection, SessionEndReason.ConnectionLost);
+			throw;
+		}
 
 		MarkActive(connection);
 		return LoginResult.Success(connection);
@@ -352,7 +376,7 @@ public sealed class UserRegistry
 			var now = _context.Clock.GetUtcNow();
 			connection.MarkActive(now);
 			if (connection is ApiConnection api) api.ExtendExpiry(now, api.TokenLifetime);
-			if (OutlivesConnection(connection)) _activity[connection.Session.Id] = connection;
+			if (!connection.IsServerOwned) _activity[connection.Session.Id] = connection;
 		}
 	}
 
@@ -577,17 +601,40 @@ public sealed class UserRegistry
 			Close(connection, reason);
 	}
 
-	/// <summary>Stores the activity of the token sessions that were used since the last time.</summary>
+	/// <summary>Stores the activity of the sessions and connections that were used since the last time.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>Run regularly instead of storing each request.</remarks>
 	public async Task FlushActivityAsync(CancellationToken cancellationToken = default)
 	{
-		var batch = new List<SessionActivity>();
+		var sessions = new List<SessionActivity>();
+		var connections = new List<ConnectionActivity>();
 		foreach (var id in _activity.Keys)
 			if (_activity.TryRemove(id, out var connection))
-				batch.Add(new SessionActivity(id, connection.LastActiveAt, connection.ExpiresAt));
+			{
+				sessions.Add(new SessionActivity(id, connection.LastActiveAt, connection.ExpiresAt));
+				connections.Add(new ConnectionActivity(id, connection.LastActiveAt));
+			}
 
-		await _context.Sessions.WriteActivityAsync(batch, cancellationToken);
+		await _context.Sessions.WriteActivityAsync(sessions, cancellationToken);
+		await _context.Connections.WriteActivityAsync(connections, cancellationToken);
+	}
+
+	/// <summary>
+	///     Ends what a stop of the server left open: every connection still open is closed at the moment it was last
+	///     active, and so is the session of every osu! client, which lives only as long as its connection.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many connections were closed.</returns>
+	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it at startup. API tokens and IRC keys
+	///     stay valid.
+	/// </remarks>
+	public async Task<int> CloseStoppedAsync(CancellationToken cancellationToken = default)
+	{
+		var closed = await _context.Connections.CloseOpenAsync(SessionEndReason.ServerStopped, cancellationToken);
+		await _context.Sessions.EndOpenAsync([SessionType.Stable, SessionType.StableTourney],
+			SessionEndReason.ServerStopped, cancellationToken);
+		return closed;
 	}
 
 	/// <summary>

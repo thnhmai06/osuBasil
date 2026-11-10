@@ -18,7 +18,7 @@ internal sealed class LobbyMatchRecoveredRecorder(
 			await rounds.CreateOrUpdateAsync(round, cancellationToken);
 		await matchEvents.RecordAsync(
 			new MatchEvent(@event.Match, MatchEventType.Closed, @event.Timestamp, null, null,
-				"Server shutdown recovery"), cancellationToken);
+				MatchEvent.ServerStoppedDetail), cancellationToken);
 		// The match reads as ended only once its report is complete.
 		await matches.UpdateAsync(@event.Match, cancellationToken);
 	}

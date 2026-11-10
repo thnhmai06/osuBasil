@@ -181,6 +181,7 @@ HTTP diagnostics. Per-core CPU is shown on Linux only.
 | `users <id> restrictions <rid> delete`                                                              | `DELETE .../restrictions/{rid}`                               | yes |
 | `users <id> sessions list [--state all\|online\|offline] [--types <mask>]`                          | `GET /v1/users/{id}/sessions`                                 | yes |
 | `users <id> sessions <sid>`                                                                         | `GET /v1/users/{id}/sessions/{sid}`                           | yes |
+| `users <id> sessions <sid> connections`                                                             | `GET /v1/users/{id}/sessions/{sid}/connections`               | yes |
 | `users <id> sessions <sid> delete`                                                                  | `DELETE /v1/users/{id}/sessions/{sid}`                        | yes |
 | `users <id> sessions delete`                                                                        | `DELETE /v1/users/{id}/sessions` (none is kept)               | yes |
 | `users <id> delete`                                                                                 | `DELETE /v1/users/{id}`                                       | yes |

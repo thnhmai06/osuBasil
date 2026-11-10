@@ -121,6 +121,25 @@ public sealed class UserSessions
 		return (UserOutcome.Ok, session);
 	}
 
+	/// <summary>Reads the connections of one session of this account.</summary>
+	/// <param name="viewer">The connection reading the connections.</param>
+	/// <param name="id">The session's public identifier.</param>
+	/// <param name="page">Which part of the trail to return.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome and, when successful, one part of the connections, newest first.</returns>
+	/// <remarks>
+	///     Reading another account's connections is recorded in the moderation log. A session that does not belong to
+	///     this account is not found.
+	/// </remarks>
+	internal async Task<(UserOutcome Outcome, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
+		Connection viewer, long id, PageRequest page, CancellationToken cancellationToken)
+	{
+		var (outcome, _) = await GetAsync(viewer, id, cancellationToken);
+		if (outcome is not UserOutcome.Ok) return (outcome, null);
+
+		return (UserOutcome.Ok, await _user.Context.Connections.ListAsync(id, page, cancellationToken));
+	}
+
 	/// <summary>Closes one session of this account, whether its client is online or not.</summary>
 	/// <param name="id">The session's public identifier.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

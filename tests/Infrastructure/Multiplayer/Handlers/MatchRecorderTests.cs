@@ -189,7 +189,7 @@ public sealed class MatchRecorderTests
 		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match, Arg.Any<CancellationToken>());
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.Closed && matchEvent.Actor == null &&
-			matchEvent.Detail == "Server shutdown recovery"), Arg.Any<CancellationToken>());
+			matchEvent.Detail == MatchEvent.ServerStoppedDetail), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]

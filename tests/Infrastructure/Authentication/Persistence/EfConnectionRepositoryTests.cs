@@ -1,0 +1,278 @@
+using System.Net;
+using Basil.Application.Authentication.Persistence;
+using Basil.Application.Common;
+using Basil.Application.Users.Persistence;
+using Basil.Domain.Authentication;
+using Basil.Domain.Client;
+using Basil.Domain.Common;
+using Basil.Domain.Cryptography;
+using Basil.Domain.Users;
+using Basil.Testing.Persistence;
+
+namespace Basil.Infrastructure.Authentication.Tests.Persistence;
+
+/// <summary>Contract tests of the trail of connections of sessions.</summary>
+[Collection("Persistence")]
+public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
+{
+	private static readonly DateTimeOffset T0 = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
+	private static readonly TimeSpan Window = TimeSpan.FromMinutes(5);
+	private static readonly IPAddress Home = IPAddress.Parse("192.0.2.10");
+	private static readonly IPAddress Work = IPAddress.Parse("192.0.2.20");
+
+	private static CancellationToken Cancel => TestContext.Current.CancellationToken;
+
+	private IConnectionRepository Connections => Get<IConnectionRepository>();
+
+	private ISessionRepository Sessions => Get<ISessionRepository>();
+
+	private async Task<long> SessionAsync(string name = "trail_user", long id = 1, SessionType type = SessionType.Api)
+	{
+		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = name }, Cancel);
+		await Sessions.CreateOrUpdateAsync(new SessionRecord
+		{
+			Id = id,
+			Value = new SessionData(user, type, T0, new SessionFingerprint(Home, type is SessionType.Stable ? Client() : null),
+				new Sha256(BitConverter.GetBytes(id)),
+				null, T0)
+		}, Cancel);
+		return id;
+	}
+
+	private Task<Page<ConnectionRecord>> ListAsync(long sessionId, int offset = 0, int limit = 10)
+	{
+		return Connections.ListAsync(sessionId, new PageRequest(offset, limit), Cancel).AsTask();
+	}
+
+	[Fact]
+	public async Task An_opened_connection_is_stored_open()
+	{
+		var session = await SessionAsync();
+
+		await Connections.OpenAsync(session, Home, "laptop", T0, Window, Cancel);
+
+		var entry = Assert.Single((await ListAsync(session)).Items);
+		Assert.Equal(session, entry.Value.SessionId);
+		Assert.Equal(Home, entry.Value.Ip);
+		Assert.Equal("laptop", entry.Value.ClientInfo);
+		Assert.Equal(T0, entry.Value.OpenedAt);
+		Assert.Equal(T0, entry.Value.LastActiveAt);
+		Assert.Null(entry.Value.ClosedAt);
+		Assert.Null(entry.Value.CloseReason);
+	}
+
+	[Fact]
+	public async Task Closing_stores_when_the_connection_was_last_used_when_it_closed_and_why()
+	{
+		var session = await SessionAsync();
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+
+		await Connections.CloseAsync(session, T0.AddMinutes(3), T0.AddMinutes(4), SessionEndReason.TimedOut, Cancel);
+
+		var entry = Assert.Single((await ListAsync(session)).Items);
+		Assert.Equal(T0.AddMinutes(3), entry.Value.LastActiveAt);
+		Assert.Equal(T0.AddMinutes(4), entry.Value.ClosedAt);
+		Assert.Equal(SessionEndReason.TimedOut, entry.Value.CloseReason);
+	}
+
+	[Fact]
+	public async Task Closing_leaves_the_connections_that_already_closed_as_they_were()
+	{
+		var session = await SessionAsync();
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+
+		await Connections.CloseAsync(session, T0.AddHours(2), T0.AddHours(3), SessionEndReason.Revoked, Cancel);
+
+		var entry = Assert.Single((await ListAsync(session)).Items);
+		Assert.Equal(T0.AddMinutes(1), entry.Value.ClosedAt);
+		Assert.Equal(SessionEndReason.LoggedOut, entry.Value.CloseReason);
+	}
+
+	[Fact]
+	public async Task A_connection_from_the_same_address_inside_the_window_continues_the_last_one()
+	{
+		var session = await SessionAsync();
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+
+		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(4), Window, Cancel);
+
+		var entry = Assert.Single((await ListAsync(session)).Items);
+		Assert.Equal(T0, entry.Value.OpenedAt);
+		Assert.Equal(T0.AddMinutes(4), entry.Value.LastActiveAt);
+		Assert.Null(entry.Value.ClosedAt);
+		Assert.Null(entry.Value.CloseReason);
+	}
+
+	[Fact]
+	public async Task A_connection_exactly_at_the_end_of_the_window_continues_the_last_one()
+	{
+		var session = await SessionAsync();
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+
+		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(1) + Window, Window, Cancel);
+
+		Assert.Single((await ListAsync(session)).Items);
+	}
+
+	[Fact]
+	public async Task A_connection_after_the_window_is_a_new_one()
+	{
+		var session = await SessionAsync();
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+
+		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(1) + Window + TimeSpan.FromTicks(1), Window,
+			Cancel);
+
+		Assert.Equal(2, (await ListAsync(session)).Items.Count);
+	}
+
+	[Fact]
+	public async Task A_connection_from_another_address_is_a_new_one()
+	{
+		var session = await SessionAsync();
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+
+		await Connections.OpenAsync(session, Work, null, T0.AddMinutes(2), Window, Cancel);
+
+		var items = (await ListAsync(session)).Items;
+		Assert.Equal([Work, Home], items.Select(entry => entry.Value.Ip));
+	}
+
+	[Fact]
+	public async Task The_trail_is_listed_newest_first_and_paged()
+	{
+		var session = await SessionAsync();
+		foreach (var minutes in new[] { 0, 60, 120 })
+		{
+			await Connections.OpenAsync(session, Home, null, T0.AddMinutes(minutes), TimeSpan.Zero, Cancel);
+			await Connections.CloseAsync(session, T0.AddMinutes(minutes), T0.AddMinutes(minutes + 1),
+				SessionEndReason.LoggedOut, Cancel);
+		}
+
+		var head = await ListAsync(session, 0, 2);
+		var tail = await ListAsync(session, 2, 2);
+
+		Assert.Equal([T0.AddMinutes(120), T0.AddMinutes(60)], head.Items.Select(entry => entry.Value.OpenedAt));
+		Assert.True(head.HasNext);
+		Assert.Equal(T0, Assert.Single(tail.Items).Value.OpenedAt);
+		Assert.False(tail.HasNext);
+	}
+
+	[Fact]
+	public async Task The_trails_of_two_sessions_are_kept_apart()
+	{
+		var first = await SessionAsync("first_user", 1);
+		var second = await SessionAsync("second_user", 2);
+		await Connections.OpenAsync(first, Home, null, T0, Window, Cancel);
+		await Connections.OpenAsync(second, Work, null, T0, Window, Cancel);
+
+		await Connections.CloseAsync(first, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+
+		Assert.NotNull(Assert.Single((await ListAsync(first)).Items).Value.ClosedAt);
+		Assert.Null(Assert.Single((await ListAsync(second)).Items).Value.ClosedAt);
+	}
+
+	[Fact]
+	public async Task Activity_is_stored_for_the_open_connection_only()
+	{
+		var open = await SessionAsync("open_user", 1);
+		var closed = await SessionAsync("closed_user", 2);
+		await Connections.OpenAsync(open, Home, null, T0, Window, Cancel);
+		await Connections.OpenAsync(closed, Home, null, T0, Window, Cancel);
+		await Connections.CloseAsync(closed, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+
+		await Connections.WriteActivityAsync(
+			[new ConnectionActivity(open, T0.AddMinutes(9)), new ConnectionActivity(closed, T0.AddMinutes(9))], Cancel);
+
+		Assert.Equal(T0.AddMinutes(9), Assert.Single((await ListAsync(open)).Items).Value.LastActiveAt);
+		Assert.Equal(T0, Assert.Single((await ListAsync(closed)).Items).Value.LastActiveAt);
+	}
+
+	[Fact]
+	public async Task Storing_no_activity_changes_nothing()
+	{
+		var session = await SessionAsync();
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+
+		await Connections.WriteActivityAsync([], Cancel);
+
+		Assert.Equal(T0, Assert.Single((await ListAsync(session)).Items).Value.LastActiveAt);
+	}
+
+	[Fact]
+	public async Task Closing_what_is_open_closes_it_at_its_last_activity_and_counts_it()
+	{
+		var open = await SessionAsync("open_user", 1);
+		var done = await SessionAsync("done_user", 2);
+		await Connections.OpenAsync(open, Home, null, T0, Window, Cancel);
+		await Connections.WriteActivityAsync([new ConnectionActivity(open, T0.AddMinutes(8))], Cancel);
+		await Connections.OpenAsync(done, Home, null, T0, Window, Cancel);
+		await Connections.CloseAsync(done, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+
+		var closed = await Connections.CloseOpenAsync(SessionEndReason.ServerStopped, Cancel);
+
+		Assert.Equal(1, closed);
+		var stopped = Assert.Single((await ListAsync(open)).Items);
+		Assert.Equal(T0.AddMinutes(8), stopped.Value.ClosedAt);
+		Assert.Equal(SessionEndReason.ServerStopped, stopped.Value.CloseReason);
+		Assert.Equal(SessionEndReason.LoggedOut, Assert.Single((await ListAsync(done)).Items).Value.CloseReason);
+	}
+
+	[Fact]
+	public async Task Deleting_a_session_deletes_its_trail()
+	{
+		var session = await SessionAsync();
+		var user = (await Sessions.GetAsync((await Get<IUserRepository>().GetByNameAsync("trail_user", Cancel))!, session,
+			Cancel))!.Value.User;
+		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Sessions.EndAsync(user, session, null, [SessionType.Api], T0.AddMinutes(1), SessionEndReason.Revoked, Cancel);
+
+		var deleted = await Sessions.DeleteEndedBeforeAsync(T0.AddDays(1), Cancel);
+
+		Assert.Equal(1, deleted);
+		Assert.Empty((await ListAsync(session)).Items);
+	}
+
+	[Fact]
+	public async Task A_connection_of_a_session_that_does_not_exist_is_refused()
+	{
+		await Assert.ThrowsAnyAsync<Exception>(() => Connections.OpenAsync(404, Home, null, T0, Window, Cancel));
+	}
+
+	[Fact]
+	public async Task Ending_the_open_sessions_of_some_kinds_ends_them_at_their_last_activity()
+	{
+		var stable = await SessionAsync("stable_user", 1, SessionType.Stable);
+		var api = await SessionAsync("api_user", 2);
+		await Sessions.WriteActivityAsync([new SessionActivity(stable, T0.AddMinutes(6), null)], Cancel);
+
+		var ended = await Sessions.EndOpenAsync([SessionType.Stable, SessionType.StableTourney],
+			SessionEndReason.ServerStopped, Cancel);
+
+		Assert.Equal(1, ended);
+		var user = (await Get<IUserRepository>().GetByNameAsync("stable_user", Cancel))!;
+		var end = (await Sessions.GetAsync(user, stable, Cancel))!.Value.End;
+		Assert.Equal(new SessionEnd(T0.AddMinutes(6), SessionEndReason.ServerStopped), end);
+		var apiUser = (await Get<IUserRepository>().GetByNameAsync("api_user", Cancel))!;
+		Assert.Null((await Sessions.GetAsync(apiUser, api, Cancel))!.Value.End);
+	}
+
+	private static OsuClient Client()
+	{
+		return new OsuClient(
+			new OsuVersion(new DateOnly(2026, 1, 2), 42, OsuVersionStream.Beta),
+			new OsuFingerprint(
+				new Md5("0cc175b9c0f1b6a831c399e269772661"),
+				new Md5("4a8a08f09d37b73795649038408b5f33"),
+				new Md5("f97c5d29941bfb1b2fdab0874906ab82"), new NetworkAdapters
+				{
+					Adapters = "adapter-one.adapter-two.",
+					Hash = new Md5("92eb5ffee6ae2fec3ad71c777531578f")
+				}));
+	}
+}

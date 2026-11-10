@@ -20,6 +20,9 @@ public sealed record MatchEvent(
 	UserRecord? Target = null,
 	string? Detail = null) : IMatchEntry
 {
+	/// <summary>The detail of the closing entry of a match that the server ended itself because it had stopped.</summary>
+	public const string ServerStoppedDetail = "ServerStopped";
+
 	/// <summary>Additional detail about the event, if any.</summary>
 	/// <exception cref="ArgumentException">The detail contains the NUL character.</exception>
 	public string? Detail

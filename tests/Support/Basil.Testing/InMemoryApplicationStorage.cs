@@ -1,3 +1,4 @@
+using System.Net;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
@@ -285,6 +286,23 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.CompletedTask;
 	}
 
+	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason,
+		CancellationToken cancellationToken = default)
+	{
+		var ended = 0;
+		for (var index = 0; index < _entries.Count; index++)
+		{
+			var entry = _entries[index];
+			if (entry.Value.End is not null || !types.Contains(entry.Value.Type)) continue;
+
+			_entries[index] = With(entry,
+				data => data with { End = new SessionEnd(data.LastActiveAt, reason) });
+			ended++;
+		}
+
+		return Task.FromResult(ended);
+	}
+
 	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity,
 		CancellationToken cancellationToken = default)
 	{
@@ -329,6 +347,90 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 	private static SessionRecord With(SessionRecord session, Func<SessionData, SessionData> change)
 	{
 		return new SessionRecord { Id = session.Id, Value = change(session.Value) };
+	}
+}
+
+internal sealed class InMemoryConnectionRepository : IConnectionRepository
+{
+	private readonly List<ConnectionRecord> _entries = [];
+	private long _nextId = 1;
+
+	public IReadOnlyList<ConnectionRecord> Entries => _entries;
+
+	public Task OpenAsync(long sessionId, IPAddress ip, string? clientInfo, DateTimeOffset at, TimeSpan reopenWithin,
+		CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		var lastIndex = _entries.FindLastIndex(entry => entry.Value.SessionId == sessionId);
+		if (lastIndex >= 0 && _entries[lastIndex].Value is { ClosedAt: { } closedAt } last &&
+		    closedAt >= at - reopenWithin && last.Ip.Equals(ip))
+		{
+			_entries[lastIndex] = With(_entries[lastIndex], data => data with
+			{
+				ClosedAt = null, CloseReason = null, LastActiveAt = at
+			});
+			return Task.CompletedTask;
+		}
+
+		_entries.Add(new ConnectionRecord
+		{
+			Id = _nextId++, Value = new ConnectionData(sessionId, ip, clientInfo, at, at)
+		});
+		return Task.CompletedTask;
+	}
+
+	public Task CloseAsync(long sessionId, DateTimeOffset lastActiveAt, DateTimeOffset closedAt,
+		SessionEndReason reason, CancellationToken cancellationToken = default)
+	{
+		for (var index = 0; index < _entries.Count; index++)
+			if (_entries[index].Value is { ClosedAt: null } data && data.SessionId == sessionId)
+				_entries[index] = With(_entries[index], value => value with
+				{
+					LastActiveAt = lastActiveAt, ClosedAt = closedAt, CloseReason = reason
+				});
+
+		return Task.CompletedTask;
+	}
+
+	public Task WriteActivityAsync(IReadOnlyCollection<ConnectionActivity> activity,
+		CancellationToken cancellationToken = default)
+	{
+		foreach (var item in activity)
+			for (var index = 0; index < _entries.Count; index++)
+				if (_entries[index].Value is { ClosedAt: null } data && data.SessionId == item.SessionId)
+					_entries[index] = With(_entries[index], value => value with { LastActiveAt = item.LastActiveAt });
+
+		return Task.CompletedTask;
+	}
+
+	public ValueTask<Page<ConnectionRecord>> ListAsync(long sessionId, PageRequest page,
+		CancellationToken cancellationToken = default)
+	{
+		var entries = _entries.Where(entry => entry.Value.SessionId == sessionId).Reverse().ToList();
+		return ValueTask.FromResult(new Page<ConnectionRecord>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
+			page.Offset + page.Limit < entries.Count));
+	}
+
+	public Task<int> CloseOpenAsync(SessionEndReason reason, CancellationToken cancellationToken = default)
+	{
+		var closed = 0;
+		for (var index = 0; index < _entries.Count; index++)
+		{
+			if (_entries[index].Value.ClosedAt is not null) continue;
+
+			_entries[index] = With(_entries[index], value => value with
+			{
+				ClosedAt = value.LastActiveAt, CloseReason = reason
+			});
+			closed++;
+		}
+
+		return Task.FromResult(closed);
+	}
+
+	private static ConnectionRecord With(ConnectionRecord record, Func<ConnectionData, ConnectionData> change)
+	{
+		return new ConnectionRecord { Id = record.Id, Value = change(record.Value) };
 	}
 }
 

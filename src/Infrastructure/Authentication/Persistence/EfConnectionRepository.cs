@@ -1,0 +1,109 @@
+using System.Net;
+using Basil.Application.Authentication.Persistence;
+using Basil.Application.Common;
+using Basil.Domain.Authentication;
+using Basil.Infrastructure.Common.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Basil.Infrastructure.Authentication.Persistence;
+
+/// <summary>Records the trail of connections of sessions.</summary>
+internal sealed class EfConnectionRepository(DatabaseSession database) : IConnectionRepository
+{
+	/// <inheritdoc />
+	public Task OpenAsync(long sessionId, IPAddress ip, string? clientInfo, DateTimeOffset at, TimeSpan reopenWithin,
+		CancellationToken cancellationToken = default)
+	{
+		var opened = at.ToUniversalTime();
+		var earliest = opened - reopenWithin;
+		return database.WriteAsync(async (AuthenticationDbContext context, CancellationToken token) =>
+		{
+			var last = await context.Connections.AsTracking().Where(row => row.SessionId == sessionId)
+				.OrderByDescending(row => row.OpenedAt).ThenByDescending(row => row.Id).FirstOrDefaultAsync(token);
+			if (last is { ClosedAt: { } closedAt } && closedAt >= earliest && Equals(last.Ip, ip))
+			{
+				last.ClosedAt = null;
+				last.CloseReason = null;
+				last.LastActiveAt = opened;
+				return;
+			}
+
+			context.Connections.Add(new ConnectionRow
+			{
+				Id = await IdCounters.NextAsync(context, "connection", token),
+				SessionId = sessionId,
+				Ip = ip,
+				ClientInfo = clientInfo,
+				OpenedAt = opened,
+				LastActiveAt = opened
+			});
+		}, cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task CloseAsync(long sessionId, DateTimeOffset lastActiveAt, DateTimeOffset closedAt,
+		SessionEndReason reason, CancellationToken cancellationToken = default)
+	{
+		var active = lastActiveAt.ToUniversalTime();
+		var closed = closedAt.ToUniversalTime();
+		return database.WriteAsync((AuthenticationDbContext context, CancellationToken token) => context.Connections
+			.Where(row => row.SessionId == sessionId && row.ClosedAt == null)
+			.ExecuteUpdateAsync(setters => setters
+				.SetProperty(row => row.LastActiveAt, active)
+				.SetProperty(row => row.ClosedAt, closed)
+				.SetProperty(row => row.CloseReason, reason), token), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task WriteActivityAsync(IReadOnlyCollection<ConnectionActivity> activity,
+		CancellationToken cancellationToken = default)
+	{
+		if (activity.Count == 0) return Task.CompletedTask;
+
+		return database.TransactAsync(async (AuthenticationDbContext context, CancellationToken token) =>
+		{
+			foreach (var item in activity)
+			{
+				var last = item.LastActiveAt.ToUniversalTime();
+				await context.Connections.Where(row => row.SessionId == item.SessionId && row.ClosedAt == null)
+					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.LastActiveAt, last), token);
+			}
+		}, cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async ValueTask<Page<ConnectionRecord>> ListAsync(long sessionId, PageRequest page,
+		CancellationToken cancellationToken = default)
+	{
+		var fetched = await database.ReadAsync((AuthenticationDbContext context) => context.Connections
+			.Where(row => row.SessionId == sessionId)
+			.OrderByDescending(row => row.OpenedAt)
+			.ThenByDescending(row => row.Id)
+			.Skip(page.Offset)
+			.Take(page.Fetch)
+			.ToListAsync(cancellationToken), cancellationToken);
+
+		var (rows, hasNext) = page.Slice(fetched);
+		return new Page<ConnectionRecord>(rows.Select(ToRecord).ToList(), hasNext);
+	}
+
+	/// <inheritdoc />
+	public Task<int> CloseOpenAsync(SessionEndReason reason, CancellationToken cancellationToken = default)
+	{
+		return database.WriteAsync((AuthenticationDbContext context, CancellationToken token) => context.Connections
+			.Where(row => row.ClosedAt == null)
+			.ExecuteUpdateAsync(setters => setters
+				.SetProperty(row => row.ClosedAt, row => row.LastActiveAt)
+				.SetProperty(row => row.CloseReason, reason), token), cancellationToken);
+	}
+
+	private static ConnectionRecord ToRecord(ConnectionRow row)
+	{
+		return new ConnectionRecord
+		{
+			Id = row.Id,
+			Value = new ConnectionData(row.SessionId, row.Ip, row.ClientInfo, row.OpenedAt, row.LastActiveAt,
+				row.ClosedAt, row.CloseReason)
+		};
+	}
+}

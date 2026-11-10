@@ -1,6 +1,7 @@
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -96,5 +97,25 @@ public sealed class ServerRecoverTests
 		Assert.NotNull(room.Match.Value.EndedAt);
 		Assert.Equal(room.Match, Assert.Single(app.LobbyEvents.Events.OfType<LobbyMatchRecovered>()).Match);
 		Assert.Equal(1, recovery.ClosedMatches);
+	}
+
+	[Fact]
+	public async Task RecoverAsync_ClosesTheConnectionsTheLastRunLeftOpen_AndCountsThem()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("Stopped", "password");
+		var connection = await app.LoginAsync(user, SessionType.Stable);
+		app.Clock.Advance(TimeSpan.FromSeconds(30));
+		app.Users.MarkActive(connection);
+		await app.Users.FlushActivityAsync(TestContext.Current.CancellationToken);
+		var lastActive = app.Clock.GetUtcNow();
+		app.Clock.Advance(TimeSpan.FromHours(1));
+
+		var recovery = await app.Server.RecoverAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(1, recovery.ClosedConnections);
+		var entry = Assert.Single(app.StoredConnections);
+		Assert.Equal(lastActive, entry.Value.ClosedAt);
+		Assert.Equal(SessionEndReason.ServerStopped, entry.Value.CloseReason);
 	}
 }

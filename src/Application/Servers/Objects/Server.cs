@@ -1,4 +1,4 @@
-﻿using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects;
 using Basil.Application.Servers.Capabilities;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -35,8 +35,8 @@ public sealed partial class Server
 	/// </summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
-	///     What the recovery did: how many general channels were opened, whether BasilBot is online and how many
-	///     matches were ended.
+	///     What the recovery did: how many general channels were opened, whether BasilBot is online, how many
+	///     matches were ended and how many connections were closed.
 	/// </returns>
 	public async Task<ServerRecovery> RecoverAsync(CancellationToken cancellationToken = default)
 	{
@@ -46,11 +46,12 @@ public sealed partial class Server
 				openedChannels++;
 
 		var registry = Context.Connections.Registry;
+		var closedConnections = await registry.CloseStoppedAsync(cancellationToken);
 		await registry.EnsureBotAsync(cancellationToken);
 		var botOnline = await registry.ConnectBotAsync(cancellationToken) is not null;
 
 		var closedMatches = await Context.Lobby.CloseUnfinishedAsync(cancellationToken);
-		return new ServerRecovery(openedChannels, botOnline, closedMatches);
+		return new ServerRecovery(openedChannels, botOnline, closedMatches, closedConnections);
 	}
 
 	/// <summary>Opens a general channel at the server's own request (startup); no rights are needed.</summary>

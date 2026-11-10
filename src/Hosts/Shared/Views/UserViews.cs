@@ -47,6 +47,24 @@ public sealed record RestrictionView(int Id, ulong Permissions, DateTimeOffset S
 	}
 }
 
+/// <summary>One connection of a session as the API shows it.</summary>
+public sealed record ConnectionView(
+	string Ip,
+	string? ClientInfo,
+	DateTimeOffset OpenedAt,
+	DateTimeOffset LastActiveAt,
+	DateTimeOffset? ClosedAt,
+	SessionEndReason? CloseReason)
+{
+	/// <summary>Describes a connection.</summary>
+	public static ConnectionView Of(ConnectionRecord c)
+	{
+		var data = c.Value;
+		return new ConnectionView(data.Ip.ToString(), data.ClientInfo, data.OpenedAt, data.LastActiveAt, data.ClosedAt,
+			data.CloseReason);
+	}
+}
+
 /// <summary>A session as the API shows it.</summary>
 public sealed record SessionView(
 	long Id,

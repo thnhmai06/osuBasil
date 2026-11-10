@@ -290,6 +290,25 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
+	public async Task Sessions_Connections_ListTheTrailOfOneSession()
+	{
+		var name = CliFixture.Name("trail");
+		await fixture.Host.CreateUserAsync(name);
+		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
+		var id = await client.LoginAsync(name);
+		var (_, listed) =
+			await fixture.RunAsync($"users {id} sessions list --state online --types {(int)SessionType.Api}");
+		var sessionId = listed.Split('\n').Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0])
+			.First(word => long.TryParse(word, out _));
+
+		var (code, text) = await fixture.RunAsync($"users {id} sessions {sessionId} connections");
+
+		Assert.Equal(0, code);
+		Assert.Contains("openedAt", text);
+		Assert.Contains("shown: 1", text);
+	}
+
+	[Fact]
 	public async Task Sessions_DeleteAll_ClosesEverySessionOfTheAccount()
 	{
 		var name = CliFixture.Name("sessall");

@@ -22,5 +22,8 @@ public enum SessionEndReason : byte
 	CredentialsChanged,
 
 	/// <summary>The user's sessions were ended, or the user may no longer use this kind of client.</summary>
-	Revoked
+	Revoked,
+
+	/// <summary>The server stopped while the connection was open; the next start ended it.</summary>
+	ServerStopped
 }

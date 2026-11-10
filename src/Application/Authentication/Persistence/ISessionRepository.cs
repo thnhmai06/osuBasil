@@ -97,6 +97,14 @@ public interface ISessionRepository
 	Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types, DateTimeOffset at,
 		SessionEndReason reason, CancellationToken cancellationToken = default);
 
+	/// <summary>Ends the unended sessions of some kinds, each at the moment it was last active.</summary>
+	/// <param name="types">The kinds of session that end.</param>
+	/// <param name="reason">Why the sessions end.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many sessions ended.</returns>
+	Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason,
+		CancellationToken cancellationToken = default);
+
 	/// <summary>Stores the latest activity of several sessions at once.</summary>
 	/// <param name="activity">The activity to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

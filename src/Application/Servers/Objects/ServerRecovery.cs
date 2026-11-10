@@ -4,4 +4,5 @@ namespace Basil.Application.Servers.Objects;
 /// <param name="OpenedChannels">The general channels that were opened.</param>
 /// <param name="BotOnline">Whether BasilBot is online once the recovery is done.</param>
 /// <param name="ClosedMatches">The matches left unfinished that were ended.</param>
-public sealed record ServerRecovery(int OpenedChannels, bool BotOnline, int ClosedMatches);
+/// <param name="ClosedConnections">The connections left open that were closed.</param>
+public sealed record ServerRecovery(int OpenedChannels, bool BotOnline, int ClosedMatches, int ClosedConnections);

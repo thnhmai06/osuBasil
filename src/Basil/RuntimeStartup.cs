@@ -18,6 +18,7 @@ internal sealed class RuntimeStartup(Server server, ILogger<RuntimeStartup> logg
 		else
 			logger.LogWarning("BasilBot could not be brought online");
 		logger.LogInformation("Closed {MatchCount} unfinished matches", recovery.ClosedMatches);
+		logger.LogInformation("Closed {ConnectionCount} connections left open", recovery.ClosedConnections);
 	}
 
 	/// <inheritdoc />

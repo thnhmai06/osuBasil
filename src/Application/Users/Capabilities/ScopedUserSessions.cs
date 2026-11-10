@@ -49,6 +49,27 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 		return (outcome, session);
 	}
 
+	/// <summary>Reads the connections of one session of this account: when and from where each client connected.</summary>
+	/// <param name="id">The session's public identifier.</param>
+	/// <param name="page">Which part of the trail to return.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome and, when successful, one part of the connections, newest first.</returns>
+	/// <remarks>
+	///     A user may read the connections of their own sessions. Reading another account's needs
+	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log. A session that
+	///     does not belong to this account is not found.
+	/// </remarks>
+	public async Task<(Result<UserOutcome> Result, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
+		long id, PageRequest page, CancellationToken cancellationToken = default)
+	{
+		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
+			return (denied, null);
+
+		var (outcome, connections) =
+			await scoped.User.Sessions.ListConnectionsAsync(scoped.Actor, id, page, cancellationToken);
+		return (outcome, connections);
+	}
+
 	/// <summary>Closes one session of this account, whether its client is online or not.</summary>
 	/// <param name="id">The session's public identifier.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
