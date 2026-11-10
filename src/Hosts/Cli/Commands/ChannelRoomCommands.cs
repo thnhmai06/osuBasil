@@ -253,12 +253,12 @@ internal static class ChannelRoomCommands
 
 	private static async Task<int> ShowMatchAsync(CommandCall call)
 	{
-		if (await call.Get<IMatchRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } match)
+		if (await call.Get<ISender>().Send(new GetMatchReport(await call.ByAsync(), call.Id("id")),
+			    call.CancellationToken) is not { } report)
 			return call.NotFound("match");
 
-		call.Formatter.Print(call.Output, MatchView.Of(match));
-		var report = await call.Get<IMatchReportRepository>().GetAsync(match, call.CancellationToken);
-		var entries = report.Records.OrderBy(entry => entry.Timestamp).ToList();
+		call.Formatter.Print(call.Output, MatchView.Of(report.Match));
+		var entries = report.Entries.Select(reported => reported.Entry).ToList();
 		call.Output.Line($"entries: {entries.Count}");
 		foreach (var entry in entries)
 			call.Output.Line(entry switch

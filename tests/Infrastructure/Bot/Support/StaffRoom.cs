@@ -1,4 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
@@ -33,10 +34,10 @@ internal sealed record StaffRoom(
 		var scope = room.ScopeTo(creator).Authority;
 
 		var referee = await RoomFixture.PlayerAsync(bot.App, name + "Referee");
-		Assert.True((await scope.AddRefereeAsync(referee.Record)).IsOk);
+		Assert.True((await scope.AddRefereeAsync(UserReference.ById(referee.Record.Id))).IsOk);
 
 		var offlineReferee = await RoomFixture.PlayerAsync(bot.App, name + "Away");
-		Assert.True((await scope.AddRefereeAsync(offlineReferee.Record)).IsOk);
+		Assert.True((await scope.AddRefereeAsync(UserReference.ById(offlineReferee.Record.Id))).IsOk);
 		bot.App.Users.Close(offlineReferee, SessionEndReason.TimedOut);
 		Assert.DoesNotContain(offlineReferee.Record, bot.App.Users.Online.Keys);
 

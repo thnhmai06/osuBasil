@@ -1,5 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -31,14 +32,16 @@ public readonly struct ScopedRoomSlots
 	}
 
 	/// <summary>Moves a player to an empty, unlocked slot.</summary>
-	/// <param name="player">The user to act on.</param>
+	/// <param name="player">The user to act on, named by id or name.</param>
 	/// <param name="index">The slot number, from 1 to 16.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
-	public Task<Result<RoomOutcome>> MoveAsync(UserRecord player, int index)
+	public async Task<Result<RoomOutcome>> MoveAsync(UserReference player, int index)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.SlotsMovePlayers) ??
-		                       _scoped.Room.MovePlayer(player, index));
+		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
+		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+			? _scoped.Room.MovePlayer(record, index)
+			: RoomOutcome.NotInRoom;
 	}
 
 	/// <summary>Arranges every slot of a room at once.</summary>
@@ -88,13 +91,15 @@ public readonly struct ScopedRoomSlots
 	}
 
 	/// <summary>Puts a player on a team.</summary>
-	/// <param name="player">The user to act on.</param>
+	/// <param name="player">The user to act on, named by id or name.</param>
 	/// <param name="team">The team to assign.</param>
 	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> SetTeamAsync(UserRecord player, GameTeam team)
+	public async Task<Result<RoomOutcome>> SetTeamAsync(UserReference player, GameTeam team)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.SlotsMovePlayers) ??
-		                       _scoped.Room.SetTeam(player, team));
+		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
+		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+			? _scoped.Room.SetTeam(record, team)
+			: RoomOutcome.NotInRoom;
 	}
 
 	/// <summary>Chooses the caller's own mods while freemod is on.</summary>

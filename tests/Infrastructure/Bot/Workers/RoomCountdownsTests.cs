@@ -1,4 +1,5 @@
 using Basil.Application.Bot.Announcements;
+using Basil.Application.Users.Objects;
 using Basil.Infrastructure.Bot.Workers;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Messages;
@@ -203,7 +204,7 @@ public sealed class RoomCountdownsTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
 		Assert.True((await StartAsync(bot, staff.Referee, staff.Room, TimeSpan.FromSeconds(10), true)).IsOk);
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Authority.RemoveRefereeAsync(staff.Referee.Record))
+		Assert.True((await staff.Room.ScopeTo(staff.Creator).Authority.RemoveRefereeAsync(UserReference.ById(staff.Referee.Record.Id)))
 			.IsOk);
 
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(10));

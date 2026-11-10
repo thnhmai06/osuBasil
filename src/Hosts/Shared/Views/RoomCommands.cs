@@ -4,7 +4,7 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
@@ -122,39 +122,35 @@ public static class RoomCommands
 				new ConfigureRoom(r.Actor, r.Room, new RoomSettingsChange(Mods: mods, Freemods: b.Freemod ?? false)),
 				ct);
 		}),
-		Command<MoveRequest>("move", "Move a player to a slot.", (r, b, s, ct) => WithUser(s, b.User, ct,
-			u => b.Slot is < 1 or > MaxRoomSize
+		Command<MoveRequest>("move", "Move a player to a slot.", (r, b, _, ct) =>
+			b.Slot is < 1 or > MaxRoomSize
 				? Refuse(RoomOutcome.InvalidSettings)
-				: r.Ask(new MovePlayer(r.Actor, r.Room, u, b.Slot), ct))),
+				: r.Ask(new MovePlayer(r.Actor, r.Room, UserReference.ById(b.User), b.Slot), ct)),
 		Command<TeamRequest>("team", "Put a player in a team.",
-			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new SetPlayerTeam(r.Actor, r.Room, u, b.Team), ct))),
-		Command<UserRequest>("host", "Give the host to a player.", (r, b, s, ct) => WithUser(s, b.User, ct, u =>
+			(r, b, _, ct) => r.Ask(new SetPlayerTeam(r.Actor, r.Room, UserReference.ById(b.User), b.Team), ct)),
+		Command<UserRequest>("host", "Give the host to a player.", (r, b, s, ct) =>
 		{
-			var host = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u)?.Stable;
+			var host = OnlineUser(s, b.User)?.Stable;
 			return host is { IsOpen: true }
 				? r.Ask(new SetRoomHost(r.Actor, r.Room, host), ct)
 				: Refuse(RoomOutcome.TargetOffline);
-		})),
+		}),
 		Command<object?>("clearhost", "Remove the host.",
 			(r, _, _, ct) => r.Ask(new SetRoomHost(r.Actor, r.Room, null), ct)),
 		Command<UserRequest>("kick", "Remove a player from the room.",
-			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new KickPlayer(r.Actor, r.Room, u), ct))),
+			(r, b, _, ct) => r.Ask(new KickPlayer(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
 		Command<UserRequest>("ban", "Ban a player from the room.",
-			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new BanPlayer(r.Actor, r.Room, u), ct))),
+			(r, b, _, ct) => r.Ask(new BanPlayer(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
 		Command<UserRequest>("unban", "Lift the ban of a player.",
-			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new UnbanPlayer(r.Actor, r.Room, u), ct))),
-		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) => WithUser(s, b.User, ct,
-			u =>
-			{
-				var target = s.GetRequiredService<UserRegistry>().Online.GetValueOrDefault(u);
-				return target is null
-					? Refuse(RoomOutcome.TargetOffline)
-					: r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct);
-			})),
+			(r, b, _, ct) => r.Ask(new UnbanPlayer(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
+		Command<UserRequest>("invite", "Invite an online player to the room.", (r, b, s, ct) =>
+			OnlineUser(s, b.User) is { } target
+				? r.Ask(new InvitePlayer(r.Actor, r.Room, target), ct)
+				: Refuse(RoomOutcome.TargetOffline)),
 		Command<UserRequest>("addref", "Make a player a referee.",
-			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new AddReferee(r.Actor, r.Room, u), ct))),
+			(r, b, _, ct) => r.Ask(new AddReferee(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
 		Command<UserRequest>("removeref", "Remove a referee.",
-			(r, b, s, ct) => WithUser(s, b.User, ct, u => r.Ask(new RemoveReferee(r.Actor, r.Room, u), ct))),
+			(r, b, _, ct) => r.Ask(new RemoveReferee(r.Actor, r.Room, UserReference.ById(b.User)), ct)),
 		Command<CountdownRequest>("start", "Start the round, or start it after a countdown.", (r, b, _, ct) =>
 			b.Seconds is { } seconds and > 0
 				? Countdown(r, seconds, true, ct)
@@ -203,11 +199,8 @@ public static class RoomCommands
 			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Difficulty.Mode)), ct);
 	}
 
-	private static async Task<Result<RoomOutcome>> WithUser(IServiceProvider services, int id, CancellationToken ct,
-		Func<UserRecord, Task<Result<RoomOutcome>>> act)
+	private static User? OnlineUser(IServiceProvider services, int id)
 	{
-		var user = await services.GetRequiredService<IUserRepository>().GetAsync(id, ct);
-		// An unknown user cannot be in the room, so the operation is refused as a state conflict.
-		return user is null ? RoomOutcome.NotInRoom : await act(user);
+		return services.GetRequiredService<UserRegistry>().Online.FirstOrDefault(pair => pair.Key.Id == id).Value;
 	}
 }

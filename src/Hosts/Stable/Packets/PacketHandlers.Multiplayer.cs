@@ -162,7 +162,7 @@ internal sealed partial class PacketHandlers
 	private async Task TourneyInfoAsync(Connection actor, int matchId, CancellationToken ct)
 	{
 		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
-		if (!await sender.Send(new CanViewMatch(actor, room.Match), ct)) return;
+		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
 		var match = StableView.Match(room);
 		outbox.Send(actor, writer => writer.UpdateMatch(match, false));
 	}
@@ -170,7 +170,7 @@ internal sealed partial class PacketHandlers
 	private async Task TourneyJoinAsync(Connection actor, int matchId, CancellationToken ct)
 	{
 		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
-		if (!await sender.Send(new CanViewMatch(actor, room.Match), ct)) return;
+		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
 		await sender.Send(new ObserveRoom(actor, room), ct);
 	}
 

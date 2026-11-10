@@ -1,4 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Mechanics;
@@ -124,7 +125,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, 2);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(UserReference.ById(setup.Player.Record.Id), 2);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -138,7 +139,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, index);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(UserReference.ById(setup.Player.Record.Id), index);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 	}
@@ -150,7 +151,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true)).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, 7);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(UserReference.ById(setup.Player.Record.Id), 7);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(7, setup.Room.Slots.Find(setup.Player)!.Index);

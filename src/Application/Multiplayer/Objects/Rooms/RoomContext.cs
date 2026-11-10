@@ -10,13 +10,13 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 /// <param name="Clock">The clock for checking current time.</param>
 /// <param name="Events">The publisher for room events.</param>
 /// <param name="Lobby">The lobby that holds the room.</param>
-/// <param name="Users">The questions a room asks about blocks between users.</param>
+/// <param name="Users">The questions a room asks about users.</param>
 /// <param name="Settings">The server settings that govern how a room runs, such as the round score wait.</param>
 internal sealed record RoomContext(
 	TimeProvider Clock,
 	IEventPublisher<RoomEvent> Events,
 	IRoomLobbyPort Lobby,
-	RoomBlocks Users,
+	RoomUsers Users,
 	ISettingsRepository Settings);
 
 /// <summary>What a room asks of the lobby that holds it.</summary>

@@ -29,7 +29,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task AddRef_ForANameNoAccountHas_SaysTheUserWasNotFound()
+	public async Task AddRef_ForANameNoAccountHas_SaysTheTargetIsNotInTheMatch()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -37,7 +37,7 @@ public sealed class MpRefereesTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp addref Nobody");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.UserNotFound)], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.TargetNotInMatch)], said.Here);
 		Assert.Empty(room.Authority.Referees);
 	}
 

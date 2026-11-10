@@ -20,21 +20,15 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args);
-		var target = await ResolveUserAsync(rawTarget, ct);
-		if (target is null)
-		{
-			await context.Reply(MpReplies.UserNotFound, ct);
-			return false;
-		}
-
-		var outcome = await sender.Send(new AddReferee(actor, room, target), ct);
+		var outcome = await sender.Send(new AddReferee(actor, room, ReferenceOf(rawTarget)), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		await context.Reply(MpReplies.AddedReferee, new { player = target.Value.Name }, ct);
+		var player = await NameOfAsync(rawTarget, ct);
+		await context.Reply(MpReplies.AddedReferee, new { player = player }, ct);
 		return true;
 	}
 
@@ -49,21 +43,15 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args);
-		var target = await ResolveUserAsync(rawTarget, ct);
-		if (target is null)
-		{
-			await context.Reply(MpReplies.UserNotFound, ct);
-			return false;
-		}
-
-		var outcome = await sender.Send(new RemoveReferee(actor, room, target), ct);
+		var outcome = await sender.Send(new RemoveReferee(actor, room, ReferenceOf(rawTarget)), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		await context.Reply(MpReplies.RemovedReferee, new { player = target.Value.Name }, ct);
+		var player = await NameOfAsync(rawTarget, ct);
+		await context.Reply(MpReplies.RemovedReferee, new { player = player }, ct);
 		return true;
 	}
 

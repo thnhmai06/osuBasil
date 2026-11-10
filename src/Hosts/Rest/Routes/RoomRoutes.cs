@@ -65,7 +65,7 @@ internal static class RoomRoutes
 	private static async Task<Room?> Find(HttpContext context, Lobby lobby, ISender sender, int id)
 	{
 		return lobby.Find(id) is { } room &&
-		       await sender.Send(new CanViewMatch(context.Connection(), room.Match), context.RequestAborted)
+		       await sender.Send(new CanViewMatch(context.Connection(), room.Match.Id), context.RequestAborted)
 			? room
 			: null;
 	}
@@ -78,7 +78,7 @@ internal static class RoomRoutes
 
 		var visible = new List<Room>();
 		foreach (var room in lobby.Rooms.Values.OrderBy(room => room.Id))
-			if (await sender.Send(new CanViewMatch(context.Connection(), room.Match), context.RequestAborted))
+			if (await sender.Send(new CanViewMatch(context.Connection(), room.Match.Id), context.RequestAborted))
 				visible.Add(room);
 
 		return Api.Paged(new Page<RoomView>([.. visible.Skip(page!.Offset).Take(page.Limit).Select(RoomView.Of)],

@@ -79,9 +79,9 @@ public sealed class RoomBlocksTests
 		Assert.False(blocked);
 	}
 
-	private static RoomBlocks Blocks(TestApplication app)
+	private static RoomUsers Blocks(TestApplication app)
 	{
-		return app.Provider.GetRequiredService<RoomBlocks>();
+		return app.Provider.GetRequiredService<RoomUsers>();
 	}
 
 	private static Task Relate(TestApplication app, UserRecord blocker, UserRecord who, RelationshipType type)

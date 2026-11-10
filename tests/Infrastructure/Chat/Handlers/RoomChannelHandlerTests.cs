@@ -1,4 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
@@ -110,7 +111,7 @@ public sealed class RoomChannelHandlerTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var channel = app.RoomChannels.Of(setup.Room);
 		channel.ScopeTo(setup.Player).Join();
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(setup.Player.Record)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(UserReference.ById(setup.Player.Record.Id))).IsOk);
 		var kicked = Assert.Single(app.RoomEvents.Events.OfType<RoomPlayerKicked>());
 
 		await new RoomPlayerKickedHandler(app.RoomChannels).Handle(kicked, TestContext.Current.CancellationToken);
@@ -125,7 +126,7 @@ public sealed class RoomChannelHandlerTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var channel = app.RoomChannels.Of(setup.Room);
 		channel.ScopeTo(setup.Player).Join();
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(setup.Player.Record)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(UserReference.ById(setup.Player.Record.Id))).IsOk);
 		var banned = Assert.Single(app.RoomEvents.Events.OfType<RoomPlayerBanned>());
 
 		await new RoomPlayerBannedHandler(app.RoomChannels).Handle(banned, TestContext.Current.CancellationToken);
@@ -195,7 +196,7 @@ public sealed class RoomChannelHandlerTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var channel = app.RoomChannels.Of(setup.Room);
 		Assert.True(channel.ScopeTo(setup.Referee).Join().IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(setup.Referee.Record)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(UserReference.ById(setup.Referee.Record.Id))).IsOk);
 		var removed = Assert.Single(app.RoomEvents.Events.OfType<RoomRefereeRemoved>());
 
 		await new RoomRefereeRemovedHandler(app.RoomChannels, app.Clock).Handle(removed,
@@ -210,9 +211,9 @@ public sealed class RoomChannelHandlerTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var channel = app.RoomChannels.Of(setup.Room);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Player.Record)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(setup.Player.Record.Id))).IsOk);
 		Assert.True(channel.ScopeTo(setup.Player).Join().IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(setup.Player.Record)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(UserReference.ById(setup.Player.Record.Id))).IsOk);
 		var removed = Assert.Single(app.RoomEvents.Events.OfType<RoomRefereeRemoved>());
 
 		await new RoomRefereeRemovedHandler(app.RoomChannels, app.Clock).Handle(removed,

@@ -31,7 +31,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Move_ForANameNoAccountHas_SaysTheUserWasNotFound()
+	public async Task Move_ForANameNoAccountHas_SaysTheTargetIsNotInTheMatch()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -40,7 +40,7 @@ public sealed class MpPlayersTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp move Nobody 3");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.UserNotFound)], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.TargetNotInMatch)], said.Here);
 		Assert.Equal(before, Snapshot(room));
 	}
 
@@ -349,7 +349,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Ban_ForANameNoAccountHas_SaysTheUserIsNotRegistered()
+	public async Task Ban_ForANameNoAccountHas_SaysTheTargetIsNotInTheMatch()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -357,7 +357,7 @@ public sealed class MpPlayersTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp ban Nobody");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.UserNotRegistered)], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.TargetNotInMatch)], said.Here);
 		Assert.Empty(room.Members.Banned);
 	}
 

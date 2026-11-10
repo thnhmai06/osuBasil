@@ -42,30 +42,36 @@ public readonly struct ScopedRoomMembers
 	}
 
 	/// <summary>Removes a player from the room.</summary>
-	/// <param name="player">The user to remove.</param>
-	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom or RoomClosed.</returns>
-	public Task<Result<RoomOutcome>> KickAsync(UserRecord player)
+	/// <param name="player">The user to remove, named by id or name.</param>
+	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom or RoomClosed; a user who does not exist is not in the room.</returns>
+	public async Task<Result<RoomOutcome>> KickAsync(UserReference player)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.MembersKick) ??
-		                       _scoped.Room.Kick(_scoped.Actor.Record, player));
+		if (_scoped.Require(RoomPermissions.MembersKick) is { } denied) return denied;
+		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+			? _scoped.Room.Kick(_scoped.Actor.Record, record)
+			: RoomOutcome.NotInRoom;
 	}
 
 	/// <summary>Bans a user from the room and removes them if seated.</summary>
-	/// <param name="player">The user to ban.</param>
+	/// <param name="player">The user to ban, named by id or name.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
-	public Task<Result<RoomOutcome>> BanAsync(UserRecord player)
+	public async Task<Result<RoomOutcome>> BanAsync(UserReference player)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.MembersBan) ??
-		                       _scoped.Room.Ban(_scoped.Actor.Record, player));
+		if (_scoped.Require(RoomPermissions.MembersBan) is { } denied) return denied;
+		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+			? _scoped.Room.Ban(_scoped.Actor.Record, record)
+			: RoomOutcome.NotInRoom;
 	}
 
 	/// <summary>Lifts a user's ban from the room.</summary>
-	/// <param name="player">The user to unban.</param>
-	/// <returns>Ok, NotAuthorized, Silenced, NotBanned or RoomClosed.</returns>
-	public Task<Result<RoomOutcome>> UnbanAsync(UserRecord player)
+	/// <param name="player">The user to unban, named by id or name.</param>
+	/// <returns>Ok, NotAuthorized, Silenced, NotBanned, NotInRoom for a user who does not exist, or RoomClosed.</returns>
+	public async Task<Result<RoomOutcome>> UnbanAsync(UserReference player)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.MembersBan) ??
-		                       _scoped.Room.Unban(player));
+		if (_scoped.Require(RoomPermissions.MembersBan) is { } denied) return denied;
+		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
+			? _scoped.Room.Unban(record)
+			: RoomOutcome.NotInRoom;
 	}
 
 	/// <summary>Invites an online user to the room.</summary>

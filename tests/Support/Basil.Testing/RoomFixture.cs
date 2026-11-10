@@ -1,4 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
@@ -133,7 +134,7 @@ public sealed class RoomFixture
 
 		var referee = await PlayerAsync(app, "Referee");
 		Assert.True((await room.ScopeTo(creator).Authority
-			.AddRefereeAsync(referee.Record)).IsOk);
+			.AddRefereeAsync(UserReference.ById(referee.Record.Id))).IsOk);
 
 		Assert.True((await room.ScopeTo(creator).Authority
 			.SetHostAsync(host)).IsOk);

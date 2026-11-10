@@ -15,7 +15,7 @@ namespace Basil.Application.Multiplayer.Registry;
 /// <param name="UserRepository">The stored user records.</param>
 /// <param name="Settings">The server settings.</param>
 /// <param name="RoomEvents">The publisher for room events.</param>
-/// <param name="Users">The questions a room asks about blocks between users.</param>
+/// <param name="Users">The questions a room asks about users.</param>
 internal sealed record LobbyContext(
 	TimeProvider Clock,
 	IEventPublisher<LobbyEvent> Events,
@@ -24,4 +24,4 @@ internal sealed record LobbyContext(
 	IUserRepository UserRepository,
 	ISettingsRepository Settings,
 	IEventPublisher<RoomEvent> RoomEvents,
-	RoomBlocks Users);
+	RoomUsers Users);

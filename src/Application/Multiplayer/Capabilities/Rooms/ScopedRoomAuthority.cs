@@ -1,5 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -19,21 +20,25 @@ public readonly struct ScopedRoomAuthority
 	}
 
 	/// <summary>Makes a user a referee.</summary>
-	/// <param name="user">The user to make referee.</param>
-	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> AddRefereeAsync(UserRecord user)
+	/// <param name="user">The user to make referee, named by id or name.</param>
+	/// <returns>Ok, NotAuthorized, NotInRoom for a user who does not exist, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
+	public async Task<Result<RoomOutcome>> AddRefereeAsync(UserReference user)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.RefereesManage) ??
-		                       _scoped.Room.AddReferee(_scoped.Actor.Record, user));
+		if (_scoped.Require(RoomPermissions.RefereesManage) is { } denied) return denied;
+		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
+			? _scoped.Room.AddReferee(_scoped.Actor.Record, record)
+			: RoomOutcome.NotInRoom;
 	}
 
 	/// <summary>Removes a user from the referees.</summary>
-	/// <param name="user">The referee to remove.</param>
-	/// <returns>Ok, NotAuthorized, NotReferee or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> RemoveRefereeAsync(UserRecord user)
+	/// <param name="user">The referee to remove, named by id or name.</param>
+	/// <returns>Ok, NotAuthorized, NotReferee, NotInRoom for a user who does not exist, or RoomClosed when the room has closed.</returns>
+	public async Task<Result<RoomOutcome>> RemoveRefereeAsync(UserReference user)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.RefereesManage) ??
-		                       _scoped.Room.RemoveReferee(_scoped.Actor.Record, user));
+		if (_scoped.Require(RoomPermissions.RefereesManage) is { } denied) return denied;
+		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
+			? _scoped.Room.RemoveReferee(_scoped.Actor.Record, record)
+			: RoomOutcome.NotInRoom;
 	}
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>

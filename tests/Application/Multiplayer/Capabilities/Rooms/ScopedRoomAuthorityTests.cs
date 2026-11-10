@@ -1,4 +1,5 @@
 using Basil.Application.Common;
+using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
@@ -50,7 +51,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Slots.Find(target.Record)?.Index;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Slots.MoveAsync(target.Record, 5);
+		var result = await room.ScopeTo(caller).Slots.MoveAsync(UserReference.ById(target.Record.Id), 5);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -128,7 +129,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Slots.Find(target.Record)?.Team;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Slots.SetTeamAsync(target.Record, GameTeam.Blue);
+		var result = await room.ScopeTo(caller).Slots.SetTeamAsync(UserReference.ById(target.Record.Id), GameTeam.Blue);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -364,7 +365,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Slots.Find(target.Record)?.Index;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Members.KickAsync(target.Record);
+		var result = await room.ScopeTo(caller).Members.KickAsync(UserReference.ById(target.Record.Id));
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -398,7 +399,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Members.Banned.Contains(target.Record);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Members.BanAsync(target.Record);
+		var result = await room.ScopeTo(caller).Members.BanAsync(UserReference.ById(target.Record.Id));
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -430,12 +431,12 @@ public sealed class ScopedRoomAuthorityTests
 		var room = setup.RoomFor(role);
 		var caller = setup.ConnectionFor(role);
 		var target = setup.Player;
-		await room.ScopeTo(setup.Manager).Members.BanAsync(target.Record);
+		await room.ScopeTo(setup.Manager).Members.BanAsync(UserReference.ById(target.Record.Id));
 		var before = room.Members.Banned.Contains(target.Record);
 		var events = app.RoomEvents.Events.Count;
 
 		var result = await room.ScopeTo(caller).Members
-			.UnbanAsync(target.Record);
+			.UnbanAsync(UserReference.ById(target.Record.Id));
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -502,7 +503,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Authority.Referees.Contains(target);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Authority.AddRefereeAsync(target);
+		var result = await room.ScopeTo(caller).Authority.AddRefereeAsync(UserReference.ById(target.Id));
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -537,7 +538,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Authority.Referees.Contains(target);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Authority.RemoveRefereeAsync(target);
+		var result = await room.ScopeTo(caller).Authority.RemoveRefereeAsync(UserReference.ById(target.Id));
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -641,7 +642,7 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Creator.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(setup.Creator.Record.Id));
 
 		Assert.Equal(RoomOutcome.IsCreator, result.Outcome);
 		Assert.DoesNotContain(setup.Creator.Record, setup.Room.Authority.Referees);
@@ -653,7 +654,7 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Referee.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(setup.Referee.Record.Id));
 
 		Assert.Equal(RoomOutcome.AlreadyReferee, result.Outcome);
 	}
@@ -666,11 +667,11 @@ public sealed class ScopedRoomAuthorityTests
 		for (var index = 1; index < RoomAuthority.MaxReferees; index++)
 		{
 			var user = await RoomFixture.PlayerAsync(app, $"Referee{index}");
-			Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(user.Record)).IsOk);
+			Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(user.Record.Id))).IsOk);
 		}
 
 		var ninth = await RoomFixture.PlayerAsync(app, "Ninth");
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(ninth.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(ninth.Record.Id));
 
 		Assert.Equal(RoomOutcome.TooManyReferees, result.Outcome);
 		Assert.Equal(RoomAuthority.MaxReferees, setup.Room.Authority.Referees.Count);
@@ -682,7 +683,7 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(setup.Outsider.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(UserReference.ById(setup.Outsider.Record.Id));
 
 		Assert.Equal(RoomOutcome.NotReferee, result.Outcome);
 	}

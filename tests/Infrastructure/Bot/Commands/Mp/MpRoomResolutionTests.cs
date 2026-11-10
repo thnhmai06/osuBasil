@@ -1,4 +1,5 @@
 using Basil.Application.Bot.Commands;
+using Basil.Application.Users.Objects;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Bot.Tests.Support;
@@ -92,7 +93,7 @@ public sealed class MpRoomResolutionTests
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
 		var room = await bot.MakeAsync(owner, "Seated");
 		var referee = await RoomFixture.PlayerAsync(bot.App, "Referee");
-		Assert.True((await room.ScopeTo(owner).Authority.AddRefereeAsync(referee.Record)).IsOk);
+		Assert.True((await room.ScopeTo(owner).Authority.AddRefereeAsync(UserReference.ById(referee.Record.Id))).IsOk);
 		Assert.True((await room.ScopeTo(referee).Members.JoinAsync("")).IsOk);
 		Assert.Null(bot.Targets.Get(referee.Record.Id));
 

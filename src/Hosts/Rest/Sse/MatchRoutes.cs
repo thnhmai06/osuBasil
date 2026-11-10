@@ -41,16 +41,14 @@ internal static class MatchRoutes
 			: result.Refusal();
 	}
 
-	private static async Task<object> EntryOf(IMatchEntry entry, IRoundScoreRepository roundScores,
-		CancellationToken ct)
+	private static object EntryOf(MatchReportEntry reported)
 	{
-		switch (entry)
+		switch (reported.Entry)
 		{
 			case Round round:
-				var scores = await roundScores.ListAsync(round, ct);
 				return new
 				{
-					type = "round", index = round.Index, timestamp = entry.Timestamp,
+					type = "round", index = round.Index, timestamp = reported.Entry.Timestamp,
 					beatmapHash = round.BeatmapHash.HashValue,
 					mode = round.Settings.Mode, mods = round.Settings.Mods.ToString(),
 					teamType = round.Settings.TeamType,
@@ -58,7 +56,7 @@ internal static class MatchRoutes
 					verdict = round.Decision is { } v
 						? new { v.ScoreOrder, v.WinnerId, v.Winner, v.Margin, v.IsDraw, v.RedScore, v.BlueScore }
 						: null,
-					scores = scores.Select(s => new
+					scores = reported.Scores.Select(s => new
 					{
 						userId = s.Score.Value.UserId, team = s.Team, totalScore = s.Score.Value.LastState.TotalScore,
 						maxCombo = s.Score.Value.LastState.MaxCombo, accuracy = s.Score.Value.Accuracy,
@@ -78,75 +76,47 @@ internal static class MatchRoutes
 		}
 	}
 
-	private static async Task<IResult> ReportAsync(HttpContext context, int id, IMatchRepository matches,
-		IMatchReportRepository reports, IRoundScoreRepository roundScores, ISender sender)
+	private static async Task<IResult> ReportAsync(HttpContext context, int id, ISender sender)
 	{
 		var ct = context.RequestAborted;
-		if (await matches.GetAsync(id, ct) is not { } match) return Api.NotFound("No such match.");
+		var connection = context.ConnectionOrNull();
+		if (await sender.Send(new GetMatchReport(connection, id), ct) is not { } report)
+			return Api.NotFound("No such match.");
 
-		if (!await IsVisibleAsync(context, sender, match, ct)) return Api.NotFound("No such match.");
+		var lastId = report.Total == 0 ? null : (report.Total - 1).ToString();
+		if (report.Match.Value.EndedAt is not null) return Ended(context, report, lastId);
 
-		var report = await reports.GetAsync(match, ct);
-		var entries = report.Records.OrderBy(r => r.Timestamp).ToList();
-		var lastId = entries.Count == 0 ? null : (entries.Count - 1).ToString();
-
-		if (match.Value.EndedAt is not null) return await EndedAsync(context, reports, roundScores, match, lastId, ct);
-
-		var sent = entries.Count;
+		var sent = report.Total;
 		return await context.StreamAsync($"match:{id}", async token =>
 		{
-			var (data, snapshotId) = await SnapshotAsync(reports, roundScores, match, token);
-			sent = ((ReportView)data).Entries.Count;
-			return (data, snapshotId);
+			var snapshot = await sender.Send(new GetMatchReport(connection, id), token);
+			if (snapshot is null) return (new ReportView(MatchView.Of(report.Match), []), null);
+			sent = snapshot.Total;
+			return (SnapshotOf(snapshot), snapshot.Total == 0 ? null : (snapshot.Total - 1).ToString());
 		}, null, async token =>
 		{
-			var (poll, total) = await PollAsync(reports, roundScores, match, sent, token);
-			sent = total;
-			return poll;
+			var current = await sender.Send(new GetMatchReport(connection, id, sent), token);
+			if (current is null) return new SsePoll([], true);
+			var fresh = current.Entries
+				.Select((entry, offset) => new SseEvent(EntryOf(entry), (sent + offset).ToString())).ToList();
+			sent = current.Total;
+			return new SsePoll(fresh, current.Match.Value.EndedAt is not null);
 		});
 	}
 
-	private static async Task<bool> IsVisibleAsync(HttpContext context, ISender sender, MatchRecord match,
-		CancellationToken ct)
+	private static ReportView SnapshotOf(MatchReportSnapshot report)
 	{
-		var connection = context.ConnectionOrNull();
-		return connection is null
-			? !match.Value.IsPrivate
-			: await sender.Send(new CanViewMatch(connection, match), ct);
-	}
-
-	private static async Task<(object, string?)> SnapshotAsync(IMatchReportRepository reports,
-		IRoundScoreRepository roundScores,
-		MatchRecord match, CancellationToken token)
-	{
-		var current = await reports.GetAsync(match, token);
-		var list = new List<object>();
-		foreach (var entry in current.Records.OrderBy(r => r.Timestamp))
-			list.Add(await EntryOf(entry, roundScores, token));
-		return (new ReportView(MatchView.Of(match), list), list.Count == 0 ? null : (list.Count - 1).ToString());
+		return new ReportView(MatchView.Of(report.Match), [.. report.Entries.Select(EntryOf)]);
 	}
 
 	// An ended match has no root: its report never changes, so the snapshot is built and the stream ends.
-	private static async Task<IResult> EndedAsync(HttpContext context, IMatchReportRepository reports,
-		IRoundScoreRepository roundScores, MatchRecord match, string? lastId, CancellationToken ct)
+	private static IResult Ended(HttpContext context, MatchReportSnapshot report, string? lastId)
 	{
 		if (lastId is not null && context.Request.Headers["Last-Event-ID"].ToString() == lastId)
 			return Results.StatusCode(StatusCodes.Status204NoContent);
 
-		var (data, snapshotId) = await SnapshotAsync(reports, roundScores, match, ct);
-		return new SnapshotOnlyResult(SseHub.Frame("snapshot", snapshotId,
-			JsonSerializer.SerializeToUtf8Bytes(data, Api.Json)));
-	}
-
-	private static async Task<(SsePoll Poll, int Total)> PollAsync(IMatchReportRepository reports,
-		IRoundScoreRepository roundScores, MatchRecord match, int sent, CancellationToken token)
-	{
-		var current = await reports.GetAsync(match, token);
-		var all = current.Records.OrderBy(r => r.Timestamp).ToList();
-		var fresh = new List<SseEvent>();
-		for (var index = sent; index < all.Count; index++)
-			fresh.Add(new SseEvent(await EntryOf(all[index], roundScores, token), index.ToString()));
-		return (new SsePoll(fresh, current.Match.Value.EndedAt is not null), all.Count);
+		return new SnapshotOnlyResult(SseHub.Frame("snapshot", lastId,
+			JsonSerializer.SerializeToUtf8Bytes(SnapshotOf(report), Api.Json)));
 	}
 
 	/// <summary>The full report of a match: the match and its entries in time order.</summary>

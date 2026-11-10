@@ -1,4 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Connections;
@@ -81,7 +82,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var player = await RoomFixture.PlayerAsync(app, "Banned");
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(player.Record)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(UserReference.ById(player.Record.Id))).IsOk);
 
 		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
@@ -172,7 +173,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(setup.Player.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(UserReference.ById(setup.Player.Record.Id));
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Null(setup.Room.Slots.Find(setup.Player));
@@ -185,7 +186,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(setup.Player.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(UserReference.ById(setup.Player.Record.Id));
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Contains(setup.Player.Record, setup.Room.Members.Banned);
@@ -199,9 +200,9 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(setup.Player.Record)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(UserReference.ById(setup.Player.Record.Id))).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(setup.Player.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(UserReference.ById(setup.Player.Record.Id));
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.DoesNotContain(setup.Player.Record, setup.Room.Members.Banned);
@@ -215,7 +216,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Referee).Members.KickAsync(setup.Creator.Record);
+		var result = await setup.Room.ScopeTo(setup.Referee).Members.KickAsync(UserReference.ById(setup.Creator.Record.Id));
 
 		Assert.Equal(RoomOutcome.IsManager, result.Outcome);
 		Assert.NotNull(setup.Room.Slots.Find(setup.Creator));
@@ -227,7 +228,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Referee).Members.BanAsync(setup.Creator.Record);
+		var result = await setup.Room.ScopeTo(setup.Referee).Members.BanAsync(UserReference.ById(setup.Creator.Record.Id));
 
 		Assert.Equal(RoomOutcome.IsManager, result.Outcome);
 		Assert.DoesNotContain(setup.Creator.Record, setup.Room.Members.Banned);
@@ -370,9 +371,35 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(setup.Outsider.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(UserReference.ById(setup.Outsider.Record.Id));
 
 		Assert.Equal(RoomOutcome.NotInRoom, result.Outcome);
+	}
+
+	[Fact]
+	public async Task KickAsync_ForAUserNoAccountHas_IsNotInRoom()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(UserReference.ById(int.MaxValue));
+
+		Assert.Equal(RoomOutcome.NotInRoom, result.Outcome);
+	}
+
+	[Fact]
+	public async Task KickAsync_ByAPlayerWithoutTheRole_IsRefusedAlikeForAKnownAndAnUnknownUser()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		var player = setup.Room.ScopeTo(setup.Player).Members;
+
+		var known = await player.KickAsync(UserReference.ById(setup.Outsider.Record.Id));
+		var unknown = await player.KickAsync(UserReference.ById(int.MaxValue));
+
+		Assert.Equal(RoomOutcome.RoleDenied, known.Outcome);
+		Assert.Equal(known.Outcome, unknown.Outcome);
+		Assert.Equal(known.Missing, unknown.Missing);
 	}
 
 	[Fact]
@@ -381,7 +408,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(setup.Outsider.Record);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(UserReference.ById(setup.Outsider.Record.Id));
 
 		Assert.Equal(RoomOutcome.NotBanned, result.Outcome);
 	}
