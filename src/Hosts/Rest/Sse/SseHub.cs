@@ -31,12 +31,14 @@ public sealed class SseStream
 		new BoundedChannelOptions(Capacity) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
 
 	private int _lag;
+	private int _released;
 
-	internal SseStream(string key, ApiConnection? connection, string owner)
+	internal SseStream(string key, ApiConnection? connection, string addressKey, string? userKey)
 	{
 		Key = key;
 		Connection = connection;
-		Owner = owner;
+		AddressKey = addressKey;
+		UserKey = userKey;
 	}
 
 	/// <summary>Gets the root the stream follows.</summary>
@@ -45,7 +47,15 @@ public sealed class SseStream
 	/// <summary>Gets the Api connection whose token opened the stream, or <see langword="null" /> for a public stream.</summary>
 	public ApiConnection? Connection { get; }
 
-	internal string Owner { get; }
+	internal string AddressKey { get; }
+
+	internal string? UserKey { get; }
+
+	/// <summary>Flips the stream to released; only the first call sees <see langword="true" />.</summary>
+	internal bool TryRelease()
+	{
+		return Interlocked.Exchange(ref _released, 1) == 0;
+	}
 
 	/// <summary>Gets the chunks to send, in order; it ends when the stream is over.</summary>
 	public ChannelReader<byte[]> Reader => _channel.Reader;
@@ -76,8 +86,8 @@ public sealed class SseStream
 public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsRepository settings) : IHostedService
 {
 	private static readonly byte[] KeepAlive = ": keep-alive\n\n"u8.ToArray();
-	private readonly Dictionary<string, Root> _roots = new();
-	private readonly object _sync = new();
+	private readonly ConcurrentDictionary<string, int> _open = new();
+	private readonly ConcurrentDictionary<string, Root> _roots = new();
 	private volatile bool _stopping;
 
 	private long _tick;
@@ -89,16 +99,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	public bool Stopping => _stopping;
 
 	/// <summary>Gets how many streams are open.</summary>
-	public int OpenStreams
-	{
-		get
-		{
-			lock (_sync)
-			{
-				return _roots.Values.Sum(root => root.Streams.Count);
-			}
-		}
-	}
+	public int OpenStreams => _roots.Sum(pair => pair.Value.Count);
 
 	/// <inheritdoc />
 	public Task StartAsync(CancellationToken cancellationToken)
@@ -135,19 +136,15 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	{
 		_stopping = true;
 		_timer?.Dispose();
-		Root[] roots;
-		lock (_sync)
-		{
-			roots = [.. _roots.Values];
-		}
-
+		Root[] roots = [.. _roots.Values];
 		var state = restarting ? "restarting" : "shuttingDown";
 		var final = Frame("server", null, Encoding.UTF8.GetBytes($"{{\"state\":\"{state}\"}}"));
 		foreach (var root in roots)
-		foreach (var stream in StreamsOf(root))
+		foreach (var stream in root.Snapshot())
 		{
 			stream.Offer(final);
 			stream.Complete();
+			Release(stream);
 		}
 	}
 
@@ -157,13 +154,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	/// <param name="id">The SSE id of the event, if it has one.</param>
 	public void Publish(string key, object data, string? id = null)
 	{
-		Root? root;
-		lock (_sync)
-		{
-			_roots.TryGetValue(key, out root);
-		}
-
-		root?.Buffer.Enqueue(new SseEvent(data, id));
+		if (_roots.TryGetValue(key, out var root)) root.Buffer.Enqueue(new SseEvent(data, id));
 	}
 
 	/// <summary>Gets how many events a root has collected since its last bundle.</summary>
@@ -171,10 +162,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	/// <returns>The number of events waiting, or 0 when nobody follows the root.</returns>
 	internal int Pending(string key)
 	{
-		lock (_sync)
-		{
-			return _roots.TryGetValue(key, out var root) ? root.Buffer.Count : 0;
-		}
+		return _roots.TryGetValue(key, out var root) ? root.Buffer.Count : 0;
 	}
 
 	/// <summary>Ends the streams of one connection on a root, or every stream of the root.</summary>
@@ -182,15 +170,9 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	/// <param name="connection">The connection whose streams end, or <see langword="null" /> for all of them.</param>
 	public void Close(string key, Connection? connection = null)
 	{
-		Root? root;
-		lock (_sync)
-		{
-			_roots.TryGetValue(key, out root);
-		}
+		if (!_roots.TryGetValue(key, out var root)) return;
 
-		if (root is null) return;
-
-		foreach (var stream in StreamsOf(root))
+		foreach (var stream in root.Snapshot())
 			if (connection is null || ReferenceEquals(stream.Connection, connection))
 				stream.Complete();
 	}
@@ -214,26 +196,24 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 
 		var current = await settings.GetAsync(cancellationToken);
 		var limit = current.RateLimits.Connections.PerIp;
-		var owner = connection is null ? "ip:" + ip : "user:" + connection.Record.Id;
-		SseStream stream;
-		Root root;
-		lock (_sync)
+		var addressKey = "ip:" + ip;
+		var userKey = connection is null ? null : "user:" + connection.Record.Id;
+		if (!TryCount(addressKey, limit)) return (null, null, TooManyStreams());
+
+		// A signed-in caller also has a ceiling of its own, the same as its number of API connections.
+		if (userKey is not null && !TryCount(userKey, current.Sessions.MaxPerUser.Api))
 		{
-			var open = _roots.Values.SelectMany(r => r.Streams).Count(s => s.Owner == owner || s.Owner == "ip:" + ip);
-			if (open >= limit)
-				return (null, null,
-					Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many open streams."));
-
-			// A signed-in caller also has a ceiling of its own, the same as its number of API connections.
-			if (connection is not null && _roots.Values.SelectMany(r => r.Streams).Count(s => s.Owner == owner) >=
-			    current.Sessions.MaxPerUser.Api)
-				return (null, null,
-					Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many open streams."));
-
-			if (!_roots.TryGetValue(key, out root!)) _roots[key] = root = new Root(key) { Poll = poll };
-			stream = new SseStream(key, connection, owner);
-			root.Streams.Add(stream);
+			Uncount(addressKey);
+			return (null, null, TooManyStreams());
 		}
+
+		var stream = new SseStream(key, connection, addressKey, userKey);
+		Root root;
+		do
+		{
+			root = _roots.GetOrAdd(key, _ => new Root { Poll = poll });
+			// A root that lost its last stream refuses new ones; it is gone from the table in a moment.
+		} while (!root.Add(stream));
 
 		try
 		{
@@ -252,13 +232,32 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	public void Release(SseStream stream)
 	{
 		stream.Complete();
-		lock (_sync)
-		{
-			if (!_roots.TryGetValue(stream.Key, out var root)) return;
+		if (!stream.TryRelease()) return;
 
-			root.Streams.Remove(stream);
-			if (root.Streams.Count == 0) _roots.Remove(stream.Key);
-		}
+		if (_roots.TryGetValue(stream.Key, out var root) && root.Remove(stream) && root.TryRetire())
+			_roots.TryRemove(new KeyValuePair<string, Root>(stream.Key, root));
+
+		Uncount(stream.AddressKey);
+		if (stream.UserKey is not null) Uncount(stream.UserKey);
+	}
+
+	private bool TryCount(string owner, int limit)
+	{
+		if (_open.AddOrUpdate(owner, 1, (_, count) => count + 1) <= limit) return true;
+
+		Uncount(owner);
+		return false;
+	}
+
+	private void Uncount(string owner)
+	{
+		var left = _open.AddOrUpdate(owner, 0, (_, count) => count - 1);
+		if (left <= 0) _open.TryRemove(new KeyValuePair<string, int>(owner, left));
+	}
+
+	private static IResult TooManyStreams()
+	{
+		return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many open streams.");
 	}
 
 	/// <summary>Marks the connection of a stream active, so a stream that is open keeps its session from idling out.</summary>
@@ -280,16 +279,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		return frame;
 	}
 
-	// The streams join and leave under the lock, so they are copied under it too.
-	private SseStream[] StreamsOf(Root root)
-	{
-		lock (_sync)
-		{
-			return [.. root.Streams];
-		}
-	}
-
-	private IResult ShuttingDown()
+	private static IResult ShuttingDown()
 	{
 		return Api.Error(StatusCodes.Status503ServiceUnavailable, "shuttingDown", "The server is shutting down.");
 	}
@@ -307,13 +297,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		try
 		{
 			Interlocked.Increment(ref _tick);
-			Root[] roots;
-			lock (_sync)
-			{
-				roots = [.. _roots.Values];
-			}
-
-			foreach (var root in roots)
+			foreach (var root in _roots.Values)
 			{
 				var complete = false;
 				if (root.Poll is { } poll)
@@ -335,16 +319,16 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 					? KeepAlive
 					: Frame("bundle", events[^1].Id,
 						JsonSerializer.SerializeToUtf8Bytes(events.Select(e => e.Data), Api.Json));
-				foreach (var stream in StreamsOf(root))
+				foreach (var stream in root.Snapshot())
 				{
 					if (stream.Connection is { IsOpen: false })
 					{
-						stream.Complete();
+						Release(stream);
 						continue;
 					}
 
 					stream.Offer(chunk);
-					if (complete) stream.Complete();
+					if (complete) Release(stream);
 				}
 			}
 		}
@@ -354,20 +338,70 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		}
 	}
 
-	private sealed class Root(string key)
+	private sealed class Root
 	{
 		private readonly SemaphoreSlim _snapshotLock = new(1, 1);
+		private readonly Lock _streams = new();
+		private readonly List<SseStream> _list = [];
+		private bool _retired;
 		private byte[]? _snapshot;
 		private string? _snapshotId;
 		private long _snapshotTick = -1;
-
-		public string Key { get; } = key;
 
 		public Func<CancellationToken, Task<SsePoll>>? Poll { get; init; }
 
 		public ConcurrentQueue<SseEvent> Buffer { get; } = new();
 
-		public List<SseStream> Streams { get; } = [];
+		public int Count
+		{
+			get
+			{
+				lock (_streams)
+				{
+					return _list.Count;
+				}
+			}
+		}
+
+		/// <summary>Adds a stream; refused when the root already retired.</summary>
+		public bool Add(SseStream stream)
+		{
+			lock (_streams)
+			{
+				if (_retired) return false;
+
+				_list.Add(stream);
+				return true;
+			}
+		}
+
+		public bool Remove(SseStream stream)
+		{
+			lock (_streams)
+			{
+				return _list.Remove(stream);
+			}
+		}
+
+		/// <summary>Retires the root when it has no stream left, so a stream that arrives later opens a fresh root.</summary>
+		public bool TryRetire()
+		{
+			lock (_streams)
+			{
+				if (_list.Count != 0) return false;
+
+				_retired = true;
+				return true;
+			}
+		}
+
+		public SseStream[] Snapshot()
+		{
+			lock (_streams)
+			{
+				return [.. _list];
+			}
+		}
 
 		/// <summary>Builds the snapshot once for every stream that joins during the same second.</summary>
 		public async Task<(byte[] Data, string? Id)> SnapshotAsync(
