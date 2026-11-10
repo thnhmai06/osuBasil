@@ -1,4 +1,5 @@
 using System.Data.Common;
+using MySql.Data.MySqlClient;
 using Testcontainers.MySql;
 using Testcontainers.PostgreSql;
 
@@ -56,6 +57,9 @@ public sealed class PersistenceFixture : IAsyncLifetime
 	/// <param name="name">The database's name.</param>
 	public async ValueTask DropDatabaseAsync(string name)
 	{
+		// MySQL keeps the pooled connections of a dropped database until they idle out, and a run of many test classes
+		// would exhaust the server's connections; PostgreSQL's force drop ends them itself.
+		if (TestServer.IsMySql) MySqlConnection.ClearAllPools();
 		await using var connection = await TestServer.OpenAsync(ServerConnectionString, CancellationToken.None);
 		await Run(connection,
 			TestServer.IsMySql

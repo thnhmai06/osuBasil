@@ -1,4 +1,5 @@
 using Basil.Domain.Users;
+using Basil.Testing.Persistence;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +17,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 		return new Dictionary<string, string?>
 		{
 			["ConnectionStrings:Write"] = connection,
+			["Basil:Database:Write:Provider"] = TestServer.ProviderName,
 			["ConnectionStrings:Read"] = "",
 			["Basil:Storage:Location"] = Path.Combine(root, "Data"),
 			["Basil:Server:Domain"] = BasilHost.DomainName,

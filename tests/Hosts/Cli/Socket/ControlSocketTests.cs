@@ -3,6 +3,7 @@ using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
 using Basil.Host.Cli.Tests.Commands;
 using Basil.Infrastructure.Common.Storage;
+using Basil.Testing.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -315,6 +316,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 			return new Dictionary<string, string?>
 			{
 				["ConnectionStrings:Write"] = connection,
+				["Basil:Database:Write:Provider"] = TestServer.ProviderName,
 				["ConnectionStrings:Read"] = "",
 				["Basil:Storage:Location"] = Path.Combine(root, "Data"),
 				["Basil:Server:Domain"] = BasilHost.DomainName,
