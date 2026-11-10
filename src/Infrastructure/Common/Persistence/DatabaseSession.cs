@@ -47,6 +47,7 @@ public class DatabaseSession(Database database, TimeProvider time)
 	/// <param name="change">The change; entities it adds or modifies on the context are saved after it runs.</param>
 	/// <param name="cancellationToken">A token that cancels the write.</param>
 	/// <exception cref="AlreadyExistsException">The change stores a value that must be unique and is already stored.</exception>
+	[Obsolete("Writes take no token.")]
 	public async Task WriteAsync<TContext>(Func<TContext, CancellationToken, Task> change,
 		CancellationToken cancellationToken = default)
 		where TContext : DbContext, IDatabaseContext<TContext>
@@ -58,13 +59,14 @@ public class DatabaseSession(Database database, TimeProvider time)
 		}, cancellationToken);
 	}
 
-	/// <summary>Runs a change like <see cref="WriteAsync{TContext}" /> and gives back what the change returned.</summary>
+	/// <summary>Runs a change like <see cref="WriteAsync{TContext}(Func{TContext, CancellationToken, Task}, CancellationToken)" /> and gives back what the change returned.</summary>
 	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
 	/// <typeparam name="T">The type of the result.</typeparam>
 	/// <param name="change">The change; entities it adds or modifies on the context are saved after it runs.</param>
 	/// <param name="cancellationToken">A token that cancels the write.</param>
 	/// <returns>The result of the change.</returns>
 	/// <exception cref="AlreadyExistsException">The change stores a value that must be unique and is already stored.</exception>
+	[Obsolete("Writes take no token.")]
 	public async Task<T> WriteAsync<TContext, T>(Func<TContext, CancellationToken, Task<T>> change,
 		CancellationToken cancellationToken = default)
 		where TContext : DbContext, IDatabaseContext<TContext>
@@ -87,6 +89,7 @@ public class DatabaseSession(Database database, TimeProvider time)
 	/// <param name="work">The changes; entities it adds or modifies on the context are saved after it runs.</param>
 	/// <param name="cancellationToken">A token that cancels the transaction.</param>
 	/// <exception cref="AlreadyExistsException">A change stores a value that must be unique and is already stored.</exception>
+	[Obsolete("Writes take no token.")]
 	public Task TransactAsync<TContext>(Func<TContext, CancellationToken, Task> work,
 		CancellationToken cancellationToken = default)
 		where TContext : DbContext, IDatabaseContext<TContext>
@@ -98,6 +101,47 @@ public class DatabaseSession(Database database, TimeProvider time)
 			await context.SaveChangesAsync(token);
 			await transaction.CommitAsync(token);
 		}, cancellationToken);
+	}
+
+	/// <summary>
+	///     Runs a change on a context of its own and stores it before returning; nothing is queued. Opening the
+	///     connection is retried a few times when the database is briefly unreachable; the change itself runs once.
+	/// </summary>
+	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
+	/// <param name="change">The change; entities it adds or modifies on the context are saved after it runs.</param>
+	/// <exception cref="AlreadyExistsException">The change stores a value that must be unique and is already stored.</exception>
+	public Task WriteAsync<TContext>(Func<TContext, Task> change)
+		where TContext : DbContext, IDatabaseContext<TContext>
+	{
+#pragma warning disable CS0618
+		return WriteAsync<TContext>((context, _) => change(context), CancellationToken.None);
+#pragma warning restore CS0618
+	}
+
+	/// <summary>Runs a change like <see cref="WriteAsync{TContext}(Func{TContext, Task})" /> and gives back what the change returned.</summary>
+	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
+	/// <typeparam name="T">The type of the result.</typeparam>
+	/// <param name="change">The change; entities it adds or modifies on the context are saved after it runs.</param>
+	/// <returns>The result of the change.</returns>
+	/// <exception cref="AlreadyExistsException">The change stores a value that must be unique and is already stored.</exception>
+	public Task<T> WriteAsync<TContext, T>(Func<TContext, Task<T>> change)
+		where TContext : DbContext, IDatabaseContext<TContext>
+	{
+#pragma warning disable CS0618
+		return WriteAsync<TContext, T>((context, _) => change(context), CancellationToken.None);
+#pragma warning restore CS0618
+	}
+
+	/// <summary>Runs the changes of one business operation in a single transaction: all are stored or none is.</summary>
+	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
+	/// <param name="work">The changes; entities it adds or modifies on the context are saved after it runs.</param>
+	/// <exception cref="AlreadyExistsException">A change stores a value that must be unique and is already stored.</exception>
+	public Task TransactAsync<TContext>(Func<TContext, Task> work)
+		where TContext : DbContext, IDatabaseContext<TContext>
+	{
+#pragma warning disable CS0618
+		return TransactAsync<TContext>((context, _) => work(context), CancellationToken.None);
+#pragma warning restore CS0618
 	}
 
 	/// <summary>Opens the connection of a context; a test replaces it to make the database unreachable.</summary>
