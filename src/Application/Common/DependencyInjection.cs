@@ -17,8 +17,7 @@ public static class DependencyInjection
 		services.TryAddSingleton<EventQueue>();
 		services.TryAddSingleton(sp => new EventPublisher(
 			new Lazy<IPublisher>(sp.GetRequiredService<IPublisher>),
-			sp.GetRequiredService<TimeProvider>(),
-			sp.GetRequiredService<EventQueue>()));
+			sp.GetRequiredService<TimeProvider>()));
 		return services;
 	}
 }

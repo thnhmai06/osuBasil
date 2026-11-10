@@ -2,14 +2,13 @@ using Mediator;
 
 namespace Basil.Application.Common.Events;
 
-/// <summary>Publishes every event of the application: stamps it, then queues its delivery.</summary>
+/// <summary>Publishes every event of the application: stamps it, and returns before any of its handlers runs.</summary>
 /// <param name="publisher">
 ///     The mediator that finds the handlers; resolved at first use, because the handlers reach objects
 ///     that publish.
 /// </param>
 /// <param name="clock">The clock the events are stamped with.</param>
-/// <param name="queue">The queue the deliveries wait in.</param>
-public sealed class EventPublisher(Lazy<IPublisher> publisher, TimeProvider clock, EventQueue queue)
+public sealed class EventPublisher(Lazy<IPublisher> publisher, TimeProvider clock)
 	: IEventPublisher<Event>
 {
 	/// <inheritdoc />
