@@ -23,7 +23,7 @@ internal static class MenuRoutes
 			.Admitted(WorkClass.Listing)
 			.WithSummary("List the FAQ entries.")
 			.WithDescription("A folder inside the entry names is written with `:`.");
-		faqs.MapGet("/{entry}", GetFaqAsync).WithSummary("Retrieve a FAQ entry.");
+		faqs.MapGet("/{entry}", GetFaqAsync).WithSummary("Get a FAQ entry.");
 		faqs.MapPut("/{entry}", SaveFaqAsync).RequireToken().WithSummary("Create or replace a FAQ entry.");
 		faqs.MapDelete("/{entry}", DeleteFaqAsync).RequireToken().WithSummary("Delete a FAQ entry.");
 
@@ -31,7 +31,7 @@ internal static class MenuRoutes
 		menu.MapGet("/banners", ListBannersAsync).Admitted(WorkClass.Listing)
 			.WithSummary("List the main-menu banners.");
 		menu.MapPost("/banners", AddBannerAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
-			.WithSummary("Add a main-menu banner from an image in the `image` field and the address in `url`.")
+			.WithSummary("Create a main-menu banner from an image in the `image` field and the address in `url`.")
 			.WithDescription(
 				"`begins` and `expires` are optional ISO 8601 times; a banner without them is always current.");
 		menu.MapDelete("/banners/{image}", DeleteBannerAsync).RequireToken().WithSummary("Delete a main-menu banner.");
@@ -40,7 +40,7 @@ internal static class MenuRoutes
 			.Admitted(WorkClass.Listing)
 			.WithSummary("List the seasonal backgrounds.");
 		menu.MapPost("/seasonals", AddSeasonalAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
-			.WithSummary("Add a seasonal background from an image in the `image` field.");
+			.WithSummary("Create a seasonal background from an image in the `image` field.");
 		menu.MapDelete("/seasonals/{image}", DeleteSeasonalAsync).RequireToken()
 			.WithSummary("Delete a seasonal background.");
 		menu.MapGet("/icon", async (ISettingsRepository settings, CancellationToken ct) =>
@@ -48,13 +48,13 @@ internal static class MenuRoutes
 			var icon = (await settings.GetAsync(ct)).MenuIcon;
 			return Api.Ok(new IconView(icon.Image is { } image ? Path.GetFileName(image.Value) : null,
 				icon.Url?.AbsoluteUri));
-		}).WithSummary("Retrieve the main-menu icon.");
+		}).WithSummary("Get the main-menu icon.");
 		menu.MapPut("/icon", SetIconAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
 			.WithSummary(
-				"Set the main-menu icon from an optional image in the `image` field and an optional address in `url`.");
+				"Replace the main-menu icon from an optional image in the `image` field and an optional address in `url`.");
 		menu.MapDelete("/icon", async (HttpContext context, ISender sender) =>
 				(await sender.Send(new ClearMenuIcon(context.Connection()), context.RequestAborted)).Answer())
-			.RequireToken().WithSummary("Remove the main-menu icon.");
+			.RequireToken().WithSummary("Delete the main-menu icon.");
 	}
 
 	private static async Task<IResult> GetFaqAsync(string entry, IFaqStorage storage, CancellationToken ct)

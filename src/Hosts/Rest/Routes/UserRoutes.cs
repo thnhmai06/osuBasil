@@ -28,7 +28,7 @@ internal static class UserRoutes
 		var users = v1.MapGroup("/users").WithTags("Users");
 		var token = users.MapGroup("").RequireToken();
 
-		users.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve an account.")
+		users.MapGet("/{id:int}", GetAsync).WithSummary("Get an account.")
 			.WithDescription(
 				"Includes the granted and the effective privileges and the end of the silence in force. An account's profile and privileges are public.");
 
@@ -37,8 +37,8 @@ internal static class UserRoutes
 			.WithDescription("`query` uses the user search syntax. Paged with `offset` and `limit`.");
 		token.MapPost("/", CreateAsync).WithSummary("Create an account.")
 			.WithDescription("For staff only. Accounts are not created by themselves through this API.");
-		token.MapPatch("/{id:int}", PatchAsync).WithSummary("Change an account.");
-		token.MapPut("/{id:int}/password", PasswordAsync).WithSummary("Change the password of an account.")
+		token.MapPatch("/{id:int}", PatchAsync).WithSummary("Update an account.");
+		token.MapPut("/{id:int}/password", PasswordAsync).WithSummary("Update the password of an account.")
 			.WithDescription("""
 			                 For one's own account the current password is required and every other session is closed; with
 			                 `includeCurrent` the calling session is closed too. Staff change another account's password without
@@ -58,23 +58,23 @@ internal static class UserRoutes
 			                 The file must be a PNG or JPEG picture within the configured size and pixel limits. Content that is not
 			                 such a picture, or that exceeds a limit, is refused with `422`.
 			                 """);
-		token.MapDelete("/{id:int}/avatar", DeleteAvatarAsync).WithSummary("Remove the avatar of an account.");
+		token.MapDelete("/{id:int}/avatar", DeleteAvatarAsync).WithSummary("Delete the avatar of an account.");
 
 		token.MapGet("/{id:int}/sessions", ListSessionsAsync).Admitted(WorkClass.Listing)
 			.WithSummary("List the sessions of an account.")
 			.WithDescription(
 				"Filter by `state` (all, online, offline) and by `types`, a bitmask of the connection kinds.");
 		token.MapGet("/{id:int}/sessions/{sid:long}", GetSessionAsync)
-			.WithSummary("Retrieve one session of an account.");
+			.WithSummary("Get one session of an account.");
 		token.MapGet("/{id:int}/sessions/{sid:long}/connections", ListConnectionsAsync).Admitted(WorkClass.Listing)
 			.WithSummary("List the connections of one session of an account.")
 			.WithDescription(
 				"Each connection tells when and from which address a client connected and how the connection ended, newest first. A client that comes back from the same address soon after it left continues its last connection. Paged with `offset` and `limit`.");
 		token.MapDelete("/{id:int}/sessions/{sid:long}", CloseSessionAsync)
-			.WithSummary("Close one session of an account.")
+			.WithSummary("Delete one session of an account.")
 			.WithDescription(
 				"Closing an osu! session only disconnects the client, which can sign in again with its password; change the password to keep the client out.");
-		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Close every session of an account.");
+		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Delete every session of an account.");
 		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).Accepts<IrcKeyRequest>(true, "application/json", "*/*")
 			.WithSummary("Create an IRC key for one device.")
 			.WithDescription("The key is shown only in this response. Close the key's session to revoke it.");
@@ -83,22 +83,22 @@ internal static class UserRoutes
 			.WithSummary("List the friends of the calling account.");
 		token.MapPut("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new AddFriend(me, other)))
-			.WithSummary("Add a friend.");
+			.WithSummary("Create a friend.");
 		token.MapDelete("/{id:int}/friends/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new RemoveFriend(me, other)))
-			.WithSummary("Remove a friend.");
+			.WithSummary("Delete a friend.");
 		token.MapGet("/{id:int}/blocks", BlocksAsync).Admitted(WorkClass.Listing)
 			.WithSummary("List the accounts the calling account blocked.");
 		token.MapPut("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new BlockUser(me, other)))
-			.WithSummary("Block an account.");
+			.WithSummary("Create a block on an account.");
 		token.MapDelete("/{id:int}/blocks/{otherId:int}", (HttpContext c, int id, int otherId) =>
 				RelationAsync(c, id, otherId, (me, other) => new UnblockUser(me, other)))
-			.WithSummary("Unblock an account.");
+			.WithSummary("Delete a block on an account.");
 
-		token.MapPut("/{id:int}/silence", SilenceAsync).WithSummary("Silence an account until a given time.")
+		token.MapPut("/{id:int}/silence", SilenceAsync).WithSummary("Create a silence on an account until a given time.")
 			.WithDescription("A silenced account cannot post chat messages and receives no private messages.");
-		token.MapDelete("/{id:int}/silence", UnsilenceAsync).WithSummary("End the silence of an account now.");
+		token.MapDelete("/{id:int}/silence", UnsilenceAsync).WithSummary("Delete the silence of an account now.");
 	}
 
 	private static async Task<IResult> GetAsync(int id, IUserRepository users, UserRegistry registry,

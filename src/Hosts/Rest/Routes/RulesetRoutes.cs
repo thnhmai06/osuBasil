@@ -11,11 +11,11 @@ internal static class RulesetRoutes
 	public static void MapRulesets(this RouteGroupBuilder v1)
 	{
 		v1.MapGet("/version", VersionAsync).WithTags("Version")
-			.WithSummary("Retrieve the application version and the active ruleset version.");
+			.WithSummary("Get the application version and the active ruleset version.");
 
 		var ruleset = v1.MapGroup("/settings/ruleset").WithTags("Settings").RequireToken();
 		ruleset.MapGet("/version", RulesetVersionAsync)
-			.WithSummary("Retrieve the active ruleset version and the version waiting for a restart.");
+			.WithSummary("Get the active ruleset version and the version waiting for a restart.");
 		ruleset.MapPost("/update", UpdateAsync)
 			.WithSummary("Download the newest ruleset version and stage it for the next restart.")
 			.WithDescription("""
@@ -27,7 +27,7 @@ internal static class RulesetRoutes
 			                 """);
 
 		v1.MapPost("/beatmapsets/reload", ReloadAsync).RequireToken().WithTags("Beatmapsets")
-			.WithSummary("Recompute the metadata of every beatmap with the rulesets in use.")
+			.WithSummary("Update the metadata of every beatmap with the rulesets in use.")
 			.WithDescription("""
 			                 Recomputes every stored beatmap, star rating included. It runs in the background and the call answers 202 at once; only one reload runs at a time and a second request is refused with 409.
 			                 """);

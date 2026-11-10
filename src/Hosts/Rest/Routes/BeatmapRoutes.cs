@@ -39,22 +39,22 @@ internal static class BeatmapRoutes
 		sets.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).RequireToken().WithSummary("Search beatmapsets.")
 			.WithDescription(
 				"`query` uses the beatmap search syntax. Hidden sets are listed only for those who manage them. Paged with `offset` and `limit`.");
-		sets.MapGet("/{id:int}", GetSetAsync).WithSummary("Retrieve a beatmapset with its beatmaps.");
-		maps.MapGet("/{id:int}", GetBeatmapAsync).WithSummary("Retrieve a beatmap with its beatmapset.");
+		sets.MapGet("/{id:int}", GetSetAsync).WithSummary("Get a beatmapset with its beatmaps.");
+		maps.MapGet("/{id:int}", GetBeatmapAsync).WithSummary("Get a beatmap with its beatmapset.");
 		sets.MapPost("/", UploadAsync).Admitted(WorkClass.Upload).RequireToken().DisableAntiforgery()
 			.WithSummary("Upload a beatmapset as an .osz archive in the `file` field.")
 			.WithDescription(
 				"A set that already exists is refused; the content of a set is never replaced. While the beatmapsets area is locked only managers can upload.");
 		sets.MapDelete("/{id:int}", DeleteAsync).RequireToken().WithSummary("Delete a beatmapset.");
 		sets.MapPatch("/{id:int}", PatchAsync).RequireToken()
-			.WithSummary("Change the status, visibility or lock of a beatmapset.")
+			.WithSummary("Update the status, visibility or lock of a beatmapset.")
 			.WithDescription(
 				"Changing the status can change how clients submit scores and replays; use a status with a leaderboard (ranked, approved, qualified, loved) so those functions keep working.");
 
 		sets.MapGet("/{id:int}/audiopreview",
 				(HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b, IBeatmapsetStorage s) =>
 					SetFileAsync(c, id, r, b, s, BeatmapsetFileType.Preview, m => m.Assets.AudioFile))
-			.WithSummary("Play the preview clip of a beatmapset.");
+			.WithSummary("Get the preview clip of a beatmapset.");
 		sets.MapGet("/{id:int}/storyboard", (HttpContext c, int id, IBeatmapsetRepository r, IBeatmapsetStorage s) =>
 			StoryboardAsync(c, id, r, s)).RequireToken().WithSummary("Download the storyboard of a beatmapset.");
 		sets.MapGet("/{id:int}/download", DownloadAsync).RequireToken()
@@ -65,7 +65,7 @@ internal static class BeatmapRoutes
 			var route = sets.MapGet("/{id:int}/" + name,
 					(HttpContext c, int id, IBeatmapsetRepository r, IBeatmapRepository b) =>
 						RedirectToLowestAsync(c, id, name, r, b))
-				.WithSummary($"Redirect to the {name} of the lowest beatmap of the set.");
+				.WithSummary($"Get the {name} of the lowest beatmap of the set.");
 			if (token) route.RequireToken();
 		}
 

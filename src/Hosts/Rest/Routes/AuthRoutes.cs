@@ -17,7 +17,7 @@ internal static class AuthRoutes
 	public static void MapAuth(this RouteGroupBuilder v1)
 	{
 		var auth = v1.MapGroup("/auth").WithTags("Auth");
-		auth.MapPost("/login", LoginAsync).WithSummary("Sign in and receive a Bearer token.")
+		auth.MapPost("/login", LoginAsync).WithSummary("Create a session and receive a Bearer token.")
 			.WithDescription("""
 			                 Sends the username and the plain password. The token is shown only in this response.
 
@@ -26,14 +26,14 @@ internal static class AuthRoutes
 			                 Repeated wrong passwords for the same address and account, or from one address, are answered with 429.
 			                 """);
 		auth.MapPost("/logout", LogoutAsync).RequireToken()
-			.WithSummary("End the current session.");
+			.WithSummary("Delete the current session.");
 		auth.MapGet("/session", (HttpContext context) =>
 			{
 				var connection = context.Connection();
 				var session = connection.Session;
 				return Api.Ok(new SessionView(session.Id, session.Value.User.Id, session.Value.StartedAt, connection.ExpiresAt));
 			}).RequireToken()
-			.WithSummary("Retrieve the current session, which names the signed-in user.");
+			.WithSummary("Get the current session, which names the signed-in user.");
 	}
 
 	private static async Task<IResult> LoginAsync(HttpContext context, LoginRequest request, UserRegistry registry,

@@ -17,15 +17,15 @@ internal static class ContentRoutes
 	public static void MapContent(this RouteGroupBuilder v1)
 	{
 		var settings = v1.MapGroup("/settings").WithTags("Settings").RequireToken();
-		settings.MapGet("/", GetAllAsync).WithSummary("Retrieve every category of the server settings.");
-		settings.MapGet("/{category}", GetCategoryAsync).WithSummary("Retrieve one category of the server settings.");
+		settings.MapGet("/", GetAllAsync).WithSummary("Get every category of the server settings.");
+		settings.MapGet("/{category}", GetCategoryAsync).WithSummary("Get one category of the server settings.");
 		settings.MapPatch("/{category}", PatchCategoryAsync)
-			.WithSummary("Change the given fields of one settings category.")
+			.WithSummary("Update the given fields of one settings category.")
 			.WithDescription(
 				"The body holds only the fields to change; nested objects are merged. The change applies at once. Rate limit partitions that already exist keep their old limit until they expire.");
 
 		v1.MapPost("/announce", AnnounceAsync).RequireToken().WithTags("Announcements")
-			.WithSummary("Send an announcement to some users or to everyone online.")
+			.WithSummary("Create an announcement for some users or for everyone online.")
 			.WithDescription("An empty or absent `to` announces to everyone online.");
 
 		var screenshots = v1.MapGroup("/screenshots").WithTags("Screenshots").RequireToken();

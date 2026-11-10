@@ -21,11 +21,11 @@ internal static class RoomRoutes
 
 		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List the open rooms the caller may see.")
 			.WithDescription("Private rooms are listed only for those who may view them.");
-		rooms.MapPost("/", CreateAsync).WithSummary("Open a room.")
+		rooms.MapPost("/", CreateAsync).WithSummary("Create a room.")
 			.WithDescription(
 				"The caller becomes its creator. While room creation is locked, only room managers can open one.");
-		rooms.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve a room with its slots, referees and bans.");
-		rooms.MapGet("/{id:int}/live", LiveAsync).Sse().WithSummary("Watch a room change.")
+		rooms.MapGet("/{id:int}", GetAsync).WithSummary("Get a room with its slots, referees and bans.");
+		rooms.MapGet("/{id:int}/live", LiveAsync).Sse().WithSummary("Stream a room change.")
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events. The first event is the room as `GET /v1/rooms/{id}` returns it; after that a bundle arrives every second in which the room changed, carrying the room as it is then. The stream ends when the room closes. It carries no gameplay or scores. Data is up to about one second old.
 			                 """);

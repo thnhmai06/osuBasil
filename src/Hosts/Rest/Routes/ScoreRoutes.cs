@@ -21,7 +21,7 @@ internal static class ScoreRoutes
 		scores.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List scores.")
 			.WithDescription(
 				"Filter by `beatmap` (a beatmap id) and `user` (a user id). Newest first, paged with `offset` and `limit`.");
-		scores.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve a score.");
+		scores.MapGet("/{id:int}", GetAsync).WithSummary("Get a score.");
 		scores.MapGet("/{id:int}/replay", ReplayAsync).RequireToken().WithSummary("Download the replay of a score.");
 	}
 

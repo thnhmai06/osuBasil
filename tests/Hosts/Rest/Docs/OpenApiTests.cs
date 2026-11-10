@@ -39,6 +39,32 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 		Assert.NotNull(paths["/v1/matches/{id}"]!["get"]!["responses"]!["200"]!["content"]!["text/event-stream"]);
 	}
 
+	private static readonly string[] SummaryVerbs =
+		["Get", "List", "Search", "Create", "Upload", "Update", "Replace", "Delete", "Download", "Stream"];
+
+	private static bool StartsWithSummaryVerb(string? summary)
+	{
+		return summary is not null && SummaryVerbs.Contains(summary.Split(' ')[0]);
+	}
+
+	[Fact]
+	public async Task Document_EverySummaryStartsWithAVerbOfTheClosedSet()
+	{
+		var paths = (await DocumentAsync())["paths"]!.AsObject();
+
+		foreach (var (path, item) in paths)
+		foreach (var (method, operation) in item!.AsObject())
+			Assert.True(StartsWithSummaryVerb((string?)operation!["summary"]),
+				$"{method} {path}: \"{(string?)operation["summary"]}\" does not start with a verb of the closed set");
+	}
+
+	[Fact]
+	public void SummaryVerbCheck_RefusesAVerbOutsideTheSet_AndAcceptsOneInside()
+	{
+		Assert.False(StartsWithSummaryVerb("Retrieve x."));
+		Assert.True(StartsWithSummaryVerb("Get x."));
+	}
+
 	[Fact]
 	public async Task Document_EverySummaryIsOneSentence_AndNothingNamesTheImplementation()
 	{

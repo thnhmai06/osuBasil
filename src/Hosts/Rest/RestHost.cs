@@ -83,7 +83,7 @@ public static class RestHost
 		var app = endpoints.MapGroup("").WithMetadata(new AdmissionPolicyAttribute());
 		app.MapGet("/health", (Admission admission) => Api.Ok(admission.Health.ToString().ToLowerInvariant()))
 			.WithTags("Operations")
-			.WithSummary("Check that the server answers and how well it keeps up.")
+			.WithSummary("Get whether the server answers and how well it keeps up.")
 			.WithDescription(
 				"The state is `healthy`, `degraded` when the server is busier than usual, or `shedding` when it is overloaded and refuses the least valuable work.");
 		app.MapDocs();

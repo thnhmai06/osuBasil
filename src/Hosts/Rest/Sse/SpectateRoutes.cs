@@ -22,7 +22,7 @@ internal static class SpectateRoutes
 	public static void MapSpectate(this RouteGroupBuilder users)
 	{
 		users.MapGet("/{id:int}/spectate", SpectateAsync).RequireToken().Sse()
-			.WithSummary("Watch a player who is online in game.")
+			.WithSummary("Stream a player who is online in game.")
 			.WithDescription("""
 			                 The response is streamed using Server-Sent Events. Opening it spectates the player as an osu! client would: the player sees a spectator, and the spectating privilege, blocks and restrictions apply. The stream only watches; it joins no chat channel.
 

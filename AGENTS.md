@@ -110,7 +110,7 @@ If yes, it is implementation detail and does not belong in the API documentation
 Use one sentence describing what the endpoint does.
 
 ```csharp
-.WithSummary("Retrieve a match report.")
+.WithSummary("Get a match report.")
 ```
 
 Do not describe storage, frameworks, services, or internal mechanisms.
