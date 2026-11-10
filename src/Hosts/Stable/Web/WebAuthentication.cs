@@ -63,17 +63,12 @@ internal sealed class WebAuthentication(
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.MaxAttempts, rules.Window);
 		if (attempt is null) return null;
 
-		try
+		if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
+		if (Md5.TryParse(passwordMd5, null, out var digest) &&
+		    await credentials.VerifyAsync(new Credentials(online.Record, digest), cancellationToken))
 		{
-			if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
-			if (await credentials.VerifyAsync(new Credentials(online.Record, new Md5(passwordMd5)), cancellationToken))
-			{
-				_verified.AddOrUpdate(client, passwordMd5.ToLowerInvariant());
-				return client;
-			}
-		}
-		catch (ArgumentException)
-		{
+			_verified.AddOrUpdate(client, passwordMd5.ToLowerInvariant());
+			return client;
 		}
 
 		attempt.Keep();

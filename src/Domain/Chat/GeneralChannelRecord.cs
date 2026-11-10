@@ -13,11 +13,18 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 		get;
 		init
 		{
-			if (string.IsNullOrEmpty(value) || value.Length < 2 || value[0] != '#' || value.Any(char.IsWhiteSpace) ||
-			    value.Contains(',') || value.Contains('\0'))
-				throw new ArgumentException("Channel name is invalid.", nameof(value));
+			if (!IsValidName(value)) throw new ArgumentException("Channel name is invalid.", nameof(value));
 			field = value;
 		}
+	}
+
+	/// <summary>Tells whether a name follows the channel naming rules.</summary>
+	/// <param name="name">The name to check.</param>
+	/// <returns><see langword="true" /> when the name can identify a channel.</returns>
+	public static bool IsValidName(string? name)
+	{
+		return !string.IsNullOrEmpty(name) && name.Length >= 2 && name[0] == '#' && !name.Any(char.IsWhiteSpace) &&
+		       !name.Contains(',') && !name.Contains('\0');
 	}
 
 	/// <summary>Gets the settings stored for this channel.</summary>

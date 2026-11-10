@@ -24,14 +24,7 @@ internal sealed class AccountRules(
 		if ((await settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Accounts))
 			return RegistrationFailure.Locked;
 
-		try
-		{
-			_ = new UserData { Name = attempt.Username };
-		}
-		catch (ArgumentException)
-		{
-			return RegistrationFailure.InvalidName;
-		}
+		if (!UserData.IsValidName(attempt.Username)) return RegistrationFailure.InvalidName;
 
 		return await users.GetByNameAsync(attempt.Username, cancellationToken) is not null
 			? RegistrationFailure.NameTaken

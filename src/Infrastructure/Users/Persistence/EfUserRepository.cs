@@ -80,7 +80,9 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 	/// <inheritdoc />
 	public async Task<bool> RenameAsync(UserRecord user, string name)
 	{
-		_ = new UserData { Name = name };
+		if (!UserData.IsValidName(name))
+			throw new ArgumentException("The name is not a valid user name.", nameof(name));
+
 		var id = user.Id;
 		var normalized = UserData.NormalizeName(name);
 

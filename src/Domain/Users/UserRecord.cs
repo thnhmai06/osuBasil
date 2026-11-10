@@ -83,19 +83,27 @@ public sealed partial class UserData
 		set
 		{
 			ArgumentNullException.ThrowIfNull(value);
-			if (value.Length is < 3 or > 15)
-				throw new ArgumentException("Username must be between 3 and 15 characters.", nameof(value));
-			if (value.StartsWith(' ') || value.EndsWith(' '))
-				throw new ArgumentException("Username cannot start or end with a space.", nameof(value));
-			if (value.Contains("  "))
-				throw new ArgumentException("Username cannot contain consecutive spaces.", nameof(value));
-			if (value.All(char.IsDigit))
-				throw new ArgumentException("Username cannot contain only digits.", nameof(value));
-			if (!OsuUsernameChars().IsMatch(value))
-				throw new ArgumentException("Username may only contain letters, numbers, spaces, and _ - [ ].",
-					nameof(value));
+			if (NameError(value) is { } error) throw new ArgumentException(error, nameof(value));
 			field = value;
 		}
+	}
+
+	/// <summary>Tells whether a name satisfies osu!'s registration rules.</summary>
+	/// <param name="name">The name to check.</param>
+	/// <returns><see langword="true" /> when the name can be a username.</returns>
+	public static bool IsValidName(string name)
+	{
+		return NameError(name) is null;
+	}
+
+	private static string? NameError(string value)
+	{
+		if (value.Length is < 3 or > 15) return "Username must be between 3 and 15 characters.";
+		if (value.StartsWith(' ') || value.EndsWith(' ')) return "Username cannot start or end with a space.";
+		if (value.Contains("  ")) return "Username cannot contain consecutive spaces.";
+		if (value.All(char.IsDigit)) return "Username cannot contain only digits.";
+		if (!OsuUsernameChars().IsMatch(value)) return "Username may only contain letters, numbers, spaces, and _ - [ ].";
+		return null;
 	}
 
 	/// <summary>Gets or sets the country the user is registered in.</summary>

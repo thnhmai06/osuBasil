@@ -65,16 +65,11 @@ public sealed class UserProfile
 	/// <returns>The outcome of renaming the account.</returns>
 	internal async Task<UserOutcome> RenameAsync(string name)
 	{
-		try
-		{
-			return await _user.Context.Users.RenameAsync(_user.Record, name)
-				? UserOutcome.Ok
-				: UserOutcome.NameTaken;
-		}
-		catch (ArgumentException)
-		{
-			return UserOutcome.InvalidName;
-		}
+		if (!UserData.IsValidName(name)) return UserOutcome.InvalidName;
+
+		return await _user.Context.Users.RenameAsync(_user.Record, name)
+			? UserOutcome.Ok
+			: UserOutcome.NameTaken;
 	}
 
 	/// <summary>Stores and sets the country shown on the profile.</summary>

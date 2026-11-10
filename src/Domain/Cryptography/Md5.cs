@@ -3,7 +3,7 @@
 namespace Basil.Domain.Cryptography;
 
 /// <summary>An MD5 digest, kept as 32 lower-case hexadecimal characters.</summary>
-public readonly record struct Md5
+public readonly record struct Md5 : IParsable<Md5>
 {
 	/// <summary>Creates a digest from its hexadecimal text.</summary>
 	/// <param name="hash">The 32 hexadecimal characters, in either case.</param>
@@ -11,9 +11,7 @@ public readonly record struct Md5
 	public Md5(string hash)
 	{
 		ArgumentNullException.ThrowIfNull(hash);
-		if (hash is not { Length: 32 }
-		    || !hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))
-			throw new ArgumentException("The MD5 value is invalid.", nameof(hash));
+		if (!IsHex(hash)) throw new ArgumentException("The MD5 value is invalid.", nameof(hash));
 
 		HashValue = hash.ToLowerInvariant();
 	}
@@ -43,6 +41,38 @@ public readonly record struct Md5
 	public override string ToString()
 	{
 		return HashValue;
+	}
+
+	/// <summary>Reads a digest from its hexadecimal text.</summary>
+	/// <param name="s">The 32 hexadecimal characters, in either case.</param>
+	/// <param name="provider">Ignored.</param>
+	/// <returns>The digest.</returns>
+	/// <exception cref="FormatException">The text is not 32 hexadecimal characters.</exception>
+	public static Md5 Parse(string s, IFormatProvider? provider = null)
+	{
+		return TryParse(s, provider, out var result) ? result : throw new FormatException("The MD5 value is invalid.");
+	}
+
+	/// <summary>Reads a digest from its hexadecimal text without throwing.</summary>
+	/// <param name="s">The text to read.</param>
+	/// <param name="provider">Ignored.</param>
+	/// <param name="result">The digest, or the default value when the text is not 32 hexadecimal characters.</param>
+	/// <returns><see langword="true" /> when the text is a digest.</returns>
+	public static bool TryParse(string? s, IFormatProvider? provider, out Md5 result)
+	{
+		if (s is not null && IsHex(s))
+		{
+			result = new Md5(s);
+			return true;
+		}
+
+		result = default;
+		return false;
+	}
+
+	private static bool IsHex(string hash)
+	{
+		return hash is { Length: 32 } && hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
 	}
 
 	/// <summary>Creates a digest from its hexadecimal text.</summary>
