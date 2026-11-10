@@ -10,6 +10,7 @@ namespace Basil.Gateway;
 public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, LoadSignal? load = null)
 {
 	private readonly LoadSignal _load = load ?? new LoadSignal();
+	private static readonly WorkClass[] MustServe = [WorkClass.Interactive, WorkClass.Upload, WorkClass.Live];
 	private readonly RateLimiter _rate = new(clock);
 	private readonly int[] _running = new int[Enum.GetValues<WorkClass>().Length];
 	private Func<GatewayLimits> _source = source;
@@ -24,7 +25,7 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 	}
 
 	/// <summary>Gets how the server is doing, from its load.</summary>
-	public AdmissionHealth Health => Volatile.Read(ref _source)().HealthAt(_load.Value);
+	public AdmissionHealth Health => Volatile.Read(ref _source)().HealthAt(CurrentLoad(Volatile.Read(ref _source)()));
 
 	/// <summary>Replaces the limits; requests decided afterwards use the new ones.</summary>
 	/// <param name="limits">The new limits.</param>
@@ -46,7 +47,7 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 	public AdmissionDecision Admit(AdmissionSubject subject, WorkClass workClass = WorkClass.Interactive)
 	{
 		var current = Volatile.Read(ref _source)();
-		if (current.Sheds(workClass, _load.Value))
+		if (current.Sheds(workClass, MustServe.Contains(workClass) ? _load.Value : CurrentLoad(current)))
 			return AdmissionDecision.Deny(AdmissionDenial.Shed, current.BusyRetryAfter);
 
 		if (Interlocked.Increment(ref _running[(int)workClass]) > current.ConcurrencyOf(workClass))
@@ -69,5 +70,19 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 	public void Release(WorkClass workClass)
 	{
 		Interlocked.Decrement(ref _running[(int)workClass]);
+	}
+
+	/// <summary>
+	///     The load that decides health and the shedding of listings and pictures: the larger of the reported load and
+	///     how full the classes that are never shed first are. Those classes themselves are held back only by their cap
+	///     and by the reported load, never by their own fullness.
+	/// </summary>
+	private double CurrentLoad(GatewayLimits limits)
+	{
+		var used = 0.0;
+		foreach (var workClass in MustServe)
+			used = Math.Max(used, (double)Volatile.Read(ref _running[(int)workClass]) / limits.ConcurrencyOf(workClass));
+
+		return Math.Max(_load.Value, Math.Min(used, 1));
 	}
 }

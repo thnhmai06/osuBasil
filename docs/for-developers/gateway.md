@@ -86,8 +86,13 @@ Health is `Healthy` below 0.50, `Degraded` from 0.50 and `Shedding` from 0.70. E
 stored in the database (`rateLimits.admission`, changed through `PATCH /v1/settings/rateLimits` or the console); the
 composition root hands `Admission` a snapshot of it from memory, so a change applies to the next request without a restart.
 The Gateway itself knows only `GatewayLimits`. A value must be positive, and the loads ordered
-0 < degraded < shed < hard shed <= 1. No load source feeds `LoadSignal` yet, so `/health`
-reports `healthy` until one exists.
+0 < degraded < shed < hard shed <= 1.
+
+The load is measured from the gateway's own work: the fullest of `Interactive`, `Upload` and `Live`, as running requests
+over the cap of the class. Health follows it, and so does the shedding of `Listing` and `Asset` (the classes dropped first),
+so a server busy with gameplay refuses searches and pictures before it refuses gameplay. The three measured classes are
+never shed by their own fullness, only held at their cap (or by the reported `LoadSignal`, which still counts when something
+reports one), so a class never turns away work below its cap.
 
 #### Audit of the queues for rebuildable work
 

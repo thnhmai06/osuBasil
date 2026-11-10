@@ -158,6 +158,45 @@ public sealed class LoadPolicyTests
 		Assert.Equal(expected, NewAdmission(signal).Health);
 	}
 
+	[Theory]
+	[InlineData(WorkClass.Interactive, 1, AdmissionHealth.Healthy)]
+	[InlineData(WorkClass.Interactive, 2, AdmissionHealth.Degraded)]
+	[InlineData(WorkClass.Interactive, 3, AdmissionHealth.Shedding)]
+	[InlineData(WorkClass.Upload, 1, AdmissionHealth.Shedding)]
+	[InlineData(WorkClass.Live, 1, AdmissionHealth.Shedding)]
+	[InlineData(WorkClass.Listing, 2, AdmissionHealth.Healthy)]
+	[InlineData(WorkClass.Asset, 2, AdmissionHealth.Healthy)]
+	public void Health_FollowsHowFullTheClassesThatAreNeverShedFirstAre(WorkClass workClass, int running,
+		AdmissionHealth expected)
+	{
+		var admission = NewAdmission();
+		for (var i = 0; i < running; i++) Assert.True(admission.Admit(Subject, workClass).Allowed);
+
+		Assert.Equal(expected, admission.Health);
+	}
+
+	[Fact]
+	public void WhenInteractiveWorkFillsItsClass_ListingsAreShed_AndTheyReturnWhenTheWorkIsDone()
+	{
+		var admission = NewAdmission();
+		for (var i = 0; i < 3; i++) admission.Admit(Subject);
+
+		var shed = admission.Admit(Subject, WorkClass.Listing);
+		for (var i = 0; i < 3; i++) admission.Release(WorkClass.Interactive);
+
+		Assert.Equal((false, AdmissionDenial.Shed, true),
+			(shed.Allowed, shed.Reason, admission.Admit(Subject, WorkClass.Listing).Allowed));
+	}
+
+	[Fact]
+	public void TheReportedLoad_StillCountsWhenTheClassesAreEmpty()
+	{
+		var signal = new LoadSignal();
+		signal.Report(0.8, 1);
+
+		Assert.Equal(AdmissionHealth.Shedding, NewAdmission(signal).Health);
+	}
+
 	[Fact]
 	public void ANewAdmission_IsHealthy()
 	{
