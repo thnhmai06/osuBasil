@@ -24,7 +24,7 @@ public readonly struct ScopedServerSettings
 	{
 		return _scoped.Needs(UserPrivileges.Developer) is { } missing
 			? (Result<ServerOutcome>.Denied(missing), null)
-			: (ServerOutcome.Ok, await _scoped.Server.GetSettingsAsync(ct));
+			: (ServerOutcome.Ok, await _scoped.Server.Settings.GetAsync(ct));
 	}
 
 	/// <summary>Replaces the settings; the change applies at once and survives a restart.</summary>
@@ -39,11 +39,11 @@ public readonly struct ScopedServerSettings
 		if (_scoped.Needs(UserPrivileges.Developer) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		var current = await _scoped.Server.GetSettingsAsync();
+		var current = await _scoped.Server.Settings.GetAsync();
 		if (settings.Accounts.DefaultPrivileges != current.Accounts.DefaultPrivileges &&
 		    _scoped.Needs(settings.Accounts.DefaultPrivileges) is { } ungrantable)
 			return Result<ServerOutcome>.Denied(ungrantable);
 
-		return await _scoped.Server.UpdateSettingsAsync(settings);
+		return await _scoped.Server.Settings.UpdateAsync(settings);
 	}
 }

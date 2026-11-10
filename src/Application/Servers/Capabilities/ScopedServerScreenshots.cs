@@ -32,7 +32,7 @@ public readonly struct ScopedServerScreenshots
 		if (_scoped.Needs(UserPrivileges.Player) is { } missing)
 			return (null, Result<ServerOutcome>.Denied(missing));
 
-		return await _scoped.Server.UploadScreenshotAsync(content, ct);
+		return await _scoped.Server.Screenshots.UploadAsync(content, ct);
 	}
 
 	/// <summary>Lists the stored screenshots.</summary>
@@ -45,7 +45,7 @@ public readonly struct ScopedServerScreenshots
 		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), []);
 
-		return (ServerOutcome.Ok, await _scoped.Server.ListScreenshotsAsync(ct));
+		return (ServerOutcome.Ok, await _scoped.Server.Screenshots.ListAsync(ct));
 	}
 
 	/// <summary>Deletes a stored screenshot.</summary>
@@ -57,6 +57,6 @@ public readonly struct ScopedServerScreenshots
 		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		return await _scoped.Server.DeleteScreenshotAsync(screenshot);
+		return await _scoped.Server.Screenshots.DeleteAsync(screenshot);
 	}
 }
