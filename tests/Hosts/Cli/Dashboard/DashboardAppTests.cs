@@ -4,6 +4,7 @@ using Basil.Host.Cli.Dashboard;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Tabs;
 using Basil.Host.Cli.Shutdown;
+using Basil.Testing.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -46,27 +47,13 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 		return new Running { Backend = backend, Thread = thread, Stop = stop, Lifetime = lifetime, Model = model };
 	}
 
-	// The terminal runs on a thread of its own, so a test can only wait for it by looking again; the wait is bounded.
-	private static async Task<bool> WaitAsync(Func<bool> condition)
-	{
-		var deadline = DateTime.UtcNow.AddSeconds(15);
-		while (DateTime.UtcNow < deadline)
-		{
-			if (condition()) return true;
-
-			await Task.Delay(25, TestContext.Current.CancellationToken);
-		}
-
-		return condition();
-	}
-
 	[Fact]
 	public async Task The_dashboard_shows_the_tab_bar_and_the_command_box()
 	{
 		await using var run = Start();
 
-		Assert.True(await WaitAsync(() => run.Screen.Contains("Overview") && run.Screen.Contains("Metrics")),
-			run.Screen);
+		await Eventually.TrueAsync(() => run.Screen.Contains("Overview") && run.Screen.Contains("Metrics"),
+			"the tab bar is drawn");
 		Assert.Contains("❯", run.Screen);
 	}
 
@@ -74,23 +61,24 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	public async Task A_function_key_changes_the_tab()
 	{
 		await using var run = Start();
-		await WaitAsync(() => run.Screen.Contains("Overview"));
+		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
 
 		run.Backend.PushEvent(new TerminalKeyEvent { Key = TerminalKey.F5 });
 
-		Assert.True(await WaitAsync(() => run.Model.Tab == DashboardTab.Logs));
+		await Eventually.TrueAsync(() => run.Model.Tab == DashboardTab.Logs, "F5 selects the Logs tab");
 	}
 
 	[Fact]
 	public async Task A_typed_command_runs_and_its_output_appears_above_the_command_box()
 	{
 		await using var run = Start();
-		await WaitAsync(() => run.Screen.Contains("Overview"));
+		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
 
 		run.Backend.PushEvent(new TerminalTextEvent { Text = "status" });
 		run.Backend.PushEvent(new TerminalKeyEvent { Key = TerminalKey.Enter });
 
-		Assert.True(await WaitAsync(() => run.Model.Output.Any(line => line.Text.StartsWith("version:"))));
+		await Eventually.TrueAsync(() => run.Model.Output.Any(line => line.Text.StartsWith("version:")),
+			"the status output is shown");
 		Assert.Contains(run.Model.Output, line => line.Text == "❯ status");
 	}
 
@@ -98,13 +86,14 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	public async Task A_password_in_a_typed_command_is_hidden_in_the_history_shown()
 	{
 		await using var run = Start();
-		await WaitAsync(() => run.Screen.Contains("Overview"));
+		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
 		var name = CliFixture.Name("dash");
 
 		run.Backend.PushEvent(new TerminalTextEvent { Text = $"users create --username {name} --password hunter2" });
 		run.Backend.PushEvent(new TerminalKeyEvent { Key = TerminalKey.Enter });
 
-		Assert.True(await WaitAsync(() => run.Model.Output.Any(line => line.Text.StartsWith("Created"))));
+		await Eventually.TrueAsync(() => run.Model.Output.Any(line => line.Text.StartsWith("Created")),
+			"the user is created");
 		Assert.DoesNotContain(run.Model.Output, line => line.Text.Contains("hunter2"));
 		Assert.Contains(run.Model.Output, line => line.Text.Contains("--password ***"));
 	}
@@ -113,15 +102,16 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	public async Task Ctrl_c_twice_asks_for_the_shutdown_and_stops_the_application()
 	{
 		await using var run = Start();
-		await WaitAsync(() => run.Screen.Contains("Overview"));
+		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
 
 		run.Backend.PushEvent(new TerminalKeyEvent
 			{ Key = TerminalKey.Unknown, Char = 'c', Modifiers = TerminalModifiers.Ctrl });
-		Assert.True(await WaitAsync(() => run.Model.Notice.StartsWith("Press Ctrl+C again within 3 seconds")));
+		await Eventually.TrueAsync(() => run.Model.Notice.StartsWith("Press Ctrl+C again within 3 seconds"),
+			"the first Ctrl+C asks for confirmation");
 		run.Backend.PushEvent(new TerminalKeyEvent
 			{ Key = TerminalKey.Unknown, Char = 'c', Modifiers = TerminalModifiers.Ctrl });
 
-		Assert.True(await WaitAsync(() => run.Lifetime.Stops == 1));
+		await Eventually.TrueAsync(() => run.Lifetime.Stops == 1, "the second Ctrl+C stops the application");
 	}
 
 	private sealed class Lifetime : IHostApplicationLifetime

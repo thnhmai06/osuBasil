@@ -45,8 +45,10 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 
 				var polled = reader.ReadAsync();
 				fixture.Host.Time.Advance(TimeSpan.FromSeconds(1));
-				await Task.Delay(TimeSpan.FromMilliseconds(300));
-				Assert.False(polled.IsCompleted);
+				await owner.CallAsync(HttpMethod.Post, $"/v1/rooms/{roomId}/lock");
+				fixture.Host.Time.Advance(TimeSpan.FromSeconds(1));
+				var next = await polled;
+				Assert.Equal("bundle", next!.Value.Event);
 			}
 		}
 	}
