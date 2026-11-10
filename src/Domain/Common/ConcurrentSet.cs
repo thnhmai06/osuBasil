@@ -70,8 +70,7 @@ public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnul
 	///     The zero-based index in <paramref name="array" /> at which copying begins.
 	/// </param>
 	/// <remarks>
-	///     The copy is taken from the backing dictionary's keys, which are captured without
-	///     locking; concurrent modifications during the copy may or may not be reflected.
+	///     Concurrent modifications during the copy may or may not be reflected.
 	/// </remarks>
 	public void CopyTo(T[] array, int arrayIndex)
 	{

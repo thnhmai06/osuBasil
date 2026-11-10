@@ -22,7 +22,7 @@ public enum Country : byte
 	Ae = 4,
 	/// <summary>Afghanistan.</summary>
 	Af = 5,
-	/// <summary>Antigua & Barbuda.</summary>
+	/// <summary>Antigua &amp; Barbuda.</summary>
 	Ag = 6,
 	/// <summary>Anguilla.</summary>
 	Ai = 7,
@@ -48,7 +48,7 @@ public enum Country : byte
 	Aw = 17,
 	/// <summary>Azerbaijan.</summary>
 	Az = 18,
-	/// <summary>Bosnia & Herzegovina.</summary>
+	/// <summary>Bosnia &amp; Herzegovina.</summary>
 	Ba = 19,
 	/// <summary>Barbados.</summary>
 	Bb = 20,
@@ -188,7 +188,7 @@ public enum Country : byte
 	Gq = 87,
 	/// <summary>Greece.</summary>
 	Gr = 88,
-	/// <summary>South Georgia & South Sandwich Islands.</summary>
+	/// <summary>South Georgia &amp; South Sandwich Islands.</summary>
 	Gs = 89,
 	/// <summary>Guatemala.</summary>
 	Gt = 90,
@@ -200,7 +200,7 @@ public enum Country : byte
 	Gy = 93,
 	/// <summary>Hong Kong SAR China.</summary>
 	Hk = 94,
-	/// <summary>Heard & McDonald Islands.</summary>
+	/// <summary>Heard &amp; McDonald Islands.</summary>
 	Hm = 95,
 	/// <summary>Honduras.</summary>
 	Hn = 96,
@@ -244,7 +244,7 @@ public enum Country : byte
 	Ki = 115,
 	/// <summary>Comoros.</summary>
 	Km = 116,
-	/// <summary>St. Kitts & Nevis.</summary>
+	/// <summary>St. Kitts &amp; Nevis.</summary>
 	Kn = 117,
 	/// <summary>North Korea.</summary>
 	Kp = 118,
@@ -360,7 +360,7 @@ public enum Country : byte
 	Pk = 173,
 	/// <summary>Poland.</summary>
 	Pl = 174,
-	/// <summary>St. Pierre & Miquelon.</summary>
+	/// <summary>St. Pierre &amp; Miquelon.</summary>
 	Pm = 175,
 	/// <summary>Pitcairn Islands.</summary>
 	Pn = 176,
@@ -400,7 +400,7 @@ public enum Country : byte
 	Sh = 193,
 	/// <summary>Slovenia.</summary>
 	Si = 194,
-	/// <summary>Svalbard & Jan Mayen.</summary>
+	/// <summary>Svalbard &amp; Jan Mayen.</summary>
 	Sj = 195,
 	/// <summary>Slovakia.</summary>
 	Sk = 196,
@@ -414,7 +414,7 @@ public enum Country : byte
 	So = 200,
 	/// <summary>Suriname.</summary>
 	Sr = 201,
-	/// <summary>São Tomé & Príncipe.</summary>
+	/// <summary>São Tomé &amp; Príncipe.</summary>
 	St = 202,
 	/// <summary>El Salvador.</summary>
 	Sv = 203,
@@ -422,7 +422,7 @@ public enum Country : byte
 	Sy = 204,
 	/// <summary>Eswatini.</summary>
 	Sz = 205,
-	/// <summary>Turks & Caicos Islands.</summary>
+	/// <summary>Turks &amp; Caicos Islands.</summary>
 	Tc = 206,
 	/// <summary>Chad.</summary>
 	Td = 207,
@@ -446,7 +446,7 @@ public enum Country : byte
 	Tl = 216,
 	/// <summary>Türkiye.</summary>
 	Tr = 217,
-	/// <summary>Trinidad & Tobago.</summary>
+	/// <summary>Trinidad &amp; Tobago.</summary>
 	Tt = 218,
 	/// <summary>Tuvalu.</summary>
 	Tv = 219,
@@ -468,7 +468,7 @@ public enum Country : byte
 	Uz = 227,
 	/// <summary>Vatican City.</summary>
 	Va = 228,
-	/// <summary>St. Vincent & Grenadines.</summary>
+	/// <summary>St. Vincent &amp; Grenadines.</summary>
 	Vc = 229,
 	/// <summary>Venezuela.</summary>
 	Ve = 230,
@@ -480,7 +480,7 @@ public enum Country : byte
 	Vn = 233,
 	/// <summary>Vanuatu.</summary>
 	Vu = 234,
-	/// <summary>Wallis & Futuna.</summary>
+	/// <summary>Wallis &amp; Futuna.</summary>
 	Wf = 235,
 	/// <summary>Samoa.</summary>
 	Ws = 236,
