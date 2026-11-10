@@ -10,5 +10,8 @@ namespace Basil.Application.Servers.Messages;
 ///     <see cref="ArgumentException" />.
 /// </summary>
 /// <param name="Actor">The connection acting.</param>
+/// <param name="Name">The name of the new icon image, set together with Image.</param>
+/// <param name="Image">The new icon image, or null to keep the current one.</param>
+/// <param name="Url">The address the icon links to, or null for no link.</param>
 public sealed record SetMenuIcon(Connection Actor, string? Name, Stream? Image, Uri? Url)
 	: IRequest<Result<ServerOutcome>>;
