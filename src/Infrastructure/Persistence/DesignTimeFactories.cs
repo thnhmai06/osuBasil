@@ -13,6 +13,7 @@ namespace Basil.Infrastructure.Persistence;
 
 internal sealed class UsersDbContextFactory : IDesignTimeDbContextFactory<UsersDbContext>
 {
+	/// <inheritdoc />
 	public UsersDbContext CreateDbContext(string[] args)
 	{
 		return PostgresDatabaseProvider.CreateDesignTime<UsersDbContext>();
@@ -21,6 +22,7 @@ internal sealed class UsersDbContextFactory : IDesignTimeDbContextFactory<UsersD
 
 internal sealed class AuthenticationDbContextFactory : IDesignTimeDbContextFactory<AuthenticationDbContext>
 {
+	/// <inheritdoc />
 	public AuthenticationDbContext CreateDbContext(string[] args)
 	{
 		return PostgresDatabaseProvider.CreateDesignTime<AuthenticationDbContext>();
@@ -29,6 +31,7 @@ internal sealed class AuthenticationDbContextFactory : IDesignTimeDbContextFacto
 
 internal sealed class BeatmapsDbContextFactory : IDesignTimeDbContextFactory<BeatmapsDbContext>
 {
+	/// <inheritdoc />
 	public BeatmapsDbContext CreateDbContext(string[] args)
 	{
 		return PostgresDatabaseProvider.CreateDesignTime<BeatmapsDbContext>();
@@ -37,6 +40,7 @@ internal sealed class BeatmapsDbContextFactory : IDesignTimeDbContextFactory<Bea
 
 internal sealed class ContentDbContextFactory : IDesignTimeDbContextFactory<ContentDbContext>
 {
+	/// <inheritdoc />
 	public ContentDbContext CreateDbContext(string[] args)
 	{
 		return PostgresDatabaseProvider.CreateDesignTime<ContentDbContext>();
@@ -45,6 +49,7 @@ internal sealed class ContentDbContextFactory : IDesignTimeDbContextFactory<Cont
 
 internal sealed class ScoresDbContextFactory : IDesignTimeDbContextFactory<ScoresDbContext>
 {
+	/// <inheritdoc />
 	public ScoresDbContext CreateDbContext(string[] args)
 	{
 		return PostgresDatabaseProvider.CreateDesignTime<ScoresDbContext>();
@@ -53,6 +58,7 @@ internal sealed class ScoresDbContextFactory : IDesignTimeDbContextFactory<Score
 
 internal sealed class MultiplayerDbContextFactory : IDesignTimeDbContextFactory<MultiplayerDbContext>
 {
+	/// <inheritdoc />
 	public MultiplayerDbContext CreateDbContext(string[] args)
 	{
 		return PostgresDatabaseProvider.CreateDesignTime<MultiplayerDbContext>();
@@ -61,6 +67,7 @@ internal sealed class MultiplayerDbContextFactory : IDesignTimeDbContextFactory<
 
 internal sealed class ChatDbContextFactory : IDesignTimeDbContextFactory<ChatDbContext>
 {
+	/// <inheritdoc />
 	public ChatDbContext CreateDbContext(string[] args)
 	{
 		return PostgresDatabaseProvider.CreateDesignTime<ChatDbContext>();

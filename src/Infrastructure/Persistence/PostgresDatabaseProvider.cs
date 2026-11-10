@@ -8,8 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 namespace Basil.Infrastructure.Persistence;
 
 /// <summary>
-///     The PostgreSQL engine of the server: pooled Npgsql connections, snake_case names and the migrations of this
-///     assembly.
+///     The PostgreSQL database engine of the server.
 /// </summary>
 public sealed class PostgresDatabaseProvider : IDatabaseProvider
 {
