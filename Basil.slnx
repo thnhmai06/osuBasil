@@ -85,6 +85,7 @@
 		<Project Path="tests/Infrastructure/Diagnostics/Basil.Infrastructure.Diagnostics.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Multiplayer/Basil.Infrastructure.Multiplayer.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Scores/Basil.Infrastructure.Scores.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Servers/Basil.Infrastructure.Servers.Tests.csproj"/>
 		<Project Path="tests/Infrastructure/Users/Basil.Infrastructure.Users.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Protocol/">
