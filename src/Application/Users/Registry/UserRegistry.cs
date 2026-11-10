@@ -37,7 +37,7 @@ public sealed class UserRegistry
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
-	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
+	private readonly ConcurrentDictionary<int, AccountGate> _gates = new();
 
 	/// <summary>Creates the registry that owns online users and their connections.</summary>
 	/// <param name="accounts">The account operations that use persistence.</param>
@@ -281,7 +281,7 @@ public sealed class UserRegistry
 
 	private LoginResult? OpenUnlessRaced(string token, Connection connection)
 	{
-		using (Enter())
+		using (Enter(connection.Record))
 		{
 			// Another request may have brought the same token in while this one read the database.
 			if (_connections.GetValueOrDefault(token) is { IsOpen: true } raced) return LoginResult.Success(raced);
@@ -351,7 +351,7 @@ public sealed class UserRegistry
 		    _context.Clock.GetUtcNow() - connection.Session.Value.StartedAt < IgnoreLogoutWithin)
 			return;
 
-		using var scope = Enter();
+		using var scope = Enter(connection.Record);
 		CloseCore(connection, reason);
 	}
 
@@ -485,7 +485,7 @@ public sealed class UserRegistry
 	/// </remarks>
 	internal LoginFailure? Open(Connection connection)
 	{
-		using var scope = Enter();
+		using var scope = Enter(connection.Record);
 
 		// The online user holds the current record; a login may have read an older one.
 		var record = _online.GetValueOrDefault(connection.Record)?.Record ?? connection.Record;
@@ -654,9 +654,15 @@ public sealed class UserRegistry
 		_connections.TryRemove(new KeyValuePair<string, Connection>(connection.Token, connection));
 	}
 
-	internal Lock.Scope Enter()
+	/// <summary>
+	///     Serialises the changes of one account's sessions; accounts do not wait for each other. The lock order is this
+	///     gate, then <see cref="User" />.
+	/// </summary>
+	/// <param name="account">The account whose sessions change.</param>
+	/// <returns>A scope that holds the account's gate until disposed.</returns>
+	internal AccountScope Enter(UserRecord account)
 	{
-		return _sync.EnterScope();
+		return new AccountScope(_gates, account.Id);
 	}
 
 	private void CloseCore(Connection connection, SessionEndReason reason)
@@ -724,5 +730,49 @@ public sealed class UserRegistry
 			RegistrationFailure.InvalidName => (null, UserOutcome.InvalidName),
 			_ => (null, UserOutcome.NameTaken)
 		};
+	}
+
+	/// <summary>The lock of one account, shared by every scope that is open on it and dropped when the last one ends.</summary>
+	internal sealed class AccountGate
+	{
+		public readonly Lock Lock = new();
+		public int Users;
+	}
+
+	/// <summary>Holds the gate of one account until disposed.</summary>
+	internal ref struct AccountScope : IDisposable
+	{
+		private readonly ConcurrentDictionary<int, AccountGate> _gates;
+		private readonly int _id;
+		private readonly AccountGate _gate;
+
+		/// <summary>Enters the gate of an account, creating it when no scope is open on the account.</summary>
+		/// <param name="gates">The gates by account id.</param>
+		/// <param name="id">The account id.</param>
+		public AccountScope(ConcurrentDictionary<int, AccountGate> gates, int id)
+		{
+			_gates = gates;
+			_id = id;
+			while (true)
+			{
+				var gate = gates.GetOrAdd(id, _ => new AccountGate());
+				// A gate whose last scope ended is marked dead (negative) before it is removed: take another one.
+				if (Interlocked.Increment(ref gate.Users) < 0) continue;
+
+				_gate = gate;
+				break;
+			}
+
+			_gate.Lock.Enter();
+		}
+
+		/// <summary>Releases the gate.</summary>
+		public void Dispose()
+		{
+			_gate.Lock.Exit();
+			if (Interlocked.Decrement(ref _gate.Users) == 0 &&
+			    Interlocked.CompareExchange(ref _gate.Users, int.MinValue, 0) == 0)
+				_gates.TryRemove(new KeyValuePair<int, AccountGate>(_id, _gate));
+		}
 	}
 }
