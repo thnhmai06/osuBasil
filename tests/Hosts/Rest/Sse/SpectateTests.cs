@@ -47,11 +47,11 @@ public sealed class SpectateTests(RestHostFixture fixture)
 		using (player)
 		using (watcher)
 		{
-			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate");
+			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", cancellationToken: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.NotNull(reader);
-				var snapshot = await reader.ReadAsync();
+				var snapshot = await reader.ReadAsync(TestContext.Current.CancellationToken);
 				Assert.Equal("snapshot", snapshot!.Value.Event);
 				Assert.Equal("SpecPlayer", (string)JsonNode.Parse(snapshot.Value.Data)!["user"]!["name"]!);
 				await player.WaitForAsync(OsuClient.In.SpectatorJoined);
@@ -60,7 +60,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 				await player.SendAsync(writer => writer.Packet(OsuClient.Out.SpectateFrames, bundle));
 				await Pending.WaitAsync(fixture.Host, SpectateKey(id));
 				fixture.Host.Time.Advance(Tick);
-				var next = await reader.ReadAsync();
+				var next = await reader.ReadAsync(TestContext.Current.CancellationToken);
 
 				Assert.Equal("bundle", next!.Value.Event);
 				Assert.Single(JsonNode.Parse(next.Value.Data)!.AsArray());
@@ -75,17 +75,17 @@ public sealed class SpectateTests(RestHostFixture fixture)
 		using (player)
 		using (watcher)
 		{
-			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate");
+			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", cancellationToken: TestContext.Current.CancellationToken);
 			using (response)
 			{
-				await reader!.ReadAsync();
+				await reader!.ReadAsync(TestContext.Current.CancellationToken);
 				fixture.Host.Time.Advance(Tick);
 
 				var (logout, _) = await watcher.CallAsync(HttpMethod.Post, "/v1/auth/logout");
 				fixture.Host.Time.Advance(Tick);
 
 				Assert.Equal(200, logout);
-				Assert.Null(await reader.ReadAsync());
+				Assert.Null(await reader.ReadAsync(TestContext.Current.CancellationToken));
 			}
 		}
 	}
@@ -96,16 +96,16 @@ public sealed class SpectateTests(RestHostFixture fixture)
 		var (player, watcher, id) = await StartAsync("SpecLeaver", "SpecStays");
 		using (watcher)
 		{
-			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate");
+			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", cancellationToken: TestContext.Current.CancellationToken);
 			using (response)
 			{
-				await reader!.ReadAsync();
+				await reader!.ReadAsync(TestContext.Current.CancellationToken);
 				// A client that logs out within a second of logging in is ignored, as bancho.py does.
 				fixture.Host.Time.Advance(TimeSpan.FromSeconds(2));
 				await player.LogoutAsync();
 				player.Dispose();
 
-				Assert.Null(await reader.ReadAsync());
+				Assert.Null(await reader.ReadAsync(TestContext.Current.CancellationToken));
 			}
 		}
 	}

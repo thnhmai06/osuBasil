@@ -44,7 +44,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 	{
 		using var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
-		var (response, _) = await anon.OpenStreamAsync("/v1/matches/999999");
+		var (response, _) = await anon.OpenStreamAsync("/v1/matches/999999", cancellationToken: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.Equal(404, (int)response.StatusCode);
@@ -60,8 +60,8 @@ public sealed class MatchTests(RestHostFixture fixture)
 		{
 			var (_, matchId) = await OpenAsync(owner, "Secret", true);
 
-			var (hidden, _) = await anon.OpenStreamAsync($"/v1/matches/{matchId}");
-			var (shown, reader) = await owner.OpenStreamAsync($"/v1/matches/{matchId}");
+			var (hidden, _) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
+			var (shown, reader) = await owner.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
 			using (hidden)
 			using (shown)
 			{
@@ -82,11 +82,11 @@ public sealed class MatchTests(RestHostFixture fixture)
 			var (roomId, matchId) = await OpenAsync(owner, "Live");
 			await fixture.Host.DrainEventsAsync();
 
-			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}");
+			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.NotNull(reader);
-				var snapshot = await reader.ReadAsync();
+				var snapshot = await reader.ReadAsync(TestContext.Current.CancellationToken);
 				Assert.Equal("snapshot", snapshot!.Value.Event);
 				var report = JsonNode.Parse(snapshot.Value.Data)!;
 				Assert.Equal(matchId, (int)report["match"]!["id"]!);
@@ -120,18 +120,18 @@ public sealed class MatchTests(RestHostFixture fixture)
 				if (list!["data"]!.AsArray().All(r => (int)r!["id"]! != roomId)) break;
 			}
 
-			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}");
+			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
 			string lastId;
 			using (response)
 			{
 				Assert.NotNull(reader);
-				var snapshot = await reader.ReadAsync();
+				var snapshot = await reader.ReadAsync(TestContext.Current.CancellationToken);
 				Assert.Equal("snapshot", snapshot!.Value.Event);
-				Assert.Null(await reader.ReadAsync());
+				Assert.Null(await reader.ReadAsync(TestContext.Current.CancellationToken));
 				lastId = reader.LastId!;
 			}
 
-			var (again, none) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", lastId);
+			var (again, none) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", lastId, TestContext.Current.CancellationToken);
 			using (again)
 			{
 				Assert.Equal(204, (int)again.StatusCode);

@@ -95,14 +95,14 @@ public sealed class ScoreTests(RestHostFixture fixture)
 		var user = await fixture.Host.CreateUserAsync("ScoreHasRep");
 		var score = await StoreAsync(user.Id, 6);
 		await fixture.Host.Services.GetRequiredService<IReplayStorage>().SaveAsync(score,
-			new OsuVersion(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable), new MemoryStream([9, 8, 7]));
+			new OsuVersion(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable), new MemoryStream([9, 8, 7]), TestContext.Current.CancellationToken);
 		var (client, _) = await fixture.SignInAsync("ScoreWatcher");
 		using (client)
 		{
-			using var response = await client.GetAsync($"/v1/scores/{score.Id}/replay");
+			using var response = await client.GetAsync($"/v1/scores/{score.Id}/replay", TestContext.Current.CancellationToken);
 
 			Assert.Equal(200, (int)response.StatusCode);
-			var file = await response.Content.ReadAsByteArrayAsync();
+			var file = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
 			Assert.Equal([9, 8, 7], file[^(sizeof(long) + 3)..^sizeof(long)]);
 			Assert.Equal(score.Id, BitConverter.ToInt64(file, file.Length - sizeof(long)));
 		}

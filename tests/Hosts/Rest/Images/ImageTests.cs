@@ -34,7 +34,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 		Assert.Equal(200, (int)plain.StatusCode);
 		Assert.Equal("image/png", plain.Content.Headers.ContentType!.MediaType);
 		Assert.Equal(200, (int)bot.StatusCode);
-		Assert.Equal(await plain.Content.ReadAsByteArrayAsync(), await bot.Content.ReadAsByteArrayAsync());
+		Assert.Equal(await plain.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken), await bot.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -87,8 +87,8 @@ public sealed class ImageTests(RestHostFixture fixture)
 			using var full = await anon.GetFromAsync("a", $"/{id}");
 
 			Assert.Equal(200, (int)small.StatusCode);
-			Assert.True((await small.Content.ReadAsByteArrayAsync()).Length <
-			            (await full.Content.ReadAsByteArrayAsync()).Length);
+			Assert.True((await small.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken)).Length <
+			            (await full.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken)).Length);
 		}
 	}
 
@@ -124,7 +124,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	public async Task Screenshot_IsPublicOnTheOsuHost()
 	{
 		var reference = await fixture.Host.Services.GetRequiredService<IScreenshotStorage>()
-			.SaveAsync(new MemoryStream(Png), "png");
+			.SaveAsync(new MemoryStream(Png), "png", TestContext.Current.CancellationToken);
 		using var client = Anonymous();
 
 		using var response = await client.GetFromAsync("osu", "/ss/" + Path.GetFileName(reference.Value));
@@ -139,7 +139,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	public async Task MenuBanner_IsServedOnTheAssetsHost()
 	{
 		await fixture.Host.Services.GetRequiredService<IMenuBannerStorage>()
-			.SaveAsync("rest-banner.png", new MemoryStream(Png));
+			.SaveAsync("rest-banner.png", new MemoryStream(Png), TestContext.Current.CancellationToken);
 		using var client = Anonymous();
 
 		using var response = await client.GetFromAsync("assets", "/menu/banners/rest-banner.png");

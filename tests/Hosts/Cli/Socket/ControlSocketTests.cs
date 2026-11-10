@@ -61,7 +61,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	{
 		var entry = CliFixture.Name("faqsock");
 		var file = Path.GetTempFileName();
-		await File.WriteAllTextAsync(file, "first\nx 99\nthird");
+		await File.WriteAllTextAsync(file, "first\nx 99\nthird", TestContext.Current.CancellationToken);
 		await fixture.RunAsync($"faqs {entry} set --file {file}");
 		using var connection = await ControlClient.ConnectAsync(SocketPath, TestContext.Current.CancellationToken);
 		var output = new StringWriter();

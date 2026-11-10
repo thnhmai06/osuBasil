@@ -288,11 +288,11 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	public async Task Motd_WhenSet_IsSentLineByLine()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
-		var before = await settings.GetAsync();
+		var before = await settings.GetAsync(TestContext.Current.CancellationToken);
 		await settings.CreateOrUpdateAsync(before with
 		{
 			General = new ServerSettings.GeneralSettings { Motd = "first line\nsecond line" }
-		});
+		}, TestContext.Current.CancellationToken);
 		try
 		{
 			using var irc = await Host.SignInAsync("MoMotdSet");
@@ -304,7 +304,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(before);
+			await settings.CreateOrUpdateAsync(before, TestContext.Current.CancellationToken);
 		}
 	}
 }

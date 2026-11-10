@@ -17,8 +17,8 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		using (plain)
 		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
 		{
-			var (noToken, _) = await anon.OpenStreamAsync("/v1/diagnostics");
-			var (denied, _) = await plain.OpenStreamAsync("/v1/diagnostics");
+			var (noToken, _) = await anon.OpenStreamAsync("/v1/diagnostics", cancellationToken: TestContext.Current.CancellationToken);
+			var (denied, _) = await plain.OpenStreamAsync("/v1/diagnostics", cancellationToken: TestContext.Current.CancellationToken);
 			var (action, envelope) = await plain.CallAsync(HttpMethod.Post, "/v1/diagnostics/gc/collect");
 			using (noToken)
 			using (denied)
@@ -38,21 +38,21 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		var (staff, _) = await fixture.SignInAsync("DiagStaff", Staff);
 		using (staff)
 		{
-			var (all, allReader) = await staff.OpenStreamAsync("/v1/diagnostics");
-			var (one, oneReader) = await staff.OpenStreamAsync("/v1/diagnostics/application");
-			var (unknown, _) = await staff.OpenStreamAsync("/v1/diagnostics/nothing");
+			var (all, allReader) = await staff.OpenStreamAsync("/v1/diagnostics", cancellationToken: TestContext.Current.CancellationToken);
+			var (one, oneReader) = await staff.OpenStreamAsync("/v1/diagnostics/application", cancellationToken: TestContext.Current.CancellationToken);
+			var (unknown, _) = await staff.OpenStreamAsync("/v1/diagnostics/nothing", cancellationToken: TestContext.Current.CancellationToken);
 			using (all)
 			using (one)
 			using (unknown)
 			{
-				var snapshot = JsonNode.Parse((await allReader!.ReadAsync())!.Value.Data)!;
+				var snapshot = JsonNode.Parse((await allReader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
 				foreach (var category in new[]
 				         {
 					         "process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database",
 					         "stable", "irc", "events", "sessions"
 				         })
 					Assert.NotNull(snapshot[category]);
-				var application = JsonNode.Parse((await oneReader!.ReadAsync())!.Value.Data)!;
+				var application = JsonNode.Parse((await oneReader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
 				Assert.NotNull(application["usersOnline"]);
 				Assert.Equal(404, (int)unknown.StatusCode);
 			}
@@ -65,10 +65,10 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		var (staff, _) = await fixture.SignInAsync("DiagTick", Staff);
 		using (staff)
 		{
-			var (response, reader) = await staff.OpenStreamAsync("/v1/diagnostics/runtime");
+			var (response, reader) = await staff.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
 			using (response)
 			{
-				await reader!.ReadAsync();
+				await reader!.ReadAsync(TestContext.Current.CancellationToken);
 
 				var bundle = await reader.NextBundleAsync(fixture.Host);
 

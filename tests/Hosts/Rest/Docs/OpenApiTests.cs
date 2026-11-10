@@ -115,9 +115,9 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
-		using var health = await client.GetAsync("/health");
-		using var docs = await client.GetAsync("/docs/v1");
-		using var osuDocs = await client.GetAsync("/docs/osu-stable");
+		using var health = await client.GetAsync("/health", TestContext.Current.CancellationToken);
+		using var docs = await client.GetAsync("/docs/v1", TestContext.Current.CancellationToken);
+		using var osuDocs = await client.GetAsync("/docs/osu-stable", TestContext.Current.CancellationToken);
 
 		Assert.Equal(200, (int)health.StatusCode);
 		Assert.Equal(200, (int)docs.StatusCode);

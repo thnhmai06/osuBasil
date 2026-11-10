@@ -19,8 +19,8 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 				await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Hidden", isPrivate = true });
 			var roomId = (int)envelope!["data"]!["id"]!;
 
-			var (noToken, _) = await anon.OpenStreamAsync($"/v1/rooms/{roomId}/live");
-			var (hidden, _) = await other.OpenStreamAsync($"/v1/rooms/{roomId}/live");
+			var (noToken, _) = await anon.OpenStreamAsync($"/v1/rooms/{roomId}/live", cancellationToken: TestContext.Current.CancellationToken);
+			var (hidden, _) = await other.OpenStreamAsync($"/v1/rooms/{roomId}/live", cancellationToken: TestContext.Current.CancellationToken);
 			using (noToken)
 			using (hidden)
 			{
@@ -38,12 +38,12 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 		{
 			var (_, envelope) = await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Still" });
 			var roomId = (int)envelope!["data"]!["id"]!;
-			var (response, reader) = await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live");
+			var (response, reader) = await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live", cancellationToken: TestContext.Current.CancellationToken);
 			using (response)
 			{
-				Assert.Equal("snapshot", (await reader!.ReadAsync())!.Value.Event);
+				Assert.Equal("snapshot", (await reader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Event);
 
-				var polled = reader.ReadAsync();
+				var polled = reader.ReadAsync(TestContext.Current.CancellationToken);
 				fixture.Host.Time.Advance(TimeSpan.FromSeconds(1));
 				await owner.CallAsync(HttpMethod.Post, $"/v1/rooms/{roomId}/lock");
 				fixture.Host.Time.Advance(TimeSpan.FromSeconds(1));
@@ -61,11 +61,11 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 		{
 			var (_, envelope) = await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Watched" });
 			var roomId = (int)envelope!["data"]!["id"]!;
-			var (response, reader) = await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live");
+			var (response, reader) = await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live", cancellationToken: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.NotNull(reader);
-				var snapshot = await reader.ReadAsync();
+				var snapshot = await reader.ReadAsync(TestContext.Current.CancellationToken);
 				Assert.Equal("snapshot", snapshot!.Value.Event);
 				Assert.False((bool)JsonNode.Parse(snapshot.Value.Data)!["locked"]!);
 
@@ -76,7 +76,7 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 				await owner.CallAsync(HttpMethod.Post, $"/v1/rooms/{roomId}/close");
 				var closed = await reader.NextBundleAsync(fixture.Host);
 				Assert.Equal("closed", (string)JsonNode.Parse(closed.Data)![0]!["type"]!);
-				Assert.Null(await reader.ReadAsync());
+				Assert.Null(await reader.ReadAsync(TestContext.Current.CancellationToken));
 			}
 		}
 	}

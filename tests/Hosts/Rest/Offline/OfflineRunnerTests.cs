@@ -40,7 +40,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 
 			var text = new StringWriter();
 			var created = await ShellRunner.RunAsync(args,
-				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)), text);
+				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)), text, cancellationToken: TestContext.Current.CancellationToken);
 			var again = await OfflineRunner.RunAsync(args,
 				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
 			var missing = await OfflineRunner.RunAsync(["users", "create", "--username", "NoPassword"],
@@ -55,7 +55,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 				builder.Configuration.AddInMemoryCollection(Settings(connection, root));
 				builder.Logging.ClearProviders();
 			});
-			await app.StartAsync();
+			await app.StartAsync(TestContext.Current.CancellationToken);
 			try
 			{
 				var url = new Uri(app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!
@@ -69,7 +69,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 			}
 			finally
 			{
-				await app.StopAsync();
+				await app.StopAsync(TestContext.Current.CancellationToken);
 				await app.DisposeAsync();
 			}
 		}

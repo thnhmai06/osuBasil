@@ -226,9 +226,9 @@ public sealed class UserCommandTests(CliFixture fixture)
 		var user = await NewAsync("sl");
 
 		var (silenced, _) = await fixture.RunAsync($"users {user.Id} silence --duration 90m --reason spam");
-		var whileSilenced = await fixture.Host.Services.GetRequiredService<IUserRepository>().GetAsync(user.Id);
+		var whileSilenced = await fixture.Host.Services.GetRequiredService<IUserRepository>().GetAsync(user.Id, TestContext.Current.CancellationToken);
 		var (unsilenced, _) = await fixture.RunAsync($"users {user.Id} unsilence");
-		var afterwards = await fixture.Host.Services.GetRequiredService<IUserRepository>().GetAsync(user.Id);
+		var afterwards = await fixture.Host.Services.GetRequiredService<IUserRepository>().GetAsync(user.Id, TestContext.Current.CancellationToken);
 
 		Assert.Equal(0, silenced);
 		Assert.Equal(fixture.Host.Time.GetUtcNow() + TimeSpan.FromMinutes(90), whileSilenced!.Value.SilencedUntil);

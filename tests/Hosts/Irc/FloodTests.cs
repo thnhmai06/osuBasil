@@ -13,7 +13,7 @@ public sealed class FloodTests(IrcHostFixture fixture)
 	public async Task Lines_BeyondTheAllowance_AreAnsweredWithANotice_ThenTheConnectionIsClosed()
 	{
 		var settings = fixture.Host.Services.GetRequiredService<ISettingsRepository>();
-		var original = await settings.GetAsync();
+		var original = await settings.GetAsync(TestContext.Current.CancellationToken);
 		await settings.CreateOrUpdateAsync(original with
 		{
 			RateLimits = original.RateLimits with
@@ -21,7 +21,7 @@ public sealed class FloodTests(IrcHostFixture fixture)
 				Admission = new ServerSettings.AdmissionLimitSettings(2, TimeSpan.FromMinutes(1), 4, 256, 32, 8, 1024,
 					0.5, 0.7, 0.9, TimeSpan.FromSeconds(5))
 			}
-		});
+		}, TestContext.Current.CancellationToken);
 
 		try
 		{
@@ -38,7 +38,7 @@ public sealed class FloodTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(original);
+			await settings.CreateOrUpdateAsync(original, TestContext.Current.CancellationToken);
 		}
 	}
 }

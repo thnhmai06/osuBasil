@@ -139,7 +139,7 @@ public sealed class UserTests(RestHostFixture fixture)
 		var (client, id) = await fixture.SignInAsync("MeRedirect");
 		using (client)
 		{
-			using var response = await client.SendAsync(HttpMethod.Patch, "/v1/me/friends?x=1");
+			using var response = await client.SendAsync(HttpMethod.Patch, "/v1/me/friends?x=1", cancellationToken: TestContext.Current.CancellationToken);
 
 			Assert.Equal(307, (int)response.StatusCode);
 			Assert.Equal($"/v1/users/{id}/friends?x=1", response.Headers.Location!.OriginalString);
@@ -152,7 +152,7 @@ public sealed class UserTests(RestHostFixture fixture)
 		var (client, id) = await fixture.SignInAsync("SessionsAlias");
 		using (client)
 		{
-			using var response = await client.GetAsync("/v1/sessions");
+			using var response = await client.GetAsync("/v1/sessions", TestContext.Current.CancellationToken);
 
 			Assert.Equal(307, (int)response.StatusCode);
 			Assert.Equal($"/v1/users/{id}/sessions", response.Headers.Location!.OriginalString);

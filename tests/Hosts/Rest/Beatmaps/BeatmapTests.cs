@@ -170,10 +170,10 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		using (client)
 		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
 		{
-			using var audio = await client.GetAsync($"/v1/beatmapsets/{setId}/audio");
-			using var audioAnon = await anon.GetAsync($"/v1/beatmapsets/{setId}/audio");
-			using var background = await anon.GetAsync($"/v1/beatmapsets/{setId}/background");
-			using var download = await anon.GetAsync($"/v1/beatmapsets/{setId}/download");
+			using var audio = await client.GetAsync($"/v1/beatmapsets/{setId}/audio", TestContext.Current.CancellationToken);
+			using var audioAnon = await anon.GetAsync($"/v1/beatmapsets/{setId}/audio", TestContext.Current.CancellationToken);
+			using var background = await anon.GetAsync($"/v1/beatmapsets/{setId}/background", TestContext.Current.CancellationToken);
+			using var download = await anon.GetAsync($"/v1/beatmapsets/{setId}/download", TestContext.Current.CancellationToken);
 
 			Assert.Equal(307, (int)audio.StatusCode);
 			Assert.Equal($"/v1/beatmaps/{mapId}/audio", audio.Headers.Location!.OriginalString);
@@ -192,7 +192,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var viewer = await fixture.SignInAsync("BmHiddenViewer",
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		hidden.Visible = false;
-		await repository.UpdateAsync(hidden);
+		await repository.UpdateAsync(hidden, TestContext.Current.CancellationToken);
 		try
 		{
 			using (viewer.Client)
@@ -204,7 +204,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 				var (setForAnon, set) = await anon.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{hidden.Beatmapset.Id}");
 				var (_, setForViewer) =
 					await viewer.Client.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{hidden.Beatmapset.Id}");
-				using var redirect = await anon.GetAsync($"/v1/beatmapsets/{hidden.Beatmapset.Id}/background");
+				using var redirect = await anon.GetAsync($"/v1/beatmapsets/{hidden.Beatmapset.Id}/background", TestContext.Current.CancellationToken);
 
 				Assert.Equal(404, anonymous);
 				Assert.Equal(200, permitted);
@@ -218,7 +218,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		finally
 		{
 			hidden.Visible = true;
-			await repository.UpdateAsync(hidden);
+			await repository.UpdateAsync(hidden, TestContext.Current.CancellationToken);
 		}
 	}
 
@@ -233,12 +233,12 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/mosi-mosi-taiko.osz");
 		var beatmap = beatmaps.OrderBy(b => b.Id).First();
 		beatmap.Assets = beatmap.Assets with { BackgroundFile = fileName };
-		await fixture.Host.Services.GetRequiredService<IBeatmapRepository>().UpdateAsync(beatmap);
+		await fixture.Host.Services.GetRequiredService<IBeatmapRepository>().UpdateAsync(beatmap, TestContext.Current.CancellationToken);
 		await fixture.Host.Services.GetRequiredService<IBeatmapsetStorage>().SaveAsync(beatmap.Beatmapset,
-			BeatmapsetFileType.Background, fileName, new MemoryStream("<script>alert(1)</script>"u8.ToArray()));
+			BeatmapsetFileType.Background, fileName, new MemoryStream("<script>alert(1)</script>"u8.ToArray()), TestContext.Current.CancellationToken);
 		using var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
-		using var response = await anon.GetAsync($"/v1/beatmaps/{beatmap.Id}/background");
+		using var response = await anon.GetAsync($"/v1/beatmaps/{beatmap.Id}/background", TestContext.Current.CancellationToken);
 
 		Assert.Equal(200, (int)response.StatusCode);
 		Assert.Equal(expected, response.Content.Headers.ContentType!.MediaType);
@@ -252,7 +252,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var (client, _) = await fixture.SignInAsync("BmDownload");
 		using (client)
 		{
-			using var response = await client.GetAsync($"/v1/beatmapsets/{setId}/download");
+			using var response = await client.GetAsync($"/v1/beatmapsets/{setId}/download", TestContext.Current.CancellationToken);
 
 			Assert.Equal(200, (int)response.StatusCode);
 			Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType!.MediaType);
@@ -266,7 +266,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var (client, _) = await fixture.SignInAsync("BmNoVideo");
 		using (client)
 		{
-			using var response = await client.GetAsync($"/v1/beatmapsets/{setId}/download?noVideo=1");
+			using var response = await client.GetAsync($"/v1/beatmapsets/{setId}/download?noVideo=1", TestContext.Current.CancellationToken);
 
 			Assert.Equal(200, (int)response.StatusCode);
 		}

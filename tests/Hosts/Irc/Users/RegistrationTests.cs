@@ -83,11 +83,11 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	public async Task Pass_AccountAtItsConnectionLimit_IsRefusedWith464AndTheTooManySessionsText()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
-		var original = await settings.GetAsync();
+		var original = await settings.GetAsync(TestContext.Current.CancellationToken);
 		await settings.CreateOrUpdateAsync(original with
 		{
 			Sessions = original.Sessions with { MaxPerUser = new ServerSettings.MaxSessionsSettings { Irc = 1 } }
-		});
+		}, TestContext.Current.CancellationToken);
 		try
 		{
 			var (first, firstKey) = await Host.NewIrcClientAsync("RegLimit");
@@ -106,7 +106,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(original);
+			await settings.CreateOrUpdateAsync(original, TestContext.Current.CancellationToken);
 		}
 	}
 
@@ -247,11 +247,11 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	public async Task RepeatedWrongKeysForOneAccountFromOneAddress_AreRefusedAsTooManyAttempts()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
-		var before = await settings.GetAsync();
+		var before = await settings.GetAsync(TestContext.Current.CancellationToken);
 		await settings.CreateOrUpdateAsync(before with
 		{
 			RateLimits = before.RateLimits with { Login = new ServerSettings.LoginLimitSettings { MaxAttempts = 1 } }
-		});
+		}, TestContext.Current.CancellationToken);
 		// Failed logins of other tests count against the address of this one until their window ends.
 		Host.Time.Advance(before.RateLimits.Login.Window + TimeSpan.FromSeconds(1));
 		try
@@ -273,7 +273,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(before);
+			await settings.CreateOrUpdateAsync(before, TestContext.Current.CancellationToken);
 		}
 	}
 }

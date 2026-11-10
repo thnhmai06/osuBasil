@@ -26,9 +26,9 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	{
 		var (code, text) =
 			await fixture.RunAsync($"beatmapsets create --file {SamplePath("hopes-and-dreams-catch.osz")}");
-		var set = (await Get<IBeatmapsetRepository>().ListAsync(new BeatmapQuery(), new PageRequest(0, 100)))
+		var set = (await Get<IBeatmapsetRepository>().ListAsync(new BeatmapQuery(), new PageRequest(0, 100), TestContext.Current.CancellationToken))
 			.Items.First(item => item.Metadata.Title.Contains("Hopes", StringComparison.OrdinalIgnoreCase));
-		var maps = await Get<IBeatmapRepository>().ListAsync(set);
+		var maps = await Get<IBeatmapRepository>().ListAsync(set, TestContext.Current.CancellationToken);
 
 		var (shown, shownText) = await fixture.RunAsync($"beatmapsets {set.Id}");
 		var (listed, listedText) = await fixture.RunAsync("beatmapsets list --query hopes");
@@ -55,7 +55,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 
 		var (code, _) =
 			await fixture.RunAsync($"beatmapsets {set.Id} set --status loved --visible false --locked true");
-		var stored = (await Get<IBeatmapsetRepository>().GetAsync(set.Id))!;
+		var stored = (await Get<IBeatmapsetRepository>().GetAsync(set.Id, TestContext.Current.CancellationToken))!;
 		var (status, visible, locked) = (stored.Status, stored.Visible, stored.Locked);
 		var (bad, _) = await fixture.RunAsync($"beatmapsets {set.Id} set --status bogus");
 		await fixture.RunAsync($"beatmapsets {set.Id} set --visible true --locked false");
@@ -136,10 +136,10 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	[Fact]
 	public async Task Settings_Set_ChangesAnAdmissionLimit()
 	{
-		var before = await Get<ISettingsRepository>().GetAsync();
+		var before = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 
 		var (code, _) = await fixture.RunAsync("settings rateLimits set --admission.requests 77");
-		var after = await Get<ISettingsRepository>().GetAsync();
+		var after = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 		await fixture.RunAsync($"settings rateLimits set --admission.requests {before.RateLimits.Admission.Requests}");
 
 		Assert.Equal(0, code);
@@ -150,10 +150,10 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	[Fact]
 	public async Task Settings_Set_ChangesANestedFieldAndKeepsTheRest()
 	{
-		var before = await Get<ISettingsRepository>().GetAsync();
+		var before = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 
 		var (code, _) = await fixture.RunAsync("settings rateLimits set --chat.count 7");
-		var after = await Get<ISettingsRepository>().GetAsync();
+		var after = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 		await fixture.RunAsync($"settings rateLimits set --chat.count {before.RateLimits.Chat.Count}");
 
 		Assert.Equal(0, code);
@@ -165,10 +165,10 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	[Fact]
 	public async Task Settings_Set_SessionLimits_ChangesOneKind_AndNonPositiveIsInvalid()
 	{
-		var before = await Get<ISettingsRepository>().GetAsync();
+		var before = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 
 		var (code, _) = await fixture.RunAsync("settings sessions set --maxPerUser.irc 7");
-		var after = await Get<ISettingsRepository>().GetAsync();
+		var after = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 		var (bad, _) = await fixture.RunAsync("settings sessions set --maxPerUser.api 0");
 		await fixture.RunAsync($"settings sessions set --maxPerUser.irc {before.Sessions.MaxPerUser.Irc}");
 
@@ -181,10 +181,10 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	[Fact]
 	public async Task Settings_Set_Locks_TakesBooleans_AndAnInvalidValueIsInvalid()
 	{
-		var before = (await Get<ISettingsRepository>().GetAsync()).Locks;
+		var before = (await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).Locks;
 
 		var (code, _) = await fixture.RunAsync("settings locks set --accounts true --rooms false");
-		var locks = (await Get<ISettingsRepository>().GetAsync()).Locks;
+		var locks = (await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).Locks;
 		var (bad, _) = await fixture.RunAsync("settings rateLimits set --chat.count 0");
 		await fixture.RunAsync(
 			$"settings locks set --accounts {before.HasFlag(Locks.Accounts)} --rooms {before.HasFlag(Locks.Rooms)}");
@@ -218,7 +218,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	{
 		var entry = CliFixture.Name("faq");
 		var file = Path.GetTempFileName();
-		await File.WriteAllTextAsync(file, "How to play?\nJust do.");
+		await File.WriteAllTextAsync(file, "How to play?\nJust do.", TestContext.Current.CancellationToken);
 		try
 		{
 			var (set, _) = await fixture.RunAsync($"faqs {entry} set --file {file}");

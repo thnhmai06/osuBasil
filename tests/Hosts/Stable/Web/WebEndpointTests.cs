@@ -125,7 +125,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 			Content = new StringContent("{}", Encoding.UTF8, "application/json")
 		};
 		request.Headers.Host = $"osu.{Host.Domain}";
-		using var response = await client.SendAsync(request);
+		using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -139,7 +139,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 			Content = new StringContent("{}", Encoding.UTF8, "application/json")
 		};
 		request.Headers.Host = $"osu.{Host.Domain}";
-		using var response = await client.SendAsync(request);
+		using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -243,9 +243,9 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		var sets = Host.Services.GetRequiredService<IBeatmapsetRepository>();
-		var set = (await sets.GetAsync(map.Beatmapset.Id))!;
+		var set = (await sets.GetAsync(map.Beatmapset.Id, TestContext.Current.CancellationToken))!;
 		set.Visible = false;
-		await sets.UpdateAsync(set);
+		await sets.UpdateAsync(set, TestContext.Current.CancellationToken);
 		using var supporter = await Host.NewClientAsync("DirectHiddenNo", privileges: UserPrivilegesExtensions.Default);
 		await supporter.LoginAsync();
 
@@ -260,7 +260,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		finally
 		{
 			set.Visible = true;
-			await sets.UpdateAsync(set);
+			await sets.UpdateAsync(set, TestContext.Current.CancellationToken);
 		}
 	}
 
@@ -315,7 +315,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		using var impostor = OsuClient.Create(Host, "WebRateWindow", "wrong");
 		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++)
 			await impostor.GetFriendsAsync("203.0.113.32");
-		var window = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.Window;
+		var window = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login.Window;
 
 		// advance in steps shorter than the idle limit, polling so the client stays online
 		for (var elapsed = TimeSpan.Zero; elapsed <= window; elapsed += TimeSpan.FromMinutes(2))

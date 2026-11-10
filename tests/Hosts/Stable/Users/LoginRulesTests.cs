@@ -22,7 +22,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 		var registry = Host.Services.GetRequiredService<UserRegistry>();
 		var connection = registry.Find(client.Token!)!;
 		Host.Time.Advance(TimeSpan.FromSeconds(2));
-		await connection.User.ScopeTo(connection).Sessions.CloseAsync(connection.Session.Id);
+		await connection.User.ScopeTo(connection).Sessions.CloseAsync(connection.Session.Id, TestContext.Current.CancellationToken);
 
 		await client.LoginAsync();
 
@@ -34,7 +34,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	{
 		var record = await Host.CreateUserAsync("SilencedOne");
 		record.Value.SilencedUntil = Host.Time.GetUtcNow().AddHours(1);
-		await Host.Services.GetRequiredService<IUserRepository>().UpdateAsync(record);
+		await Host.Services.GetRequiredService<IUserRepository>().UpdateAsync(record, TestContext.Current.CancellationToken);
 		using var client = OsuClient.Create(Host, "SilencedOne", "password");
 
 		var packets = await client.LoginAsync();
@@ -48,7 +48,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	public async Task Login_AfterTooManyWrongPasswords_IsRefusedEvenWithTheRightOne()
 	{
 		using var client = await Host.NewClientAsync("LockedOut");
-		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login
+		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
 			.MaxAttempts;
 		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", "203.0.113.7");
 
@@ -63,7 +63,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	public async Task Login_FromAnotherAddress_IsNotAffectedByTheLockout()
 	{
 		using var client = await Host.NewClientAsync("OtherAddress");
-		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login
+		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
 			.MaxAttempts;
 		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", "203.0.113.8");
 
@@ -76,14 +76,14 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	public async Task Login_BeyondTheConnectionLimitOfOneAddress_IsRefused()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
-		var original = await settings.GetAsync();
+		var original = await settings.GetAsync(TestContext.Current.CancellationToken);
 		await settings.CreateOrUpdateAsync(original with
 		{
 			RateLimits = original.RateLimits with
 			{
 				Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 1 }
 			}
-		});
+		}, TestContext.Current.CancellationToken);
 		try
 		{
 			using var first = await Host.NewClientAsync("ConnOne");
@@ -103,7 +103,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 				{
 					Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 10_000 }
 				}
-			});
+			}, TestContext.Current.CancellationToken);
 		}
 	}
 
