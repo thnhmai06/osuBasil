@@ -146,7 +146,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	public async Task Screenshots_ListAndDelete_NeedTheManagePermission()
 	{
 		var reference = await fixture.Host.Services.GetRequiredService<IScreenshotStorage>()
-			.SaveAsync(new MemoryStream([1, 2, 3]), "png", TestContext.Current.CancellationToken);
+			.SaveAsync(new MemoryStream([1, 2, 3]), "png");
 		var id = Path.GetFileName(reference.Value);
 		var (plain, _) = await fixture.SignInAsync("ShotPlain");
 		var (moderator, _) =

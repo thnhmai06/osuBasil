@@ -17,14 +17,13 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 	}
 
 	/// <inheritdoc />
-	public async Task<ContentReference> SaveAsync(Stream content, string extension,
-		CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(Stream content, string extension)
 	{
 		if (extension.Length is < 1 or > 8 || !extension.All(char.IsAsciiLetterOrDigit))
 			throw new ArgumentException("The extension must be 1 to 8 ASCII letters or digits.", nameof(extension));
 
 		var name = $"{Guid.CreateVersion7():D}.{extension.ToLowerInvariant()}";
-		await Files.SaveAsync(name, content, cancellationToken);
+		await Files.SaveAsync(name, content, CancellationToken.None);
 		return Files.ReferenceOf(name);
 	}
 
@@ -35,7 +34,7 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(ContentReference screenshot)
 	{
 		if (Files.TryGetName(screenshot, out var name))
 			Files.Delete(name);

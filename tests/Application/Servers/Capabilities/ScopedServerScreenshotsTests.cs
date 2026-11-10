@@ -36,7 +36,7 @@ public sealed class ScopedServerScreenshotsTests
 		{
 			Inspector = (IScreenshotInspector)App.Provider.GetRequiredService(typeof(IScreenshotInspector));
 			Storage = (IScreenshotStorage)App.Provider.GetRequiredService(typeof(IScreenshotStorage));
-			Storage.SaveAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Stored);
+			Storage.SaveAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns(Stored);
 		}
 
 		public TestApplication App { get; } = new();
@@ -117,7 +117,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 		Assert.Equal(Stored, screenshot);
-		await f.Storage.Received(1).SaveAsync(Arg.Any<Stream>(), extension, Arg.Any<CancellationToken>());
+		await f.Storage.Received(1).SaveAsync(Arg.Any<Stream>(), extension);
 	}
 
 	[Fact]
@@ -127,7 +127,7 @@ public sealed class ScopedServerScreenshotsTests
 		f.InspectedAs(new ScreenshotInfo("png", 10, 10));
 		var uploaded = Enumerable.Range(0, 1000).Select(i => (byte)(i % 251)).ToArray();
 		byte[]? savedBytes = null;
-		f.Storage.SaveAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+		f.Storage.SaveAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns(call =>
 		{
 			var copy = new MemoryStream();
 			call.Arg<Stream>().CopyTo(copy);
@@ -358,7 +358,7 @@ public sealed class ScopedServerScreenshotsTests
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
-		await f.Storage.Received(1).DeleteAsync(Stored, Arg.Any<CancellationToken>());
+		await f.Storage.Received(1).DeleteAsync(Stored);
 	}
 
 	[Fact]
@@ -371,7 +371,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
-		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default, TestContext.Current.CancellationToken);
+		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default);
 	}
 
 	[Fact]

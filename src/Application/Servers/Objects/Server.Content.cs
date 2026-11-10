@@ -13,7 +13,7 @@ public sealed partial class Server
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
 	internal async Task<ServerOutcome> SaveFaqAsync(string entry, string text, CancellationToken cancellationToken)
 	{
-		await using var writer = await Context.Faqs.CreateOrUpdateAsync(entry, cancellationToken);
+		await using var writer = await Context.Faqs.CreateOrUpdateAsync(entry);
 		await writer.WriteAsync(text);
 		writer.Commit();
 		return ServerOutcome.Ok;
@@ -26,7 +26,7 @@ public sealed partial class Server
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
 	internal async Task<ServerOutcome> DeleteFaqAsync(string entry, CancellationToken cancellationToken)
 	{
-		await Context.Faqs.DeleteAsync(entry, cancellationToken);
+		await Context.Faqs.DeleteAsync(entry);
 		return ServerOutcome.Ok;
 	}
 
@@ -45,7 +45,7 @@ public sealed partial class Server
 	{
 		var banner = new MenuBanner
 		{
-			Image = await Context.BannerImages.SaveAsync(name, image, cancellationToken),
+			Image = await Context.BannerImages.SaveAsync(name, image),
 			Url = url,
 			StartsAt = startsAt,
 			EndsAt = endsAt,
@@ -53,11 +53,11 @@ public sealed partial class Server
 		};
 		try
 		{
-			await Context.Banners.CreateOrUpdateAsync(banner, cancellationToken);
+			await Context.Banners.CreateOrUpdateAsync(banner);
 		}
 		catch
 		{
-			await Context.BannerImages.DeleteAsync(banner.Image, CancellationToken.None);
+			await Context.BannerImages.DeleteAsync(banner.Image);
 			throw;
 		}
 
@@ -70,8 +70,8 @@ public sealed partial class Server
 	/// <returns>Ok.</returns>
 	internal async Task<ServerOutcome> DeleteBannerAsync(MenuBanner banner, CancellationToken cancellationToken)
 	{
-		await Context.Banners.DeleteAsync(banner, cancellationToken);
-		await Context.BannerImages.DeleteAsync(banner.Image, cancellationToken);
+		await Context.Banners.DeleteAsync(banner);
+		await Context.BannerImages.DeleteAsync(banner.Image);
 		return ServerOutcome.Ok;
 	}
 
@@ -84,7 +84,7 @@ public sealed partial class Server
 	internal async Task<(ServerOutcome Outcome, ContentReference Image)> AddSeasonalAsync(string name, Stream image,
 		CancellationToken cancellationToken)
 	{
-		return (ServerOutcome.Ok, await Context.Seasonals.SaveAsync(name, image, cancellationToken));
+		return (ServerOutcome.Ok, await Context.Seasonals.SaveAsync(name, image));
 	}
 
 	/// <summary>Deletes a seasonal background.</summary>
@@ -93,7 +93,7 @@ public sealed partial class Server
 	/// <returns>Ok.</returns>
 	internal async Task<ServerOutcome> DeleteSeasonalAsync(ContentReference image, CancellationToken cancellationToken)
 	{
-		await Context.Seasonals.DeleteAsync(image, cancellationToken);
+		await Context.Seasonals.DeleteAsync(image);
 		return ServerOutcome.Ok;
 	}
 
@@ -109,11 +109,10 @@ public sealed partial class Server
 	{
 		var settings = await Context.Settings.GetAsync(cancellationToken);
 		var reference = name is not null && image is not null
-			? await Context.Icon.SaveAsync(name, image, cancellationToken)
+			? await Context.Icon.SaveAsync(name, image)
 			: settings.MenuIcon.Image;
 		await Context.Settings.CreateOrUpdateAsync(
-			settings with { MenuIcon = new ServerSettings.MenuIconSettings { Url = url, Image = reference } },
-			cancellationToken);
+			settings with { MenuIcon = new ServerSettings.MenuIconSettings { Url = url, Image = reference } });
 		return ServerOutcome.Ok;
 	}
 
@@ -122,10 +121,9 @@ public sealed partial class Server
 	/// <returns>Ok.</returns>
 	internal async Task<ServerOutcome> ClearIconAsync(CancellationToken cancellationToken)
 	{
-		await Context.Icon.DeleteAsync(cancellationToken);
+		await Context.Icon.DeleteAsync();
 		var settings = await Context.Settings.GetAsync(cancellationToken);
-		await Context.Settings.CreateOrUpdateAsync(settings with { MenuIcon = new ServerSettings.MenuIconSettings() },
-			cancellationToken);
+		await Context.Settings.CreateOrUpdateAsync(settings with { MenuIcon = new ServerSettings.MenuIconSettings() });
 		return ServerOutcome.Ok;
 	}
 }

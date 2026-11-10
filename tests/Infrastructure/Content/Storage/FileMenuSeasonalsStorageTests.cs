@@ -30,8 +30,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[Fact]
 	public async Task A_saved_background_opens_with_the_bytes_it_was_saved_with()
 	{
-		var reference = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"),
-			TestContext.Current.CancellationToken);
+		var reference = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
 
 		Assert.Equal("autumn",
 			await TestStreams.ReadAllAsync(await _seasonals.OpenAsync(reference,
@@ -42,9 +41,9 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	public async Task The_reference_of_a_saved_background_is_listed_with_those_of_the_others()
 	{
 		var autumn =
-			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("1"), TestContext.Current.CancellationToken);
+			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("1"));
 		var spring =
-			await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("2"), TestContext.Current.CancellationToken);
+			await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("2"));
 
 		var listed = await _seasonals.ListAsync(TestContext.Current.CancellationToken);
 
@@ -61,12 +60,10 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[Fact]
 	public async Task Saving_under_a_name_in_use_replaces_that_background_only()
 	{
-		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("old and longer"),
-			TestContext.Current.CancellationToken);
-		var spring = await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("spring"),
-			TestContext.Current.CancellationToken);
+		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("old and longer"));
+		var spring = await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("spring"));
 
-		await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("new"), TestContext.Current.CancellationToken);
+		await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("new"));
 
 		Assert.Equal("new",
 			await TestStreams.ReadAllAsync(await _seasonals.OpenAsync(autumn, TestContext.Current.CancellationToken)));
@@ -78,11 +75,10 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[Fact]
 	public async Task A_save_that_fails_keeps_the_background_stored_under_the_name()
 	{
-		var reference = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("previous"),
-			TestContext.Current.CancellationToken);
+		var reference = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("previous"));
 
 		await Assert.ThrowsAsync<IOException>(() =>
-			_seasonals.SaveAsync("autumn.jpg", new TestStreams.Failing(), TestContext.Current.CancellationToken));
+			_seasonals.SaveAsync("autumn.jpg", new TestStreams.Failing()));
 
 		Assert.Equal("previous",
 			await TestStreams.ReadAllAsync(await _seasonals.OpenAsync(reference,
@@ -93,11 +89,11 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	public async Task A_deleted_background_is_no_longer_stored_and_the_others_are()
 	{
 		var autumn =
-			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("1"), TestContext.Current.CancellationToken);
+			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("1"));
 		var spring =
-			await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("2"), TestContext.Current.CancellationToken);
+			await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("2"));
 
-		await _seasonals.DeleteAsync(autumn, TestContext.Current.CancellationToken);
+		await _seasonals.DeleteAsync(autumn);
 
 		Assert.Null(await _seasonals.OpenAsync(autumn, TestContext.Current.CancellationToken));
 		Assert.Equal([spring.Value],
@@ -110,14 +106,14 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 		var reference = new ContentReference("Menu/Seasonals/missing.jpg");
 
 		Assert.Null(await _seasonals.OpenAsync(reference, TestContext.Current.CancellationToken));
-		await _seasonals.DeleteAsync(reference, TestContext.Current.CancellationToken);
+		await _seasonals.DeleteAsync(reference);
 	}
 
 	[Fact]
 	public async Task A_reference_to_another_storage_or_an_address_opens_as_null_and_deletes_nothing()
 	{
 		var stored =
-			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("kept"), TestContext.Current.CancellationToken);
+			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("kept"));
 		var banner = new ContentReference("Menu/Banners/autumn.jpg");
 		var address = new ContentReference(new Uri("https://example.com/Menu/Seasonals/autumn.jpg"));
 		await File.WriteAllTextAsync(Path.Combine(_data.Paths.MenuBanners.Path, "autumn.jpg"), "banner",
@@ -125,8 +121,8 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 
 		Assert.Null(await _seasonals.OpenAsync(banner, TestContext.Current.CancellationToken));
 		Assert.Null(await _seasonals.OpenAsync(address, TestContext.Current.CancellationToken));
-		await _seasonals.DeleteAsync(banner, TestContext.Current.CancellationToken);
-		await _seasonals.DeleteAsync(address, TestContext.Current.CancellationToken);
+		await _seasonals.DeleteAsync(banner);
+		await _seasonals.DeleteAsync(address);
 
 		Assert.True(File.Exists(Path.Combine(_data.Paths.MenuBanners.Path, "autumn.jpg")));
 		Assert.Equal("kept",
@@ -136,10 +132,9 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[Fact]
 	public async Task A_renamed_background_opens_under_its_new_reference_with_its_bytes_and_no_longer_under_the_old()
 	{
-		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"),
-			TestContext.Current.CancellationToken);
+		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
 
-		var renamed = await _seasonals.RenameAsync(autumn, "fall.jpg", TestContext.Current.CancellationToken);
+		var renamed = await _seasonals.RenameAsync(autumn, "fall.jpg");
 
 		Assert.NotNull(renamed);
 		Assert.Equal("Menu/Seasonals/fall.jpg", renamed.Value.Value);
@@ -154,8 +149,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[Fact]
 	public async Task Renaming_a_reference_to_no_stored_background_gives_null()
 	{
-		var renamed = await _seasonals.RenameAsync(new ContentReference("Menu/Seasonals/missing.jpg"), "fall.jpg",
-			TestContext.Current.CancellationToken);
+		var renamed = await _seasonals.RenameAsync(new ContentReference("Menu/Seasonals/missing.jpg"), "fall.jpg");
 
 		Assert.Null(renamed);
 		Assert.Empty(await _seasonals.ListAsync(TestContext.Current.CancellationToken));
@@ -164,12 +158,10 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[Fact]
 	public async Task Renaming_onto_a_taken_name_gives_null_and_changes_neither_background()
 	{
-		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"),
-			TestContext.Current.CancellationToken);
-		var spring = await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("spring"),
-			TestContext.Current.CancellationToken);
+		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
+		var spring = await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("spring"));
 
-		var renamed = await _seasonals.RenameAsync(autumn, "spring.jpg", TestContext.Current.CancellationToken);
+		var renamed = await _seasonals.RenameAsync(autumn, "spring.jpg");
 
 		Assert.Null(renamed);
 		Assert.Equal("autumn",
@@ -184,11 +176,10 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[MemberData(nameof(NotCanonicalNames))]
 	public async Task Renaming_to_a_name_that_is_not_safe_is_refused_and_keeps_the_background(string newName)
 	{
-		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"),
-			TestContext.Current.CancellationToken);
+		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
 
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-			_seasonals.RenameAsync(autumn, newName, TestContext.Current.CancellationToken));
+			_seasonals.RenameAsync(autumn, newName));
 
 		Assert.Equal("autumn",
 			await TestStreams.ReadAllAsync(await _seasonals.OpenAsync(autumn, TestContext.Current.CancellationToken)));
@@ -202,7 +193,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	public async Task Saving_under_a_name_that_is_not_safe_is_refused_and_stores_nothing(string name)
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-			_seasonals.SaveAsync(name, TestStreams.Of("data"), TestContext.Current.CancellationToken));
+			_seasonals.SaveAsync(name, TestStreams.Of("data")));
 
 		Assert.Empty(await _seasonals.ListAsync(TestContext.Current.CancellationToken));
 		Assert.Empty(TempData.FilesUnder(_data.Root));

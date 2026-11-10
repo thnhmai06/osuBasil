@@ -8,8 +8,7 @@ public interface IMenuBannerRepository
 {
 	/// <summary>Stores a banner, replacing the stored banner with the same image.</summary>
 	/// <param name="banner">The banner to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(MenuBanner banner);
 
 	/// <summary>Gets a banner by its image.</summary>
 	/// <param name="image">The image to look up.</param>
@@ -25,6 +24,5 @@ public interface IMenuBannerRepository
 
 	/// <summary>Deletes a banner; deleting a missing one does nothing.</summary>
 	/// <param name="banner">The banner to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default);
+	Task DeleteAsync(MenuBanner banner);
 }

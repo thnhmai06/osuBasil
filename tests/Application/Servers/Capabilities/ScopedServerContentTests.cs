@@ -16,9 +16,9 @@ public sealed class ScopedServerContentTests
 	{
 		var image = new ContentReference("banners/a.png");
 		var images = Substitute.For<IMenuBannerStorage>();
-		images.SaveAsync("a.png", Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(image);
+		images.SaveAsync("a.png", Arg.Any<Stream>()).Returns(image);
 		var banners = Substitute.For<IMenuBannerRepository>();
-		banners.CreateOrUpdateAsync(Arg.Any<MenuBanner>(), Arg.Any<CancellationToken>())
+		banners.CreateOrUpdateAsync(Arg.Any<MenuBanner>())
 			.Returns(Task.FromException(new IOException("disk full")));
 		using var app = new TestApplication(services =>
 		{
@@ -31,6 +31,6 @@ public sealed class ScopedServerContentTests
 		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Content.AddBannerAsync("a.png",
 			new MemoryStream(), new Uri("https://example.org"), null, null, TestContext.Current.CancellationToken));
 
-		await images.Received(1).DeleteAsync(image, Arg.Any<CancellationToken>());
+		await images.Received(1).DeleteAsync(image);
 	}
 }

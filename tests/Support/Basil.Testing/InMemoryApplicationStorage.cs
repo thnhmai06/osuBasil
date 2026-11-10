@@ -515,9 +515,8 @@ internal sealed class InMemorySettingsRepository : ISettingsRepository
 		return ValueTask.FromResult(Current);
 	}
 
-	public Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(ServerSettings settings)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		Current = settings;
 		return Task.CompletedTask;
 	}

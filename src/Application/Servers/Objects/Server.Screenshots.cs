@@ -33,7 +33,7 @@ public sealed partial class Server
 		}
 
 		upload.Content.Position = 0;
-		var reference = await Context.Screenshots.SaveAsync(upload.Content, info.Extension, cancellationToken);
+		var reference = await Context.Screenshots.SaveAsync(upload.Content, info.Extension);
 		return (reference, ServerOutcome.Ok);
 	}
 
@@ -52,7 +52,7 @@ public sealed partial class Server
 	internal async Task<ServerOutcome> DeleteScreenshotAsync(ContentReference screenshot,
 		CancellationToken cancellationToken)
 	{
-		await Context.Screenshots.DeleteAsync(screenshot, cancellationToken);
+		await Context.Screenshots.DeleteAsync(screenshot);
 		return ServerOutcome.Ok;
 	}
 }

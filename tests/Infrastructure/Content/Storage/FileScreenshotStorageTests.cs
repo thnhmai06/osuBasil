@@ -25,7 +25,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	public async Task A_saved_screenshot_opens_with_the_bytes_it_was_saved_with()
 	{
 		var reference =
-			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png", TestContext.Current.CancellationToken);
+			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png");
 
 		Assert.Equal("shot",
 			await TestStreams.ReadAllAsync(await _screenshots.OpenAsync(reference,
@@ -36,7 +36,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	public async Task A_screenshot_is_stored_under_a_uuid_name_with_the_extension()
 	{
 		var reference =
-			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png", TestContext.Current.CancellationToken);
+			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png");
 
 		Assert.StartsWith("Screenshots/", reference.Value);
 		var name = reference.Value["Screenshots/".Length..];
@@ -47,9 +47,9 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	[Fact]
 	public async Task Two_screenshots_get_different_references_and_neither_replaces_the_other()
 	{
-		var first = await _screenshots.SaveAsync(TestStreams.Of("first"), "png", TestContext.Current.CancellationToken);
+		var first = await _screenshots.SaveAsync(TestStreams.Of("first"), "png");
 		var second =
-			await _screenshots.SaveAsync(TestStreams.Of("first"), "png", TestContext.Current.CancellationToken);
+			await _screenshots.SaveAsync(TestStreams.Of("first"), "png");
 
 		Assert.NotEqual(first, second);
 		Assert.Equal(2, (await _screenshots.ListAsync(TestContext.Current.CancellationToken)).Count());
@@ -58,8 +58,8 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	[Fact]
 	public async Task The_references_of_the_saved_screenshots_are_listed()
 	{
-		var first = await _screenshots.SaveAsync(TestStreams.Of("1"), "png", TestContext.Current.CancellationToken);
-		var second = await _screenshots.SaveAsync(TestStreams.Of("2"), "jpg", TestContext.Current.CancellationToken);
+		var first = await _screenshots.SaveAsync(TestStreams.Of("1"), "png");
+		var second = await _screenshots.SaveAsync(TestStreams.Of("2"), "jpg");
 
 		var listed = await _screenshots.ListAsync(TestContext.Current.CancellationToken);
 
@@ -82,7 +82,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	public async Task An_extension_of_one_to_eight_ascii_letters_or_digits_is_accepted(string extension)
 	{
 		var reference =
-			await _screenshots.SaveAsync(TestStreams.Of("shot"), extension, TestContext.Current.CancellationToken);
+			await _screenshots.SaveAsync(TestStreams.Of("shot"), extension);
 
 		Assert.EndsWith("." + extension, reference.Value, StringComparison.OrdinalIgnoreCase);
 		Assert.Equal("shot",
@@ -104,7 +104,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	public async Task Any_other_extension_is_refused_and_stores_nothing(string extension)
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-			_screenshots.SaveAsync(TestStreams.Of("shot"), extension, TestContext.Current.CancellationToken));
+			_screenshots.SaveAsync(TestStreams.Of("shot"), extension));
 
 		Assert.Empty(await _screenshots.ListAsync(TestContext.Current.CancellationToken));
 		Assert.Empty(TempData.FilesUnder(_data.Root));
@@ -114,7 +114,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	public async Task A_save_that_fails_stores_nothing()
 	{
 		await Assert.ThrowsAsync<IOException>(() =>
-			_screenshots.SaveAsync(new TestStreams.Failing(), "png", TestContext.Current.CancellationToken));
+			_screenshots.SaveAsync(new TestStreams.Failing(), "png"));
 
 		Assert.Empty(await _screenshots.ListAsync(TestContext.Current.CancellationToken));
 		Assert.Empty(TempData.FilesUnder(_data.Root));
@@ -123,10 +123,10 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	[Fact]
 	public async Task A_deleted_screenshot_is_no_longer_stored_and_the_others_are()
 	{
-		var gone = await _screenshots.SaveAsync(TestStreams.Of("gone"), "png", TestContext.Current.CancellationToken);
-		var kept = await _screenshots.SaveAsync(TestStreams.Of("kept"), "png", TestContext.Current.CancellationToken);
+		var gone = await _screenshots.SaveAsync(TestStreams.Of("gone"), "png");
+		var kept = await _screenshots.SaveAsync(TestStreams.Of("kept"), "png");
 
-		await _screenshots.DeleteAsync(gone, TestContext.Current.CancellationToken);
+		await _screenshots.DeleteAsync(gone);
 
 		Assert.Null(await _screenshots.OpenAsync(gone, TestContext.Current.CancellationToken));
 		Assert.Equal([kept.Value],
@@ -139,13 +139,13 @@ public sealed class FileScreenshotStorageTests : IDisposable
 		var reference = new ContentReference("Screenshots/missing.png");
 
 		Assert.Null(await _screenshots.OpenAsync(reference, TestContext.Current.CancellationToken));
-		await _screenshots.DeleteAsync(reference, TestContext.Current.CancellationToken);
+		await _screenshots.DeleteAsync(reference);
 	}
 
 	[Fact]
 	public async Task A_reference_to_another_storage_or_an_address_opens_as_null_and_deletes_nothing()
 	{
-		var stored = await _screenshots.SaveAsync(TestStreams.Of("kept"), "png", TestContext.Current.CancellationToken);
+		var stored = await _screenshots.SaveAsync(TestStreams.Of("kept"), "png");
 		var banner = new ContentReference("Menu/Banners/shot.png");
 		var address = new ContentReference(new Uri("https://example.com/Screenshots/shot.png"));
 		await File.WriteAllTextAsync(Path.Combine(_data.Paths.MenuBanners.Path, "shot.png"), "banner",
@@ -153,8 +153,8 @@ public sealed class FileScreenshotStorageTests : IDisposable
 
 		Assert.Null(await _screenshots.OpenAsync(banner, TestContext.Current.CancellationToken));
 		Assert.Null(await _screenshots.OpenAsync(address, TestContext.Current.CancellationToken));
-		await _screenshots.DeleteAsync(banner, TestContext.Current.CancellationToken);
-		await _screenshots.DeleteAsync(address, TestContext.Current.CancellationToken);
+		await _screenshots.DeleteAsync(banner);
+		await _screenshots.DeleteAsync(address);
 
 		Assert.True(File.Exists(Path.Combine(_data.Paths.MenuBanners.Path, "shot.png")));
 		Assert.Equal("kept",

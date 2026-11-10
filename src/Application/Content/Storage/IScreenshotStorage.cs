@@ -13,10 +13,9 @@ public interface IScreenshotStorage
 	/// <summary>Stores a screenshot under a new unique name.</summary>
 	/// <param name="content">The image bytes.</param>
 	/// <param name="extension">The file extension of the image format, without the dot.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored screenshot.</returns>
 	/// <exception cref="ArgumentException"><paramref name="extension" /> is not 1 to 8 ASCII letters or digits.</exception>
-	Task<ContentReference> SaveAsync(Stream content, string extension, CancellationToken cancellationToken = default);
+	Task<ContentReference> SaveAsync(Stream content, string extension);
 
 	/// <summary>Opens a stored screenshot.</summary>
 	/// <param name="screenshot">The reference of the screenshot to open.</param>
@@ -26,6 +25,5 @@ public interface IScreenshotStorage
 
 	/// <summary>Deletes a stored screenshot; a reference to no screenshot stored here does nothing.</summary>
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default);
+	Task DeleteAsync(ContentReference screenshot);
 }

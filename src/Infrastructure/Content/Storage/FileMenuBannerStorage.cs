@@ -17,10 +17,9 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	}
 
 	/// <inheritdoc />
-	public async Task<ContentReference> SaveAsync(string name, Stream content,
-		CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(string name, Stream content)
 	{
-		await Files.SaveAsync(name, content, cancellationToken);
+		await Files.SaveAsync(name, content, CancellationToken.None);
 		return Files.ReferenceOf(name);
 	}
 
@@ -31,7 +30,7 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(ContentReference image, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(ContentReference image)
 	{
 		if (Files.TryGetName(image, out var name))
 			Files.Delete(name);

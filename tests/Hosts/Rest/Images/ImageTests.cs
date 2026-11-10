@@ -124,7 +124,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	public async Task Screenshot_IsPublicOnTheOsuHost()
 	{
 		var reference = await fixture.Host.Services.GetRequiredService<IScreenshotStorage>()
-			.SaveAsync(new MemoryStream(Png), "png", TestContext.Current.CancellationToken);
+			.SaveAsync(new MemoryStream(Png), "png");
 		using var client = Anonymous();
 
 		using var response = await client.GetFromAsync("osu", "/ss/" + Path.GetFileName(reference.Value));
@@ -139,7 +139,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	public async Task MenuBanner_IsServedOnTheAssetsHost()
 	{
 		await fixture.Host.Services.GetRequiredService<IMenuBannerStorage>()
-			.SaveAsync("rest-banner.png", new MemoryStream(Png), TestContext.Current.CancellationToken);
+			.SaveAsync("rest-banner.png", new MemoryStream(Png));
 		using var client = Anonymous();
 
 		using var response = await client.GetFromAsync("assets", "/menu/banners/rest-banner.png");

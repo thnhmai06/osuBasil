@@ -21,7 +21,7 @@ public sealed class FloodTests(IrcHostFixture fixture)
 				Admission = new ServerSettings.AdmissionLimitSettings(2, TimeSpan.FromMinutes(1), 4, 256, 32, 8, 1024,
 					0.5, 0.7, 0.9, TimeSpan.FromSeconds(5))
 			}
-		}, TestContext.Current.CancellationToken);
+		});
 
 		try
 		{
@@ -38,7 +38,7 @@ public sealed class FloodTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(original, TestContext.Current.CancellationToken);
+			await settings.CreateOrUpdateAsync(original);
 		}
 	}
 }

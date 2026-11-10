@@ -19,7 +19,7 @@ public sealed partial class Server
 	internal async Task<ServerOutcome> UpdateSettingsAsync(ServerSettings settings,
 		CancellationToken cancellationToken)
 	{
-		await Context.Settings.CreateOrUpdateAsync(settings, cancellationToken);
+		await Context.Settings.CreateOrUpdateAsync(settings);
 		return ServerOutcome.Ok;
 	}
 }

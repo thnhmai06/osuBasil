@@ -30,8 +30,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	[Fact]
 	public async Task A_saved_image_opens_with_the_bytes_it_was_saved_with()
 	{
-		var reference = await _banners.SaveAsync("summer.png", TestStreams.Of("summer"),
-			TestContext.Current.CancellationToken);
+		var reference = await _banners.SaveAsync("summer.png", TestStreams.Of("summer"));
 
 		Assert.Equal("summer",
 			await TestStreams.ReadAllAsync(await _banners.OpenAsync(reference, TestContext.Current.CancellationToken)));
@@ -40,8 +39,8 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	[Fact]
 	public async Task The_reference_of_a_saved_image_is_listed_with_those_of_the_others()
 	{
-		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("1"), TestContext.Current.CancellationToken);
-		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("2"), TestContext.Current.CancellationToken);
+		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("1"));
+		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("2"));
 
 		var listed = await _banners.ListAsync(TestContext.Current.CancellationToken);
 
@@ -58,13 +57,11 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	[Fact]
 	public async Task Saving_under_a_name_in_use_replaces_that_image_only()
 	{
-		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("old and longer"),
-			TestContext.Current.CancellationToken);
-		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("winter"),
-			TestContext.Current.CancellationToken);
+		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("old and longer"));
+		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("winter"));
 
 		var replaced =
-			await _banners.SaveAsync("summer.png", TestStreams.Of("new"), TestContext.Current.CancellationToken);
+			await _banners.SaveAsync("summer.png", TestStreams.Of("new"));
 
 		Assert.Equal(summer, replaced);
 		Assert.Equal("new",
@@ -77,11 +74,10 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	[Fact]
 	public async Task A_save_that_fails_keeps_the_image_stored_under_the_name()
 	{
-		var reference = await _banners.SaveAsync("summer.png", TestStreams.Of("previous"),
-			TestContext.Current.CancellationToken);
+		var reference = await _banners.SaveAsync("summer.png", TestStreams.Of("previous"));
 
 		await Assert.ThrowsAsync<IOException>(() =>
-			_banners.SaveAsync("summer.png", new TestStreams.Failing(), TestContext.Current.CancellationToken));
+			_banners.SaveAsync("summer.png", new TestStreams.Failing()));
 
 		Assert.Equal("previous",
 			await TestStreams.ReadAllAsync(await _banners.OpenAsync(reference, TestContext.Current.CancellationToken)));
@@ -91,10 +87,10 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	[Fact]
 	public async Task A_deleted_image_is_no_longer_stored_and_the_others_are()
 	{
-		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("1"), TestContext.Current.CancellationToken);
-		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("2"), TestContext.Current.CancellationToken);
+		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("1"));
+		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("2"));
 
-		await _banners.DeleteAsync(summer, TestContext.Current.CancellationToken);
+		await _banners.DeleteAsync(summer);
 
 		Assert.Null(await _banners.OpenAsync(summer, TestContext.Current.CancellationToken));
 		Assert.Equal([winter.Value],
@@ -113,7 +109,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	public async Task A_reference_to_another_storage_or_an_address_opens_as_null_and_deletes_nothing()
 	{
 		var stored =
-			await _banners.SaveAsync("summer.png", TestStreams.Of("kept"), TestContext.Current.CancellationToken);
+			await _banners.SaveAsync("summer.png", TestStreams.Of("kept"));
 		var seasonal = new ContentReference("Menu/Seasonals/summer.png");
 		var address = new ContentReference(new Uri("https://example.com/Menu/Banners/summer.png"));
 		await File.WriteAllTextAsync(Path.Combine(_data.Paths.MenuSeasonals.Path, "summer.png"), "seasonal",
@@ -122,9 +118,9 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 		Assert.Null(await _banners.OpenAsync(seasonal, TestContext.Current.CancellationToken));
 		Assert.Null(await _banners.OpenAsync(address, TestContext.Current.CancellationToken));
 		Assert.Null(await _banners.OpenAsync(default, TestContext.Current.CancellationToken));
-		await _banners.DeleteAsync(seasonal, TestContext.Current.CancellationToken);
-		await _banners.DeleteAsync(address, TestContext.Current.CancellationToken);
-		await _banners.DeleteAsync(default, TestContext.Current.CancellationToken);
+		await _banners.DeleteAsync(seasonal);
+		await _banners.DeleteAsync(address);
+		await _banners.DeleteAsync(default);
 
 		Assert.True(File.Exists(Path.Combine(_data.Paths.MenuSeasonals.Path, "summer.png")));
 		Assert.Equal("kept",
@@ -134,8 +130,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	[Fact]
 	public async Task Deleting_an_image_that_is_not_stored_does_nothing()
 	{
-		await _banners.DeleteAsync(new ContentReference("Menu/Banners/missing.png"),
-			TestContext.Current.CancellationToken);
+		await _banners.DeleteAsync(new ContentReference("Menu/Banners/missing.png"));
 
 		Assert.Empty(await _banners.ListAsync(TestContext.Current.CancellationToken));
 	}
@@ -147,7 +142,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	public async Task Saving_under_a_name_that_is_not_safe_is_refused_and_stores_nothing(string name)
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-			_banners.SaveAsync(name, TestStreams.Of("data"), TestContext.Current.CancellationToken));
+			_banners.SaveAsync(name, TestStreams.Of("data")));
 
 		Assert.Empty(await _banners.ListAsync(TestContext.Current.CancellationToken));
 		Assert.Empty(TempData.FilesUnder(_data.Root));
@@ -158,10 +153,10 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 		Saving_under_a_name_with_a_trailing_dot_is_refused_without_replacing_the_image_Windows_resolves_it_to()
 	{
 		var reference =
-			await _banners.SaveAsync("image.png", TestStreams.Of("old"), TestContext.Current.CancellationToken);
+			await _banners.SaveAsync("image.png", TestStreams.Of("old"));
 
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-			_banners.SaveAsync("image.png.", TestStreams.Of("new"), TestContext.Current.CancellationToken));
+			_banners.SaveAsync("image.png.", TestStreams.Of("new")));
 
 		Assert.Equal("old",
 			await TestStreams.ReadAllAsync(await _banners.OpenAsync(reference, TestContext.Current.CancellationToken)));

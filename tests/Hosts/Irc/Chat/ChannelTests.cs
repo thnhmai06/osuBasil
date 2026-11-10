@@ -292,7 +292,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 		await settings.CreateOrUpdateAsync(before with
 		{
 			General = new ServerSettings.GeneralSettings { Motd = "first line\nsecond line" }
-		}, TestContext.Current.CancellationToken);
+		});
 		try
 		{
 			using var irc = await Host.SignInAsync("MoMotdSet");
@@ -304,7 +304,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(before, TestContext.Current.CancellationToken);
+			await settings.CreateOrUpdateAsync(before);
 		}
 	}
 }

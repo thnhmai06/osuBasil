@@ -304,7 +304,7 @@ public sealed class ContentHandlerTests
 			return Task.FromResult<IEnumerable<string>>(Entries.Keys.ToList());
 		}
 
-		public Task<IFaqEntryWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default)
+		public Task<IFaqEntryWriter> CreateOrUpdateAsync(string entry)
 		{
 			return Task.FromResult<IFaqEntryWriter>(new Writer(Entries, entry));
 		}
@@ -316,7 +316,7 @@ public sealed class ContentHandlerTests
 				: null);
 		}
 
-		public Task DeleteAsync(string entry, CancellationToken cancellationToken = default)
+		public Task DeleteAsync(string entry)
 		{
 			Entries.Remove(entry);
 			return Task.CompletedTask;

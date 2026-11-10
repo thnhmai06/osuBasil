@@ -58,7 +58,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 				}
 			}
 		};
-		await Settings.CreateOrUpdateAsync(settings, TestContext.Current.CancellationToken);
+		await Settings.CreateOrUpdateAsync(settings);
 
 		var reloaded = await ReloadAsync();
 
@@ -77,7 +77,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 				Mirror = new ServerSettings.BeatmapMirrorSettings { DownloadEndpoint = null, SearchEndpoint = null }
 			}
 		};
-		await Settings.CreateOrUpdateAsync(settings, TestContext.Current.CancellationToken);
+		await Settings.CreateOrUpdateAsync(settings);
 
 		var reloaded = await ReloadAsync();
 
@@ -90,7 +90,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 		var settings = new ServerSettings
 			{ General = new ServerSettings.GeneralSettings { Motd = "Welcome to the server." } };
 
-		await Settings.CreateOrUpdateAsync(settings, TestContext.Current.CancellationToken);
+		await Settings.CreateOrUpdateAsync(settings);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select name, value from settings where name = @name",
@@ -110,8 +110,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 			new ServerSettings
 			{
 				General = new ServerSettings.GeneralSettings { Motd = "A message the database cannot store." }
-			},
-			TestContext.Current.CancellationToken));
+			}));
 
 		Assert.Null((await Settings.GetAsync(TestContext.Current.CancellationToken)).General.Motd);
 		Assert.Same(before, await Settings.GetAsync(TestContext.Current.CancellationToken));
@@ -123,11 +122,9 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 		var changes = new[]
 		{
 			Settings.CreateOrUpdateAsync(
-				new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "First message." } },
-				TestContext.Current.CancellationToken),
+				new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "First message." } }),
 			Settings.CreateOrUpdateAsync(
-				new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "Second message." } },
-				TestContext.Current.CancellationToken)
+				new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "Second message." } })
 		};
 		await Task.WhenAll(changes);
 

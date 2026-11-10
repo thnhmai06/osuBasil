@@ -25,7 +25,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	[Fact]
 	public async Task Commit_stores_the_written_text()
 	{
-		var writer = await _faqs.CreateOrUpdateAsync(Entry, TestContext.Current.CancellationToken);
+		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("New contents");
 		writer.Commit();
 
@@ -37,7 +37,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	{
 		await StoreAsync(Entry, "Version 1");
 
-		var writer = await _faqs.CreateOrUpdateAsync(Entry, TestContext.Current.CancellationToken);
+		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("Partial write: only the half of a");
 		await writer.DisposeAsync();
 
@@ -47,7 +47,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	[Fact]
 	public async Task DisposeAfterCommit_keeps_the_committed_text()
 	{
-		var writer = await _faqs.CreateOrUpdateAsync(Entry, TestContext.Current.CancellationToken);
+		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("Committed text");
 		writer.Commit();
 		await writer.DisposeAsync();
@@ -60,7 +60,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	{
 		await StoreAsync(Entry, "Version 1");
 
-		await using var writer = await _faqs.CreateOrUpdateAsync(Entry, TestContext.Current.CancellationToken);
+		await using var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("Version 2");
 
 		Assert.Equal("Version 1", await ReadAsync(Entry));
@@ -70,7 +70,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	public async Task
 		A_new_entry_is_neither_listed_nor_readable_until_the_writer_commits_and_not_at_all_if_it_never_does()
 	{
-		var writer = await _faqs.CreateOrUpdateAsync(Entry, TestContext.Current.CancellationToken);
+		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("Draft");
 
 		Assert.Empty(await _faqs.ListAsync(TestContext.Current.CancellationToken));
@@ -86,7 +86,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	[Fact]
 	public async Task Committing_again_changes_nothing()
 	{
-		var writer = await _faqs.CreateOrUpdateAsync(Entry, TestContext.Current.CancellationToken);
+		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("Committed text");
 		writer.Commit();
 
@@ -101,10 +101,10 @@ public sealed class FileFaqStorageTests : IDisposable
 		await StoreAsync("Rules:A", "A1");
 		await StoreAsync("Rules:B", "B1");
 
-		var writerA = await _faqs.CreateOrUpdateAsync("Rules:A", TestContext.Current.CancellationToken);
+		var writerA = await _faqs.CreateOrUpdateAsync("Rules:A");
 		await writerA.WriteAsync("A2");
 		writerA.Commit();
-		var writerB = await _faqs.CreateOrUpdateAsync("Rules:B", TestContext.Current.CancellationToken);
+		var writerB = await _faqs.CreateOrUpdateAsync("Rules:B");
 		await writerB.WriteAsync("B2");
 		await writerB.DisposeAsync();
 
@@ -150,7 +150,7 @@ public sealed class FileFaqStorageTests : IDisposable
 		await StoreAsync("Gone", "1");
 		await StoreAsync("Kept", "2");
 
-		await _faqs.DeleteAsync("Gone", TestContext.Current.CancellationToken);
+		await _faqs.DeleteAsync("Gone");
 
 		Assert.Null(await _faqs.ReadAsync("Gone", TestContext.Current.CancellationToken));
 		Assert.Equal(["Kept"], await _faqs.ListAsync(TestContext.Current.CancellationToken));
@@ -159,7 +159,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	[Fact]
 	public async Task Deleting_an_entry_that_is_not_stored_does_nothing()
 	{
-		await _faqs.DeleteAsync("Missing:Entry", TestContext.Current.CancellationToken);
+		await _faqs.DeleteAsync("Missing:Entry");
 
 		Assert.Empty(await _faqs.ListAsync(TestContext.Current.CancellationToken));
 	}
@@ -171,7 +171,7 @@ public sealed class FileFaqStorageTests : IDisposable
 
 		var failure = await Record.ExceptionAsync(async () =>
 		{
-			var writer = await _faqs.CreateOrUpdateAsync("../escape", TestContext.Current.CancellationToken);
+			var writer = await _faqs.CreateOrUpdateAsync("../escape");
 			await writer.WriteAsync("Escaped");
 			writer.Commit();
 		});
@@ -202,7 +202,7 @@ public sealed class FileFaqStorageTests : IDisposable
 		var outside = Path.Combine(_data.Root, "secret.txt");
 		await File.WriteAllTextAsync(outside, "Secret", TestContext.Current.CancellationToken);
 
-		_ = await Record.ExceptionAsync(() => _faqs.DeleteAsync("../secret", TestContext.Current.CancellationToken));
+		_ = await Record.ExceptionAsync(() => _faqs.DeleteAsync("../secret"));
 
 		Assert.True(File.Exists(outside));
 	}
@@ -219,7 +219,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(async () =>
 		{
-			var writer = await _faqs.CreateOrUpdateAsync(entry, TestContext.Current.CancellationToken);
+			var writer = await _faqs.CreateOrUpdateAsync(entry);
 			await writer.WriteAsync("Text");
 			writer.Commit();
 		});
@@ -229,7 +229,7 @@ public sealed class FileFaqStorageTests : IDisposable
 
 	private async ValueTask StoreAsync(string entry, string text)
 	{
-		var writer = await _faqs.CreateOrUpdateAsync(entry, TestContext.Current.CancellationToken);
+		var writer = await _faqs.CreateOrUpdateAsync(entry);
 		await writer.WriteAsync(text);
 		writer.Commit();
 	}

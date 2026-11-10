@@ -17,10 +17,9 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	}
 
 	/// <inheritdoc />
-	public async Task<ContentReference> SaveAsync(string name, Stream content,
-		CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(string name, Stream content)
 	{
-		await Files.SaveAsync(name, content, cancellationToken);
+		await Files.SaveAsync(name, content, CancellationToken.None);
 		return Files.ReferenceOf(name);
 	}
 
@@ -31,8 +30,7 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	}
 
 	/// <inheritdoc />
-	public Task<ContentReference?> RenameAsync(ContentReference background, string newName,
-		CancellationToken cancellationToken = default)
+	public Task<ContentReference?> RenameAsync(ContentReference background, string newName)
 	{
 		return Task.FromResult<ContentReference?>(
 			Files.TryGetName(background, out var name) && Files.Move(name, newName)
@@ -41,7 +39,7 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(ContentReference background, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(ContentReference background)
 	{
 		if (Files.TryGetName(background, out var name))
 			Files.Delete(name);

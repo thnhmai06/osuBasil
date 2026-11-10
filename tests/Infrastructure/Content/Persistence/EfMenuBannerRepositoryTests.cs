@@ -33,7 +33,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	{
 		var banner = Banner("banners/one.png", Moment);
 
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
 		Assert.NotNull(await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken));
 	}
@@ -42,7 +42,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task A_banner_is_found_by_its_image()
 	{
 		var banner = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
 		var found = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
 
@@ -55,7 +55,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	{
 		var banner = Banner("banners/one.png", Moment);
 
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select image, url, created_at from menu_banners where image = @image",
@@ -73,8 +73,8 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	{
 		var first = Banner("banners/one.png", Moment);
 		var second = Banner("banners/two.png", Moment.AddMinutes(1));
-		await Banners.CreateOrUpdateAsync(second, TestContext.Current.CancellationToken);
-		await Banners.CreateOrUpdateAsync(first, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(second);
+		await Banners.CreateOrUpdateAsync(first);
 
 		var banners = (await Banners.ListAsync(TestContext.Current.CancellationToken)).ToList();
 
@@ -85,7 +85,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task A_stored_banner_is_read_back_from_the_database()
 	{
 		var banner = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
 		var reloaded = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
 
@@ -98,9 +98,9 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task A_banner_is_deleted()
 	{
 		var banner = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
-		await Banners.DeleteAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.DeleteAsync(banner);
 
 		Assert.Null(await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken));
 	}
@@ -109,9 +109,9 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task A_deleted_banner_is_gone_from_the_database_when_deleting_it_returns()
 	{
 		var banner = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
-		await Banners.DeleteAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.DeleteAsync(banner);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select image from menu_banners where image = @image",
@@ -125,10 +125,10 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task A_banner_is_replaced()
 	{
 		var banner = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 		banner.Url = new Uri("https://example.com/changed");
 
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
 		var found = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
 		Assert.Equal(new Uri("https://example.com/changed"), found!.Url);
@@ -138,10 +138,10 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task A_replaced_banner_is_stored_when_storing_it_returns()
 	{
 		var banner = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 		banner.Url = new Uri("https://example.com/changed");
 
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select url from menu_banners where image = @image",
 			new Dictionary<string, object?> { ["@image"] = banner.Image.ToString() },
@@ -154,7 +154,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task A_replaced_banner_keeps_the_instant_it_was_created_at()
 	{
 		var created = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(created, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(created);
 		await Banners.CreateOrUpdateAsync(new MenuBanner
 		{
 			Image = created.Image,
@@ -162,7 +162,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 			StartsAt = null,
 			EndsAt = null,
 			CreatedAt = Moment.AddDays(1)
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var reloaded = await Banners.GetAsync(created.Image, TestContext.Current.CancellationToken);
 
@@ -174,7 +174,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	public async Task Of_two_concurrent_changes_of_a_banner_the_one_stored_last_is_read()
 	{
 		var banner = Banner("banners/one.png", Moment);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 		var first = Banner("banners/one.png", Moment);
 		first.Url = new Uri("https://example.com/first");
 		var second = Banner("banners/one.png", Moment);
@@ -182,8 +182,8 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 
 		var changes = new[]
 		{
-			Banners.CreateOrUpdateAsync(first, TestContext.Current.CancellationToken),
-			Banners.CreateOrUpdateAsync(second, TestContext.Current.CancellationToken)
+			Banners.CreateOrUpdateAsync(first),
+			Banners.CreateOrUpdateAsync(second)
 		};
 		await Task.WhenAll(changes);
 
@@ -203,12 +203,12 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 		var banner = Banner("banners/moving.png", Moment);
 		banner.StartsAt = Moment;
 		banner.EndsAt = Moment.AddDays(1);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 		var moved = Banner("banners/moving.png", Moment);
 		moved.StartsAt = Moment.AddDays(10);
 		moved.EndsAt = Moment.AddDays(11);
 
-		await Banners.CreateOrUpdateAsync(moved, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(moved);
 
 		var found = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
 		Assert.Equal((Moment.AddDays(10), Moment.AddDays(11)), (found!.StartsAt, found.EndsAt));
@@ -220,12 +220,12 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 		var banner = Banner("banners/moving.png", Moment);
 		banner.StartsAt = Moment.AddDays(10);
 		banner.EndsAt = Moment.AddDays(11);
-		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(banner);
 		var moved = Banner("banners/moving.png", Moment);
 		moved.StartsAt = Moment;
 		moved.EndsAt = Moment.AddDays(1);
 
-		await Banners.CreateOrUpdateAsync(moved, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(moved);
 
 		var found = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
 		Assert.Equal((Moment, Moment.AddDays(1)), (found!.StartsAt, found.EndsAt));
@@ -238,7 +238,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 		string url)
 	{
 		var good = Banner("banners/good.png", Moment);
-		await Banners.CreateOrUpdateAsync(good, TestContext.Current.CancellationToken);
+		await Banners.CreateOrUpdateAsync(good);
 		await StoredRows.InsertAsync(ConnectionString, "menu_banners", [
 			new Dictionary<string, object?> { ["image"] = image, ["url"] = url, ["created_at"] = Moment }
 		], TestContext.Current.CancellationToken);

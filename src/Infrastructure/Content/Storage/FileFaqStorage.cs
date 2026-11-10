@@ -18,7 +18,7 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	}
 
 	/// <inheritdoc />
-	public Task<IFaqEntryWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default)
+	public Task<IFaqEntryWriter> CreateOrUpdateAsync(string entry)
 	{
 		return Task.FromResult<IFaqEntryWriter>(EntryWriter.Create(Files.Resolve(FileNameOf(entry))));
 	}
@@ -32,7 +32,7 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(string entry, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(string entry)
 	{
 		var fileName = FileNameOf(entry);
 		Files.Resolve(fileName); // an unsafe entry name is refused, not ignored

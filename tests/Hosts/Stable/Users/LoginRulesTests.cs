@@ -83,7 +83,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 			{
 				Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 1 }
 			}
-		}, TestContext.Current.CancellationToken);
+		});
 		try
 		{
 			using var first = await Host.NewClientAsync("ConnOne");
@@ -103,7 +103,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 				{
 					Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 10_000 }
 				}
-			}, TestContext.Current.CancellationToken);
+			});
 		}
 	}
 

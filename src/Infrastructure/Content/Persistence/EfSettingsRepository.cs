@@ -78,18 +78,18 @@ internal sealed class EfSettingsRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(ServerSettings settings)
 	{
 		var values = Categories.ToDictionary(category => category.Name, category => category.Write(settings),
 			StringComparer.Ordinal);
-		await _gate.WaitAsync(cancellationToken);
+		await _gate.WaitAsync();
 		try
 		{
-			await database.TransactAsync(async (ContentDbContext context, CancellationToken token) =>
+			await database.TransactAsync(async (ContentDbContext context) =>
 			{
 				foreach (var (name, value) in values)
-					await UpsertSettingAsync(context, name, value, token);
-			}, cancellationToken);
+					await UpsertSettingAsync(context, name, value);
+			});
 			Interlocked.Exchange(ref _settings, settings);
 		}
 		finally
@@ -98,8 +98,7 @@ internal sealed class EfSettingsRepository(
 		}
 	}
 
-	private static Task UpsertSettingAsync(ContentDbContext context, string name, string? value,
-		CancellationToken token)
+	private static Task UpsertSettingAsync(ContentDbContext context, string name, string? value)
 	{
 		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name);
 	}

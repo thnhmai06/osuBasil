@@ -10,10 +10,9 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 	private DataStorage Files => paths.MenuIcon;
 
 	/// <inheritdoc />
-	public async Task<ContentReference> SaveAsync(string name, Stream content,
-		CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(string name, Stream content)
 	{
-		await Files.SaveAsync(name, content, cancellationToken);
+		await Files.SaveAsync(name, content, CancellationToken.None);
 		Files.DeleteAllExcept(name);
 		return Files.ReferenceOf(name);
 	}
@@ -31,7 +30,7 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(CancellationToken cancellationToken = default)
+	public Task DeleteAsync()
 	{
 		Files.DeleteAllExcept(null);
 		return Task.CompletedTask;

@@ -194,7 +194,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 		await ownerClient.LoginAsync("SesLocked");
 		await staffClient.LoginAsync("SesLockStaff");
 		var settings = host.Services.GetRequiredService<ISettingsRepository>();
-		await settings.CreateOrUpdateAsync(await settings.GetAsync(TestContext.Current.CancellationToken) with { Locks = Locks.Profiles }, TestContext.Current.CancellationToken);
+		await settings.CreateOrUpdateAsync(await settings.GetAsync(TestContext.Current.CancellationToken) with { Locks = Locks.Profiles });
 
 		var (rename, renameBody) =
 			await ownerClient.CallAsync(HttpMethod.Patch, $"/v1/users/{owner.Id}", new { name = "NewName1" });
@@ -218,7 +218,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("SesRoomLock");
 		var settings = host.Services.GetRequiredService<ISettingsRepository>();
-		await settings.CreateOrUpdateAsync(await settings.GetAsync(TestContext.Current.CancellationToken) with { Locks = Locks.Rooms }, TestContext.Current.CancellationToken);
+		await settings.CreateOrUpdateAsync(await settings.GetAsync(TestContext.Current.CancellationToken) with { Locks = Locks.Rooms });
 
 		var (status, envelope) = await client.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Locked out" });
 

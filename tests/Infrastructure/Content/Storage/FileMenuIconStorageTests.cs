@@ -37,7 +37,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	public async Task The_saved_icon_opens_with_its_reference_and_the_bytes_it_was_saved_with()
 	{
 		var reference =
-			await _icon.SaveAsync("icon.png", TestStreams.Of("icon"), TestContext.Current.CancellationToken);
+			await _icon.SaveAsync("icon.png", TestStreams.Of("icon"));
 
 		var stored = await StoredAsync();
 
@@ -49,9 +49,9 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	[Fact]
 	public async Task Saving_an_icon_under_the_same_name_replaces_it()
 	{
-		await _icon.SaveAsync("icon.png", TestStreams.Of("old and longer"), TestContext.Current.CancellationToken);
+		await _icon.SaveAsync("icon.png", TestStreams.Of("old and longer"));
 
-		await _icon.SaveAsync("icon.png", TestStreams.Of("new"), TestContext.Current.CancellationToken);
+		await _icon.SaveAsync("icon.png", TestStreams.Of("new"));
 
 		Assert.Equal("new", (await StoredAsync())?.Text);
 	}
@@ -59,9 +59,9 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	[Fact]
 	public async Task Saving_an_icon_under_another_name_replaces_any_stored_icon()
 	{
-		await _icon.SaveAsync("old.png", TestStreams.Of("old"), TestContext.Current.CancellationToken);
+		await _icon.SaveAsync("old.png", TestStreams.Of("old"));
 
-		var reference = await _icon.SaveAsync("new.jpg", TestStreams.Of("new"), TestContext.Current.CancellationToken);
+		var reference = await _icon.SaveAsync("new.jpg", TestStreams.Of("new"));
 
 		var stored = await StoredAsync();
 		Assert.NotNull(stored);
@@ -73,10 +73,10 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	[Fact]
 	public async Task A_save_that_fails_keeps_the_stored_icon()
 	{
-		await _icon.SaveAsync("old.png", TestStreams.Of("previous"), TestContext.Current.CancellationToken);
+		await _icon.SaveAsync("old.png", TestStreams.Of("previous"));
 
 		await Assert.ThrowsAsync<IOException>(() =>
-			_icon.SaveAsync("new.jpg", new TestStreams.Failing(), TestContext.Current.CancellationToken));
+			_icon.SaveAsync("new.jpg", new TestStreams.Failing()));
 
 		Assert.Equal("previous", (await StoredAsync())?.Text);
 	}
@@ -87,10 +87,10 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	[MemberData(nameof(NotCanonicalNames))]
 	public async Task Saving_under_a_name_that_is_not_safe_is_refused_and_keeps_the_stored_icon(string name)
 	{
-		await _icon.SaveAsync("old.png", TestStreams.Of("previous"), TestContext.Current.CancellationToken);
+		await _icon.SaveAsync("old.png", TestStreams.Of("previous"));
 
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-			_icon.SaveAsync(name, TestStreams.Of("new"), TestContext.Current.CancellationToken));
+			_icon.SaveAsync(name, TestStreams.Of("new")));
 
 		Assert.Equal(["old.png"], TempData.FilesUnder(_data.Paths.MenuIcon.Path));
 		Assert.Equal("previous", (await StoredAsync())?.Text);
@@ -99,9 +99,9 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	[Fact]
 	public async Task A_deleted_icon_is_no_longer_stored()
 	{
-		await _icon.SaveAsync("icon.png", TestStreams.Of("icon"), TestContext.Current.CancellationToken);
+		await _icon.SaveAsync("icon.png", TestStreams.Of("icon"));
 
-		await _icon.DeleteAsync(TestContext.Current.CancellationToken);
+		await _icon.DeleteAsync();
 
 		Assert.Null(await StoredAsync());
 	}
@@ -109,7 +109,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	[Fact]
 	public async Task Deleting_when_no_icon_is_stored_does_nothing()
 	{
-		await _icon.DeleteAsync(TestContext.Current.CancellationToken);
+		await _icon.DeleteAsync();
 
 		Assert.Null(await StoredAsync());
 	}

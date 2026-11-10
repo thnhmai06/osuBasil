@@ -13,6 +13,5 @@ public interface ISettingsRepository
 
 	/// <summary>Stores the server-wide settings, replacing the stored ones.</summary>
 	/// <param name="settings">The settings to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(ServerSettings settings);
 }

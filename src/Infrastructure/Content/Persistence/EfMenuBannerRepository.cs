@@ -13,12 +13,12 @@ internal sealed class EfMenuBannerRepository(
 	ILogger<EfMenuBannerRepository> logger) : IMenuBannerRepository
 {
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(MenuBanner banner)
 	{
 		var image = banner.Image.ToString();
-		return database.WriteAsync(async (ContentDbContext context, CancellationToken token) =>
+		return database.WriteAsync(async (ContentDbContext context) =>
 		{
-			var stored = await context.MenuBanners.AsTracking().FirstOrDefaultAsync(row => row.Image == image, token);
+			var stored = await context.MenuBanners.AsTracking().FirstOrDefaultAsync(row => row.Image == image);
 			if (stored is null)
 			{
 				context.MenuBanners.Add(new MenuBannerRow
@@ -36,7 +36,7 @@ internal sealed class EfMenuBannerRepository(
 			stored.Url = banner.Url.ToString();
 			stored.StartsAt = banner.StartsAt?.ToUniversalTime();
 			stored.EndsAt = banner.EndsAt?.ToUniversalTime();
-		}, cancellationToken);
+		});
 	}
 
 	/// <inheritdoc />
@@ -59,12 +59,12 @@ internal sealed class EfMenuBannerRepository(
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(MenuBanner banner)
 	{
 		var image = banner.Image.ToString();
-		return database.WriteAsync((ContentDbContext context, CancellationToken token) => context.MenuBanners
+		return database.WriteAsync((ContentDbContext context) => context.MenuBanners
 			.Where(row => row.Image == image)
-			.ExecuteDeleteAsync(token), cancellationToken);
+			.ExecuteDeleteAsync());
 	}
 
 	/// <summary>Builds a banner from a stored row, or logs and returns null when the row is not valid.</summary>

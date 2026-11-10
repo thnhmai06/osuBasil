@@ -87,7 +87,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		await settings.CreateOrUpdateAsync(original with
 		{
 			Sessions = original.Sessions with { MaxPerUser = new ServerSettings.MaxSessionsSettings { Irc = 1 } }
-		}, TestContext.Current.CancellationToken);
+		});
 		try
 		{
 			var (first, firstKey) = await Host.NewIrcClientAsync("RegLimit");
@@ -106,7 +106,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(original, TestContext.Current.CancellationToken);
+			await settings.CreateOrUpdateAsync(original);
 		}
 	}
 
@@ -251,7 +251,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		await settings.CreateOrUpdateAsync(before with
 		{
 			RateLimits = before.RateLimits with { Login = new ServerSettings.LoginLimitSettings { MaxAttempts = 1 } }
-		}, TestContext.Current.CancellationToken);
+		});
 		// Failed logins of other tests count against the address of this one until their window ends.
 		Host.Time.Advance(before.RateLimits.Login.Window + TimeSpan.FromSeconds(1));
 		try
@@ -273,7 +273,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		}
 		finally
 		{
-			await settings.CreateOrUpdateAsync(before, TestContext.Current.CancellationToken);
+			await settings.CreateOrUpdateAsync(before);
 		}
 	}
 }
