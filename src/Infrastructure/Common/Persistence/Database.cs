@@ -26,6 +26,7 @@ public sealed class Database : IAsyncDisposable
 		_synchronousSource = providers.Write.CreateSource(write, settings.WritePoolSize);
 	}
 
+	/// <inheritdoc />
 	public async ValueTask DisposeAsync()
 	{
 		await _readSource.DisposeAsync();
