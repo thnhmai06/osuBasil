@@ -39,7 +39,7 @@ public static class SettingsCategories
 	}
 
 	/// <summary>Reads every category of the settings, by name.</summary>
-	public static Dictionary<string, object> GetAll(ServerSettings settings)
+	public static IReadOnlyDictionary<string, object> GetAll(ServerSettings settings)
 	{
 		return Categories.ToDictionary(c => c.Key, c => c.Value.Get(settings));
 	}

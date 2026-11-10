@@ -42,7 +42,7 @@ public interface ISuggestionSource
 public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource source)
 {
 	/// <summary>Splits a line into words with their positions; text in double quotes is one word.</summary>
-	public static List<(int Start, int Length, string Text)> Words(string line)
+	public static IReadOnlyList<(int Start, int Length, string Text)> Words(string line)
 	{
 		var words = new List<(int, int, string)>();
 		var i = 0;
@@ -71,7 +71,7 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 	/// <summary>Colours a typed line.</summary>
 	/// <param name="line">The line.</param>
 	/// <returns>One token for every word.</returns>
-	public List<Token> Highlight(string line)
+	public IReadOnlyList<Token> Highlight(string line)
 	{
 		var tokens = new List<Token>();
 		var words = Words(line);

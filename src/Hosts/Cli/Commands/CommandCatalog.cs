@@ -33,7 +33,7 @@ public sealed class CommandCatalog
 	/// <summary>Splits a typed line into words; text in double quotes is one word and a backslash escapes the next character.</summary>
 	/// <param name="line">The line.</param>
 	/// <returns>The words.</returns>
-	public static List<string> Split(string line)
+	public static IReadOnlyList<string> Split(string line)
 	{
 		var words = new List<string>();
 		var current = new StringBuilder();

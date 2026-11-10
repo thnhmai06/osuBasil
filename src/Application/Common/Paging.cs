@@ -10,7 +10,7 @@ public static class Paging
 	/// <param name="list">Reads one page.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Every item, in listing order.</returns>
-	public static async Task<List<T>> ListAllAsync<T>(Func<PageRequest, Task<Page<T>>> list,
+	public static async Task<IReadOnlyList<T>> ListAllAsync<T>(Func<PageRequest, Task<Page<T>>> list,
 		CancellationToken cancellationToken = default)
 	{
 		var page = new PageRequest(0, PageSize);
