@@ -50,10 +50,10 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var beatmaps = Get<IBeatmapRepository>();
 		var set = StoredBeatmaps.Set(11);
 		await sets.CommitAsync(new BeatmapsetChanges(
-			[new BeatmapsetChange(null, StoredBeatmaps.SetData(11))], []), TestContext.Current.CancellationToken);
+			[new BeatmapsetChange(null, StoredBeatmaps.SetData(11))], []));
 		Assert.NotNull(await beatmaps.GetAsync(BeatmapHash, TestContext.Current.CancellationToken));
 
-		await beatmaps.RetainAsync(set, [], TestContext.Current.CancellationToken);
+		await beatmaps.RetainAsync(set, []);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select id from beatmaps where beatmapset_id = @set",
 			new Dictionary<string, object?> { ["@set"] = 11 }, TestContext.Current.CancellationToken);
@@ -416,7 +416,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		var beatmap = await Beatmaps.GetAsync(301, TestContext.Current.CancellationToken);
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
-			Beatmaps.UpdateAsync(Changed(beatmap!, BeatmapHash), TestContext.Current.CancellationToken));
+			Beatmaps.UpdateAsync(Changed(beatmap!, BeatmapHash)));
 	}
 
 	[Fact]
@@ -430,21 +430,20 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 			[
 				new BeatmapsetChange(null, StoredBeatmaps.Data(22, "Camellia", "Beta", "Mapper",
 					[StoredBeatmaps.Difficulty(302, BeatmapHash, "Hard")]))
-			], []), TestContext.Current.CancellationToken);
+			], []));
 		}
 
 		var beatmap = await Beatmaps.GetAsync(301, TestContext.Current.CancellationToken);
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
-			Beatmaps.UpdateAsync(Changed(beatmap!, BeatmapHash), TestContext.Current.CancellationToken));
+			Beatmaps.UpdateAsync(Changed(beatmap!, BeatmapHash)));
 	}
 
 	/// <summary>Commits one beatmapset as a new set.</summary>
 	/// <param name="data">The set as it is stored.</param>
 	private async Task CommitAsync(BeatmapsetData data)
 	{
-		await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []),
-			TestContext.Current.CancellationToken);
+		await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []));
 	}
 
 	/// <summary>Copies a difficulty with another hash.</summary>

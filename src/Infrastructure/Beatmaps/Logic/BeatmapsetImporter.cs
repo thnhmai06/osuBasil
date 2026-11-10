@@ -20,7 +20,7 @@ internal sealed class BeatmapsetImporter(
 			var (content, stream) = await planner.ReadAsync(uploaded, cancellationToken);
 			if (content is null)
 			{
-				await storage.QuarantineAsync(uploaded, cancellationToken);
+				await storage.QuarantineAsync(uploaded);
 				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
 			}
 
@@ -42,13 +42,13 @@ internal sealed class BeatmapsetImporter(
 				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
 
 			// The archive is closed first: it is moved into the set's folder.
-			var imported = await storer.StoreAsync(item, cancellationToken);
+			var imported = await storer.StoreAsync(item);
 			return (new BeatmapsetImportResult(imported.Set, imported.Beatmaps, null), imported);
 		}
 		finally
 		{
 			// Taken in, the archive has moved into its set's folder; rejected, nothing of it is kept.
-			await storage.DeleteAsync(uploaded, CancellationToken.None);
+			await storage.DeleteAsync(uploaded);
 		}
 	}
 }

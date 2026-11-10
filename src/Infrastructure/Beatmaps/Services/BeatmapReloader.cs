@@ -106,7 +106,7 @@ internal sealed class BeatmapReloader(
 			{
 				Version = beatmap.Metadata.Version, Difficulty = analysis.Difficulty, Objects = analysis.Objects
 			};
-			await beatmaps.UpdateAsync(beatmap, cancellationToken);
+			await beatmaps.UpdateAsync(beatmap);
 			return true;
 		}
 		catch (Exception e) when (e is not OperationCanceledException)

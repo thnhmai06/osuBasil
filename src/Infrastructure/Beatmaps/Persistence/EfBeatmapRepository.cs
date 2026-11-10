@@ -22,11 +22,11 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	};
 
 	/// <inheritdoc />
-	public Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(BeatmapRecord beatmap)
 	{
 		var row = ToRow(beatmap);
-		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.Id == row.Id), cancellationToken);
+		return database.WriteAsync((BeatmapsDbContext context) =>
+			context.UpsertAsync(row, stored => stored.Id == row.Id));
 	}
 
 	/// <inheritdoc />
@@ -79,14 +79,13 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	}
 
 	/// <inheritdoc />
-	public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
-		CancellationToken cancellationToken = default)
+	public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep)
 	{
 		var setId = set.Id;
 		var keepIds = keep.Select(beatmap => beatmap.Id).ToArray();
-		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) => context.Beatmaps
+		return database.WriteAsync((BeatmapsDbContext context) => context.Beatmaps
 			.Where(b => b.BeatmapsetId == setId && !((IEnumerable<int>)keepIds).Contains(b.Id))
-			.ExecuteDeleteAsync(token), cancellationToken);
+			.ExecuteDeleteAsync());
 	}
 
 	/// <summary>Stores the difficulties of a beatmapset as a scan or import brings them in.</summary>
@@ -95,7 +94,6 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	/// <param name="now">The time of the import, in UTC.</param>
 	/// <param name="releasable">The ids of the sets whose difficulties this commit replaces or removes.</param>
 	/// <param name="context">The EF context the commit runs on.</param>
-	/// <param name="token">A token that cancels the commit.</param>
 	/// <returns>Each stored difficulty, in the same order.</returns>
 	/// <remarks>
 	///     A difficulty already stored under the same file's hash, or under the same osu! id, is moved to this set and
@@ -103,19 +101,18 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	///     same commit; otherwise it is refused.
 	/// </remarks>
 	internal static async Task<List<BeatmapRecord>> StoreAsync(BeatmapsetRecord set,
-		IReadOnlyList<BeatmapData> data, DateTimeOffset now, IReadOnlySet<int> releasable, BeatmapsDbContext context,
-		CancellationToken token)
+		IReadOnlyList<BeatmapData> data, DateTimeOffset now, IReadOnlySet<int> releasable, BeatmapsDbContext context)
 	{
 		var stored = new List<BeatmapRecord>(data.Count);
-		foreach (var item in data) stored.Add(await StoreOneAsync(set, item, now, releasable, context, token));
+		foreach (var item in data) stored.Add(await StoreOneAsync(set, item, now, releasable, context));
 
 		return stored;
 	}
 
 	private static async Task<BeatmapRecord> StoreOneAsync(BeatmapsetRecord set, BeatmapData item, DateTimeOffset now,
-		IReadOnlySet<int> releasable, BeatmapsDbContext context, CancellationToken token)
+		IReadOnlySet<int> releasable, BeatmapsDbContext context)
 	{
-		var row = await FindAsync(item, context, token);
+		var row = await FindAsync(item, context);
 		if (row is not null && row.BeatmapsetId != set.Id && !releasable.Contains(row.BeatmapsetId))
 			throw new AlreadyExistsException(
 				$"A difficulty of another beatmapset already has the hash {item.Hash} or the id {row.Id}.");
@@ -131,7 +128,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			// A difficulty without an osu! id takes the next local id.
 			toStore.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapIds);
 			context.Beatmaps.Add(toStore);
-			await context.SaveChangesAsync(token);
+			await context.SaveChangesAsync();
 		}
 		else
 		{
@@ -159,7 +156,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	}
 
 	private static async Task<BeatmapRow?> FindAsync(BeatmapData data, BeatmapsDbContext context,
-		CancellationToken token)
+		CancellationToken token = default)
 	{
 		var hash = data.Hash.HashValue;
 		var row = await context.Beatmaps.FirstOrDefaultAsync(b => b.Hash == hash, token);

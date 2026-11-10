@@ -237,7 +237,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var archive =
 			await _storage.SaveAsync(new MemoryStream(Osz(("a.osu", "x"))), TestContext.Current.CancellationToken);
 
-		await _storage.DeleteAsync(archive, TestContext.Current.CancellationToken);
+		await _storage.DeleteAsync(archive);
 
 		Assert.Empty(Directory.GetFileSystemEntries(Sets));
 	}
@@ -248,7 +248,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var bytes = Osz(("a.osu", "x"));
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
-		await _storage.QuarantineAsync(archive, TestContext.Current.CancellationToken);
+		await _storage.QuarantineAsync(archive);
 
 		Assert.Empty(Directory.GetFileSystemEntries(Sets));
 		var kept = Assert.Single(Directory.GetFiles(_data.Paths.Quarantine));
@@ -263,7 +263,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var set = Set(id, "Artist", "Title");
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
-		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, archive);
 
 		Assert.Equal([$"{id} Artist - Title"], TopLevel());
 		Assert.Equal(["archive.osz"], TempData.FilesUnder(Path.Combine(Sets, $"{id} Artist - Title")));
@@ -282,7 +282,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			Assert.IsAssignableFrom<BeatmapsetArchive>(
 				Assert.Single(await _storage.ListAsync(TestContext.Current.CancellationToken)));
 
-		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, archive);
 
 		Assert.Equal([$"{id} Artist - Title"], TopLevel());
 		Assert.Equal(bytes,
@@ -298,7 +298,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var bytes = Osz(("a.osu", "new"));
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
-		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, archive);
 
 		Assert.Equal([$"{id} Artist - Title"], TopLevel());
 		Assert.Equal(bytes,
@@ -315,7 +315,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var archive = await _storage.SaveAsync(new MemoryStream(Osz(("a.osu", "new"))),
 			TestContext.Current.CancellationToken);
 
-		await _storage.SaveAsync(Set(id, "Artist", "Title"), archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(Set(id, "Artist", "Title"), archive);
 
 		Assert.Equal([$"{id} Artist - Title", Path.Combine($"{id} Artist - Title", "archive.osz")], Everything());
 	}
@@ -328,7 +328,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var own = await OwnArchiveAsync($"{id} Old Artist - Old Title");
 		PlaceFolder(id, "New Artist", "New Title", Osz(("a.osu", "other")), ("versions/stale2.osu", "stale"));
 
-		await _storage.SaveAsync(Set(id, "New Artist", "New Title"), own, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(Set(id, "New Artist", "New Title"), own);
 
 		Assert.Equal([$"{id} New Artist - New Title"], TopLevel());
 	}
@@ -341,7 +341,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var archive = await _storage.SaveAsync(new MemoryStream(Osz(("a.osu", "new"))),
 			TestContext.Current.CancellationToken);
 
-		await _storage.SaveAsync(Set(id, "New Artist", "New Title"), archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(Set(id, "New Artist", "New Title"), archive);
 
 		Assert.Equal([$"{id} New Artist - New Title"], TopLevel());
 	}
@@ -355,7 +355,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var own = await OwnArchiveAsync($"{id} Old Artist - Old Title");
 		var set = Set(id, "New Artist", "New Title");
 
-		await _storage.SaveAsync(set, own, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, own);
 
 		Assert.Equal([$"{id} New Artist - New Title"], TopLevel());
 		Assert.Equal(bytes,
@@ -374,7 +374,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var own = await OwnArchiveAsync($"{id} artist - title");
 		var set = Set(id, "Artist", "Title");
 
-		await _storage.SaveAsync(set, own, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, own);
 
 		Assert.Equal([$"{id} Artist - Title"], TopLevel());
 		Assert.Equal(bytes,
@@ -392,7 +392,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var own = await OwnArchiveAsync($"{id} artist - title");
 		await using var watching = Watching.Start(_storage, _time);
 
-		await _storage.SaveAsync(Set(id, "Artist", "Title"), own, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(Set(id, "Artist", "Title"), own);
 		PlaceFolder(NewId(), "Sentinel", "Folder", Osz(("a.osu", "x")));
 		var reported = await watching.ReadUntilAsync(source => source.Name.Contains("Sentinel"));
 
@@ -408,7 +408,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var bytes = Osz(("a.osu", "x"));
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
-		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, archive);
 
 		var name = Assert.Single(TopLevel());
 		Assert.StartsWith($"{id} Artist - ", name);
@@ -426,7 +426,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var bytes = Osz(("a.osu", "x"));
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
-		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, archive);
 
 		var name = Assert.Single(TopLevel());
 		Assert.StartsWith($"{id} ", name);
@@ -444,7 +444,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var bytes = Osz(("a.osu", "x"));
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
-		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, archive);
 
 		Assert.Equal(bytes,
 			await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, true, TestContext.Current.CancellationToken)));
@@ -485,7 +485,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		Assert.NotNull(packed);
 		var set = Set(7, "Loose", "Folder");
 
-		await _storage.SaveAsync(set, packed, TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, packed);
 
 		Assert.Equal(["7 Loose - Folder"], TopLevel());
 		Assert.Equal(["archive.osz"], TempData.FilesUnder(Path.Combine(Sets, "7 Loose - Folder")));
@@ -502,7 +502,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var packed = await _storage.PackAsync(folder, TestContext.Current.CancellationToken);
 		Assert.NotNull(packed);
 
-		await _storage.DeleteAsync(packed, TestContext.Current.CancellationToken);
+		await _storage.DeleteAsync(packed);
 
 		Assert.Equal(["7 Loose - Folder"], TopLevel());
 		Assert.Equal(["diff1.osu"], TempData.FilesUnder(Path.Combine(Sets, "7 Loose - Folder")));
@@ -557,7 +557,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	{
 		var set = StoredSet(out var folder);
 
-		await _storage.SaveAsync(set, type, name, TestStreams.Of("content"), TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, type, name, TestStreams.Of("content"));
 
 		Assert.Equal("content",
 			await File.ReadAllTextAsync(Path.Combine(folder, place), TestContext.Current.CancellationToken));
@@ -572,8 +572,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	{
 		var set = StoredSet(out var folder);
 
-		await _storage.SaveAsync(set, BeatmapsetFileType.Storyboard, "", TestStreams.Of("storyboard"),
-			TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, BeatmapsetFileType.Storyboard, "", TestStreams.Of("storyboard"));
 
 		Assert.Equal("storyboard",
 			await File.ReadAllTextAsync(Path.Combine(folder, "storyboard.osb"), TestContext.Current.CancellationToken));
@@ -597,11 +596,9 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	public async Task A_stored_file_is_replaced_by_one_saved_under_the_same_name()
 	{
 		var set = StoredSet(out _);
-		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("old and longer"),
-			TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("old and longer"));
 
-		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("new"),
-			TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("new"));
 
 		Assert.Equal("new",
 			await TestStreams.ReadAllAsync(await _storage.OpenAsync(set, BeatmapsetFileType.Background, "bg.jpg",
@@ -612,8 +609,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	public async Task An_opened_file_can_be_sought()
 	{
 		var set = StoredSet(out _);
-		await _storage.SaveAsync(set, BeatmapsetFileType.Audio, "song.mp3", TestStreams.Of("content"),
-			TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, BeatmapsetFileType.Audio, "song.mp3", TestStreams.Of("content"));
 
 		await using var stream = await _storage.OpenAsync(set, BeatmapsetFileType.Audio, "song.mp3",
 			TestContext.Current.CancellationToken);
@@ -626,12 +622,11 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	public async Task A_save_that_fails_keeps_the_stored_file_and_leaves_nothing_else()
 	{
 		var set = StoredSet(out var folder);
-		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("previous"),
-			TestContext.Current.CancellationToken);
+		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("previous"));
 		var before = TempData.FilesUnder(Sets);
 
 		await Assert.ThrowsAsync<IOException>(() => _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg",
-			new TestStreams.Failing(), TestContext.Current.CancellationToken));
+			new TestStreams.Failing()));
 
 		Assert.Equal(before, TempData.FilesUnder(Sets));
 		Assert.Equal("previous",
@@ -662,7 +657,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var before = TempData.FilesUnder(Sets);
 
 		await Assert.ThrowsAnyAsync<ArgumentException>(() => _storage.SaveAsync(set, BeatmapsetFileType.Background,
-			name, TestStreams.Of("content"), TestContext.Current.CancellationToken));
+			name, TestStreams.Of("content")));
 
 		Assert.Equal(before, TempData.FilesUnder(Sets));
 		Assert.False(File.Exists(Path.Combine(Sets, "escape.jpg")));
@@ -744,8 +739,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		PlaceFolder(id, "Artist", "Title", bytes);
 		var set = Set(id, "Artist", "Title");
 
-		await _storage.SaveArchiveWithoutVideoAsync(set, ["video.mp4", "sub/clip.avi"],
-			TestContext.Current.CancellationToken);
+		await _storage.SaveArchiveWithoutVideoAsync(set, ["video.mp4", "sub/clip.avi"]);
 
 		var made = await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, false,
 			TestContext.Current.CancellationToken));
@@ -763,8 +757,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			Osz(("a.osu", "difficulty"), ("Movie.OGV", "video"), ("sub\\intro.webm", "video")));
 		var set = Set(id, "Artist", "Title");
 
-		await _storage.SaveArchiveWithoutVideoAsync(set, ["movie.ogv", "sub/intro.webm"],
-			TestContext.Current.CancellationToken);
+		await _storage.SaveArchiveWithoutVideoAsync(set, ["movie.ogv", "sub/intro.webm"]);
 
 		var made = await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, false,
 			TestContext.Current.CancellationToken));
@@ -778,7 +771,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "difficulty"), ("storyboard.mp4", "an animation")));
 		var set = Set(id, "Artist", "Title");
 
-		await _storage.SaveArchiveWithoutVideoAsync(set, [], TestContext.Current.CancellationToken);
+		await _storage.SaveArchiveWithoutVideoAsync(set, []);
 
 		var made = await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, false,
 			TestContext.Current.CancellationToken));
@@ -794,7 +787,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var set = Set(id, "Artist", "Title");
 
 		var failure = await Record.ExceptionAsync(() =>
-			_storage.SaveArchiveWithoutVideoAsync(set, [], TestContext.Current.CancellationToken));
+			_storage.SaveArchiveWithoutVideoAsync(set, []));
 
 		Assert.NotNull(failure);
 		Assert.Null(await _storage.OpenArchiveAsync(set, false, TestContext.Current.CancellationToken));
@@ -814,7 +807,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			("video/intro.mp4", "m"), ("storyboard.osb", "s"), ("archive-novideo.osz", "n"));
 		var set = Set(id, "Artist", "Title");
 
-		await _storage.ClearAsync(set, TestContext.Current.CancellationToken);
+		await _storage.ClearAsync(set);
 
 		Assert.Equal(["archive.osz"], TempData.FilesUnder(Path.Combine(Sets, $"{id} Artist - Title")));
 		Assert.Equal(bytes,
@@ -826,7 +819,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	[Fact]
 	public async Task Clearing_a_set_without_a_folder_does_nothing()
 	{
-		await _storage.ClearAsync(Set(NewId(), "Nobody", "Home"), TestContext.Current.CancellationToken);
+		await _storage.ClearAsync(Set(NewId(), "Nobody", "Home"));
 
 		Assert.Empty(Directory.GetFileSystemEntries(Sets));
 	}
@@ -843,7 +836,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")), ("versions/hash.osu", "v"));
 		PlaceFolder(other, "Other", "Set", Osz(("a.osu", "x")));
 
-		await _storage.DeleteAsync(Set(id, "Artist", "Title"), TestContext.Current.CancellationToken);
+		await _storage.DeleteAsync(Set(id, "Artist", "Title"));
 
 		Assert.Equal([$"{other} Other - Set"], TopLevel());
 		Assert.Equal([$"{other} Other - Set"],
@@ -857,7 +850,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		PlaceFolder(id, "Old", "Name", Osz(("a.osu", "x")));
 		PlaceFolder(id, "New", "Name", Osz(("a.osu", "y")));
 
-		await _storage.DeleteAsync(Set(id, "New", "Name"), TestContext.Current.CancellationToken);
+		await _storage.DeleteAsync(Set(id, "New", "Name"));
 
 		Assert.Empty(TopLevel());
 	}
@@ -871,7 +864,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		PlaceFolder(other, "Other", "Set", Osz(("a.osu", "x")));
 		var before = Everything().Where(path => path.StartsWith($"{other} ", StringComparison.Ordinal)).ToArray();
 
-		await _storage.DeleteAsync(Set(id, "Artist", "Title"), TestContext.Current.CancellationToken);
+		await _storage.DeleteAsync(Set(id, "Artist", "Title"));
 
 		Assert.Equal(before, Everything());
 	}
@@ -882,7 +875,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")), ("audio/preview_a.mp3", "p"), ("versions/h.osu", "v"));
 
-		await _storage.DeleteAsync(Set(id, "Artist", "Title"), TestContext.Current.CancellationToken);
+		await _storage.DeleteAsync(Set(id, "Artist", "Title"));
 
 		Assert.Empty(Everything());
 	}
@@ -893,7 +886,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		PlaceFolder(NewId(), "Artist", "Title", Osz(("a.osu", "x")));
 		var before = Everything();
 
-		await _storage.DeleteAsync(Set(NewId(), "Nobody", "Home"), TestContext.Current.CancellationToken);
+		await _storage.DeleteAsync(Set(NewId(), "Nobody", "Home"));
 
 		Assert.Equal(before, Everything());
 	}
@@ -910,7 +903,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var inUse = new FileStream(Path.Combine(folder, "archive.osz"), FileMode.Open, FileAccess.Read,
 			FileShare.None);
 
-		await Assert.ThrowsAsync<IOException>(() => _storage.DeleteAsync(set, TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<IOException>(() => _storage.DeleteAsync(set));
 		await inUse.DisposeAsync();
 
 		Assert.Equal([$"{id} Artist - Title"], TopLevel());
@@ -927,7 +920,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 				Assert.Single(await _storage.ListAsync(TestContext.Current.CancellationToken)));
 
 		await Assert.ThrowsAsync<ArgumentException>(() =>
-			_storage.DeleteAsync(archive, TestContext.Current.CancellationToken));
+			_storage.DeleteAsync(archive));
 
 		Assert.True(File.Exists(path));
 	}
@@ -940,7 +933,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var own = await OwnArchiveAsync($"{id} Artist - Title");
 
 		await Assert.ThrowsAsync<ArgumentException>(() =>
-			_storage.DeleteAsync(own, TestContext.Current.CancellationToken));
+			_storage.DeleteAsync(own));
 
 		Assert.True(File.Exists(Path.Combine(folder, "archive.osz")));
 	}
@@ -954,11 +947,10 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	{
 		var set = StoredSet(out _);
 		var gated = new TestStreams.Gated("part ", "rest");
-		var save = _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", gated,
-			TestContext.Current.CancellationToken);
+		var save = _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", gated);
 		await gated.Started.WaitAsync(TestContext.Current.CancellationToken);
 
-		var clear = _storage.ClearAsync(set, TestContext.Current.CancellationToken);
+		var clear = _storage.ClearAsync(set);
 
 		Assert.False(clear.IsCompleted);
 		gated.Release();
@@ -974,11 +966,10 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var set = StoredSet(out _);
 		var other = StoredSet(out _);
 		var gated = new TestStreams.Gated("part ", "rest");
-		var save = _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", gated,
-			TestContext.Current.CancellationToken);
+		var save = _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", gated);
 		await gated.Started.WaitAsync(TestContext.Current.CancellationToken);
 
-		await _storage.ClearAsync(other, TestContext.Current.CancellationToken)
+		await _storage.ClearAsync(other)
 			.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
 		Assert.False(save.IsCompleted);

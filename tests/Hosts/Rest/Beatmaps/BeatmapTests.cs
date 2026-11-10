@@ -192,7 +192,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var viewer = await fixture.SignInAsync("BmHiddenViewer",
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		hidden.Visible = false;
-		await repository.UpdateAsync(hidden, TestContext.Current.CancellationToken);
+		await repository.UpdateAsync(hidden);
 		try
 		{
 			using (viewer.Client)
@@ -218,7 +218,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		finally
 		{
 			hidden.Visible = true;
-			await repository.UpdateAsync(hidden, TestContext.Current.CancellationToken);
+			await repository.UpdateAsync(hidden);
 		}
 	}
 
@@ -233,9 +233,9 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/mosi-mosi-taiko.osz");
 		var beatmap = beatmaps.OrderBy(b => b.Id).First();
 		beatmap.Assets = beatmap.Assets with { BackgroundFile = fileName };
-		await fixture.Host.Services.GetRequiredService<IBeatmapRepository>().UpdateAsync(beatmap, TestContext.Current.CancellationToken);
+		await fixture.Host.Services.GetRequiredService<IBeatmapRepository>().UpdateAsync(beatmap);
 		await fixture.Host.Services.GetRequiredService<IBeatmapsetStorage>().SaveAsync(beatmap.Beatmapset,
-			BeatmapsetFileType.Background, fileName, new MemoryStream("<script>alert(1)</script>"u8.ToArray()), TestContext.Current.CancellationToken);
+			BeatmapsetFileType.Background, fileName, new MemoryStream("<script>alert(1)</script>"u8.ToArray()));
 		using var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
 		using var response = await anon.GetAsync($"/v1/beatmaps/{beatmap.Id}/background", TestContext.Current.CancellationToken);

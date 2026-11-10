@@ -14,8 +14,7 @@ public interface IBeatmapsetRepository
 
 	/// <summary>Stores the new values of a created beatmapset, replacing the stored ones.</summary>
 	/// <param name="set">The beatmapset to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task UpdateAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
+	Task UpdateAsync(BeatmapsetRecord set);
 
 	/// <summary>Lists the beatmapsets that have at least one beatmap the query includes, newest id first.</summary>
 	/// <param name="query">Which beatmaps to include.</param>
@@ -33,7 +32,6 @@ public interface IBeatmapsetRepository
 
 	/// <summary>Stores what one scan or import changes, all at once.</summary>
 	/// <param name="changes">The beatmapsets to store and to remove.</param>
-	/// <param name="cancellationToken">A token that cancels the wait for its turn.</param>
 	/// <returns>The stored beatmapsets, in the order of <see cref="BeatmapsetChanges.Store" />.</returns>
 	/// <remarks>
 	///     Either every change is stored or none is. A replaced beatmap keeps its id and whether it is locked or
@@ -41,12 +39,10 @@ public interface IBeatmapsetRepository
 	///     osu! id, or a new local id.
 	/// </remarks>
 	/// <exception cref="AlreadyExistsException">A new set or beatmap has an id or hash another stored one has.</exception>
-	Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes,
-		CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes);
 
 	/// <summary>Deletes a beatmapset.</summary>
 	/// <remarks>Remove the set's beatmaps first, with <see cref="IBeatmapRepository.RetainAsync" /> keeping none.</remarks>
 	/// <param name="set">The beatmapset to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
+	Task DeleteAsync(BeatmapsetRecord set);
 }

@@ -164,8 +164,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive,
-			CancellationToken cancellationToken = default)
+		public Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive)
 		{
 			var memory = (MemoryArchive)archive;
 			_uploaded.Remove(memory);
@@ -187,7 +186,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task ClearAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+		public Task ClearAsync(BeatmapsetRecord set)
 		{
 			if (Stored.TryGetValue(set.Id, out var stored))
 			{
@@ -199,16 +198,14 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content,
-			CancellationToken cancellationToken = default)
+		public Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content)
 		{
 			Stored[set.Id].Files.Add((type, name));
 			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
-		public Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles,
-			CancellationToken cancellationToken = default)
+		public Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles)
 		{
 			Stored[set.Id].WithoutVideo = true;
 			Stored[set.Id].VideoFiles = [.. videoFiles];
@@ -254,14 +251,14 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+		public Task DeleteAsync(BeatmapsetRecord set)
 		{
 			Stored.Remove(set.Id);
 			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
-		public Task QuarantineAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)
+		public Task QuarantineAsync(BeatmapsetArchive archive)
 		{
 			_uploaded.Remove((MemoryArchive)archive);
 			Quarantined.Add((MemoryArchive)archive);
@@ -269,7 +266,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task DeleteAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)
+		public Task DeleteAsync(BeatmapsetArchive archive)
 		{
 			_uploaded.Remove((MemoryArchive)archive);
 			return Task.CompletedTask;
@@ -361,7 +358,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task UpdateAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+		public Task UpdateAsync(BeatmapsetRecord set)
 		{
 			if (UpdateFailure is { } failure) throw failure;
 			Records[set.Id] = set;
@@ -384,8 +381,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes,
-			CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes)
 		{
 			var stored = new List<BeatmapsetRecord>();
 			foreach (var change in changes.Store)
@@ -425,7 +421,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+		public Task DeleteAsync(BeatmapsetRecord set)
 		{
 			Records.Remove(set.Id);
 			return Task.CompletedTask;
@@ -446,7 +442,7 @@ public sealed class BeatmapsetWorld
 		public Dictionary<Md5, BeatmapRecord> Records { get; } = [];
 
 		/// <inheritdoc />
-		public Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default)
+		public Task UpdateAsync(BeatmapRecord beatmap)
 		{
 			Records[beatmap.Hash] = beatmap;
 			return Task.CompletedTask;
@@ -481,8 +477,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
-			CancellationToken cancellationToken = default)
+		public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep)
 		{
 			foreach (var hash in Records.Where(pair => pair.Value.Beatmapset.Equals(set) && !keep.Contains(pair.Value))
 				         .Select(pair => pair.Key).ToList())

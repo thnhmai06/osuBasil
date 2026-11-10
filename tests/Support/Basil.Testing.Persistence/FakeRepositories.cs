@@ -65,7 +65,7 @@ public sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRepo
 		return ValueTask.FromResult(Beatmap is { } found && found.Hash == hash ? found : null);
 	}
 
-	public Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(BeatmapRecord beatmap)
 	{
 		throw new NotSupportedException();
 	}
@@ -87,8 +87,7 @@ public sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRepo
 		throw new NotSupportedException();
 	}
 
-	public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
-		CancellationToken cancellationToken = default)
+	public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep)
 	{
 		throw new NotSupportedException();
 	}

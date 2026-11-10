@@ -11,7 +11,7 @@ internal sealed class BeatmapsetFileAudit(IBeatmapsetStorage storage, IBeatmapRe
 	/// <param name="set">The stored beatmapset.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when its archive or any file made from it is not stored.</returns>
-	public async Task<bool> MissingFilesAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
+	public async Task<bool> MissingFilesAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		if (await ArchiveMissingAsync(set, true, cancellationToken)) return true;
 		if (await ArchiveMissingAsync(set, false, cancellationToken)) return true;

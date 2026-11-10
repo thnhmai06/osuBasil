@@ -14,20 +14,19 @@ internal sealed class BeatmapsetFileWriter(
 {
 	/// <summary>Makes every file a set serves from its archive, which is already stored.</summary>
 	/// <param name="set">The beatmapset, whose archive is stored.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The names are chosen the same way they were when the set was planned, so they match the records.</remarks>
-	internal async Task StoreFilesAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
+	internal async Task StoreFilesAsync(BeatmapsetRecord set)
 	{
-		await storage.ClearAsync(set, cancellationToken);
+		await storage.ClearAsync(set);
 
-		var stream = await storage.OpenArchiveAsync(set, true, cancellationToken);
+		var stream = await storage.OpenArchiveAsync(set, true);
 		if (stream is null) return;
 
 		var keep = false;
 		List<string> videoFiles;
 		try
 		{
-			var content = await reader.ReadAsync(stream, cancellationToken);
+			var content = await reader.ReadAsync(stream);
 			keep = content is not null;
 			if (content is null) return;
 
@@ -42,33 +41,29 @@ internal sealed class BeatmapsetFileWriter(
 
 				foreach (var difficulty in content.Difficulties)
 				{
-					var hash = await difficulty.File.HashAsync(cancellationToken);
-					var osu = await difficulty.File.OpenAsync(cancellationToken);
+					var hash = await difficulty.File.HashAsync();
+					var osu = await difficulty.File.OpenAsync();
 					await using (osu)
 					{
-						await storage.SaveAsync(set, BeatmapsetFileType.Version, $"{hash}.osu", osu, cancellationToken);
+						await storage.SaveAsync(set, BeatmapsetFileType.Version, $"{hash}.osu", osu);
 					}
 				}
 
 				var done = new HashSet<BeatmapsetContentFile>();
 				foreach (var difficulty in content.Difficulties)
 				{
-					await SaveFileAsync(set, BeatmapsetFileType.Background, difficulty.Background, backgrounds, done,
-						cancellationToken);
-					await SaveFileAsync(set, BeatmapsetFileType.Audio, difficulty.Audio, audio, done,
-						cancellationToken);
-					await SaveFileAsync(set, BeatmapsetFileType.Video, difficulty.Video, video, done,
-						cancellationToken);
+					await SaveFileAsync(set, BeatmapsetFileType.Background, difficulty.Background, backgrounds, done);
+					await SaveFileAsync(set, BeatmapsetFileType.Audio, difficulty.Audio, audio, done);
+					await SaveFileAsync(set, BeatmapsetFileType.Video, difficulty.Video, video, done);
 				}
 
 				if (content.Storyboard is not null)
 				{
-					var storyboard = await content.Storyboard.OpenAsync(cancellationToken);
+					var storyboard = await content.Storyboard.OpenAsync();
 					await using (storyboard)
 					{
 						await storage.SaveAsync(set, BeatmapsetFileType.Storyboard, StoredFileNames.Storyboard,
-							storyboard,
-							cancellationToken);
+							storyboard);
 					}
 				}
 			}
@@ -78,9 +73,9 @@ internal sealed class BeatmapsetFileWriter(
 			if (!keep) await stream.DisposeAsync();
 		}
 
-		await storage.SaveArchiveWithoutVideoAsync(set, videoFiles, cancellationToken);
-		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken);
-		await assets.BuildAsync(set, storedBeatmaps, cancellationToken);
+		await storage.SaveArchiveWithoutVideoAsync(set, videoFiles);
+		var storedBeatmaps = await beatmaps.ListAsync(set);
+		await assets.BuildAsync(set, storedBeatmaps);
 	}
 
 	/// <summary>Stores one file of a set, once, under the name chosen for it.</summary>
@@ -89,17 +84,15 @@ internal sealed class BeatmapsetFileWriter(
 	/// <param name="file">The file of the set's archive, or <see langword="null" /> when the set has none of that kind.</param>
 	/// <param name="names">The name chosen for each file.</param>
 	/// <param name="done">The files already stored by this call; <paramref name="file" /> is added to it.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	private async Task SaveFileAsync(BeatmapsetRecord set, BeatmapsetFileType type, BeatmapsetContentFile? file,
-		IReadOnlyDictionary<BeatmapsetContentFile, string> names, HashSet<BeatmapsetContentFile> done,
-		CancellationToken cancellationToken)
+		IReadOnlyDictionary<BeatmapsetContentFile, string> names, HashSet<BeatmapsetContentFile> done)
 	{
 		if (file is null || !done.Add(file)) return;
 
-		var stream = await file.OpenAsync(cancellationToken);
+		var stream = await file.OpenAsync();
 		await using (stream)
 		{
-			await storage.SaveAsync(set, type, names[file], stream, cancellationToken);
+			await storage.SaveAsync(set, type, names[file], stream);
 		}
 	}
 }

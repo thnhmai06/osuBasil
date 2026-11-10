@@ -90,7 +90,7 @@ internal sealed class BeatmapPreviewMaker(
 
 			var preview = File.OpenRead(outputPath);
 			await using var previewScope = preview;
-			await storage.SaveAsync(set, BeatmapsetFileType.Preview, audio, preview, cancellationToken);
+			await storage.SaveAsync(set, BeatmapsetFileType.Preview, audio, preview);
 		}
 		finally
 		{

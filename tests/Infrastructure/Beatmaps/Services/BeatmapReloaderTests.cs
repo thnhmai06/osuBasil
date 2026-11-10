@@ -58,8 +58,7 @@ public sealed class BeatmapReloaderTests
 
 		Assert.Equal((1, 0), (done, failed));
 		await _beatmaps.Received(1).UpdateAsync(
-			Arg.Is<BeatmapRecord>(stored => stored.Metadata.Difficulty.Star == NewStar),
-			Arg.Any<CancellationToken>());
+			Arg.Is<BeatmapRecord>(stored => stored.Metadata.Difficulty.Star == NewStar));
 	}
 
 	[Fact]
@@ -73,7 +72,7 @@ public sealed class BeatmapReloaderTests
 		var (done, failed) = await NewReloader().ReloadAllAsync(Token);
 
 		Assert.Equal((0, 1), (done, failed));
-		await _beatmaps.DidNotReceive().UpdateAsync(Arg.Any<BeatmapRecord>(), Arg.Any<CancellationToken>());
+		await _beatmaps.DidNotReceive().UpdateAsync(Arg.Any<BeatmapRecord>());
 	}
 
 	[Fact]
@@ -89,7 +88,7 @@ public sealed class BeatmapReloaderTests
 		var (done, failed) = await NewReloader().ReloadAllAsync(Token);
 
 		Assert.Equal((0, 1), (done, failed));
-		await _beatmaps.DidNotReceive().UpdateAsync(Arg.Any<BeatmapRecord>(), Arg.Any<CancellationToken>());
+		await _beatmaps.DidNotReceive().UpdateAsync(Arg.Any<BeatmapRecord>());
 	}
 
 	[Fact]

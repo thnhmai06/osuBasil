@@ -245,7 +245,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		var sets = Host.Services.GetRequiredService<IBeatmapsetRepository>();
 		var set = (await sets.GetAsync(map.Beatmapset.Id, TestContext.Current.CancellationToken))!;
 		set.Visible = false;
-		await sets.UpdateAsync(set, TestContext.Current.CancellationToken);
+		await sets.UpdateAsync(set);
 		using var supporter = await Host.NewClientAsync("DirectHiddenNo", privileges: UserPrivilegesExtensions.Default);
 		await supporter.LoginAsync();
 
@@ -260,7 +260,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		finally
 		{
 			set.Visible = true;
-			await sets.UpdateAsync(set, TestContext.Current.CancellationToken);
+			await sets.UpdateAsync(set);
 		}
 	}
 

@@ -32,19 +32,17 @@ public interface IBeatmapsetStorage
 	/// <summary>Makes an archive lying in the storage the set's archive, moving it byte for byte.</summary>
 	/// <param name="set">The beatmapset the archive holds.</param>
 	/// <param name="archive">The archive: one placed by hand, uploaded, packed from a folder, or a set folder's own.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>
 	///     The set's folder is named after the set, and another folder stored for the set is deleted. A set folder's own
 	///     archive stays in place; the folder is only renamed when its name changed.
 	/// </remarks>
-	Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive, CancellationToken cancellationToken = default);
+	Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive);
 
 	/// <summary>Keeps an uploaded archive that could not be read in quarantine, for the operator to look at.</summary>
 	/// <param name="archive">An archive returned by <see cref="SaveAsync(Stream, CancellationToken)" />.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The archive is no longer readable afterwards. Quarantined files older than seven days are deleted.</remarks>
 	/// <exception cref="ArgumentException">The archive was not uploaded to this storage.</exception>
-	Task QuarantineAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default);
+	Task QuarantineAsync(BeatmapsetArchive archive);
 
 	/// <summary>Packs a folder of loose files into an archive that waits to be taken in.</summary>
 	/// <param name="folder">The folder; its files are left as they are until the archive is taken in.</param>
@@ -62,8 +60,7 @@ public interface IBeatmapsetStorage
 
 	/// <summary>Removes every file made from a set's archive, keeping the archive.</summary>
 	/// <param name="set">The beatmapset.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task ClearAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
+	Task ClearAsync(BeatmapsetRecord set);
 
 	/// <summary>Stores one file made from a set's archive.</summary>
 	/// <param name="set">The beatmapset.</param>
@@ -73,10 +70,8 @@ public interface IBeatmapsetStorage
 	///     the name of the audio it is made from; ignored for the storyboard. A file with that name is replaced.
 	/// </param>
 	/// <param name="content">The content, read to its end; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <exception cref="ArgumentException"><paramref name="name" /> is not a plain file name.</exception>
-	Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content,
-		CancellationToken cancellationToken = default);
+	Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content);
 
 	/// <summary>Makes the set's archive without video from its archive.</summary>
 	/// <param name="set">The beatmapset.</param>
@@ -84,9 +79,7 @@ public interface IBeatmapsetStorage
 	///     The names, as they are in the archive, of the files that the set's difficulties declare as their video; the
 	///     letter case of a name does not matter.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles,
-		CancellationToken cancellationToken = default);
+	Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles);
 
 	/// <summary>Determines whether a file made from a set's archive is stored.</summary>
 	/// <param name="set">The beatmapset.</param>
@@ -129,19 +122,17 @@ public interface IBeatmapsetStorage
 
 	/// <summary>Deletes a set's folder with everything in it; deleting a missing set does nothing.</summary>
 	/// <param name="set">The beatmapset whose folder to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The folder stops being the set's at once; its files are removed right after.</remarks>
 	/// <exception cref="IOException">A file of the set is in use; the set keeps its folder.</exception>
-	Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
+	Task DeleteAsync(BeatmapsetRecord set);
 
 	/// <summary>Removes an uploaded or packed archive, once it is taken in or will not be; a packed folder's files stay.</summary>
 	/// <param name="archive">
 	///     An archive returned by <see cref="SaveAsync(Stream, CancellationToken)" /> or
 	///     <see cref="PackAsync(BeatmapsetFolder, CancellationToken)" />.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <exception cref="ArgumentException"><paramref name="archive" /> was neither uploaded nor packed by this storage.</exception>
-	Task DeleteAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default);
+	Task DeleteAsync(BeatmapsetArchive archive);
 }
 
 /// <summary>What a file made from a beatmapset's archive is.</summary>

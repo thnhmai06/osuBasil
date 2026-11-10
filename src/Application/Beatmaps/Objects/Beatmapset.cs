@@ -33,61 +33,56 @@ public sealed class Beatmapset
 	}
 
 	/// <summary>Forgets a stored beatmapset, leaving the files of its folder as they are.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	internal async Task ForgetAsync(CancellationToken cancellationToken)
+	internal async Task ForgetAsync()
 	{
-		await Context.Repository.CommitAsync(new BeatmapsetChanges([], [Record]), cancellationToken);
+		await Context.Repository.CommitAsync(new BeatmapsetChanges([], [Record]));
 		Context.Events.Publish(new BeatmapsetDeleted(Record));
 	}
 
 	/// <summary>Deletes this beatmapset and its files.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Locked when the beatmapset is write-locked, which is then not deleted; otherwise Ok.</returns>
-	internal async Task<BeatmapsetOutcome> DeleteAsync(CancellationToken cancellationToken)
+	internal async Task<BeatmapsetOutcome> DeleteAsync()
 	{
 		if (Record.Locked) return BeatmapsetOutcome.Locked;
 
-		await Context.Storage.DeleteAsync(Record, cancellationToken);
-		await ForgetAsync(cancellationToken);
+		await Context.Storage.DeleteAsync(Record);
+		await ForgetAsync();
 		return BeatmapsetOutcome.Ok;
 	}
 
 	/// <summary>Changes whether this beatmapset is shown in public listings.</summary>
 	/// <param name="visible">Whether the beatmapset is visible.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<BeatmapsetOutcome> SetVisibleAsync(bool visible, CancellationToken cancellationToken)
+	internal async Task<BeatmapsetOutcome> SetVisibleAsync(bool visible)
 	{
 		if (Record.Visible == visible) return BeatmapsetOutcome.Ok;
 
 		Record.Visible = visible;
-		await Context.Repository.UpdateAsync(Record, cancellationToken);
+		await Context.Repository.UpdateAsync(Record);
 		return BeatmapsetOutcome.Ok;
 	}
 
 	/// <summary>Changes whether this beatmapset is write-locked.</summary>
 	/// <param name="locked">Whether the beatmapset is write-locked.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<BeatmapsetOutcome> SetLockedAsync(bool locked, CancellationToken cancellationToken)
+	internal async Task<BeatmapsetOutcome> SetLockedAsync(bool locked)
 	{
 		if (Record.Locked == locked) return BeatmapsetOutcome.Ok;
 
 		Record.Locked = locked;
-		await Context.Repository.UpdateAsync(Record, cancellationToken);
+		await Context.Repository.UpdateAsync(Record);
 		return BeatmapsetOutcome.Ok;
 	}
 
 	/// <summary>Changes the ranked status the beatmapset is reported with.</summary>
 	/// <param name="status">The new status.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<BeatmapsetOutcome> SetStatusAsync(BeatmapsetStatus status, CancellationToken cancellationToken)
+	internal async Task<BeatmapsetOutcome> SetStatusAsync(BeatmapsetStatus status)
 	{
 		if (Record.Status == status) return BeatmapsetOutcome.Ok;
 
 		Record.Status = status;
-		await Context.Repository.UpdateAsync(Record, cancellationToken);
+		await Context.Repository.UpdateAsync(Record);
 		return BeatmapsetOutcome.Ok;
 	}
 }

@@ -49,7 +49,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		[
 			new BeatmapsetChange(null, StoredBeatmaps.Data(11, "Camellia", "First", "Mapper")),
 			new BeatmapsetChange(null, StoredBeatmaps.Data(22, "Camellia", "Second", "Mapper"))
-		], []), TestContext.Current.CancellationToken);
+		], []));
 
 		Assert.Equal(new[] { 11, 22 }, stored.Select(set => set.Id));
 	}
@@ -60,8 +60,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []),
-			TestContext.Current.CancellationToken);
+				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.Equal("Renamed", Assert.Single(replaced).Metadata.Title);
 	}
@@ -72,8 +71,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []),
-			TestContext.Current.CancellationToken);
+				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.Equal(set.CreatedAt, Assert.Single(replaced).CreatedAt);
 	}
@@ -85,8 +83,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		set.Locked = true;
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []),
-			TestContext.Current.CancellationToken);
+				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.True(Assert.Single(replaced).Locked);
 	}
@@ -98,8 +95,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		set.Visible = false;
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []),
-			TestContext.Current.CancellationToken);
+				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.False(Assert.Single(replaced).Visible);
 	}
@@ -114,7 +110,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		[
 			new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 				[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")]))
-		], []), TestContext.Current.CancellationToken);
+		], []));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select id from beatmaps where beatmapset_id = @id",
 			new Dictionary<string, object?> { ["@id"] = set.Id }, rows => rows.Count == 1,
@@ -128,7 +124,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
-		await Sets.CommitAsync(new BeatmapsetChanges([], [set]), TestContext.Current.CancellationToken);
+		await Sets.CommitAsync(new BeatmapsetChanges([], [set]));
 
 		Assert.Null(await Sets.GetAsync(set.Id, TestContext.Current.CancellationToken));
 	}
@@ -139,7 +135,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")])));
 
-		await Sets.CommitAsync(new BeatmapsetChanges([], [set]), TestContext.Current.CancellationToken);
+		await Sets.CommitAsync(new BeatmapsetChanges([], [set]));
 
 		var sets = await StoredRows.WaitForAsync(ConnectionString, "select id from beatmapsets where id = @id",
 			new Dictionary<string, object?> { ["@id"] = set.Id }, rows => rows.Count == 0,
@@ -213,7 +209,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 		var changed = Changed(set, true);
 
-		await Sets.UpdateAsync(changed, TestContext.Current.CancellationToken);
+		await Sets.UpdateAsync(changed);
 
 		var found = await Sets.GetAsync(set.Id, TestContext.Current.CancellationToken);
 		Assert.True(found!.Locked);
@@ -225,7 +221,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 		var changed = Changed(set, visible: false);
 
-		await Sets.UpdateAsync(changed, TestContext.Current.CancellationToken);
+		await Sets.UpdateAsync(changed);
 
 		var found = await Sets.GetAsync(set.Id, TestContext.Current.CancellationToken);
 		Assert.False(found!.Visible);
@@ -235,7 +231,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	public async Task An_update_is_stored()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
-		await Sets.UpdateAsync(Changed(set, true, false), TestContext.Current.CancellationToken);
+		await Sets.UpdateAsync(Changed(set, true, false));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select locked, visible from beatmapsets where id = @id",
@@ -251,7 +247,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
-		await Sets.DeleteAsync(set, TestContext.Current.CancellationToken);
+		await Sets.DeleteAsync(set);
 
 		Assert.Null(await Sets.GetAsync(set.Id, TestContext.Current.CancellationToken));
 	}
@@ -261,7 +257,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
-		await Sets.DeleteAsync(set, TestContext.Current.CancellationToken);
+		await Sets.DeleteAsync(set);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select id from beatmapsets where id = @id",
 			new Dictionary<string, object?> { ["@id"] = set.Id }, rows => rows.Count == 0,
@@ -275,7 +271,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")])));
-		await Sets.DeleteAsync(set, TestContext.Current.CancellationToken);
+		await Sets.DeleteAsync(set);
 
 		var page = await Sets.ListAsync(new BeatmapQuery(), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -336,14 +332,14 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var beatmaps = Get<IBeatmapRepository>();
 		var easy = (await beatmaps.GetAsync(EasyHash, TestContext.Current.CancellationToken))!;
 		set.Locked = true;
-		await Sets.UpdateAsync(set, TestContext.Current.CancellationToken);
-		await beatmaps.UpdateAsync(easy, TestContext.Current.CancellationToken);
+		await Sets.UpdateAsync(set);
+		await beatmaps.UpdateAsync(easy);
 
 		await Sets.CommitAsync(new BeatmapsetChanges(
 		[
 			new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 				[StoredBeatmaps.Difficulty(301, EasyHash, "Easy renamed")]))
-		], []), TestContext.Current.CancellationToken);
+		], []));
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select version from beatmaps where hash = @hash",
 			new Dictionary<string, object?> { ["@hash"] = EasyHash.HashValue }, TestContext.Current.CancellationToken);
@@ -357,7 +353,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var orphan = StoredBeatmaps.Beatmap(777);
 
 		await Assert.ThrowsAnyAsync<Exception>(() =>
-			Get<IBeatmapRepository>().UpdateAsync(orphan, TestContext.Current.CancellationToken));
+			Get<IBeatmapRepository>().UpdateAsync(orphan));
 	}
 
 	/// <summary>Commits one beatmapset as a new set.</summary>
@@ -365,8 +361,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	/// <returns>The stored set.</returns>
 	private async Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetData data)
 	{
-		return await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []),
-			TestContext.Current.CancellationToken);
+		return await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []));
 	}
 
 	/// <summary>Copies a beatmapset with the lock and the visibility the test names.</summary>

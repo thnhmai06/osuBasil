@@ -46,7 +46,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(BeatmapsetArchive archive)
 	{
 		if (archive is not FileBeatmapsetArchive placed ||
 		    (!IsHidden(Path.GetFileName(placed.Path)) && placed.PackedFrom is null))
@@ -66,7 +66,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task QuarantineAsync(BeatmapsetArchive archive, CancellationToken cancellationToken = default)
+	public Task QuarantineAsync(BeatmapsetArchive archive)
 	{
 		if (archive is not FileBeatmapsetArchive placed || !IsHidden(Path.GetFileName(placed.Path)))
 			throw new ArgumentException("The archive was not uploaded to this storage.", nameof(archive));
@@ -76,14 +76,13 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive,
-		CancellationToken cancellationToken = default)
+	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive)
 	{
 		if (archive is not FileBeatmapsetArchive placed)
 			throw new ArgumentException("The archive does not belong to this storage.", nameof(archive));
 
 		var target = Path.Combine(paths.Beatmapsets.Path, FolderName(set));
-		var gate = await LockAsync(set.Id, cancellationToken);
+		var gate = await LockAsync(set.Id);
 		try
 		{
 			var placedParent = Path.GetDirectoryName(placed.Path);
@@ -147,9 +146,9 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task ClearAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+	public async Task ClearAsync(BeatmapsetRecord set)
 	{
-		var gate = await LockAsync(set.Id, cancellationToken);
+		var gate = await LockAsync(set.Id);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set));
@@ -169,10 +168,9 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content,
-		CancellationToken cancellationToken = default)
+	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content)
 	{
-		var gate = await LockAsync(set.Id, cancellationToken);
+		var gate = await LockAsync(set.Id);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set)) ??
@@ -188,7 +186,7 @@ internal sealed class FileBeatmapsetStorage(
 					             FileShare.None,
 					             BufferSize, FileOptions.Asynchronous))
 				{
-					await content.CopyToAsync(output, cancellationToken);
+					await content.CopyToAsync(output);
 				}
 
 				File.Move(temporary, path, true);
@@ -205,11 +203,10 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles,
-		CancellationToken cancellationToken = default)
+	public async Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles)
 	{
 		var videos = videoFiles.Select(name => name.Replace('\\', '/')).ToHashSet(StringComparer.OrdinalIgnoreCase);
-		var gate = await LockAsync(set.Id, cancellationToken);
+		var gate = await LockAsync(set.Id);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set)) ??
@@ -230,13 +227,12 @@ internal sealed class FileBeatmapsetStorage(
 					await using var destination = new ZipArchive(output, ZipArchiveMode.Create, true);
 					foreach (var entry in source.Entries.Where(entry => !entry.FullName.EndsWith('/')))
 					{
-						cancellationToken.ThrowIfCancellationRequested();
 						if (videos.Contains(entry.FullName.Replace('\\', '/'))) continue;
 
 						var created = destination.CreateEntry(entry.FullName, CompressionLevel.Optimal);
-						await using var entryInput = await entry.OpenAsync(cancellationToken);
-						await using var entryOutput = await created.OpenAsync(cancellationToken);
-						await entryInput.CopyToAsync(entryOutput, cancellationToken);
+						await using var entryInput = await entry.OpenAsync();
+						await using var entryOutput = await created.OpenAsync();
+						await entryInput.CopyToAsync(entryOutput);
 					}
 				}
 
@@ -319,9 +315,9 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+	public async Task DeleteAsync(BeatmapsetRecord set)
 	{
-		var gate = await LockAsync(set.Id, cancellationToken);
+		var gate = await LockAsync(set.Id);
 		try
 		{
 			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
@@ -410,7 +406,7 @@ internal sealed class FileBeatmapsetStorage(
 	/// <param name="id">The id of the beatmapset.</param>
 	/// <param name="cancellationToken">A token that cancels the wait.</param>
 	/// <returns>The turn; releasing it lets the next operation on the set run.</returns>
-	private async Task<SetLock> LockAsync(int id, CancellationToken cancellationToken)
+	private async Task<SetLock> LockAsync(int id, CancellationToken cancellationToken = default)
 	{
 		SetLock gate;
 		lock (_setLocks)

@@ -38,7 +38,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var result = await set.ScopeTo(actor).DeleteAsync(TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).DeleteAsync();
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
 		Assert.Empty(world.Sets.Records);
@@ -53,8 +53,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var allowed = await set.ScopeTo(new FixedActor(actor.Record, Manager)).DeleteAsync(
-			TestContext.Current.CancellationToken);
+		var allowed = await set.ScopeTo(new FixedActor(actor.Record, Manager)).DeleteAsync();
 
 		Assert.Equal(BeatmapsetOutcome.Ok, allowed.Outcome);
 		Assert.Empty(world.Sets.Records);
@@ -66,8 +65,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPrivilegesExtensions.Default)).DeleteAsync(
-			TestContext.Current.CancellationToken);
+		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPrivilegesExtensions.Default)).DeleteAsync();
 
 		Assert.Equal(UserPrivileges.Tournament, denied.Missing);
 		Assert.NotEmpty(world.Sets.Records);
@@ -89,8 +87,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var result = await set.ScopeTo(actor).SetStatusAsync(BeatmapsetStatus.Loved,
-			TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).SetStatusAsync(BeatmapsetStatus.Loved);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
 		Assert.Equal(BeatmapsetStatus.Loved, set.Record.Status);
@@ -104,7 +101,7 @@ public sealed class ScopedBeatmapsetTests
 		using var _ = app;
 
 		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPrivilegesExtensions.Default)).SetStatusAsync(
-			BeatmapsetStatus.Loved, TestContext.Current.CancellationToken);
+			BeatmapsetStatus.Loved);
 
 		Assert.Equal(UserPrivileges.Tournament, denied.Missing);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Record.Status);
@@ -118,7 +115,7 @@ public sealed class ScopedBeatmapsetTests
 		set.Record.Locked = true;
 		var events = app.BeatmapsetEvents.Events.Count;
 
-		var result = await set.ScopeTo(actor).DeleteAsync(TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).DeleteAsync();
 
 		Assert.Equal(BeatmapsetOutcome.Locked, result.Outcome);
 		Assert.Single(world.Sets.Records);
@@ -132,7 +129,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
-		var result = await set.ScopeTo(actor).DeleteAsync(TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).DeleteAsync();
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Tournament, result.Missing);
@@ -146,7 +143,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var result = await set.ScopeTo(actor).SetVisibleAsync(false, TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).SetVisibleAsync(false);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
 		Assert.False(set.Record.Visible);
@@ -160,7 +157,7 @@ public sealed class ScopedBeatmapsetTests
 		world.Sets.UpdateFailure = new InvalidOperationException("store down");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			set.ScopeTo(actor).SetVisibleAsync(false, TestContext.Current.CancellationToken));
+			set.ScopeTo(actor).SetVisibleAsync(false));
 	}
 
 	[Fact]
@@ -171,7 +168,7 @@ public sealed class ScopedBeatmapsetTests
 		world.Sets.UpdateFailure = new InvalidOperationException("store down");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			set.ScopeTo(actor).SetLockedAsync(true, TestContext.Current.CancellationToken));
+			set.ScopeTo(actor).SetLockedAsync(true));
 	}
 
 	[Fact]
@@ -182,7 +179,7 @@ public sealed class ScopedBeatmapsetTests
 		world.Sets.UpdateFailure = new InvalidOperationException("store down");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			set.ScopeTo(actor).SetStatusAsync(BeatmapsetStatus.Loved, TestContext.Current.CancellationToken));
+			set.ScopeTo(actor).SetStatusAsync(BeatmapsetStatus.Loved));
 	}
 
 	[Fact]
@@ -190,9 +187,9 @@ public sealed class ScopedBeatmapsetTests
 	{
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
-		await set.ScopeTo(actor).SetVisibleAsync(false, TestContext.Current.CancellationToken);
+		await set.ScopeTo(actor).SetVisibleAsync(false);
 
-		var result = await set.ScopeTo(actor).SetVisibleAsync(true, TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).SetVisibleAsync(true);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
 		Assert.True(set.Record.Visible);
@@ -204,7 +201,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
-		var result = await set.ScopeTo(actor).SetVisibleAsync(false, TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).SetVisibleAsync(false);
 
 		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.True(set.Record.Visible);
@@ -216,7 +213,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var result = await set.ScopeTo(actor).SetLockedAsync(true, TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).SetLockedAsync(true);
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
 		Assert.True(set.Record.Locked);
@@ -227,10 +224,10 @@ public sealed class ScopedBeatmapsetTests
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
-		await set.ScopeTo(actor).SetLockedAsync(true, TestContext.Current.CancellationToken);
+		await set.ScopeTo(actor).SetLockedAsync(true);
 
-		await set.ScopeTo(actor).SetLockedAsync(false, TestContext.Current.CancellationToken);
-		var result = await set.ScopeTo(actor).DeleteAsync(TestContext.Current.CancellationToken);
+		await set.ScopeTo(actor).SetLockedAsync(false);
+		var result = await set.ScopeTo(actor).DeleteAsync();
 
 		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
 		Assert.Empty(world.Sets.Records);
@@ -242,7 +239,7 @@ public sealed class ScopedBeatmapsetTests
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
-		var result = await set.ScopeTo(actor).SetLockedAsync(true, TestContext.Current.CancellationToken);
+		var result = await set.ScopeTo(actor).SetLockedAsync(true);
 
 		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.False(set.Record.Locked);

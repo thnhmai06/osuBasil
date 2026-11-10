@@ -14,11 +14,11 @@ internal sealed class PatchBeatmapsetHandler(Beatmapsets beatmapsets)
 		CancellationToken cancellationToken)
 	{
 		var scoped = beatmapsets.Of(request.Set).ScopeTo(request.Actor);
-		if (request.Status is { } status && await scoped.SetStatusAsync(status, cancellationToken) is { IsOk: false } a)
+		if (request.Status is { } status && await scoped.SetStatusAsync(status) is { IsOk: false } a)
 			return a;
 		if (request.Visible is { } visible &&
-		    await scoped.SetVisibleAsync(visible, cancellationToken) is { IsOk: false } b) return b;
-		if (request.Locked is { } locked && await scoped.SetLockedAsync(locked, cancellationToken) is { IsOk: false } c)
+		    await scoped.SetVisibleAsync(visible) is { IsOk: false } b) return b;
+		if (request.Locked is { } locked && await scoped.SetLockedAsync(locked) is { IsOk: false } c)
 			return c;
 		return BeatmapsetOutcome.Ok;
 	}

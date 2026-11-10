@@ -36,48 +36,41 @@ public readonly struct ScopedBeatmapset
 	public Beatmapset Beatmapset { get; }
 
 	/// <summary>Deletes this beatmapset and its files.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of deleting the beatmapset; a locked set is not deleted.</returns>
-	public async Task<Result<BeatmapsetOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<BeatmapsetOutcome>> DeleteAsync()
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.DeleteAsync(cancellationToken);
+		return await Beatmapset.DeleteAsync();
 	}
 
 	/// <summary>Changes whether this beatmapset is shown in public listings.</summary>
 	/// <param name="visible">Whether the beatmapset is visible.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of changing the beatmapset's visibility.</returns>
-	public async Task<Result<BeatmapsetOutcome>> SetVisibleAsync(bool visible,
-		CancellationToken cancellationToken = default)
+	public async Task<Result<BeatmapsetOutcome>> SetVisibleAsync(bool visible)
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.SetVisibleAsync(visible, cancellationToken);
+		return await Beatmapset.SetVisibleAsync(visible);
 	}
 
 	/// <summary>Changes whether this beatmapset is write-locked.</summary>
 	/// <param name="locked">Whether the beatmapset is write-locked.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of changing the beatmapset's lock.</returns>
-	public async Task<Result<BeatmapsetOutcome>> SetLockedAsync(bool locked,
-		CancellationToken cancellationToken = default)
+	public async Task<Result<BeatmapsetOutcome>> SetLockedAsync(bool locked)
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.SetLockedAsync(locked, cancellationToken);
+		return await Beatmapset.SetLockedAsync(locked);
 	}
 
 	/// <summary>Changes the ranked status the beatmapset is reported with.</summary>
 	/// <param name="status">The new status.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of changing the beatmapset's status.</returns>
-	public async Task<Result<BeatmapsetOutcome>> SetStatusAsync(BeatmapsetStatus status,
-		CancellationToken cancellationToken = default)
+	public async Task<Result<BeatmapsetOutcome>> SetStatusAsync(BeatmapsetStatus status)
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
-		return await Beatmapset.SetStatusAsync(status, cancellationToken);
+		return await Beatmapset.SetStatusAsync(status);
 	}
 }

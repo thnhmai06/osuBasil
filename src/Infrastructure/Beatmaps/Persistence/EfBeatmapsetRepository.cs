@@ -19,29 +19,28 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(BeatmapsetRecord set)
 	{
 		var row = ToRow(set);
-		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.Id == row.Id), cancellationToken);
+		return database.WriteAsync((BeatmapsDbContext context) =>
+			context.UpsertAsync(row, stored => stored.Id == row.Id));
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes,
-		CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes)
 	{
 		List<StoredSet> stored = [];
-		await database.TransactAsync(async (BeatmapsDbContext context, CancellationToken token) =>
-			stored = await StoreAsync(changes, context, token), cancellationToken);
+		await database.TransactAsync(async (BeatmapsDbContext context) =>
+			stored = await StoreAsync(changes, context));
 		return [.. stored.Select(item => item.Set)];
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(BeatmapsetRecord set)
 	{
-		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) => context.Beatmapsets
+		return database.WriteAsync((BeatmapsDbContext context) => context.Beatmapsets
 			.Where(s => s.Id == set.Id)
-			.ExecuteDeleteAsync(token), cancellationToken);
+			.ExecuteDeleteAsync());
 	}
 
 	/// <inheritdoc />
@@ -76,10 +75,8 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 	/// <summary>Stores every change in one transaction, keeping what a replaced beatmapset was stored with.</summary>
 	/// <param name="changes">The beatmapsets to store and to remove.</param>
 	/// <param name="context">The EF context the transaction runs on.</param>
-	/// <param name="token">The cancellation token.</param>
 	/// <returns>What was stored, in the order of <see cref="BeatmapsetChanges.Store" />.</returns>
-	private async Task<List<StoredSet>> StoreAsync(BeatmapsetChanges changes, BeatmapsDbContext context,
-		CancellationToken token)
+	private async Task<List<StoredSet>> StoreAsync(BeatmapsetChanges changes, BeatmapsDbContext context)
 	{
 		var now = time.GetUtcNow();
 		var stored = new List<StoredSet>(changes.Store.Count);
@@ -89,16 +86,16 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 			.Concat(changes.Remove.Select(removed => removed.Id)).ToHashSet();
 
 		foreach (var (existing, data) in changes.Store)
-			stored.Add(await StoreOneAsync(existing, data, now, releasable, context, token));
+			stored.Add(await StoreOneAsync(existing, data, now, releasable, context));
 
 		foreach (var set in changes.Remove)
 		{
 			await context.Beatmaps
 				.Where(b => b.BeatmapsetId == set.Id)
-				.ExecuteDeleteAsync(token);
+				.ExecuteDeleteAsync();
 			await context.Beatmapsets
 				.Where(s => s.Id == set.Id)
-				.ExecuteDeleteAsync(token);
+				.ExecuteDeleteAsync();
 		}
 
 		return stored;
@@ -106,7 +103,7 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 
 	private static async Task<StoredSet> StoreOneAsync(BeatmapsetRecord? existing, BeatmapsetData data,
 		DateTimeOffset now,
-		IReadOnlySet<int> releasable, BeatmapsDbContext context, CancellationToken token)
+		IReadOnlySet<int> releasable, BeatmapsDbContext context)
 	{
 		var knownId = existing?.Id ?? data.OnlineId;
 		// A record needs an id; the row of a set without an osu! id has none until a local id is taken.
@@ -120,7 +117,7 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 			if (row.Id == 0)
 				row.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapsetIds);
 			context.Beatmapsets.Add(row);
-			await context.SaveChangesAsync(token);
+			await context.SaveChangesAsync();
 		}
 		else
 		{
@@ -129,12 +126,12 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 
 		var set = Build(existing, data, now, row.Id);
 		var beatmaps =
-			await EfBeatmapRepository.StoreAsync(set, data.Beatmaps, now, releasable, context, token);
+			await EfBeatmapRepository.StoreAsync(set, data.Beatmaps, now, releasable, context);
 
 		var keepIds = beatmaps.Select(beatmap => beatmap.Id).ToArray();
 		await context.Beatmaps
 			.Where(b => b.BeatmapsetId == set.Id && !((IEnumerable<int>)keepIds).Contains(b.Id))
-			.ExecuteDeleteAsync(token);
+			.ExecuteDeleteAsync();
 
 		return new StoredSet(set, beatmaps);
 	}

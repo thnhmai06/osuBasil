@@ -10,10 +10,9 @@ public interface IBeatmapRepository
 {
 	/// <summary>Stores the new values of a created beatmap, replacing the stored ones.</summary>
 	/// <param name="beatmap">The beatmap to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The values are stored when the call returns; a beatmap read afterwards has them.</remarks>
 	/// <exception cref="AlreadyExistsException">Another beatmap already has the beatmap's hash.</exception>
-	Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default);
+	Task UpdateAsync(BeatmapRecord beatmap);
 
 	/// <summary>Gets a beatmap by id.</summary>
 	/// <param name="id">The beatmap id.</param>
@@ -45,7 +44,5 @@ public interface IBeatmapRepository
 	/// <summary>Deletes the stored beatmaps of a beatmapset that are not in a given list.</summary>
 	/// <param name="set">The beatmapset.</param>
 	/// <param name="keep">The beatmaps the set still has.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
-		CancellationToken cancellationToken = default);
+	Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep);
 }

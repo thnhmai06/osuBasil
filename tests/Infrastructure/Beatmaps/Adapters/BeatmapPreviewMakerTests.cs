@@ -22,7 +22,7 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 	public BeatmapPreviewMakerTests()
 	{
 		_storage.SaveAsync(Arg.Any<BeatmapsetRecord>(), BeatmapsetFileType.Preview, Arg.Any<string>(),
-				Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+				Arg.Any<Stream>())
 			.Returns(call =>
 			{
 				using var content = new MemoryStream();
