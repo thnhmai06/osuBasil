@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Basil.Application.Bot.Announcements;
 using Basil.Application.Bot.Objects;
 using Basil.Application.Bot.Replies;
@@ -42,30 +43,17 @@ internal sealed class RoomCountdowns(
 	IReplies replies,
 	ILogger<RoomCountdowns> logger)
 {
-	private readonly Dictionary<Room, Running> _running = [];
-	private readonly Lock _sync = new();
+	private readonly ConcurrentDictionary<Room, Running> _running = new();
 
 	/// <summary>Gets how many countdowns are running.</summary>
-	public int Count
-	{
-		get
-		{
-			lock (_sync)
-			{
-				return _running.Count;
-			}
-		}
-	}
+	public int Count => _running.Count;
 
 	/// <summary>Tells whether a countdown is running in a room.</summary>
 	/// <param name="room">The room.</param>
 	/// <returns><see langword="true" /> when a countdown is running.</returns>
 	public bool IsRunning(Room room)
 	{
-		lock (_sync)
-		{
-			return _running.ContainsKey(room);
-		}
+		return _running.ContainsKey(room);
 	}
 
 	/// <summary>Starts a countdown in a room, replacing the one already running.</summary>
@@ -83,19 +71,27 @@ internal sealed class RoomCountdowns(
 		if (startsRound && room.Rounds.InProgress) return RoomOutcome.InProgress;
 
 		var running = new Running(new RoomCountdown(actor, length, startsRound, clock.GetUtcNow()));
-		Running? replaced;
-		lock (_sync)
+		running.Timers =
+		[
+			.. RoomCountdown.MarksFor(length, startsRound).Select(mark =>
+				clock.CreateTimer(InBackground(() => TickAsync(room, running, mark)), null, length - mark,
+					Timeout.InfiniteTimeSpan)),
+			clock.CreateTimer(InBackground(() => ElapseAsync(room, running)), null, length,
+				Timeout.InfiniteTimeSpan)
+		];
+
+		Running? replaced = null;
+		while (true)
 		{
-			_running.Remove(room, out replaced);
-			_running[room] = running;
-			running.Timers =
-			[
-				.. RoomCountdown.MarksFor(length, startsRound).Select(mark =>
-					clock.CreateTimer(InBackground(() => TickAsync(room, running, mark)), null, length - mark,
-						Timeout.InfiniteTimeSpan)),
-				clock.CreateTimer(InBackground(() => ElapseAsync(room, running)), null, length,
-					Timeout.InfiniteTimeSpan)
-			];
+			if (_running.TryGetValue(room, out var old))
+			{
+				if (!_running.TryUpdate(room, running, old)) continue;
+
+				replaced = old;
+				break;
+			}
+
+			if (_running.TryAdd(room, running)) break;
 		}
 
 		if (replaced is not null)
@@ -122,14 +118,9 @@ internal sealed class RoomCountdowns(
 	public async Task<bool> CancelAsync(Room room, CountdownCancelReason reason, bool onlyIfStartsRound,
 		CancellationToken cancellationToken)
 	{
-		Running? running;
-		lock (_sync)
-		{
-			if (!_running.TryGetValue(room, out running) || (onlyIfStartsRound && !running.Countdown.StartsRound))
-				return false;
-
-			_running.Remove(room);
-		}
+		if (!_running.TryGetValue(room, out var running) || (onlyIfStartsRound && !running.Countdown.StartsRound) ||
+		    !_running.TryRemove(new KeyValuePair<Room, Running>(room, running)))
+			return false;
 
 		running.Dispose();
 		var reply = reason switch
@@ -171,12 +162,7 @@ internal sealed class RoomCountdowns(
 	{
 		try
 		{
-			lock (_sync)
-			{
-				if (!IsCurrent(room, running)) return;
-
-				_running.Remove(room);
-			}
+			if (!_running.TryRemove(new KeyValuePair<Room, Running>(room, running))) return;
 
 			running.Dispose();
 			var countdown = running.Countdown;
@@ -211,10 +197,7 @@ internal sealed class RoomCountdowns(
 
 	private bool IsCurrent(Room room, Running running)
 	{
-		lock (_sync)
-		{
-			return _running.TryGetValue(room, out var current) && ReferenceEquals(current, running);
-		}
+		return _running.TryGetValue(room, out var current) && ReferenceEquals(current, running);
 	}
 
 	private Task SayAsync(Room room, string text, CancellationToken cancellationToken)
