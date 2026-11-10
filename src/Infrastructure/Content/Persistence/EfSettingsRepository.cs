@@ -101,7 +101,7 @@ internal sealed class EfSettingsRepository(
 	private static Task UpsertSettingAsync(ContentDbContext context, string name, string? value,
 		CancellationToken token)
 	{
-		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name, token);
+		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name);
 	}
 
 	private static Category Of<T>(string name, Func<ServerSettings, T> get, Func<ServerSettings, T, ServerSettings> set)

@@ -22,7 +22,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 		var registry = Host.Services.GetRequiredService<UserRegistry>();
 		var connection = registry.Find(client.Token!)!;
 		Host.Time.Advance(TimeSpan.FromSeconds(2));
-		await connection.User.ScopeTo(connection).Sessions.CloseAsync(connection.Session.Id, TestContext.Current.CancellationToken);
+		await connection.User.ScopeTo(connection).Sessions.CloseAsync(connection.Session.Id);
 
 		await client.LoginAsync();
 
@@ -34,7 +34,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	{
 		var record = await Host.CreateUserAsync("SilencedOne");
 		record.Value.SilencedUntil = Host.Time.GetUtcNow().AddHours(1);
-		await Host.Services.GetRequiredService<IUserRepository>().UpdateAsync(record, TestContext.Current.CancellationToken);
+		await Host.Services.GetRequiredService<IUserRepository>().UpdateAsync(record);
 		using var client = OsuClient.Create(Host, "SilencedOne", "password");
 
 		var packets = await client.LoginAsync();

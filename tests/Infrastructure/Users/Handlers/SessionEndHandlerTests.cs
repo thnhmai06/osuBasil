@@ -32,7 +32,7 @@ public sealed class SessionEndHandlerTests
 		app.Users.Close(connection, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>());
 		var sessions = Substitute.For<ISessionRepository>();
-		sessions.CreateOrUpdateAsync(default!, TestContext.Current.CancellationToken).ReturnsForAnyArgs(Task.FromException(new InvalidOperationException()));
+		sessions.CreateOrUpdateAsync(default!).ReturnsForAnyArgs(Task.FromException(new InvalidOperationException()));
 		var counter = SessionEndHandler.UpdateFailures;
 		long failures = 0;
 		using var listener = new MeterListener();

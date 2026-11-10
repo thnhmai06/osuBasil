@@ -25,7 +25,7 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 	{
 		var row = ToRow(channel);
 		return database.WriteAsync((ChatDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.Name == row.Name, token), cancellationToken);
+			context.UpsertAsync(row, stored => stored.Name == row.Name), cancellationToken);
 	}
 
 	/// <inheritdoc />

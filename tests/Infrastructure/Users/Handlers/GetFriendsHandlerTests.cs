@@ -14,7 +14,7 @@ public sealed class GetFriendsHandlerTests
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Mine", "password"));
 		var friend = await app.LoginAsync(await app.CreateUserAsync("Friend", "password"));
-		await friend.User.ScopeTo(actor).Relationships.AddFriendAsync(TestContext.Current.CancellationToken);
+		await friend.User.ScopeTo(actor).Relationships.AddFriendAsync();
 
 		var (result, users) = await new GetFriendsHandler().Handle(new GetFriends(actor),
 			TestContext.Current.CancellationToken);

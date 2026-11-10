@@ -8,13 +8,11 @@ public interface IRelationshipRepository
 {
 	/// <summary>Stores a relationship, replacing any relationship the same user holds toward the same target.</summary>
 	/// <param name="relationship">The relationship to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(Relationship relationship);
 
 	/// <summary>Deletes a relationship; deleting a missing one does nothing.</summary>
 	/// <param name="relationship">The relationship to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default);
+	Task DeleteAsync(Relationship relationship);
 
 	/// <summary>Lists the relationships a user holds, oldest first.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> relationships are returned.</remarks>

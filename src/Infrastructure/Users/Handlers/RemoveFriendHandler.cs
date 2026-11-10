@@ -13,6 +13,6 @@ internal sealed class RemoveFriendHandler(UserRegistry registry) : IRequestHandl
 	public async ValueTask<Result<UserOutcome>> Handle(RemoveFriend request, CancellationToken cancellationToken)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships
-			.RemoveFriendAsync(cancellationToken);
+			.RemoveFriendAsync();
 	}
 }

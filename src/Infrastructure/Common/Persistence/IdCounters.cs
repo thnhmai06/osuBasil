@@ -33,18 +33,17 @@ public static class IdCounters
 	/// <summary>Takes the next id of a counter; two callers never take the same id.</summary>
 	/// <param name="context">The context of the module that owns the counter.</param>
 	/// <param name="name">The name of the counter.</param>
-	/// <param name="cancellationToken">A token that cancels the call.</param>
 	/// <returns>The id, which the counter will not hand out again.</returns>
-	public static async Task<long> NextAsync(DbContext context, string name, CancellationToken cancellationToken)
+	public static async Task<long> NextAsync(DbContext context, string name)
 	{
 		var counters = context.Set<IdCounterRow>();
 		while (true)
 		{
 			var next = await counters.Where(row => row.Name == name).Select(row => row.Next)
-				.SingleAsync(cancellationToken);
+				.SingleAsync();
 			// The update only counts when nobody took this id in between; otherwise read again.
 			var taken = await counters.Where(row => row.Name == name && row.Next == next)
-				.ExecuteUpdateAsync(set => set.SetProperty(row => row.Next, next + 1), cancellationToken);
+				.ExecuteUpdateAsync(set => set.SetProperty(row => row.Next, next + 1));
 			if (taken == 1) return next;
 		}
 	}

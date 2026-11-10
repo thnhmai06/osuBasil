@@ -24,18 +24,16 @@ public sealed class UserCredentials
 	/// <param name="passwordHash">The MD5 digest of the claimed password.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the password is the account's.</returns>
-	internal Task<bool> IsPasswordAsync(Md5 passwordHash, CancellationToken cancellationToken)
+	internal Task<bool> IsPasswordAsync(Md5 passwordHash, CancellationToken cancellationToken = default)
 	{
 		return _user.Context.Credentials.IsPasswordAsync(_user.Record, passwordHash, cancellationToken);
 	}
 
 	/// <summary>Replaces the account's password.</summary>
 	/// <param name="passwordHash">The MD5 digest of the new password.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	internal Task ReplaceAsync(Md5 passwordHash, CancellationToken cancellationToken)
+	internal Task ReplaceAsync(Md5 passwordHash)
 	{
-		return _user.Context.Credentials.CreateOrUpdateAsync(new Credentials(_user.Record, passwordHash),
-			cancellationToken);
+		return _user.Context.Credentials.CreateOrUpdateAsync(new Credentials(_user.Record, passwordHash));
 	}
 
 	/// <summary>Replaces the account's password and signs its other sessions out.</summary>
@@ -43,30 +41,29 @@ public sealed class UserCredentials
 	/// <param name="currentPasswordHash">The current digest, required when the account changes its own password.</param>
 	/// <param name="actor">The connection changing the password.</param>
 	/// <param name="includeCurrent">Whether the HTTP API session of <paramref name="actor" /> is signed out too.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of replacing the password.</returns>
 	/// <remarks>
 	///     A new password equal to the current one signs nobody out. Changing another account's password is recorded
 	///     in the moderation log.
 	/// </remarks>
 	internal async Task<UserOutcome> ChangeAsync(Md5 newPasswordHash, Md5? currentPasswordHash, Connection actor,
-		bool includeCurrent, CancellationToken cancellationToken)
+		bool includeCurrent)
 	{
 		var isSelf = actor.Record.Equals(_user.Record);
 		var unchanged = false;
 		if (isSelf)
 		{
-			if (currentPasswordHash is not { } current || !await IsPasswordAsync(current, cancellationToken))
+			if (currentPasswordHash is not { } current || !await IsPasswordAsync(current))
 				return UserOutcome.WrongPassword;
 
 			unchanged = current == newPasswordHash;
 		}
 
-		await ReplaceAsync(newPasswordHash, cancellationToken);
+		await ReplaceAsync(newPasswordHash);
 		if (unchanged) return UserOutcome.Ok;
 
 		var keep = isSelf && !includeCurrent && actor is ApiConnection api ? api.Session.Id : (long?)null;
-		await _user.Sessions.CloseAsync(null, keep, SessionEndReason.CredentialsChanged, cancellationToken);
+		await _user.Sessions.CloseAsync(null, keep, SessionEndReason.CredentialsChanged);
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationData
 			{
@@ -74,7 +71,7 @@ public sealed class UserCredentials
 				Actor = actor.Record,
 				Target = _user.Record,
 				Timestamp = _user.Context.Clock.GetUtcNow()
-			}, cancellationToken);
+			});
 
 		return UserOutcome.Ok;
 	}

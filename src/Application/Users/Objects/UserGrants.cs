@@ -46,11 +46,10 @@ public sealed class UserGrants
 	///     announces it.
 	/// </summary>
 	/// <param name="privileges">The privileges to grant.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of replacing the privileges.</returns>
-	internal async Task<UserOutcome> SetAsync(UserPrivileges privileges, CancellationToken cancellationToken)
+	internal async Task<UserOutcome> SetAsync(UserPrivileges privileges)
 	{
-		await _user.StoreChangeAsync(data => data.Privileges = privileges, cancellationToken);
+		await _user.StoreChangeAsync(data => data.Privileges = privileges);
 		Replace(privileges);
 		if (_user.Context.Registry.Online.GetValueOrDefault(_user.Record) is { } user)
 			_user.Context.Registry.CloseDisallowed(user);

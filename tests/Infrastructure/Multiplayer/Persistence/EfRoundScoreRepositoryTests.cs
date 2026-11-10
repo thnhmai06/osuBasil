@@ -266,7 +266,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
 		return await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = name });
 	}
 
 	/// <summary>Creates a play of the given account.</summary>

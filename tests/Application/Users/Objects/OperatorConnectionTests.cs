@@ -65,8 +65,7 @@ public sealed class OperatorConnectionTests
 		var actor = await app.Users.OperateAsync(Token);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "FirstAdmin" }, new Md5(new byte[16]), UserPrivilegesExtensions.All,
-			Token);
+			new UserData { Name = "FirstAdmin" }, new Md5(new byte[16]), UserPrivilegesExtensions.All);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(UserPrivilegesExtensions.All, user!.Value.Privileges);
@@ -79,7 +78,7 @@ public sealed class OperatorConnectionTests
 		var admin = await app.CreateUserAsync("OpTargetAdmin", "password", UserPrivilegesExtensions.All);
 		var actor = await app.Users.OperateAsync(Token);
 
-		var result = await app.Users.Of(admin).ScopeTo(actor).Privileges.SetAsync(UserPrivileges.None, Token);
+		var result = await app.Users.Of(admin).ScopeTo(actor).Privileges.SetAsync(UserPrivileges.None);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(UserPrivileges.None, admin.Value.Privileges);
@@ -92,7 +91,7 @@ public sealed class OperatorConnectionTests
 		var actor = await app.Users.OperateAsync(Token);
 		var bot = actor.Record;
 
-		var result = await app.Users.Of(bot).ScopeTo(actor).Privileges.SetAsync(UserPrivilegesExtensions.All, Token);
+		var result = await app.Users.Of(bot).ScopeTo(actor).Privileges.SetAsync(UserPrivilegesExtensions.All);
 
 		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
 	}
@@ -108,7 +107,7 @@ public sealed class OperatorConnectionTests
 		foreach (var connection in bot!.Connections)
 		{
 			var result = await app.Users.Of(target).ScopeTo(connection).Privileges
-				.SetAsync(UserPrivilegesExtensions.All, Token);
+				.SetAsync(UserPrivilegesExtensions.All);
 
 			Assert.False(result.IsOk);
 		}

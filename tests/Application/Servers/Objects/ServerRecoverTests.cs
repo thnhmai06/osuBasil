@@ -107,7 +107,7 @@ public sealed class ServerRecoverTests
 		var connection = await app.LoginAsync(user, SessionType.Stable);
 		app.Clock.Advance(TimeSpan.FromSeconds(30));
 		app.Users.MarkActive(connection);
-		await app.Users.FlushActivityAsync(TestContext.Current.CancellationToken);
+		await app.Users.FlushActivityAsync();
 		var lastActive = app.Clock.GetUtcNow();
 		app.Clock.Advance(TimeSpan.FromHours(1));
 

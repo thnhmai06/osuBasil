@@ -19,7 +19,7 @@ public sealed class StoredChangeFailureTests
 		app.UserUpdateFailure = new InvalidOperationException("refused");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			app.Users.Of(target).ScopeTo(staff).Privileges.SetAsync(UserPrivileges.None, Token));
+			app.Users.Of(target).ScopeTo(staff).Privileges.SetAsync(UserPrivileges.None));
 
 		Assert.Equal(before, target.Value.Privileges);
 	}
@@ -34,7 +34,7 @@ public sealed class StoredChangeFailureTests
 		app.UserUpdateFailure = new InvalidOperationException("refused");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(Country.Vn, Token));
+			app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(Country.Vn));
 
 		Assert.Equal(before, user.Value.Country);
 	}
@@ -49,11 +49,11 @@ public sealed class StoredChangeFailureTests
 		var scoped = app.Users.Of(target).ScopeTo(staff);
 		app.UserUpdateFailure = new InvalidOperationException("refused");
 
-		await Assert.ThrowsAsync<InvalidOperationException>(() => scoped.DeleteAsync(Token));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => scoped.DeleteAsync());
 		Assert.Null(target.Value.DeletedAt);
 
 		app.UserUpdateFailure = null;
-		Assert.True((await scoped.DeleteAsync(Token)).IsOk);
+		Assert.True((await scoped.DeleteAsync()).IsOk);
 		Assert.NotNull(target.Value.DeletedAt);
 	}
 

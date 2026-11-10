@@ -21,9 +21,8 @@ internal sealed class InMemoryUserRepository : IUserRepository
 	/// <summary>Gets or sets the failure the next updates throw, or <see langword="null" /> to accept them.</summary>
 	public Exception? UpdateFailure { get; set; }
 
-	public Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
+	public Task<UserRecord> CreateAsync(UserData data)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		if (_users.Values.Any(user => user.Value.DeletedAt is null &&
 		                              user.Value.NormalizedName == data.NormalizedName))
 			throw new AlreadyExistsException(data.Name);
@@ -31,9 +30,8 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		return Task.FromResult(Seed(data));
 	}
 
-	public Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default)
+	public Task<UserRecord> ReplaceAsync(int id, UserData data)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		if (_users.Values.Any(user => user.Id != id && user.Value.DeletedAt is null &&
 		                              user.Value.NormalizedName == data.NormalizedName))
 			throw new AlreadyExistsException(data.Name);
@@ -41,9 +39,8 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		return Task.FromResult(Seed(data, id));
 	}
 
-	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(UserRecord user)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		if (UpdateFailure is { } failure) throw failure;
 		if (_users.TryGetValue(user.Id, out var stored) && !ReferenceEquals(stored, user))
 		{
@@ -60,16 +57,14 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		return Task.CompletedTask;
 	}
 
-	public Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task DiscardAsync(UserRecord user)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_users.Remove(user.Id);
 		return Task.CompletedTask;
 	}
 
-	public Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default)
+	public Task<bool> RenameAsync(UserRecord user, string name)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		var normalized = UserData.NormalizeName(name);
 		if (_users.Values.Any(other => other.Id != user.Id && other.Value.DeletedAt is null &&
 		                               other.Value.NormalizedName == normalized))
@@ -121,16 +116,14 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 		                       password == credentials.PasswordHash);
 	}
 
-	public Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Credentials credentials)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_passwords[credentials.User.Id] = credentials.PasswordHash;
 		return Task.CompletedTask;
 	}
 
-	public Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(UserRecord user)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_passwords.Remove(user.Id);
 		return Task.CompletedTask;
 	}
@@ -145,9 +138,8 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 	/// <summary>Gets or sets the failure the next recordings throw, or <see langword="null" /> to accept them.</summary>
 	public Exception? RecordFailure { get; set; }
 
-	public Task CreateOrUpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(SessionRecord session)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		var index = _entries.FindIndex(entry => entry.Id == session.Id);
 		if (index >= 0)
 		{
@@ -194,7 +186,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 	}
 
 	public Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types,
-		DateTimeOffset at, SessionEndReason reason, CancellationToken cancellationToken = default)
+		DateTimeOffset at, SessionEndReason reason)
 	{
 		for (var index = 0; index < _entries.Count; index++)
 		{
@@ -209,8 +201,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.CompletedTask;
 	}
 
-	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason,
-		CancellationToken cancellationToken = default)
+	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason)
 	{
 		var ended = 0;
 		for (var index = 0; index < _entries.Count; index++)
@@ -226,8 +217,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.FromResult(ended);
 	}
 
-	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity,
-		CancellationToken cancellationToken = default)
+	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity)
 	{
 		foreach (var item in activity)
 		{
@@ -241,7 +231,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.CompletedTask;
 	}
 
-	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
+	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff)
 	{
 		var deleted = _entries.RemoveAll(entry => entry.Value.End?.At < cutoff ||
 		                                          (entry.Value.End is null && entry.Value.ExpiresAt < cutoff));
@@ -280,10 +270,8 @@ internal sealed class InMemoryConnectionRepository : IConnectionRepository
 
 	public IReadOnlyList<ConnectionRecord> Entries => _entries;
 
-	public Task OpenAsync(long sessionId, IPAddress ip, string? clientInfo, DateTimeOffset at, TimeSpan reopenWithin,
-		CancellationToken cancellationToken = default)
+	public Task OpenAsync(long sessionId, IPAddress ip, string? clientInfo, DateTimeOffset at, TimeSpan reopenWithin)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		var lastIndex = _entries.FindLastIndex(entry => entry.Value.SessionId == sessionId);
 		if (lastIndex >= 0 && _entries[lastIndex].Value is { ClosedAt: { } closedAt } last &&
 		    closedAt >= at - reopenWithin && last.Ip.Equals(ip))
@@ -303,7 +291,7 @@ internal sealed class InMemoryConnectionRepository : IConnectionRepository
 	}
 
 	public Task CloseAsync(long sessionId, DateTimeOffset lastActiveAt, DateTimeOffset closedAt,
-		SessionEndReason reason, CancellationToken cancellationToken = default)
+		SessionEndReason reason)
 	{
 		for (var index = 0; index < _entries.Count; index++)
 			if (_entries[index].Value is { ClosedAt: null } data && data.SessionId == sessionId)
@@ -315,8 +303,7 @@ internal sealed class InMemoryConnectionRepository : IConnectionRepository
 		return Task.CompletedTask;
 	}
 
-	public Task WriteActivityAsync(IReadOnlyCollection<ConnectionActivity> activity,
-		CancellationToken cancellationToken = default)
+	public Task WriteActivityAsync(IReadOnlyCollection<ConnectionActivity> activity)
 	{
 		foreach (var item in activity)
 			for (var index = 0; index < _entries.Count; index++)
@@ -334,7 +321,7 @@ internal sealed class InMemoryConnectionRepository : IConnectionRepository
 			page.Offset + page.Limit < entries.Count));
 	}
 
-	public Task<int> CloseOpenAsync(SessionEndReason reason, CancellationToken cancellationToken = default)
+	public Task<int> CloseOpenAsync(SessionEndReason reason)
 	{
 		var closed = 0;
 		for (var index = 0; index < _entries.Count; index++)
@@ -361,18 +348,16 @@ internal sealed class InMemoryRelationshipRepository : IRelationshipRepository
 {
 	private readonly List<Relationship> _relationships = [];
 
-	public Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Relationship relationship)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_relationships.RemoveAll(existing => existing.Actor.Equals(relationship.Actor) &&
 		                                     existing.Target.Equals(relationship.Target));
 		_relationships.Add(relationship);
 		return Task.CompletedTask;
 	}
 
-	public Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(Relationship relationship)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_relationships.Remove(relationship);
 		return Task.CompletedTask;
 	}
@@ -397,9 +382,8 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 	/// <summary>Gets or sets the failure the next appends throw, or <see langword="null" /> to accept them.</summary>
 	public Exception? AppendFailure { get; set; }
 
-	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
+	public Task AppendAsync(ModerationData entry)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		if (AppendFailure is { } failure) throw failure;
 		_entries.Add(new ModerationLog { Id = _nextId++, Value = entry });
 		_values.Add(entry);

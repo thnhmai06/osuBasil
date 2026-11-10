@@ -30,17 +30,15 @@ public sealed class UserSilence
 	/// <param name="endsAt">When the silence ends.</param>
 	/// <param name="reason">Why the account is silenced, if known.</param>
 	/// <param name="actor">The account imposing the silence.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of silencing the account.</returns>
-	internal async Task<UserOutcome> ImposeAsync(DateTimeOffset endsAt, string? reason, UserRecord actor,
-		CancellationToken cancellationToken)
+	internal async Task<UserOutcome> ImposeAsync(DateTimeOffset endsAt, string? reason, UserRecord actor)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
 		if (endsAt <= now) return UserOutcome.InvalidSilence;
 
-		await _user.StoreChangeAsync(data => data.SilencedUntil = endsAt, cancellationToken);
+		await _user.StoreChangeAsync(data => data.SilencedUntil = endsAt);
 		_user.Change(data => data.SilencedUntil = endsAt);
-		await _user.Context.ModerationLog.AppendAsync(Log(ModerationAction.Silence, actor, reason, now), cancellationToken);
+		await _user.Context.ModerationLog.AppendAsync(Log(ModerationAction.Silence, actor, reason, now));
 
 		_user.Context.Events.Publish(new UserSilenced(_user.Record, endsAt));
 		return UserOutcome.Ok;
@@ -49,18 +47,15 @@ public sealed class UserSilence
 	/// <summary>Ends the silence of the account now.</summary>
 	/// <param name="reason">Why the silence is lifted, if known.</param>
 	/// <param name="actor">The account lifting the silence.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of lifting the silence.</returns>
-	internal async Task<UserOutcome> LiftAsync(string? reason, UserRecord actor,
-		CancellationToken cancellationToken)
+	internal async Task<UserOutcome> LiftAsync(string? reason, UserRecord actor)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
 		if (!_user.Record.Value.IsSilenced(now)) return UserOutcome.Ok;
 
-		await _user.StoreChangeAsync(data => data.SilencedUntil = null, cancellationToken);
+		await _user.StoreChangeAsync(data => data.SilencedUntil = null);
 		_user.Change(data => data.SilencedUntil = null);
-		await _user.Context.ModerationLog.AppendAsync(Log(ModerationAction.Unsilence, actor, reason, now),
-			cancellationToken);
+		await _user.Context.ModerationLog.AppendAsync(Log(ModerationAction.Unsilence, actor, reason, now));
 		_user.Context.Events.Publish(new UserUnsilenced(_user.Record));
 		return UserOutcome.Ok;
 	}

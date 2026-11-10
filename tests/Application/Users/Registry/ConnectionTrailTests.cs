@@ -65,7 +65,7 @@ public sealed class ConnectionTrailTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Key", "password");
 		var api = await app.LoginAsync(user);
-		var (result, key, session) = await app.Users.Of(user).ScopeTo(api).Sessions.OpenIrcAsync("laptop", Token);
+		var (result, key, session) = await app.Users.Of(user).ScopeTo(api).Sessions.OpenIrcAsync("laptop");
 		Assert.True(result.IsOk);
 
 		var irc = await app.Users.LoginWithTokenAsync(SessionType.Irc, key!, IPAddress.Loopback,
@@ -195,7 +195,7 @@ public sealed class ConnectionTrailTests
 		app.Clock.Advance(TimeSpan.FromSeconds(30));
 		app.Users.MarkActive(connection);
 
-		await app.Users.FlushActivityAsync(Token);
+		await app.Users.FlushActivityAsync();
 
 		Assert.Equal(app.Clock.GetUtcNow(), Assert.Single(app.StoredConnections).Value.LastActiveAt);
 	}
@@ -210,11 +210,11 @@ public sealed class ConnectionTrailTests
 		app.Clock.Advance(TimeSpan.FromSeconds(20));
 		app.Users.MarkActive(api);
 		app.Users.MarkActive(osu);
-		await app.Users.FlushActivityAsync(Token);
+		await app.Users.FlushActivityAsync();
 		var lastActive = app.Clock.GetUtcNow();
 		app.Clock.Advance(TimeSpan.FromHours(3));
 
-		var closed = await app.Users.CloseStoppedAsync(Token);
+		var closed = await app.Users.CloseStoppedAsync();
 
 		Assert.Equal(2, closed);
 		Assert.All(app.StoredConnections, entry =>
@@ -234,7 +234,7 @@ public sealed class ConnectionTrailTests
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Already", "password"));
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 
-		var closed = await app.Users.CloseStoppedAsync(Token);
+		var closed = await app.Users.CloseStoppedAsync();
 
 		Assert.Equal(0, closed);
 		Assert.Equal(SessionEndReason.LoggedOut, Assert.Single(app.StoredConnections).Value.CloseReason);

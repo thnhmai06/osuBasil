@@ -208,12 +208,12 @@ public sealed class ScopedChannelRulesTests
 
 	private sealed class ClosingRelationshipRepository(Action onList) : IRelationshipRepository
 	{
-		public Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
+		public Task CreateOrUpdateAsync(Relationship relationship)
 		{
 			return Task.CompletedTask;
 		}
 
-		public Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default)
+		public Task DeleteAsync(Relationship relationship)
 		{
 			return Task.CompletedTask;
 		}
@@ -297,7 +297,7 @@ public sealed class ScopedChannelRulesTests
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		var blockedRecord = await app.CreateUserAsync("TheBlocked", "password");
 		await app.Users.Of(blockedRecord).ScopeTo(ownerConnection).Relationships
-			.BlockAsync(TestContext.Current.CancellationToken);
+			.BlockAsync();
 		var sender = await app.LoginAsync(await app.CreateUserAsync("Innocent", "password"));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)

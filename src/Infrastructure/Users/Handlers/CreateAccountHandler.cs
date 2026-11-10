@@ -16,6 +16,6 @@ internal sealed class CreateAccountHandler(UserRegistry registry)
 		CancellationToken cancellationToken)
 	{
 		return await registry.ScopeTo(request.Actor).CreateAccountAsync(request.Data, request.PasswordHash,
-			request.Privileges, cancellationToken);
+			request.Privileges);
 	}
 }

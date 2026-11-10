@@ -10,8 +10,7 @@ public interface IModerationLogRepository
 {
 	/// <summary>Records a moderation action.</summary>
 	/// <param name="entry">The action to record.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default);
+	Task AppendAsync(ModerationData entry);
 
 	/// <summary>Lists the entries recorded against a user, newest first.</summary>
 	/// <param name="target">The user whose moderation history to list.</param>

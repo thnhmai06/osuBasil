@@ -106,9 +106,8 @@ public sealed class User
 
 	/// <summary>Stores the account data as a change would leave it, before the change is applied to the live record.</summary>
 	/// <param name="change">The change to apply to a copy of the data.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>A refused write leaves the live record as it was; the caller applies the change once this returns.</remarks>
-	internal Task StoreChangeAsync(Action<UserData> change, CancellationToken cancellationToken)
+	internal Task StoreChangeAsync(Action<UserData> change)
 	{
 		UserData copy;
 		using (Enter())
@@ -125,13 +124,12 @@ public sealed class User
 		}
 
 		change(copy);
-		return Context.Users.UpdateAsync(new UserRecord { Id = Record.Id, Value = copy }, cancellationToken);
+		return Context.Users.UpdateAsync(new UserRecord { Id = Record.Id, Value = copy });
 	}
 
 	/// <summary>Deletes this account, keeping it out of sign-in and every listing while its record remains.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of deleting the account.</returns>
-	internal async Task<UserOutcome> DeleteAsync(CancellationToken cancellationToken)
+	internal async Task<UserOutcome> DeleteAsync()
 	{
 		if (Record.Value.DeletedAt is not null) return UserOutcome.Ok;
 
@@ -140,7 +138,7 @@ public sealed class User
 		{
 			data.DeletedAt = now;
 			data.Privileges = UserPrivileges.None;
-		}, cancellationToken);
+		});
 		Grants.MarkDeleted(now);
 		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);
 		return UserOutcome.Ok;

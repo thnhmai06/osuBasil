@@ -34,7 +34,7 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 			PlayCount = stats.PlayCount
 		};
 		return database.WriteAsync((ScoresDbContext context, CancellationToken token) =>
-				context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode, token),
+				context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode),
 			cancellationToken);
 	}
 

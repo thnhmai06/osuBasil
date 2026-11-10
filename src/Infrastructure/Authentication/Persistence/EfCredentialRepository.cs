@@ -33,24 +33,24 @@ internal sealed class EfCredentialRepository(DatabaseSession database) : ICreden
 	}
 
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(Credentials credentials)
 	{
 		var row = new CredentialRow
 		{
 			UserId = credentials.User.Id,
 			PasswordHash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue)
 		};
-		await database.WriteAsync((AuthenticationDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.UserId == row.UserId, token), cancellationToken);
+		await database.WriteAsync((AuthenticationDbContext context) =>
+			context.UpsertAsync(row, stored => stored.UserId == row.UserId));
 		_hashes.Remove(row.UserId);
 	}
 
 	/// <inheritdoc />
-	public async Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public async Task DeleteAsync(UserRecord user)
 	{
-		await database.WriteAsync((AuthenticationDbContext context, CancellationToken token) => context.Credentials
+		await database.WriteAsync((AuthenticationDbContext context) => context.Credentials
 			.Where(c => c.UserId == user.Id)
-			.ExecuteDeleteAsync(token), cancellationToken);
+			.ExecuteDeleteAsync());
 		_hashes.Remove(user.Id);
 	}
 }

@@ -16,6 +16,6 @@ internal sealed class OpenIrcSessionHandler(UserRegistry registry)
 		OpenIrcSession request, CancellationToken cancellationToken)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
-			.OpenIrcAsync(request.Label, cancellationToken);
+			.OpenIrcAsync(request.Label);
 	}
 }

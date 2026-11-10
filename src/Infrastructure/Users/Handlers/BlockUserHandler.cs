@@ -12,6 +12,6 @@ internal sealed class BlockUserHandler(UserRegistry registry) : IRequestHandler<
 	/// <inheritdoc />
 	public async ValueTask<Result<UserOutcome>> Handle(BlockUser request, CancellationToken cancellationToken)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.BlockAsync(cancellationToken);
+		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.BlockAsync();
 	}
 }

@@ -36,12 +36,11 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	public async Task A_recorded_session_is_stored()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "login_user" });
 
 		await Sessions.CreateOrUpdateAsync(
 			Record(FirstId, user, SessionType.Stable, First,
-				new SessionFingerprint(IPAddress.Parse("192.0.2.10"), Client()), Hash),
-			TestContext.Current.CancellationToken);
+				new SessionFingerprint(IPAddress.Parse("192.0.2.10"), Client()), Hash));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select id, user_id, type, ip as ip, client_info, started_at, last_active_at, ended_at, " +
@@ -76,11 +75,10 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	public async Task A_session_without_an_osu_client_is_stored_without_client_data()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "login_user" });
 
 		await Sessions.CreateOrUpdateAsync(
-			Record(FirstId, user, SessionType.Api, First, new SessionFingerprint(IPAddress.Parse("192.0.2.11")), Hash),
-			TestContext.Current.CancellationToken);
+			Record(FirstId, user, SessionType.Api, First, new SessionFingerprint(IPAddress.Parse("192.0.2.11")), Hash));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select client_date, client_revision, client_stream, osu_path_hash, network_adapters, " +
@@ -102,7 +100,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	public async Task A_session_list_is_ordered_by_start_time_newest_first()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "login_user" });
 		await RecordAsync(user, First, FirstId);
 		await RecordAsync(user, Second, SecondId);
 		await RecordAsync(user, Third, ThirdId);
@@ -122,7 +120,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	public async Task A_session_list_returns_the_requested_page()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "login_user" });
 		await RecordAsync(user, First, FirstId);
 		await RecordAsync(user, Second, SecondId);
 		await RecordAsync(user, Third, ThirdId);
@@ -138,16 +136,16 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	public async Task An_ended_session_persists_its_last_activity_and_end_reason()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "closed_session" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "closed_session" });
 		var session = Record(FirstId, user, SessionType.Api, First,
 			new SessionFingerprint(IPAddress.Parse("192.0.2.12")), Hash);
-		await Sessions.CreateOrUpdateAsync(session, TestContext.Current.CancellationToken);
+		await Sessions.CreateOrUpdateAsync(session);
 		var ended = new SessionRecord
 		{
 			Id = session.Id,
 			Value = session.Value with { LastActiveAt = Second, End = new SessionEnd(Third, SessionEndReason.Revoked) }
 		};
-		await Sessions.CreateOrUpdateAsync(ended, TestContext.Current.CancellationToken);
+		await Sessions.CreateOrUpdateAsync(ended);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select last_active_at, ended_at, end_reason from sessions where id = @id",
@@ -195,7 +193,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	private async Task<UserRecord> UserAsync(string name = "token_user")
 	{
 		return await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = name });
 	}
 
 	private Task RecordTokenAsync(UserRecord user, long id, SessionType type, Sha256 hash,
@@ -203,7 +201,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	{
 		return Sessions.CreateOrUpdateAsync(
 			Record(id, user, type, First, new SessionFingerprint(IPAddress.Parse("192.0.2.20"), ClientInfo: "label"),
-				hash, expiresAt), TestContext.Current.CancellationToken);
+				hash, expiresAt));
 	}
 
 	private static SessionRecord Record(long id, UserRecord user, SessionType type, DateTimeOffset startedAt,
@@ -256,7 +254,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Irc, Hash, First, cancel));
 		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, Sha("unknown"u8.ToArray()), First, cancel));
 
-		await Sessions.EndAsync(user, null, null, [SessionType.Api], Second, SessionEndReason.Revoked, cancel);
+		await Sessions.EndAsync(user, null, null, [SessionType.Api], Second, SessionEndReason.Revoked);
 		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, Hash, First, cancel));
 	}
 
@@ -282,7 +280,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		var cancel = TestContext.Current.CancellationToken;
 
 		await Sessions.EndAsync(user, null, FirstId, [SessionType.Api, SessionType.Irc], Third,
-			SessionEndReason.Revoked, cancel);
+			SessionEndReason.Revoked);
 
 		var page = await Sessions.ListAsync(All(user), new PageRequest(0, 10), cancel);
 		Assert.Null(page.Items.Single(entry => entry.Id == FirstId).Value.End?.At);
@@ -303,8 +301,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		await RecordTokenAsync(user, SecondId, SessionType.Api, Sha([2]));
 		var cancel = TestContext.Current.CancellationToken;
 
-		await Sessions.EndAsync(user, SecondId, null, [SessionType.Api], Third, SessionEndReason.Revoked,
-			cancel);
+		await Sessions.EndAsync(user, SecondId, null, [SessionType.Api], Third, SessionEndReason.Revoked);
 
 		Assert.Null((await Sessions.GetAsync(user, FirstId, cancel))!.Value.End?.At);
 		Assert.Equal(Third, (await Sessions.GetAsync(user, SecondId, cancel))!.Value.End?.At);
@@ -328,12 +325,10 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
 		await RecordTokenAsync(user, SecondId, SessionType.Irc, Sha([2]));
 		await RecordAsync(user, First, ThirdId);
-		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Second, SessionEndReason.LoggedOut,
-			cancel);
-		await Sessions.EndAsync(user, ThirdId, null, [SessionType.Stable], Second, SessionEndReason.Revoked,
-			cancel);
+		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Second, SessionEndReason.LoggedOut);
+		await Sessions.EndAsync(user, ThirdId, null, [SessionType.Stable], Second, SessionEndReason.Revoked);
 
-		var deleted = await Sessions.DeleteEndedBeforeAsync(Third, cancel);
+		var deleted = await Sessions.DeleteEndedBeforeAsync(Third);
 
 		Assert.Equal(2, deleted);
 		Assert.Null(await Sessions.GetAsync(user, FirstId, cancel));
@@ -347,10 +342,9 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
-		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Third, SessionEndReason.LoggedOut,
-			cancel);
+		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Third, SessionEndReason.LoggedOut);
 
-		Assert.Equal(0, await Sessions.DeleteEndedBeforeAsync(Second, cancel));
+		Assert.Equal(0, await Sessions.DeleteEndedBeforeAsync(Second));
 		Assert.NotNull(await Sessions.GetAsync(user, FirstId, cancel));
 	}
 
@@ -362,8 +356,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
 		await RecordTokenAsync(user, SecondId, SessionType.Irc, Sha([2]));
 		await RecordTokenAsync(user, ThirdId, SessionType.Api, Sha([3]), Second);
-		await Sessions.EndAsync(user, SecondId, null, [SessionType.Irc], Second, SessionEndReason.Revoked,
-			cancel);
+		await Sessions.EndAsync(user, SecondId, null, [SessionType.Irc], Second, SessionEndReason.Revoked);
 		var now = Third.AddHours(-1);
 
 		var active = await Sessions.ListAsync(new SessionQuery(user, SessionState.Active, null, now),
@@ -390,8 +383,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	{
 		await Sessions.CreateOrUpdateAsync(
 			Record(id, user, SessionType.Stable, timestamp,
-				new SessionFingerprint(IPAddress.Parse("192.0.2.10"), Client()), Sha(BitConverter.GetBytes(id))),
-			TestContext.Current.CancellationToken);
+				new SessionFingerprint(IPAddress.Parse("192.0.2.10"), Client()), Sha(BitConverter.GetBytes(id))));
 	}
 
 	/// <summary>Waits until the given number of sessions is stored.</summary>
@@ -400,7 +392,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	public async Task A_recorded_session_is_in_the_database_when_the_write_returns()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "login_user" });
 
 		await RecordAsync(user, First, FirstId);
 
@@ -413,13 +405,13 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	public async Task Storing_a_session_twice_keeps_one_session_with_the_latest_state()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "login_user" });
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordAsync(user, First, FirstId);
 		var stored = (await Sessions.GetAsync(user, FirstId, cancel))!;
 
 		await Sessions.CreateOrUpdateAsync(
-			new SessionRecord { Id = stored.Id, Value = stored.Value with { LastActiveAt = Second } }, cancel);
+			new SessionRecord { Id = stored.Id, Value = stored.Value with { LastActiveAt = Second } });
 
 		var page = await Sessions.ListAsync(All(user), new PageRequest(0, 10), cancel);
 		Assert.Equal(Second, Assert.Single(page.Items).Value.LastActiveAt);

@@ -16,7 +16,6 @@ public readonly struct ScopedUserCredentials(ScopedUser scoped)
 	/// <param name="includeCurrent">
 	///     Whether the HTTP API session making this call is signed out too; ignored when acting on another account.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of replacing the password.</returns>
 	/// <remarks>
 	///     A user's own password change needs the current password and signs out every other session. A new password
@@ -26,13 +25,13 @@ public readonly struct ScopedUserCredentials(ScopedUser scoped)
 	///     in the moderation log.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
-		bool includeCurrent = false, CancellationToken cancellationToken = default)
+		bool includeCurrent = false)
 	{
 		if (scoped.User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
-		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner, cancellationToken))
+		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))
 			return UserOutcome.Locked;
 		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Owner, false) is { } denied) return denied;
 		return await scoped.User.Credentials.ChangeAsync(newPasswordHash, currentPasswordHash, scoped.Actor,
-			includeCurrent, cancellationToken);
+			includeCurrent);
 	}
 }

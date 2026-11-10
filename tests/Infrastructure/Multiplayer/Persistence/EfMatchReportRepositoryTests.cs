@@ -168,7 +168,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
 		return await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = name });
 	}
 
 	/// <summary>Records a play in a round.</summary>

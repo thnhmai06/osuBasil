@@ -8,47 +8,42 @@ public interface IUserRepository
 {
 	/// <summary>Stores a new user and assigns its id.</summary>
 	/// <param name="data">The account data of the new user.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored user.</returns>
 	/// <remarks>Ids start at 1.</remarks>
 	/// <exception cref="AlreadyExistsException">Another user already has the same safe name.</exception>
-	Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default);
+	Task<UserRecord> CreateAsync(UserData data);
 
 	/// <summary>Stores the new values of a created user, replacing the stored ones.</summary>
 	/// <param name="user">The user to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The name of a user already stored is kept; a stored user changes name only through <see cref="RenameAsync" />.</remarks>
-	Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default);
+	Task UpdateAsync(UserRecord user);
 
 	/// <summary>Removes a user that was stored a moment ago and never used.</summary>
 	/// <param name="user">The user to remove; nothing else refers to it yet.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>
 	///     This undoes <see cref="CreateAsync" /> when the rest of creating an account failed; a user who has been in use
 	///     is deleted, not discarded.
 	/// </remarks>
-	Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default);
+	Task DiscardAsync(UserRecord user);
 
 	/// <summary>Stores a user under a given id, replacing the user that holds the id or creating it.</summary>
 	/// <param name="id">The id to store the user under.</param>
 	/// <param name="data">The account data the id holds afterwards.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored user.</returns>
 	/// <remarks>
 	///     This is the one place a store takes an id it did not give out: the server uses it to make BasilBot the user of
 	///     its fixed id.
 	/// </remarks>
 	/// <exception cref="AlreadyExistsException">Another user already has the same safe name.</exception>
-	Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default);
+	Task<UserRecord> ReplaceAsync(int id, UserData data);
 
 	/// <summary>Gives a stored user a new name, unless another user already has it.</summary>
 	/// <param name="user">The user to rename.</param>
 	/// <param name="name">The new name; names that differ only in case or in spaces versus underscores are the same name.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the user now has the new name; <see langword="false" /> when another user has it.</returns>
 	/// <remarks>The user keeps the old name until the new one is stored.</remarks>
 	/// <exception cref="ArgumentException">The name is not a valid user name.</exception>
-	Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default);
+	Task<bool> RenameAsync(UserRecord user, string name);
 
 	/// <summary>Gets a user by id.</summary>
 	/// <param name="id">The user id.</param>

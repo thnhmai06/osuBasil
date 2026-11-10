@@ -17,7 +17,7 @@ internal sealed class SessionRetentionSweeper(
 		{
 			try
 			{
-				var deleted = await registry.PurgeEndedSessionsAsync(stoppingToken);
+				var deleted = await registry.PurgeEndedSessionsAsync();
 				if (deleted > 0) logger.LogInformation("Deleted {SessionCount} sessions past their retention", deleted);
 			}
 			catch (Exception exception) when (exception is not OperationCanceledException)

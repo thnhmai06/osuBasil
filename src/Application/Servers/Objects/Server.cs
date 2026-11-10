@@ -46,7 +46,7 @@ public sealed partial class Server
 				openedChannels++;
 
 		var registry = Context.Connections.Registry;
-		var closedConnections = await registry.CloseStoppedAsync(cancellationToken);
+		var closedConnections = await registry.CloseStoppedAsync();
 		await registry.EnsureBotAsync(cancellationToken);
 		var botOnline = await registry.ConnectBotAsync(cancellationToken) is not null;
 

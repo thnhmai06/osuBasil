@@ -23,7 +23,7 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 	{
 		var row = ToRow(set);
 		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.Id == row.Id, token), cancellationToken);
+			context.UpsertAsync(row, stored => stored.Id == row.Id), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -118,13 +118,13 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		{
 			// A new set never replaces a stored one: an id another set has is refused by the database.
 			if (row.Id == 0)
-				row.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapsetIds, token);
+				row.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapsetIds);
 			context.Beatmapsets.Add(row);
 			await context.SaveChangesAsync(token);
 		}
 		else
 		{
-			await context.UpsertAsync(row, candidate => candidate.Id == row.Id, token);
+			await context.UpsertAsync(row, candidate => candidate.Id == row.Id);
 		}
 
 		var set = Build(existing, data, now, row.Id);

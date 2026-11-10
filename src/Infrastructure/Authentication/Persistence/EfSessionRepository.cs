@@ -15,15 +15,15 @@ namespace Basil.Infrastructure.Authentication.Persistence;
 internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRepository
 {
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(SessionRecord session, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(SessionRecord session)
 	{
 		var row = ToRow(session);
-		return database.WriteAsync(async (AuthenticationDbContext context, CancellationToken token) =>
+		return database.WriteAsync(async (AuthenticationDbContext context) =>
 		{
-			var stored = await context.Sessions.AsTracking().FirstOrDefaultAsync(item => item.Id == row.Id, token);
+			var stored = await context.Sessions.AsTracking().FirstOrDefaultAsync(item => item.Id == row.Id);
 			if (stored is null) context.Sessions.Add(row);
 			else context.Entry(stored).CurrentValues.SetValues(row);
-		}, cancellationToken);
+		});
 	}
 
 	/// <inheritdoc />
@@ -83,10 +83,10 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 	/// <inheritdoc />
 	public Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types,
-		DateTimeOffset at, SessionEndReason reason, CancellationToken cancellationToken = default)
+		DateTimeOffset at, SessionEndReason reason)
 	{
 		var end = at.ToUniversalTime();
-		return database.WriteAsync(async (AuthenticationDbContext context, CancellationToken token) =>
+		return database.WriteAsync(async (AuthenticationDbContext context) =>
 		{
 			var query = context.Sessions.Where(row => row.UserId == user.Id && types.Contains(row.Type));
 			if (only is { } one) query = query.Where(row => row.Id == one);
@@ -94,28 +94,26 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 			await query.Where(row => row.EndedAt == null).ExecuteUpdateAsync(setters => setters
 				.SetProperty(row => row.EndedAt, end)
-				.SetProperty(row => row.EndReason, reason), token);
-		}, cancellationToken);
+				.SetProperty(row => row.EndReason, reason));
+		});
 	}
 
 	/// <inheritdoc />
-	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason,
-		CancellationToken cancellationToken = default)
+	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason)
 	{
-		return database.WriteAsync((AuthenticationDbContext context, CancellationToken token) => context.Sessions
+		return database.WriteAsync((AuthenticationDbContext context) => context.Sessions
 			.Where(row => row.EndedAt == null && types.Contains(row.Type))
 			.ExecuteUpdateAsync(setters => setters
 				.SetProperty(row => row.EndedAt, row => row.LastActiveAt)
-				.SetProperty(row => row.EndReason, reason), token), cancellationToken);
+				.SetProperty(row => row.EndReason, reason)));
 	}
 
 	/// <inheritdoc />
-	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity,
-		CancellationToken cancellationToken = default)
+	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity)
 	{
 		if (activity.Count == 0) return Task.CompletedTask;
 
-		return database.TransactAsync(async (AuthenticationDbContext context, CancellationToken token) =>
+		return database.TransactAsync(async (AuthenticationDbContext context) =>
 		{
 			foreach (var item in activity)
 			{
@@ -124,20 +122,20 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 				await context.Sessions.Where(row => row.Id == item.Id && row.EndedAt == null)
 					.ExecuteUpdateAsync(setters => setters
 						.SetProperty(row => row.LastActiveAt, last)
-						.SetProperty(row => row.ExpiresAt, expires), token);
+						.SetProperty(row => row.ExpiresAt, expires));
 			}
-		}, cancellationToken);
+		});
 	}
 
 	/// <inheritdoc />
-	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
+	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff)
 	{
 		var before = cutoff.ToUniversalTime();
-		return database.WriteAsync(async (AuthenticationDbContext context, CancellationToken token) =>
+		return database.WriteAsync(async (AuthenticationDbContext context) =>
 			await context.Sessions.Where(row => (row.EndedAt != null && row.EndedAt < before) ||
 			                                    (row.EndedAt == null && row.ExpiresAt != null &&
 			                                     row.ExpiresAt < before))
-				.ExecuteDeleteAsync(token), cancellationToken);
+				.ExecuteDeleteAsync());
 	}
 
 	private static SessionRecord ToRecord(SessionRow row, UserRecord user)

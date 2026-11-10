@@ -20,9 +20,9 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_recorded_action_is_stored()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 
 		await Log.AppendAsync(new ModerationData
 		{
@@ -31,7 +31,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 			Target = target,
 			Reason = "A reason.",
 			Timestamp = First
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select action, by_id, target_id, reason, timestamp from moderation_log",
@@ -49,7 +49,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_recorded_action_against_an_account_the_database_does_not_hold_is_refused_to_the_caller()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var unknown = new UserRecord { Id = 4242, Value = new UserData { Name = "not_stored" } };
 
 		await Assert.ThrowsAnyAsync<Exception>(() => Log.AppendAsync(new ModerationData
@@ -58,16 +58,16 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 			Actor = moderator,
 			Target = unknown,
 			Timestamp = First
-		}, TestContext.Current.CancellationToken));
+		}));
 	}
 
 	[Fact]
 	public async Task A_moderation_history_is_listed_newest_first()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 		await AppendAsync(moderator, target, First);
 		await AppendAsync(moderator, target, Second);
 		await AppendAsync(moderator, target, Third);
@@ -85,9 +85,9 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_moderation_history_names_the_users_it_is_about()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 		await AppendAsync(moderator, target, First);
 		await WaitForEntriesAsync(1);
 
@@ -103,9 +103,9 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_moderation_history_returns_the_requested_part()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 		await AppendAsync(moderator, target, First);
 		await AppendAsync(moderator, target, Second);
 		await AppendAsync(moderator, target, Third);
@@ -121,9 +121,9 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_moderation_history_holds_the_moments_the_interval_covers()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 		await AppendAsync(moderator, target, First);
 		await AppendAsync(moderator, target, Second);
 		await AppendAsync(moderator, target, Third);
@@ -139,9 +139,9 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_moderation_history_leaves_out_the_moments_the_interval_excludes()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 		await AppendAsync(moderator, target, First);
 		await AppendAsync(moderator, target, Second);
 		await AppendAsync(moderator, target, Third);
@@ -158,9 +158,9 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_moderation_history_holds_the_earliest_moment_the_interval_covers()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 		await AppendAsync(moderator, target, First);
 		await AppendAsync(moderator, target, Second);
 		await AppendAsync(moderator, target, Third);
@@ -176,11 +176,11 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	public async Task A_moderation_history_of_one_account_leaves_out_the_others()
 	{
 		var moderator = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "moderator" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "moderator" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_user" });
 		var other = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "other_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "other_user" });
 		await AppendAsync(moderator, target, First);
 		await AppendAsync(moderator, other, Second);
 		await WaitForEntriesAsync(2);
@@ -202,7 +202,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 			Actor = moderator,
 			Target = target,
 			Timestamp = timestamp
-		}, TestContext.Current.CancellationToken);
+		});
 	}
 
 	/// <summary>Waits until the given number of entries is stored.</summary>

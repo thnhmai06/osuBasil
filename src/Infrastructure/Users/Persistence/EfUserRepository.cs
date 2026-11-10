@@ -12,16 +12,16 @@ namespace Basil.Infrastructure.Users.Persistence;
 internal sealed class EfUserRepository(DatabaseSession database) : IUserRepository
 {
 	/// <inheritdoc />
-	public async Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
+	public async Task<UserRecord> CreateAsync(UserData data)
 	{
 		var row = ToRow(0, data);
 		try
 		{
-			await database.WriteAsync(async (UsersDbContext context, CancellationToken token) =>
+			await database.WriteAsync(async (UsersDbContext context) =>
 			{
-				row.Id = (int)await IdCounters.NextAsync(context, "user", token);
+				row.Id = (int)await IdCounters.NextAsync(context, "user");
 				context.Users.Add(row);
-			}, cancellationToken);
+			});
 		}
 		catch (AlreadyExistsException)
 		{
@@ -32,13 +32,13 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 	}
 
 	/// <inheritdoc />
-	public async Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default)
+	public async Task<UserRecord> ReplaceAsync(int id, UserData data)
 	{
 		var row = ToRow(id, data);
 		try
 		{
-			await database.WriteAsync((UsersDbContext context, CancellationToken token) =>
-				context.UpsertAsync(row, stored => stored.Id == id, token), cancellationToken);
+			await database.WriteAsync((UsersDbContext context) =>
+				context.UpsertAsync(row, stored => stored.Id == id));
 		}
 		catch (AlreadyExistsException)
 		{
@@ -49,7 +49,7 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(UserRecord user)
 	{
 		var id = user.Id;
 		var country = (int)user.Value.Country;
@@ -57,7 +57,7 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		var silencedUntil = user.Value.SilencedUntil?.ToUniversalTime();
 		var deletedAt = user.Value.DeletedAt?.ToUniversalTime();
 		// A deletion is permanent: a record that does not know it must not take it back.
-		return database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Users
+		return database.WriteAsync((UsersDbContext context) => context.Users
 				.Where(row => row.Id == id)
 				.ExecuteUpdateAsync(set => set
 					.SetProperty(row => row.Country, country)
@@ -65,21 +65,20 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 					.SetProperty(row => row.SilencedUntil, silencedUntil)
 					.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt)
 					.SetProperty(row => row.ActiveName,
-						row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null), token),
-			cancellationToken);
+						row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null)));
 	}
 
 	/// <inheritdoc />
-	public Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task DiscardAsync(UserRecord user)
 	{
 		var id = user.Id;
-		return database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Users
+		return database.WriteAsync((UsersDbContext context) => context.Users
 			.Where(row => row.Id == id)
-			.ExecuteDeleteAsync(token), cancellationToken);
+			.ExecuteDeleteAsync());
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default)
+	public async Task<bool> RenameAsync(UserRecord user, string name)
 	{
 		_ = new UserData { Name = name };
 		var id = user.Id;
@@ -88,13 +87,12 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		// Whether the name is free is the database's to say, so the record takes the name only once it is committed.
 		try
 		{
-			await database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Users
+			await database.WriteAsync((UsersDbContext context) => context.Users
 					.Where(row => row.Id == id)
 					.ExecuteUpdateAsync(set => set
 						.SetProperty(row => row.Name, name)
 						.SetProperty(row => row.NormalizedName, normalized)
-						.SetProperty(row => row.ActiveName, row => row.DeletedAt == null ? normalized : null), token),
-				cancellationToken);
+						.SetProperty(row => row.ActiveName, row => row.DeletedAt == null ? normalized : null)));
 		}
 		catch (AlreadyExistsException)
 		{

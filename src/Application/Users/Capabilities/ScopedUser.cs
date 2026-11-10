@@ -85,18 +85,17 @@ public readonly struct ScopedUser
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the area is locked and the caller does not hold <paramref name="manager" />.</returns>
 	internal async Task<bool> IsLockedAsync(Locks area, UserPrivileges manager,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken = default)
 	{
 		return (await User.Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(area) &&
 		       Require(manager) is not null;
 	}
 
 	/// <summary>Deletes this account, keeping it out of sign-in and every listing while its record remains.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of deleting the account.</returns>
-	public async Task<Result<UserOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> DeleteAsync()
 	{
 		if (Guard(UserPrivileges.Owner, true) is { } denied) return denied;
-		return await User.DeleteAsync(cancellationToken);
+		return await User.DeleteAsync();
 	}
 }

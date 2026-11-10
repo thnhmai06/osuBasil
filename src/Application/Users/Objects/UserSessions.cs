@@ -88,7 +88,7 @@ public sealed class UserSessions
 				Actor = viewer.Record,
 				Target = _user.Record,
 				Timestamp = now
-			}, cancellationToken);
+			});
 
 		return await _user.Context.Sessions.ListAsync(new SessionQuery(_user.Record, state, types, now), page,
 			cancellationToken);
@@ -116,7 +116,7 @@ public sealed class UserSessions
 				Actor = viewer.Record,
 				Target = _user.Record,
 				Timestamp = _user.Context.Clock.GetUtcNow()
-			}, cancellationToken);
+			});
 
 		return (UserOutcome.Ok, session);
 	}
@@ -142,22 +142,21 @@ public sealed class UserSessions
 
 	/// <summary>Closes one session of this account, whether its client is online or not.</summary>
 	/// <param name="id">The session's public identifier.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of closing the session.</returns>
 	/// <remarks>
 	///     A closed session cannot sign in again with what it stored: an API token and an IRC key stop working. An
 	///     osu! client is disconnected but can sign in again with its password. A session that does not belong to this
 	///     account is not found.
 	/// </remarks>
-	internal async Task<UserOutcome> CloseAsync(long id, CancellationToken cancellationToken)
+	internal async Task<UserOutcome> CloseAsync(long id)
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
 		if (!Connections.Any(connection => connection.Session.Id == id) &&
-		    await _user.Context.Sessions.GetAsync(_user.Record, id, cancellationToken) is null)
+		    await _user.Context.Sessions.GetAsync(_user.Record, id) is null)
 			return UserOutcome.NotFound;
 
-		await CloseAsync(id, null, SessionEndReason.Revoked, cancellationToken);
+		await CloseAsync(id, null, SessionEndReason.Revoked);
 		return UserOutcome.Ok;
 	}
 
@@ -166,11 +165,9 @@ public sealed class UserSessions
 	/// <param name="keepCurrent">
 	///     Whether the HTTP API session making this call stays open; ignored when acting on another account.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of closing the sessions.</returns>
 	/// <remarks>Closing another account's sessions is recorded in the moderation log.</remarks>
-	internal async Task<UserOutcome> CloseAllAsync(Connection actor, bool keepCurrent,
-		CancellationToken cancellationToken)
+	internal async Task<UserOutcome> CloseAllAsync(Connection actor, bool keepCurrent)
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 
@@ -184,9 +181,9 @@ public sealed class UserSessions
 				Actor = actor.Record,
 				Target = _user.Record,
 				Timestamp = _user.Context.Clock.GetUtcNow()
-			}, cancellationToken);
+			});
 
-		await CloseAsync(null, keep, SessionEndReason.Revoked, cancellationToken);
+		await CloseAsync(null, keep, SessionEndReason.Revoked);
 
 		return UserOutcome.Ok;
 	}
@@ -194,14 +191,13 @@ public sealed class UserSessions
 	/// <summary>Opens a long-lived IRC key for one IRC client of this account.</summary>
 	/// <param name="actor">The connection asking for the key.</param>
 	/// <param name="label">A name for the client the key is for, such as the machine it runs on.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the new key and its session.</returns>
 	/// <remarks>
 	///     The key is shown only here; closing the key's session stops it working and leaves the account's other IRC
 	///     clients alone.
 	/// </remarks>
 	internal async Task<(UserOutcome Outcome, string? Key, SessionRecord? Session)> OpenIrcAsync(Connection actor,
-		string label, CancellationToken cancellationToken)
+		string label)
 	{
 		if (_user.Record.Value.DeletedAt is not null) return (UserOutcome.Deleted, null, null);
 
@@ -217,7 +213,7 @@ public sealed class UserSessions
 				new SessionFingerprint(actor.Session.Value.Fingerprint.Ip, ClientInfo: label),
 				UserRegistry.HashToken(key), null, now)
 		};
-		await _user.Context.Sessions.CreateOrUpdateAsync(session, cancellationToken);
+		await _user.Context.Sessions.CreateOrUpdateAsync(session);
 		return (UserOutcome.Ok, key, session);
 	}
 
@@ -225,12 +221,10 @@ public sealed class UserSessions
 	/// <param name="only">The one session to close, or <see langword="null" /> for every session.</param>
 	/// <param name="except">A session that stays open, or <see langword="null" /> for none.</param>
 	/// <param name="reason">Why the sessions close.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	internal async Task CloseAsync(long? only, long? except, SessionEndReason reason,
-		CancellationToken cancellationToken)
+	internal async Task CloseAsync(long? only, long? except, SessionEndReason reason)
 	{
 		_user.Context.Registry.CloseAll(_user.Record, reason, except, only);
 		await _user.Context.Sessions.EndAsync(_user.Record, only, except, ClientTypes,
-			_user.Context.Clock.GetUtcNow(), reason, cancellationToken);
+			_user.Context.Clock.GetUtcNow(), reason);
 	}
 }

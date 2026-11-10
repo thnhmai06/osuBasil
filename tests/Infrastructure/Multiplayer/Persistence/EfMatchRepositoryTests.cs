@@ -58,8 +58,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	[Fact]
 	public async Task A_created_match_keeps_the_creator_it_was_created_with()
 	{
-		var creator = await Get<IUserRepository>().CreateAsync(new UserData { Name = "creator_user" },
-			TestContext.Current.CancellationToken);
+		var creator = await Get<IUserRepository>().CreateAsync(new UserData { Name = "creator_user" });
 
 		var match = await Matches.CreateAsync(StoredMatches.Data("owned_match", First, creator),
 			TestContext.Current.CancellationToken);

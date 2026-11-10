@@ -32,12 +32,12 @@ public sealed class AccountCreationTests
 			return Task.FromResult(false);
 		}
 
-		public Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default)
+		public Task CreateOrUpdateAsync(Credentials credentials)
 		{
 			throw new InvalidOperationException("the database refused the credential");
 		}
 
-		public Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
+		public Task DeleteAsync(UserRecord user)
 		{
 			return Task.CompletedTask;
 		}

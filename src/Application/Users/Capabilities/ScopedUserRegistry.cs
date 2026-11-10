@@ -43,20 +43,19 @@ public readonly struct ScopedUserRegistry
 	/// <param name="privileges">
 	///     The privileges of the account, or <see langword="null" /> for the default privileges of new accounts.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     The new account when the result is ok; otherwise why none was created. Granting needs
 	///     <see cref="UserPrivileges.Owner" /> and only privileges that are in effect for the caller.
 	/// </returns>
 	public async Task<(UserRecord? User, Result<UserOutcome> Result)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, UserPrivileges? privileges, CancellationToken cancellationToken = default)
+		Md5 passwordHash, UserPrivileges? privileges)
 	{
 		var granted = privileges ??
-		              (await Actor.User.Context.Settings.GetAsync(cancellationToken)).Accounts.DefaultPrivileges;
+		              (await Actor.User.Context.Settings.GetAsync()).Accounts.DefaultPrivileges;
 		if (Require(UserPrivileges.Owner | granted) is { } missing)
 			return (null, Result<UserOutcome>.Denied(missing));
 
-		var (user, outcome) = await _registry.RegisterAsync(data, passwordHash, granted, cancellationToken);
+		var (user, outcome) = await _registry.RegisterAsync(data, passwordHash, granted);
 		return (user, outcome);
 	}
 }

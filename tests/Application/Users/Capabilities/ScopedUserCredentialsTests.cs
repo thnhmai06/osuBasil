@@ -34,7 +34,7 @@ public sealed class ScopedUserCredentialsTests
 
 	private static async Task<string> OpenIrcKeyAsync(TestApplication app, Connection actor)
 	{
-		var (result, key, _) = await app.Users.Of(actor.Record).ScopeTo(actor).Sessions.OpenIrcAsync("client", Token);
+		var (result, key, _) = await app.Users.Of(actor.Record).ScopeTo(actor).Sessions.OpenIrcAsync("client");
 		Assert.True(result.IsOk);
 		return key!;
 	}
@@ -50,7 +50,7 @@ public sealed class ScopedUserCredentialsTests
 		var key = await OpenIrcKeyAsync(app, current);
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("old"), false, Token);
+			.ChangePasswordAsync(Hash("new"), Hash("old"), false);
 
 		Assert.True(result.IsOk);
 		Assert.True(await app.VerifiesPasswordAsync(user, "new"));
@@ -72,7 +72,7 @@ public sealed class ScopedUserCredentialsTests
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("old"), true, Token);
+			.ChangePasswordAsync(Hash("new"), Hash("old"), true);
 
 		Assert.False(current.IsOpen);
 		Assert.Equal(LoginFailure.InvalidToken,
@@ -88,7 +88,7 @@ public sealed class ScopedUserCredentialsTests
 		var other = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("old"), Hash("old"), true, Token);
+			.ChangePasswordAsync(Hash("old"), Hash("old"), true);
 
 		Assert.True(result.IsOk);
 		Assert.True(current.IsOpen);
@@ -104,7 +104,7 @@ public sealed class ScopedUserCredentialsTests
 		var other = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("guess"), false, Token);
+			.ChangePasswordAsync(Hash("new"), Hash("guess"), false);
 
 		Assert.Equal(UserOutcome.WrongPassword, result.Outcome);
 		Assert.True(await app.VerifiesPasswordAsync(user, "old"));
@@ -118,8 +118,7 @@ public sealed class ScopedUserCredentialsTests
 		var user = await app.CreateUserAsync("Missing", "old");
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
-		var result = await app.Users.Of(user).ScopeTo(current).Credentials.ChangePasswordAsync(Hash("new"), null,
-			cancellationToken: Token);
+		var result = await app.Users.Of(user).ScopeTo(current).Credentials.ChangePasswordAsync(Hash("new"), null);
 
 		Assert.Equal(UserOutcome.WrongPassword, result.Outcome);
 		Assert.True(await app.VerifiesPasswordAsync(user, "old"));
@@ -135,8 +134,7 @@ public sealed class ScopedUserCredentialsTests
 		var osu = await app.LoginAsync(user, SessionType.Stable, "old");
 		var key = await OpenIrcKeyAsync(app, api);
 
-		var result = await app.Users.Of(user).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null,
-			cancellationToken: Token);
+		var result = await app.Users.Of(user).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null);
 
 		Assert.True(result.IsOk);
 		Assert.True(await app.VerifiesPasswordAsync(user, "new"));
@@ -155,8 +153,7 @@ public sealed class ScopedUserCredentialsTests
 		var other = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
 		var user = await app.CreateUserAsync("Victim", "old");
 
-		var result = await app.Users.Of(user).ScopeTo(other).Credentials.ChangePasswordAsync(Hash("new"), null,
-			cancellationToken: Token);
+		var result = await app.Users.Of(user).ScopeTo(other).Credentials.ChangePasswordAsync(Hash("new"), null);
 
 		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.True(await app.VerifiesPasswordAsync(user, "old"));
@@ -169,8 +166,7 @@ public sealed class ScopedUserCredentialsTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		var peer = await app.CreateUserAsync("Peer", "old", UserPrivilegesExtensions.All);
 
-		var result = await app.Users.Of(peer).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null,
-			cancellationToken: Token);
+		var result = await app.Users.Of(peer).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null);
 
 		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
 		Assert.True(await app.VerifiesPasswordAsync(peer, "old"));
@@ -185,7 +181,7 @@ public sealed class ScopedUserCredentialsTests
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("old"), false, Token);
+			.ChangePasswordAsync(Hash("new"), Hash("old"), false);
 
 		Assert.Equal(UserOutcome.Locked, result.Outcome);
 		Assert.True(await app.VerifiesPasswordAsync(user, "old"));
@@ -201,7 +197,7 @@ public sealed class ScopedUserCredentialsTests
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("old"), false, Token);
+			.ChangePasswordAsync(Hash("new"), Hash("old"), false);
 
 		Assert.True(result.IsOk);
 		Assert.True(await app.VerifiesPasswordAsync(user, "new"));
@@ -214,8 +210,7 @@ public sealed class ScopedUserCredentialsTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var bot = await app.SeedBotAsync();
 
-		var result = await app.Users.Of(bot).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null,
-			cancellationToken: Token);
+		var result = await app.Users.Of(bot).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null);
 
 		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
 		Assert.True(await app.VerifiesPasswordAsync(bot, "basil-bot"));

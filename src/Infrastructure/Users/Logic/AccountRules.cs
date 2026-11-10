@@ -40,13 +40,13 @@ internal sealed class AccountRules(
 
 	/// <inheritdoc />
 	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
-		UserPrivileges? privileges, CancellationToken cancellationToken)
+		UserPrivileges? privileges)
 	{
-		data.Privileges = privileges ?? (await settings.GetAsync(cancellationToken)).Accounts.DefaultPrivileges;
+		data.Privileges = privileges ?? (await settings.GetAsync()).Accounts.DefaultPrivileges;
 		UserRecord user;
 		try
 		{
-			user = await users.CreateAsync(data, cancellationToken);
+			user = await users.CreateAsync(data);
 		}
 		catch (AlreadyExistsException)
 		{
@@ -55,7 +55,7 @@ internal sealed class AccountRules(
 
 		try
 		{
-			await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash), cancellationToken);
+			await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash));
 		}
 		catch
 		{
@@ -84,7 +84,7 @@ internal sealed class AccountRules(
 	{
 		try
 		{
-			await users.DiscardAsync(user, CancellationToken.None);
+			await users.DiscardAsync(user);
 		}
 		catch (Exception exception)
 		{

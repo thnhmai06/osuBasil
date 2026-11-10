@@ -26,7 +26,7 @@ public sealed class SessionRetentionTests
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 		app.Clock.Advance(DefaultRetention + TimeSpan.FromDays(1));
 
-		var deleted = await app.Users.PurgeEndedSessionsAsync(Token);
+		var deleted = await app.Users.PurgeEndedSessionsAsync();
 
 		Assert.Equal(1, deleted);
 		Assert.DoesNotContain(app.StoredSessions, entry => entry.Id == connection.Session.Id);
@@ -41,7 +41,7 @@ public sealed class SessionRetentionTests
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 		app.Clock.Advance(DefaultRetention - TimeSpan.FromDays(1));
 
-		var deleted = await app.Users.PurgeEndedSessionsAsync(Token);
+		var deleted = await app.Users.PurgeEndedSessionsAsync();
 
 		Assert.Equal(0, deleted);
 		Assert.Contains(app.StoredSessions, entry => entry.Id == connection.Session.Id);
@@ -62,7 +62,7 @@ public sealed class SessionRetentionTests
 		var connection = await app.LoginAsync(user);
 		app.Clock.Advance(DefaultRetention * 2);
 
-		var deleted = await app.Users.PurgeEndedSessionsAsync(Token);
+		var deleted = await app.Users.PurgeEndedSessionsAsync();
 
 		Assert.Equal(0, deleted);
 		Assert.Contains(app.StoredSessions, entry => entry.Id == connection.Session.Id);
@@ -81,7 +81,7 @@ public sealed class SessionRetentionTests
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 		app.Clock.Advance(TimeSpan.FromDays(8));
 
-		Assert.Equal(1, await app.Users.PurgeEndedSessionsAsync(Token));
+		Assert.Equal(1, await app.Users.PurgeEndedSessionsAsync());
 	}
 
 	[Fact]
@@ -93,13 +93,12 @@ public sealed class SessionRetentionTests
 		var log = app.Provider.GetRequiredService<IModerationLogRepository>();
 		await log.AppendAsync(
 			new ModerationData
-				{ Action = ModerationAction.Note, Actor = staff, Target = target, Timestamp = app.Clock.GetUtcNow() },
-			Token);
+				{ Action = ModerationAction.Note, Actor = staff, Target = target, Timestamp = app.Clock.GetUtcNow() });
 		var connection = await app.LoginAsync(target);
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 		app.Clock.Advance(DefaultRetention * 10);
 
-		await app.Users.PurgeEndedSessionsAsync(Token);
+		await app.Users.PurgeEndedSessionsAsync();
 
 		Assert.Single(app.ModerationEntries);
 	}

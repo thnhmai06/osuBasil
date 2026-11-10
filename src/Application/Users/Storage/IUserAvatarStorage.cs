@@ -8,8 +8,7 @@ public interface IUserAvatarStorage
 	/// <summary>Stores the avatar of a user, replacing any avatar stored for them.</summary>
 	/// <param name="user">The user whose avatar to store.</param>
 	/// <param name="content">The image bytes.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task SaveAsync(UserRecord user, Stream content, CancellationToken cancellationToken = default);
+	Task SaveAsync(UserRecord user, Stream content);
 
 	/// <summary>Opens the stored avatar of a user.</summary>
 	/// <param name="user">The user whose avatar to open.</param>
@@ -19,6 +18,5 @@ public interface IUserAvatarStorage
 
 	/// <summary>Deletes the avatar of a user; deleting a missing avatar does nothing.</summary>
 	/// <param name="user">The user whose avatar to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default);
+	Task DeleteAsync(UserRecord user);
 }

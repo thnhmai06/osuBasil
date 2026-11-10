@@ -363,7 +363,7 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var target = app.Users.Of(setup.Outsider.Record);
 		Assert.True((await app.Users.Of(setup.Player.Record).ScopeTo(setup.Outsider).Relationships
-			.BlockAsync(TestContext.Current.CancellationToken)).IsOk);
+			.BlockAsync()).IsOk);
 
 		var result = await setup.Room.ScopeTo(setup.Player).Members.InviteAsync(target,
 			TestContext.Current.CancellationToken);
@@ -378,7 +378,7 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var target = app.Users.Of(setup.Outsider.Record);
 		Assert.True((await app.Users.Of(setup.Manager.Record).ScopeTo(setup.Outsider).Relationships
-			.BlockAsync(TestContext.Current.CancellationToken)).IsOk);
+			.BlockAsync()).IsOk);
 
 		var result = await setup.Room.ScopeTo(setup.Manager).Members.InviteAsync(target,
 			TestContext.Current.CancellationToken);

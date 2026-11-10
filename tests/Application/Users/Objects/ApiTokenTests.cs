@@ -100,7 +100,7 @@ public sealed class ApiTokenTests
 		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, connection.ExpiresAt);
 		Assert.Equal(issued, app.TokenExpiryOf(connection.Session.Id));
 
-		await app.Users.FlushActivityAsync(Token);
+		await app.Users.FlushActivityAsync();
 
 		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, app.TokenExpiryOf(connection.Session.Id));
 	}
@@ -200,7 +200,7 @@ public sealed class ApiTokenTests
 		var connection = await app.LoginAsync(user);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
 		app.Users.CloseIdle();
-		Assert.True((await app.Users.Of(user).ScopeTo(admin).DeleteAsync(Token)).IsOk);
+		Assert.True((await app.Users.Of(user).ScopeTo(admin).DeleteAsync()).IsOk);
 
 		var result = await OpenAsync(app, connection.Token);
 

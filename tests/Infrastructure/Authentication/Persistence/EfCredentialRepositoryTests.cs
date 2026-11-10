@@ -20,10 +20,10 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_stored_credential_verifies_the_right_password()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
 		var credentials = new Credentials(user, HashOf(Password));
 
-		await Credentials.CreateOrUpdateAsync(credentials, TestContext.Current.CancellationToken);
+		await Credentials.CreateOrUpdateAsync(credentials);
 
 		Assert.True(await Credentials.VerifyAsync(credentials, TestContext.Current.CancellationToken));
 	}
@@ -32,9 +32,8 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_stored_credential_rejects_a_wrong_password()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
-			TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)));
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf("another password")),
 			TestContext.Current.CancellationToken));
@@ -44,7 +43,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task An_account_without_a_credential_verifies_nothing()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "no_cred" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "no_cred" });
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)),
 			TestContext.Current.CancellationToken));
@@ -54,11 +53,9 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_stored_credential_replaces_the_earlier_one()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the first password")),
-			TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the second password")),
-			TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the first password")));
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the second password")));
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf("the first password")),
 			TestContext.Current.CancellationToken));
@@ -70,11 +67,10 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_deleted_credential_verifies_nothing()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
-			TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)));
 
-		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+		await Credentials.DeleteAsync(user);
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)),
 			TestContext.Current.CancellationToken));
@@ -84,14 +80,13 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_deleted_credential_is_removed_from_the_database()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
-			TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)));
 		await StoredRows.WaitForAsync(ConnectionString, "select user_id from credentials where user_id = @id",
 			new Dictionary<string, object?> { ["@id"] = user.Id }, rows => rows.Count == 1,
 			"the stored credential", TestContext.Current.CancellationToken);
 
-		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+		await Credentials.DeleteAsync(user);
 
 		await StoredRows.WaitForAsync(ConnectionString, "select user_id from credentials where user_id = @id",
 			new Dictionary<string, object?> { ["@id"] = user.Id }, rows => rows.Count == 0,
@@ -102,9 +97,9 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task Deleting_the_credential_of_an_account_without_one_changes_nothing()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "no_cred" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "no_cred" });
 
-		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+		await Credentials.DeleteAsync(user);
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)),
 			TestContext.Current.CancellationToken));
@@ -114,9 +109,8 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task The_stored_credential_is_not_the_password()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
-			TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select password_hash from credentials where user_id = @id",
@@ -132,10 +126,9 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_stored_credential_is_in_the_database_when_the_write_returns()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
 
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
-			TestContext.Current.CancellationToken);
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)));
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select user_id from credentials where user_id = @id",
 			new Dictionary<string, object?> { ["@id"] = user.Id }, TestContext.Current.CancellationToken);
@@ -148,7 +141,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 		var ghost = new UserRecord { Id = 9999, Value = new UserData { Name = "ghost" } };
 
 		await Assert.ThrowsAnyAsync<Exception>(() => Credentials.CreateOrUpdateAsync(
-			new Credentials(ghost, HashOf(Password)), TestContext.Current.CancellationToken));
+			new Credentials(ghost, HashOf(Password))));
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(ghost, HashOf(Password)),
 			TestContext.Current.CancellationToken));
@@ -158,14 +151,12 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_replaced_password_takes_effect_after_the_old_one_was_verified()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the first password")),
-			TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the first password")));
 		Assert.True(await Credentials.VerifyAsync(new Credentials(user, HashOf("the first password")),
 			TestContext.Current.CancellationToken));
 
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the second password")),
-			TestContext.Current.CancellationToken);
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf("the second password")));
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf("the first password")),
 			TestContext.Current.CancellationToken));
@@ -177,13 +168,12 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	public async Task A_deleted_credential_verifies_nothing_after_it_was_verified()
 	{
 		var user = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
-		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)),
-			TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "cred_user" });
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)));
 		Assert.True(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)),
 			TestContext.Current.CancellationToken));
 
-		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+		await Credentials.DeleteAsync(user);
 
 		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)),
 			TestContext.Current.CancellationToken));

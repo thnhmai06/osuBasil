@@ -143,8 +143,8 @@ public sealed class UserRegistry
 
 		try
 		{
-			await _context.Sessions.CreateOrUpdateAsync(session, cancellationToken);
-			await RecordConnectionAsync(connection, cancellationToken);
+			await _context.Sessions.CreateOrUpdateAsync(session);
+			await RecordConnectionAsync(connection);
 		}
 		catch
 		{
@@ -156,13 +156,13 @@ public sealed class UserRegistry
 		return LoginResult.Success(connection);
 	}
 
-	private Task RecordConnectionAsync(Connection connection, CancellationToken cancellationToken)
+	private Task RecordConnectionAsync(Connection connection)
 	{
 		if (connection.IsServerOwned) return Task.CompletedTask;
 
 		var device = connection.Session.Value.Fingerprint;
 		return _context.Connections.OpenAsync(connection.Session.Id, device.Ip, device.ClientInfo,
-			_context.Clock.GetUtcNow(), ReopenWithin, cancellationToken);
+			_context.Clock.GetUtcNow(), ReopenWithin);
 	}
 
 	private static void ThrowIfInvalidLogin(SessionType type, OsuClient? client)
@@ -228,7 +228,7 @@ public sealed class UserRegistry
 
 		try
 		{
-			await RecordConnectionAsync(connection, cancellationToken);
+			await RecordConnectionAsync(connection);
 		}
 		catch
 		{
@@ -335,7 +335,7 @@ public sealed class UserRegistry
 		if (failure is not null) return (null, failure);
 
 		return await _accounts.CreateAsync(new UserData { Name = attempt.Username }, attempt.PasswordHash,
-			null, cancellationToken);
+			null);
 	}
 
 	/// <summary>Closes a connection, taking its user offline if it was their last one.</summary>
@@ -420,9 +420,9 @@ public sealed class UserRegistry
 			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
 				? new UserData
 					{ Name = stored.Value.Name, Country = stored.Value.Country, Privileges = UserPrivileges.None }
-				: new UserData { Name = BasilBot.DefaultName, Privileges = UserPrivileges.None }, cancellationToken);
+				: new UserData { Name = BasilBot.DefaultName, Privileges = UserPrivileges.None });
 
-		await _context.Credentials.DeleteAsync(bot, cancellationToken);
+		await _context.Credentials.DeleteAsync(bot);
 		return bot;
 	}
 
@@ -579,9 +579,8 @@ public sealed class UserRegistry
 	}
 
 	/// <summary>Stores the activity of the sessions and connections that were used since the last time.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>Run regularly instead of storing each request.</remarks>
-	public async Task FlushActivityAsync(CancellationToken cancellationToken = default)
+	public async Task FlushActivityAsync()
 	{
 		var sessions = new List<SessionActivity>();
 		var connections = new List<ConnectionActivity>();
@@ -592,25 +591,24 @@ public sealed class UserRegistry
 				connections.Add(new ConnectionActivity(id, connection.LastActiveAt));
 			}
 
-		await _context.Sessions.WriteActivityAsync(sessions, cancellationToken);
-		await _context.Connections.WriteActivityAsync(connections, cancellationToken);
+		await _context.Sessions.WriteActivityAsync(sessions);
+		await _context.Connections.WriteActivityAsync(connections);
 	}
 
 	/// <summary>
 	///     Ends what a stop of the server left open: every connection still open is closed at the moment it was last
 	///     active, and so is the session of every osu! client, which lives only as long as its connection.
 	/// </summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many connections were closed.</returns>
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it at startup. API tokens and IRC keys
 	///     stay valid.
 	/// </remarks>
-	public async Task<int> CloseStoppedAsync(CancellationToken cancellationToken = default)
+	public async Task<int> CloseStoppedAsync()
 	{
-		var closed = await _context.Connections.CloseOpenAsync(SessionEndReason.ServerStopped, cancellationToken);
+		var closed = await _context.Connections.CloseOpenAsync(SessionEndReason.ServerStopped);
 		await _context.Sessions.EndOpenAsync([SessionType.Stable, SessionType.StableTourney],
-			SessionEndReason.ServerStopped, cancellationToken);
+			SessionEndReason.ServerStopped);
 		return closed;
 	}
 
@@ -618,14 +616,12 @@ public sealed class UserRegistry
 	///     Deletes the sessions that ended longer ago than the server settings keep them; the moderation log is never
 	///     touched.
 	/// </summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many sessions were deleted.</returns>
 	/// <remarks>Run regularly; the server calls it on its own, so it needs no rights.</remarks>
-	public async Task<int> PurgeEndedSessionsAsync(CancellationToken cancellationToken = default)
+	public async Task<int> PurgeEndedSessionsAsync()
 	{
-		var retention = (await _context.Settings.GetAsync(cancellationToken)).Sessions.RetentionPeriod;
-		return await _context.Sessions.DeleteEndedBeforeAsync(_context.Clock.GetUtcNow() - retention,
-			cancellationToken);
+		var retention = (await _context.Settings.GetAsync()).Sessions.RetentionPeriod;
+		return await _context.Sessions.DeleteEndedBeforeAsync(_context.Clock.GetUtcNow() - retention);
 	}
 
 	/// <summary>Closes connections of kinds the user may no longer use.</summary>
@@ -706,9 +702,9 @@ public sealed class UserRegistry
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, UserPrivileges? privileges, CancellationToken cancellationToken)
+		Md5 passwordHash, UserPrivileges? privileges)
 	{
-		return _accounts.CreateAsync(data, passwordHash, privileges, cancellationToken);
+		return _accounts.CreateAsync(data, passwordHash, privileges);
 	}
 
 	/// <summary>Creates an account and reports the outcome as a user outcome.</summary>
@@ -717,12 +713,11 @@ public sealed class UserRegistry
 	/// <param name="privileges">
 	///     The privileges of the account, or <see langword="null" /> for the default privileges of new accounts.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The new account when the result is ok; otherwise why none was created.</returns>
 	internal async Task<(UserRecord? User, UserOutcome Outcome)> RegisterAsync(UserData data, Md5 passwordHash,
-		UserPrivileges? privileges, CancellationToken cancellationToken)
+		UserPrivileges? privileges)
 	{
-		var (user, failure) = await CreateAccountAsync(data, passwordHash, privileges, cancellationToken);
+		var (user, failure) = await CreateAccountAsync(data, passwordHash, privileges);
 		return failure switch
 		{
 			null => (user, UserOutcome.Ok),

@@ -67,7 +67,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await app.Users.Of(watcher.Record).ScopeTo(host).Relationships.BlockAsync(Token)).IsOk);
+		Assert.True((await app.Users.Of(watcher.Record).ScopeTo(host).Relationships.BlockAsync()).IsOk);
 
 		var result = await host.ScopeTo(watcher).SpectateAsync();
 

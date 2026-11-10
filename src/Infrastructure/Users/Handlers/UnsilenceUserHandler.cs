@@ -14,6 +14,6 @@ internal sealed class UnsilenceUserHandler(UserRegistry registry)
 	public async ValueTask<Result<UserOutcome>> Handle(UnsilenceUser request, CancellationToken cancellationToken)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Silence
-			.LiftAsync(request.Reason, cancellationToken);
+			.LiftAsync(request.Reason);
 	}
 }

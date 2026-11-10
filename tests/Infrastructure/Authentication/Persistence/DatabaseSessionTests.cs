@@ -92,6 +92,6 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 
 	private Task<UserRecord> NewUserAsync(string name)
 	{
-		return Get<IUserRepository>().CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+		return Get<IUserRepository>().CreateAsync(new UserData { Name = name });
 	}
 }

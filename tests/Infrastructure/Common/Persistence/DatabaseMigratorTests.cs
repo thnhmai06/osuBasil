@@ -23,8 +23,7 @@ public sealed class DatabaseMigratorTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task Migrating_a_migrated_database_keeps_the_data()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "kept_user" },
-			TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "kept_user" });
 
 		await Get<DatabaseMigrator>().MigrateAsync(TestContext.Current.CancellationToken);
 

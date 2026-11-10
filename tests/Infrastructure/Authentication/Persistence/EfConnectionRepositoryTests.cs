@@ -28,14 +28,14 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 
 	private async Task<long> SessionAsync(string name = "trail_user", long id = 1, SessionType type = SessionType.Api)
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = name }, Cancel);
+		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = name });
 		await Sessions.CreateOrUpdateAsync(new SessionRecord
 		{
 			Id = id,
 			Value = new SessionData(user, type, T0, new SessionFingerprint(Home, type is SessionType.Stable ? Client() : null),
 				new Sha256(BitConverter.GetBytes(id)),
 				null, T0)
-		}, Cancel);
+		});
 		return id;
 	}
 
@@ -49,7 +49,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	{
 		var session = await SessionAsync();
 
-		await Connections.OpenAsync(session, Home, "laptop", T0, Window, Cancel);
+		await Connections.OpenAsync(session, Home, "laptop", T0, Window);
 
 		var entry = Assert.Single((await ListAsync(session)).Items);
 		Assert.Equal(session, entry.Value.SessionId);
@@ -65,9 +65,9 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task Closing_stores_when_the_connection_was_last_used_when_it_closed_and_why()
 	{
 		var session = await SessionAsync();
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
 
-		await Connections.CloseAsync(session, T0.AddMinutes(3), T0.AddMinutes(4), SessionEndReason.TimedOut, Cancel);
+		await Connections.CloseAsync(session, T0.AddMinutes(3), T0.AddMinutes(4), SessionEndReason.TimedOut);
 
 		var entry = Assert.Single((await ListAsync(session)).Items);
 		Assert.Equal(T0.AddMinutes(3), entry.Value.LastActiveAt);
@@ -79,10 +79,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task Closing_leaves_the_connections_that_already_closed_as_they_were()
 	{
 		var session = await SessionAsync();
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
-		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut);
 
-		await Connections.CloseAsync(session, T0.AddHours(2), T0.AddHours(3), SessionEndReason.Revoked, Cancel);
+		await Connections.CloseAsync(session, T0.AddHours(2), T0.AddHours(3), SessionEndReason.Revoked);
 
 		var entry = Assert.Single((await ListAsync(session)).Items);
 		Assert.Equal(T0.AddMinutes(1), entry.Value.ClosedAt);
@@ -93,10 +93,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task A_connection_from_the_same_address_inside_the_window_continues_the_last_one()
 	{
 		var session = await SessionAsync();
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
-		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut);
 
-		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(4), Window, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(4), Window);
 
 		var entry = Assert.Single((await ListAsync(session)).Items);
 		Assert.Equal(T0, entry.Value.OpenedAt);
@@ -109,10 +109,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task A_connection_exactly_at_the_end_of_the_window_continues_the_last_one()
 	{
 		var session = await SessionAsync();
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
-		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut);
 
-		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(1) + Window, Window, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(1) + Window, Window);
 
 		Assert.Single((await ListAsync(session)).Items);
 	}
@@ -121,11 +121,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task A_connection_after_the_window_is_a_new_one()
 	{
 		var session = await SessionAsync();
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
-		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut);
 
-		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(1) + Window + TimeSpan.FromTicks(1), Window,
-			Cancel);
+		await Connections.OpenAsync(session, Home, null, T0.AddMinutes(1) + Window + TimeSpan.FromTicks(1), Window);
 
 		Assert.Equal(2, (await ListAsync(session)).Items.Count);
 	}
@@ -134,10 +133,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task A_connection_from_another_address_is_a_new_one()
 	{
 		var session = await SessionAsync();
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
-		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
+		await Connections.CloseAsync(session, T0, T0.AddMinutes(1), SessionEndReason.TimedOut);
 
-		await Connections.OpenAsync(session, Work, null, T0.AddMinutes(2), Window, Cancel);
+		await Connections.OpenAsync(session, Work, null, T0.AddMinutes(2), Window);
 
 		var items = (await ListAsync(session)).Items;
 		Assert.Equal([Work, Home], items.Select(entry => entry.Value.Ip));
@@ -149,9 +148,9 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 		var session = await SessionAsync();
 		foreach (var minutes in new[] { 0, 60, 120 })
 		{
-			await Connections.OpenAsync(session, Home, null, T0.AddMinutes(minutes), TimeSpan.Zero, Cancel);
+			await Connections.OpenAsync(session, Home, null, T0.AddMinutes(minutes), TimeSpan.Zero);
 			await Connections.CloseAsync(session, T0.AddMinutes(minutes), T0.AddMinutes(minutes + 1),
-				SessionEndReason.LoggedOut, Cancel);
+				SessionEndReason.LoggedOut);
 		}
 
 		var head = await ListAsync(session, 0, 2);
@@ -168,10 +167,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	{
 		var first = await SessionAsync("first_user", 1);
 		var second = await SessionAsync("second_user", 2);
-		await Connections.OpenAsync(first, Home, null, T0, Window, Cancel);
-		await Connections.OpenAsync(second, Work, null, T0, Window, Cancel);
+		await Connections.OpenAsync(first, Home, null, T0, Window);
+		await Connections.OpenAsync(second, Work, null, T0, Window);
 
-		await Connections.CloseAsync(first, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+		await Connections.CloseAsync(first, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut);
 
 		Assert.NotNull(Assert.Single((await ListAsync(first)).Items).Value.ClosedAt);
 		Assert.Null(Assert.Single((await ListAsync(second)).Items).Value.ClosedAt);
@@ -182,12 +181,12 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	{
 		var open = await SessionAsync("open_user", 1);
 		var closed = await SessionAsync("closed_user", 2);
-		await Connections.OpenAsync(open, Home, null, T0, Window, Cancel);
-		await Connections.OpenAsync(closed, Home, null, T0, Window, Cancel);
-		await Connections.CloseAsync(closed, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+		await Connections.OpenAsync(open, Home, null, T0, Window);
+		await Connections.OpenAsync(closed, Home, null, T0, Window);
+		await Connections.CloseAsync(closed, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut);
 
 		await Connections.WriteActivityAsync(
-			[new ConnectionActivity(open, T0.AddMinutes(9)), new ConnectionActivity(closed, T0.AddMinutes(9))], Cancel);
+			[new ConnectionActivity(open, T0.AddMinutes(9)), new ConnectionActivity(closed, T0.AddMinutes(9))]);
 
 		Assert.Equal(T0.AddMinutes(9), Assert.Single((await ListAsync(open)).Items).Value.LastActiveAt);
 		Assert.Equal(T0, Assert.Single((await ListAsync(closed)).Items).Value.LastActiveAt);
@@ -197,9 +196,9 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task Storing_no_activity_changes_nothing()
 	{
 		var session = await SessionAsync();
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
 
-		await Connections.WriteActivityAsync([], Cancel);
+		await Connections.WriteActivityAsync([]);
 
 		Assert.Equal(T0, Assert.Single((await ListAsync(session)).Items).Value.LastActiveAt);
 	}
@@ -209,12 +208,12 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	{
 		var open = await SessionAsync("open_user", 1);
 		var done = await SessionAsync("done_user", 2);
-		await Connections.OpenAsync(open, Home, null, T0, Window, Cancel);
-		await Connections.WriteActivityAsync([new ConnectionActivity(open, T0.AddMinutes(8))], Cancel);
-		await Connections.OpenAsync(done, Home, null, T0, Window, Cancel);
-		await Connections.CloseAsync(done, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut, Cancel);
+		await Connections.OpenAsync(open, Home, null, T0, Window);
+		await Connections.WriteActivityAsync([new ConnectionActivity(open, T0.AddMinutes(8))]);
+		await Connections.OpenAsync(done, Home, null, T0, Window);
+		await Connections.CloseAsync(done, T0, T0.AddMinutes(1), SessionEndReason.LoggedOut);
 
-		var closed = await Connections.CloseOpenAsync(SessionEndReason.ServerStopped, Cancel);
+		var closed = await Connections.CloseOpenAsync(SessionEndReason.ServerStopped);
 
 		Assert.Equal(1, closed);
 		var stopped = Assert.Single((await ListAsync(open)).Items);
@@ -229,10 +228,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 		var session = await SessionAsync();
 		var user = (await Sessions.GetAsync((await Get<IUserRepository>().GetByNameAsync("trail_user", Cancel))!, session,
 			Cancel))!.Value.User;
-		await Connections.OpenAsync(session, Home, null, T0, Window, Cancel);
-		await Sessions.EndAsync(user, session, null, [SessionType.Api], T0.AddMinutes(1), SessionEndReason.Revoked, Cancel);
+		await Connections.OpenAsync(session, Home, null, T0, Window);
+		await Sessions.EndAsync(user, session, null, [SessionType.Api], T0.AddMinutes(1), SessionEndReason.Revoked);
 
-		var deleted = await Sessions.DeleteEndedBeforeAsync(T0.AddDays(1), Cancel);
+		var deleted = await Sessions.DeleteEndedBeforeAsync(T0.AddDays(1));
 
 		Assert.Equal(1, deleted);
 		Assert.Empty((await ListAsync(session)).Items);
@@ -241,7 +240,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_connection_of_a_session_that_does_not_exist_is_refused()
 	{
-		await Assert.ThrowsAnyAsync<Exception>(() => Connections.OpenAsync(404, Home, null, T0, Window, Cancel));
+		await Assert.ThrowsAnyAsync<Exception>(() => Connections.OpenAsync(404, Home, null, T0, Window));
 	}
 
 	[Fact]
@@ -249,10 +248,10 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	{
 		var stable = await SessionAsync("stable_user", 1, SessionType.Stable);
 		var api = await SessionAsync("api_user", 2);
-		await Sessions.WriteActivityAsync([new SessionActivity(stable, T0.AddMinutes(6), null)], Cancel);
+		await Sessions.WriteActivityAsync([new SessionActivity(stable, T0.AddMinutes(6), null)]);
 
 		var ended = await Sessions.EndOpenAsync([SessionType.Stable, SessionType.StableTourney],
-			SessionEndReason.ServerStopped, Cancel);
+			SessionEndReason.ServerStopped);
 
 		Assert.Equal(1, ended);
 		var user = (await Get<IUserRepository>().GetByNameAsync("stable_user", Cancel))!;

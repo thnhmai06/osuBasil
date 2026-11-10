@@ -18,7 +18,7 @@ internal sealed class IdleConnectionSweeper(
 			{
 				var closed = registry.CloseIdle();
 				if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections", closed);
-				await registry.FlushActivityAsync(stoppingToken);
+				await registry.FlushActivityAsync();
 			}
 			catch (Exception exception)
 			{

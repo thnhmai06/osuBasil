@@ -18,35 +18,31 @@ public readonly struct ScopedUserRelationships
 	}
 
 	/// <summary>Adds the target as a friend.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of adding the friend.</returns>
-	public async Task<Result<UserOutcome>> AddFriendAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> AddFriendAsync()
 	{
-		return await _scoped.Actor.User.Relationships.AddFriendAsync(_scoped.User.Record, cancellationToken);
+		return await _scoped.Actor.User.Relationships.AddFriendAsync(_scoped.User.Record);
 	}
 
 	/// <summary>Removes the target as a friend.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of removing the friend.</returns>
-	public async Task<Result<UserOutcome>> RemoveFriendAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> RemoveFriendAsync()
 	{
-		return await _scoped.Actor.User.Relationships.RemoveFriendAsync(_scoped.User.Record, cancellationToken);
+		return await _scoped.Actor.User.Relationships.RemoveFriendAsync(_scoped.User.Record);
 	}
 
 	/// <summary>Blocks the target.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of blocking the target.</returns>
-	public async Task<Result<UserOutcome>> BlockAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> BlockAsync()
 	{
-		return await _scoped.Actor.User.Relationships.BlockAsync(_scoped.User.Record, cancellationToken);
+		return await _scoped.Actor.User.Relationships.BlockAsync(_scoped.User.Record);
 	}
 
 	/// <summary>Removes a block on the target.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of removing the block.</returns>
-	public async Task<Result<UserOutcome>> UnblockAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> UnblockAsync()
 	{
-		return await _scoped.Actor.User.Relationships.UnblockAsync(_scoped.User.Record, cancellationToken);
+		return await _scoped.Actor.User.Relationships.UnblockAsync(_scoped.User.Record);
 	}
 
 	/// <summary>Lists the users this account has friended.</summary>

@@ -19,7 +19,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		var row = ToRow(0, data);
 		await database.WriteAsync(async (ScoresDbContext context, CancellationToken token) =>
 		{
-			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
+			row.Id = (int)await IdCounters.NextAsync(context, "score");
 			context.Scores.Add(row);
 		}, cancellationToken);
 		return new ScoreRecord { Id = row.Id, Value = data };
@@ -99,7 +99,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		UserStats stats = null!;
 		await database.TransactAsync(async (ScoresDbContext context, CancellationToken token) =>
 		{
-			row.Id = (int)await IdCounters.NextAsync(context, "score", token);
+			row.Id = (int)await IdCounters.NextAsync(context, "score");
 			context.Scores.Add(row);
 			stats = await EfUserStatsRepository.AddPlayAsync(context, data.UserId!.Value, data.Mode,
 				data.LastState.TotalScore, rankedScore, token);

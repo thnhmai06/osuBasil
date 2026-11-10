@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Persistence;
 internal sealed class EfRelationshipRepository(DatabaseSession database) : IRelationshipRepository
 {
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Relationship relationship)
 	{
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
@@ -21,19 +21,18 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 			Type = (int)relationship.Type,
 			CreatedAt = relationship.CreatedAt.ToUniversalTime()
 		};
-		return database.WriteAsync((UsersDbContext context, CancellationToken token) =>
-				context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId, token),
-			cancellationToken);
+		return database.WriteAsync((UsersDbContext context) =>
+				context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId));
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(Relationship relationship)
 	{
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
-		return database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Relationships
+		return database.WriteAsync((UsersDbContext context) => context.Relationships
 			.Where(r => r.ActorId == actorId && r.TargetId == targetId)
-			.ExecuteDeleteAsync(token), cancellationToken);
+			.ExecuteDeleteAsync());
 	}
 
 	/// <inheritdoc />

@@ -26,7 +26,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	{
 		var row = ToRow(beatmap);
 		return database.WriteAsync((BeatmapsDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.Id == row.Id, token), cancellationToken);
+			context.UpsertAsync(row, stored => stored.Id == row.Id), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -129,13 +129,13 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 		if (toStore.Id == 0)
 		{
 			// A difficulty without an osu! id takes the next local id.
-			toStore.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapIds, token);
+			toStore.Id = (int)await IdCounters.NextAsync(context, BeatmapsDbContext.LocalBeatmapIds);
 			context.Beatmaps.Add(toStore);
 			await context.SaveChangesAsync(token);
 		}
 		else
 		{
-			await context.UpsertAsync(toStore, candidate => candidate.Id == toStore.Id, token);
+			await context.UpsertAsync(toStore, candidate => candidate.Id == toStore.Id);
 		}
 
 		return Build(set, item, row, now, toStore.Id);

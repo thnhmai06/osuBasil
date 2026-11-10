@@ -11,10 +11,9 @@ namespace Basil.Infrastructure.Users.Persistence;
 internal sealed class EfModerationLogRepository(DatabaseSession database) : IModerationLogRepository
 {
 	/// <inheritdoc />
-	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
+	public Task AppendAsync(ModerationData entry)
 	{
-		return database.WriteAsync((UsersDbContext context, CancellationToken token) => AddAsync(context, entry, token),
-			cancellationToken);
+		return database.WriteAsync((UsersDbContext context) => AddAsync(context, entry));
 	}
 
 	/// <inheritdoc />
@@ -68,8 +67,7 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 	}
 
 	/// <summary>Adds an entry to a context, to be stored with the other changes of that context.</summary>
-	internal static async Task AddAsync(UsersDbContext context, ModerationData entry,
-		CancellationToken cancellationToken)
+	internal static async Task AddAsync(UsersDbContext context, ModerationData entry)
 	{
 		var row = new ModerationLogRow
 		{
@@ -79,7 +77,7 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 			Reason = entry.Reason,
 			Timestamp = entry.Timestamp.ToUniversalTime()
 		};
-		row.Id = await IdCounters.NextAsync(context, "moderation_log", cancellationToken);
+		row.Id = await IdCounters.NextAsync(context, "moderation_log");
 		context.ModerationLog.Add(row);
 	}
 }

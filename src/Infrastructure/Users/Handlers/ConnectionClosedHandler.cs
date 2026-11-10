@@ -21,7 +21,7 @@ internal sealed class ConnectionClosedHandler(
 		try
 		{
 			await connections.CloseAsync(connection.Session.Id, connection.LastActiveAt, time.GetUtcNow(),
-				@event.Reason, cancellationToken);
+				@event.Reason);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !cancellationToken.IsCancellationRequested)

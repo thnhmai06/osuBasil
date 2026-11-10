@@ -59,8 +59,7 @@ public interface ISessionRepository
 {
 	/// <summary>Stores a session: records it when it is new, and replaces its stored state when it is already there.</summary>
 	/// <param name="session">The session as it stands now, with its activity and end.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(SessionRecord session, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(SessionRecord session);
 
 	/// <summary>Lists the sessions of a user, newest first.</summary>
 	/// <param name="query">Whose sessions to list and which of them to include.</param>
@@ -93,27 +92,21 @@ public interface ISessionRepository
 	/// <param name="types">The kinds of session that end.</param>
 	/// <param name="at">When the sessions end.</param>
 	/// <param name="reason">Why the sessions end.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types, DateTimeOffset at,
-		SessionEndReason reason, CancellationToken cancellationToken = default);
+		SessionEndReason reason);
 
 	/// <summary>Ends the unended sessions of some kinds, each at the moment it was last active.</summary>
 	/// <param name="types">The kinds of session that end.</param>
 	/// <param name="reason">Why the sessions end.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many sessions ended.</returns>
-	Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason,
-		CancellationToken cancellationToken = default);
+	Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason);
 
 	/// <summary>Stores the latest activity of several sessions at once.</summary>
 	/// <param name="activity">The activity to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity,
-		CancellationToken cancellationToken = default);
+	Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity);
 
 	/// <summary>Deletes the sessions that ended or expired before a moment, which are no longer worth keeping.</summary>
 	/// <param name="cutoff">The moment before which a session must have ended to be deleted.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many sessions were deleted.</returns>
-	Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default);
+	Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff);
 }

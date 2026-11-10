@@ -19,8 +19,7 @@ public sealed class ScopedUserSilenceTests
 		var actor = await app.LoginAsync(actorRecord);
 		var end = app.Clock.GetUtcNow().AddHours(1);
 
-		var result = await app.Users.Of(target).ScopeTo(actor).Silence.ImposeAsync(end, "test reason",
-			TestContext.Current.CancellationToken);
+		var result = await app.Users.Of(target).ScopeTo(actor).Silence.ImposeAsync(end, "test reason");
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Equal(end, target.Value.SilencedUntil);
@@ -41,8 +40,7 @@ public sealed class ScopedUserSilenceTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Moderator", "password", Staff));
 		var target = await app.CreateUserAsync("Target", "password");
 
-		var result = await app.Users.Of(target).ScopeTo(actor).Silence.ImposeAsync(app.Clock.GetUtcNow(),
-			cancellationToken: TestContext.Current.CancellationToken);
+		var result = await app.Users.Of(target).ScopeTo(actor).Silence.ImposeAsync(app.Clock.GetUtcNow());
 
 		Assert.Equal(UserOutcome.InvalidSilence, result.Outcome);
 		Assert.Null(target.Value.SilencedUntil);
@@ -56,7 +54,7 @@ public sealed class ScopedUserSilenceTests
 		var target = await app.CreateUserAsync("EqualTarget", "password", Staff);
 
 		var result = await app.Users.Of(target).ScopeTo(actor).Silence.ImposeAsync(
-			app.Clock.GetUtcNow().AddHours(1), cancellationToken: TestContext.Current.CancellationToken);
+			app.Clock.GetUtcNow().AddHours(1));
 
 		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
 		Assert.Null(target.Value.SilencedUntil);
@@ -70,7 +68,7 @@ public sealed class ScopedUserSilenceTests
 		var actor = await app.LoginAsync(record);
 
 		var result = await app.Users.Of(record).ScopeTo(actor).Silence.ImposeAsync(
-			app.Clock.GetUtcNow().AddHours(1), cancellationToken: TestContext.Current.CancellationToken);
+			app.Clock.GetUtcNow().AddHours(1));
 
 		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
 	}
@@ -83,7 +81,7 @@ public sealed class ScopedUserSilenceTests
 		var target = await app.CreateUserAsync("Target", "password");
 
 		var result = await app.Users.Of(target).ScopeTo(actor).Silence.ImposeAsync(
-			app.Clock.GetUtcNow().AddHours(1), cancellationToken: TestContext.Current.CancellationToken);
+			app.Clock.GetUtcNow().AddHours(1));
 
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.Null(target.Value.SilencedUntil);
@@ -96,10 +94,9 @@ public sealed class ScopedUserSilenceTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("LiftMod", "password", Staff));
 		var target = await app.CreateUserAsync("Lifted", "password");
 		var scoped = app.Users.Of(target).ScopeTo(actor);
-		Assert.True((await scoped.Silence.ImposeAsync(app.Clock.GetUtcNow().AddHours(1),
-			cancellationToken: TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await scoped.Silence.ImposeAsync(app.Clock.GetUtcNow().AddHours(1))).IsOk);
 
-		var result = await scoped.Silence.LiftAsync(cancellationToken: TestContext.Current.CancellationToken);
+		var result = await scoped.Silence.LiftAsync();
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Null(target.Value.SilencedUntil);
@@ -115,7 +112,7 @@ public sealed class ScopedUserSilenceTests
 		var target = await app.CreateUserAsync("Free", "password");
 
 		var result = await app.Users.Of(target).ScopeTo(actor).Silence.LiftAsync(
-			cancellationToken: TestContext.Current.CancellationToken);
+			);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Empty(app.ModerationEntries);
@@ -130,7 +127,7 @@ public sealed class ScopedUserSilenceTests
 		app.Silence(target, app.Clock.GetUtcNow().AddHours(1));
 
 		var result = await app.Users.Of(target).ScopeTo(actor).Silence.LiftAsync(
-			cancellationToken: TestContext.Current.CancellationToken);
+			);
 
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.NotNull(target.Value.SilencedUntil);

@@ -179,8 +179,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 
 	private async Task<UserRecord> UserAsync(string name)
 	{
-		return await Get<IUserRepository>().CreateAsync(new UserData { Name = name },
-			TestContext.Current.CancellationToken);
+		return await Get<IUserRepository>().CreateAsync(new UserData { Name = name });
 	}
 
 	private async Task<MatchRecord> MatchAsync(string name, UserRecord creator, bool isPrivate)

@@ -20,10 +20,9 @@ internal interface IAccountRules
 	/// <param name="privileges">
 	///     The privileges of the account, or <see langword="null" /> for the default privileges of new accounts.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the creation.</param>
 	/// <returns>The created account, or <see langword="null" /> and the reason when the name is taken.</returns>
 	Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
-		UserPrivileges? privileges, CancellationToken cancellationToken);
+		UserPrivileges? privileges);
 
 	/// <summary>Finds the account a login attempt names and checks its password.</summary>
 	/// <param name="attempt">The login the client sent.</param>

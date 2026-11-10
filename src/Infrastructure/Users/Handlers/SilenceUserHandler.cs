@@ -13,6 +13,6 @@ internal sealed class SilenceUserHandler(UserRegistry registry) : IRequestHandle
 	public async ValueTask<Result<UserOutcome>> Handle(SilenceUser request, CancellationToken cancellationToken)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Silence
-			.ImposeAsync(request.EndsAt, request.Reason, cancellationToken);
+			.ImposeAsync(request.EndsAt, request.Reason);
 	}
 }

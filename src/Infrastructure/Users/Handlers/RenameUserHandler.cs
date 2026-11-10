@@ -13,6 +13,6 @@ internal sealed class RenameUserHandler(UserRegistry registry) : IRequestHandler
 	public async ValueTask<Result<UserOutcome>> Handle(RenameUser request, CancellationToken cancellationToken)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile
-			.RenameAsync(request.Name, cancellationToken);
+			.RenameAsync(request.Name);
 	}
 }

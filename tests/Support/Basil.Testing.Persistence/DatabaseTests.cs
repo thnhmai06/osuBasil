@@ -87,8 +87,7 @@ public abstract class DatabaseTests(PersistenceFixture container) : IAsyncLifeti
 	protected async Task<MatchRecord> CreateStoredMatchAsync(string name, DateTimeOffset startedAt,
 		DateTimeOffset? endedAt = null, bool isPrivate = false)
 	{
-		_matchCreator ??= await Get<IUserRepository>().CreateAsync(new UserData { Name = "match_creator" },
-			TestContext.Current.CancellationToken);
+		_matchCreator ??= await Get<IUserRepository>().CreateAsync(new UserData { Name = "match_creator" });
 		return await Get<IMatchRepository>().CreateAsync(
 			StoredMatches.Data(name, startedAt, _matchCreator, endedAt, isPrivate),
 			TestContext.Current.CancellationToken);

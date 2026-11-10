@@ -21,7 +21,7 @@ public sealed class ScopedUserTests
 		var actor = await app.LoginAsync(actorRecord);
 
 		var result = await app.Users.Of(target).ScopeTo(actor).Privileges.SetAsync(
-			target.Value.Privileges | UserPrivileges.Developer, TestContext.Current.CancellationToken);
+			target.Value.Privileges | UserPrivileges.Developer);
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Developer, result.Missing);
@@ -57,14 +57,14 @@ public sealed class ScopedUserTests
 		var connection = await app.LoginAsync(target);
 		var scoped = app.Users.Of(target).ScopeTo(actor);
 
-		Assert.True((await scoped.DeleteAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await scoped.DeleteAsync()).IsOk);
 		var deletedAt = target.Value.DeletedAt;
 		Assert.NotNull(deletedAt);
 		Assert.False(connection.IsOpen);
 		Assert.Equal(SessionEndReason.Deleted,
 			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]).Reason);
 
-		Assert.True((await scoped.DeleteAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await scoped.DeleteAsync()).IsOk);
 
 		Assert.Equal(deletedAt, target.Value.DeletedAt);
 	}

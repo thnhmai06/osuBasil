@@ -25,7 +25,7 @@ internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepo
 		};
 		return database.WriteAsync(async (MultiplayerDbContext context, CancellationToken token) =>
 		{
-			row.Id = await IdCounters.NextAsync(context, "match_event", token);
+			row.Id = await IdCounters.NextAsync(context, "match_event");
 			context.MatchEvents.Add(row);
 		}, cancellationToken);
 	}

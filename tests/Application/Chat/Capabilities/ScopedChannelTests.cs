@@ -377,7 +377,7 @@ public sealed class ScopedChannelTests
 		var senderRecord = await app.CreateUserAsync("Blocked", "password");
 		var sender = await app.LoginAsync(senderRecord);
 		await app.Users.Of(senderRecord).ScopeTo(ownerConnection).Relationships
-			.BlockAsync(TestContext.Current.CancellationToken);
+			.BlockAsync();
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
 			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
@@ -395,7 +395,7 @@ public sealed class ScopedChannelTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 		var staff = await app.LoginAsync(staffRecord);
 		await app.Users.Of(staffRecord).ScopeTo(ownerConnection).Relationships
-			.BlockAsync(TestContext.Current.CancellationToken);
+			.BlockAsync();
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(staff)
 			.PostAsync("notice", cancellationToken: TestContext.Current.CancellationToken);
@@ -414,7 +414,7 @@ public sealed class ScopedChannelTests
 		var friend = await app.LoginAsync(friendRecord);
 		var stranger = await app.LoginAsync(await app.CreateUserAsync("TheStranger", "password"));
 		await app.Users.Of(friendRecord).ScopeTo(ownerConnection).Relationships
-			.AddFriendAsync(TestContext.Current.CancellationToken);
+			.AddFriendAsync();
 		var pm = app.PmChannels.Of(app.Users.Of(owner));
 
 		var fromFriend =

@@ -53,7 +53,7 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("Traveller", "password");
 		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(Country.Vn, Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(Country.Vn);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(Country.Vn, user.Value.Country);
@@ -67,7 +67,7 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("Nowhere", "password");
 		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(0, Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.SetCountryAsync(0);
 
 		Assert.Equal(UserOutcome.InvalidCountry, result.Outcome);
 	}
@@ -80,7 +80,7 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("OldName", "password");
 		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("NewName", Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("NewName");
 
 		Assert.True(result.IsOk);
 		Assert.Equal("NewName", user.Value.Name);
@@ -95,7 +95,7 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("Wanter", "password");
 		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("taken", Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("taken");
 
 		Assert.Equal(UserOutcome.NameTaken, result.Outcome);
 		Assert.Equal("Wanter", user.Value.Name);
@@ -109,7 +109,7 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("Valid", "password");
 		var actor = await app.LoginAsync(user);
 
-		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("", Token);
+		var result = await app.Users.Of(user).ScopeTo(actor).Profile.RenameAsync("");
 
 		Assert.Equal(UserOutcome.InvalidName, result.Outcome);
 	}
@@ -125,7 +125,7 @@ public sealed class ScopedUserProfileTests
 
 		Assert.True((await profile.SetAvatarAsync(new MemoryStream([1, 2, 3]), Token)).IsOk);
 		Assert.Equal([1, 2, 3], avatars.Images[user.Id]);
-		Assert.True((await profile.RemoveAvatarAsync(Token)).IsOk);
+		Assert.True((await profile.RemoveAvatarAsync()).IsOk);
 		Assert.Empty(avatars.Images);
 	}
 
@@ -240,11 +240,11 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("Victim", "password");
 		var profile = app.Users.Of(user).ScopeTo(nosy).Profile;
 
-		Assert.Equal(UserPrivileges.Owner, (await profile.RenameAsync("Hacked", Token)).Missing);
-		Assert.Equal(UserPrivileges.Owner, (await profile.SetCountryAsync(Country.Au, Token)).Missing);
+		Assert.Equal(UserPrivileges.Owner, (await profile.RenameAsync("Hacked")).Missing);
+		Assert.Equal(UserPrivileges.Owner, (await profile.SetCountryAsync(Country.Au)).Missing);
 		Assert.Equal(UserPrivileges.Owner,
 			(await profile.SetAvatarAsync(new MemoryStream([1]), Token)).Missing);
-		Assert.Equal(UserPrivileges.Owner, (await profile.RemoveAvatarAsync(Token)).Missing);
+		Assert.Equal(UserPrivileges.Owner, (await profile.RemoveAvatarAsync()).Missing);
 		Assert.Equal("Victim", user.Value.Name);
 		Assert.Empty(avatars.Images);
 	}
@@ -258,8 +258,8 @@ public sealed class ScopedUserProfileTests
 		var peer = await app.CreateUserAsync("Peer", "password", UserPrivilegesExtensions.All);
 		var profile = app.Users.Of(peer).ScopeTo(admin).Profile;
 
-		Assert.Equal(UserOutcome.NotOutranking, (await profile.RenameAsync("Hacked", Token)).Outcome);
-		Assert.Equal(UserOutcome.NotOutranking, (await profile.SetCountryAsync(Country.Au, Token)).Outcome);
+		Assert.Equal(UserOutcome.NotOutranking, (await profile.RenameAsync("Hacked")).Outcome);
+		Assert.Equal(UserOutcome.NotOutranking, (await profile.SetCountryAsync(Country.Au)).Outcome);
 	}
 
 	[Fact]
@@ -270,7 +270,7 @@ public sealed class ScopedUserProfileTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Offender", "password");
 
-		var result = await app.Users.Of(user).ScopeTo(admin).Profile.RenameAsync("Reformed", Token);
+		var result = await app.Users.Of(user).ScopeTo(admin).Profile.RenameAsync("Reformed");
 
 		Assert.True(result.IsOk);
 		Assert.Equal("Reformed", user.Value.Name);
@@ -285,10 +285,10 @@ public sealed class ScopedUserProfileTests
 		var actor = await app.LoginAsync(user);
 		var profile = app.Users.Of(user).ScopeTo(actor).Profile;
 
-		Assert.Equal(UserOutcome.Locked, (await profile.RenameAsync("Thawed", Token)).Outcome);
-		Assert.Equal(UserOutcome.Locked, (await profile.SetCountryAsync(Country.Au, Token)).Outcome);
+		Assert.Equal(UserOutcome.Locked, (await profile.RenameAsync("Thawed")).Outcome);
+		Assert.Equal(UserOutcome.Locked, (await profile.SetCountryAsync(Country.Au)).Outcome);
 		Assert.Equal(UserOutcome.Locked, (await profile.SetAvatarAsync(new MemoryStream([1]), Token)).Outcome);
-		Assert.Equal(UserOutcome.Locked, (await profile.RemoveAvatarAsync(Token)).Outcome);
+		Assert.Equal(UserOutcome.Locked, (await profile.RemoveAvatarAsync()).Outcome);
 		Assert.Equal("Frozen", user.Value.Name);
 		Assert.Empty(avatars.Images);
 	}
@@ -301,7 +301,7 @@ public sealed class ScopedUserProfileTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Frozen", "password");
 
-		var result = await app.Users.Of(user).ScopeTo(admin).Profile.RenameAsync("Thawed", Token);
+		var result = await app.Users.Of(user).ScopeTo(admin).Profile.RenameAsync("Thawed");
 
 		Assert.True(result.IsOk);
 	}
@@ -315,8 +315,8 @@ public sealed class ScopedUserProfileTests
 		var bot = await app.SeedBotAsync();
 		var profile = app.Users.Of(bot).ScopeTo(admin).Profile;
 
-		Assert.True((await profile.RenameAsync("Basilisk", Token)).IsOk);
-		Assert.True((await profile.SetCountryAsync(Country.Vn, Token)).IsOk);
+		Assert.True((await profile.RenameAsync("Basilisk")).IsOk);
+		Assert.True((await profile.SetCountryAsync(Country.Vn)).IsOk);
 		Assert.True((await profile.SetAvatarAsync(new MemoryStream([9]), Token)).IsOk);
 		Assert.Equal("Basilisk", bot.Value.Name);
 		Assert.Equal([9], avatars.Images[bot.Id]);
@@ -327,10 +327,10 @@ public sealed class ScopedUserProfileTests
 	{
 		public Dictionary<int, byte[]> Images { get; } = [];
 
-		public async Task SaveAsync(UserRecord user, Stream content, CancellationToken cancellationToken = default)
+		public async Task SaveAsync(UserRecord user, Stream content)
 		{
 			using var copy = new MemoryStream();
-			await content.CopyToAsync(copy, cancellationToken);
+			await content.CopyToAsync(copy);
 			Images[user.Id] = copy.ToArray();
 		}
 
@@ -341,7 +341,7 @@ public sealed class ScopedUserProfileTests
 				: null);
 		}
 
-		public Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
+		public Task DeleteAsync(UserRecord user)
 		{
 			Images.Remove(user.Id);
 			return Task.CompletedTask;

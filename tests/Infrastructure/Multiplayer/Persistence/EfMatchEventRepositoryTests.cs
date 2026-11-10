@@ -84,8 +84,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	public async Task A_recorded_event_names_the_account_that_performed_it()
 	{
 		var match = await CreateMatchAsync("actor_event_match");
-		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_actor" },
-			TestContext.Current.CancellationToken);
+		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_actor" });
 		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerJoined, First, actor),
 			TestContext.Current.CancellationToken);
 		await WaitForEventsAsync(match, 1);
@@ -99,8 +98,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	public async Task A_recorded_event_names_the_account_it_affected()
 	{
 		var match = await CreateMatchAsync("target_event_match");
-		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_target" },
-			TestContext.Current.CancellationToken);
+		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_target" });
 		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerLeft, First, null, target),
 			TestContext.Current.CancellationToken);
 		await WaitForEventsAsync(match, 1);

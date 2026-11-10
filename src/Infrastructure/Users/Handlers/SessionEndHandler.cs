@@ -20,7 +20,7 @@ internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<Ses
 		var session = @event.Connection.Snapshot();
 		try
 		{
-			await sessions.CreateOrUpdateAsync(session, cancellationToken);
+			await sessions.CreateOrUpdateAsync(session);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !cancellationToken.IsCancellationRequested)

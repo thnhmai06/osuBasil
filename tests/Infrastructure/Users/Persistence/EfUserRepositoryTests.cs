@@ -18,7 +18,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_created_user_is_given_an_id_by_the_store()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "first_user" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "first_user" });
 
 		Assert.Equal(BasilBot.Id + 1, user.Id);
 	}
@@ -26,10 +26,9 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task Created_users_are_given_increasing_ids()
 	{
-		var first = await Users.CreateAsync(new UserData { Name = "older_user" },
-			TestContext.Current.CancellationToken);
+		var first = await Users.CreateAsync(new UserData { Name = "older_user" });
 		var second =
-			await Users.CreateAsync(new UserData { Name = "newer_user" }, TestContext.Current.CancellationToken);
+			await Users.CreateAsync(new UserData { Name = "newer_user" });
 
 		Assert.True(second.Id > first.Id);
 	}
@@ -37,36 +36,35 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_name_that_differs_only_in_case_is_the_name_of_another_account()
 	{
-		await Users.CreateAsync(new UserData { Name = "same_name" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "same_name" });
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
-			Users.CreateAsync(new UserData { Name = "SAME_NAME" }, TestContext.Current.CancellationToken));
+			Users.CreateAsync(new UserData { Name = "SAME_NAME" }));
 	}
 
 	[Fact]
 	public async Task A_name_that_differs_only_in_spaces_is_the_name_of_another_account()
 	{
-		await Users.CreateAsync(new UserData { Name = "some_name" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "some_name" });
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
-			Users.CreateAsync(new UserData { Name = "Some Name" }, TestContext.Current.CancellationToken));
+			Users.CreateAsync(new UserData { Name = "Some Name" }));
 	}
 
 	[Fact]
 	public async Task A_name_another_account_holds_in_the_database_is_refused()
 	{
 		await using var other = new StorageComposition(ConnectionString);
-		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" },
-			TestContext.Current.CancellationToken);
+		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" });
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
-			Users.CreateAsync(new UserData { Name = "taken_elsewhere" }, TestContext.Current.CancellationToken));
+			Users.CreateAsync(new UserData { Name = "taken_elsewhere" }));
 	}
 
 	[Fact]
 	public async Task An_account_is_found_by_a_name_that_differs_only_in_case_and_spaces()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "some_name" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "some_name" });
 
 		var found = await Users.GetByNameAsync("Some Name", TestContext.Current.CancellationToken);
 
@@ -77,11 +75,11 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_deleted_account_frees_its_name()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "freed_name" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "freed_name" });
 		await DeleteAsync(user);
 
 		var second =
-			await Users.CreateAsync(new UserData { Name = "freed_name" }, TestContext.Current.CancellationToken);
+			await Users.CreateAsync(new UserData { Name = "freed_name" });
 
 		Assert.NotEqual(user.Id, second.Id);
 	}
@@ -89,12 +87,12 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_name_is_taken_as_soon_as_its_account_is_deleted()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "taken_name" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "taken_name" });
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
-		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
+		await Users.UpdateAsync(user);
 
 		var second =
-			await Users.CreateAsync(new UserData { Name = "taken_name" }, TestContext.Current.CancellationToken);
+			await Users.CreateAsync(new UserData { Name = "taken_name" });
 
 		Assert.NotEqual(user.Id, second.Id);
 	}
@@ -102,8 +100,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_deleted_account_is_still_found_by_id()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "deleted_user" },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "deleted_user" });
 		await DeleteAsync(user);
 
 		var found = await Users.GetAsync(user.Id, TestContext.Current.CancellationToken);
@@ -116,8 +113,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_deleted_account_is_not_found_by_name()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "hidden_name" },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "hidden_name" });
 		await DeleteAsync(user);
 
 		Assert.Null(await Users.GetByNameAsync("hidden_name", TestContext.Current.CancellationToken));
@@ -127,8 +123,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	public async Task A_replaced_account_holds_the_new_data_under_the_same_id()
 	{
 		var replaced = await Users.ReplaceAsync(BasilBot.Id,
-			new UserData { Name = "renamed_bot", Privileges = UserPrivileges.None },
-			TestContext.Current.CancellationToken);
+			new UserData { Name = "renamed_bot", Privileges = UserPrivileges.None });
 
 		var found = await Users.GetAsync(BasilBot.Id, TestContext.Current.CancellationToken);
 
@@ -141,8 +136,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_replaced_account_is_stored()
 	{
-		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Privileges = UserPrivileges.None },
-			TestContext.Current.CancellationToken);
+		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Privileges = UserPrivileges.None });
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select name, privileges from users where id = @id",
@@ -155,12 +149,10 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_deleted_account_is_restored_by_replacing_it()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "was_deleted" },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "was_deleted" });
 		await DeleteAsync(user);
 
-		var restored = await Users.ReplaceAsync(user.Id, new UserData { Name = "restored_user" },
-			TestContext.Current.CancellationToken);
+		var restored = await Users.ReplaceAsync(user.Id, new UserData { Name = "restored_user" });
 
 		Assert.Null(restored.Value.DeletedAt);
 		Assert.Equal(user.Id,
@@ -175,8 +167,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	{
 		const int id = 5000;
 
-		var created = await Users.ReplaceAsync(id, new UserData { Name = "chosen_id" },
-			TestContext.Current.CancellationToken);
+		var created = await Users.ReplaceAsync(id, new UserData { Name = "chosen_id" });
 
 		Assert.Equal(id, created.Id);
 		Assert.Equal(id, (await Users.GetAsync(id, TestContext.Current.CancellationToken))!.Id);
@@ -188,20 +179,18 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task Replacing_an_account_with_a_name_another_account_has_is_refused()
 	{
-		await Users.CreateAsync(new UserData { Name = "name_in_use" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "name_in_use" });
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() => Users.ReplaceAsync(BasilBot.Id,
-			new UserData { Name = "Name In Use" }, TestContext.Current.CancellationToken));
+			new UserData { Name = "Name In Use" }));
 	}
 
 	[Fact]
 	public async Task Replacing_an_account_leaves_the_ids_the_store_gives_out_unchanged()
 	{
-		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "bot_again" },
-			TestContext.Current.CancellationToken);
+		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "bot_again" });
 
-		var user = await Users.CreateAsync(new UserData { Name = "after_replace" },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "after_replace" });
 
 		Assert.Equal(BasilBot.Id + 1, user.Id);
 	}
@@ -209,7 +198,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task Two_reads_of_one_account_return_the_same_account()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "same_one" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "same_one" });
 
 		var byId = await Users.GetAsync(user.Id, TestContext.Current.CancellationToken);
 		var byName = await Users.GetByNameAsync("same_one", TestContext.Current.CancellationToken);
@@ -222,11 +211,10 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task An_update_is_seen_at_once()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "updated_user", Country = Country.Jp },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "updated_user", Country = Country.Jp });
 		user.Value.Country = Country.De;
 
-		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
+		await Users.UpdateAsync(user);
 
 		var found = await Users.GetAsync(user.Id, TestContext.Current.CancellationToken);
 		Assert.Equal(Country.De, found!.Value.Country);
@@ -235,10 +223,9 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task An_update_is_stored()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "stored_user", Country = Country.Jp },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "stored_user", Country = Country.Jp });
 		user.Value.Country = Country.De;
-		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
+		await Users.UpdateAsync(user);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select country from users where id = @id",
 			new Dictionary<string, object?> { ["@id"] = user.Id },
@@ -251,7 +238,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_deleted_account_is_never_restored()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "never_back" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "never_back" });
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
 
 		Assert.Throws<InvalidOperationException>(() => user.Value.DeletedAt = null);
@@ -260,26 +247,24 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_discarded_account_is_gone_and_its_name_is_free()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "discarded_user" },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "discarded_user" });
 
-		await Users.DiscardAsync(user, TestContext.Current.CancellationToken);
+		await Users.DiscardAsync(user);
 
 		Assert.Null(await Users.GetAsync(user.Id, TestContext.Current.CancellationToken));
 		Assert.Null(await Users.GetByNameAsync("discarded_user", TestContext.Current.CancellationToken));
-		await Users.CreateAsync(new UserData { Name = "discarded_user" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "discarded_user" });
 	}
 
 	[Fact]
 	public async Task An_update_by_a_record_that_does_not_know_the_deletion_does_not_restore_the_account()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "stale_record" },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "stale_record" });
 		await DeleteAsync(user);
 		var stale = new UserRecord
 			{ Id = user.Id, Value = new UserData { Name = "stale_record", Country = Country.De } };
 
-		await Users.UpdateAsync(stale, TestContext.Current.CancellationToken);
+		await Users.UpdateAsync(stale);
 
 		var found = await Users.GetAsync(user.Id, TestContext.Current.CancellationToken);
 		Assert.NotNull(found!.Value.DeletedAt);
@@ -289,10 +274,9 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_rename_to_a_free_name_gives_the_account_the_new_name()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "before_rename" },
-			TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "before_rename" });
 
-		Assert.True(await Users.RenameAsync(user, "after_rename", TestContext.Current.CancellationToken));
+		Assert.True(await Users.RenameAsync(user, "after_rename"));
 
 		var renamed = await Users.GetByNameAsync("after_rename", TestContext.Current.CancellationToken);
 		Assert.NotNull(renamed);
@@ -302,9 +286,8 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_rename_frees_the_old_name()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "before_rename" },
-			TestContext.Current.CancellationToken);
-		await Users.RenameAsync(user, "after_rename", TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "before_rename" });
+		await Users.RenameAsync(user, "after_rename");
 
 		Assert.Null(await Users.GetByNameAsync("before_rename", TestContext.Current.CancellationToken));
 	}
@@ -312,11 +295,11 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_rename_to_a_taken_name_leaves_the_account_alone()
 	{
-		await Users.CreateAsync(new UserData { Name = "taken_first" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "taken_first" });
 		var second =
-			await Users.CreateAsync(new UserData { Name = "taken_second" }, TestContext.Current.CancellationToken);
+			await Users.CreateAsync(new UserData { Name = "taken_second" });
 
-		Assert.False(await Users.RenameAsync(second, "taken_first", TestContext.Current.CancellationToken));
+		Assert.False(await Users.RenameAsync(second, "taken_first"));
 
 		Assert.Equal("taken_second", second.Value.Name);
 		Assert.NotNull(await Users.GetByNameAsync("taken_second", TestContext.Current.CancellationToken));
@@ -325,9 +308,9 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_rename_to_the_same_name_in_another_case_succeeds()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "case_user" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "case_user" });
 
-		Assert.True(await Users.RenameAsync(user, "CASE_USER", TestContext.Current.CancellationToken));
+		Assert.True(await Users.RenameAsync(user, "CASE_USER"));
 
 		Assert.Equal("CASE_USER", user.Value.Name);
 	}
@@ -336,11 +319,10 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	public async Task A_rename_to_a_name_another_account_holds_in_the_database_is_refused()
 	{
 		await using var other = new StorageComposition(ConnectionString);
-		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" },
-			TestContext.Current.CancellationToken);
-		var user = await Users.CreateAsync(new UserData { Name = "mover_user" }, TestContext.Current.CancellationToken);
+		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" });
+		var user = await Users.CreateAsync(new UserData { Name = "mover_user" });
 
-		Assert.False(await Users.RenameAsync(user, "taken_elsewhere", TestContext.Current.CancellationToken));
+		Assert.False(await Users.RenameAsync(user, "taken_elsewhere"));
 
 		Assert.Equal("mover_user", user.Value.Name);
 	}
@@ -348,8 +330,8 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_finds_accounts_by_a_part_of_their_name()
 	{
-		await Users.CreateAsync(new UserData { Name = "alpha_one" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "beta_two" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "alpha_one" });
+		await Users.CreateAsync(new UserData { Name = "beta_two" });
 
 		var page = await Users.ListAsync(new UserQuery("alpha"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -360,8 +342,8 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_finds_accounts_by_a_name_that_holds_an_underscore()
 	{
-		await Users.CreateAsync(new UserData { Name = "alpha_one" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "beta_two" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "alpha_one" });
+		await Users.CreateAsync(new UserData { Name = "beta_two" });
 
 		var page = await Users.ListAsync(new UserQuery("alpha_one"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -372,8 +354,8 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_ignores_the_case_and_the_spaces_of_the_text()
 	{
-		await Users.CreateAsync(new UserData { Name = "alpha_one" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "beta_two" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "alpha_one" });
+		await Users.CreateAsync(new UserData { Name = "beta_two" });
 
 		var page = await Users.ListAsync(new UserQuery("ALPHA ONE"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -384,8 +366,8 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_finds_an_account_by_its_id()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "id_user" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "other_one" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "id_user" });
+		await Users.CreateAsync(new UserData { Name = "other_one" });
 
 		var page = await Users.ListAsync(new UserQuery(user.Id.ToString()), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -396,10 +378,8 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_finds_accounts_by_their_country()
 	{
-		await Users.CreateAsync(new UserData { Name = "from_jp", Country = Country.Jp },
-			TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "from_de", Country = Country.De },
-			TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "from_jp", Country = Country.Jp });
+		await Users.CreateAsync(new UserData { Name = "from_de", Country = Country.De });
 
 		var page = await Users.ListAsync(new UserQuery(Countries: [Country.Jp]), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -410,13 +390,12 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_finds_accounts_by_the_permissions_they_hold()
 	{
-		await Users.CreateAsync(new UserData { Name = "plain_user", Privileges = UserPrivileges.None },
-			TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "plain_user", Privileges = UserPrivileges.None });
 		await Users.CreateAsync(new UserData
 		{
 			Name = "admin_user",
 			Privileges = UserPrivilegesExtensions.Default | UserPrivileges.Developer
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var page = await Users.ListAsync(new UserQuery(Privileges: UserPrivileges.Developer),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
@@ -461,9 +440,9 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_returns_the_requested_part()
 	{
-		await Users.CreateAsync(new UserData { Name = "page_one" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "page_two" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "page_three" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "page_one" });
+		await Users.CreateAsync(new UserData { Name = "page_two" });
+		await Users.CreateAsync(new UserData { Name = "page_three" });
 
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(1, 2), TestContext.Current.CancellationToken);
 
@@ -474,9 +453,9 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_returns_no_more_accounts_than_asked_for()
 	{
-		await Users.CreateAsync(new UserData { Name = "page_one" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "page_two" }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "page_three" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "page_one" });
+		await Users.CreateAsync(new UserData { Name = "page_two" });
+		await Users.CreateAsync(new UserData { Name = "page_three" });
 
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 2), TestContext.Current.CancellationToken);
 
@@ -487,11 +466,10 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_is_ordered_by_id()
 	{
-		var first = await Users.CreateAsync(new UserData { Name = "order_one" }, TestContext.Current.CancellationToken);
+		var first = await Users.CreateAsync(new UserData { Name = "order_one" });
 		var second =
-			await Users.CreateAsync(new UserData { Name = "order_two" }, TestContext.Current.CancellationToken);
-		var third = await Users.CreateAsync(new UserData { Name = "order_three" },
-			TestContext.Current.CancellationToken);
+			await Users.CreateAsync(new UserData { Name = "order_two" });
+		var third = await Users.CreateAsync(new UserData { Name = "order_three" });
 
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
@@ -503,15 +481,15 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	private async Task DeleteAsync(UserRecord user)
 	{
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
-		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
+		await Users.UpdateAsync(user);
 	}
 
 	/// <summary>Creates two accounts and deletes the second one.</summary>
 	private async Task TwoAccountsOneDeletedAsync()
 	{
-		await Users.CreateAsync(new UserData { Name = "living_user" }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "living_user" });
 		var deleted =
-			await Users.CreateAsync(new UserData { Name = "dead_user" }, TestContext.Current.CancellationToken);
+			await Users.CreateAsync(new UserData { Name = "dead_user" });
 		await DeleteAsync(deleted);
 	}
 }

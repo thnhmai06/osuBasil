@@ -14,6 +14,6 @@ internal sealed class SetUserCountryHandler(UserRegistry registry)
 	public async ValueTask<Result<UserOutcome>> Handle(SetUserCountry request, CancellationToken cancellationToken)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile
-			.SetCountryAsync(request.Country, cancellationToken);
+			.SetCountryAsync(request.Country);
 	}
 }

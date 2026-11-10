@@ -36,8 +36,7 @@ public sealed class UserRegistryTests
 		var actor = await app.LoginAsync(manager);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "StaffMade" }, new Md5("0123456789abcdef0123456789abcdef"), null,
-			TestContext.Current.CancellationToken);
+			new UserData { Name = "StaffMade" }, new Md5("0123456789abcdef0123456789abcdef"), null);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(user);
@@ -166,7 +165,7 @@ public sealed class UserRegistryTests
 		var user = await app.CreateUserAsync("KeyStored", "password");
 		var api = await app.LoginAsync(user);
 		var (_, key, _) = await app.Users.Of(user).ScopeTo(api).Sessions
-			.OpenIrcAsync("device", TestContext.Current.CancellationToken);
+			.OpenIrcAsync("device");
 
 		var refused = await app.Users.LoginWithTokenAsync(SessionType.Irc, key!, IPAddress.Loopback, _ => false,
 			TestContext.Current.CancellationToken);

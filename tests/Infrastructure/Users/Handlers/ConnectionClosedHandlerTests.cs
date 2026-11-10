@@ -39,8 +39,7 @@ public sealed class ConnectionClosedHandlerTests
 			.Handle(new UserConnectionClosed(bot, SessionEndReason.LoggedOut, false),
 				TestContext.Current.CancellationToken);
 
-		await connections.DidNotReceiveWithAnyArgs().CloseAsync(default, default, default, default,
-			TestContext.Current.CancellationToken);
+		await connections.DidNotReceiveWithAnyArgs().CloseAsync(default, default, default, default);
 	}
 
 	[Fact]
@@ -51,7 +50,7 @@ public sealed class ConnectionClosedHandlerTests
 		app.Users.Close(connection, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>());
 		var connections = Substitute.For<IConnectionRepository>();
-		connections.CloseAsync(default, default, default, default, TestContext.Current.CancellationToken).ReturnsForAnyArgs(
+		connections.CloseAsync(default, default, default, default).ReturnsForAnyArgs(
 			Task.FromException(new InvalidOperationException()));
 		var counter = SessionEndHandler.UpdateFailures;
 		long failures = 0;

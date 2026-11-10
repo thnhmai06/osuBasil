@@ -18,27 +18,27 @@ public sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 		return ValueTask.FromResult(User is { } found && found.Id == id ? found : null);
 	}
 
-	public Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
+	public Task<UserRecord> CreateAsync(UserData data)
 	{
 		throw new NotSupportedException();
 	}
 
-	public Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default)
+	public Task<UserRecord> ReplaceAsync(int id, UserData data)
 	{
 		throw new NotSupportedException();
 	}
 
-	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(UserRecord user)
 	{
 		throw new NotSupportedException();
 	}
 
-	public Task DiscardAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task DiscardAsync(UserRecord user)
 	{
 		throw new NotSupportedException();
 	}
 
-	public Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default)
+	public Task<bool> RenameAsync(UserRecord user, string name)
 	{
 		throw new NotSupportedException();
 	}

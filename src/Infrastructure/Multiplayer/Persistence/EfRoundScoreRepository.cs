@@ -24,7 +24,7 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 			Team = roundScore.Team is { } team ? (int)team : null
 		};
 		await database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token), cancellationToken);
+			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId), cancellationToken);
 		return roundScore;
 	}
 

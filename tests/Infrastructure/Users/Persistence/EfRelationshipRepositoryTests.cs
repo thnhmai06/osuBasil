@@ -17,7 +17,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	public async Task A_listing_reads_no_more_relationships_than_the_ceiling()
 	{
 		var actor = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "many_friends" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "many_friends" });
 		var targets = Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g => 100_000_000 + g).ToArray();
 		await StoredRows.InsertAsync(ConnectionString, "users", targets.Select(id =>
 			(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
@@ -42,9 +42,9 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	public async Task A_relationship_is_added()
 	{
 		var actor = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_one" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_one" });
 
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
@@ -52,7 +52,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 			Target = target,
 			Type = RelationshipType.Friend,
 			CreatedAt = Moment
-		}, TestContext.Current.CancellationToken);
+		});
 		await WaitForRelationshipsAsync(1);
 
 		var listed = await Relationships.ListAsync(actor, TestContext.Current.CancellationToken);
@@ -65,7 +65,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	public async Task A_relationship_toward_an_account_the_database_does_not_hold_is_refused_to_the_caller()
 	{
 		var actor = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_alone" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_alone" });
 		var unknown = new UserRecord { Id = 4242, Value = new UserData { Name = "not_stored" } };
 
 		await Assert.ThrowsAnyAsync<Exception>(() => Relationships.CreateOrUpdateAsync(new Relationship
@@ -74,23 +74,23 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 			Target = unknown,
 			Type = RelationshipType.Friend,
 			CreatedAt = Moment
-		}, TestContext.Current.CancellationToken));
+		}));
 	}
 
 	[Fact]
 	public async Task A_relationship_toward_the_same_account_replaces_the_earlier_one()
 	{
 		var actor = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_one" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_one" });
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = actor,
 			Target = target,
 			Type = RelationshipType.Friend,
 			CreatedAt = Moment
-		}, TestContext.Current.CancellationToken);
+		});
 
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
@@ -98,7 +98,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 			Target = target,
 			Type = RelationshipType.Block,
 			CreatedAt = Moment.AddHours(1)
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select type from relationships where actor_id = @actor and target_id = @target",
@@ -117,23 +117,23 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	public async Task A_replaced_relationship_is_listed_once()
 	{
 		var actor = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_one" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_one" });
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = actor,
 			Target = target,
 			Type = RelationshipType.Friend,
 			CreatedAt = Moment
-		}, TestContext.Current.CancellationToken);
+		});
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = actor,
 			Target = target,
 			Type = RelationshipType.Block,
 			CreatedAt = Moment.AddHours(1)
-		}, TestContext.Current.CancellationToken);
+		});
 		await WaitForRelationshipsAsync(1);
 
 		var listed = await Relationships.ListAsync(actor, TestContext.Current.CancellationToken);
@@ -145,9 +145,9 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	public async Task A_relationship_is_deleted()
 	{
 		var actor = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_one" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_one" });
 		var relationship = new Relationship
 		{
 			Actor = actor,
@@ -155,10 +155,10 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 			Type = RelationshipType.Friend,
 			CreatedAt = Moment
 		};
-		await Relationships.CreateOrUpdateAsync(relationship, TestContext.Current.CancellationToken);
+		await Relationships.CreateOrUpdateAsync(relationship);
 		await WaitForRelationshipsAsync(1);
 
-		await Relationships.DeleteAsync(relationship, TestContext.Current.CancellationToken);
+		await Relationships.DeleteAsync(relationship);
 
 		Assert.Empty(await Relationships.ListAsync(actor, TestContext.Current.CancellationToken));
 	}
@@ -167,9 +167,9 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	public async Task A_deleted_relationship_is_stored_as_gone()
 	{
 		var actor = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_one" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_one" });
 		var relationship = new Relationship
 		{
 			Actor = actor,
@@ -177,10 +177,10 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 			Type = RelationshipType.Friend,
 			CreatedAt = Moment
 		};
-		await Relationships.CreateOrUpdateAsync(relationship, TestContext.Current.CancellationToken);
+		await Relationships.CreateOrUpdateAsync(relationship);
 		await WaitForRelationshipsAsync(1);
 
-		await Relationships.DeleteAsync(relationship, TestContext.Current.CancellationToken);
+		await Relationships.DeleteAsync(relationship);
 
 		await StoredRows.WaitForAsync(ConnectionString,
 			"select actor_id from relationships where actor_id = @actor and target_id = @target",
@@ -196,25 +196,25 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	public async Task A_user_lists_only_the_relationships_they_hold()
 	{
 		var first = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_one" });
 		var second = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "actor_two" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "actor_two" });
 		var target = await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = "target_one" });
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = first,
 			Target = target,
 			Type = RelationshipType.Friend,
 			CreatedAt = Moment
-		}, TestContext.Current.CancellationToken);
+		});
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = second,
 			Target = target,
 			Type = RelationshipType.Block,
 			CreatedAt = Moment
-		}, TestContext.Current.CancellationToken);
+		});
 		await WaitForRelationshipsAsync(2);
 
 		var firstList = await Relationships.ListAsync(first, TestContext.Current.CancellationToken);

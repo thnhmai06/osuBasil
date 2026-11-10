@@ -30,7 +30,7 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		};
 		await database.WriteAsync(async (MultiplayerDbContext context, CancellationToken token) =>
 		{
-			row.Id = (int)await IdCounters.NextAsync(context, "match", token);
+			row.Id = (int)await IdCounters.NextAsync(context, "match");
 			context.Matches.Add(row);
 		}, cancellationToken);
 
@@ -50,7 +50,7 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 			IsPrivate = match.Value.IsPrivate
 		};
 		return database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
-			context.ReplaceAsync(row, stored => stored.Id == row.Id, token), cancellationToken);
+			context.ReplaceAsync(row, stored => stored.Id == row.Id), cancellationToken);
 	}
 
 	/// <inheritdoc />

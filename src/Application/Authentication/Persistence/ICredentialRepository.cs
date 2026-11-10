@@ -16,12 +16,10 @@ public interface ICredentialRepository
 
 	/// <summary>Stores a user's credential, replacing any credential stored for that user.</summary>
 	/// <param name="credentials">The credential to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(Credentials credentials);
 
 	/// <summary>Removes the credential stored for a user, so no password verifies for them any more.</summary>
 	/// <param name="user">The user whose credential is removed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>Nothing happens when the user has no credential.</remarks>
-	Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default);
+	Task DeleteAsync(UserRecord user);
 }

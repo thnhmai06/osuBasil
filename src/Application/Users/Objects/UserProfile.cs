@@ -62,13 +62,12 @@ public sealed class UserProfile
 
 	/// <summary>Gives the account a new name.</summary>
 	/// <param name="name">The new name.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of renaming the account.</returns>
-	internal async Task<UserOutcome> RenameAsync(string name, CancellationToken cancellationToken)
+	internal async Task<UserOutcome> RenameAsync(string name)
 	{
 		try
 		{
-			return await _user.Context.Users.RenameAsync(_user.Record, name, cancellationToken)
+			return await _user.Context.Users.RenameAsync(_user.Record, name)
 				? UserOutcome.Ok
 				: UserOutcome.NameTaken;
 		}
@@ -80,13 +79,12 @@ public sealed class UserProfile
 
 	/// <summary>Stores and sets the country shown on the profile.</summary>
 	/// <param name="country">The country.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of setting the country.</returns>
-	internal async Task<UserOutcome> SetCountryAsync(Country country, CancellationToken cancellationToken)
+	internal async Task<UserOutcome> SetCountryAsync(Country country)
 	{
 		if (!Enum.IsDefined(country)) return UserOutcome.InvalidCountry;
 
-		await _user.StoreChangeAsync(data => data.Country = country, cancellationToken);
+		await _user.StoreChangeAsync(data => data.Country = country);
 		SetCountry(country);
 		return UserOutcome.Ok;
 	}
@@ -104,30 +102,29 @@ public sealed class UserProfile
 		await using var upload = await context.Spool.SpoolAsync(image, limits.AvatarMaxSize, cancellationToken);
 		if (upload.TooLarge) return UserOutcome.TooLarge;
 
-		var info = await context.Inspector.InspectAsync(upload.Content, cancellationToken);
+		var info = await context.Inspector.InspectAsync(upload.Content);
 		if (info is null || info.Width < 1 || info.Height < 1)
 		{
-			await upload.QuarantineAsync(cancellationToken);
+			await upload.QuarantineAsync();
 			return UserOutcome.InvalidImage;
 		}
 
 		if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
 		{
-			await upload.QuarantineAsync(cancellationToken);
+			await upload.QuarantineAsync();
 			return UserOutcome.DimensionsTooLarge;
 		}
 
 		upload.Content.Position = 0;
-		await context.Avatars.SaveAsync(_user.Record, upload.Content, cancellationToken);
+		await context.Avatars.SaveAsync(_user.Record, upload.Content);
 		return UserOutcome.Ok;
 	}
 
 	/// <summary>Removes the avatar image, so the default avatar shows.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of removing the avatar.</returns>
-	internal async Task<UserOutcome> RemoveAvatarAsync(CancellationToken cancellationToken)
+	internal async Task<UserOutcome> RemoveAvatarAsync()
 	{
-		await _user.Context.Avatars.DeleteAsync(_user.Record, cancellationToken);
+		await _user.Context.Avatars.DeleteAsync(_user.Record);
 		return UserOutcome.Ok;
 	}
 }

@@ -199,6 +199,6 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
 		return await Get<IUserRepository>()
-			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+			.CreateAsync(new UserData { Name = name });
 	}
 }
