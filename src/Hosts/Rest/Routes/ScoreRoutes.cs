@@ -1,14 +1,9 @@
-using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
-using Basil.Application.Scores.Persistence;
-using Basil.Application.Scores.Storage;
-using Basil.Application.Users.Persistence;
-using Basil.Domain.Common;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Users;
+using Basil.Application.Scores.Messages;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
+using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -26,40 +21,33 @@ internal static class ScoreRoutes
 	}
 
 	private static async Task<IResult> ListAsync(HttpContext context, int? beatmap, int? user, int? offset, int? limit,
-		IScoreRepository scores, IBeatmapRepository beatmaps, IUserRepository users)
+		ISender sender)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var ct = context.RequestAborted;
-		Md5? hash = null;
-		if (beatmap is { } beatmapId)
+		var listing = await sender.Send(new ListScores(beatmap, user, page!), context.RequestAborted);
+		return listing.Outcome switch
 		{
-			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map) return Api.NotFound("No such beatmap.");
-			hash = map.Hash;
-		}
-
-		UserRecord? player = null;
-		if (user is { } userId && (player = await users.GetAsync(userId, ct)) is null)
-			return Api.NotFound("No such user.");
-
-		var found = await scores.ListAsync(new ScoreQuery(player, hash), page!, ct);
-		return Api.Paged(new Page<ScoreView>([.. found.Items.Select(ScoreView.Of)], found.HasNext), page!);
+			ScoreListOutcome.NoBeatmap => Api.NotFound("No such beatmap."),
+			ScoreListOutcome.NoUser => Api.NotFound("No such user."),
+			_ => Api.Paged(
+				new Page<ScoreView>([.. listing.Scores!.Items.Select(ScoreView.Of)], listing.Scores.HasNext), page!)
+		};
 	}
 
-	private static async Task<IResult> GetAsync(HttpContext context, int id, IScoreRepository scores)
+	private static async Task<IResult> GetAsync(HttpContext context, int id, ISender sender)
 	{
-		return await scores.GetAsync(id, context.RequestAborted) is { } score
+		return await sender.Send(new GetScore(id), context.RequestAborted) is { } score
 			? Api.Ok(ScoreView.Of(score))
 			: Api.NotFound("No such score.");
 	}
 
-	private static async Task<IResult> ReplayAsync(HttpContext context, int id, IScoreRepository scores,
-		IReplayStorage replays)
+	private static async Task<IResult> ReplayAsync(HttpContext context, int id, ISender sender)
 	{
-		if (await scores.GetAsync(id, context.RequestAborted) is not { } score) return Api.NotFound("No such score.");
+		if (await sender.Send(new GetScore(id), context.RequestAborted) is null) return Api.NotFound("No such score.");
 
-		var stream = await replays.OpenAsync(score, context.RequestAborted);
+		var stream = await sender.Send(new OpenReplay(id), context.RequestAborted);
 		return stream is null
 			? Api.NotFound("The score has no replay.")
 			: Results.Stream(stream, "application/octet-stream", $"{id}.osr");

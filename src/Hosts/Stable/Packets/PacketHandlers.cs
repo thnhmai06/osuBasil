@@ -1,4 +1,4 @@
-using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Messages;
@@ -28,7 +28,6 @@ internal sealed partial class PacketHandlers(
 	UserRegistry registry,
 	Lobby lobby,
 	ISender sender,
-	IBeatmapRepository beatmaps,
 	ISettingsRepository settings,
 	Outbox outbox,
 	RateLimiter limiter,
@@ -189,9 +188,7 @@ internal sealed partial class PacketHandlers(
 		var entries = new List<BeatmapInfoResponse>();
 		for (var index = 0; index < Math.Min(request.Filenames.Count, MaxRequestedFilenames); index++)
 		{
-			var page = await beatmaps.ListAsync(new BeatmapQuery(
-				FileName: request.Filenames[index]), new PageRequest(0, 1), ct);
-			if (page.Items.FirstOrDefault() is { } map)
+			if (await sender.Send(new FindBeatmapByFileName(request.Filenames[index]), ct) is { } map)
 				entries.Add(new BeatmapInfoResponse((short)index, map.Id,
 					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1,
 					map.Hash.ToString()));

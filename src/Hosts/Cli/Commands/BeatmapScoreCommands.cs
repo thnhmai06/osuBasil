@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
-using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Messages;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
@@ -172,27 +172,24 @@ internal static class BeatmapScoreCommands
 	private static async Task<int> ListScoresAsync(CommandCall call)
 	{
 		var page = call.Page();
-		var ct = call.CancellationToken;
-		Md5? hash = null;
-		if (call.Int("beatmap") is { } beatmapId)
+		var listing = await call.Get<ISender>().Send(new ListScores(call.Int("beatmap"), call.Int("user"), page),
+			call.CancellationToken);
+		switch (listing.Outcome)
 		{
-			if (await call.Get<ISender>().Send(new FindBeatmap(beatmapId), ct) is not { } map)
+			case ScoreListOutcome.NoBeatmap:
 				return call.NotFound("beatmap");
-			hash = map.Hash;
+			case ScoreListOutcome.NoUser:
+				return call.NotFound("user");
 		}
 
-		UserRecord? player = null;
-		if (call.Int("user") is { } userId && (player = await call.Get<IUserRepository>().GetAsync(userId, ct)) is null)
-			return call.NotFound("user");
-
-		var found = await call.Get<IScoreRepository>().ListAsync(new ScoreQuery(player, hash), page, ct);
-		call.PrintPage(new Page<ScoreView>([.. found.Items.Select(ScoreView.Of)], found.HasNext), page);
+		call.PrintPage(new Page<ScoreView>([.. listing.Scores!.Items.Select(ScoreView.Of)], listing.Scores.HasNext),
+			page);
 		return ExitCodes.Success;
 	}
 
 	private static async Task<int> ShowScoreAsync(CommandCall call)
 	{
-		if (await call.Get<IScoreRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } score)
+		if (await call.Get<ISender>().Send(new GetScore(call.Id("id")), call.CancellationToken) is not { } score)
 			return call.NotFound("score");
 
 		call.Formatter.Print(call.Output, ScoreView.Of(score));

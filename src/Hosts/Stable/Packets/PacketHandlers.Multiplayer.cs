@@ -1,3 +1,4 @@
+using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
@@ -105,7 +106,7 @@ internal sealed partial class PacketHandlers
 		async Task<RoomSettingsChange> BuildAsync(GameMode mode)
 		{
 			var hash = new Md5(match.MapMd5);
-			var known = await beatmaps.GetAsync(hash);
+			var known = await sender.Send(new FindBeatmapByHash(hash));
 			return new RoomSettingsChange(
 				Beatmap: new BeatmapReference(hash, match.MapId, match.MapName, mode, known));
 		}
