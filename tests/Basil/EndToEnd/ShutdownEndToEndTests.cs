@@ -79,8 +79,8 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		var (lateIrc, _) = await host.NewIrcClientAsync("E2eStopLateIrc");
 		using var lateIrcClient = lateIrc;
 		var lateIrcError = await lateIrc.ReadUntilAsync(line => IrcClient.CommandOf(line) == "ERROR");
-		var polled = await osu.PollAsync();
-		var notice = await irc.ReadUntilAsync(line => IrcClient.CommandOf(line) == "NOTICE");
+		var (polled, notice) = await PollWhileAsync(osu,
+			irc.ReadUntilAsync(line => IrcClient.CommandOf(line) == "NOTICE"));
 		var error = await irc.ReadUntilAsync(line => IrcClient.CommandOf(line) == "ERROR");
 		(string Event, string Data) final = default;
 		while (await roomReader.NextOrEndAsync(host) is { } next)
@@ -118,8 +118,8 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		var shutdown = ShutdownOf(host);
 
 		var running = shutdown.StoppingAsync(CancellationToken.None);
-		var polled = await osu.PollAsync();
-		var notice = await irc.ReadUntilAsync(line => IrcClient.CommandOf(line) == "NOTICE");
+		var (polled, notice) = await PollWhileAsync(osu,
+			irc.ReadUntilAsync(line => IrcClient.CommandOf(line) == "NOTICE"));
 		var error = await irc.ReadUntilAsync(line => IrcClient.CommandOf(line) == "ERROR");
 		await running;
 
@@ -155,5 +155,24 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 
 		Assert.Equal("server", final.Event);
 		Assert.Equal("restarting", (string)JsonNode.Parse(final.Data!)!["state"]!);
+	}
+
+	/// <summary>
+	///     Polls an osu! client again and again until something else has happened. The server tells the IRC clients only
+	///     once the osu! clients have taken their packets, and anything queued for a client after its poll (another
+	///     user joining its channel) means it must poll once more; the clock of the host is fake, so no time limit ends
+	///     that wait.
+	/// </summary>
+	private static async Task<(IReadOnlyList<ServerPacket> Polled, T Result)> PollWhileAsync<T>(OsuClient client,
+		Task<T> until)
+	{
+		var polled = new List<ServerPacket>();
+		while (!until.IsCompleted)
+		{
+			polled.AddRange(await client.PollAsync());
+			await Task.WhenAny(until, Task.Delay(20));
+		}
+
+		return (polled, await until);
 	}
 }
