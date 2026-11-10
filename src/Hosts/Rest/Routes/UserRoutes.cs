@@ -101,24 +101,23 @@ internal static class UserRoutes
 		token.MapDelete("/{id:int}/silence", UnsilenceAsync).WithSummary("Delete the silence of an account now.");
 	}
 
-	private static async Task<IResult> GetAsync(int id, IUserRepository users, UserRegistry registry,
+	private static async Task<IResult> GetAsync(int id, ISender sender, UserRegistry registry,
 		TimeProvider clock, CancellationToken ct)
 	{
-		var record = await users.GetAsync(id, ct);
-		return record is null || record.Value.DeletedAt is not null
+		var record = await sender.Send(new GetUser(UserReference.ById(id)), ct);
+		return record is null
 			? Api.NotFound("No such user.")
 			: Api.Ok(UserView.Of(registry, record, clock));
 	}
 
 	private static async Task<IResult> SearchAsync(HttpContext context, string? query, int? offset, int? limit,
-		IUserRepository users, UserRegistry registry, TimeProvider clock, CancellationToken ct)
+		ISender sender, UserRegistry registry, TimeProvider clock, CancellationToken ct)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var effective = context.Connection().EffectivePrivileges(clock.GetUtcNow());
-		var found = await users.ListAsync(UserQuery.Parse(query ?? string.Empty).LimitTo(effective), page!,
-			ct);
+		var found = await sender.Send(new SearchUsers(context.Connection(), UserQuery.Parse(query ?? string.Empty),
+			page!), ct);
 		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.HasNext),
 			page!);
 	}
@@ -139,7 +138,7 @@ internal static class UserRoutes
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchUserRequest request,
-		IUserRepository users, UserRegistry registry, TimeProvider clock)
+		ISender sender, UserRegistry registry, TimeProvider clock)
 	{
 		var target = UserReference.ById(id);
 
@@ -147,8 +146,8 @@ internal static class UserRoutes
 		if (await PatchNameAndCountryAsync(context, target, request, ct) is { } refusal) return refusal;
 		if (await PatchSelfAndPrivilegesAsync(context, target, request, ct) is { } denied) return denied;
 
-		var record = await users.GetAsync(id, ct);
-		return record is null || record.Value.DeletedAt is not null
+		var record = await sender.Send(new GetUser(target), ct);
+		return record is null
 			? Api.NotFound("No such user.")
 			: Api.Ok(UserView.Of(registry, registry.Of(record).Record, clock), "Updated successfully");
 	}

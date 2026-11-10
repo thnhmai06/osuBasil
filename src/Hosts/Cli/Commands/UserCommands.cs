@@ -141,9 +141,8 @@ internal static class UserCommands
 		var page = call.Page();
 		var registry = call.Get<UserRegistry>();
 		var clock = call.Get<TimeProvider>();
-		var found = await call.Get<IUserRepository>().ListAsync(UserQuery.Parse(call.Text("query") ?? string.Empty),
-			page,
-			call.CancellationToken);
+		var found = await call.Get<ISender>().Send(new SearchUsers(await call.ByAsync(),
+			UserQuery.Parse(call.Text("query") ?? string.Empty), page), call.CancellationToken);
 		call.PrintPage(new Page<UserView>(
 			[.. found.Items.Select(user => UserView.Of(registry, user, clock))], found.HasNext), page);
 		return ExitCodes.Success;
@@ -182,7 +181,7 @@ internal static class UserCommands
 
 	private static async Task<int> ShowAsync(CommandCall call)
 	{
-		if (await call.FindUserAsync() is not { } record) return call.NotFound(NoUser);
+		if (await call.Get<ISender>().Send(new GetUser(call.UserOf()), call.CancellationToken) is not { } record) return call.NotFound(NoUser);
 
 		call.Formatter.Print(call.Output, UserView.Of(call.Get<UserRegistry>(), record, call.Get<TimeProvider>()));
 		return ExitCodes.Success;

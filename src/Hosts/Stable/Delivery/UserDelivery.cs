@@ -1,4 +1,4 @@
-using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Messages;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -12,15 +12,14 @@ namespace Basil.Host.Stable.Delivery;
 internal sealed class UserOnlineDelivery(
 	UserRegistry registry,
 	Outbox outbox,
-	IUserStatsRepository statsRepository,
+	ISender sender,
 	TimeProvider clock) : INotificationHandler<UserConnectionOpened>
 {
 	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken ct)
 	{
 		if (!notification.CameOnline || notification.Connection.Type is not SessionType.Stable) return;
 		var user = notification.Connection.User;
-		var stats = await statsRepository.GetAsync(user.Record, user.Stable?.Status.GameMode ?? GameMode.Standard,
-			ct);
+		var stats = await sender.Send(new GetUserStats(user, user.Stable?.Status.GameMode ?? GameMode.Standard), ct);
 		var now = clock.GetUtcNow();
 		outbox.Send(registry.OpenStableClients(), writer =>
 		{
@@ -46,13 +45,13 @@ internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
 }
 
 /// <summary>Tells every osu! client the new status of a user.</summary>
-internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, IUserStatsRepository statsRepository)
+internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, ISender sender)
 	: INotificationHandler<UserConnectionStatusChanged>
 {
 	public async ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken ct)
 	{
 		var user = notification.Connection.User;
-		var stats = await statsRepository.GetAsync(user.Record, notification.Status.GameMode, ct);
+		var stats = await sender.Send(new GetUserStats(user, notification.Status.GameMode), ct);
 		outbox.Send(registry.OpenStableClients(), writer => StableView.WriteStats(writer, user, stats));
 	}
 }

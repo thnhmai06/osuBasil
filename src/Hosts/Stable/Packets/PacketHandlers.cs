@@ -3,7 +3,7 @@ using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Messages;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -28,8 +28,6 @@ internal sealed partial class PacketHandlers(
 	UserRegistry registry,
 	Lobby lobby,
 	ISender sender,
-	IUserRepository users,
-	IUserStatsRepository statsRepository,
 	IBeatmapRepository beatmaps,
 	ISettingsRepository settings,
 	Outbox outbox,
@@ -111,11 +109,6 @@ internal sealed partial class PacketHandlers(
 		return Task.CompletedTask;
 	}
 
-	private async Task<UserRecord?> FindUserAsync(int id, CancellationToken ct)
-	{
-		return await users.GetAsync(id, ct);
-	}
-
 	private async Task ChangeActionAsync(StableConnection osu, PacketReader reader,
 		CancellationToken ct)
 	{
@@ -143,7 +136,7 @@ internal sealed partial class PacketHandlers(
 
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await statsRepository.GetAsync(user.Record, user.Stable?.Status.GameMode ?? GameMode.Standard,
+			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.GameMode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{
@@ -159,7 +152,7 @@ internal sealed partial class PacketHandlers(
 		var now = clock.GetUtcNow();
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
-			stats.Add(await statsRepository.GetAsync(user.Record, user.Stable?.Status.GameMode ?? GameMode.Standard,
+			stats.Add(await sender.Send(new GetUserStats(user, user.Stable?.Status.GameMode ?? GameMode.Standard),
 				ct));
 		outbox.Send(actor, writer =>
 		{

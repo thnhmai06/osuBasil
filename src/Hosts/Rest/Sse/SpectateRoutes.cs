@@ -1,7 +1,7 @@
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
@@ -30,10 +30,10 @@ internal static class SpectateRoutes
 			                 """);
 	}
 
-	private static async Task<IResult> SpectateAsync(HttpContext context, int id, IUserRepository users,
+	private static async Task<IResult> SpectateAsync(HttpContext context, int id,
 		UserRegistry registry, ISender sender)
 	{
-		if (await users.GetAsync(id, context.RequestAborted) is not { } record) return Api.NotFound("No such user.");
+		if (await sender.Send(new GetUser(UserReference.ById(id)), context.RequestAborted) is not { } record) return Api.NotFound("No such user.");
 
 		var host = registry.Of(record).Stable;
 		if (host is not { IsOpen: true })

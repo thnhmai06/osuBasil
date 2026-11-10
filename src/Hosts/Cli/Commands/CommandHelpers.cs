@@ -46,13 +46,6 @@ internal static class CommandHelpers
 		return UserReference.ById(call.Id(name));
 	}
 
-	/// <summary>Finds an account by id; the console may see deleted accounts too only through their own commands.</summary>
-	public static async Task<UserRecord?> FindUserAsync(this CommandCall call, string name = "id")
-	{
-		var record = await call.Get<IUserRepository>().GetAsync(call.Id(name), call.CancellationToken);
-		return record is null || record.Value.DeletedAt is not null ? null : record;
-	}
-
 	/// <summary>Hashes a plain password the way the API does.</summary>
 	public static Md5 Md5Of(string password)
 	{

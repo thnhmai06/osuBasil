@@ -2,7 +2,7 @@ using System.Net;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Messages;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -25,7 +25,6 @@ namespace Basil.Host.Stable.Login;
 internal sealed class StableLogin(
 	UserRegistry registry,
 	GeneralChannelRegistry channels,
-	IUserStatsRepository statsRepository,
 	ISettingsRepository settings,
 	Outbox outbox,
 	LoginAttemptGuard attempts,
@@ -131,8 +130,8 @@ internal sealed class StableLogin(
 			: 0;
 		var others = new List<(User User, UserStats Stats)>();
 		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))
-			others.Add((other, await statsRepository.GetAsync(other.Record,
-				other.Stable?.Status.GameMode ?? GameMode.Standard, ct)));
+			others.Add((other, await sender.Send(new GetUserStats(other,
+				other.Stable?.Status.GameMode ?? GameMode.Standard), ct)));
 
 		var welcome = Outbox.Build(writer =>
 		{

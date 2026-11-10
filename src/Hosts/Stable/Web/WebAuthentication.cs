@@ -4,12 +4,14 @@ using System.Text;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Common;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Gateway;
+using Mediator;
 using Basil.Host.Stable.Support;
 
 namespace Basil.Host.Stable.Web;
@@ -17,7 +19,7 @@ namespace Basil.Host.Stable.Web;
 /// <summary>Authenticates the web requests of an osu! client by its username and password hash.</summary>
 internal sealed class WebAuthentication(
 	UserRegistry registry,
-	IUserRepository users,
+	ISender sender,
 	ICredentialRepository credentials,
 	ISettingsRepository settings,
 	LoginAttemptGuard attempts,
@@ -54,7 +56,7 @@ internal sealed class WebAuthentication(
 	{
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;
 		var normalized = UserData.NormalizeName(username);
-		if (await users.GetByNameAsync(username, ct) is not { } record) return null;
+		if (await sender.Send(new GetUser(UserReference.ByName(username)), ct) is not { } record) return null;
 		var online = registry.Of(record);
 		if (online.Stable is not { IsOpen: true } client) return null;
 		var rules = (await settings.GetAsync(ct)).RateLimits.Login;

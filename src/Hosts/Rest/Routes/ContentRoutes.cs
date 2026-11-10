@@ -1,7 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Servers.Messages;
-using Basil.Application.Users.Persistence;
+using Basil.Application.Users.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Gateway;
@@ -74,8 +75,7 @@ internal static class ContentRoutes
 		}
 	}
 
-	private static async Task<IResult> AnnounceAsync(HttpContext context, AnnounceRequest request, ISender sender,
-		IUserRepository users)
+	private static async Task<IResult> AnnounceAsync(HttpContext context, AnnounceRequest request, ISender sender)
 	{
 		if (string.IsNullOrWhiteSpace(request.Text)) return Api.Invalid("text is required.");
 
@@ -89,7 +89,7 @@ internal static class ContentRoutes
 		var recipients = new List<UserRecord>();
 		foreach (var id in ids.Distinct())
 		{
-			if (await users.GetAsync(id, context.RequestAborted) is not { } user)
+			if (await sender.Send(new GetUser(UserReference.ById(id)), context.RequestAborted) is not { } user)
 				return Api.NotFound($"No such user: {id}.");
 			recipients.Add(user);
 		}

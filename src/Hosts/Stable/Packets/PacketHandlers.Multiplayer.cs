@@ -148,8 +148,7 @@ internal sealed partial class PacketHandlers
 
 	private async Task InviteAsync(StableConnection osu, Room room, int userId, CancellationToken ct)
 	{
-		if (await FindUserAsync(userId, ct) is { } record)
-			await sender.Send(new InvitePlayer(osu, room, registry.Of(record)), ct);
+		if (OnlineUsers([userId]) is [{ } target]) await sender.Send(new InvitePlayer(osu, room, target), ct);
 	}
 
 	private void ForwardScore(StableConnection osu, Room room, PacketReader reader)
