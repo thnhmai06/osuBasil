@@ -11,11 +11,13 @@ namespace Basil.Application.Users.Objects.Connections;
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
 public abstract class Connection(SessionRecord login, string token) : IActor
 {
-	// UTC ticks, written and read atomically: a connection and the activity flush touch them from different threads.
-	private const long None = long.MinValue;
 	private SessionEnd? _end;
-	private long _expiresTicks = login.Value.ExpiresAt?.UtcTicks ?? None;
-	private long _lastActiveTicks = login.Value.LastActiveAt.UtcTicks;
+
+	/// <summary>Holds the last activity and token expiry of the session.</summary>
+	private sealed record Activity(DateTimeOffset LastActiveAt, DateTimeOffset? ExpiresAt);
+
+	// Swapped whole: a connection and the activity flush touch it from different threads.
+	private Activity _activity = new(login.Value.LastActiveAt, login.Value.ExpiresAt);
 
 	/// <summary>Gets the online user this connection belongs to.</summary>
 	public User User { get; internal set; } = null!;
@@ -33,13 +35,10 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	public bool IsOpen { get; internal set; }
 
 	/// <summary>Gets when this connection was last active.</summary>
-	public DateTimeOffset LastActiveAt => new(Interlocked.Read(ref _lastActiveTicks), TimeSpan.Zero);
+	public DateTimeOffset LastActiveAt => Volatile.Read(ref _activity).LastActiveAt;
 
 	/// <summary>Gets when the session's token expires, or <see langword="null" /> for a non-expiring session.</summary>
-	public DateTimeOffset? ExpiresAt =>
-		Interlocked.Read(ref _expiresTicks) is var ticks && ticks != None
-			? new DateTimeOffset(ticks, TimeSpan.Zero)
-			: null;
+	public DateTimeOffset? ExpiresAt => Volatile.Read(ref _activity).ExpiresAt;
 
 	/// <summary>Gets how the session ended, or <see langword="null" /> while it remains active.</summary>
 	public SessionEnd? End => Volatile.Read(ref _end);
@@ -60,14 +59,15 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	/// <returns>The stored session with its current expiry, activity and end.</returns>
 	public SessionRecord Snapshot()
 	{
+		var activity = Volatile.Read(ref _activity);
 		var value = Session.Value;
 		return new SessionRecord
 		{
 			Id = Session.Id,
 			Value = value with
 			{
-				ExpiresAt = ExpiresAt,
-				LastActiveAt = LastActiveAt,
+				ExpiresAt = activity.ExpiresAt,
+				LastActiveAt = activity.LastActiveAt,
 				End = End
 			}
 		};
@@ -77,7 +77,12 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	/// <param name="at">The time of the activity.</param>
 	internal void MarkActive(DateTimeOffset at)
 	{
-		if (End is null && at >= LastActiveAt) Interlocked.Exchange(ref _lastActiveTicks, at.UtcTicks);
+		while (true)
+		{
+			var current = Volatile.Read(ref _activity);
+			if (End is not null || at < current.LastActiveAt) return;
+			if (Interlocked.CompareExchange(ref _activity, current with { LastActiveAt = at }, current) == current) return;
+		}
 	}
 
 	/// <summary>Extends the sliding expiry of an API token session.</summary>
@@ -85,7 +90,12 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	/// <param name="lifetime">How long the token remains valid after activity.</param>
 	internal void ExtendExpiry(DateTimeOffset at, TimeSpan lifetime)
 	{
-		if (Type is SessionType.Api && End is null) Interlocked.Exchange(ref _expiresTicks, (at + lifetime).UtcTicks);
+		while (true)
+		{
+			var current = Volatile.Read(ref _activity);
+			if (Type is not SessionType.Api || End is not null) return;
+			if (Interlocked.CompareExchange(ref _activity, current with { ExpiresAt = at + lifetime }, current) == current) return;
+		}
 	}
 
 	/// <summary>Ends this connection's session at a moment for a specific reason; an ended session stays ended.</summary>
