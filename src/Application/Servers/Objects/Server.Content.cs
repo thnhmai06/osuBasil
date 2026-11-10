@@ -5,14 +5,39 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
+	/// <summary>Gets the FAQ entries of the server, changed without a rights check.</summary>
+	public ServerFaq Faq => new(this);
+
+	/// <summary>Gets the main-menu banners of the server, changed without a rights check.</summary>
+	public ServerBanners Banners => new(this);
+
+	/// <summary>Gets the seasonal backgrounds of the server, changed without a rights check.</summary>
+	public ServerSeasonals Seasonals => new(this);
+
+	/// <summary>Gets the main-menu icon of the server, changed without a rights check.</summary>
+	public ServerIcon Icon => new(this);
+}
+
+/// <summary>The FAQ entries of the server, changed without a rights check.</summary>
+public readonly struct ServerFaq
+{
+	private readonly Server _server;
+
+	/// <summary>Creates the view of a server.</summary>
+	/// <param name="server">The server.</param>
+	internal ServerFaq(Server server)
+	{
+		_server = server;
+	}
+
 	/// <summary>Creates or replaces a FAQ entry.</summary>
 	/// <param name="entry">The entry name; <c>:</c> separates folders.</param>
 	/// <param name="text">The text of the entry.</param>
 	/// <returns>Ok.</returns>
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
-	internal async Task<ServerOutcome> SaveFaqAsync(string entry, string text)
+	internal async Task<ServerOutcome> SaveAsync(string entry, string text)
 	{
-		await using var writer = await Context.Faqs.CreateOrUpdateAsync(entry);
+		await using var writer = await _server.Context.Faqs.CreateOrUpdateAsync(entry);
 		await writer.WriteAsync(text);
 		writer.Commit();
 		return ServerOutcome.Ok;
@@ -22,10 +47,23 @@ public sealed partial class Server
 	/// <param name="entry">The entry name.</param>
 	/// <returns>Ok; deleting an entry that does not exist is ok.</returns>
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
-	internal async Task<ServerOutcome> DeleteFaqAsync(string entry)
+	internal async Task<ServerOutcome> DeleteAsync(string entry)
 	{
-		await Context.Faqs.DeleteAsync(entry);
+		await _server.Context.Faqs.DeleteAsync(entry);
 		return ServerOutcome.Ok;
+	}
+}
+
+/// <summary>The main-menu banners of the server, changed without a rights check.</summary>
+public readonly struct ServerBanners
+{
+	private readonly Server _server;
+
+	/// <summary>Creates the view of a server.</summary>
+	/// <param name="server">The server.</param>
+	internal ServerBanners(Server server)
+	{
+		_server = server;
 	}
 
 	/// <summary>Adds a main-menu banner whose image is uploaded.</summary>
@@ -37,24 +75,24 @@ public sealed partial class Server
 	/// <returns>Ok and the banner.</returns>
 	/// <remarks>When storing the banner fails, the stored image is deleted again and the failure is rethrown.</remarks>
 	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
-	internal async Task<(ServerOutcome Outcome, MenuBanner Banner)> AddBannerAsync(string name, Stream image, Uri url,
+	internal async Task<(ServerOutcome Outcome, MenuBanner Banner)> CreateAsync(string name, Stream image, Uri url,
 		DateTimeOffset? startsAt, DateTimeOffset? endsAt)
 	{
 		var banner = new MenuBanner
 		{
-			Image = await Context.BannerImages.SaveAsync(name, image),
+			Image = await _server.Context.BannerImages.SaveAsync(name, image),
 			Url = url,
 			StartsAt = startsAt,
 			EndsAt = endsAt,
-			CreatedAt = Context.Connections.Clock.GetUtcNow()
+			CreatedAt = _server.Context.Connections.Clock.GetUtcNow()
 		};
 		try
 		{
-			await Context.Banners.CreateOrUpdateAsync(banner);
+			await _server.Context.Banners.CreateOrUpdateAsync(banner);
 		}
 		catch
 		{
-			await Context.BannerImages.DeleteAsync(banner.Image);
+			await _server.Context.BannerImages.DeleteAsync(banner.Image);
 			throw;
 		}
 
@@ -64,11 +102,24 @@ public sealed partial class Server
 	/// <summary>Deletes a main-menu banner and its image.</summary>
 	/// <param name="banner">The banner.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<ServerOutcome> DeleteBannerAsync(MenuBanner banner)
+	internal async Task<ServerOutcome> DeleteAsync(MenuBanner banner)
 	{
-		await Context.Banners.DeleteAsync(banner);
-		await Context.BannerImages.DeleteAsync(banner.Image);
+		await _server.Context.Banners.DeleteAsync(banner);
+		await _server.Context.BannerImages.DeleteAsync(banner.Image);
 		return ServerOutcome.Ok;
+	}
+}
+
+/// <summary>The seasonal backgrounds of the server, changed without a rights check.</summary>
+public readonly struct ServerSeasonals
+{
+	private readonly Server _server;
+
+	/// <summary>Creates the view of a server.</summary>
+	/// <param name="server">The server.</param>
+	internal ServerSeasonals(Server server)
+	{
+		_server = server;
 	}
 
 	/// <summary>Adds a seasonal background.</summary>
@@ -76,18 +127,31 @@ public sealed partial class Server
 	/// <param name="image">The image.</param>
 	/// <returns>Ok and the reference of the image.</returns>
 	/// <exception cref="ArgumentException">The name is not valid.</exception>
-	internal async Task<(ServerOutcome Outcome, ContentReference Image)> AddSeasonalAsync(string name, Stream image)
+	internal async Task<(ServerOutcome Outcome, ContentReference Image)> CreateAsync(string name, Stream image)
 	{
-		return (ServerOutcome.Ok, await Context.Seasonals.SaveAsync(name, image));
+		return (ServerOutcome.Ok, await _server.Context.Seasonals.SaveAsync(name, image));
 	}
 
 	/// <summary>Deletes a seasonal background.</summary>
 	/// <param name="image">The reference of the image.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<ServerOutcome> DeleteSeasonalAsync(ContentReference image)
+	internal async Task<ServerOutcome> DeleteAsync(ContentReference image)
 	{
-		await Context.Seasonals.DeleteAsync(image);
+		await _server.Context.Seasonals.DeleteAsync(image);
 		return ServerOutcome.Ok;
+	}
+}
+
+/// <summary>The main-menu icon of the server, changed without a rights check.</summary>
+public readonly struct ServerIcon
+{
+	private readonly Server _server;
+
+	/// <summary>Creates the view of a server.</summary>
+	/// <param name="server">The server.</param>
+	internal ServerIcon(Server server)
+	{
+		_server = server;
 	}
 
 	/// <summary>Sets the main-menu icon: its image, the address it links to, or both.</summary>
@@ -96,24 +160,24 @@ public sealed partial class Server
 	/// <param name="url">The address the icon links to, or <see langword="null" /> for none.</param>
 	/// <returns>Ok.</returns>
 	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
-	internal async Task<ServerOutcome> SetIconAsync(string? name, Stream? image, Uri? url)
+	internal async Task<ServerOutcome> ReplaceAsync(string? name, Stream? image, Uri? url)
 	{
-		var settings = await Context.Settings.GetAsync();
+		var settings = await _server.Context.Settings.GetAsync();
 		var reference = name is not null && image is not null
-			? await Context.Icon.SaveAsync(name, image)
+			? await _server.Context.Icon.SaveAsync(name, image)
 			: settings.MenuIcon.Image;
-		await Context.Settings.CreateOrUpdateAsync(
+		await _server.Context.Settings.CreateOrUpdateAsync(
 			settings with { MenuIcon = new ServerSettings.MenuIconSettings { Url = url, Image = reference } });
 		return ServerOutcome.Ok;
 	}
 
 	/// <summary>Removes the main-menu icon.</summary>
 	/// <returns>Ok.</returns>
-	internal async Task<ServerOutcome> ClearIconAsync()
+	internal async Task<ServerOutcome> DeleteAsync()
 	{
-		await Context.Icon.DeleteAsync();
-		var settings = await Context.Settings.GetAsync();
-		await Context.Settings.CreateOrUpdateAsync(settings with { MenuIcon = new ServerSettings.MenuIconSettings() });
+		await _server.Context.Icon.DeleteAsync();
+		var settings = await _server.Context.Settings.GetAsync();
+		await _server.Context.Settings.CreateOrUpdateAsync(settings with { MenuIcon = new ServerSettings.MenuIconSettings() });
 		return ServerOutcome.Ok;
 	}
 }

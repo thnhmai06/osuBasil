@@ -11,6 +11,6 @@ internal sealed class DeleteMenuBannerHandler(Server server) : IRequestHandler<D
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(DeleteMenuBanner request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.DeleteBannerAsync(request.Banner);
+		return await server.ScopeTo(request.Actor).Banners.DeleteAsync(request.Banner);
 	}
 }

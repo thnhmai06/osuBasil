@@ -11,6 +11,6 @@ internal sealed class SaveFaqHandler(Server server) : IRequestHandler<SaveFaq, R
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(SaveFaq request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.SaveFaqAsync(request.Entry, request.Text);
+		return await server.ScopeTo(request.Actor).Faq.SaveAsync(request.Entry, request.Text);
 	}
 }

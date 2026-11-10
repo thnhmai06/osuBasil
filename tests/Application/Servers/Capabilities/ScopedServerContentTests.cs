@@ -28,7 +28,7 @@ public sealed class ScopedServerContentTests
 		var manager = await RoomFixture.PlayerAsync(app, "Boss",
 			UserPrivilegesExtensions.Default | UserPrivileges.Owner);
 
-		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Content.AddBannerAsync("a.png",
+		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Banners.CreateAsync("a.png",
 			new MemoryStream(), new Uri("https://example.org"), null, null));
 
 		await images.Received(1).DeleteAsync(image);

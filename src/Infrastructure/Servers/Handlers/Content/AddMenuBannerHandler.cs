@@ -14,7 +14,7 @@ internal sealed class AddMenuBannerHandler(Server server)
 	public async ValueTask<(Result<ServerOutcome> Result, MenuBanner? Banner)> Handle(AddMenuBanner request,
 		CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.AddBannerAsync(request.Name, request.Image, request.Url,
+		return await server.ScopeTo(request.Actor).Banners.CreateAsync(request.Name, request.Image, request.Url,
 			request.StartsAt, request.EndsAt);
 	}
 }

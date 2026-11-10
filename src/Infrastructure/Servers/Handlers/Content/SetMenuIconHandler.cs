@@ -11,6 +11,6 @@ internal sealed class SetMenuIconHandler(Server server) : IRequestHandler<SetMen
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(SetMenuIcon request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.SetIconAsync(request.Name, request.Image, request.Url);
+		return await server.ScopeTo(request.Actor).Icon.ReplaceAsync(request.Name, request.Image, request.Url);
 	}
 }

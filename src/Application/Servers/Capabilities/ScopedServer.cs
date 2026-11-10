@@ -41,8 +41,17 @@ public readonly struct ScopedServer
 	/// <summary>Gets operations for the policy settings.</summary>
 	public ScopedServerSettings Settings => new(this);
 
-	/// <summary>Gets operations for the content shown to players: FAQ entries and the main menu.</summary>
-	public ScopedServerContent Content => new(this);
+	/// <summary>Gets the FAQ entries as the actor may change them.</summary>
+	public ScopedServerFaq Faq => new(this);
+
+	/// <summary>Gets the main-menu banners as the actor may change them.</summary>
+	public ScopedServerBanners Banners => new(this);
+
+	/// <summary>Gets the seasonal backgrounds as the actor may change them.</summary>
+	public ScopedServerSeasonals Seasonals => new(this);
+
+	/// <summary>Gets the main-menu icon as the actor may change them.</summary>
+	public ScopedServerIcon Icon => new(this);
 
 	/// <summary>Gets operations for screenshots.</summary>
 	public ScopedServerScreenshots Screenshots => new(this);

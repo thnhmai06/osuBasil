@@ -11,6 +11,6 @@ internal sealed class DeleteFaqHandler(Server server) : IRequestHandler<DeleteFa
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(DeleteFaq request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.DeleteFaqAsync(request.Entry);
+		return await server.ScopeTo(request.Actor).Faq.DeleteAsync(request.Entry);
 	}
 }
