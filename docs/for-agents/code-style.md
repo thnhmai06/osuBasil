@@ -40,6 +40,7 @@ Moved out of `AGENTS.md`; the rules are binding. Read this before writing or rev
     in scope (`Method has 'async' overload with cancellation support`, `Use 'await using'`, `CancelAsync`,
     `ZipArchiveEntry.OpenAsync`, `WithCancellation` on an async stream). A private/internal method whose callers hold a
     token takes it. Do not change a public signature just to carry a token: report it.
+  * **Only reads take a token.** A write takes none, unless the business defines a cancel that restores the previous state; an operation that spools an upload passes its token to the spool only.
   * **LINQ.** A `foreach` that only filters, maps, finds, counts or aggregates becomes a query when it reads as a
     sentence (`Loop can be converted into LINQ-expression`; `.OfType<T>()` to drop `null`s). Keep the loop when it
     awaits, mutates in order, has side effects, or the query would be harder to read. Never write a `ForEach`

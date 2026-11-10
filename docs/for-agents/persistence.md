@@ -117,11 +117,11 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 The Authentication module is the pilot; copy its shape (`EfCredentialRepository`, `EfSessionRepository`).
 
 * **One helper, `DatabaseSession`** (`Infrastructure.Common/Persistence`), injected into the repository. It has no queue
-  and no retry of a change. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own. `WriteAsync<TContext>(change, ct)` and `WriteAsync<TContext, T>(change, ct)` create a context whose
+  and no retry of a change. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own. `WriteAsync<TContext>(change)` and `WriteAsync<TContext, T>(change)` create a context whose
   commit is confirmed, run the change, call `SaveChanges` and dispose; the second form returns what the change returned
-  (a row count). `TransactAsync<TContext>(work, ct)` is the same inside one transaction, for a business operation that
+  (a row count). `TransactAsync<TContext>(work)` is the same inside one transaction, for a business operation that
   stores several rows. Entities the change adds or modifies are saved by the helper; `ExecuteUpdate`/`ExecuteDelete`
-  run on their own.
+  run on their own. Only reads take a token: the lambda of a write is `(Context context) => ...` and a write is never cancelled.
 * **Failure contract.** A write is finished when the call returns. A unique violation becomes `AlreadyExistsException`;
   every other failure (foreign key, connection, timeout) reaches the caller as the original exception. Nothing is
   swallowed, and a change is never retried (only the opening of the connection is, three times after 50, 200 and 800 ms),

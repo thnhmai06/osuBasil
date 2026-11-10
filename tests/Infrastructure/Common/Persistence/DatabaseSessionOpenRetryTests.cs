@@ -22,11 +22,11 @@ public sealed class DatabaseSessionOpenRetryTests
 		var session = new UnreachableSession(_clock, 2);
 		var runs = 0;
 
-		await Complete(session.WriteAsync<ProbeContext>((_, _) =>
+		await Complete(session.WriteAsync<ProbeContext>(_ =>
 		{
 			runs++;
 			return Task.CompletedTask;
-		}, TestContext.Current.CancellationToken));
+		}));
 
 		Assert.Equal(1, runs);
 		Assert.Equal(Waits[..2], _clock.Waits);
@@ -38,11 +38,11 @@ public sealed class DatabaseSessionOpenRetryTests
 		var session = new UnreachableSession(_clock, int.MaxValue);
 		var runs = 0;
 
-		var write = session.WriteAsync<ProbeContext>((_, _) =>
+		var write = session.WriteAsync<ProbeContext>(_ =>
 		{
 			runs++;
 			return Task.CompletedTask;
-		}, TestContext.Current.CancellationToken);
+		});
 		await Assert.ThrowsAsync<TimeoutException>(() => Complete(write));
 
 		Assert.Equal(0, runs);
@@ -55,11 +55,11 @@ public sealed class DatabaseSessionOpenRetryTests
 		var session = new UnreachableSession(_clock, 0);
 		var runs = 0;
 
-		var write = session.WriteAsync<ProbeContext>((_, _) =>
+		var write = session.WriteAsync<ProbeContext>(_ =>
 		{
 			runs++;
 			throw new InvalidOperationException("change failed");
-		}, TestContext.Current.CancellationToken);
+		});
 		await Assert.ThrowsAsync<InvalidOperationException>(() => Complete(write));
 
 		Assert.Equal(1, runs);
@@ -95,7 +95,7 @@ public sealed class DatabaseSessionOpenRetryTests
 	{
 		private int _failures = failures;
 
-		protected override Task OpenAsync(DbContext context, CancellationToken cancellationToken)
+		protected override Task OpenAsync(DbContext context)
 		{
 			if (_failures-- > 0) throw new TimeoutException("unreachable");
 			return Task.CompletedTask;

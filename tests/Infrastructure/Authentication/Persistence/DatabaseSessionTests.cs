@@ -18,7 +18,7 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	{
 		var user = await NewUserAsync("session_user");
 
-		await Database.WriteAsync(AddCredential(user.Id), TestContext.Current.CancellationToken);
+		await Database.WriteAsync(AddCredential(user.Id));
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select user_id from credentials", null,
 			TestContext.Current.CancellationToken);
@@ -29,10 +29,10 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	public async Task A_write_of_a_value_that_is_already_stored_reports_that_it_exists()
 	{
 		var user = await NewUserAsync("session_user");
-		await Database.WriteAsync(AddCredential(user.Id), TestContext.Current.CancellationToken);
+		await Database.WriteAsync(AddCredential(user.Id));
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
-			Database.WriteAsync(AddCredential(user.Id), TestContext.Current.CancellationToken));
+			Database.WriteAsync(AddCredential(user.Id)));
 	}
 
 	[Fact]
@@ -41,11 +41,11 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 		var first = await NewUserAsync("first_user");
 
 		await Assert.ThrowsAnyAsync<Exception>(() => Database.TransactAsync(
-			async (AuthenticationDbContext context, CancellationToken token) =>
+			async (AuthenticationDbContext context) =>
 			{
-				await AddCredential(first.Id)(context, token);
-				await AddCredential(first.Id + 1000)(context, token);
-			}, TestContext.Current.CancellationToken));
+				await AddCredential(first.Id)(context);
+				await AddCredential(first.Id + 1000)(context);
+			}));
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select user_id from credentials", null,
 			TestContext.Current.CancellationToken);
@@ -58,11 +58,11 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 		var first = await NewUserAsync("first_user");
 		var second = await NewUserAsync("second_user");
 
-		await Database.TransactAsync(async (AuthenticationDbContext context, CancellationToken token) =>
+		await Database.TransactAsync(async (AuthenticationDbContext context) =>
 		{
-			await AddCredential(first.Id)(context, token);
-			await AddCredential(second.Id)(context, token);
-		}, TestContext.Current.CancellationToken);
+			await AddCredential(first.Id)(context);
+			await AddCredential(second.Id)(context);
+		});
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select user_id from credentials", null,
 			TestContext.Current.CancellationToken);
@@ -73,7 +73,7 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	public async Task A_read_sees_what_a_write_stored()
 	{
 		var user = await NewUserAsync("session_user");
-		await Database.WriteAsync(AddCredential(user.Id), TestContext.Current.CancellationToken);
+		await Database.WriteAsync(AddCredential(user.Id));
 
 		var count = await Database.ReadAsync((AuthenticationDbContext context) => Task.FromResult(
 			context.Credentials.Count()), TestContext.Current.CancellationToken);
@@ -81,9 +81,9 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 		Assert.Equal(1, count);
 	}
 
-	private static Func<AuthenticationDbContext, CancellationToken, Task> AddCredential(int userId)
+	private static Func<AuthenticationDbContext, Task> AddCredential(int userId)
 	{
-		return (context, _) =>
+		return context =>
 		{
 			context.Credentials.Add(new CredentialRow { UserId = userId, PasswordHash = "hash" });
 			return Task.CompletedTask;
