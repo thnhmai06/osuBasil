@@ -41,10 +41,9 @@ public sealed class GeneralChannel : Channel
 	/// <summary>Applies a change to the channel and removes the members who may no longer read it.</summary>
 	/// <param name="change">The settings to change.</param>
 	/// <param name="privilegesOf">Gives the effective privileges a member holds.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, or Closed when the channel has closed.</returns>
 	internal async Task<ChannelOutcome> ConfigureAsync(GeneralChannelChange change,
-		Func<Connection, UserPrivileges> privilegesOf, CancellationToken cancellationToken)
+		Func<Connection, UserPrivileges> privilegesOf)
 	{
 		using (Enter())
 		{
@@ -60,17 +59,16 @@ public sealed class GeneralChannel : Channel
 			Context.Events.Publish(new ChannelConfigured(this, change, removed));
 		}
 
-		await Context.Channels.CreateOrUpdateAsync(Record, cancellationToken);
+		await Context.Channels.CreateOrUpdateAsync(Record);
 		return ChannelOutcome.Ok;
 	}
 
 	/// <summary>Closes the channel and deletes it.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<ChannelOutcome> DeleteAsync(CancellationToken cancellationToken)
+	internal async Task<ChannelOutcome> DeleteAsync()
 	{
 		Close();
-		await Context.Channels.DeleteAsync(Record, cancellationToken);
+		await Context.Channels.DeleteAsync(Record);
 		return ChannelOutcome.Ok;
 	}
 

@@ -21,19 +21,19 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(GeneralChannelRecord channel)
 	{
 		var row = ToRow(channel);
-		return database.WriteAsync((ChatDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.Name == row.Name), cancellationToken);
+		return database.WriteAsync((ChatDbContext context) =>
+			context.UpsertAsync(row, stored => stored.Name == row.Name));
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(GeneralChannelRecord channel)
 	{
-		return database.WriteAsync((ChatDbContext context, CancellationToken token) => context.Channels
+		return database.WriteAsync((ChatDbContext context) => context.Channels
 			.Where(c => c.Name == channel.Name)
-			.ExecuteDeleteAsync(token), cancellationToken);
+			.ExecuteDeleteAsync());
 	}
 
 	/// <summary>Builds the row that stores a channel, from the values it has now.</summary>

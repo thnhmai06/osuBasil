@@ -38,30 +38,27 @@ public readonly struct ScopedGeneralChannel
 
 	/// <summary>Changes the settings of this general channel.</summary>
 	/// <param name="change">The settings to change.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, a denial that names the missing privileges, or Closed when the channel has closed.</returns>
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Moderator" />. Members who may no longer read the channel are removed;
 	///     one <see cref="ChannelConfigured" /> reports the change and removed members.
 	/// </remarks>
 	/// <exception cref="ArgumentException">A privilege or the topic in <paramref name="change" /> is invalid.</exception>
-	public async Task<Result<ChannelOutcome>> ConfigureAsync(GeneralChannelChange change,
-		CancellationToken cancellationToken = default)
+	public async Task<Result<ChannelOutcome>> ConfigureAsync(GeneralChannelChange change)
 	{
 		if (Require(UserPrivileges.Moderator) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
 		var now = Channel.Context.Clock.GetUtcNow();
-		return await Channel.ConfigureAsync(change, member => member.EffectivePrivileges(now), cancellationToken);
+		return await Channel.ConfigureAsync(change, member => member.EffectivePrivileges(now));
 	}
 
 	/// <summary>Closes and deletes this general channel.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, or a denial that names the missing privileges.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />; announces <see cref="ChannelClosed" />.</remarks>
-	public async Task<Result<ChannelOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<ChannelOutcome>> DeleteAsync()
 	{
 		if (Require(UserPrivileges.Moderator) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
-		return await Channel.DeleteAsync(cancellationToken);
+		return await Channel.DeleteAsync();
 	}
 }

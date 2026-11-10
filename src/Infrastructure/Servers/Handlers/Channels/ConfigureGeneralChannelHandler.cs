@@ -15,8 +15,7 @@ internal sealed class ConfigureGeneralChannelHandler(Server server)
 		var (found, channel) = server.ScopeTo(request.Actor).Channels.Find(request.Name);
 		if (channel is null) return new GeneralChannelAnswer(found, null);
 
-		var result = await channel.ScopeTo(request.Actor).General!.Value.ConfigureAsync(request.Change,
-			cancellationToken);
+		var result = await channel.ScopeTo(request.Actor).General!.Value.ConfigureAsync(request.Change);
 		return new GeneralChannelAnswer(result, channel);
 	}
 }

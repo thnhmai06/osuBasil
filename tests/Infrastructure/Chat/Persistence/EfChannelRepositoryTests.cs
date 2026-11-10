@@ -61,7 +61,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 		{
 			Name = "#news",
 			Value = new GeneralChannelData { Topic = "The news." }
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var channels = (await Channels.ListAsync(TestContext.Current.CancellationToken)).ToList();
 
@@ -75,7 +75,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 		{
 			Name = "#news",
 			Value = new GeneralChannelData { Topic = "The news." }
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select name, topic, auto_join, visible from channels where name = @name",
@@ -95,7 +95,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 		{
 			Name = "#osu",
 			Value = new GeneralChannelData { Topic = "A new topic." }
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var channels = (await Channels.ListAsync(TestContext.Current.CancellationToken)).ToList();
 
@@ -109,7 +109,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 		{
 			Name = "#osu",
 			Value = new GeneralChannelData { Topic = "A new topic." }
-		}, TestContext.Current.CancellationToken);
+		});
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select topic from channels where name = @name",
 			new Dictionary<string, object?> { ["@name"] = "#osu" }, TestContext.Current.CancellationToken);
@@ -125,9 +125,9 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 			Name = "#news",
 			Value = new GeneralChannelData { Topic = "The news." }
 		};
-		await Channels.CreateOrUpdateAsync(channel, TestContext.Current.CancellationToken);
+		await Channels.CreateOrUpdateAsync(channel);
 
-		await Channels.DeleteAsync(channel, TestContext.Current.CancellationToken);
+		await Channels.DeleteAsync(channel);
 
 		Assert.DoesNotContain(await Channels.ListAsync(TestContext.Current.CancellationToken),
 			candidate => candidate.Name == "#news");
@@ -141,9 +141,9 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 			Name = "#news",
 			Value = new GeneralChannelData { Topic = "The news." }
 		};
-		await Channels.CreateOrUpdateAsync(channel, TestContext.Current.CancellationToken);
+		await Channels.CreateOrUpdateAsync(channel);
 
-		await Channels.DeleteAsync(channel, TestContext.Current.CancellationToken);
+		await Channels.DeleteAsync(channel);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select name from channels where name = @name",
 			new Dictionary<string, object?> { ["@name"] = "#news" }, TestContext.Current.CancellationToken);
@@ -160,7 +160,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 		};
 
 		await Assert.ThrowsAnyAsync<Exception>(() =>
-			Channels.CreateOrUpdateAsync(refused, TestContext.Current.CancellationToken));
+			Channels.CreateOrUpdateAsync(refused));
 
 		var channels = await Channels.ListAsync(TestContext.Current.CancellationToken);
 		Assert.Equal("General discussion.", channels.Single(channel => channel.Name == "#osu").Value.Topic);
@@ -171,8 +171,8 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	{
 		var changes = new[]
 		{
-			Channels.CreateOrUpdateAsync(Osu("First topic."), TestContext.Current.CancellationToken),
-			Channels.CreateOrUpdateAsync(Osu("Second topic."), TestContext.Current.CancellationToken)
+			Channels.CreateOrUpdateAsync(Osu("First topic.")),
+			Channels.CreateOrUpdateAsync(Osu("Second topic."))
 		};
 		await Task.WhenAll(changes);
 

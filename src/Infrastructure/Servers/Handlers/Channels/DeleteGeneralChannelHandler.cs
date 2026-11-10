@@ -15,7 +15,7 @@ internal sealed class DeleteGeneralChannelHandler(Server server)
 		var (found, channel) = server.ScopeTo(request.Actor).Channels.Find(request.Name);
 		if (channel is null) return new GeneralChannelAnswer(found, null);
 
-		var result = await channel.ScopeTo(request.Actor).General!.Value.DeleteAsync(cancellationToken);
+		var result = await channel.ScopeTo(request.Actor).General!.Value.DeleteAsync();
 		return new GeneralChannelAnswer(result, channel);
 	}
 }

@@ -14,11 +14,9 @@ public interface IChannelRepository
 
 	/// <summary>Stores a general channel, adding it or replacing the stored channel with the same name.</summary>
 	/// <param name="channel">The channel to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(GeneralChannelRecord channel);
 
 	/// <summary>Deletes a general channel; deleting a missing one does nothing.</summary>
 	/// <param name="channel">The channel to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default);
+	Task DeleteAsync(GeneralChannelRecord channel);
 }

@@ -18,7 +18,7 @@ public sealed partial class Server
 
 		try
 		{
-			await Context.Chat.Channels.CreateOrUpdateAsync(record, cancellationToken);
+			await Context.Chat.Channels.CreateOrUpdateAsync(record);
 		}
 		catch
 		{

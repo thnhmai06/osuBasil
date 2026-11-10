@@ -50,7 +50,7 @@ public sealed class ScopedServerChannelsTests
 	public async Task CreateAsync_WhenStoringTheChannelFails_LeavesNoOpenChannelAndRethrows()
 	{
 		var repository = Substitute.For<IChannelRepository>();
-		repository.CreateOrUpdateAsync(Arg.Any<GeneralChannelRecord>(), Arg.Any<CancellationToken>())
+		repository.CreateOrUpdateAsync(Arg.Any<GeneralChannelRecord>())
 			.Returns(Task.FromException(new IOException("disk full")));
 		using var app = new TestApplication(services => services.AddSingleton(repository));
 		var manager = await RoomFixture.PlayerAsync(app, "Boss",
