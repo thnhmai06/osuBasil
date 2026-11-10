@@ -8,10 +8,9 @@ public sealed partial class Server
 	/// <summary>Creates or replaces a FAQ entry.</summary>
 	/// <param name="entry">The entry name; <c>:</c> separates folders.</param>
 	/// <param name="text">The text of the entry.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
-	internal async Task<ServerOutcome> SaveFaqAsync(string entry, string text, CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> SaveFaqAsync(string entry, string text)
 	{
 		await using var writer = await Context.Faqs.CreateOrUpdateAsync(entry);
 		await writer.WriteAsync(text);
@@ -21,10 +20,9 @@ public sealed partial class Server
 
 	/// <summary>Deletes a FAQ entry.</summary>
 	/// <param name="entry">The entry name.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok; deleting an entry that does not exist is ok.</returns>
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
-	internal async Task<ServerOutcome> DeleteFaqAsync(string entry, CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> DeleteFaqAsync(string entry)
 	{
 		await Context.Faqs.DeleteAsync(entry);
 		return ServerOutcome.Ok;
@@ -36,12 +34,11 @@ public sealed partial class Server
 	/// <param name="url">The address the banner links to.</param>
 	/// <param name="startsAt">When it starts showing, or <see langword="null" /> for now.</param>
 	/// <param name="endsAt">When it stops showing, or <see langword="null" /> for never.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok and the banner.</returns>
 	/// <remarks>When storing the banner fails, the stored image is deleted again and the failure is rethrown.</remarks>
 	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
 	internal async Task<(ServerOutcome Outcome, MenuBanner Banner)> AddBannerAsync(string name, Stream image, Uri url,
-		DateTimeOffset? startsAt, DateTimeOffset? endsAt, CancellationToken cancellationToken)
+		DateTimeOffset? startsAt, DateTimeOffset? endsAt)
 	{
 		var banner = new MenuBanner
 		{
@@ -66,9 +63,8 @@ public sealed partial class Server
 
 	/// <summary>Deletes a main-menu banner and its image.</summary>
 	/// <param name="banner">The banner.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<ServerOutcome> DeleteBannerAsync(MenuBanner banner, CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> DeleteBannerAsync(MenuBanner banner)
 	{
 		await Context.Banners.DeleteAsync(banner);
 		await Context.BannerImages.DeleteAsync(banner.Image);
@@ -78,20 +74,17 @@ public sealed partial class Server
 	/// <summary>Adds a seasonal background.</summary>
 	/// <param name="name">The file name of the image.</param>
 	/// <param name="image">The image.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok and the reference of the image.</returns>
 	/// <exception cref="ArgumentException">The name is not valid.</exception>
-	internal async Task<(ServerOutcome Outcome, ContentReference Image)> AddSeasonalAsync(string name, Stream image,
-		CancellationToken cancellationToken)
+	internal async Task<(ServerOutcome Outcome, ContentReference Image)> AddSeasonalAsync(string name, Stream image)
 	{
 		return (ServerOutcome.Ok, await Context.Seasonals.SaveAsync(name, image));
 	}
 
 	/// <summary>Deletes a seasonal background.</summary>
 	/// <param name="image">The reference of the image.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<ServerOutcome> DeleteSeasonalAsync(ContentReference image, CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> DeleteSeasonalAsync(ContentReference image)
 	{
 		await Context.Seasonals.DeleteAsync(image);
 		return ServerOutcome.Ok;
@@ -101,13 +94,11 @@ public sealed partial class Server
 	/// <param name="name">The file name of the image, or <see langword="null" /> to keep the image.</param>
 	/// <param name="image">The image, or <see langword="null" /> to keep the image.</param>
 	/// <param name="url">The address the icon links to, or <see langword="null" /> for none.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
 	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
-	internal async Task<ServerOutcome> SetIconAsync(string? name, Stream? image, Uri? url,
-		CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> SetIconAsync(string? name, Stream? image, Uri? url)
 	{
-		var settings = await Context.Settings.GetAsync(cancellationToken);
+		var settings = await Context.Settings.GetAsync();
 		var reference = name is not null && image is not null
 			? await Context.Icon.SaveAsync(name, image)
 			: settings.MenuIcon.Image;
@@ -117,12 +108,11 @@ public sealed partial class Server
 	}
 
 	/// <summary>Removes the main-menu icon.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok.</returns>
-	internal async Task<ServerOutcome> ClearIconAsync(CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> ClearIconAsync()
 	{
 		await Context.Icon.DeleteAsync();
-		var settings = await Context.Settings.GetAsync(cancellationToken);
+		var settings = await Context.Settings.GetAsync();
 		await Context.Settings.CreateOrUpdateAsync(settings with { MenuIcon = new ServerSettings.MenuIconSettings() });
 		return ServerOutcome.Ok;
 	}

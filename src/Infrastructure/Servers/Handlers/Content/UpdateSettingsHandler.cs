@@ -11,6 +11,6 @@ internal sealed class UpdateSettingsHandler(Server server) : IRequestHandler<Upd
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(UpdateSettings request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Settings.UpdateAsync(request.Settings, ct);
+		return await server.ScopeTo(request.Actor).Settings.UpdateAsync(request.Settings);
 	}
 }

@@ -29,23 +29,21 @@ public readonly struct ScopedServerSettings
 
 	/// <summary>Replaces the settings; the change applies at once and survives a restart.</summary>
 	/// <param name="settings">The new settings.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of storing the settings.</returns>
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Developer" />. Changing the privileges that new accounts
 	///     receive also requires every privilege of the new set to be in effect for the caller, as granting does.
 	/// </remarks>
-	public async Task<Result<ServerOutcome>> UpdateAsync(ServerSettings settings,
-		CancellationToken cancellationToken = default)
+	public async Task<Result<ServerOutcome>> UpdateAsync(ServerSettings settings)
 	{
 		if (_scoped.Needs(UserPrivileges.Developer) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		var current = await _scoped.Server.GetSettingsAsync(cancellationToken);
+		var current = await _scoped.Server.GetSettingsAsync();
 		if (settings.Accounts.DefaultPrivileges != current.Accounts.DefaultPrivileges &&
 		    _scoped.Needs(settings.Accounts.DefaultPrivileges) is { } ungrantable)
 			return Result<ServerOutcome>.Denied(ungrantable);
 
-		return await _scoped.Server.UpdateSettingsAsync(settings, cancellationToken);
+		return await _scoped.Server.UpdateSettingsAsync(settings);
 	}
 }

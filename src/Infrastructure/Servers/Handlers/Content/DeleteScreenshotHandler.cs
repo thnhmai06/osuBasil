@@ -11,6 +11,6 @@ internal sealed class DeleteScreenshotHandler(Server server) : IRequestHandler<D
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(DeleteScreenshot request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Screenshots.DeleteAsync(request.Screenshot, ct);
+		return await server.ScopeTo(request.Actor).Screenshots.DeleteAsync(request.Screenshot);
 	}
 }

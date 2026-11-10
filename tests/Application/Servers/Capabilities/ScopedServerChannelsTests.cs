@@ -22,8 +22,7 @@ public sealed class ScopedServerChannelsTests
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Plain");
 
-		var result = await app.Server.ScopeTo(player).Channels.CreateAsync(Record("#denied"),
-			TestContext.Current.CancellationToken);
+		var result = await app.Server.ScopeTo(player).Channels.CreateAsync(Record("#denied"));
 
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.Null(app.Channels.Find("#denied"));
@@ -37,9 +36,9 @@ public sealed class ScopedServerChannelsTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
 		var first = await app.Server.ScopeTo(manager).Channels
-			.CreateAsync(Record("#fresh"), TestContext.Current.CancellationToken);
+			.CreateAsync(Record("#fresh"));
 		var second = await app.Server.ScopeTo(manager).Channels
-			.CreateAsync(Record("#FRESH"), TestContext.Current.CancellationToken);
+			.CreateAsync(Record("#FRESH"));
 
 		Assert.Equal(ServerOutcome.Ok, first.Outcome);
 		Assert.Equal(ServerOutcome.NameTaken, second.Outcome);
@@ -57,7 +56,7 @@ public sealed class ScopedServerChannelsTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
 		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Channels
-			.CreateAsync(Record("#broken"), TestContext.Current.CancellationToken));
+			.CreateAsync(Record("#broken")));
 
 		Assert.Null(app.Channels.Find("#broken"));
 	}

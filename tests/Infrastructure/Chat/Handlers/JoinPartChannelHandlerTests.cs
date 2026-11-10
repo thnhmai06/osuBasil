@@ -20,8 +20,7 @@ public sealed class JoinPartChannelHandlerTests
 		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPrivilegesExtensions.All);
 		var actor = await app.LoginAsync(admin);
 		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(
-			new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() },
-			TestContext.Current.CancellationToken);
+			new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() });
 		Assert.True(created.IsOk);
 		return actor;
 	}

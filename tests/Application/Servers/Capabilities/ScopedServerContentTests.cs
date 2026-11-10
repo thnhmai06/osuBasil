@@ -29,7 +29,7 @@ public sealed class ScopedServerContentTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Owner);
 
 		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Content.AddBannerAsync("a.png",
-			new MemoryStream(), new Uri("https://example.org"), null, null, TestContext.Current.CancellationToken));
+			new MemoryStream(), new Uri("https://example.org"), null, null));
 
 		await images.Received(1).DeleteAsync(image);
 	}

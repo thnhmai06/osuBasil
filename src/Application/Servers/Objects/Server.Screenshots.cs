@@ -19,16 +19,16 @@ public sealed partial class Server
 		await using var upload = await Context.Spool.SpoolAsync(content, limits.ScreenshotMaxSize, cancellationToken);
 		if (upload.TooLarge) return (null, ServerOutcome.TooLarge);
 
-		var info = await Context.Inspector.InspectAsync(upload.Content, cancellationToken);
+		var info = await Context.Inspector.InspectAsync(upload.Content);
 		if (info is null || info.Width < 1 || info.Height < 1)
 		{
-			await upload.QuarantineAsync(cancellationToken);
+			await upload.QuarantineAsync();
 			return (null, ServerOutcome.InvalidImage);
 		}
 
 		if (info.Width > limits.ScreenshotMaxSide || info.Height > limits.ScreenshotMaxSide)
 		{
-			await upload.QuarantineAsync(cancellationToken);
+			await upload.QuarantineAsync();
 			return (null, ServerOutcome.DimensionsTooLarge);
 		}
 
@@ -47,10 +47,8 @@ public sealed partial class Server
 
 	/// <summary>Deletes a stored screenshot.</summary>
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, even when none is stored under the reference.</returns>
-	internal async Task<ServerOutcome> DeleteScreenshotAsync(ContentReference screenshot,
-		CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> DeleteScreenshotAsync(ContentReference screenshot)
 	{
 		await Context.Screenshots.DeleteAsync(screenshot);
 		return ServerOutcome.Ok;

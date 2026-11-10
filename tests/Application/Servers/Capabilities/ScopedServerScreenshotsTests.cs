@@ -355,7 +355,7 @@ public sealed class ScopedServerScreenshotsTests
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
-		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
+		var result = await screenshots.DeleteAsync(Stored);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 		await f.Storage.Received(1).DeleteAsync(Stored);
@@ -367,7 +367,7 @@ public sealed class ScopedServerScreenshotsTests
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
 
-		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
+		var result = await screenshots.DeleteAsync(Stored);
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
@@ -381,7 +381,7 @@ public sealed class ScopedServerScreenshotsTests
 		var screenshots = await f.ScreenshotsOfAsync(
 			(UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator) | UserPrivileges.Player);
 
-		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
+		var result = await screenshots.DeleteAsync(Stored);
 
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 	}

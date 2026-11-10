@@ -7,11 +7,9 @@ public sealed partial class Server
 {
 	/// <summary>Creates and opens a general channel.</summary>
 	/// <param name="record">The channel to create.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>NameTaken when a channel with that name is already open; otherwise Ok.</returns>
 	/// <remarks>When storing the channel fails, the channel is closed again and the failure is rethrown.</remarks>
-	internal async Task<ServerOutcome> CreateChannelAsync(GeneralChannelRecord record,
-		CancellationToken cancellationToken)
+	internal async Task<ServerOutcome> CreateChannelAsync(GeneralChannelRecord record)
 	{
 		var channel = OpenChannel(record);
 		if (channel is null) return ServerOutcome.NameTaken;

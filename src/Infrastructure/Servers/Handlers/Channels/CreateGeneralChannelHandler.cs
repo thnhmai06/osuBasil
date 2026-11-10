@@ -13,6 +13,6 @@ internal sealed class CreateGeneralChannelHandler(Server server)
 	public ValueTask<Result<ServerOutcome>> Handle(CreateGeneralChannel request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<ServerOutcome>>(
-			server.ScopeTo(request.Actor).Channels.CreateAsync(request.Record, cancellationToken));
+			server.ScopeTo(request.Actor).Channels.CreateAsync(request.Record));
 	}
 }

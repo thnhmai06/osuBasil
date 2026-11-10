@@ -14,6 +14,6 @@ internal sealed class AddMenuSeasonalHandler(Server server)
 	public async ValueTask<(Result<ServerOutcome> Result, ContentReference? Image)> Handle(AddMenuSeasonal request,
 		CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.AddSeasonalAsync(request.Name, request.Image, ct);
+		return await server.ScopeTo(request.Actor).Content.AddSeasonalAsync(request.Name, request.Image);
 	}
 }

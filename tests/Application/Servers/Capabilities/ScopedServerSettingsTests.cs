@@ -23,8 +23,7 @@ public sealed class ScopedServerSettingsTests
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Plain");
 
-		var result = await app.Server.ScopeTo(player).Settings.UpdateAsync(new ServerSettings(),
-			TestContext.Current.CancellationToken);
+		var result = await app.Server.ScopeTo(player).Settings.UpdateAsync(new ServerSettings());
 
 		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
@@ -37,8 +36,7 @@ public sealed class ScopedServerSettingsTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
-			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner),
-			TestContext.Current.CancellationToken);
+			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner));
 
 		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
@@ -51,8 +49,7 @@ public sealed class ScopedServerSettingsTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Developer | UserPrivileges.Owner);
 
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
-			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner),
-			TestContext.Current.CancellationToken);
+			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner));
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 	}
@@ -65,8 +62,7 @@ public sealed class ScopedServerSettingsTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
-			new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "hello" } },
-			TestContext.Current.CancellationToken);
+			new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "hello" } });
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 	}

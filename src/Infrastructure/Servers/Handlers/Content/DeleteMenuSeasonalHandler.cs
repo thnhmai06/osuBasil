@@ -12,6 +12,6 @@ internal sealed class DeleteMenuSeasonalHandler(Server server)
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(DeleteMenuSeasonal request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.DeleteSeasonalAsync(request.Image, ct);
+		return await server.ScopeTo(request.Actor).Content.DeleteSeasonalAsync(request.Image);
 	}
 }

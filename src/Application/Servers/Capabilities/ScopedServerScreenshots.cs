@@ -50,15 +50,13 @@ public readonly struct ScopedServerScreenshots
 
 	/// <summary>Deletes a stored screenshot.</summary>
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok when the caller may delete screenshots, even when none is stored under the reference.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />.</remarks>
-	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference screenshot,
-		CancellationToken cancellationToken = default)
+	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference screenshot)
 	{
 		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		return await _scoped.Server.DeleteScreenshotAsync(screenshot, cancellationToken);
+		return await _scoped.Server.DeleteScreenshotAsync(screenshot);
 	}
 }

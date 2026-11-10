@@ -11,6 +11,6 @@ internal sealed class ClearMenuIconHandler(Server server) : IRequestHandler<Clea
 	/// <inheritdoc />
 	public async ValueTask<Result<ServerOutcome>> Handle(ClearMenuIcon request, CancellationToken ct)
 	{
-		return await server.ScopeTo(request.Actor).Content.ClearIconAsync(ct);
+		return await server.ScopeTo(request.Actor).Content.ClearIconAsync();
 	}
 }

@@ -15,6 +15,6 @@ internal sealed class AddMenuBannerHandler(Server server)
 		CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Content.AddBannerAsync(request.Name, request.Image, request.Url,
-			request.StartsAt, request.EndsAt, ct);
+			request.StartsAt, request.EndsAt);
 	}
 }

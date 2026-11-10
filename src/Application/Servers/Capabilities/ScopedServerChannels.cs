@@ -20,16 +20,14 @@ public readonly struct ScopedServerChannels
 
 	/// <summary>Creates and opens a general channel.</summary>
 	/// <param name="record">The channel to create.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome; NameTaken when a channel with that name is already open.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />.</remarks>
-	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record,
-		CancellationToken cancellationToken = default)
+	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record)
 	{
 		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
-		return await _scoped.Server.CreateChannelAsync(record, cancellationToken);
+		return await _scoped.Server.CreateChannelAsync(record);
 	}
 
 	/// <summary>Finds the general channel to manage under a name.</summary>
