@@ -14,7 +14,7 @@ public sealed class GeneralChannelRegistryTests
 		bool visible = true)
 	{
 		var admin = await app.LoginAsync(await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password",
-			UserPermissionsGroups.All));
+			UserPrivilegesExtensions.All));
 		var record = new GeneralChannelRecord
 		{
 			Name = name, Value = new GeneralChannelData { ReadPrivileges = read, Visible = visible }
@@ -44,7 +44,7 @@ public sealed class GeneralChannelRegistryTests
 		await OpenAsync(app, "#open2");
 		await OpenAsync(app, "#hidden2", visible: false);
 		var manager = await RoomFixture.PlayerAsync(app, "Manager",
-			UserPermissionsGroups.Default | UserPermissions.ChatManageChannels);
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
 		var names = app.Channels.VisibleTo(manager).Select(channel => channel.Name).Order().ToList();
 
@@ -52,12 +52,12 @@ public sealed class GeneralChannelRegistryTests
 	}
 
 	[Fact]
-	public async Task VisibleTo_ManagerStillCannotSeeAChannelItMayNotRead()
+	public async Task VisibleTo_ModeratorCannotSeeAChannelThatNeedsTheOwnerPrivilege()
 	{
 		using var app = new TestApplication();
-		await OpenAsync(app, "#staff2", UserPrivileges.Moderator, false);
+		await OpenAsync(app, "#staff2", UserPrivileges.Owner, false);
 		var manager = await RoomFixture.PlayerAsync(app, "Manager2",
-			UserPermissionsGroups.Default | UserPermissions.ChatManageChannels);
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
 		Assert.Empty(app.Channels.VisibleTo(manager));
 	}

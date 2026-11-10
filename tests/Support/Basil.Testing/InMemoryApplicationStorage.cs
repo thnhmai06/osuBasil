@@ -48,7 +48,8 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		if (_users.TryGetValue(user.Id, out var stored) && !ReferenceEquals(stored, user))
 		{
 			stored.Value.Country = user.Value.Country;
-			stored.Value.Permissions = user.Value.Permissions;
+			stored.Value.Privileges = user.Value.Privileges;
+			stored.Value.SilencedUntil = user.Value.SilencedUntil;
 			if (user.Value.DeletedAt is not null) stored.Value.DeletedAt = user.Value.DeletedAt;
 		}
 		else
@@ -132,84 +133,6 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 		cancellationToken.ThrowIfCancellationRequested();
 		_passwords.Remove(user.Id);
 		return Task.CompletedTask;
-	}
-}
-
-internal sealed class InMemoryRestrictionRepository(InMemoryModerationLogRepository moderationLog)
-	: IRestrictionRepository
-{
-	private readonly Dictionary<int, List<UserRestriction>> _restrictions = [];
-	private int _nextId = 1;
-
-	public Task<UserRestriction> CreateAsync(RestrictionData data, ModerationData? log = null,
-		CancellationToken cancellationToken = default)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		if (log is not null) moderationLog.AppendAsync(log, cancellationToken).GetAwaiter().GetResult();
-		var restriction = new UserRestriction { Id = _nextId++, Value = data };
-		GetFor(data.User).Add(restriction);
-		return Task.FromResult(restriction);
-	}
-
-	public Task UpdateAsync(UserRestriction restriction, ModerationData? log = null,
-		CancellationToken cancellationToken = default)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		if (log is not null) moderationLog.AppendAsync(log, cancellationToken).GetAwaiter().GetResult();
-		return Task.CompletedTask;
-	}
-
-	public Task DeleteAsync(UserRestriction restriction, ModerationData? log = null,
-		CancellationToken cancellationToken = default)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		if (log is not null) moderationLog.AppendAsync(log, cancellationToken).GetAwaiter().GetResult();
-		GetFor(restriction.Value.User).RemoveAll(item => item.Id == restriction.Id);
-		return Task.CompletedTask;
-	}
-
-	public ValueTask<UserRestriction?> GetAsync(int id, CancellationToken cancellationToken = default)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		return ValueTask.FromResult(_restrictions.Values.SelectMany(items => items)
-			.FirstOrDefault(restriction => restriction.Id == id));
-	}
-
-	public Task<IReadOnlyList<UserRestriction>> ListAsync(UserRecord user,
-		CancellationToken cancellationToken = default)
-	{
-		cancellationToken.ThrowIfCancellationRequested();
-		return Task.FromResult<IReadOnlyList<UserRestriction>>(GetFor(user));
-	}
-
-	public UserRestriction Seed(UserRecord user, UserPermissions permissions, DateTimeOffset startsAt,
-		DateTimeOffset? endsAt = null)
-	{
-		var restriction = new UserRestriction
-		{
-			Id = _nextId++,
-			Value = new RestrictionData
-			{
-				User = user,
-				Permissions = permissions,
-				StartsAt = startsAt,
-				EndsAt = endsAt
-			}
-		};
-		GetFor(user).Add(restriction);
-		return restriction;
-	}
-
-	private List<UserRestriction> GetFor(UserRecord user)
-	{
-		return _restrictions.GetValueOrDefault(user.Id) ?? AddList(user.Id);
-	}
-
-	private List<UserRestriction> AddList(int userId)
-	{
-		var list = new List<UserRestriction>();
-		_restrictions.Add(userId, list);
-		return list;
 	}
 }
 

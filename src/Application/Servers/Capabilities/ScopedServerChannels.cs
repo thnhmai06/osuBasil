@@ -22,11 +22,11 @@ public readonly struct ScopedServerChannels
 	/// <param name="record">The channel to create.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome; NameTaken when a channel with that name is already open.</returns>
-	/// <remarks>Requires <see cref="UserPermissions.ChatManageChannels" />.</remarks>
+	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />.</remarks>
 	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing)
+		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
 		return await _scoped.Server.CreateChannelAsync(record, cancellationToken);
@@ -35,15 +35,15 @@ public readonly struct ScopedServerChannels
 	/// <summary>Finds the general channel to manage under a name.</summary>
 	/// <param name="name">The channel name.</param>
 	/// <returns>
-	///     The open channel, NotFound when no open channel has that name, or a denial that names the missing permissions.
+	///     The open channel, NotFound when no open channel has that name, or a denial that names the missing privileges.
 	/// </returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatManageChannels" />. The name is looked up only after the right is met,
+	///     Requires <see cref="UserPrivileges.Moderator" />. The name is looked up only after the right is met,
 	///     so a connection without it is refused the same way whether or not the channel exists.
 	/// </remarks>
 	public (Result<ChannelOutcome> Result, GeneralChannel? Channel) Find(string name)
 	{
-		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing)
+		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return (Result<ChannelOutcome>.Denied(missing), null);
 
 		return _scoped.Server.FindGeneralChannel(name);

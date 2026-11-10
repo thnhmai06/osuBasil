@@ -15,7 +15,7 @@ namespace Basil.Application.Scores.Tests.Capabilities;
 
 /// <summary>
 ///     Verifies who may submit a score on an osu! client: the client itself, holding
-///     <see cref="UserPermissions.ScoreSubmit" />.
+///     <see cref="UserPrivileges.Player" />.
 /// </summary>
 public sealed class ScopedScoreSubmitterTests
 {
@@ -33,24 +33,6 @@ public sealed class ScopedScoreSubmitterTests
 	{
 		return new SubmittedClient(Hash.ToString(), TestApplication.CreateClient().Fingerprint, "uninstall", "disk",
 			"20260101", Hash);
-	}
-
-	[Fact]
-	public async Task SubmitAsync_WithScoreSubmitSuspended_IsDeniedWithThatPermission()
-	{
-		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("NoScores", "password");
-		app.AddRestriction(user, UserPermissions.ScoreSubmit);
-		var client = Assert.IsType<StableConnection>(await app.LoginAsync(user, SessionType.Stable));
-
-		var (result, rejection) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
-			.SubmitAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null,
-				TestContext.Current.CancellationToken);
-
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ScoreSubmit, result.Missing);
-		Assert.Null(rejection);
-		Assert.Empty(app.ScoreEvents.Events);
 	}
 
 	[Fact]

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Basil.ArchitectureTests;
 
 /// <summary>
-///     Pins the owner rule that a <c>Scoped*</c> capability only checks permissions, calls the owning object and
+///     Pins the owner rule that a <c>Scoped*</c> capability only checks privileges, calls the owning object and
 ///     wraps its answer: it declares no nested type and its methods stay short.
 /// </summary>
 public sealed partial class ScopedThinnessTests

@@ -53,10 +53,10 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record.
   A query record searched with text (`UserQuery`, `BeatmapQuery`, `MatchQuery`) is `IParsable<T>`: every criterion, a
   state included, is written in the search text (`deleted=1`,
-  `hidden=0`, `ended=0`, `private=1`, enum masks as numbers such as `permission=4`), and a state is a `bool?` (`null` for both,
+  `hidden=0`, `ended=0`, `private=1`, enum masks as numbers such as `privilege=4`), and a state is a `bool?` (`null` for both,
   written `*`) whose default, kept when the text has no token for it, is `null` (both). Every caller narrows a query to the asker
   before using it, `UserQuery.Parse(text).LimitTo(effective)`: `LimitTo` sets each state the asker may not see to
-  what a user without that permission sees (`Deleted = false`, `Hidden = false`); `MatchQuery.LimitTo(effective, viewer)` sets
+  what a user without that privilege sees (`Deleted = false`, `Hidden = false`); `MatchQuery.LimitTo(effective, viewer)` sets
   `VisibleTo` to the viewer when they lack `RoomViewPrivate`, so private matches are listed only when the viewer took part in
   them or manages them (`private=1` then returns just those). A caller that serves match-owned data (the match, its rounds, events, report or round-score relation) to a
   user must check `ScopedLobby.CanViewAsync` first; the match repositories are plain storage and do not gate. A query used
@@ -79,7 +79,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 * **Reads are bounded.** A listing is a query with a limit that returns a page, and the database connection is released
   before the result is sent to a client. A listing does not instantiate live objects and has no mandatory `COUNT`; the
   next page is found by a keyset where possible. A live object that exists in a registry is looked up in the registry, not
-  rebuilt from the row. A listing that returns a whole collection (a user's relationships or restrictions, a match's
+  rebuilt from the row. A listing that returns a whole collection (a user's relationships or sessions, a match's
   events, rounds and round scores, a set's beatmaps, the channels, the banners) reads at most `ListLimits.Ceiling` rows.
 * **A stored row is trusted.** Rows are written only by the server, through the Domain, so a row that fails the Domain
   rules on load is a fault of the database, not a case to work around: the read throws. The exception is configuration an

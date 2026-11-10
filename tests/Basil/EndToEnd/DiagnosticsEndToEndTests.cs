@@ -10,8 +10,8 @@ namespace Basil.Tests.EndToEnd;
 [Collection("Host end to end")]
 public sealed class DiagnosticsEndToEndTests(HostEndToEndFixture fixture)
 {
-	private static readonly UserPermissions Staff =
-		UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics;
+	private static readonly UserPrivileges Staff =
+		UserPrivilegesExtensions.Default | UserPrivileges.Developer;
 
 	[Fact]
 	public async Task TheDiagnosticsStream_AndTheDashboard_ReportTheSameCounts()

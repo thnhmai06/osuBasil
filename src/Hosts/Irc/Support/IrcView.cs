@@ -37,18 +37,18 @@ internal static class IrcView
 	/// <summary>Gets the status symbols of a user in a channel.</summary>
 	/// <param name="channel">The channel.</param>
 	/// <param name="member">One of the user's connections in the channel.</param>
-	/// <param name="now">The current time, for the effective permissions.</param>
+	/// <param name="now">The current time, for the effective privileges.</param>
 	/// <param name="all">Whether to list every symbol (multi-prefix) instead of the highest.</param>
 	/// <returns>The symbols, <c>@</c> before <c>+</c>; empty for a read-only member.</returns>
 	public static string Prefix(Channel channel, Connection member, DateTimeOffset now, bool all)
 	{
-		var permissions = member.EffectivePermissions(now);
+		var privileges = member.EffectivePrivileges(now);
 		var (authority, voice) = channel switch
 		{
 			RoomChannel room => (room.Room.Authority.IsManagedBy(member.Record),
-				room.Room.Involves(member, permissions) || permissions.Allows(UserPermissions.ChatManagePostAnyRoom)),
-			GeneralChannel general => (permissions.Allows(UserPermissions.ChatManageChannels),
-				permissions.Privileges.Allows(general.Record.Value.WritePrivileges)),
+				room.Room.Involves(member, privileges) || privileges.Allows(UserPrivileges.Tournament)),
+			GeneralChannel general => (privileges.Allows(UserPrivileges.Moderator),
+				privileges.Allows(general.Record.Value.WritePrivileges)),
 			_ => (false, false)
 		};
 		var symbols = (authority ? "@" : string.Empty) + (voice ? "+" : string.Empty);

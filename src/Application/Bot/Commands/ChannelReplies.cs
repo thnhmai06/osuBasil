@@ -39,9 +39,9 @@ internal static class ChannelReplies
 	public static readonly Reply InvalidArguments = new("channel.invalidArguments",
 		"That is not a valid channel name or option. Type !channel for the usage.");
 
-	/// <summary>Reply when the typist lacks permissions the operation needs; <c>{permissions}</c> lists them.</summary>
-	public static readonly Reply MissingPermissions = new("channel.missingPermissions",
-		"You are missing the permissions needed for that: {permissions}.", "permissions");
+	/// <summary>Reply when the typist lacks privileges the operation needs; <c>{privileges}</c> lists them.</summary>
+	public static readonly Reply MissingPrivileges = new("channel.missingPrivileges",
+		"You are missing the privileges needed for that: {privileges}.", "privileges");
 
 	/// <summary>Reply when the server refuses for a reason without a reply of its own; <c>{outcome}</c> names it.</summary>
 	public static readonly Reply Refused = new("channel.refused", "The server refused that: {outcome}.", "outcome");
@@ -52,7 +52,7 @@ internal static class ChannelReplies
 	/// <returns>The reply and the arguments to fill it with.</returns>
 	public static (Reply Reply, object Arguments) Of(Result<ServerOutcome> result, string name)
 	{
-		if (result.Missing is { } missing) return (MissingPermissions, new { permissions = missing.ToString() });
+		if (result.Missing is { } missing) return (MissingPrivileges, new { privileges = missing.ToString() });
 
 		return result.Outcome switch
 		{
@@ -69,7 +69,7 @@ internal static class ChannelReplies
 	/// <returns>The reply and the arguments to fill it with.</returns>
 	public static (Reply Reply, object Arguments) Of(Result<ChannelOutcome> result, string name, Reply success)
 	{
-		if (result.Missing is { } missing) return (MissingPermissions, new { permissions = missing.ToString() });
+		if (result.Missing is { } missing) return (MissingPrivileges, new { privileges = missing.ToString() });
 
 		return result.Outcome switch
 		{

@@ -22,14 +22,14 @@ public readonly struct ScopedServerScreenshots
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ScreenshotUpload" />. The image may be at most the screenshot size
+	///     Requires <see cref="UserPrivileges.Player" />. The image may be at most the screenshot size
 	///     limit of the server settings in bytes and must be a PNG or JPEG picture of at most the screenshot side
 	///     limit in pixels per side, told from its content, never from a name.
 	/// </remarks>
 	public async Task<(ContentReference? Screenshot, Result<ServerOutcome> Result)> UploadAsync(Stream content,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ScreenshotUpload) is { } missing)
+		if (_scoped.Needs(UserPrivileges.Player) is { } missing)
 			return (null, Result<ServerOutcome>.Denied(missing));
 
 		return await _scoped.Server.UploadScreenshotAsync(content, cancellationToken);
@@ -38,11 +38,11 @@ public readonly struct ScopedServerScreenshots
 	/// <summary>Lists the stored screenshots.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the references of the screenshots.</returns>
-	/// <remarks>Requires <see cref="UserPermissions.ScreenshotManage" />.</remarks>
+	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />.</remarks>
 	public async Task<(Result<ServerOutcome> Result, IReadOnlyList<ContentReference> Screenshots)> ListAsync(
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ScreenshotManage) is { } missing)
+		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), []);
 
 		return (ServerOutcome.Ok, await _scoped.Server.ListScreenshotsAsync(cancellationToken));
@@ -52,11 +52,11 @@ public readonly struct ScopedServerScreenshots
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok when the caller may delete screenshots, even when none is stored under the reference.</returns>
-	/// <remarks>Requires <see cref="UserPermissions.ScreenshotManage" />.</remarks>
+	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />.</remarks>
 	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference screenshot,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ScreenshotManage) is { } missing)
+		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
 		return await _scoped.Server.DeleteScreenshotAsync(screenshot, cancellationToken);

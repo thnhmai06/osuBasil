@@ -6,7 +6,7 @@ namespace Basil.Application.Users.Tests.Objects;
 
 /// <summary>
 ///     BasilBot's account is a fixed record: nobody, whatever they hold, deletes it, restricts it, grants it
-///     permissions or sets its password.
+///     privileges or sets its password.
 /// </summary>
 public sealed class BasilBotProtectionTests
 {
@@ -16,7 +16,7 @@ public sealed class BasilBotProtectionTests
 	public async Task DeleteAsync_OfBasilBot_IsRefused()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var bot = await app.SeedBotAsync();
 
 		var result = await app.Users.Of(bot).ScopeTo(admin).DeleteAsync(Token);
@@ -26,33 +26,29 @@ public sealed class BasilBotProtectionTests
 	}
 
 	[Fact]
-	public async Task RestrictAndSilence_OfBasilBot_AreRefused()
+	public async Task Silence_OfBasilBot_IsRefused()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var bot = await app.SeedBotAsync();
-		var restrictions = app.Users.Of(bot).ScopeTo(admin).Restrictions;
 
-		var (restricted, restriction) = await restrictions.RestrictAsync(UserPermissions.ChatPost, null,
-			cancellationToken: Token);
-		var (silenced, _) = await restrictions.SilenceAsync(app.Clock.GetUtcNow().AddHours(1),
-			cancellationToken: Token);
+		var silenced = await app.Users.Of(bot).ScopeTo(admin).Silence.ImposeAsync(
+			app.Clock.GetUtcNow().AddHours(1), cancellationToken: Token);
 
-		Assert.Equal(UserOutcome.SystemAccount, restricted.Outcome);
 		Assert.Equal(UserOutcome.SystemAccount, silenced.Outcome);
-		Assert.Null(restriction);
+		Assert.Null(bot.Value.SilencedUntil);
 	}
 
 	[Fact]
-	public async Task SetPermissions_OfBasilBot_IsRefused()
+	public async Task SetPrivileges_OfBasilBot_IsRefused()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var bot = await app.SeedBotAsync();
 
-		var result = await app.Users.Of(bot).ScopeTo(admin).Permissions.SetAsync(UserPermissions.ChatPost, Token);
+		var result = await app.Users.Of(bot).ScopeTo(admin).Privileges.SetAsync(UserPrivileges.Player, Token);
 
 		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
-		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPrivileges.None, bot.Value.Privileges);
 	}
 }

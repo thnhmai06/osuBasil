@@ -6,14 +6,14 @@ it.
 ## What this is
 
 Basil is a lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) backend platform specialized for
-multiplayer. The server provides the core capabilities (accounts and sessions, permissions, rooms, chat, scores,
+multiplayer. The server provides the core capabilities (accounts and sessions, privileges, rooms, chat, scores,
 beatmaps, events); specific features such as tournament tooling and overlays are clients built on top
 of it, each signing in as an ordinary user. The server works the same with or without any of them.
 
 It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, osu-web v1/v2 API compatibility, and other unrelated features are intentionally out of scope. Chat commands, announcements and room countdowns are in scope: they are BasilBot, a feature of the server.
 
-The identity, permissions and restriction rules are in [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md); read
-them before touching users, sessions, permissions, rooms or chat.
+The identity, privileges and silence rules are in [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md); read
+them before touching users, sessions, privileges, rooms or chat.
 
 Before porting or recreating anything from bancho.py, read:
 
@@ -493,7 +493,7 @@ system; no host or gateway knows it exists.
   (`Configurations/Templates/replies.json`, written with the defaults when missing).
 * Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
 * The console is the one entry point that skips rights checks (`OperatorConnection`); a chat command still uses the
-  typist's rights. See [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md).
+  typist's rights. See [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md).
 
 ### Application feature folders
 
@@ -531,7 +531,7 @@ Users/         IUserRepository and friends, UserQuery, login inputs    (Persiste
                UserRegistry                                            (Registry)
                ScopedUser*, ScopedStableConnection                      (Capabilities)
                AccountRules                                            (Infrastructure Logic)
-               ConnectionHandler, RestrictionHandler                   (Infrastructure Handlers)
+               ConnectionHandler                                       (Infrastructure Handlers)
 Chat/          IChannelRepository                                      (Persistence)
                the channel tree, ChannelContext, ChannelOutcome,
                ChannelEvents                                            (Objects)
@@ -603,7 +603,7 @@ not Domain and not host configuration.
 The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 
 * [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, capabilities (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
-* [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md): permissions, privileges, restrictions, hierarchy, sessions, BasilBot. Before touching users, connections, permissions or the bot.
+* [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md): privileges, silence, hierarchy, sessions, BasilBot. Before touching users, connections, privileges or the bot.
 * [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Common`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
@@ -626,20 +626,20 @@ See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) f
 Referee, host, and creator are separate concepts.
 
 Whoever creates a room is its creator, however it was created (in game, or through the API, directly or
-by a client acting for the user); every room has a creator. Creating a room needs `RoomCreate`. The
+by a client acting for the user); every room has a creator. Creating a room needs `Player`. The
 creator is remembered on the match and ranks above referees; it is not added to the referee list. A creator
 who created the room in game is also its first host. When a room is opened through the API or BasilBot, a creator whose
 game client is online and not in any room is seated in the new room as host; a creator already in another
 room stays there and does not become host. Managing a room is for the creator and the referees (and
-`RoomManageAny`, which acts with the creator's authority in every room); being the host does not
-grant management rights. A creator or referee whose permissions are all suspended cannot manage. Every room
-operation with a permission rule runs on `room.ScopeTo(actor)`, which checks authority, not the transport. BasilBot's `!mp` commands call these operations using the typist's connection.
+`Tournament`, which acts with the creator's authority in every room); being the host does not
+grant management rights. A creator or referee who has lost the `Player` privilege cannot manage. Every room
+operation with a privilege rule runs on `room.ScopeTo(actor)`, which checks authority, not the transport. BasilBot's `!mp` commands call these operations using the typist's connection.
 
 Do not treat them as interchangeable.
 
 The creator has permanent match authority. Referee membership and host state have different lifecycles.
 
-See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) before changing match permissions or `!mp` authorization.
+See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) before changing match privileges or `!mp` authorization.
 
 #### Streaming
 
@@ -800,7 +800,7 @@ the owner merges them into the skill later, nobody edits the skill silently.
   and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
   hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
 * **Capabilities and `Result<TOutcome>`** (2026-10-21, revised; see `docs/for-agents/application-design.md`): a `Scoped*`
-  capability is a `readonly struct` valid for one request that snapshots the effective permissions and states each
+  capability is a `readonly struct` valid for one request that snapshots the effective privileges and states each
   requirement through `ScopedRights.Require` (`null` = met); behaviours return a shared `Result<TOutcome>` with
   per-object outcome enums starting at `Ok = 1`.
 * **No `ConfigureAwait(false)`** in a server application (owner decision, 2026-10-26: the project rule stands and the
@@ -830,7 +830,7 @@ the owner merges them into the skill later, nobody edits the skill silently.
   formats the server accepts, so the parsers of the others never see uploaded bytes.
 * **Authorize before you look up.** A command or route that answers "no such X" before it checks the right to manage X
   tells an unauthorized caller which names exist. Check the right first; the refusal must be identical whether or not
-  the target exists (same status, same missing-permission mask).
+  the target exists (same status, same missing-privilege mask).
 * **Tests that share one running host own their identities.** A limit counted per address or per account is shared
   with every earlier test that is still closing sockets; give each limit test addresses or accounts nobody else uses.
 * **Read a reply to its last line, and pace every poll.** A long list is split over several lines, so look at all of
@@ -910,10 +910,9 @@ Before considering a code change complete:
    a repository read, an internal helper that takes, returns or creates a live object or publishes an event (except
    the explicit `IAnticheatReporter` system service), a contract name that reveals its mechanism, or a reference from a module's Infrastructure project to another module,
    or any project reference outside the graph of the modules. Since the identity redesign, also
-   reject: an action without a real `actor`, authority decided by connection kind, a check on granted instead of
-   effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
-   delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
-   to the object that owns it" (God Actor, service-centric procedural design, permission plumbing, exposed mutable
+   reject: an action without a real `actor`, authority decided by connection kind, a right finer than a `UserPrivileges` flag, a privilege
+   derived instead of stored, a privilege that implies another, and a delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
+   to the object that owns it" (God Actor, service-centric procedural design, privilege plumbing, exposed mutable
    state, fake scoping), and a bot message that goes through a rights check or a bot command that runs with the
    bot's rights instead of the typist's.
 8. Review delegated work for what agents tend to leave behind, besides the rules above: `.ConfigureAwait(false)` in

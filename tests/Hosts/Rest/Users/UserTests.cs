@@ -40,7 +40,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	[Fact]
 	public async Task Search_ListsADeletedAccountOnlyForThoseWhoMayViewDeletedAccounts()
 	{
-		var (staff, _) = await fixture.SignInAsync("SearchDelStaff", RestHostFixture.StaffPermissions);
+		var (staff, _) = await fixture.SignInAsync("SearchDelStaff", RestHostFixture.StaffPrivileges);
 		var (plain, _) = await fixture.SignInAsync("SearchDelPlain");
 		var target = await fixture.Host.CreateUserAsync("SearchDelTarget");
 		using (staff)
@@ -101,7 +101,7 @@ public sealed class UserTests(RestHostFixture fixture)
 				new { name = "Stolen" });
 
 			Assert.Equal(403, status);
-			Assert.Equal("permissionDenied", (string)envelope!["errors"]!["code"]!);
+			Assert.Equal("privilegeDenied", (string)envelope!["errors"]!["code"]!);
 			Assert.NotEqual(0UL, (ulong)envelope["errors"]!["missing"]!);
 		}
 	}
@@ -109,7 +109,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	[Fact]
 	public async Task Patch_BasilBotAsStaff_Answers409SystemAccount()
 	{
-		var (client, _) = await fixture.SignInAsync("PatchBotStaff", RestHostFixture.StaffPermissions);
+		var (client, _) = await fixture.SignInAsync("PatchBotStaff", RestHostFixture.StaffPrivileges);
 		using (client)
 		{
 			var (status, envelope) = await client.CallAsync(HttpMethod.Delete, "/v1/users/1");
@@ -122,7 +122,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	[Fact]
 	public async Task Patch_StaffRenamesAnotherUser_Succeeds()
 	{
-		var (client, _) = await fixture.SignInAsync("PatchStaff", RestHostFixture.StaffPermissions);
+		var (client, _) = await fixture.SignInAsync("PatchStaff", RestHostFixture.StaffPrivileges);
 		var target = await fixture.Host.CreateUserAsync("PatchTarget");
 		using (client)
 		{
@@ -263,64 +263,35 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Restriction_AddedByStaff_ShowsInTheUsersRestrictions_ThenLiftedAndDeleted()
+	public async Task Silence_ImposedByStaff_ShowsOnTheUser_ThenLifted()
 	{
-		var (staff, _) = await fixture.SignInAsync("RestrictStaff", RestHostFixture.StaffPermissions);
-		var target = await fixture.Host.CreateUserAsync("RestrictTarget");
+		var (staff, _) = await fixture.SignInAsync("SilenceStaff", RestHostFixture.StaffPrivileges);
+		var target = await fixture.Host.CreateUserAsync("SilenceTarget");
 		using (staff)
 		{
-			var (created, envelope) = await staff.CallAsync(HttpMethod.Post, $"/v1/users/{target.Id}/restrictions",
-				new { permissions = (ulong)UserPermissions.ChatPost, endsAt = (DateTimeOffset?)null, reason = "test" });
-			var rid = (int)envelope!["data"]!["id"]!;
-			var (history, list) = await staff.CallAsync(HttpMethod.Get, $"/v1/users/{target.Id}/restrictions");
-			var (lifted, _) = await staff.CallAsync(HttpMethod.Post, $"/v1/users/{target.Id}/restrictions/{rid}/lift");
-			var (deleted, _) = await staff.CallAsync(HttpMethod.Delete, $"/v1/users/{target.Id}/restrictions/{rid}");
-			var (gone, empty) = await staff.CallAsync(HttpMethod.Get, $"/v1/users/{target.Id}/restrictions");
+			var endsAt = fixture.Host.Time.GetUtcNow().AddHours(1);
+			var (silenced, _) = await staff.CallAsync(HttpMethod.Put, $"/v1/users/{target.Id}/silence",
+				new { endsAt, reason = "test" });
+			var (_, whileSilenced) = await staff.CallAsync(HttpMethod.Get, $"/v1/users/{target.Id}");
+			var (lifted, _) = await staff.CallAsync(HttpMethod.Delete, $"/v1/users/{target.Id}/silence");
+			var (_, afterwards) = await staff.CallAsync(HttpMethod.Get, $"/v1/users/{target.Id}");
 
-			Assert.Equal(201, created);
-			Assert.Equal(200, history);
-			Assert.Single(list!["data"]!.AsArray());
+			Assert.Equal(200, silenced);
+			Assert.Equal(endsAt, (DateTimeOffset)whileSilenced!["data"]!["silencedUntil"]!);
 			Assert.Equal(200, lifted);
-			Assert.Equal(200, deleted);
-			Assert.Equal(200, gone);
-			Assert.Empty(empty!["data"]!.AsArray());
+			Assert.Null(afterwards!["data"]!["silencedUntil"]);
 		}
 	}
 
 	[Fact]
-	public async Task Restriction_OfAnotherUserThroughThisUsersRoute_Answers404_AndIsLeftAlone()
+	public async Task Silence_ByANonModerator_Answers403()
 	{
-		var (staff, _) = await fixture.SignInAsync("IdorStaff", RestHostFixture.StaffPermissions);
-		var a = await fixture.Host.CreateUserAsync("IdorA");
-		var b = await fixture.Host.CreateUserAsync("IdorB");
-		using (staff)
-		{
-			var (_, created) = await staff.CallAsync(HttpMethod.Post, $"/v1/users/{b.Id}/restrictions",
-				new { permissions = (ulong)UserPermissions.ChatPost });
-			var rid = (int)created!["data"]!["id"]!;
-
-			var (lift, _) = await staff.CallAsync(HttpMethod.Post, $"/v1/users/{a.Id}/restrictions/{rid}/lift");
-			var (delete, _) = await staff.CallAsync(HttpMethod.Delete, $"/v1/users/{a.Id}/restrictions/{rid}");
-			var (_, user) = await staff.CallAsync(HttpMethod.Get, $"/v1/users/{b.Id}");
-			var (_, history) = await staff.CallAsync(HttpMethod.Get, $"/v1/users/{b.Id}/restrictions");
-
-			Assert.Equal(404, lift);
-			Assert.Equal(404, delete);
-			Assert.Single(user!["data"]!["restrictions"]!.AsArray());
-			Assert.Null(history!["data"]![0]!["endsAt"]);
-			Assert.Equal(rid, (int)history["data"]![0]!["id"]!);
-		}
-	}
-
-	[Fact]
-	public async Task Restriction_ByANonStaffUser_Answers403()
-	{
-		var (client, _) = await fixture.SignInAsync("RestrictNobody");
-		var target = await fixture.Host.CreateUserAsync("RestrictVictim");
+		var (client, _) = await fixture.SignInAsync("SilenceNobody");
+		var target = await fixture.Host.CreateUserAsync("SilenceVictim");
 		using (client)
 		{
-			var (status, _) = await client.CallAsync(HttpMethod.Post, $"/v1/users/{target.Id}/restrictions",
-				new { permissions = (ulong)UserPermissions.ChatPost });
+			var (status, _) = await client.CallAsync(HttpMethod.Put, $"/v1/users/{target.Id}/silence",
+				new { endsAt = fixture.Host.Time.GetUtcNow().AddHours(1) });
 
 			Assert.Equal(403, status);
 		}
@@ -347,7 +318,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	[Fact]
 	public async Task Create_ByStaff_Answers201_AndByAnotherUserIsRefused()
 	{
-		var (staff, _) = await fixture.SignInAsync("CreateStaff", RestHostFixture.StaffPermissions);
+		var (staff, _) = await fixture.SignInAsync("CreateStaff", RestHostFixture.StaffPrivileges);
 		var (plain, _) = await fixture.SignInAsync("CreatePlain");
 		using (staff)
 		using (plain)

@@ -94,7 +94,7 @@ internal static class BeatmapRoutes
 		return set.Visible || MayViewHidden(context);
 	}
 
-	/// <summary>A beatmap is hidden when it or its set is; the same permission shows both.</summary>
+	/// <summary>A beatmap is hidden when it or its set is; the same privilege shows both.</summary>
 	private static bool CanView(HttpContext context, BeatmapRecord map)
 	{
 		return map.IsVisible() || MayViewHidden(context);
@@ -104,7 +104,7 @@ internal static class BeatmapRoutes
 	{
 		var connection = context.ConnectionOrNull();
 		var clock = context.RequestServices.GetRequiredService<TimeProvider>();
-		return connection?.EffectivePermissions(clock.GetUtcNow()).Allows(UserPermissions.BeatmapsetManageViewHidden) ==
+		return connection?.EffectivePrivileges(clock.GetUtcNow()).Allows(UserPrivileges.Tournament) ==
 		       true;
 	}
 
@@ -135,7 +135,7 @@ internal static class BeatmapRoutes
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var effective = context.Connection().EffectivePermissions(clock.GetUtcNow());
+		var effective = context.Connection().EffectivePrivileges(clock.GetUtcNow());
 		var found = await repository.ListAsync(BeatmapQuery.Parse(query ?? string.Empty).LimitTo(effective), page!,
 			context.RequestAborted);
 		return Api.Paged(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.HasNext), page!);

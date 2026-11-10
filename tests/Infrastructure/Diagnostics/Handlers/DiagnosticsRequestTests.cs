@@ -4,7 +4,7 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Handlers;
 
-/// <summary>The requests of the maintenance actions refuse a sender without the permission and name what is missing.</summary>
+/// <summary>The requests of the maintenance actions refuse a sender without the privilege and name what is missing.</summary>
 public sealed class DiagnosticsRequestTests
 {
 	[Fact]
@@ -15,7 +15,7 @@ public sealed class DiagnosticsRequestTests
 
 		var (result, deleted) = await app.Sender.Send(new ClearCaches(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 		Assert.Equal(0, deleted);
 	}
 
@@ -27,7 +27,7 @@ public sealed class DiagnosticsRequestTests
 
 		var result = await app.Sender.Send(new ResetExceptions(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]
@@ -38,7 +38,7 @@ public sealed class DiagnosticsRequestTests
 
 		var result = await app.Sender.Send(new CollectGarbage(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]
@@ -49,7 +49,7 @@ public sealed class DiagnosticsRequestTests
 
 		var result = await app.Sender.Send(new CheckDiagnosticsAccess(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]
@@ -57,7 +57,7 @@ public sealed class DiagnosticsRequestTests
 	{
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 
 		var result = await app.Sender.Send(new ResetExceptions(staff), TestContext.Current.CancellationToken);
 

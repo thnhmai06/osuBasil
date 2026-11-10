@@ -324,7 +324,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	[Fact]
 	public async Task Silenced_UserCannotChat_Gets404()
 	{
-		using var irc = await Host.SignInAsync("ChMute", permissions: UserPermissions.None);
+		using var irc = await Host.SignInAsync("ChMute", privileges: UserPrivileges.None);
 		await irc.SendAsync("PRIVMSG #osu :can I?");
 
 		Assert.StartsWith(":irc.basil.test 404 ChMute #osu :", await irc.ExpectAsync("404"));

@@ -26,7 +26,7 @@ Before deploying Basil, make sure you have:
 * `ffmpeg` installed. *(optional)*
 * A hostname or domain that clients can resolve to the server.
 * A TLS certificate covering the Basil hostname and its required subdomains.
-* Permission to bind to the configured HTTPS port.
+* Privilege to bind to the configured HTTPS port.
 * Firewall access for the configured Basil ports (HTTPS, and IRC if you use it).
 
 Basil releases are self-contained and include the required .NET runtime. **You do not need to install .NET separately.**
@@ -213,7 +213,7 @@ the storage while the server is stopped:
 ./Basil users create --username admin --password change-me --admin
 ```
 
-`--admin` gives the account every permission. The console commands are specified in [`console.md`](console.md).
+`--admin` gives the account every privilege. The console commands are specified in [`console.md`](console.md).
 
 ---
 
@@ -298,7 +298,7 @@ If this fails, check:
 4. Choose the username and password. The email field is not used.
 5. Complete registration.
 
-New accounts receive the default permission set. Registration is limited per address and per server by the registration
+New accounts receive the default privilege set. Registration is limited per address and per server by the registration
 rate limit, and while the **accounts** lock is on only account managers can create accounts; see
 [`configuration.md`](configuration.md). See [`getting-started.md`](../for-client/osu-stable/getting-started.md).
 
@@ -320,8 +320,8 @@ curl -X POST https://api.<domain>/v1/users \
   -d '{"username":"Player1","password":"hunter2","country":"vn"}'
 ```
 
-`username` and `password` are required; `country` is a two-letter code and `permissions` is an optional bitmask
-(default: the default permissions). See [`privileges.md`](../for-developers/privileges.md) for the permission reference.
+`username` and `password` are required; `country` is a two-letter code and `privileges` is an optional bitmask
+(default: the default privileges). See [`privileges.md`](../for-developers/privileges.md) for the privilege reference.
 
 ---
 

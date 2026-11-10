@@ -22,7 +22,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_StoresTheAccountWithTheDefaultPermissionsAndAPassword()
+	public async Task Create_StoresTheAccountWithTheDefaultPrivilegesAndAPassword()
 	{
 		var name = CliFixture.Name("create");
 
@@ -31,7 +31,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 		var user = await fixture.UserAsync(name);
 		Assert.Equal(0, code);
 		Assert.Equal($"Created {name} with id {user.Id}.", text);
-		Assert.Equal(UserPermissionsGroups.Default, user.Value.Permissions);
+		Assert.Equal(UserPrivilegesExtensions.Default, user.Value.Privileges);
 		Assert.True(await CanSignInAsync(name, "pw1"));
 	}
 
@@ -43,10 +43,10 @@ public sealed class UserCommandTests(CliFixture fixture)
 
 		await fixture.RunAsync($"users create --username {admin} --password pw --admin");
 		await fixture.RunAsync(
-			$"users create --username {mask} --password pw --permissions {(ulong)UserPermissions.ChatPost}");
+			$"users create --username {mask} --password pw --privileges {(ulong)UserPrivileges.Player}");
 
-		Assert.Equal(UserPermissionsGroups.All, (await fixture.UserAsync(admin)).Value.Permissions);
-		Assert.Equal(UserPermissions.ChatPost, (await fixture.UserAsync(mask)).Value.Permissions);
+		Assert.Equal(UserPrivilegesExtensions.All, (await fixture.UserAsync(admin)).Value.Privileges);
+		Assert.Equal(UserPrivileges.Player, (await fixture.UserAsync(mask)).Value.Privileges);
 	}
 
 	[Fact]
@@ -71,11 +71,11 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Show_PrintsTheAccountWithTheNamesOfItsPermissions()
+	public async Task Show_PrintsTheAccountWithTheNamesOfItsPrivileges()
 	{
 		var name = CliFixture.Name("show");
 		await fixture.RunAsync(
-			$"users create --username {name} --password pw --permissions {(ulong)(UserPermissions.ChatPost | UserPermissions.ChatPostPrivate)}");
+			$"users create --username {name} --password pw --privileges {(ulong)(UserPrivileges.Player | UserPrivileges.Supporter)}");
 		var user = await fixture.UserAsync(name);
 
 		var (code, text) = await fixture.RunAsync($"users {user.Id}");
@@ -83,7 +83,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 		Assert.Equal(0, code);
 		Assert.Contains("name:", text);
 		Assert.Contains(name, text);
-		Assert.Contains("(ChatPost, ChatPostPrivate)", text);
+		Assert.Contains("(Player, Supporter)", text);
 	}
 
 	[Fact]
@@ -126,13 +126,13 @@ public sealed class UserCommandTests(CliFixture fixture)
 
 		var (code, _) =
 			await fixture.RunAsync(
-				$"users {user.Id} set --username {renamed} --country vn --permissions {(ulong)UserPermissions.ChatPost}");
+				$"users {user.Id} set --username {renamed} --country vn --privileges {(ulong)UserPrivileges.Player}");
 
 		Assert.Equal(0, code);
 		var changed = await fixture.UserAsync(renamed);
 		Assert.Equal(user.Id, changed.Id);
 		Assert.Equal(Country.Vn, changed.Value.Country);
-		Assert.Equal(UserPermissions.ChatPost, changed.Value.Permissions);
+		Assert.Equal(UserPrivileges.Player, changed.Value.Privileges);
 		Assert.True(await CanSignInAsync(renamed, "pw"));
 	}
 
@@ -183,7 +183,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	public async Task Set_PermissionsOnBasilBot_IsRefusedAsASystemAccount()
 	{
 		var (code, text) =
-			await fixture.RunAsync($"users {BasilBot.Id} set --permissions {(ulong)UserPermissionsGroups.All}");
+			await fixture.RunAsync($"users {BasilBot.Id} set --privileges {(ulong)UserPrivilegesExtensions.All}");
 
 		Assert.Equal(1, code);
 		Assert.Contains("systemAccount", text);
@@ -196,10 +196,10 @@ public sealed class UserCommandTests(CliFixture fixture)
 		await fixture.RunAsync($"users create --username {name} --password pw --admin");
 		var user = await fixture.UserAsync(name);
 
-		var (code, _) = await fixture.RunAsync($"users {user.Id} set --permissions {(ulong)UserPermissions.None}");
+		var (code, _) = await fixture.RunAsync($"users {user.Id} set --privileges {(ulong)UserPrivileges.None}");
 
 		Assert.Equal(0, code);
-		Assert.Equal(UserPermissions.None, (await fixture.UserAsync(name)).Value.Permissions);
+		Assert.Equal(UserPrivileges.None, (await fixture.UserAsync(name)).Value.Privileges);
 	}
 
 	[Theory]
@@ -221,47 +221,27 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Restrictions_CreateListLiftDelete_WorkAndTheMaskIsNamed()
+	public async Task Silence_AndUnsilence_SetAndClearTheEndOfTheSilence()
 	{
-		var user = await NewAsync("rs");
-		var mask = (ulong)UserPermissions.ChatPost;
+		var user = await NewAsync("sl");
 
-		var (created, createdText) =
-			await fixture.RunAsync(
-				$"users {user.Id} restrictions create --permissions {mask} --duration 2h --reason spam");
-		var (_, listed) = await fixture.RunAsync($"users {user.Id} restrictions list");
-		var restrictions = await fixture.Host.Services.GetRequiredService<IRestrictionRepository>().ListAsync(user);
-		var id = restrictions.Single().Id;
-		var (lifted, _) = await fixture.RunAsync($"users {user.Id} restrictions {id} lift");
-		var (deleted, _) = await fixture.RunAsync($"users {user.Id} restrictions {id} delete");
+		var (silenced, _) = await fixture.RunAsync($"users {user.Id} silence --duration 90m --reason spam");
+		var whileSilenced = await fixture.Host.Services.GetRequiredService<IUserRepository>().GetAsync(user.Id);
+		var (unsilenced, _) = await fixture.RunAsync($"users {user.Id} unsilence");
+		var afterwards = await fixture.Host.Services.GetRequiredService<IUserRepository>().GetAsync(user.Id);
 
-		Assert.Equal(0, created);
-		Assert.Contains($"restriction {id}", createdText);
-		Assert.Contains("permissions", listed);
-		Assert.Equal(0, lifted);
-		Assert.Equal(0, deleted);
-		Assert.Empty(await fixture.Host.Services.GetRequiredService<IRestrictionRepository>().ListAsync(user));
+		Assert.Equal(0, silenced);
+		Assert.Equal(fixture.Host.Time.GetUtcNow() + TimeSpan.FromMinutes(90), whileSilenced!.Value.SilencedUntil);
+		Assert.Equal(0, unsilenced);
+		Assert.Null(afterwards!.Value.SilencedUntil);
 	}
 
 	[Fact]
-	public async Task Restrictions_Duration_SetsTheEndFromTheServersClock()
+	public async Task Silence_AWrongDuration_IsInvalid()
 	{
-		var user = await NewAsync("rd");
+		var user = await NewAsync("sw");
 
-		await fixture.RunAsync(
-			$"users {user.Id} restrictions create --permissions {(ulong)UserPermissions.ChatPost} --duration 90m");
-
-		var restriction = (await fixture.Host.Services.GetRequiredService<IRestrictionRepository>().ListAsync(user))
-			.Single();
-		Assert.Equal(fixture.Host.Time.GetUtcNow() + TimeSpan.FromMinutes(90), restriction.Value.EndsAt);
-	}
-
-	[Fact]
-	public async Task Restrictions_AWrongDuration_IsInvalid()
-	{
-		var user = await NewAsync("rw");
-
-		var (code, _) = await fixture.RunAsync($"users {user.Id} restrictions create --permissions 1 --duration soon");
+		var (code, _) = await fixture.RunAsync($"users {user.Id} silence --duration soon");
 
 		Assert.Equal(2, code);
 	}

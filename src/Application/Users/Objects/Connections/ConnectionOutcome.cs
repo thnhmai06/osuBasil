@@ -1,6 +1,6 @@
 namespace Basil.Application.Users.Objects.Connections;
 
-/// <summary>What happened to an operation on a connection that was not refused for lack of permissions.</summary>
+/// <summary>What happened to an operation on a connection that was not refused for lack of privileges.</summary>
 public enum ConnectionOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>

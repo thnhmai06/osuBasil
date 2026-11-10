@@ -23,7 +23,7 @@ public enum RoomExpectation
 
 /// <summary>
 ///     Who may do what in a room. The expected rights come from AGENTS.md ("Authority") and
-///     docs/for-developers/multiplayer.md ("Room roles and permissions"): the creator holds every room right, a
+///     docs/for-developers/multiplayer.md ("Room roles and privileges"): the creator holds every room right, a
 ///     referee holds every right except managing referees, the host holds the in-client host operations, a player
 ///     may chat and invite, and a user who may manage every room acts with the creator's authority wherever they
 ///     are.
@@ -632,7 +632,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.RoomJoinDenied)
 		{
-			Assert.Equal(UserPermissions.RoomJoin, result.Missing);
+			Assert.Equal(UserPrivileges.Player, result.Missing);
 			return;
 		}
 

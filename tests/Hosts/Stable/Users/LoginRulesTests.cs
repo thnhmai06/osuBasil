@@ -30,20 +30,18 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_RestrictedAccount_StillLogsInAndIsToldItIsRestricted()
+	public async Task Login_SilencedAccount_StillLogsInAndIsToldHowLongTheSilenceLasts()
 	{
-		var record = await Host.CreateUserAsync("RestrictedOne");
-		await Host.Services.GetRequiredService<IRestrictionRepository>().CreateAsync(new RestrictionData
-		{
-			User = record, Permissions = RestrictionData.Restricted, StartsAt = Host.Time.GetUtcNow().AddDays(-1),
-			EndsAt = null
-		});
-		using var client = OsuClient.Create(Host, "RestrictedOne", "password");
+		var record = await Host.CreateUserAsync("SilencedOne");
+		record.Value.SilencedUntil = Host.Time.GetUtcNow().AddHours(1);
+		await Host.Services.GetRequiredService<IUserRepository>().UpdateAsync(record);
+		using var client = OsuClient.Create(Host, "SilencedOne", "password");
 
 		var packets = await client.LoginAsync();
 
 		Assert.True(client.LoginCode > 0);
-		Assert.Contains(packets, packet => packet.Id == OsuClient.In.AccountRestricted);
+		Assert.Contains(packets, packet => packet.Id == OsuClient.In.SilenceEnd);
+		Assert.DoesNotContain(packets, packet => packet.Id == OsuClient.In.AccountRestricted);
 	}
 
 	[Fact]

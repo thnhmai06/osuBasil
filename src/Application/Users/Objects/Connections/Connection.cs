@@ -51,9 +51,9 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	public UserRecord Record => Session.Value.User;
 
 	/// <inheritdoc />
-	public virtual UserPermissions EffectivePermissions(DateTimeOffset now)
+	public virtual UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{
-		return User.EffectivePermissions(now);
+		return User.EffectivePrivileges(now);
 	}
 
 	/// <summary>Gets the session as it stands now, ready to be stored.</summary>
@@ -96,11 +96,11 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 		Interlocked.CompareExchange(ref _end, new SessionEnd(at, reason), null);
 	}
 
-	/// <summary>Tells whether this connection's authority is above an account's permissions.</summary>
-	/// <param name="granted">The permissions granted to this connection's user when the scope was made.</param>
-	/// <param name="target">The permissions granted to the account acted on.</param>
-	/// <returns><see langword="true" /> when the granted permissions strictly include the target's.</returns>
-	internal virtual bool Outranks(UserPermissions granted, UserPermissions target)
+	/// <summary>Tells whether this connection's authority is above an account's privileges.</summary>
+	/// <param name="granted">The privileges granted to this connection's user when the scope was made.</param>
+	/// <param name="target">The privileges granted to the account acted on.</param>
+	/// <returns><see langword="true" /> when the granted privileges strictly include the target's.</returns>
+	internal virtual bool Outranks(UserPrivileges granted, UserPrivileges target)
 	{
 		return granted.Allows(target) && granted != target;
 	}
@@ -322,13 +322,13 @@ public sealed class OperatorConnection : Connection
 	public override SessionType Type => SessionType.Api;
 
 	/// <inheritdoc />
-	public override UserPermissions EffectivePermissions(DateTimeOffset now)
+	public override UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{
-		return UserPermissionsGroups.All;
+		return UserPrivilegesExtensions.All;
 	}
 
 	/// <inheritdoc />
-	internal override bool Outranks(UserPermissions granted, UserPermissions target)
+	internal override bool Outranks(UserPrivileges granted, UserPrivileges target)
 	{
 		return true;
 	}

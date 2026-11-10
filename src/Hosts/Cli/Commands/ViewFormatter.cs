@@ -17,7 +17,7 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 	/// <summary>The flags enum each bitmask-valued field of the views holds.</summary>
 	private static readonly Dictionary<string, Type> Masks = new(StringComparer.OrdinalIgnoreCase)
 	{
-		["permissions"] = typeof(UserPermissions), ["effectivePermissions"] = typeof(UserPermissions),
+		["privileges"] = typeof(UserPrivileges), ["effectivePrivileges"] = typeof(UserPrivileges),
 		["readPrivileges"] = typeof(UserPrivileges), ["writePrivileges"] = typeof(UserPrivileges),
 		["types"] = typeof(SessionType)
 	};

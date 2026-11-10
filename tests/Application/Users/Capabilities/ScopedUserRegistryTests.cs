@@ -22,39 +22,39 @@ public sealed class ScopedUserRegistryTests
 			new UserData { Name = "NewAccount" }, Hash, null, TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
 	public async Task CreateAccountAsync_RequestedPermissionNotHeld_NamesTheMissingPermission()
 	{
 		using var app = new TestApplication();
-		var permissions = UserPermissionsGroups.Default | UserPermissions.UserManage;
-		var actorRecord = await app.CreateUserAsync("LimitedMod", "password", permissions);
+		var privileges = UserPrivilegesExtensions.Default | UserPrivileges.Owner;
+		var actorRecord = await app.CreateUserAsync("LimitedMod", "password", privileges);
 		var actor = await app.LoginAsync(actorRecord);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "TooMuchPower" }, Hash, UserPermissions.ServerManageSettings,
+			new UserData { Name = "TooMuchPower" }, Hash, UserPrivileges.Developer,
 			TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
-		Assert.Equal(UserPermissions.ServerManageSettings, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]
 	public async Task CreateAccountAsync_AllowedPermissionsWithinActorsGrant_CreatesAccount()
 	{
 		using var app = new TestApplication();
-		var actorRecord = await app.CreateUserAsync("AccountManager", "password", UserPermissionsGroups.All);
+		var actorRecord = await app.CreateUserAsync("AccountManager", "password", UserPrivilegesExtensions.All);
 		var actor = await app.LoginAsync(actorRecord);
-		var data = new UserData { Name = "CreatedAccount", Permissions = UserPermissions.UserManageNote };
+		var data = new UserData { Name = "CreatedAccount", Privileges = UserPrivileges.Moderator };
 
-		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(data, Hash, data.Permissions,
+		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(data, Hash, data.Privileges,
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(user);
-		Assert.Equal(UserPermissions.UserManageNote, user.Value.Permissions);
+		Assert.Equal(UserPrivileges.Moderator, user.Value.Privileges);
 	}
 
 	[Fact]
@@ -62,17 +62,17 @@ public sealed class ScopedUserRegistryTests
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("DefaultMgr", "password",
-			UserPermissionsGroups.All));
+			UserPrivilegesExtensions.All));
 		await app.SetSettingsAsync(new ServerSettings
 		{
-			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost }
+			Accounts = new ServerSettings.AccountSettings { DefaultPrivileges = UserPrivileges.Player }
 		});
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "ConfigDefault" }, Hash, null, TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
-		Assert.Equal(UserPermissions.ChatPost, user!.Value.Permissions);
+		Assert.Equal(UserPrivileges.Player, user!.Value.Privileges);
 	}
 
 	[Fact]
@@ -80,25 +80,25 @@ public sealed class ScopedUserRegistryTests
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("ExplicitMgr", "password",
-			UserPermissionsGroups.All));
+			UserPrivilegesExtensions.All));
 		await app.SetSettingsAsync(new ServerSettings
 		{
-			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost }
+			Accounts = new ServerSettings.AccountSettings { DefaultPrivileges = UserPrivileges.Player }
 		});
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "ExplicitMask" }, Hash, UserPermissions.UserManageNote,
+			new UserData { Name = "ExplicitMask" }, Hash, UserPrivileges.Moderator,
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
-		Assert.Equal(UserPermissions.UserManageNote, user!.Value.Permissions);
+		Assert.Equal(UserPrivileges.Moderator, user!.Value.Privileges);
 	}
 
 	[Fact]
 	public async Task CreateAccountAsync_DuplicateName_ReturnsNameTaken()
 	{
 		using var app = new TestApplication();
-		var actorRecord = await app.CreateUserAsync("DupManager", "password", UserPermissionsGroups.All);
+		var actorRecord = await app.CreateUserAsync("DupManager", "password", UserPrivilegesExtensions.All);
 		await app.CreateUserAsync("AlreadyCreated", "password");
 		var actor = await app.LoginAsync(actorRecord);
 

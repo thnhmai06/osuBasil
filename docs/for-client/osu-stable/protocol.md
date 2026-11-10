@@ -122,9 +122,9 @@ A client should not continue polling with an invalid token indefinitely.
 
 ---
 
-## Restricted accounts
+## Operations an account may not do
 
-Restricted accounts may have access to fewer protocol operations than unrestricted accounts.
+An account may be refused some protocol operations, such as chatting while silenced.
 
 Unsupported or disallowed operations do not prevent the rest of a packet batch from being processed.
 

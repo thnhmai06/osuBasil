@@ -21,17 +21,17 @@ public readonly struct ScopedUserCredentials(ScopedUser scoped)
 	/// <remarks>
 	///     A user's own password change needs the current password and signs out every other session. A new password
 	///     equal to the current one signs nobody out. While <see cref="Locks.Profiles" /> is locked, only a user
-	///     holding <see cref="UserPermissions.UserManage" /> may change a password. Changing another account's password
-	///     needs <see cref="UserPermissions.UserManage" /> and hierarchy, signs out all of its sessions, and is recorded
+	///     holding <see cref="UserPrivileges.Owner" /> may change a password. Changing another account's password
+	///     needs <see cref="UserPrivileges.Owner" /> and hierarchy, signs out all of its sessions, and is recorded
 	///     in the moderation log.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
 		bool includeCurrent = false, CancellationToken cancellationToken = default)
 	{
 		if (scoped.User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
-		if (await scoped.IsLockedAsync(Locks.Profiles, UserPermissions.UserManage, cancellationToken))
+		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner, cancellationToken))
 			return UserOutcome.Locked;
-		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
+		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Owner, false) is { } denied) return denied;
 		return await scoped.User.Credentials.ChangeAsync(newPasswordHash, currentPasswordHash, scoped.Actor,
 			includeCurrent, cancellationToken);
 	}

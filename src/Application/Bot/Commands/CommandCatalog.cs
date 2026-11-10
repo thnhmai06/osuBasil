@@ -19,7 +19,7 @@ internal static class CommandCatalog
 		Of("where", "<username>", "show a user's country"),
 		Of("faq", "<entry>|list", "print a FAQ entry, or list every entry"),
 		Of("mp", "help", "list multiplayer subcommands"),
-		Of("channel", "list|create|set|delete", "manage the general channels (needs permission)"),
+		Of("channel", "list|create|set|delete", "manage the general channels (needs privilege)"),
 
 		Of("mp make", "[name]", "create a public match and become its creator"),
 		Of("mp makeprivate", "[name]", "create a private match and become its creator"),

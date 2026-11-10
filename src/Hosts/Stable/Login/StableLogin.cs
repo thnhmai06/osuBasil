@@ -111,8 +111,8 @@ internal sealed class StableLogin(
 		{
 			LoginFailure.TooManySessions => Fail(LoginFailureReason.AuthenticationFailed,
 				StableReplies.TooManySessions),
-			LoginFailure.NoTourneyPermission => Fail(LoginFailureReason.AuthenticationFailed,
-				StableReplies.NoTourneyPermission),
+			LoginFailure.NoTourneyPrivilege => Fail(LoginFailureReason.AuthenticationFailed,
+				StableReplies.NoTourneyPrivilege),
 			_ => Fail(LoginFailureReason.AuthenticationFailed)
 		};
 	}
@@ -121,12 +121,14 @@ internal sealed class StableLogin(
 	{
 		var user = connection.User;
 		var now = clock.GetUtcNow();
-		var effective = user.EffectivePermissions(now);
+		var effective = user.EffectivePrivileges(now);
 		var roles = StableView.Roles(effective);
 		var privileges = (int)roles;
 		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
 		var friends = (await sender.Send(new ListFriends(connection, user.Record), cancellationToken)).Users;
-		var restricted = (user.Record.Value.Permissions & ~effective) != UserPermissions.None;
+		var silenceSeconds = user.Record.Value.IsSilenced(now)
+			? (int)(user.Record.Value.SilencedUntil!.Value - now).TotalSeconds
+			: 0;
 		var others = new List<(User User, UserStats Stats)>();
 		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))
 			others.Add((other, await statsRepository.GetAsync(other.Record,
@@ -137,7 +139,7 @@ internal sealed class StableLogin(
 			writer.ProtocolVersion(ProtocolVersion);
 			writer.LoginReply(user.Record.Id);
 			writer.Privileges(privileges);
-			if (restricted) writer.AccountRestricted();
+			if (silenceSeconds > 0) writer.SilenceEnd(silenceSeconds);
 			if (!string.IsNullOrEmpty(motd)) writer.Notification(motd);
 			writer.FriendsList([.. friends.Select(friend => friend.Id)]);
 			foreach (var channel in channels.All.Values.Where(channel => ReadableBy(channel, roles)))

@@ -17,13 +17,13 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// <returns>The outcome and, when successful, one part of the sessions, newest first.</returns>
 	/// <remarks>
 	///     A user may read their own sessions. Reading another account's sessions needs
-	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log.
+	///     <see cref="UserPrivileges.Moderator" /> and is recorded in the moderation log.
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)> ListAsync(PageRequest page,
 		SessionState state = SessionState.Any, IReadOnlyList<SessionType>? types = null,
 		CancellationToken cancellationToken = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
+		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
 			return (denied, null);
 
 		var sessions = await scoped.User.Sessions.ListAsync(scoped.Actor, page, state, types, cancellationToken);
@@ -36,13 +36,13 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// <returns>The outcome and, when successful, the session.</returns>
 	/// <remarks>
 	///     A user may read their own sessions. Reading another account's session needs
-	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log. A session that
+	///     <see cref="UserPrivileges.Moderator" /> and is recorded in the moderation log. A session that
 	///     does not belong to this account is not found.
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, SessionRecord? Session)> GetAsync(long id,
 		CancellationToken cancellationToken = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
+		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
 			return (denied, null);
 
 		var (outcome, session) = await scoped.User.Sessions.GetAsync(scoped.Actor, id, cancellationToken);
@@ -56,13 +56,13 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// <returns>The outcome and, when successful, one part of the connections, newest first.</returns>
 	/// <remarks>
 	///     A user may read the connections of their own sessions. Reading another account's needs
-	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log. A session that
+	///     <see cref="UserPrivileges.Moderator" /> and is recorded in the moderation log. A session that
 	///     does not belong to this account is not found.
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
 		long id, PageRequest page, CancellationToken cancellationToken = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
+		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
 			return (denied, null);
 
 		var (outcome, connections) =
@@ -77,11 +77,11 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// <remarks>
 	///     A closed session cannot sign in again with what it stored: an API token and an IRC key stop working. An
 	///     osu! client is disconnected but can sign in again with its password. Closing another account's session needs
-	///     <see cref="UserPermissions.UserManage" /> and hierarchy.
+	///     <see cref="UserPrivileges.Owner" /> and hierarchy.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> CloseAsync(long id, CancellationToken cancellationToken = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
+		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Owner, false) is { } denied) return denied;
 		return await scoped.User.Sessions.CloseAsync(id, cancellationToken);
 	}
 
@@ -92,13 +92,13 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of closing the sessions.</returns>
 	/// <remarks>
-	///     Closing another account's sessions needs <see cref="UserPermissions.UserManage" /> and hierarchy, and is
+	///     Closing another account's sessions needs <see cref="UserPrivileges.Owner" /> and hierarchy, and is
 	///     recorded in the moderation log.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> CloseAllAsync(bool keepCurrent = true,
 		CancellationToken cancellationToken = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
+		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Owner, false) is { } denied) return denied;
 		return await scoped.User.Sessions.CloseAllAsync(scoped.Actor, keepCurrent, cancellationToken);
 	}
 

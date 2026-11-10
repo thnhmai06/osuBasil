@@ -4,8 +4,8 @@ namespace Basil.ArchitectureTests;
 
 /// <summary>
 ///     Pins the owner rule that a runtime object does the logic and returns its own outcome, while the <c>Scoped*</c>
-///     capability in front of it decides what the caller's permissions allow: an object of the listed modules neither
-///     reads effective permissions nor answers with a denial.
+///     capability in front of it decides what the caller's privileges allow: an object of the listed modules neither
+///     reads effective privileges nor answers with a denial.
 /// </summary>
 public sealed partial class ObjectsDoNotDecidePermissionsTests
 {
@@ -18,7 +18,7 @@ public sealed partial class ObjectsDoNotDecidePermissionsTests
 		var offenders = ObjectFiles().SelectMany(path => Offences(File.ReadAllText(path)).Select(line =>
 			$"{Path.GetFileName(path)}: {line.Trim()}")).ToList();
 
-		Assert.True(offenders.Count == 0, "Objects that decide permissions:\n" + string.Join("\n", offenders));
+		Assert.True(offenders.Count == 0, "Objects that decide privileges:\n" + string.Join("\n", offenders));
 	}
 
 	[Fact]
@@ -34,8 +34,8 @@ public sealed partial class ObjectsDoNotDecidePermissionsTests
 		const string source = """
 		                      internal Result<RoomOutcome> Join(StableConnection actor)
 		                      {
-		                          var rights = actor.EffectivePermissions(now);
-		                          return Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
+		                          var rights = actor.EffectivePrivileges(now);
+		                          return Result<RoomOutcome>.Denied(UserPrivileges.Player);
 		                      }
 		                      """;
 
@@ -45,7 +45,7 @@ public sealed partial class ObjectsDoNotDecidePermissionsTests
 	[Fact]
 	public void Offences_AcceptsAnObjectThatReceivesPermissionsAsAValue()
 	{
-		const string source = "public bool Involves(Connection connection, UserPermissions permissions) => permissions.Allows(UserPermissions.RoomJoin);";
+		const string source = "public bool Involves(Connection connection, UserPrivileges privileges) => privileges.Allows(UserPrivileges.Player);";
 
 		Assert.Empty(Offences(source));
 	}
@@ -71,6 +71,6 @@ public sealed partial class ObjectsDoNotDecidePermissionsTests
 		return directory?.FullName ?? throw new DirectoryNotFoundException("Basil.slnx was not found.");
 	}
 
-	[GeneratedRegex(@"EffectivePermissions\(|Result<\w+>|\.Denied\(")]
+	[GeneratedRegex(@"EffectivePrivileges\(|Result<\w+>|\.Denied\(")]
 	private static partial Regex Offence();
 }

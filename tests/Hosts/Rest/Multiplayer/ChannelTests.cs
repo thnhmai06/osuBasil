@@ -6,8 +6,8 @@ namespace Basil.Host.Rest.Tests.Multiplayer;
 [Collection("REST host")]
 public sealed class ChannelTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions
-		Manager = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
+	private static readonly UserPrivileges
+		Manager = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
 
 	[Fact]
 	public async Task List_WithoutAToken_Answers401()
@@ -33,7 +33,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 
 			Assert.Equal(201, created);
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)envelope!["errors"]!["missing"]!);
 		}
 	}
 
@@ -118,8 +118,8 @@ public sealed class ChannelTests(RestHostFixture fixture)
 
 			Assert.Equal(403, exists);
 			Assert.Equal(exists, missing);
-			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)hidden!["errors"]!["missing"]!);
-			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)ghost!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)hidden!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)ghost!["errors"]!["missing"]!);
 		}
 	}
 
@@ -138,8 +138,8 @@ public sealed class ChannelTests(RestHostFixture fixture)
 
 			Assert.Equal(403, exists);
 			Assert.Equal(exists, missing);
-			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)hidden!["errors"]!["missing"]!);
-			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)ghost!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)hidden!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)ghost!["errors"]!["missing"]!);
 		}
 	}
 }

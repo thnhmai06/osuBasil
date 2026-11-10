@@ -50,12 +50,12 @@ public sealed class ServerRecoverTests
 	public async Task RecoverAsync_AnotherAccountHoldsTheBotsId_TheBotComesOnlineInIt()
 	{
 		using var app = new TestApplication();
-		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
+		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
 
 		await app.Server.RecoverAsync(TestContext.Current.CancellationToken);
 
 		var bot = Assert.Single(app.Users.Online.Keys, user => user.Id == BasilBot.Id);
-		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPrivileges.None, bot.Value.Privileges);
 		Assert.False(await app.VerifiesPasswordAsync(other, "secret"));
 	}
 

@@ -25,13 +25,13 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
-			UserPermissionsGroups.Default & ~UserPermissions.RoomCreate);
+			UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 
 		var (room, result) = await OpenAsync(app, creator, source: RoomSource.Api);
 
 		Assert.Null(room);
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.RoomCreate, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 	}
 
 	[Fact]
@@ -39,13 +39,13 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
-			UserPermissionsGroups.Default & ~UserPermissions.RoomJoin);
+			UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 
 		var (room, result) = await OpenAsync(app, creator);
 
 		Assert.Null(room);
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.RoomJoin, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 	}
 
 	[Fact]
@@ -161,7 +161,7 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
-			UserPermissionsGroups.Default | UserPermissions.RoomManageCreateUnlimited);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		for (var index = 0; index < 4; index++)
 			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
 
@@ -198,7 +198,7 @@ public sealed class ScopedLobbyTests
 			Locks = Locks.Rooms
 		});
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
-			UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 
 		var (room, result) = await OpenAsync(app, creator);
 
@@ -294,7 +294,7 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var viewer = await app.LoginAsync(await app.CreateUserAsync("Viewer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomManageViewPrivate));
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament));
 
 		Assert.True(await app.Lobby.ScopeTo(viewer).CanViewAsync(match, TestContext.Current.CancellationToken));
 	}
@@ -305,7 +305,7 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var manager = await app.LoginAsync(await app.CreateUserAsync("Manager", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomManageAny));
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament));
 
 		Assert.True(await app.Lobby.ScopeTo(manager).CanViewAsync(match, TestContext.Current.CancellationToken));
 	}
@@ -331,19 +331,6 @@ public sealed class ScopedLobbyTests
 			TestContext.Current.CancellationToken), "precondition: the stored history shows the player");
 
 		Assert.False(await app.Lobby.ScopeTo(player).CanViewAsync(room.Match, TestContext.Current.CancellationToken));
-	}
-
-	[Fact]
-	public async Task CanViewAsync_RoomViewPrivateSuspendedByARestriction_DoesNotOpenAPrivateMatch()
-	{
-		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
-		var user = await app.CreateUserAsync("Viewer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomManageViewPrivate);
-		app.AddRestriction(user, UserPermissions.RoomManageViewPrivate);
-		var viewer = await app.LoginAsync(user);
-
-		Assert.False(await app.Lobby.ScopeTo(viewer).CanViewAsync(match, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

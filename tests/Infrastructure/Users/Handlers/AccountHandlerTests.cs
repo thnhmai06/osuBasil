@@ -9,7 +9,7 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>The messages that create an account and change its name, country, password, permissions and existence.</summary>
+/// <summary>The messages that create an account and change its name, country, password, privileges and existence.</summary>
 public sealed class AccountHandlerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -38,7 +38,7 @@ public sealed class AccountHandlerTests
 			new CreateAccount(actor, new UserData { Name = "Newcomer" }, Hash("secret"), null), Token);
 
 		Assert.Null(user);
-		Assert.Equal(UserPermissions.UserManage, result.Missing & UserPermissions.UserManage);
+		Assert.Equal(UserPrivileges.Owner, result.Missing & UserPrivileges.Owner);
 	}
 
 	[Fact]
@@ -62,7 +62,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new RenameUserHandler(app.Users).Handle(new RenameUser(actor, other.Record, "Taken"), Token);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.Equal("Other", other.User.Record.Value.Name);
 	}
 
@@ -89,7 +89,7 @@ public sealed class AccountHandlerTests
 		var result = await new SetUserCountryHandler(app.Users)
 			.Handle(new SetUserCountry(actor, other.Record, Country.Vn), Token);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
@@ -171,32 +171,32 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserPermissions_WithTheRightToManagePermissions_ReplacesThePermissions()
+	public async Task SetUserPermissions_WithTheRightToManagePermissions_ReplacesThePrivileges()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
 		var target = await app.LoginAsync(await app.CreateUserAsync("Target", "password"));
 
-		var result = await new SetUserPermissionsHandler(app.Users)
-			.Handle(new SetUserPermissions(admin, target.Record, UserPermissions.ChatPost), Token);
+		var result = await new SetUserPrivilegesHandler(app.Users)
+			.Handle(new SetUserPrivileges(admin, target.Record, UserPrivileges.Player), Token);
 
 		Assert.True(result.IsOk);
-		Assert.Equal(UserPermissions.ChatPost, target.User.Record.Value.Permissions);
+		Assert.Equal(UserPrivileges.Player, target.User.Record.Value.Privileges);
 	}
 
 	[Fact]
-	public async Task SetUserPermissions_WithoutTheRight_IsDeniedAndKeepsThePermissions()
+	public async Task SetUserPermissions_WithoutTheRight_IsDeniedAndKeepsThePrivileges()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
 		var target = await app.LoginAsync(await app.CreateUserAsync("Target", "password"));
-		var before = target.User.Record.Value.Permissions;
+		var before = target.User.Record.Value.Privileges;
 
-		var result = await new SetUserPermissionsHandler(app.Users)
-			.Handle(new SetUserPermissions(actor, target.Record, UserPermissions.ChatPost), Token);
+		var result = await new SetUserPrivilegesHandler(app.Users)
+			.Handle(new SetUserPrivileges(actor, target.Record, UserPrivileges.Player), Token);
 
 		Assert.NotNull(result.Missing);
-		Assert.Equal(before, target.User.Record.Value.Permissions);
+		Assert.Equal(before, target.User.Record.Value.Privileges);
 	}
 
 	[Fact]
@@ -221,7 +221,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new DeleteUserHandler(app.Users).Handle(new DeleteUser(actor, target), Token);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
@@ -233,7 +233,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new RemoveUserAvatarHandler(app.Users).Handle(new RemoveUserAvatar(actor, other), Token);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
@@ -246,12 +246,12 @@ public sealed class AccountHandlerTests
 		var result = await new SetUserAvatarHandler(app.Users)
 			.Handle(new SetUserAvatar(actor, other, new MemoryStream()), Token);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	private static async Task<Connection> AdminAsync(TestApplication app)
 	{
-		return await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		return await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 	}
 
 	private static Md5 Hash(string password)

@@ -5,7 +5,7 @@
 Basil is an osu! (stable) backend platform specialized for multiplayer, built on top of **bancho.py**. It is
 intentionally **not** a full osu! server.
 
-The server implements the core capabilities that multiplayer needs: accounts, sessions and permissions, rooms, chat,
+The server implements the core capabilities that multiplayer needs: accounts, sessions and privileges, rooms, chat,
 scores, beatmaps, the client protocols, and the events other programs observe. BasilBot's chat commands and
 announcements are built into the server; tournament automation beyond those commands and overlays remain client
 features that sign in as ordinary users through the HTTP API. Features from bancho.py are not automatically in scope
@@ -61,12 +61,12 @@ are features of the room; BasilBot announces their marks. See the generated Basi
 ### HTTP API
 
 The `api.<domain>` host is user-centric: a client signs in with an account's credentials, receives a session token,
-and every action it takes is checked against that account's permissions and attributed to it. The API covers what
+and every action it takes is checked against that account's privileges and attributed to it. The API covers what
 clients built on Basil need, such as BasilBot, tournament tools and overlays:
 
 * rooms and their full management
 * chat channels and private messages
-* users, their permissions and restrictions
+* users, their privileges and silences
 * match reports, replays and beatmap downloads
 * live updates and events through SSE
 
@@ -88,7 +88,7 @@ a link the client opens.
 
 ### Account creation and operator console
 
-New accounts receive only the default permissions; being the first account grants no special rights. The first
+New accounts receive only the default privileges; being the first account grants no special rights. The first
 administrator is created by the operator through a console command. The console is planned for the Host phase in
 `Basil.Cli`; it is not implemented yet. The design has no administrator key or bootstrap credentials. Account
 registration remains part of the supported game-client workflow, subject to `ServerSettings.LockedCreation`.
@@ -107,7 +107,7 @@ even though Basil has no other social features.
 
 ### Moderation
 
-Restricting a user (a silence is the restriction of chat and multiplayer), lifting it, adding a note, and a moderation
+Silencing a user (a silence stops chatting), lifting it, adding a note, and a moderation
 log that keeps the trace of these actions and of every view of a user's login history. The log is for people; it never
 changes a right.
 
@@ -221,12 +221,12 @@ The `api.<domain>` host was introduced with a deliberately narrower API surface:
 * tournament match reports
 * SSE live updates
 * replay and beatmap downloads
-* management CRUD gated by the permissions of the signed-in user
+* management CRUD gated by the privileges of the signed-in user
 
 It does **not** attempt to reproduce a general osu-web API, and has no OAuth.
 
 Since the identity redesign the API is user-centric: management is no longer gated by an admin key acting for the
-server, but by the permissions of the signed-in user, so clients built on Basil can do through the API what their
+server, but by the privileges of the signed-in user, so clients built on Basil can do through the API what their
 accounts are allowed to do.
 
 ### Automatic Stable/Basil parity testing

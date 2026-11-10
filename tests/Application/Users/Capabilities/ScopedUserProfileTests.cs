@@ -240,11 +240,11 @@ public sealed class ScopedUserProfileTests
 		var user = await app.CreateUserAsync("Victim", "password");
 		var profile = app.Users.Of(user).ScopeTo(nosy).Profile;
 
-		Assert.Equal(UserPermissions.UserManage, (await profile.RenameAsync("Hacked", Token)).Missing);
-		Assert.Equal(UserPermissions.UserManage, (await profile.SetCountryAsync(Country.Au, Token)).Missing);
-		Assert.Equal(UserPermissions.UserManage,
+		Assert.Equal(UserPrivileges.Owner, (await profile.RenameAsync("Hacked", Token)).Missing);
+		Assert.Equal(UserPrivileges.Owner, (await profile.SetCountryAsync(Country.Au, Token)).Missing);
+		Assert.Equal(UserPrivileges.Owner,
 			(await profile.SetAvatarAsync(new MemoryStream([1]), Token)).Missing);
-		Assert.Equal(UserPermissions.UserManage, (await profile.RemoveAvatarAsync(Token)).Missing);
+		Assert.Equal(UserPrivileges.Owner, (await profile.RemoveAvatarAsync(Token)).Missing);
 		Assert.Equal("Victim", user.Value.Name);
 		Assert.Empty(avatars.Images);
 	}
@@ -254,8 +254,8 @@ public sealed class ScopedUserProfileTests
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
-		var peer = await app.CreateUserAsync("Peer", "password", UserPermissionsGroups.All);
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
+		var peer = await app.CreateUserAsync("Peer", "password", UserPrivilegesExtensions.All);
 		var profile = app.Users.Of(peer).ScopeTo(admin).Profile;
 
 		Assert.Equal(UserOutcome.NotOutranking, (await profile.RenameAsync("Hacked", Token)).Outcome);
@@ -267,7 +267,7 @@ public sealed class ScopedUserProfileTests
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Offender", "password");
 
 		var result = await app.Users.Of(user).ScopeTo(admin).Profile.RenameAsync("Reformed", Token);
@@ -298,7 +298,7 @@ public sealed class ScopedUserProfileTests
 	{
 		var (app, _) = await StartAsync(Locks.Profiles);
 		using var _ = app;
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Frozen", "password");
 
 		var result = await app.Users.Of(user).ScopeTo(admin).Profile.RenameAsync("Thawed", Token);
@@ -311,7 +311,7 @@ public sealed class ScopedUserProfileTests
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		var bot = await app.SeedBotAsync();
 		var profile = app.Users.Of(bot).ScopeTo(admin).Profile;
 

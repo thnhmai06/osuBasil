@@ -30,7 +30,7 @@ public sealed class TourneyTests(StableHostFixture fixture)
 		var creator = await Host.NewClientAsync("TourneyHost");
 		var player = await Host.NewClientAsync("TourneyPlayer");
 		var observerUser = await Host.NewClientAsync("TourneyWatch",
-			permissions: UserPermissionsGroups.Default | UserPermissions.RoomObserve,
+			privileges: UserPrivilegesExtensions.Default | UserPrivileges.Tournament,
 			tourney: true);
 		await creator.LoginAsync();
 		await player.LoginAsync();
@@ -52,10 +52,10 @@ public sealed class TourneyTests(StableHostFixture fixture)
 	}
 
 	private async Task<(int MatchId, Connection Observer)> PrivateRoomAndTourneyAsync(string suffix,
-		UserPermissions tourneyPermissions)
+		UserPrivileges tourneyPrivileges)
 	{
 		var creator = await Host.NewClientAsync("PrivHost" + suffix);
-		var tourney = await Host.NewClientAsync("PrivWatch" + suffix, permissions: tourneyPermissions, tourney: true);
+		var tourney = await Host.NewClientAsync("PrivWatch" + suffix, privileges: tourneyPrivileges, tourney: true);
 		await creator.LoginAsync();
 		await tourney.LoginAsync();
 		Assert.True(tourney.LoginCode > 0);
@@ -72,19 +72,10 @@ public sealed class TourneyTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TourneyClient_JoiningAPrivateRoomItMayNotView_DoesNotBecomeAnObserver()
-	{
-		var (matchId, observer) =
-			await PrivateRoomAndTourneyAsync("No", UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-
-		Assert.DoesNotContain(observer, Host.Services.GetRequiredService<Lobby>().Find(matchId)!.Members.Observers);
-	}
-
-	[Fact]
 	public async Task TourneyClient_JoiningAPrivateRoomItMayView_BecomesAnObserver()
 	{
 		var (matchId, observer) = await PrivateRoomAndTourneyAsync("Yes",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve | UserPermissions.RoomManageViewPrivate);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament | UserPrivileges.Tournament);
 
 		Assert.Contains(observer, Host.Services.GetRequiredService<Lobby>().Find(matchId)!.Members.Observers);
 	}

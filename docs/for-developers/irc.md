@@ -10,7 +10,7 @@ the osu! stable client. The osu! client does not use IRC; it receives chat as os
 
 The IRC transport adds no rules of its own. It decodes IRC lines, calls the Application operation of the object being
 acted on with the IRC connection as the actor, and encodes the typed result as IRC lines. Authority is decided by the
-user's effective permissions, never by the fact that the request came over IRC.
+user's effective privileges, never by the fact that the request came over IRC.
 
 The wire behaviour follows [Modern IRC](https://modern.ircdocs.horse/) and the [IRCv3](https://ircv3.net/irc/)
 specifications that are listed below. Where this page and a specification differ, this page is the contract.
@@ -19,7 +19,7 @@ specifications that are listed below. Where this page and a specification differ
 
 * A user can hold an osu! (stable) connection **and** several IRC connections at the same time. Neither evicts the other.
 * An IRC connection is a full chat participant: it joins channels, sends and receives messages, runs BasilBot commands
-  and referees or creates rooms to the extent the user's permissions allow.
+  and referees or creates rooms to the extent the user's privileges allow.
 * An IRC connection is never a player: it cannot be seated in a room slot and cannot spectate.
 * IRC is read-and-chat only. Nothing is *managed* through IRC: topics, channel modes, kicks and invitations are refused
   with `482`. Channels are managed through the HTTP API or by messaging BasilBot (`!channel list|create|set|delete`).
@@ -139,14 +139,14 @@ nickname `502`, and a change `501`. There are no user modes and no `+o`/`+v`: no
 * `JOIN` of an unknown or closed channel is `403`; of a channel the connection may not read `473`. Joining a channel the
   connection is already in does nothing.
 * A room channel can be read by a connection that takes part in the room: a seated player, an observing osu!tourney
-  client, the creator or a referee whose permissions include `RoomJoin`, or an account with `RoomManageAny` or
-  `RoomObserve`. Writing needs the same involvement or `ChatManagePostAnyRoom`. `JOIN #mp_5` is `473` when the room exists and
+  client, the creator or a referee whose privileges include `Player`, or an account with `Tournament` or
+  `Tournament`. Writing needs the same involvement or `Tournament`. `JOIN #mp_5` is `473` when the room exists and
   the caller may not enter, `403` when it does not exist. `LIST` lists only the room channels the connection could join.
 * A creator or referee joins the room channel with an ordinary `JOIN` and stays in it after leaving a slot.
 * `LIST` shows the visible general channels the connection may read, and the joinable room channels.
 
 **Status prefixes** mirror Basil's rights and are computed per channel, never granted by IRC. `@` marks authority:
-the creator and the referees of a room (`#mp_*`), and any user with `ChatManageChannels` in a general channel. `+` marks
+the creator and the referees of a room (`#mp_*`), and any user with `Moderator` in a general channel. `+` marks
 a member who may write. A read-only member has no prefix. `PREFIX=(ov)@+` is advertised only to say which symbols
 exist.
 
@@ -169,7 +169,7 @@ exist.
 | `Closed` | `403` |
 | `AccessDenied` on join | `473` |
 | `NotMember` on part | `442` |
-| `AccessDenied`, `NotMember`, `Blocked`, `TargetSilenced` on send, or a missing `ChatPost`/`ChatPostPrivate` | `404` with a text that names the reason |
+| `AccessDenied`, `NotMember`, `Blocked`, `TargetSilenced` on send, or a missing `Player`/`Player` | `404` with a text that names the reason |
 | unknown nickname | `401` |
 | `Empty` | `412` |
 | `InvalidText` | the message is dropped |
@@ -223,7 +223,7 @@ closes the socket.
 * **One model, thin transport.** A rule added to the Application holds on every transport.
 * **Keys, not passwords.** A client library or bot stores its credential in plain text and sends it unencrypted; a
   per-device key limits what a leak costs and can be revoked alone.
-* **No management over IRC.** Channels and rooms already have an API and BasilBot commands with permission checks;
+* **No management over IRC.** Channels and rooms already have an API and BasilBot commands with privilege checks;
   duplicating them as IRC modes would be a second, weaker surface.
 * **BasilBot is a user.** The bot is account 1 with a server-owned IRC connection, so it appears in `WHO`, `NAMES` and `WHOIS` and
   can be messaged like any user. It has no socket, and nobody can log in as it.

@@ -28,7 +28,7 @@ public sealed class PmChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("TourneyObserver", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		await app.LoginAsync(record, SessionType.StableTourney);
 		var opened = Assert.Single(app.UserEvents.Events.OfType<UserConnectionOpened>());
 

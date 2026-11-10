@@ -7,7 +7,6 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) :
 	IDatabaseContext<UsersDbContext>
 {
 	public DbSet<UserRow> Users => Set<UserRow>();
-	public DbSet<RestrictionRow> Restrictions => Set<RestrictionRow>();
 	public DbSet<ModerationLogRow> ModerationLog => Set<ModerationLogRow>();
 	public DbSet<RelationshipRow> Relationships => Set<RelationshipRow>();
 
@@ -21,6 +20,6 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) :
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<UsersDbContext>(modelBuilder);
-		IdCounters.Map(modelBuilder, "user_id_counters", ("user", 2), ("restriction", 1), ("moderation_log", 1));
+		IdCounters.Map(modelBuilder, "user_id_counters", ("user", 2), ("moderation_log", 1));
 	}
 }

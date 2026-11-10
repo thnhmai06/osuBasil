@@ -129,13 +129,13 @@ public sealed class ScoreSubmissionFixture : IDisposable
 
 	/// <summary>Creates an account, logs it in with a game client and prepares storage.</summary>
 	/// <param name="name">The account name.</param>
-	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
+	/// <param name="privileges">The privileges to grant, or the normal new-account privileges.</param>
 	/// <returns>The fixture.</returns>
 	public static async Task<ScoreSubmissionFixture> CreateAsync(string name = "Submitter",
-		UserPermissions? permissions = null)
+		UserPrivileges? privileges = null)
 	{
 		var app = new TestApplication();
-		var user = await app.CreateUserAsync(name, Password, permissions);
+		var user = await app.CreateUserAsync(name, Password, privileges);
 		var result = await app.Users.LoginAsync(
 			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), SessionType.Stable,
 			IPAddress.Loopback, LoginClient(), 0);

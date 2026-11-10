@@ -13,23 +13,23 @@ public readonly struct ScopedScoreSubmitter
 	/// <summary>Gets the actor this scope is for.</summary>
 	public StableConnection Actor { get; }
 
-	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
-	public UserPermissions Rights { get; }
+	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
+	public UserPrivileges Rights { get; }
 
 	/// <summary>Checks whether the actor holds the right an action needs.</summary>
 	/// <param name="required">The right the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPermissions? Require(UserPermissions required)
+	internal UserPrivileges? Require(UserPrivileges required)
 	{
 		return ScopedRights.Require(Rights, required);
 	}
 
 	private readonly ScoreSubmitter _submitter;
 
-	internal ScopedScoreSubmitter(ScoreSubmitter submitter, StableConnection actor, UserPermissions permissions)
+	internal ScopedScoreSubmitter(ScoreSubmitter submitter, StableConnection actor, UserPrivileges privileges)
 	{
 		Actor = actor;
-		Rights = permissions;
+		Rights = privileges;
 		_submitter = submitter;
 	}
 
@@ -46,10 +46,10 @@ public readonly struct ScopedScoreSubmitter
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the submission.</param>
 	/// <returns>
-	///     Ok when the score was stored; otherwise Rejected with the rejection, or the permissions the client lacks.
+	///     Ok when the score was stored; otherwise Rejected with the rejection, or the privileges the client lacks.
 	/// </returns>
 	/// <remarks>
-	///     Needs <see cref="UserPermissions.ScoreSubmit" />. A score on a beatmap the server does not have is taken only
+	///     Needs <see cref="UserPrivileges.Player" />. A score on a beatmap the server does not have is taken only
 	///     when <see cref="IScoreBeatmapAcceptance" /> accepts it. Every accepted play adds to the play count and the total
 	///     score; passed plays also add to the ranked score. The submission is checked against the player's latest
 	///     recorded login. A submission whose checksum was already stored is refused. Only a passed play keeps its
@@ -62,7 +62,7 @@ public readonly struct ScopedScoreSubmitter
 		Stream? replay,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.ScoreSubmit) is { } missing)
+		if (Require(UserPrivileges.Player) is { } missing)
 			return (Result<ScoreSubmissionOutcome>.Denied(missing), null);
 
 		return await _submitter.SubmitAsync(Actor, submission, beatmap, client, replay, cancellationToken);

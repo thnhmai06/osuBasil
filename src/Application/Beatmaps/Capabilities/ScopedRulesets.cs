@@ -6,21 +6,21 @@ using Basil.Domain.Users;
 namespace Basil.Application.Beatmaps.Capabilities;
 
 /// <summary>The rulesets as one actor may use them.</summary>
-/// <remarks>Every operation requires <see cref="UserPermissions.ServerManageSettings" />.</remarks>
+/// <remarks>Every operation requires <see cref="UserPrivileges.Developer" />.</remarks>
 public readonly struct ScopedRulesets
 {
 	private readonly Rulesets _rulesets;
-	private readonly UserPermissions _rights;
+	private readonly UserPrivileges _rights;
 
 	internal ScopedRulesets(Rulesets rulesets, IActor actor)
 	{
 		_rulesets = rulesets;
-		_rights = actor.EffectivePermissions(rulesets.Clock.GetUtcNow());
+		_rights = actor.EffectivePrivileges(rulesets.Clock.GetUtcNow());
 	}
 
-	private UserPermissions? Require()
+	private UserPrivileges? Require()
 	{
-		return ScopedRights.Require(_rights, UserPermissions.ServerManageSettings);
+		return ScopedRights.Require(_rights, UserPrivileges.Developer);
 	}
 
 	/// <summary>Reads the active and the staged version.</summary>

@@ -70,7 +70,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	{
 		var (osu, _, id) = await CreatorWithIrcAsync("RmHostOf");
 		using var _ = osu;
-		using var observer = await Host.SignInAsync("RmObserver", permissions: UserPermissionsGroups.All);
+		using var observer = await Host.SignInAsync("RmObserver", privileges: UserPrivilegesExtensions.All);
 
 		await observer.SendAsync($"JOIN #mp_{id}");
 

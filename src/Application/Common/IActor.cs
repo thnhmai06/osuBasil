@@ -8,8 +8,8 @@ public interface IActor
 	/// <summary>Gets the user on whose behalf the actor acts.</summary>
 	UserRecord Record { get; }
 
-	/// <summary>Gets what the user may do at a moment, with the restrictions that apply then.</summary>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	/// <returns>The effective permissions.</returns>
-	UserPermissions EffectivePermissions(DateTimeOffset now);
+	/// <summary>Gets what the user may do at a moment, with a silence that applies then.</summary>
+	/// <param name="now">The moment to evaluate a silence at.</param>
+	/// <returns>The effective privileges.</returns>
+	UserPrivileges EffectivePrivileges(DateTimeOffset now);
 }

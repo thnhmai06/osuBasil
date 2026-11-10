@@ -18,7 +18,7 @@ concurrent or arriving while the server is overloaded never reaches a module.
 Limits written inside each host are repeated, drift apart and are easy to forget on a new route. Putting them in one
 place makes the policy visible, testable and the same for every protocol. The gateway is kept apart from the business on
 purpose: a ban or a restriction is a business fact, decided at login and by capabilities (see
-[`../for-agents/identity-permissions.md`](../for-agents/identity-permissions.md)); the gateway only protects the process.
+[`../for-agents/identity-privileges.md`](../for-agents/identity-privileges.md)); the gateway only protects the process.
 
 ## What
 
@@ -51,7 +51,7 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
    consumed by time does not give a permit back on success.
 2. **After authentication.** Per user. The host turns the `Connection` into an opaque `AdmissionSubject` (a key and a tier)
    that the gateway defines; the mapping lives in `Basil.Host.Shared`. A signed-in user gets a higher allowance, and
-   all of a user's connections share one key. The tier is recomputed for each request from effective permissions and is not
+   all of a user's connections share one key. The tier is recomputed for each request from effective privileges and is not
    stored. The gateway never sees a Users type.
 
 ### Load policies

@@ -10,7 +10,7 @@ namespace Basil.Application.Servers.Tests.Capabilities;
 
 /// <summary>
 ///     Uploading a beatmapset as a connection, from the XML contract of <see cref="ScopedServerBeatmapsets" />: it needs
-///     <see cref="UserPermissions.BeatmapsetUpload" />, a locked area refuses everyone but managers, and a set the
+///     <see cref="UserPrivileges.Player" />, a locked area refuses everyone but managers, and a set the
 ///     server has is never overwritten.
 /// </summary>
 public sealed class ScopedServerBeatmapsetsTests
@@ -18,19 +18,19 @@ public sealed class ScopedServerBeatmapsetsTests
 	private static readonly Diff Easy = new("Easy", "easy file");
 
 	private static async Task<(TestApplication App, BeatmapsetWorld World, ScopedServerBeatmapsets Uploads)> SetupAsync(
-		UserPermissions permissions, Locks locks)
+		UserPrivileges privileges, Locks locks)
 	{
 		var world = new BeatmapsetWorld();
 		var app = world.CreateApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = locks });
-		var actor = await app.LoginAsync(await app.CreateUserAsync("Uploader", "password", permissions));
+		var actor = await app.LoginAsync(await app.CreateUserAsync("Uploader", "password", privileges));
 		return (app, world, app.Server.ScopeTo(actor).Beatmapsets);
 	}
 
 	[Fact]
 	public async Task UploadAsync_WhenUnlocked_StoresTheSet()
 	{
-		var (app, world, uploads) = await SetupAsync(UserPermissionsGroups.Default, Locks.None);
+		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;
 
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
@@ -44,7 +44,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	[Fact]
 	public async Task UploadAsync_ArchiveLargerThanTheConfiguredLimit_IsTooLargeAndStoresNothing()
 	{
-		var (app, world, uploads) = await SetupAsync(UserPermissionsGroups.Default, Locks.None);
+		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;
 		var bytes = Osz.Build(100, Easy);
 		await app.SetSettingsAsync(new ServerSettings
@@ -61,7 +61,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	[Fact]
 	public async Task UploadAsync_ArchiveExactlyAtTheConfiguredLimit_StoresTheSet()
 	{
-		var (app, world, uploads) = await SetupAsync(UserPermissionsGroups.Default, Locks.None);
+		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;
 		var bytes = Osz.Build(100, Easy);
 		await app.SetSettingsAsync(new ServerSettings
@@ -77,14 +77,14 @@ public sealed class ScopedServerBeatmapsetsTests
 	public async Task UploadAsync_WithoutTheUploadPermission_NamesIt()
 	{
 		var (app, world, uploads) = await SetupAsync(
-			UserPermissionsGroups.Default & ~UserPermissions.BeatmapsetUpload, Locks.None);
+			UserPrivilegesExtensions.Default & ~UserPrivileges.Player, Locks.None);
 		using var _ = app;
 
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.BeatmapsetUpload, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 		Assert.Null(import);
 		Assert.Empty(world.Sets.Records);
 	}
@@ -92,7 +92,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	[Fact]
 	public async Task UploadAsync_WhileLocked_RefusesAUserWithoutBeatmapsetManage()
 	{
-		var (app, world, uploads) = await SetupAsync(UserPermissionsGroups.Default, Locks.Beatmapsets);
+		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.Beatmapsets);
 		using var _ = app;
 
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
@@ -107,7 +107,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	public async Task UploadAsync_WhileLocked_LetsABeatmapsetManagerUpload()
 	{
 		var (app, world, uploads) = await SetupAsync(
-			UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage, Locks.Beatmapsets);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament, Locks.Beatmapsets);
 		using var _ = app;
 
 		var (result, _) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
@@ -120,7 +120,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	[Fact]
 	public async Task UploadAsync_OfASetTheServerHas_IsRejectedAndTheStoredSetStays()
 	{
-		var (app, world, uploads) = await SetupAsync(UserPermissionsGroups.Default, Locks.None);
+		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;
 		await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)), TestContext.Current.CancellationToken);
 

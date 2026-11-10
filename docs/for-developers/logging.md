@@ -12,7 +12,7 @@ diagnostics, not to the log.
 * start, stop and each phase of shutdown, including timeouts and a forced exit;
 * login and logout of every connection type;
 * a room opened or closed and a round started or ended;
-* restrictions and other moderation actions;
+* silences and other moderation actions;
 * console commands (with passwords and keys masked);
 * errors and warnings from any component.
 
@@ -41,7 +41,7 @@ so a change applies at once.
 ## Logging a business event
 
 Log once, where the state changes, and let the event handlers do it. `LifecycleLog.cs` contains the handlers for user
-connections, rooms, rounds and restrictions; a new lifecycle event gets a handler there, not a copy in each transport.
+connections, rooms, rounds and silences; a new lifecycle event gets a handler there, not a copy in each transport.
 A transport may log a transport-specific failure, but not the business event again.
 
 Use the level that matches the meaning: `Information` for lifecycle, `Warning` for an abnormal condition that continues,

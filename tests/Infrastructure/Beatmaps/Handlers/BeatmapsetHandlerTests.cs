@@ -12,16 +12,16 @@ namespace Basil.Infrastructure.Beatmaps.Tests.Handlers;
 /// <summary>The messages that delete or change a beatmapset with the rights of the sending connection.</summary>
 public sealed class BeatmapsetHandlerTests
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage;
+	private static readonly UserPrivileges Manager = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 
 	private static async Task<(TestApplication App, BeatmapsetWorld World, BeatmapsetRecord Set, Connection Actor)>
-		SetupAsync(UserPermissions permissions)
+		SetupAsync(UserPrivileges privileges)
 	{
 		var world = new BeatmapsetWorld();
 		var app = world.CreateApplication();
 		var imported = await app.Beatmapsets.ImportAsync(
 			new MemoryStream(Osz.Build(null, new Diff("Easy", "easy file"))), TestContext.Current.CancellationToken);
-		var actor = await app.LoginAsync(await app.CreateUserAsync("Manager", "password", permissions));
+		var actor = await app.LoginAsync(await app.CreateUserAsync("Manager", "password", privileges));
 		return (app, world, imported.Set!, actor);
 	}
 
@@ -41,13 +41,13 @@ public sealed class BeatmapsetHandlerTests
 	[Fact]
 	public async Task Delete_WithoutBeatmapsetManage_IsDeniedWithThatPermission()
 	{
-		var (app, world, set, actor) = await SetupAsync(UserPermissionsGroups.Default);
+		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
 		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(new DeleteBeatmapset(actor, set),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.Single(world.Sets.Records);
 	}
 
@@ -70,7 +70,7 @@ public sealed class BeatmapsetHandlerTests
 	[Fact]
 	public async Task Patch_WithNoField_IsOkAndChangesNothing()
 	{
-		var (app, _, set, actor) = await SetupAsync(UserPermissionsGroups.Default);
+		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
 		var result = await new PatchBeatmapsetHandler(app.Beatmapsets).Handle(
@@ -83,14 +83,14 @@ public sealed class BeatmapsetHandlerTests
 	[Fact]
 	public async Task Patch_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
 	{
-		var (app, _, set, actor) = await SetupAsync(UserPermissionsGroups.Default);
+		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
 		var result = await new PatchBeatmapsetHandler(app.Beatmapsets).Handle(
 			new PatchBeatmapset(actor, set, BeatmapsetStatus.Loved, false, null),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Status);
 		Assert.True(set.Visible);
 	}

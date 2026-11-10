@@ -66,16 +66,16 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null, int? V
 		return result is not null;
 	}
 
-	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
-	/// <param name="effective">The asker's effective permissions.</param>
+	/// <summary>Narrows the query to what a user with the given privileges may see.</summary>
+	/// <param name="effective">The asker's effective privileges.</param>
 	/// <param name="viewer">The asker.</param>
 	/// <returns>
-	///     The query as asked when the asker may view private matches (<see cref="UserPermissions.RoomManageViewPrivate" />);
+	///     The query as asked when the asker may view private matches (<see cref="UserPrivileges.Tournament" />);
 	///     otherwise a query whose private matches are only the ones the asker took part in or manages.
 	/// </returns>
-	public MatchQuery LimitTo(UserPermissions effective, UserRecord viewer)
+	public MatchQuery LimitTo(UserPrivileges effective, UserRecord viewer)
 	{
 		ArgumentNullException.ThrowIfNull(viewer);
-		return effective.Allows(UserPermissions.RoomManageViewPrivate) ? this : this with { VisibleTo = viewer.Id };
+		return effective.Allows(UserPrivileges.Tournament) ? this : this with { VisibleTo = viewer.Id };
 	}
 }

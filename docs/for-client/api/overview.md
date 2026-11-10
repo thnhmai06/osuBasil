@@ -65,7 +65,7 @@ The documentation site contains separate references for:
 
 ## Authentication
 
-The API is user-centric: a call acts for the signed-in user and may do what that user's permissions allow.
+The API is user-centric: a call acts for the signed-in user and may do what that user's privileges allow.
 
 Sign in with `POST /v1/auth/login`, giving the username and the plain password. The response carries a token, shown
 only there. Send it with every call that needs it:
@@ -75,7 +75,7 @@ Authorization: Bearer <token>
 ```
 
 * A call without a token, or with a token that is no longer valid, is answered with `401`.
-* A call that lacks a permission it needs is answered with `403`; the error names the missing permissions.
+* A call that lacks a privilege it needs is answered with `403`; the error names the missing privileges.
 * A few routes are public and need no token, for example retrieving an account or an image.
 * `GET /v1/auth/session` tells you which user the token belongs to; `POST /v1/auth/logout` ends the session.
 

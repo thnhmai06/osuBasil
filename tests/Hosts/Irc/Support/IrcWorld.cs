@@ -11,9 +11,9 @@ internal static class IrcWorld
 {
 	/// <summary>Creates an account and signs an IRC client in, then waits until it is in <c>#osu</c>.</summary>
 	public static async Task<IrcClient> SignInAsync(this BasilHost host, string name, string caps = "",
-		UserPermissions? permissions = null)
+		UserPrivileges? privileges = null)
 	{
-		var (irc, key) = await host.NewIrcClientAsync(name, permissions);
+		var (irc, key) = await host.NewIrcClientAsync(name, privileges);
 		var nick = name.Replace(' ', '_');
 		if (caps.Length == 0) await irc.RegisterAsync(nick, key);
 		else await irc.RegisterWithCapsAsync(nick, key, caps);

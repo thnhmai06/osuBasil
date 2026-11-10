@@ -40,9 +40,9 @@ internal sealed class AccountRules(
 
 	/// <inheritdoc />
 	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
-		UserPermissions? permissions, CancellationToken cancellationToken)
+		UserPrivileges? privileges, CancellationToken cancellationToken)
 	{
-		data.Permissions = permissions ?? (await settings.GetAsync(cancellationToken)).Accounts.DefaultPermissions;
+		data.Privileges = privileges ?? (await settings.GetAsync(cancellationToken)).Accounts.DefaultPrivileges;
 		UserRecord user;
 		try
 		{

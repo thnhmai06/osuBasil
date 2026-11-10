@@ -27,10 +27,10 @@ public static class CommandReporting
 	/// <summary>Prints the refusal in a result that is not ok.</summary>
 	public static int Refuse<TOutcome>(this CommandCall call, Result<TOutcome> result) where TOutcome : struct, Enum
 	{
-		// The console skips the rights checks, so a missing permission only happens through a bug; it is still shown.
+		// The console skips the rights checks, so a missing privilege only happens through a bug; it is still shown.
 		var info = result.Missing is null
 			? OutcomeErrors.Describe(result.Outcome)
-			: new ErrorInfo(OutcomeErrors.PermissionDeniedCode, ErrorKind.PermissionDenied);
+			: new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, ErrorKind.PrivilegeDenied);
 		call.Output.Error(info.Code, Humanize(info.Code));
 		return info.Kind == ErrorKind.Invalid ? ExitCodes.Invalid : ExitCodes.Refused;
 	}

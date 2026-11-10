@@ -36,8 +36,8 @@ API route
 
 * `success` is `true` below status 400 and `code` repeats the HTTP status.
 * `meta` is `{ offset, limit, hasNext }` for a page (`Api.Paged`) and `null` otherwise.
-* `errors` is `{ code, missing }` for a failure: `code` is a stable camelCase string, and `missing` is the permission mask
-  the caller lacks when the refusal is for lack of permissions.
+* `errors` is `{ code, missing }` for a failure: `code` is a stable camelCase string, and `missing` is the privilege mask
+  the caller lacks when the refusal is for lack of privileges.
 * JSON is camelCase and enums are camelCase strings (`ApiJson.Options`).
 
 Outcomes of the Application objects reach the client through `OutcomeErrors` (in `Basil.Host.Shared`), which maps each
@@ -131,7 +131,7 @@ When adding a normal JSON endpoint:
 1. Define the response model (a view in `Basil.Host.Shared` when the console also shows it).
 2. Register the route in the appropriate route group, with `.RequireToken()` when it needs a signed-in user.
 3. Take the actor from the connection of the request and work through a scope (`x.ScopeTo(connection)`); the route
-   holds no permission rule of its own.
+   holds no privilege rule of its own.
 4. Return an `Api` result: `Ok`, `Created`, `Done` or `Paged` for success, and `result.Refusal()` / `result.Answer()` for
    an outcome.
 5. Write `.WithSummary` and `.WithDescription` as public contract only.

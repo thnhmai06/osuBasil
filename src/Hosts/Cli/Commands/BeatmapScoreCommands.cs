@@ -85,7 +85,7 @@ internal static class BeatmapScoreCommands
 	{
 		var page = call.Page();
 		var found = await call.Get<IBeatmapsetRepository>().ListAsync(
-			BeatmapQuery.Parse(call.Text("query") ?? string.Empty).LimitTo(UserPermissionsGroups.All), page,
+			BeatmapQuery.Parse(call.Text("query") ?? string.Empty).LimitTo(UserPrivilegesExtensions.All), page,
 			call.CancellationToken);
 		call.PrintPage(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.HasNext), page);
 		return ExitCodes.Success;

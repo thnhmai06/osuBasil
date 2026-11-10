@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 ///     viewable by everyone; a private one only by a user who took part in it (a player-joined event targets the user),
 ///     its
 ///     creator, or a referee that is still one (a referee-added event not followed by a referee-removed event for the same
-///     user). The permission that lets a user view every private match is not a persistence concern.
+///     user). The privilege that lets a user view every private match is not a persistence concern.
 /// </summary>
 [Collection("Persistence")]
 public sealed class EfMatchVisibilityTests(PersistenceFixture container) : DatabaseTests(container)

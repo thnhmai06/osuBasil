@@ -36,7 +36,7 @@ public class ServerSettingsTests
 		() => _ = Limits(degraded: 0.7, shed: 0.7),
 		() => _ = Limits(shed: 0.9, hardShed: 0.9),
 		() => _ = new ServerSettings.BotSettings { CommandPrefix = " " },
-		() => _ = new ServerSettings.AccountSettings { DefaultPermissions = (UserPermissions)(1UL << 62) }
+		() => _ = new ServerSettings.AccountSettings { DefaultPrivileges = (UserPrivileges)(1 << 7) }
 	};
 
 	private static ServerSettings.AdmissionLimitSettings Limits(int requests = 120, TimeSpan? window = null,

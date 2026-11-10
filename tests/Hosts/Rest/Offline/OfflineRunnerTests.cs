@@ -65,7 +65,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 				var (status, user) = await client.CallAsync(HttpMethod.Get, $"/v1/users/{id}");
 
 				Assert.Equal(200, status);
-				Assert.Equal((ulong)UserPermissionsGroups.All, (ulong)user!["data"]!["permissions"]!);
+				Assert.Equal((ulong)UserPrivilegesExtensions.All, (ulong)user!["data"]!["privileges"]!);
 			}
 			finally
 			{

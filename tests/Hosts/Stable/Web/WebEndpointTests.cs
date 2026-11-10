@@ -222,10 +222,10 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var plain = await Host.NewClientAsync("DirectPlain",
-			permissions: UserPermissionsGroups.Default & ~UserPermissions.BeatmapsetDirect);
+			privileges: UserPrivilegesExtensions.Default & ~UserPrivileges.Supporter);
 		await plain.LoginAsync();
 		using var supporter = await Host.NewClientAsync("DirectSupport",
-			permissions: UserPermissionsGroups.Default);
+			privileges: UserPrivilegesExtensions.Default);
 		await supporter.LoginAsync();
 
 		var (denied, _) = await plain.WebGetAsync($"/d/{map.Beatmapset.Id}", "u", "h");
@@ -246,7 +246,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		var set = (await sets.GetAsync(map.Beatmapset.Id))!;
 		set.Visible = false;
 		await sets.UpdateAsync(set);
-		using var supporter = await Host.NewClientAsync("DirectHiddenNo", permissions: UserPermissionsGroups.Default);
+		using var supporter = await Host.NewClientAsync("DirectHiddenNo", privileges: UserPrivilegesExtensions.Default);
 		await supporter.LoginAsync();
 
 		try

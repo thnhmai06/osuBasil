@@ -173,13 +173,13 @@ public sealed class DashboardRenderer(DashboardModel model, ViewFormatter format
 		surface.Title(area,
 			$"Users online: {users.Count}" + (model.Filter.Length > 0 ? $"   filter: {model.Filter}" : "") +
 			"   (Alt+Up/Down select, Alt+Enter copies the id)");
-		PaintTable(surface, area.Below(1), ["id", "name", "connections", "status", "room", "idle", "permissions"],
+		PaintTable(surface, area.Below(1), ["id", "name", "connections", "status", "room", "idle", "privileges"],
 		[
 			.. users.Select(user => (IReadOnlyList<string>)
 			[
 				user.Id.ToString(), user.Name, user.Connections, user.Status, user.Room,
 				user.Idle.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture),
-				user.Permissions.ToString(CultureInfo.InvariantCulture)
+				user.Privileges.ToString(CultureInfo.InvariantCulture)
 			])
 		]);
 	}

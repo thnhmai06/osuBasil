@@ -11,13 +11,13 @@ public readonly struct ScopedServer
 	/// <summary>Gets the actor this scope is for.</summary>
 	public Connection Actor { get; }
 
-	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
-	public UserPermissions Rights { get; }
+	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
+	public UserPrivileges Rights { get; }
 
 	/// <summary>Checks whether the actor holds the right an action needs.</summary>
 	/// <param name="required">The right the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPermissions? Require(UserPermissions required)
+	internal UserPrivileges? Require(UserPrivileges required)
 	{
 		return ScopedRights.Require(Rights, required);
 	}
@@ -28,7 +28,7 @@ public readonly struct ScopedServer
 	internal ScopedServer(Server server, Connection actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePermissions(server.Context.Connections.Clock.GetUtcNow());
+		Rights = actor.EffectivePrivileges(server.Context.Connections.Clock.GetUtcNow());
 		Server = server;
 	}
 
@@ -55,7 +55,7 @@ public readonly struct ScopedServer
 	/// <param name="to">The user to notify.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatManageAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPrivileges.Moderator" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) Notify(string text, UserRecord to)
 	{
@@ -67,7 +67,7 @@ public readonly struct ScopedServer
 	/// <param name="to">The users to notify.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatManageAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPrivileges.Moderator" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) Notify(string text, IReadOnlyCollection<UserRecord> to)
 	{
@@ -78,7 +78,7 @@ public readonly struct ScopedServer
 	/// <param name="text">The text to show.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatManageAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPrivileges.Moderator" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) NotifyAll(string text)
 	{
@@ -87,15 +87,15 @@ public readonly struct ScopedServer
 
 	private Result<ServerOutcome>? Denied()
 	{
-		return Require(UserPermissions.ChatManageAnnounce) is { } missing
+		return Require(UserPrivileges.Moderator) is { } missing
 			? Result<ServerOutcome>.Denied(missing)
 			: null;
 	}
 
-	/// <summary>Checks whether the caller holds the permissions an action on this server needs.</summary>
-	/// <param name="required">The permissions the action needs.</param>
-	/// <returns><see langword="null" /> when all are in effect; otherwise the permissions that are missing.</returns>
-	internal UserPermissions? Needs(UserPermissions required)
+	/// <summary>Checks whether the caller holds the privileges an action on this server needs.</summary>
+	/// <param name="required">The privileges the action needs.</param>
+	/// <returns><see langword="null" /> when all are in effect; otherwise the privileges that are missing.</returns>
+	internal UserPrivileges? Needs(UserPrivileges required)
 	{
 		return Require(required);
 	}

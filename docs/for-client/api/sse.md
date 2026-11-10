@@ -56,7 +56,7 @@ scores received; an event carries its type, time, actor, target and detail.
 ## Spectate
 
 `GET /v1/users/{id}/spectate` follows a player who is online in game. The player sees a spectator, and the usual
-spectating permission, blocks and restrictions apply. The stream only watches: it joins no chat channel. The first
+spectating privilege and blocks apply. The stream only watches: it joins no chat channel. The first
 snapshot has the player's id, name, country and current status. Bundles then carry:
 
 * `{ "type": "frames", "action": ..., "sequence": ..., "frames": [[button, taiko, x, y, time], ...], "score": {...} }`

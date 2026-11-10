@@ -13,7 +13,7 @@ namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
 /// <summary>
 ///     The message that posts to chat: it finds the channel its target names and posts as the sender. Expected values
-///     come from AGENTS.md (a refusal names the missing permissions, a private message goes to an online user).
+///     come from AGENTS.md (a refusal names the missing privileges, a private message goes to an online user).
 /// </summary>
 public sealed class PostChatMessageHandlerTests
 {
@@ -26,7 +26,7 @@ public sealed class PostChatMessageHandlerTests
 
 	private static async Task<Connection> OpenChannelAsync(TestApplication app)
 	{
-		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPermissionsGroups.All);
+		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPrivilegesExtensions.All);
 		var actor = await app.LoginAsync(admin);
 		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(
 			new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() },
@@ -74,14 +74,14 @@ public sealed class PostChatMessageHandlerTests
 		using var app = new TestApplication();
 		await OpenChannelAsync(app);
 		var user = await app.CreateUserAsync("Muted", "password",
-			UserPermissionsGroups.Default & ~UserPermissions.ChatPost);
+			UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 		var actor = await app.LoginAsync(user);
 
 		var result = await HandlerFor(app).Handle(
 			new PostChatMessage(actor, new ChatTarget.General(ChannelName), "hello"),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ChatPost, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 		Assert.False(result.IsOk);
 	}
 

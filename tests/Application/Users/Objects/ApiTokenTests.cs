@@ -195,7 +195,7 @@ public sealed class ApiTokenTests
 	public async Task Token_OfADeletedAccount_OpensNothing()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Doomed", "password");
 		var connection = await app.LoginAsync(user);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));

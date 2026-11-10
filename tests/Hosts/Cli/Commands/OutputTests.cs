@@ -34,11 +34,11 @@ public sealed class OutputTests
 	[Fact]
 	public void A_bitmask_is_followed_by_the_names_of_its_flags()
 	{
-		var mask = (ulong)(UserPermissions.ChatPost | UserPermissions.ChatPostPrivate);
+		var mask = (ulong)(UserPrivileges.Player | UserPrivileges.Moderator);
 
-		var text = ViewFormatter.Mask("permissions", mask);
+		var text = ViewFormatter.Mask("privileges", mask);
 
-		Assert.Equal($"{mask} (ChatPost, ChatPostPrivate)", text);
+		Assert.Equal($"{mask} (Player, Moderator)", text);
 	}
 
 	[Fact]
@@ -51,7 +51,7 @@ public sealed class OutputTests
 	public void A_number_that_is_not_a_mask_stays_a_number()
 	{
 		Assert.Equal("12", ViewFormatter.Mask("limit", 12));
-		Assert.Equal("0", ViewFormatter.Mask("permissions", 0));
+		Assert.Equal("0", ViewFormatter.Mask("privileges", 0));
 	}
 
 	[Fact]
@@ -68,14 +68,13 @@ public sealed class OutputTests
 	public void A_view_prints_its_fields_with_api_names_booleans_and_dashes_for_nothing()
 	{
 		var output = new CollectedOutput();
-		var view = new UserView(3, "alice", "vn", (ulong)UserPermissions.ChatPost, (ulong)UserPermissions.ChatPost,
-			null);
+		var view = new UserView(3, "alice", "vn", (ulong)UserPrivileges.Player, (ulong)UserPrivileges.Player, null);
 
 		Utc.Print(output, view);
 
-		Assert.Contains(output.Lines, line => line.Text == "id:                   3");
-		Assert.Contains(output.Lines, line => line.Text.StartsWith("permissions:") && line.Text.EndsWith("(ChatPost)"));
-		Assert.Contains(output.Lines, line => line.Text == "restrictions:         -");
+		Assert.Contains(output.Lines, line => line.Text == "id:                  3");
+		Assert.Contains(output.Lines, line => line.Text.StartsWith("privileges:") && line.Text.EndsWith("(Player)"));
+		Assert.Contains(output.Lines, line => line.Text == "silencedUntil:       -");
 	}
 
 	[Fact]

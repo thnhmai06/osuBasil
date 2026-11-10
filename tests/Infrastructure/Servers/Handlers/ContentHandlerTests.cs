@@ -37,7 +37,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new SaveFaqHandler(app.Server).Handle(new SaveFaq(plain, "rules", "Be kind."), Token);
 
-		Assert.Equal(UserPermissions.ServerManageContent, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.Empty(faqs.Entries);
 	}
 
@@ -63,7 +63,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new DeleteFaqHandler(app.Server).Handle(new DeleteFaq(plain, "rules"), Token);
 
-		Assert.Equal(UserPermissions.ServerManageContent, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
@@ -73,7 +73,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new ClearMenuIconHandler(app.Server).Handle(new ClearMenuIcon(await PlainAsync(app)), Token);
 
-		Assert.Equal(UserPermissions.ServerManageContent, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
@@ -84,7 +84,7 @@ public sealed class ContentHandlerTests
 		var result = await new SetMenuIconHandler(app.Server)
 			.Handle(new SetMenuIcon(await PlainAsync(app), "icon", new MemoryStream(), null), Token);
 
-		Assert.Equal(UserPermissions.ServerManageContent, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
@@ -95,7 +95,7 @@ public sealed class ContentHandlerTests
 		var (result, banner) = await new AddMenuBannerHandler(app.Server)
 			.Handle(new AddMenuBanner(await PlainAsync(app), "banner", new MemoryStream(), null, null, null), Token);
 
-		Assert.Equal(UserPermissions.ServerManageContent, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.Null(banner);
 	}
 
@@ -107,7 +107,7 @@ public sealed class ContentHandlerTests
 		var (result, image) = await new AddMenuSeasonalHandler(app.Server)
 			.Handle(new AddMenuSeasonal(await PlainAsync(app), "season", new MemoryStream()), Token);
 
-		Assert.Equal(UserPermissions.ServerManageContent, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.Null(image);
 	}
 
@@ -119,7 +119,7 @@ public sealed class ContentHandlerTests
 		var result = await new DeleteMenuSeasonalHandler(app.Server)
 			.Handle(new DeleteMenuSeasonal(await PlainAsync(app), new ContentReference("season.png")), Token);
 
-		Assert.Equal(UserPermissions.ServerManageContent, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
@@ -140,7 +140,7 @@ public sealed class ContentHandlerTests
 
 		var (result, settings) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(await PlainAsync(app)), Token);
 
-		Assert.Equal(UserPermissions.ServerManageSettings, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 		Assert.Null(settings);
 	}
 
@@ -150,7 +150,7 @@ public sealed class ContentHandlerTests
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
 		var (_, current) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(admin), Token);
-		var changed = current! with { Accounts = current.Accounts with { DefaultPermissions = current.Accounts.DefaultPermissions } };
+		var changed = current! with { Accounts = current.Accounts with { DefaultPrivileges = current.Accounts.DefaultPrivileges } };
 
 		var result = await new UpdateSettingsHandler(app.Server).Handle(new UpdateSettings(admin, changed), Token);
 
@@ -166,7 +166,7 @@ public sealed class ContentHandlerTests
 		var result = await new UpdateSettingsHandler(app.Server)
 			.Handle(new UpdateSettings(await PlainAsync(app), current!), Token);
 
-		Assert.Equal(UserPermissions.ServerManageSettings, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]
@@ -189,7 +189,7 @@ public sealed class ContentHandlerTests
 		var (result, _) = await new ListScreenshotsHandler(app.Server)
 			.Handle(new ListScreenshots(await PlainAsync(app)), Token);
 
-		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 	}
 
 	[Fact]
@@ -200,7 +200,7 @@ public sealed class ContentHandlerTests
 		var result = await new DeleteScreenshotHandler(app.Server)
 			.Handle(new DeleteScreenshot(await PlainAsync(app), new ContentReference("shot.png")), Token);
 
-		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 	}
 
 	[Fact]
@@ -211,7 +211,7 @@ public sealed class ContentHandlerTests
 		var (screenshot, result) = await new UploadScreenshotHandler(app.Server)
 			.Handle(new UploadScreenshot(await PlainAsync(app), new MemoryStream()), Token);
 
-		Assert.Equal(UserPermissions.ScreenshotUpload, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 		Assert.Null(screenshot);
 	}
 
@@ -224,7 +224,7 @@ public sealed class ContentHandlerTests
 		var (result, import) = await new UploadBeatmapsetHandler(app.Server)
 			.Handle(new UploadBeatmapset(await PlainAsync(app), new MemoryStream()), Token);
 
-		Assert.Equal(UserPermissions.BeatmapsetUpload, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 		Assert.Null(import);
 	}
 
@@ -285,12 +285,12 @@ public sealed class ContentHandlerTests
 
 	private static async Task<Connection> AdminAsync(TestApplication app)
 	{
-		return await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		return await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 	}
 
 	private static async Task<Connection> PlainAsync(TestApplication app)
 	{
-		return await app.LoginAsync(await app.CreateUserAsync("Plain", "password", UserPermissions.ChatPost));
+		return await app.LoginAsync(await app.CreateUserAsync("Plain", "password", UserPrivileges.None));
 	}
 
 	/// <summary>A FAQ storage that keeps its entries in memory.</summary>

@@ -120,7 +120,7 @@ public sealed class UserRegistry
 	///     <paramref name="client" /> is <see langword="null" /> for an osu! or osu!tourney login.
 	/// </exception>
 	/// <remarks>
-	///     An osu!tourney login needs <see cref="UserPermissions.RoomObserve" /> in effect. Successful logins are
+	///     An osu!tourney login needs <see cref="UserPrivileges.Tournament" /> in effect. Successful logins are
 	///     recorded.
 	/// </remarks>
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, SessionType type, IPAddress ip,
@@ -138,7 +138,7 @@ public sealed class UserRegistry
 		var session = NewLoginSession(record, type, ip, client, now, lifetime, token);
 		var connection = NewConnection(session, token, utcOffset, lifetime);
 
-		var openFailure = Open(connection, await ActiveRestrictionsAsync(record, cancellationToken));
+		var openFailure = Open(connection);
 		if (openFailure is not null) return LoginResult.Fail(openFailure.Value);
 
 		try
@@ -224,8 +224,7 @@ public sealed class UserRegistry
 		var session = ResumedSession(stored!, record!, type, ip, token);
 		var connection = NewConnection(session, token, 0, lifetime);
 
-		var restrictions = await ActiveRestrictionsAsync(record!, cancellationToken);
-		if (OpenUnlessRaced(token, connection, restrictions) is { } settled) return settled;
+		if (OpenUnlessRaced(token, connection) is { } settled) return settled;
 
 		try
 		{
@@ -280,15 +279,14 @@ public sealed class UserRegistry
 		};
 	}
 
-	private LoginResult? OpenUnlessRaced(string token, Connection connection,
-		IReadOnlyList<UserRestriction> restrictions)
+	private LoginResult? OpenUnlessRaced(string token, Connection connection)
 	{
 		using (Enter())
 		{
 			// Another request may have brought the same token in while this one read the database.
 			if (_connections.GetValueOrDefault(token) is { IsOpen: true } raced) return LoginResult.Success(raced);
 
-			var failure = Open(connection, restrictions);
+			var failure = Open(connection);
 			if (failure is not null) return LoginResult.Fail(failure.Value);
 		}
 
@@ -304,15 +302,6 @@ public sealed class UserRegistry
 			SessionType.Irc => new IrcConnection(session, token),
 			_ => new ApiConnection(session, token, lifetime)
 		};
-	}
-
-	private async Task<List<UserRestriction>> ActiveRestrictionsAsync(UserRecord record,
-		CancellationToken cancellationToken)
-	{
-		var now = _context.Clock.GetUtcNow();
-		return (await _context.Restrictions.ListAsync(record, cancellationToken))
-			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
-			.ToList();
 	}
 
 	/// <summary>Creates the stored form of a token or key.</summary>
@@ -406,7 +395,7 @@ public sealed class UserRegistry
 	/// <returns>The bot's account.</returns>
 	/// <remarks>
 	///     <para>
-	///         An account that holds the id is taken over: it loses its permissions, its password and its restrictions,
+	///         An account that holds the id is taken over: it loses its privileges, its password and its silence,
 	///         a deleted one is restored, and its connections are closed (the bot's own connections stay open when the
 	///         account is the bot already). A live account keeps its name and country; a deleted one gets
 	///         <see cref="BasilBot.DefaultName" />. When the id holds nothing, the bot is created.
@@ -422,7 +411,7 @@ public sealed class UserRegistry
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken cancellationToken = default)
 	{
 		var stored = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
-		var isBot = stored is { Value: { DeletedAt: null, Permissions: UserPermissions.None } };
+		var isBot = stored is { Value: { DeletedAt: null, Privileges: UserPrivileges.None, SilencedUntil: null } };
 
 		if (!isBot && stored is not null) CloseAll(stored, SessionEndReason.Revoked);
 
@@ -430,17 +419,8 @@ public sealed class UserRegistry
 			? stored!
 			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
 				? new UserData
-					{ Name = stored.Value.Name, Country = stored.Value.Country, Permissions = UserPermissions.None }
-				: new UserData { Name = BasilBot.DefaultName, Permissions = UserPermissions.None }, cancellationToken);
-
-		var now = _context.Clock.GetUtcNow();
-		foreach (var restriction in await _context.Restrictions.ListAsync(bot, cancellationToken))
-		{
-			if (restriction.Value.EndsAt <= now) continue;
-
-			restriction.Value.EndsAt = restriction.Value.StartsAt > now ? restriction.Value.StartsAt : now;
-			await _context.Restrictions.UpdateAsync(restriction, cancellationToken: cancellationToken);
-		}
+					{ Name = stored.Value.Name, Country = stored.Value.Country, Privileges = UserPrivileges.None }
+				: new UserData { Name = BasilBot.DefaultName, Privileges = UserPrivileges.None }, cancellationToken);
 
 		await _context.Credentials.DeleteAsync(bot, cancellationToken);
 		return bot;
@@ -486,7 +466,7 @@ public sealed class UserRegistry
 			Connection connection = type is SessionType.Stable
 				? new StableConnection(login, token, 0, _connectionContext)
 				: new IrcConnection(login, token);
-			if (Open(connection, []) is not null) return null;
+			if (Open(connection) is not null) return null;
 		}
 
 		return _online.GetValueOrDefault(user);
@@ -494,26 +474,24 @@ public sealed class UserRegistry
 
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
 	/// <param name="connection">The new connection.</param>
-	/// <param name="restrictions">The user's restrictions that have not ended.</param>
 	/// <returns><see langword="null" /> on success; otherwise, why the connection was refused.</returns>
 	/// <remarks>
 	///     A user holds at most the number of open connections of a kind that the server settings allow. At the limit,
 	///     the user's connections of that kind that sent nothing for too long are closed first; if the user is still at
 	///     the limit, an HTTP API connection replaces the one that was active longest ago and any other kind is refused
 	///     with <see cref="LoginFailure.TooManySessions" />. BasilBot's connections are limited to one of each kind
-	///     whatever the settings say. An osu!tourney connection needs <see cref="UserPermissions.RoomObserve" /> in
+	///     whatever the settings say. An osu!tourney connection needs <see cref="UserPrivileges.Tournament" /> in
 	///     effect.
 	/// </remarks>
-	internal LoginFailure? Open(Connection connection, IReadOnlyList<UserRestriction> restrictions)
+	internal LoginFailure? Open(Connection connection)
 	{
 		using var scope = Enter();
 
 		// The online user holds the current record; a login may have read an older one.
 		var record = _online.GetValueOrDefault(connection.Record)?.Record ?? connection.Record;
 		if (connection.Type is SessionType.StableTourney &&
-		    !record.Value.Permissions.Effective(restrictions, _context.Clock.GetUtcNow())
-			    .Allows(UserPermissions.RoomObserve))
-			return LoginFailure.NoTourneyPermission;
+		    !record.Value.Privileges.Allows(UserPrivileges.Tournament))
+			return LoginFailure.NoTourneyPrivilege;
 
 		if (_online.GetValueOrDefault(connection.Record) is { } holder &&
 		    MakeRoomFor(holder, connection) is { } refusal)
@@ -525,7 +503,6 @@ public sealed class UserRegistry
 		user ??= Of(connection.Record);
 		if (cameOnline) Add(user);
 
-		user.Restrictions.Replace(restrictions);
 		connection.User = user;
 		user.Add(connection);
 		connection.IsOpen = true;
@@ -652,10 +629,10 @@ public sealed class UserRegistry
 	}
 
 	/// <summary>Closes connections of kinds the user may no longer use.</summary>
-	/// <param name="user">The online user whose permissions or restrictions changed.</param>
+	/// <param name="user">The online user whose privileges or silence changed.</param>
 	internal void CloseDisallowed(User user)
 	{
-		if (user.EffectivePermissions(_context.Clock.GetUtcNow()).Allows(UserPermissions.RoomObserve)) return;
+		if (user.EffectivePrivileges(_context.Clock.GetUtcNow()).Allows(UserPrivileges.Tournament)) return;
 
 		foreach (var connection in user.Tourneys.Where(connection => connection.IsOpen).ToList())
 			Close(connection, SessionEndReason.Revoked);
@@ -729,23 +706,23 @@ public sealed class UserRegistry
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, UserPermissions? permissions, CancellationToken cancellationToken)
+		Md5 passwordHash, UserPrivileges? privileges, CancellationToken cancellationToken)
 	{
-		return _accounts.CreateAsync(data, passwordHash, permissions, cancellationToken);
+		return _accounts.CreateAsync(data, passwordHash, privileges, cancellationToken);
 	}
 
 	/// <summary>Creates an account and reports the outcome as a user outcome.</summary>
 	/// <param name="data">The account data.</param>
 	/// <param name="passwordHash">The MD5 digest of the password.</param>
-	/// <param name="permissions">
-	///     The permissions of the account, or <see langword="null" /> for the default permissions of new accounts.
+	/// <param name="privileges">
+	///     The privileges of the account, or <see langword="null" /> for the default privileges of new accounts.
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The new account when the result is ok; otherwise why none was created.</returns>
 	internal async Task<(UserRecord? User, UserOutcome Outcome)> RegisterAsync(UserData data, Md5 passwordHash,
-		UserPermissions? permissions, CancellationToken cancellationToken)
+		UserPrivileges? privileges, CancellationToken cancellationToken)
 	{
-		var (user, failure) = await CreateAccountAsync(data, passwordHash, permissions, cancellationToken);
+		var (user, failure) = await CreateAccountAsync(data, passwordHash, privileges, cancellationToken);
 		return failure switch
 		{
 			null => (user, UserOutcome.Ok),

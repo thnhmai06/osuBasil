@@ -156,7 +156,7 @@ Established verified accounts are not rejected solely because their hardware mat
 
 ## Account verification
 
-Basil has no account-verification step. A new account receives the default permission set when it is created, and the
+Basil has no account-verification step. A new account receives the default privilege set when it is created, and the
 client does not request or receive a verification privilege during login.
 
 See [`privileges.md`](../../for-developers/privileges.md) for the roles the client displays.
@@ -184,7 +184,7 @@ Client                              Basil
   |                                   |
   |                                   | Authenticate credentials
   |                                   | Validate client information
-  |                                   | Check account restrictions
+  |                                   | Check the account silence
   |                                   | Create session
   |                                   |
   | cho-token + login packets         |

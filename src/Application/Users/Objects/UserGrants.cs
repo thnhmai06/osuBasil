@@ -3,64 +3,63 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects;
 
-/// <summary>Owns the permissions granted to one account and which of them are in effect.</summary>
+/// <summary>Owns the privileges granted to one account and which of them are in effect.</summary>
 public sealed class UserGrants
 {
 	private readonly User _user;
 
-	/// <summary>Creates the permission state for an account.</summary>
-	/// <param name="user">The account that owns the permissions.</param>
+	/// <summary>Creates the privilege state for an account.</summary>
+	/// <param name="user">The account that owns the privileges.</param>
 	internal UserGrants(User user)
 	{
 		_user = user;
 	}
 
-	/// <summary>Gets the permissions granted to the account.</summary>
-	public UserPermissions Granted
+	/// <summary>Gets the privileges granted to the account.</summary>
+	public UserPrivileges Granted
 	{
 		get
 		{
 			using var scope = _user.Enter();
-			return _user.Record.Value.Permissions;
+			return _user.Record.Value.Privileges;
 		}
 	}
 
-	/// <summary>Gets the granted permissions that no active restriction suspends at a moment.</summary>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	/// <returns>The permissions in effect.</returns>
-	public UserPermissions Effective(DateTimeOffset now)
+	/// <summary>Gets the granted privileges in effect at a moment.</summary>
+	/// <param name="now">The moment to evaluate at.</param>
+	/// <returns>The granted privileges.</returns>
+	public UserPrivileges Effective(DateTimeOffset now)
 	{
-		using var scope = _user.Enter();
-		return _user.Record.Value.Permissions.Effective(_user.Restrictions, now);
+		return Granted;
 	}
 
-	/// <summary>Replaces the permissions granted to the account.</summary>
-	/// <param name="permissions">The permissions to grant.</param>
-	internal void Replace(UserPermissions permissions)
+	/// <summary>Replaces the privileges granted to the account.</summary>
+	/// <param name="privileges">The privileges to grant.</param>
+	internal void Replace(UserPrivileges privileges)
 	{
 		using var scope = _user.Enter();
-		_user.Change(data => data.Permissions = permissions);
+		_user.Change(data => data.Privileges = privileges);
 	}
 
 	/// <summary>
-	///     Replaces the permissions granted to the account, signs out sessions that no longer have the right, and
+	///     Replaces the privileges granted to the account, signs out sessions that no longer have the right, and
 	///     announces it.
 	/// </summary>
-	/// <param name="permissions">The permissions to grant.</param>
+	/// <param name="privileges">The privileges to grant.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The outcome of replacing the permissions.</returns>
-	internal async Task<UserOutcome> SetAsync(UserPermissions permissions, CancellationToken cancellationToken)
+	/// <returns>The outcome of replacing the privileges.</returns>
+	internal async Task<UserOutcome> SetAsync(UserPrivileges privileges, CancellationToken cancellationToken)
 	{
-		await _user.StoreChangeAsync(data => data.Permissions = permissions, cancellationToken);
-		Replace(permissions);
+		await _user.StoreChangeAsync(data => data.Privileges = privileges, cancellationToken);
+		Replace(privileges);
 		if (_user.Context.Registry.Online.GetValueOrDefault(_user.Record) is { } user)
 			_user.Context.Registry.CloseDisallowed(user);
 
-		_user.Context.Events.Publish(new UserPermissionsChanged(_user.Record, permissions));
+		_user.Context.Events.Publish(new UserPrivilegesChanged(_user.Record, privileges));
 		return UserOutcome.Ok;
 	}
 
-	/// <summary>Marks the account as deleted, taking all its permissions away.</summary>
+	/// <summary>Marks the account as deleted, taking all its privileges away.</summary>
 	/// <param name="at">When the account was deleted.</param>
 	internal void MarkDeleted(DateTimeOffset at)
 	{
@@ -68,7 +67,7 @@ public sealed class UserGrants
 		_user.Change(data =>
 		{
 			data.DeletedAt = at;
-			data.Permissions = UserPermissions.None;
+			data.Privileges = UserPrivileges.None;
 		});
 	}
 }

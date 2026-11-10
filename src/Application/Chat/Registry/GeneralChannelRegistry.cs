@@ -43,15 +43,15 @@ public sealed class GeneralChannelRegistry
 	/// <param name="actor">The connection that asks.</param>
 	/// <returns>
 	///     The channels the connection may read that are visible; a connection that holds
-	///     <see cref="UserPermissions.ChatManageChannels" /> also sees the hidden ones, so it can manage them.
+	///     <see cref="UserPrivileges.Moderator" /> also sees the hidden ones, so it can manage them.
 	/// </returns>
 	public IEnumerable<GeneralChannel> VisibleTo(Connection actor)
 	{
 		foreach (var channel in _channels.Values)
 		{
-			var permissions = actor.EffectivePermissions(channel.Context.Clock.GetUtcNow());
-			if (!channel.IsClosed && channel.CanRead(actor, permissions) &&
-			    (channel.Record.Value.Visible || permissions.Allows(UserPermissions.ChatManageChannels)))
+			var privileges = actor.EffectivePrivileges(channel.Context.Clock.GetUtcNow());
+			if (!channel.IsClosed && channel.CanRead(actor, privileges) &&
+			    (channel.Record.Value.Visible || privileges.Allows(UserPrivileges.Moderator)))
 				yield return channel;
 		}
 	}

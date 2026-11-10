@@ -10,7 +10,7 @@ namespace Basil.Host.Cli.Dashboard.Data;
 /// <param name="Status">What the osu! client reports it is doing.</param>
 /// <param name="Room">The room it is in, or <c>-</c>.</param>
 /// <param name="Idle">How long since the last activity.</param>
-/// <param name="Permissions">The effective permissions.</param>
+/// <param name="Privileges">The effective privileges.</param>
 public sealed record UserRow(
 	int Id,
 	string Name,
@@ -18,7 +18,7 @@ public sealed record UserRow(
 	string Status,
 	string Room,
 	TimeSpan Idle,
-	ulong Permissions);
+	ulong Privileges);
 
 /// <summary>One slot of the room that is selected.</summary>
 /// <param name="Index">The slot number.</param>

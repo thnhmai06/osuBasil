@@ -106,14 +106,26 @@ public sealed partial class UserData
 		set => field = value.ThrowIfUndefined();
 	} = Country.Xx;
 
-	/// <summary>Gets or sets the permissions granted to the user.</summary>
-	/// <remarks>New users are granted every player and supporter permission.</remarks>
-	/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no permission defines.</exception>
-	public UserPermissions Permissions
+	/// <summary>Gets or sets the privileges granted to the user.</summary>
+	/// <remarks>New users are granted the player and supporter privileges.</remarks>
+	/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no privilege defines.</exception>
+	public UserPrivileges Privileges
 	{
 		get;
 		set => field = value.ThrowIfUndefined();
-	} = UserPermissionsGroups.Default;
+	} = UserPrivilegesExtensions.Default;
+
+	/// <summary>Gets or sets the moment the user's silence ends, or <see langword="null" /> when the user is not silenced.</summary>
+	/// <remarks>A silenced user cannot post chat messages and receives no private messages until this moment.</remarks>
+	public DateTimeOffset? SilencedUntil { get; set; }
+
+	/// <summary>Gets a value that indicates whether the user is silenced at a moment.</summary>
+	/// <param name="now">The moment to check.</param>
+	/// <returns><see langword="true" /> while <paramref name="now" /> is before <see cref="SilencedUntil" />.</returns>
+	public bool IsSilenced(DateTimeOffset now)
+	{
+		return now < SilencedUntil;
+	}
 
 	/// <summary>Gets or sets the date and time when the user was permanently deleted, if any.</summary>
 	/// <exception cref="InvalidOperationException">The account was deleted already and the value is <see langword="null" />.</exception>

@@ -18,11 +18,11 @@ public readonly struct ScopedServerSettings
 	/// <summary>Reads the settings in force.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the settings.</returns>
-	/// <remarks>Requires <see cref="UserPermissions.ServerManageSettings" />.</remarks>
+	/// <remarks>Requires <see cref="UserPrivileges.Developer" />.</remarks>
 	public async Task<(Result<ServerOutcome> Result, ServerSettings? Settings)> GetAsync(
 		CancellationToken cancellationToken = default)
 	{
-		return _scoped.Needs(UserPermissions.ServerManageSettings) is { } missing
+		return _scoped.Needs(UserPrivileges.Developer) is { } missing
 			? (Result<ServerOutcome>.Denied(missing), null)
 			: (ServerOutcome.Ok, await _scoped.Server.GetSettingsAsync(cancellationToken));
 	}
@@ -32,18 +32,18 @@ public readonly struct ScopedServerSettings
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of storing the settings.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ServerManageSettings" />. Changing the permissions that new accounts
-	///     receive also requires every permission of the new set to be in effect for the caller, as granting does.
+	///     Requires <see cref="UserPrivileges.Developer" />. Changing the privileges that new accounts
+	///     receive also requires every privilege of the new set to be in effect for the caller, as granting does.
 	/// </remarks>
 	public async Task<Result<ServerOutcome>> UpdateAsync(ServerSettings settings,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ServerManageSettings) is { } missing)
+		if (_scoped.Needs(UserPrivileges.Developer) is { } missing)
 			return Result<ServerOutcome>.Denied(missing);
 
 		var current = await _scoped.Server.GetSettingsAsync(cancellationToken);
-		if (settings.Accounts.DefaultPermissions != current.Accounts.DefaultPermissions &&
-		    _scoped.Needs(settings.Accounts.DefaultPermissions) is { } ungrantable)
+		if (settings.Accounts.DefaultPrivileges != current.Accounts.DefaultPrivileges &&
+		    _scoped.Needs(settings.Accounts.DefaultPrivileges) is { } ungrantable)
 			return Result<ServerOutcome>.Denied(ungrantable);
 
 		return await _scoped.Server.UpdateSettingsAsync(settings, cancellationToken);

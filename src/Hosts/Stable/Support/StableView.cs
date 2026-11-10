@@ -29,18 +29,17 @@ internal static class StableView
 	}
 
 	/// <summary>Gets the roles an account shows to clients.</summary>
-	/// <param name="effective">The account's effective permissions.</param>
-	/// <returns>The roles that at least one effective permission belongs to; the player role when there is none.</returns>
-	public static UserPrivileges Roles(UserPermissions effective)
+	/// <param name="effective">The account's effective privileges.</param>
+	/// <returns>The effective privileges; the player role when there is none.</returns>
+	public static UserPrivileges Roles(UserPrivileges effective)
 	{
-		var roles = effective.Privileges;
-		return roles == UserPrivileges.None ? UserPrivileges.Player : roles;
+		return effective == UserPrivileges.None ? UserPrivileges.Player : effective;
 	}
 
 	/// <summary>Gets the role bits a client shows for an account.</summary>
-	/// <param name="effective">The account's effective permissions.</param>
+	/// <param name="effective">The account's effective privileges.</param>
 	/// <returns>The client's privilege bits for the account's roles.</returns>
-	public static int Privileges(UserPermissions effective)
+	public static int Privileges(UserPrivileges effective)
 	{
 		return (int)Roles(effective);
 	}
@@ -49,12 +48,12 @@ internal static class StableView
 	/// <param name="writer">The writer to add the packet to.</param>
 	/// <param name="user">The user.</param>
 	/// <param name="stats">The user's statistics in the mode they are in.</param>
-	/// <param name="now">The current time, for the effective permissions.</param>
+	/// <param name="now">The current time, for the effective privileges.</param>
 	public static void WritePresence(PacketWriter writer, User user, UserStats stats, DateTimeOffset now)
 	{
 		var client = user.Stable;
 		writer.UserPresence(user.Record.Id, user.Record.Value.Name, client?.UtcOffset ?? 0,
-			(int)user.Record.Value.Country, Privileges(user.EffectivePermissions(now)),
+			(int)user.Record.Value.Country, Privileges(user.EffectivePrivileges(now)),
 			(int)(client?.Status.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
 	}
 

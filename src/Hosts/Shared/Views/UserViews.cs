@@ -19,31 +19,18 @@ public sealed record UserView(
 	int Id,
 	string Name,
 	string Country,
-	ulong Permissions,
-	ulong EffectivePermissions,
-	IReadOnlyList<RestrictionView>? Restrictions)
+	ulong Privileges,
+	ulong EffectivePrivileges,
+	DateTimeOffset? SilencedUntil)
 {
-	/// <summary>Describes an account with the restrictions in force at the moment, when they are given.</summary>
-	public static UserView Of(UserRegistry registry, UserRecord record, TimeProvider clock,
-		IReadOnlyList<UserRestriction>? restrictions = null)
+	/// <summary>Describes an account; a silence that has ended is not shown.</summary>
+	public static UserView Of(UserRegistry registry, UserRecord record, TimeProvider clock)
 	{
 		var user = registry.Of(record);
 		var now = clock.GetUtcNow();
 		return new UserView(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToLowerInvariant(),
-			(ulong)record.Value.Permissions, (ulong)user.EffectivePermissions(now),
-			restrictions is null
-				? null
-				: [.. restrictions.Where(r => r.Value.IsActive(now)).Select(RestrictionView.Of)]);
-	}
-}
-
-/// <summary>A restriction as the API shows it.</summary>
-public sealed record RestrictionView(int Id, ulong Permissions, DateTimeOffset StartsAt, DateTimeOffset? EndsAt)
-{
-	/// <summary>Describes a restriction.</summary>
-	public static RestrictionView Of(UserRestriction r)
-	{
-		return new RestrictionView(r.Id, (ulong)r.Value.Permissions, r.Value.StartsAt, r.Value.EndsAt);
+			(ulong)record.Value.Privileges, (ulong)user.EffectivePrivileges(now),
+			record.Value.IsSilenced(now) ? record.Value.SilencedUntil : null);
 	}
 }
 

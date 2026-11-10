@@ -71,12 +71,12 @@ internal sealed class RoundEndedLog(ILogger<RoundEndedLog> logger) : INotificati
 	}
 }
 
-/// <summary>Logs a restriction: a moderation action.</summary>
-internal sealed class RestrictionLog(ILogger<RestrictionLog> logger) : INotificationHandler<UserRestricted>
+/// <summary>Logs a silence: a moderation action.</summary>
+internal sealed class SilenceLog(ILogger<SilenceLog> logger) : INotificationHandler<UserSilenced>
 {
-	public ValueTask Handle(UserRestricted notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSilenced notification, CancellationToken cancellationToken)
 	{
-		logger.LogInformation("User {UserId} was restricted", notification.User.Id);
+		logger.LogInformation("User {UserId} was silenced", notification.User.Id);
 		return ValueTask.CompletedTask;
 	}
 }

@@ -1,6 +1,6 @@
 namespace Basil.Application.Beatmaps.Objects;
 
-/// <summary>What happened to a beatmapset operation that was not refused for lack of permissions.</summary>
+/// <summary>What happened to a beatmapset operation that was not refused for lack of privileges.</summary>
 public enum BeatmapsetOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>

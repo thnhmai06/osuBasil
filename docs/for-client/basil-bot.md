@@ -3,7 +3,7 @@
 ## Overview
 
 BasilBot is the server's built-in chat command and announcement surface. It is not an actor but the voice the server speaks with: its
-account is fixed, the server protects it, and nobody can sign in as it or act for it. Permissions mean nothing to it,
+account is fixed, the server protects it, and nobody can sign in as it or act for it. Privileges mean nothing to it,
 and its privileges only decide how a client shows it. Commands run with the rights of the user who typed them.
 
 Commands include:
@@ -12,16 +12,16 @@ Commands include:
 * `!mp` commands for multiplayer room management;
 * `!channel` commands for managing the general channels.
 
-`!channel list|create|set|delete` does what the HTTP API for channels does, and needs the permission to manage
+`!channel list|create|set|delete` does what the HTTP API for channels does, and needs the privilege to manage
 channels. Options are written `name=value`: `topic`, `read` and `write` (the privilege masks that may read and write),
 `autojoin` and `visible` (`true` or `false`), for example `!channel create #events topic="Big event" autojoin=true`.
-`list` shows the channels you can see; with the permission it also shows the hidden ones.
+`list` shows the channels you can see; with the privilege it also shows the hidden ones.
 
 The `!mp` commands support tournament operations such as creating and configuring rooms, managing referees and
 players, and controlling room countdowns.
 
 Commands run using the connection of the person who typed them, so they require that person's own rights. BasilBot
-only replies; its messages and server announcements bypass user permission checks. The command handler and
+only replies; its messages and server announcements bypass user privilege checks. The command handler and
 announcement handlers are implemented in `Basil.Infrastructure.Bot` and run in the server for the osu! client and IRC.
 
 Room countdowns belong to the room, not to BasilBot. A countdown that starts a round is cancelled when the round's
@@ -29,7 +29,7 @@ settings change; countdowns stop when the round starts or is aborted or the room
 countdown marks.
 
 BasilBot is shown as an online user to both the osu! client and IRC. Operators also have a console in the server
-process (`Basil`): it runs a command as the operator, which is the one entry point that skips permission checks,
+process (`Basil`): it runs a command as the operator, which is the one entry point that skips privilege checks,
 while a chat command always runs with the typist's rights. See [`../for-technicians/console.md`](../for-technicians/console.md).
 
 ---

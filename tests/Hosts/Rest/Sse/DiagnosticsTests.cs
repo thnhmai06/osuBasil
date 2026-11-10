@@ -3,12 +3,12 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Tests.Sse;
 
-/// <summary>Diagnostics need the permission; a stream carries a full sample first and one per second after.</summary>
+/// <summary>Diagnostics need the privilege; a stream carries a full sample first and one per second after.</summary>
 [Collection("REST host")]
 public sealed class DiagnosticsTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Staff = UserPermissionsGroups.Default |
-	                                                UserPermissions.ServerManageDiagnostics;
+	private static readonly UserPrivileges Staff = UserPrivilegesExtensions.Default |
+	                                                UserPrivileges.Developer;
 
 	[Fact]
 	public async Task Diagnostics_WithoutPermission_Answer403_AndWithoutAToken401()
@@ -28,7 +28,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 			}
 
 			Assert.Equal(403, action);
-			Assert.Equal((ulong)UserPermissions.ServerManageDiagnostics, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)envelope!["errors"]!["missing"]!);
 		}
 	}
 

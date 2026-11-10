@@ -432,34 +432,6 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Removes a user from rooms when the server itself calls it; it needs no rights.</summary>
-	/// <param name="user">The user whose multiplayer access is suspended.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public async Task RemoveSuspendedAsync(User user, CancellationToken cancellationToken = default)
-	{
-		if (user.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(UserPermissions.RoomJoin)) return;
-
-		foreach (var connection in user.Connections)
-			await ReleaseAsync(connection, cancellationToken);
-
-		await RemoveRefereeAsync(user.Record, cancellationToken);
-	}
-
-	/// <summary>Removes a referee from open rooms when the server itself calls it; it needs no rights.</summary>
-	/// <param name="user">The user to remove from referee lists.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public async Task RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
-	{
-		if (await Context.UserRepository.GetAsync(BasilBot.Id, cancellationToken) is not { } actor) return;
-
-		foreach (var room in Rooms.Values.ToArray())
-		{
-			if (!room.Authority.Referees.Contains(user)) continue;
-
-			room.RemoveReferee(actor, user);
-		}
-	}
-
 	/// <summary>Closes every open room when the server itself calls it at shutdown; it needs no rights.</summary>
 	/// <returns>How many rooms were closed.</returns>
 	/// <remarks>Each room ends its match and its round in progress, and publishes one <see cref="LobbyRoomClosed" />.</remarks>

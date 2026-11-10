@@ -11,7 +11,7 @@ using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>The <c>users</c> commands: accounts, their avatars, friends, blocks, restrictions and sessions.</summary>
+/// <summary>The <c>users</c> commands: accounts, their avatars, friends, blocks, silences and sessions.</summary>
 internal static class UserCommands
 {
 	private const string NoUser = "user";
@@ -31,9 +31,9 @@ internal static class UserCommands
 				new OptionDef("username", "The name of the account.", Required: true, Alias: "u"),
 				new OptionDef("password", "The plain password.", Required: true, Alias: "p", Secret: true),
 				new OptionDef("country", "A two-letter country code."),
-				new OptionDef("permissions", "The permissions, as a bitmask (default: the default permissions).",
+				new OptionDef("privileges", "The privileges, as a bitmask (default: the default privileges).",
 					OptionKind.Mask),
-				new OptionDef("admin", "Give the account every permission.", OptionKind.Bool)
+				new OptionDef("admin", "Give the account every privilege.", OptionKind.Bool)
 			],
 			Run = CreateAsync
 		};
@@ -51,7 +51,7 @@ internal static class UserCommands
 				new OptionDef("username", "The new name."), new OptionDef("country", "A two-letter country code."),
 				new OptionDef("away", "The away message; empty clears it."),
 				new OptionDef("pmPrivate", "Block private messages from strangers.", OptionKind.Bool),
-				new OptionDef("permissions", "The granted permissions, as a bitmask.", OptionKind.Mask),
+				new OptionDef("privileges", "The granted privileges, as a bitmask.", OptionKind.Mask),
 				new OptionDef("password", "A new plain password; every session of the account is closed.", Secret: true)
 			],
 			Run = SetAsync
@@ -81,34 +81,19 @@ internal static class UserCommands
 
 		yield return new CommandDef
 		{
-			Pattern = "users <id:int> restrictions list", Route = "GET /v1/users/{id}/restrictions", Offline = true,
-			Summary = "Lists the restrictions an account has had.", Run = RestrictionsAsync
-		};
-		yield return new CommandDef
-		{
-			Pattern = "users <id:int> restrictions create", Route = "POST /v1/users/{id}/restrictions", Offline = true,
-			Summary = "Restricts an account.",
+			Pattern = "users <id:int> silence", Route = "PUT /v1/users/{id}/silence", Offline = true,
+			Summary = "Silences an account: it cannot post chat messages.",
 			Options =
 			[
-				new OptionDef("permissions", "The suspended permissions, as a bitmask.", OptionKind.Mask, true),
-				new OptionDef("duration", "How long it lasts, such as 30m, 12h or 7d; none means until lifted.",
-					OptionKind.Duration),
+				new OptionDef("duration", "How long it lasts, such as 30m, 12h or 7d.", OptionKind.Duration, true),
 				new OptionDef("reason", "Why.")
 			],
-			Run = RestrictAsync
+			Run = SilenceAsync
 		};
 		yield return new CommandDef
 		{
-			Pattern = "users <id:int> restrictions <rid:int> lift",
-			Route = "POST /v1/users/{id}/restrictions/{rid}/lift",
-			Offline = true, Summary = "Ends a restriction now and keeps it in the history.", Run = LiftAsync
-		};
-		yield return new CommandDef
-		{
-			Pattern = "users <id:int> restrictions <rid:int> delete",
-			Route = "DELETE /v1/users/{id}/restrictions/{rid}",
-			Offline = true, Summary = "Ends a restriction and removes it from the history.",
-			Run = DeleteRestrictionAsync
+			Pattern = "users <id:int> unsilence", Route = "DELETE /v1/users/{id}/silence", Offline = true,
+			Summary = "Ends the silence of an account now.", Run = UnsilenceAsync
 		};
 		yield return new CommandDef
 		{
@@ -169,10 +154,10 @@ internal static class UserCommands
 		{
 			Name = call.Required("username")
 		};
-		UserPermissions? permissions = call.Bool("admin") == true
-			? UserPermissionsGroups.All
-			: call.Mask("permissions") is { } mask
-				? (UserPermissions)mask
+		UserPrivileges? privileges = call.Bool("admin") == true
+			? UserPrivilegesExtensions.All
+			: call.Mask("privileges") is { } mask
+				? (UserPrivileges)mask
 				: null;
 		if (call.Text("country") is { } code)
 			data.Country = Enum.TryParse<Country>(code, true, out var country) && code.Length == 2 &&
@@ -182,7 +167,7 @@ internal static class UserCommands
 
 		var actor = await call.ByAsync();
 		var (record, result) = await call.Get<ISender>().Send(new CreateAccount(actor, data,
-			CommandHelpers.Md5Of(call.Required("password")), permissions), call.CancellationToken);
+			CommandHelpers.Md5Of(call.Required("password")), privileges), call.CancellationToken);
 		return result.IsOk
 			? Created(call, record!)
 			: call.Refuse(result);
@@ -198,9 +183,7 @@ internal static class UserCommands
 	{
 		if (await call.FindUserAsync() is not { } record) return call.NotFound(NoUser);
 
-		var restrictions = await call.Get<IRestrictionRepository>().ListAsync(record, call.CancellationToken);
-		call.Formatter.Print(call.Output,
-			UserView.Of(call.Get<UserRegistry>(), record, call.Get<TimeProvider>(), restrictions));
+		call.Formatter.Print(call.Output, UserView.Of(call.Get<UserRegistry>(), record, call.Get<TimeProvider>()));
 		return ExitCodes.Success;
 	}
 
@@ -243,8 +226,8 @@ internal static class UserCommands
 		var ct = call.CancellationToken;
 		var sender = call.Get<ISender>();
 		var actor = await call.ByAsync();
-		if (call.Mask("permissions") is { } permissions &&
-		    await sender.Send(new SetUserPermissions(actor, target, (UserPermissions)permissions), ct) is
+		if (call.Mask("privileges") is { } privileges &&
+		    await sender.Send(new SetUserPrivileges(actor, target, (UserPrivileges)privileges), ct) is
 			    { IsOk: false } set)
 			return call.Refuse(set);
 
@@ -289,54 +272,22 @@ internal static class UserCommands
 		return ExitCodes.Success;
 	}
 
-	private static async Task<int> RestrictionsAsync(CommandCall call)
-	{
-		if (await call.FindUserAsync() is not { } record) return call.NotFound(NoUser);
-
-		var list = await call.Get<IRestrictionRepository>().ListAsync(record, call.CancellationToken);
-		call.Formatter.PrintTable(call.Output, [.. list.Select(RestrictionView.Of)]);
-		return ExitCodes.Success;
-	}
-
-	private static async Task<int> RestrictAsync(CommandCall call)
+	private static async Task<int> SilenceAsync(CommandCall call)
 	{
 		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
-		var duration = call.Duration("duration");
-		var endsAt = duration is { } length ? call.Get<TimeProvider>().GetUtcNow() + length : (DateTimeOffset?)null;
-		var (result, restriction) = await call.Get<ISender>().Send(new RestrictUser(
-			await call.ByAsync(), target, (UserPermissions)call.Mask("permissions")!.Value,
-			endsAt, call.Text("reason")), call.CancellationToken);
-		if (!result.IsOk) return call.Refuse(result);
-
-		call.Output.Ok($"Restricted with restriction {restriction!.Id}.");
-		return ExitCodes.Success;
+		var endsAt = call.Get<TimeProvider>().GetUtcNow() + call.Duration("duration")!.Value;
+		return call.Report(await call.Get<ISender>().Send(
+			new SilenceUser(await call.ByAsync(), target, endsAt, call.Text("reason")), call.CancellationToken),
+			"Silenced.");
 	}
 
-	private static async Task<int> LiftAsync(CommandCall call)
+	private static async Task<int> UnsilenceAsync(CommandCall call)
 	{
 		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
 
-		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
-			{ } restriction
-			? call.NotFound("restriction")
-			: call.Report(
-				await call.Get<ISender>().Send(new LiftRestriction(await call.ByAsync(), target, restriction),
-					call.CancellationToken),
-				"Restriction lifted.");
-	}
-
-	private static async Task<int> DeleteRestrictionAsync(CommandCall call)
-	{
-		if (await call.FindUserAsync() is not { } target) return call.NotFound(NoUser);
-
-		return await call.Get<IRestrictionRepository>().GetAsync(call.Id("rid"), call.CancellationToken) is not
-			{ } restriction
-			? call.NotFound("restriction")
-			: call.Report(
-				await call.Get<ISender>().Send(new DeleteRestriction(await call.ByAsync(), target, restriction),
-					call.CancellationToken),
-				"Restriction deleted.");
+		return call.Report(await call.Get<ISender>().Send(
+			new UnsilenceUser(await call.ByAsync(), target, null), call.CancellationToken), "Silence lifted.");
 	}
 
 	private static async Task<int> SessionsAsync(CommandCall call)

@@ -146,14 +146,14 @@ public sealed class ScopedUserSessionsTests
 		var user = await app.CreateUserAsync("Target", "password");
 		var session = await app.LoginAsync(user);
 		var weak = await app.LoginAsync(await app.CreateUserAsync("Weak", "password"));
-		var peer = await app.LoginAsync(await app.CreateUserAsync("Peer", "password", UserPermissionsGroups.All));
-		var peerTarget = await app.CreateUserAsync("PeerTarget", "password", UserPermissionsGroups.All);
+		var peer = await app.LoginAsync(await app.CreateUserAsync("Peer", "password", UserPrivilegesExtensions.All));
+		var peerTarget = await app.CreateUserAsync("PeerTarget", "password", UserPrivilegesExtensions.All);
 		var peerSession = await app.LoginAsync(peerTarget);
 
 		var withoutPermission = await app.Users.Of(user).ScopeTo(weak).Sessions.CloseAsync(session.Session.Id, Token);
 		var equalRank = await app.Users.Of(peerTarget).ScopeTo(peer).Sessions.CloseAsync(peerSession.Session.Id, Token);
 
-		Assert.Equal(UserPermissions.UserManage, withoutPermission.Missing);
+		Assert.Equal(UserPrivileges.Owner, withoutPermission.Missing);
 		Assert.Equal(UserOutcome.NotOutranking, equalRank.Outcome);
 		Assert.True(session.IsOpen);
 		Assert.True(peerSession.IsOpen);
@@ -217,7 +217,7 @@ public sealed class ScopedUserSessionsTests
 	public async Task CloseAllAsync_ByStaff_ClosesEverythingAndRecordsIt()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Target", "password");
 		var api = await app.LoginAsync(user);
 		var osu = await app.LoginAsync(user, SessionType.Stable);
@@ -242,7 +242,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(other).Sessions.CloseAllAsync(false, Token);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.True(api.IsOpen);
 	}
 
@@ -250,8 +250,8 @@ public sealed class ScopedUserSessionsTests
 	public async Task CloseAllAsync_ByStaffOfEqualRank_IsRefused()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
-		var peer = await app.CreateUserAsync("Peer", "password", UserPermissionsGroups.All);
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
+		var peer = await app.CreateUserAsync("Peer", "password", UserPrivilegesExtensions.All);
 		var api = await app.LoginAsync(peer);
 
 		var result = await app.Users.Of(peer).ScopeTo(admin).Sessions.CloseAllAsync(false, Token);
@@ -264,7 +264,7 @@ public sealed class ScopedUserSessionsTests
 	public async Task ListAsync_OfOwnSessions_NeedsNoPermission_AndFiltersByStateAndKind()
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("Lister", "password", UserPermissions.None);
+		var user = await app.CreateUserAsync("Lister", "password", UserPrivileges.None);
 		var api = await app.LoginAsync(user);
 		var osu = await app.LoginAsync(user, SessionType.Stable);
 		app.Users.Close(osu, SessionEndReason.ConnectionLost);
@@ -287,14 +287,14 @@ public sealed class ScopedUserSessionsTests
 		var target = await app.CreateUserAsync("Viewed", "password");
 		await app.LoginAsync(target);
 		var nosy = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
-		var staff = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var staff = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 
 		var (denied, none) = await app.Users.Of(target).ScopeTo(nosy).Sessions.ListAsync(new PageRequest(0, 10),
 			cancellationToken: Token);
 		var (allowed, page) = await app.Users.Of(target).ScopeTo(staff).Sessions.ListAsync(new PageRequest(0, 10),
 			cancellationToken: Token);
 
-		Assert.Equal(UserPermissions.UserManageViewSessions, denied.Missing);
+		Assert.Equal(UserPrivileges.Moderator, denied.Missing);
 		Assert.Null(none);
 		Assert.True(allowed.IsOk);
 		Assert.Single(page!.Items);
@@ -337,7 +337,7 @@ public sealed class ScopedUserSessionsTests
 	public async Task OpenIrcAsync_ForAnotherUser_IsRefused()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Other", "password");
 
 		var (result, key, _) = await app.Users.Of(user).ScopeTo(admin).Sessions.OpenIrcAsync("sneaky", Token);
@@ -375,7 +375,7 @@ public sealed class ScopedUserSessionsTests
 	public async Task BasilBot_SessionsCannotBeClosedOrOpened()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var bot = await app.SeedBotAsync();
 		await app.Users.ConnectBotAsync(Token);
 		var scoped = app.Users.Of(bot).ScopeTo(admin).Sessions;

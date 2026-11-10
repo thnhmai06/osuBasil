@@ -27,18 +27,18 @@ public class ResultTests
 	}
 
 	[Fact]
-	public void Denied_NamesTheMissingPermissionsAndIsNotOk()
+	public void Denied_NamesTheMissingPrivilegesAndIsNotOk()
 	{
-		var result = Result<SampleOutcome>.Denied(UserPermissions.RoomJoin | UserPermissions.ChatPost);
+		var result = Result<SampleOutcome>.Denied(UserPrivileges.Player | UserPrivileges.Player);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.RoomJoin | UserPermissions.ChatPost, result.Missing);
+		Assert.Equal(UserPrivileges.Player | UserPrivileges.Player, result.Missing);
 	}
 
 	[Fact]
 	public void Denied_EvenWithOkOutcome_IsNotOk()
 	{
-		var result = new Result<SampleOutcome>(SampleOutcome.Ok, UserPermissions.RoomJoin);
+		var result = new Result<SampleOutcome>(SampleOutcome.Ok, UserPrivileges.Player);
 
 		Assert.False(result.IsOk);
 	}
@@ -46,7 +46,7 @@ public class ResultTests
 	[Fact]
 	public void Denied_NoPermissions_Throws()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Result<SampleOutcome>.Denied(UserPermissions.None));
+		Assert.Throws<ArgumentOutOfRangeException>(() => Result<SampleOutcome>.Denied(UserPrivileges.None));
 	}
 
 	[Fact]

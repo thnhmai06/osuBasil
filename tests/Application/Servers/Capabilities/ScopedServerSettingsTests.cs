@@ -6,15 +6,15 @@ using Basil.Testing;
 namespace Basil.Application.Servers.Tests.Capabilities;
 
 /// <summary>
-///     Changing the settings needs the right to manage them; widening the default permissions of new accounts also
-///     needs those permissions.
+///     Changing the settings needs the right to manage them; widening the default privileges of new accounts also
+///     needs those privileges.
 /// </summary>
 public sealed class ScopedServerSettingsTests
 {
-	private static ServerSettings WithDefault(UserPermissions permissions)
+	private static ServerSettings WithDefault(UserPrivileges privileges)
 	{
 		return new ServerSettings
-			{ Accounts = new ServerSettings.AccountSettings { DefaultPermissions = permissions } };
+			{ Accounts = new ServerSettings.AccountSettings { DefaultPrivileges = privileges } };
 	}
 
 	[Fact]
@@ -26,43 +26,43 @@ public sealed class ScopedServerSettingsTests
 		var result = await app.Server.ScopeTo(player).Settings.UpdateAsync(new ServerSettings(),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ServerManageSettings, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]
-	public async Task UpdateAsync_GrantingDefaultPermissionsTheCallerLacks_IsDeniedWithThoseAsMissing()
+	public async Task UpdateAsync_GrantingDefaultPrivilegesTheCallerLacks_IsDeniedWithThoseAsMissing()
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "SettingsOnly",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageSettings);
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
-			WithDefault(UserPermissionsGroups.Default | UserPermissions.UserManage),
+			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 	}
 
 	[Fact]
-	public async Task UpdateAsync_GrantingDefaultPermissionsTheCallerHolds_IsAccepted()
+	public async Task UpdateAsync_GrantingDefaultPrivilegesTheCallerHolds_IsAccepted()
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "Both",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageSettings | UserPermissions.UserManage);
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer | UserPrivileges.Owner);
 
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
-			WithDefault(UserPermissionsGroups.Default | UserPermissions.UserManage),
+			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 	}
 
 	[Fact]
-	public async Task UpdateAsync_ChangingOtherSettings_NeedsNoDefaultPermissionsHeld()
+	public async Task UpdateAsync_ChangingOtherSettings_NeedsNoDefaultPrivilegesHeld()
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "SettingsOnly",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageSettings);
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
 			new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "hello" } },

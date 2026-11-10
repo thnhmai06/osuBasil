@@ -27,7 +27,7 @@ earlier SQLite file to write in parallel, so a deployment needs a database serve
 
 | Group        | Tables                                                                      | Notes                                                                 |
 |--------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| Accounts     | `users`, `credentials`, `restrictions`, `relationships`, `logins`           | `logins` is append-only history                                       |
+| Accounts     | `users`, `credentials`, `relationships`, `logins`           | `logins` is append-only history                                       |
 | Server       | `settings` (one row per setting), `channels`, `menu_banners`               | resident: loaded at startup, never released                           |
 | Beatmaps     | `beatmapsets`, `beatmaps`, counters `local_beatmapset`, `local_beatmap` | mirror the stored beatmapset files; local ids start at 1 000 000 000 |
 | Multiplayer  | `matches`, `rounds`, `match_events`, `round_scores`                         | `match_events` is append-only history                                 |
@@ -52,7 +52,7 @@ by how much, the ranking of the scores) is stored as JSON in `rounds.result` whe
 ## Invariants
 
 * **Awaited writes.** A repository change returns when the database has committed it, and a failure reaches the
-  caller. A change that stores several rows together runs in one transaction: a restriction and its moderation-log entry,
+  caller. A change that stores several rows together runs in one transaction: a silence and its moderation-log entry,
   a score and the statistics of its play. When the two live in different module databases no transaction covers both,
   so the log entry is appended first.
 * **Records are copies.** A repository returns fresh records; the live object in a registry is the truth of the

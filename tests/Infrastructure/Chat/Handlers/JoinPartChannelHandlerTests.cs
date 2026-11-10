@@ -17,7 +17,7 @@ public sealed class JoinPartChannelHandlerTests
 
 	private static async Task<Connection> OpenChannelAsync(TestApplication app)
 	{
-		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPermissionsGroups.All);
+		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPrivilegesExtensions.All);
 		var actor = await app.LoginAsync(admin);
 		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(
 			new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() },

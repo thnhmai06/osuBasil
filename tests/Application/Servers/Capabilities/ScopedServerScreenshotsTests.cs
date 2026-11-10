@@ -13,10 +13,10 @@ namespace Basil.Application.Servers.Tests.Capabilities;
 
 /// <summary>
 ///     Behaviour of screenshot upload and deletion, from the XML contract of <see cref="ScopedServerScreenshots" />: an
-///     upload needs <see cref="UserPermissions.ScreenshotUpload" />, is at most the configured number of bytes and a PNG
+///     upload needs <see cref="UserPrivileges.Player" />, is at most the configured number of bytes and a PNG
 ///     or JPEG
 ///     of at most the configured pixels per side, told from content; a deletion needs
-///     <see cref="UserPermissions.ScreenshotManage" />.
+///     <see cref="UserPrivileges.Moderator" />.
 /// </summary>
 public sealed class ScopedServerScreenshotsTests
 {
@@ -53,15 +53,15 @@ public sealed class ScopedServerScreenshotsTests
 			Inspector.InspectAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(info);
 		}
 
-		public async Task<ScopedServerScreenshots> ScreenshotsOfAsync(UserPermissions permissions)
+		public async Task<ScopedServerScreenshots> ScreenshotsOfAsync(UserPrivileges privileges)
 		{
-			var user = await App.CreateUserAsync("Uploader", "password", permissions);
+			var user = await App.CreateUserAsync("Uploader", "password", privileges);
 			return App.Server.ScopeTo(await App.LoginAsync(user)).Screenshots;
 		}
 
 		public Task<ScopedServerScreenshots> UploaderAsync()
 		{
-			return ScreenshotsOfAsync(UserPermissionsGroups.Default | UserPermissions.ScreenshotUpload);
+			return ScreenshotsOfAsync(UserPrivilegesExtensions.Default | UserPrivileges.Player);
 		}
 
 		public void AssertNothingStored()
@@ -70,20 +70,20 @@ public sealed class ScopedServerScreenshotsTests
 		}
 	}
 
-	#region Upload: permissions
+	#region Upload: privileges
 
 	[Fact]
 	public async Task UploadAsync_WithoutScreenshotUpload_IsDeniedNamingItAndStoresNothing()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
-		var screenshots = await f.ScreenshotsOfAsync(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotUpload);
+		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 
 		var (screenshot, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
 		Assert.Null(screenshot);
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ScreenshotUpload, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 		f.AssertNothingStored();
 	}
 
@@ -93,27 +93,11 @@ public sealed class ScopedServerScreenshotsTests
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
 		var screenshots = await f.ScreenshotsOfAsync(
-			(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotUpload) | UserPermissions.ScreenshotManage);
+			(UserPrivilegesExtensions.Default & ~UserPrivileges.Player) | UserPrivileges.Moderator);
 
 		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ScreenshotUpload, result.Missing);
-	}
-
-	[Fact]
-	public async Task UploadAsync_ScreenshotUploadSuspendedByRestriction_IsDenied()
-	{
-		using var f = new Fixture();
-		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
-		var user = await f.App.CreateUserAsync("Restricted", "password",
-			UserPermissionsGroups.Default | UserPermissions.ScreenshotUpload);
-		f.App.AddRestriction(user, UserPermissions.ScreenshotUpload);
-		var screenshots = f.App.Server.ScopeTo(await f.App.LoginAsync(user)).Screenshots;
-
-		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
-
-		Assert.Equal(UserPermissions.ScreenshotUpload, result.Missing);
-		f.AssertNothingStored();
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 	}
 
 	#endregion
@@ -369,7 +353,7 @@ public sealed class ScopedServerScreenshotsTests
 	public async Task DeleteAsync_WithScreenshotDelete_IsOkAndRemovesTheScreenshot()
 	{
 		using var f = new Fixture();
-		var screenshots = await f.ScreenshotsOfAsync(UserPermissionsGroups.Default | UserPermissions.ScreenshotManage);
+		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
@@ -381,12 +365,12 @@ public sealed class ScopedServerScreenshotsTests
 	public async Task DeleteAsync_WithoutScreenshotDelete_IsDeniedNamingItAndRemovesNothing()
 	{
 		using var f = new Fixture();
-		var screenshots = await f.ScreenshotsOfAsync(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotManage);
+		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
 
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default);
 	}
 
@@ -395,25 +379,11 @@ public sealed class ScopedServerScreenshotsTests
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(
-			(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotManage) | UserPermissions.ScreenshotUpload);
+			(UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator) | UserPrivileges.Player);
 
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
-	}
-
-	[Fact]
-	public async Task DeleteAsync_ScreenshotDeleteSuspendedByRestriction_IsDenied()
-	{
-		using var f = new Fixture();
-		var user = await f.App.CreateUserAsync("NoDeleter", "password",
-			UserPermissionsGroups.Default | UserPermissions.ScreenshotManage);
-		f.App.AddRestriction(user, UserPermissions.ScreenshotManage);
-		var screenshots = f.App.Server.ScopeTo(await f.App.LoginAsync(user)).Screenshots;
-
-		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
-
-		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 	}
 
 	#endregion

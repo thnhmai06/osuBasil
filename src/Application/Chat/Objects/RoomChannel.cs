@@ -46,14 +46,14 @@ public sealed class RoomChannel : Channel
 	}
 
 	/// <inheritdoc />
-	internal override bool CanRead(Connection connection, UserPermissions permissions)
+	internal override bool CanRead(Connection connection, UserPrivileges privileges)
 	{
-		return Room.Involves(connection, permissions) || permissions.Allows(UserPermissions.RoomObserve);
+		return Room.Involves(connection, privileges) || privileges.Allows(UserPrivileges.Tournament);
 	}
 
 	/// <inheritdoc />
-	internal override bool CanWrite(Connection connection, UserPermissions permissions)
+	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
 	{
-		return Room.Involves(connection, permissions) || permissions.Allows(UserPermissions.ChatManagePostAnyRoom);
+		return Room.Involves(connection, privileges) || privileges.Allows(UserPrivileges.Tournament);
 	}
 }

@@ -12,12 +12,12 @@ internal sealed partial class IrcCommands
 	/// <summary>Lists the channels a connection may see: the visible general channels it may read and the rooms it may join.</summary>
 	private IEnumerable<Channel> VisibleChannels(Connection actor, DateTimeOffset now)
 	{
-		var permissions = actor.EffectivePermissions(now);
+		var privileges = actor.EffectivePrivileges(now);
 		foreach (var channel in general.VisibleTo(actor))
 			yield return channel;
 
 		foreach (var room in lobby.Rooms.Values)
-			if (!room.IsClosed && (room.Involves(actor, permissions) || permissions.Allows(UserPermissions.RoomObserve)))
+			if (!room.IsClosed && (room.Involves(actor, privileges) || privileges.Allows(UserPrivileges.Tournament)))
 				yield return roomChannels.Of(room);
 	}
 

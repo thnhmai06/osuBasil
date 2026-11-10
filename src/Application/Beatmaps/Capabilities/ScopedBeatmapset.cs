@@ -11,13 +11,13 @@ public readonly struct ScopedBeatmapset
 	/// <summary>Gets the actor this scope is for.</summary>
 	public IActor Actor { get; }
 
-	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
-	public UserPermissions Rights { get; }
+	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
+	public UserPrivileges Rights { get; }
 
 	/// <summary>Checks whether the actor holds the right an action needs.</summary>
 	/// <param name="required">The right the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPermissions? Require(UserPermissions required)
+	internal UserPrivileges? Require(UserPrivileges required)
 	{
 		return ScopedRights.Require(Rights, required);
 	}
@@ -28,7 +28,7 @@ public readonly struct ScopedBeatmapset
 	internal ScopedBeatmapset(Beatmapset beatmapset, IActor actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow());
+		Rights = actor.EffectivePrivileges(beatmapset.Context.Clock.GetUtcNow());
 		Beatmapset = beatmapset;
 	}
 
@@ -40,7 +40,7 @@ public readonly struct ScopedBeatmapset
 	/// <returns>The outcome of deleting the beatmapset; a locked set is not deleted.</returns>
 	public async Task<Result<BeatmapsetOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
 		return await Beatmapset.DeleteAsync(cancellationToken);
 	}
@@ -52,7 +52,7 @@ public readonly struct ScopedBeatmapset
 	public async Task<Result<BeatmapsetOutcome>> SetVisibleAsync(bool visible,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
 		return await Beatmapset.SetVisibleAsync(visible, cancellationToken);
 	}
@@ -64,7 +64,7 @@ public readonly struct ScopedBeatmapset
 	public async Task<Result<BeatmapsetOutcome>> SetLockedAsync(bool locked,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
 		return await Beatmapset.SetLockedAsync(locked, cancellationToken);
 	}
@@ -76,7 +76,7 @@ public readonly struct ScopedBeatmapset
 	public async Task<Result<BeatmapsetOutcome>> SetStatusAsync(BeatmapsetStatus status,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 
 		return await Beatmapset.SetStatusAsync(status, cancellationToken);
 	}

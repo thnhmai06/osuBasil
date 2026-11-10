@@ -16,7 +16,8 @@ internal sealed class UserRow
 	public string? ActiveName { get; set; }
 
 	public int Country { get; set; }
-	public long Permissions { get; set; }
+	public int Privileges { get; set; }
+	public DateTimeOffset? SilencedUntil { get; set; }
 	public DateTimeOffset? DeletedAt { get; set; }
 }
 

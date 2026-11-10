@@ -63,12 +63,12 @@ public sealed partial class Room
 	///     join rooms, or it manages every room.
 	/// </summary>
 	/// <param name="connection">The connection to check.</param>
-	/// <param name="permissions">The effective permissions of the connection's user, which the caller read.</param>
-	public bool Involves(Connection connection, UserPermissions permissions)
+	/// <param name="privileges">The privileges of the connection's user, which the caller read.</param>
+	public bool Involves(Connection connection, UserPrivileges privileges)
 	{
 		return IsPresent(connection)
-		       || (Authority.IsManagedBy(connection.Record) && permissions.Allows(UserPermissions.RoomJoin))
-		       || permissions.Allows(UserPermissions.RoomManageAny);
+		       || (Authority.IsManagedBy(connection.Record) && privileges.Allows(UserPrivileges.Player))
+		       || privileges.Allows(UserPrivileges.Tournament);
 	}
 
 	/// <summary>Removes a seated player and updates the room's round and empty-room state.</summary>

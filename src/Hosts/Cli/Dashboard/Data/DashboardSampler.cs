@@ -72,7 +72,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 						string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
 						user.Stable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
 						now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
-						(ulong)user.EffectivePermissions(now)))
+						(ulong)user.EffectivePrivileges(now)))
 		];
 	}
 

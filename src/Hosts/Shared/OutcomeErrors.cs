@@ -10,8 +10,8 @@ namespace Basil.Host.Shared;
 /// <summary>How a refused operation is classified, independent of the transport that reports it.</summary>
 public enum ErrorKind : byte
 {
-	/// <summary>The caller lacks permissions.</summary>
-	PermissionDenied = 1,
+	/// <summary>The caller lacks privileges.</summary>
+	PrivilegeDenied = 1,
 
 	/// <summary>The caller may not do this although the request is valid (hierarchy, ownership).</summary>
 	Forbidden,
@@ -46,8 +46,8 @@ public readonly record struct ErrorInfo(string Code, ErrorKind Kind);
 /// <summary>The one table that turns the outcome of an operation into a code and a kind, shared by every transport.</summary>
 public static class OutcomeErrors
 {
-	/// <summary>The code of a refusal for lack of permissions.</summary>
-	public const string PermissionDeniedCode = "permissionDenied";
+	/// <summary>The code of a refusal for lack of privileges.</summary>
+	public const string PrivilegeDeniedCode = "privilegeDenied";
 
 	/// <summary>Describes an outcome that is not <c>Ok</c>.</summary>
 	/// <param name="outcome">The outcome of any Application object.</param>
@@ -81,7 +81,7 @@ public static class OutcomeErrors
 			},
 			ChannelOutcome channel => channel switch
 			{
-				ChannelOutcome.AccessDenied or ChannelOutcome.Blocked => ErrorKind.Forbidden,
+				ChannelOutcome.AccessDenied or ChannelOutcome.Blocked or ChannelOutcome.Silenced => ErrorKind.Forbidden,
 				ChannelOutcome.NotFound => ErrorKind.NotFound,
 				ChannelOutcome.Closed => ErrorKind.Gone,
 				ChannelOutcome.Empty or ChannelOutcome.InvalidText => ErrorKind.Invalid,

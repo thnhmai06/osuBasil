@@ -7,7 +7,7 @@ namespace Basil.Host.Rest.Tests.Sse;
 [Collection("REST host")]
 public sealed class MatchTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.RoomManageAny;
+	private static readonly UserPrivileges Manager = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 
 	private static async Task<(int RoomId, int MatchId)> OpenAsync(RestClient client, string name,
 		bool isPrivate = false)
@@ -33,7 +33,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 
 			Assert.Equal(401, noToken);
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPermissions.RoomManageAny, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Tournament, (ulong)envelope!["errors"]!["missing"]!);
 			Assert.Equal(200, ok);
 			Assert.Equal(422, tooMany);
 		}

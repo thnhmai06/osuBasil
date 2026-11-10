@@ -1,6 +1,6 @@
 namespace Basil.Application.Diagnostics.Objects;
 
-/// <summary>What happened to a diagnostics operation that was not refused for lack of permissions.</summary>
+/// <summary>What happened to a diagnostics operation that was not refused for lack of privileges.</summary>
 public enum DiagnosticsOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>

@@ -21,14 +21,14 @@ public sealed class SpectatorChannel : Channel
 	public override string Topic => $"{Host.Record.Value.Name}'s spectator channel";
 
 	/// <inheritdoc />
-	internal override bool CanRead(Connection connection, UserPermissions permissions)
+	internal override bool CanRead(Connection connection, UserPrivileges privileges)
 	{
 		return ReferenceEquals(connection, Host) || Host.Spectators.Contains(connection);
 	}
 
 	/// <inheritdoc />
-	internal override bool CanWrite(Connection connection, UserPermissions permissions)
+	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
 	{
-		return CanRead(connection, permissions);
+		return CanRead(connection, privileges);
 	}
 }

@@ -153,7 +153,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("LimitStream", "password",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("LimitStream");
 		await ChangeAsync(host, s => s with
@@ -177,7 +177,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("UserStream", "password",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("UserStream");
 		await ChangeAsync(host, s => s with
@@ -199,7 +199,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("LimitStop", "password",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics);
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("LimitStop");
 		var (response, reader) = await client.OpenStreamAsync("/v1/diagnostics/runtime");

@@ -154,7 +154,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/padoru-standard.osz");
 		var set = beatmaps.First().Beatmapset;
 		var (manager, _) = await fixture.SignInAsync("ImgManager",
-			UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		using (manager)
 		using (var anon = Anonymous())
 		{

@@ -12,7 +12,7 @@ public static class OutcomeResults
 	{
 		return kind switch
 		{
-			ErrorKind.PermissionDenied or ErrorKind.Forbidden or ErrorKind.WrongPassword => StatusCodes
+			ErrorKind.PrivilegeDenied or ErrorKind.Forbidden or ErrorKind.WrongPassword => StatusCodes
 				.Status403Forbidden,
 			ErrorKind.NotFound => StatusCodes.Status404NotFound,
 			ErrorKind.Conflict or ErrorKind.Locked or ErrorKind.SystemAccount => StatusCodes.Status409Conflict,
@@ -26,8 +26,8 @@ public static class OutcomeResults
 	public static IResult Refusal<TOutcome>(this Result<TOutcome> result) where TOutcome : struct, Enum
 	{
 		if (result.Missing is { } missing)
-			return Api.Error(StatusCodes.Status403Forbidden, OutcomeErrors.PermissionDeniedCode,
-				"Missing permissions.", missing);
+			return Api.Error(StatusCodes.Status403Forbidden, OutcomeErrors.PrivilegeDeniedCode,
+				"Missing privileges.", missing);
 
 		var info = OutcomeErrors.Describe(result.Outcome);
 		return Api.Error(StatusOf(info.Kind), info.Code, info.Code);

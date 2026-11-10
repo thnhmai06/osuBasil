@@ -124,7 +124,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	{
 		var (first, id) = await fixture.SignInAsync("SesOne");
 		using var second = await SecondClientAsync("SesOne");
-		var (staff, _) = await fixture.SignInAsync("SesStaff", RestHostFixture.StaffPermissions);
+		var (staff, _) = await fixture.SignInAsync("SesStaff", RestHostFixture.StaffPrivileges);
 		using (first)
 		using (staff)
 		{
@@ -145,7 +145,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	[Fact]
 	public async Task BasilBot_CannotHaveItsSessionsClosedOrAnIrcKeyOpened()
 	{
-		var (staff, _) = await fixture.SignInAsync("SesBotStaff", RestHostFixture.StaffPermissions);
+		var (staff, _) = await fixture.SignInAsync("SesBotStaff", RestHostFixture.StaffPrivileges);
 		using (staff)
 		{
 			var (close, envelope) = await staff.CallAsync(HttpMethod.Delete, "/v1/users/1/sessions");
@@ -161,7 +161,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	public async Task Password_WithIncludeCurrent_ClosesTheCallingSessionToo_AndStaffChangeClosesEverySession()
 	{
 		var (first, id) = await fixture.SignInAsync("SesPwInc");
-		var (staff, _) = await fixture.SignInAsync("SesPwStaff", RestHostFixture.StaffPermissions);
+		var (staff, _) = await fixture.SignInAsync("SesPwStaff", RestHostFixture.StaffPrivileges);
 		using (first)
 		using (staff)
 		{
@@ -188,7 +188,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await RestHostFixture.RaiseLimitsAsync(host);
 		var owner = await host.CreateUserAsync("SesLocked");
-		await host.CreateUserAsync("SesLockStaff", "password", RestHostFixture.StaffPermissions);
+		await host.CreateUserAsync("SesLockStaff", "password", RestHostFixture.StaffPrivileges);
 		using var ownerClient = new RestClient(host.Url, host.Domain);
 		using var staffClient = new RestClient(host.Url, host.Domain);
 		await ownerClient.LoginAsync("SesLocked");

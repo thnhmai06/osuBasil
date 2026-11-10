@@ -22,7 +22,7 @@ PacketDispatcher ──► PacketHandlers ──► scoped Application objects
 Outbox of that connection drained ──► HTTP response
 ```
 
-The host holds no business rule, permission rule or state of its own. A handler reads the packet, takes the actor from the
+The host holds no business rule, privilege rule or state of its own. A handler reads the packet, takes the actor from the
 connection that sent it, and calls an operation on a scope of the object acted on (`x.ScopeTo(connection)`).
 
 ---
@@ -69,12 +69,11 @@ operation, so a class each would only add files.
 * The multiplayer packets map onto the room's operations (`room.ScopeTo(connection)` and its parts: members, settings,
   authority, slots, rounds).
 
-### Restricted accounts and permissions
+### Privileges
 
-The handlers do not know about restrictions. A restricted account has its **effective** permissions reduced, and the
-Application objects check them: a scoped operation returns a `Result<TOutcome>` whose missing mask says what the caller
-lacks. The handler turns a refusal into the packet the client expects (or ignores it). Permissions are never decided by
-the kind of connection. See [`identity-permissions.md`](../for-agents/identity-permissions.md) and
+The handlers do not decide what an account may do. The Application objects check its privileges: a scoped operation returns a `Result<TOutcome>` whose missing mask says what the caller
+lacks. The handler turns a refusal into the packet the client expects (or ignores it). Privileges are never decided by
+the kind of connection. See [`identity-privileges.md`](../for-agents/identity-privileges.md) and
 [`privileges.md`](privileges.md).
 
 ---
@@ -126,14 +125,14 @@ If the operation changes shared multiplayer state, follow the room rules below.
 `Room` is mutable shared state, and Basil runs on the thread pool, so two packets for the same room can run at once.
 
 **An operation that reads and then mutates a room is a synchronous method of `Room` that holds the room's own `Lock`
-across the whole state change and publishes its event inside it.** `ScopedRoom` only checks permissions and calls it. A
+across the whole state change and publishes its event inside it.** `ScopedRoom` only checks privileges and calls it. A
 closed room answers `RoomClosed`. Do not introduce a second synchronization mechanism for the same state, and never `await`
 under the room lock.
 
 ```text
 Handler A                    Handler B
     |                            |
-ScopedRoom (permission)     ScopedRoom (permission)
+ScopedRoom (privilege)     ScopedRoom (privilege)
     |                            |
 Room.Operation ── Lock ──┐       |
     mutate, publish      │       |
@@ -161,7 +160,7 @@ the room lock is held, so a subscriber never sees an older state after a newer o
    when the layout is new, with a protocol test: packet layouts are wire contracts).
 2. Add a case to `PacketHandlers` (in the partial file of its feature) that reads the payload and calls the operation on the
    scope of the object acted on.
-3. If the operation does not exist yet, add it to that object in Application, with its permission check and its outcome,
+3. If the operation does not exist yet, add it to that object in Application, with its privilege check and its outcome,
    and a test there.
 4. If clients must hear about the change, publish an Application event and add or extend a `Delivery` handler.
 5. Add a host test in `tests/Hosts/Stable` that sends the packet from a simulated client and checks what the client

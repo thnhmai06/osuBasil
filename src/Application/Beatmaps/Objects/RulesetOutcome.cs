@@ -1,6 +1,6 @@
 namespace Basil.Application.Beatmaps.Objects;
 
-/// <summary>What happened to a ruleset operation that was not refused for lack of permissions.</summary>
+/// <summary>What happened to a ruleset operation that was not refused for lack of privileges.</summary>
 public enum RulesetOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>

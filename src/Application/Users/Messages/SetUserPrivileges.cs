@@ -6,9 +6,9 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-/// <summary>Asks Users to replace the permissions granted to an account.</summary>
+/// <summary>Asks Users to replace the privileges granted to an account.</summary>
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
-/// <param name="Permissions">The new permissions.</param>
-public sealed record SetUserPermissions(Connection Actor, UserRecord Target, UserPermissions Permissions)
+/// <param name="Privileges">The new privileges.</param>
+public sealed record SetUserPrivileges(Connection Actor, UserRecord Target, UserPrivileges Privileges)
 	: IRequest<Result<UserOutcome>>;

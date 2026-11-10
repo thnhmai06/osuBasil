@@ -16,7 +16,7 @@ public sealed class OutcomeErrorsTests
 	private static readonly Dictionary<UserOutcome, ErrorKind> Users = new()
 	{
 		[UserOutcome.NotOutranking] = Forbidden, [UserOutcome.SystemAccount] = SystemAccount,
-		[UserOutcome.InvalidRestriction] = Invalid, [UserOutcome.Self] = Invalid, [UserOutcome.Deleted] = NotFound,
+		[UserOutcome.InvalidSilence] = Invalid, [UserOutcome.Self] = Invalid, [UserOutcome.Deleted] = NotFound,
 		[UserOutcome.WrongPassword] = WrongPassword, [UserOutcome.InvalidName] = Invalid,
 		[UserOutcome.NameTaken] = Conflict, [UserOutcome.NotFound] = NotFound, [UserOutcome.Locked] = Locked,
 		[UserOutcome.NotSelf] = Forbidden, [UserOutcome.InvalidLabel] = Invalid, [UserOutcome.InvalidCountry] = Invalid,
@@ -52,6 +52,7 @@ public sealed class OutcomeErrorsTests
 		[ChannelOutcome.Closed] = Gone,
 		[ChannelOutcome.Empty] = Invalid, [ChannelOutcome.InvalidText] = Invalid, [ChannelOutcome.Blocked] = Forbidden,
 		[ChannelOutcome.TargetSilenced] = Conflict, [ChannelOutcome.AccessDenied] = Forbidden,
+		[ChannelOutcome.Silenced] = Forbidden,
 		[ChannelOutcome.NotFound] = NotFound
 	};
 
@@ -111,7 +112,7 @@ public sealed class OutcomeErrorsTests
 	}
 
 	[Theory]
-	[InlineData(PermissionDenied, 403)]
+	[InlineData(PrivilegeDenied, 403)]
 	[InlineData(Forbidden, 403)]
 	[InlineData(WrongPassword, 403)]
 	[InlineData(NotFound, 404)]

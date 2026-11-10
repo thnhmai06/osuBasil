@@ -24,7 +24,7 @@ internal static class SpectateRoutes
 		users.MapGet("/{id:int}/spectate", SpectateAsync).RequireToken().Sse()
 			.WithSummary("Watch a player who is online in game.")
 			.WithDescription("""
-			                 The response is streamed using Server-Sent Events. Opening it spectates the player as an osu! client would: the player sees a spectator, and the spectating permission, blocks and restrictions apply. The stream only watches; it joins no chat channel.
+			                 The response is streamed using Server-Sent Events. Opening it spectates the player as an osu! client would: the player sees a spectator, and the spectating privilege, blocks and restrictions apply. The stream only watches; it joins no chat channel.
 
 			                 The first event is the snapshot with the player's profile and in-game status. After that a bundle arrives every second with the frames, score updates and status changes since the previous one. Data is up to about one second old.
 			                 """);

@@ -50,20 +50,17 @@ public sealed record ModerationData
 /// <summary>The kinds of action the moderation log records.</summary>
 public enum ModerationAction : byte
 {
-	/// <summary>A user's permissions were suspended by a restriction.</summary>
-	Restrict = 0,
+	/// <summary>A user was silenced.</summary>
+	Silence = 0,
 
-	/// <summary>A restriction of a user's permissions was lifted.</summary>
-	Lift = 1,
+	/// <summary>A user's silence was lifted.</summary>
+	Unsilence = 1,
 
 	/// <summary>A note was added to the moderation history of a user.</summary>
 	Note = 2,
 
 	/// <summary>The login history of a user was read.</summary>
 	ViewLogins = 3,
-
-	/// <summary>A restriction was removed from a user's history.</summary>
-	Delete = 4,
 
 	/// <summary>A user's sessions were closed by a moderator.</summary>
 	CloseSessions = 5,

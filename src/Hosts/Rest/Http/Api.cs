@@ -24,7 +24,7 @@ public sealed record Envelope<T>(
 
 /// <summary>The machine-readable part of an error response.</summary>
 /// <param name="Code">The stable camelCase error code.</param>
-/// <param name="Missing">The permissions the caller lacks, when the refusal is for lack of permissions.</param>
+/// <param name="Missing">The privileges the caller lacks, when the refusal is for lack of privileges.</param>
 public sealed record ErrorBody(string Code, ulong? Missing = null);
 
 /// <summary>Pagination information of a list response.</summary>
@@ -74,7 +74,7 @@ public static class Api
 	}
 
 	/// <summary>Answers an error.</summary>
-	public static IResult Error(int status, string code, string message, UserPermissions? missing = null)
+	public static IResult Error(int status, string code, string message, UserPrivileges? missing = null)
 	{
 		return Respond<object>(status, message, null, null,
 			new ErrorBody(code, missing is { } m ? (ulong)m : null));

@@ -8,12 +8,12 @@ namespace Basil.Infrastructure.Bot.Tests.Commands;
 /// <summary>
 ///     <c>!channel list|create|set|delete</c>, which does what the HTTP API that manages the general channels does.
 ///     Expected replies are named by the reply that owns the wording; whether a typist may manage channels is the
-///     channel's rule, so the tests pair each refusal with the permission it names.
+///     channel's rule, so the tests pair each refusal with the privilege it names.
 /// </summary>
 public sealed class ChannelCommandsTests
 {
-	private static readonly UserPermissions
-		Manager = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
+	private static readonly UserPrivileges
+		Manager = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
 
 	[Fact]
 	public async Task Create_ByAManager_OpensTheChannelWithTheOptionsGiven()
@@ -44,8 +44,8 @@ public sealed class ChannelCommandsTests
 		Assert.False(succeeded);
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPermissions,
-					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+				bot.Text(ChannelReplies.MissingPrivileges,
+					new { privileges = nameof(UserPrivileges.Moderator) })
 			],
 			said.Here);
 		Assert.Null(bot.App.Channels.Find("#nope"));
@@ -112,8 +112,8 @@ public sealed class ChannelCommandsTests
 		Assert.False(succeeded);
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPermissions,
-					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+				bot.Text(ChannelReplies.MissingPrivileges,
+					new { privileges = nameof(UserPrivileges.Moderator) })
 			],
 			said.Here);
 		Assert.Equal("keep", bot.App.Channels.Find("#locked")!.Topic);
@@ -132,8 +132,8 @@ public sealed class ChannelCommandsTests
 
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPermissions,
-					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+				bot.Text(ChannelReplies.MissingPrivileges,
+					new { privileges = nameof(UserPrivileges.Moderator) })
 			],
 			exists.Here);
 		Assert.Equal(exists.Here, missing.Here);
@@ -191,8 +191,8 @@ public sealed class ChannelCommandsTests
 		Assert.False(succeeded);
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPermissions,
-					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+				bot.Text(ChannelReplies.MissingPrivileges,
+					new { privileges = nameof(UserPrivileges.Moderator) })
 			],
 			said.Here);
 		Assert.NotNull(bot.App.Channels.Find("#kept"));
@@ -211,8 +211,8 @@ public sealed class ChannelCommandsTests
 
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPermissions,
-					new { permissions = nameof(UserPermissions.ChatManageChannels) })
+				bot.Text(ChannelReplies.MissingPrivileges,
+					new { privileges = nameof(UserPrivileges.Moderator) })
 			],
 			exists.Here);
 		Assert.Equal(exists.Here, missing.Here);

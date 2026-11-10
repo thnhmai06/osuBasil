@@ -20,7 +20,6 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<UsersDbContext>>();
 		services.AddSingleton<IUserRepository, EfUserRepository>();
-		services.AddSingleton<IRestrictionRepository, EfRestrictionRepository>();
 		services.AddSingleton<IRelationshipRepository, EfRelationshipRepository>();
 		services.AddSingleton<IModerationLogRepository, EfModerationLogRepository>();
 		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();

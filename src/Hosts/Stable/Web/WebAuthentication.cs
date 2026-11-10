@@ -28,18 +28,18 @@ internal sealed class WebAuthentication(
 
 	/// <summary>Tells whether a client may use osu!direct.</summary>
 	/// <param name="client">The authenticated client.</param>
-	/// <returns><see langword="true" /> when its effective permissions include osu!direct.</returns>
+	/// <returns><see langword="true" /> when its effective privileges include osu!direct.</returns>
 	public bool MayUseDirect(StableConnection client)
 	{
-		return Effective(client).Allows(UserPermissions.BeatmapsetDirect);
+		return Effective(client).Allows(UserPrivileges.Supporter);
 	}
 
 	/// <summary>Gets what a client may do right now.</summary>
 	/// <param name="client">The authenticated client.</param>
-	/// <returns>Its effective permissions.</returns>
-	public UserPermissions Effective(StableConnection client)
+	/// <returns>Its effective privileges.</returns>
+	public UserPrivileges Effective(StableConnection client)
 	{
-		return client.User.EffectivePermissions(clock.GetUtcNow());
+		return client.User.EffectivePrivileges(clock.GetUtcNow());
 	}
 
 	/// <summary>Finds the online osu! client a web request speaks for.</summary>

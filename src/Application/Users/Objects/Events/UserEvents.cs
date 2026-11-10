@@ -26,25 +26,19 @@ public sealed record UserConnectionClosed(Connection Connection, SessionEndReaso
 /// <param name="Status">The new status.</param>
 public sealed record UserConnectionStatusChanged(StableConnection Connection, PlayerStatus Status) : UserEvent;
 
-/// <summary>Some of a user's permissions were suspended; a silence is one such restriction.</summary>
-/// <param name="User">The restricted user.</param>
-/// <param name="Restriction">The new restriction.</param>
-public sealed record UserRestricted(UserRecord User, UserRestriction Restriction) : UserEvent;
+/// <summary>A user was silenced.</summary>
+/// <param name="User">The silenced user.</param>
+/// <param name="Until">The moment the silence ends.</param>
+public sealed record UserSilenced(UserRecord User, DateTimeOffset Until) : UserEvent;
 
-/// <summary>A restriction of a user was ended before its time.</summary>
-/// <param name="User">The user the restriction applied to.</param>
-/// <param name="Restriction">The lifted restriction, now ending at the moment it was lifted.</param>
-public sealed record UserRestrictionLifted(UserRecord User, UserRestriction Restriction) : UserEvent;
-
-/// <summary>A restriction was removed from a user's history.</summary>
-/// <param name="User">The user whose restriction was removed.</param>
-/// <param name="Restriction">The removed restriction.</param>
-public sealed record UserRestrictionDeleted(UserRecord User, UserRestriction Restriction) : UserEvent;
-
-/// <summary>The permissions granted to a user were replaced.</summary>
+/// <summary>The silence of a user was lifted before its end.</summary>
 /// <param name="User">The user.</param>
-/// <param name="Permissions">The permissions now granted.</param>
-public sealed record UserPermissionsChanged(UserRecord User, UserPermissions Permissions) : UserEvent;
+public sealed record UserUnsilenced(UserRecord User) : UserEvent;
+
+/// <summary>The privileges granted to a user were replaced.</summary>
+/// <param name="User">The user.</param>
+/// <param name="Privileges">The privileges now granted.</param>
+public sealed record UserPrivilegesChanged(UserRecord User, UserPrivileges Privileges) : UserEvent;
 
 /// <summary>A notification was shown to online users.</summary>
 /// <param name="Recipients">The osu! clients that were sent the notification.</param>

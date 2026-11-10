@@ -115,17 +115,17 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_WithoutTheRoomCreatePermission_SaysWhichPermissionIsMissingAndOpensNothing()
+	public async Task Make_WithoutThePlayerPrivilege_SaysWhichPrivilegeIsMissingAndOpensNothing()
 	{
 		using var bot = new BotHarness();
 		var typist =
 			await RoomFixture.PlayerAsync(bot.App, "Typist",
-				UserPermissionsGroups.Default & ~UserPermissions.RoomCreate);
+				UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 
 		var (succeeded, said) = await bot.TypeAsync(typist, "#osu", "!mp make Finals");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.Text(MpReplies.MissingPermissions, new { permissions = "RoomCreate" })], said.Here);
+		Assert.Equal([bot.Text(MpReplies.MissingPrivileges, new { privileges = nameof(UserPrivileges.Player) })], said.Here);
 		Assert.Empty(bot.App.Lobby.Rooms);
 	}
 

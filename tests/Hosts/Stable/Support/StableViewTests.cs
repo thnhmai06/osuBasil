@@ -7,16 +7,16 @@ namespace Basil.Host.Stable.Tests.Support;
 public sealed class StableViewTests
 {
 	[Fact]
-	public void Roles_OfAnObserver_IncludeSupporter()
+	public void Roles_AreTheEffectivePrivileges()
 	{
-		var roles = StableView.Roles(UserPermissions.RoomObserve);
+		const UserPrivileges held = UserPrivileges.Player | UserPrivileges.Moderator;
 
-		Assert.True(roles.HasFlag(UserPrivileges.Supporter));
+		Assert.Equal(held, StableView.Roles(held));
 	}
 
 	[Fact]
-	public void Roles_WithoutAnyPermission_FallBackToPlayer()
+	public void Roles_WithoutAnyPrivilege_FallBackToPlayer()
 	{
-		Assert.Equal(UserPrivileges.Player, StableView.Roles(UserPermissions.None));
+		Assert.Equal(UserPrivileges.Player, StableView.Roles(UserPrivileges.None));
 	}
 }

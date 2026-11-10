@@ -6,8 +6,8 @@ namespace Basil.Host.Rest.Tests.Content;
 [Collection("REST host")]
 public sealed class RulesetTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Manager =
-		UserPermissionsGroups.Default | UserPermissions.ServerManageSettings;
+	private static readonly UserPrivileges Manager =
+		UserPrivilegesExtensions.Default | UserPrivileges.Developer;
 
 	[Fact]
 	public async Task Version_IsPublic_AndNamesTheAppAndTheRulesetVersion()
@@ -36,7 +36,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 
 			Assert.Equal(401, unauthorized);
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPermissions.ServerManageSettings, (ulong)refusal!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)refusal!["errors"]!["missing"]!);
 			Assert.Equal(200, ok);
 			Assert.False(string.IsNullOrEmpty((string?)envelope!["data"]!["active"]));
 			Assert.Null(envelope["data"]!["staged"]);
@@ -52,7 +52,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 			var (denied, refusal) = await plain.CallAsync(HttpMethod.Post, "/v1/settings/ruleset/update");
 
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPermissions.ServerManageSettings, (ulong)refusal!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)refusal!["errors"]!["missing"]!);
 		}
 	}
 

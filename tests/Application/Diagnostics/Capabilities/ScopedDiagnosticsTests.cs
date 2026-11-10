@@ -6,11 +6,11 @@ using NSubstitute;
 
 namespace Basil.Application.Diagnostics.Tests.Capabilities;
 
-/// <summary>The diagnostics and their maintenance actions need <see cref="UserPermissions.ServerManageDiagnostics" />.</summary>
+/// <summary>The diagnostics and their maintenance actions need <see cref="UserPrivileges.Developer" />.</summary>
 public sealed class ScopedDiagnosticsTests
 {
-	private static readonly UserPermissions Staff =
-		UserPermissionsGroups.Default | UserPermissions.ServerManageDiagnostics;
+	private static readonly UserPrivileges Staff =
+		UserPrivilegesExtensions.Default | UserPrivileges.Developer;
 
 	private readonly ICacheCleaner _caches = Substitute.For<ICacheCleaner>();
 	private readonly IClearTally _exceptions = Substitute.For<IClearTally>();
@@ -29,7 +29,7 @@ public sealed class ScopedDiagnosticsTests
 		var result = Diagnostics(app).ScopeTo(plain).Access();
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]
@@ -49,7 +49,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var (result, deleted) = Diagnostics(app).ScopeTo(plain).ClearCaches();
 
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 		Assert.Equal(0, deleted);
 		_caches.DidNotReceive().Clear();
 	}
@@ -75,7 +75,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var result = Diagnostics(app).ScopeTo(plain).ResetExceptions();
 
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 		_exceptions.DidNotReceive().Reset();
 	}
 
@@ -99,7 +99,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var result = Diagnostics(app).ScopeTo(plain).CollectGarbage();
 
-		Assert.Equal(UserPermissions.ServerManageDiagnostics, result.Missing);
+		Assert.Equal(UserPrivileges.Developer, result.Missing);
 	}
 
 	[Fact]

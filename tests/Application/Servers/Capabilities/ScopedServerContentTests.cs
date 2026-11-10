@@ -26,7 +26,7 @@ public sealed class ScopedServerContentTests
 			services.AddSingleton(banners);
 		});
 		var manager = await RoomFixture.PlayerAsync(app, "Boss",
-			UserPermissionsGroups.Default | UserPermissions.ServerManageContent);
+			UserPrivilegesExtensions.Default | UserPrivileges.Owner);
 
 		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Content.AddBannerAsync("a.png",
 			new MemoryStream(), new Uri("https://example.org"), null, null, TestContext.Current.CancellationToken));

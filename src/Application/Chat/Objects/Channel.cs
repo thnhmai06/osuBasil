@@ -54,13 +54,13 @@ public abstract class Channel
 
 	/// <summary>Checks whether a connection may read the channel and so join it.</summary>
 	/// <param name="connection">The connection to check.</param>
-	/// <param name="permissions">The effective permissions the connection holds.</param>
-	internal abstract bool CanRead(Connection connection, UserPermissions permissions);
+	/// <param name="privileges">The effective privileges the connection holds.</param>
+	internal abstract bool CanRead(Connection connection, UserPrivileges privileges);
 
 	/// <summary>Checks whether a connection may write to the channel.</summary>
 	/// <param name="connection">The connection to check.</param>
-	/// <param name="permissions">The effective permissions the connection holds.</param>
-	internal abstract bool CanWrite(Connection connection, UserPermissions permissions);
+	/// <param name="privileges">The effective privileges the connection holds.</param>
+	internal abstract bool CanWrite(Connection connection, UserPrivileges privileges);
 
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="actor">The connection acting on this channel.</param>
@@ -85,7 +85,7 @@ public abstract class Channel
 	/// <returns>The members who do not block the author; every member when nobody blocks them.</returns>
 	/// <remarks>
 	///     A member who blocks the author is not shown the message, silently, and the author is not told. A block
-	///     yields to a higher right: an author holding <see cref="UserPermissions.ChatManageMessageAnyone" />, and the server
+	///     yields to a higher right: an author holding <see cref="UserPrivileges.Moderator" />, and the server
 	///     itself, reach every member. The author's own connections are kept; the transport decides whether to echo.
 	/// </remarks>
 	public async Task<IReadOnlyList<Connection>> RecipientsAsync(ChannelMessagePosted posted,
@@ -135,13 +135,13 @@ public abstract class Channel
 
 	/// <summary>Adds a connection to the channel's members.</summary>
 	/// <param name="connection">The connection that joins.</param>
-	/// <param name="permissions">The effective permissions the connection holds.</param>
+	/// <param name="privileges">The effective privileges the connection holds.</param>
 	/// <returns>Ok, Closed, AccessDenied or AlreadyMember.</returns>
-	internal ChannelOutcome Join(Connection connection, UserPermissions permissions)
+	internal ChannelOutcome Join(Connection connection, UserPrivileges privileges)
 	{
 		using var scope = Enter();
 		if (IsClosed) return ChannelOutcome.Closed;
-		if (!CanRead(connection, permissions)) return ChannelOutcome.AccessDenied;
+		if (!CanRead(connection, privileges)) return ChannelOutcome.AccessDenied;
 		if (Members.Contains(connection)) return ChannelOutcome.AlreadyMember;
 
 		Connection? replaced = null;
@@ -174,17 +174,16 @@ public abstract class Channel
 
 	/// <summary>Posts a message from a connection to the channel.</summary>
 	/// <param name="actor">The connection that posts.</param>
-	/// <param name="permissions">The effective permissions the poster holds.</param>
-	/// <param name="recipientPermissions">
-	///     The effective permissions of the user who receives a private message; <see langword="null" /> for any
-	///     other channel.
+	/// <param name="privileges">The effective privileges the poster holds.</param>
+	/// <param name="recipientSilenced">
+	///     Whether the user who receives a private message is silenced; <see langword="null" /> for any other channel.
 	/// </param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, Closed, Empty, InvalidText, NotMember, AccessDenied, Blocked or TargetSilenced.</returns>
-	internal async Task<ChannelOutcome> PostAsync(Connection actor, UserPermissions permissions,
-		UserPermissions? recipientPermissions, string text, bool notice, CancellationToken cancellationToken)
+	/// <returns>Ok, Closed, Empty, InvalidText, NotMember, Silenced, AccessDenied, Blocked or TargetSilenced.</returns>
+	internal async Task<ChannelOutcome> PostAsync(Connection actor, UserPrivileges privileges,
+		bool? recipientSilenced, string text, bool notice, CancellationToken cancellationToken)
 	{
 		if (IsClosed) return ChannelOutcome.Closed;
 		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
@@ -192,10 +191,11 @@ public abstract class Channel
 		if (this is not PmChannel && !Members.Contains(actor)) return ChannelOutcome.NotMember;
 
 		var now = Context.Clock.GetUtcNow();
-		if (!CanWrite(actor, permissions)) return ChannelOutcome.AccessDenied;
+		if (actor.User.Record.Value.IsSilenced(now)) return ChannelOutcome.Silenced;
+		if (!CanWrite(actor, privileges)) return ChannelOutcome.AccessDenied;
 
-		var mayMessageAnyone = permissions.Allows(UserPermissions.ChatManageMessageAnyone);
-		if (this is PmChannel pm && recipientPermissions is { } recipient &&
+		var mayMessageAnyone = privileges.Allows(UserPrivileges.Moderator);
+		if (this is PmChannel pm && recipientSilenced is { } recipient &&
 		    await PrivateMessageRefusalAsync(pm, actor, mayMessageAnyone, recipient, cancellationToken) is { } refusal)
 			return refusal;
 
@@ -206,7 +206,7 @@ public abstract class Channel
 	}
 
 	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, Connection actor,
-		bool mayMessageAnyone, UserPermissions recipientPermissions, CancellationToken cancellationToken)
+		bool mayMessageAnyone, bool recipientSilenced, CancellationToken cancellationToken)
 	{
 		if (!mayMessageAnyone)
 		{
@@ -219,8 +219,7 @@ public abstract class Channel
 			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
 		}
 
-		if (!pm.Owner.Record.IsFriendOfEveryone() &&
-		    !recipientPermissions.Allows(UserPermissions.ChatPostPrivate))
+		if (!pm.Owner.Record.IsFriendOfEveryone() && recipientSilenced)
 			return ChannelOutcome.TargetSilenced;
 
 		return null;

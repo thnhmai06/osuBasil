@@ -27,24 +27,24 @@ public sealed class GeneralChannel : Channel
 	public override string Topic => Record.Value.Topic;
 
 	/// <inheritdoc />
-	internal override bool CanRead(Connection connection, UserPermissions permissions)
+	internal override bool CanRead(Connection connection, UserPrivileges privileges)
 	{
-		return permissions.Privileges.Allows(Record.Value.ReadPrivileges);
+		return privileges.Allows(Record.Value.ReadPrivileges);
 	}
 
 	/// <inheritdoc />
-	internal override bool CanWrite(Connection connection, UserPermissions permissions)
+	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
 	{
-		return permissions.Privileges.Allows(Record.Value.WritePrivileges);
+		return privileges.Allows(Record.Value.WritePrivileges);
 	}
 
 	/// <summary>Applies a change to the channel and removes the members who may no longer read it.</summary>
 	/// <param name="change">The settings to change.</param>
-	/// <param name="permissionsOf">Gives the effective permissions a member holds.</param>
+	/// <param name="privilegesOf">Gives the effective privileges a member holds.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, or Closed when the channel has closed.</returns>
 	internal async Task<ChannelOutcome> ConfigureAsync(GeneralChannelChange change,
-		Func<Connection, UserPermissions> permissionsOf, CancellationToken cancellationToken)
+		Func<Connection, UserPrivileges> privilegesOf, CancellationToken cancellationToken)
 	{
 		using (Enter())
 		{
@@ -54,7 +54,7 @@ public sealed class GeneralChannel : Channel
 			Validate(change);
 			Apply(target, change);
 
-			var removed = Members.Where(member => !CanRead(member, permissionsOf(member))).ToArray();
+			var removed = Members.Where(member => !CanRead(member, privilegesOf(member))).ToArray();
 			foreach (var member in removed)
 				MutableMembers.Remove(member);
 			Context.Events.Publish(new ChannelConfigured(this, change, removed));

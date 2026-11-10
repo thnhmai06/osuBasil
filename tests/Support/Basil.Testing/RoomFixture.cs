@@ -140,18 +140,18 @@ public sealed class RoomFixture
 			.SetHostAsync(host, TestContext.Current.CancellationToken)).IsOk);
 
 		var outsider = await PlayerAsync(app, "Outsider");
-		var manager = await PlayerAsync(app, "Manager", UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
-		var noRoomJoin = await PlayerAsync(app, "NoJoin", UserPermissionsGroups.Default & ~UserPermissions.RoomJoin);
+		var manager = await PlayerAsync(app, "Manager", UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
+		var noRoomJoin = await PlayerAsync(app, "NoJoin", UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 
-		// The suspended creator may create a room through the API, but may not be seated in it.
+		// The creator who lost the player privilege after creating the room may not be seated in it.
 		var suspendedUser = await app.CreateUserAsync("Suspended", "password");
-		app.AddRestriction(suspendedUser, UserPermissions.RoomJoin);
 		var suspendedCreator = await PlayerAsync(app, suspendedUser);
 		var (suspendedRoom, suspendedOpened) = await app.Lobby.ScopeTo(suspendedCreator)
 			.OpenRoomAsync("api room", "", RoomSource.Api, false,
 				cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(suspendedOpened.IsOk);
 		Assert.NotNull(suspendedRoom);
+		suspendedUser.Value.Privileges = UserPrivileges.None;
 
 		return new RoomFixture
 		{
@@ -198,12 +198,12 @@ public sealed class RoomFixture
 	/// <summary>Creates a user and logs them in with an osu! client.</summary>
 	/// <param name="app">The application the user belongs to.</param>
 	/// <param name="name">The account name.</param>
-	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
+	/// <param name="privileges">The privileges to grant, or the normal new-account privileges.</param>
 	/// <returns>The opened connection.</returns>
 	public static async Task<StableConnection> PlayerAsync(TestApplication app, string name,
-		UserPermissions? permissions = null)
+		UserPrivileges? privileges = null)
 	{
-		var user = await app.CreateUserAsync(name, "password", permissions);
+		var user = await app.CreateUserAsync(name, "password", privileges);
 		return await PlayerAsync(app, user);
 	}
 

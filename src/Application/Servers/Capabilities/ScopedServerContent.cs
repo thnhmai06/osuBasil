@@ -5,8 +5,8 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Servers.Capabilities;
 
-/// <summary>Changes the FAQ entries and the main menu; reading them needs no permission.</summary>
-/// <remarks>Every change requires <see cref="UserPermissions.ServerManageContent" />.</remarks>
+/// <summary>Changes the FAQ entries and the main menu; reading them needs no privilege.</summary>
+/// <remarks>Every change requires <see cref="UserPrivileges.Owner" />.</remarks>
 public readonly struct ScopedServerContent
 {
 	private readonly ScopedServer _scoped;
@@ -20,7 +20,7 @@ public readonly struct ScopedServerContent
 
 	private Result<ServerOutcome>? Denied()
 	{
-		return _scoped.Needs(UserPermissions.ServerManageContent) is { } missing
+		return _scoped.Needs(UserPrivileges.Owner) is { } missing
 			? Result<ServerOutcome>.Denied(missing)
 			: null;
 	}

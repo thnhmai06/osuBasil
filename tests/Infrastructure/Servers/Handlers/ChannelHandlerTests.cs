@@ -17,7 +17,7 @@ public sealed class ChannelHandlerTests
 	public async Task CreateGeneralChannel_WithTheRight_CreatesTheChannel()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 
 		var result = await new CreateGeneralChannelHandler(app.Server)
 			.Handle(new CreateGeneralChannel(admin, Record("#new")), Token);
@@ -31,7 +31,7 @@ public sealed class ChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var plain = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 
 		var result = await new CreateGeneralChannelHandler(app.Server)
 			.Handle(new CreateGeneralChannel(plain, Record("#new")), Token);
@@ -44,7 +44,7 @@ public sealed class ChannelHandlerTests
 	public async Task ConfigureGeneralChannel_WithTheRight_ChangesTheTopicAndAnswersWithTheChannel()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		await new CreateGeneralChannelHandler(app.Server).Handle(new CreateGeneralChannel(admin, Record("#topic")), Token);
 
 		var answer = await new ConfigureGeneralChannelHandler(app.Server)
@@ -58,7 +58,7 @@ public sealed class ChannelHandlerTests
 	public async Task ConfigureGeneralChannel_OfAChannelThatDoesNotExist_AnswersWithoutAChannel()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 
 		var answer = await new ConfigureGeneralChannelHandler(app.Server)
 			.Handle(new ConfigureGeneralChannel(admin, "#missing", new GeneralChannelChange(Topic: "x")), Token);
@@ -71,7 +71,7 @@ public sealed class ChannelHandlerTests
 	public async Task DeleteGeneralChannel_WithTheRight_RemovesTheChannel()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 		await new CreateGeneralChannelHandler(app.Server).Handle(new CreateGeneralChannel(admin, Record("#gone")), Token);
 
 		var answer = await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#gone"), Token);
@@ -84,7 +84,7 @@ public sealed class ChannelHandlerTests
 	public async Task DeleteGeneralChannel_OfAChannelThatDoesNotExist_AnswersWithoutAChannel()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 
 		var answer = await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#missing"), Token);
 

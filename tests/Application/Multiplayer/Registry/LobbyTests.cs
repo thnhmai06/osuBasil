@@ -34,7 +34,7 @@ public sealed class LobbyTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var observerUser = await app.CreateUserAsync("Observer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var observer = (TourneyConnection)await app.LoginAsync(observerUser, SessionType.StableTourney);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);
@@ -43,47 +43,6 @@ public sealed class LobbyTests
 
 		Assert.DoesNotContain(observer, setup.Room.Members.Observers);
 		Assert.IsType<RoomObserverLeft>(app.RoomEvents.Events[^1]);
-	}
-
-	[Fact]
-	public async Task RemoveSuspendedAsync_ForAUserWhoMayNotJoinRooms_RemovesThemFromTheirRoom()
-	{
-		using var app = new TestApplication();
-		var setup = await RoomFixture.CreateAsync(app);
-		await RestrictRoomJoinAsync(app, setup.Player.Record);
-
-		await app.Lobby.RemoveSuspendedAsync(app.Users.Of(setup.Player.Record),
-			TestContext.Current.CancellationToken);
-
-		Assert.Null(setup.Room.Slots.Find(setup.Player));
-	}
-
-	[Fact]
-	public async Task RemoveSuspendedAsync_ForAUserWhoMayNotJoinRooms_RemovesTheirRefereeEntries()
-	{
-		using var app = new TestApplication();
-		await app.SeedBotAsync();
-		var setup = await RoomFixture.CreateAsync(app);
-		await RestrictRoomJoinAsync(app, setup.Referee.Record);
-
-		await app.Lobby.RemoveSuspendedAsync(app.Users.Of(setup.Referee.Record),
-			TestContext.Current.CancellationToken);
-
-		Assert.DoesNotContain(setup.Referee.Record, setup.Room.Authority.Referees);
-		Assert.IsType<RoomRefereeRemoved>(app.RoomEvents.Events[^1]);
-	}
-
-	[Fact]
-	public async Task RemoveSuspendedAsync_ForAUserWhoMayStillJoinRooms_LeavesThemInTheirRoom()
-	{
-		using var app = new TestApplication();
-		var setup = await RoomFixture.CreateAsync(app);
-
-		await app.Lobby.RemoveSuspendedAsync(app.Users.Of(setup.Player.Record),
-			TestContext.Current.CancellationToken);
-
-		Assert.NotNull(setup.Room.Slots.Find(setup.Player));
-		Assert.Contains(setup.Referee.Record, setup.Room.Authority.Referees);
 	}
 
 	[Fact]
@@ -192,16 +151,6 @@ public sealed class LobbyTests
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Null(app.Lobby.Find(setup.Room.Id));
-	}
-
-	private static async Task RestrictRoomJoinAsync(TestApplication app, UserRecord target)
-	{
-		var moderator = await app.CreateUserAsync("Moderator", "password",
-			UserPermissionsGroups.Default | UserPermissions.UserManageRestrict);
-		var actor = await app.LoginAsync(moderator);
-		var (result, _) = await app.Users.Of(target).ScopeTo(actor).Restrictions.RestrictAsync(
-			UserPermissions.RoomJoin, null, cancellationToken: TestContext.Current.CancellationToken);
-		Assert.True(result.IsOk);
 	}
 
 	[Theory]

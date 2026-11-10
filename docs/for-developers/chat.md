@@ -26,28 +26,28 @@ Each kind of channel decides who may read and write it (`CanRead` and `CanWrite`
 | Kind | Read | Write |
 |---|---|---|
 | General | Effective privileges satisfy `ReadPrivileges` | Effective privileges satisfy `WritePrivileges` |
-| Room | A room participant or an account with effective `RoomObserve` | A room participant or an account with effective `ChatManagePostAnyRoom` |
+| Room | A room participant or an account with effective `Tournament` | A room participant or an account with effective `Tournament` |
 | Spectator | The spectated player or one of that player's spectators | The spectated player or one of that player's spectators |
-| Private message | The recipient's connection, except osu!tourney | An open connection with effective `ChatPostPrivate` |
+| Private message | The recipient's connection, except osu!tourney | An open connection with effective `Player` |
 
-For a room channel, participants include seated players, registered observers, and the room's creator or referees when their room permissions are effective. `RoomManageAny` also grants access across rooms. These are account permissions, not authority inferred from the connection type.
+For a room channel, participants include seated players, registered observers, and the room's creator or referees when their room permissions are effective. `Tournament` also grants access across rooms. These are account permissions, not authority inferred from the connection type.
 
 ## Acting on a channel
 
-Create a scope from the channel and the real caller connection. The scope keeps the caller with each operation, so callers do not pass an actor or permission mask repeatedly:
+Create a scope from the channel and the real caller connection. The scope keeps the caller with each operation, so callers do not pass an actor or privilege mask repeatedly:
 
 ```csharp
 var scopedChannel = channel.ScopeTo(by);
 var result = scopedChannel.Join();
 ```
 
-`ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `ChatManageChannels`. A missing permission comes back as a denial naming the missing permissions; otherwise `ConfigureAsync` returns `Ok` or `Closed`. Configuring a channel removes members who can no longer read it.
+`ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `Moderator`. A missing privilege comes back as a denial naming the missing privileges; otherwise `ConfigureAsync` returns `Ok` or `Closed`. Configuring a channel removes members who can no longer read it.
 
-The channel to manage is found through `server.ScopeTo(by).Channels.Find(name)`. It requires effective `ChatManageChannels` and answers `NotFound` only once that right is met, so a connection without it is refused the same way whether or not the channel exists.
+The channel to manage is found through `server.ScopeTo(by).Channels.Find(name)`. It requires effective `Moderator` and answers `NotFound` only once that right is met, so a connection without it is refused the same way whether or not the channel exists.
 
 ### Results
 
-Every operation returns `Result<ChannelOutcome>` rather than throwing for ordinary refusals. A refusal for lack of a permission carries the missing permissions.
+Every operation returns `Result<ChannelOutcome>` rather than throwing for ordinary refusals. A refusal for lack of a privilege carries the missing privileges.
 
 | Operation | Outcome | Meaning |
 |---|---|---|
@@ -65,18 +65,19 @@ Every operation returns `Result<ChannelOutcome>` rather than throwing for ordina
 | | `NotMember` | The sender is not a member of a channel that requires membership |
 | | `AccessDenied` | The kind of channel does not let the sender write |
 | | `Blocked` | The recipient blocks the sender or accepts private messages only from friends |
-| | `TargetSilenced` | An active restriction suspends the recipient's private-message permission |
+| | | `Silenced` | The sender is silenced and may not post |
+| | `TargetSilenced` | The recipient is silenced, so private messages to them are refused |
 | | `Closed` | The channel is closed |
 
-A sender without the permission to post (`ChatPost`, or `ChatPostPrivate` for a private message) is refused with a denial that names it; an active restriction on the sender shows up the same way, because the check is on effective permissions. A closed same-kind connection may be replaced during a join; an open one cannot. osu!tourney and API connections may have multiple concurrent memberships of their kind.
+A sender without the `Player` privilege is refused with a denial that names it; a silenced sender is refused with `Silenced`. A closed same-kind connection may be replaced during a join; an open one cannot. osu!tourney and API connections may have multiple concurrent memberships of their kind.
 
 Text over the channel's maximum length is truncated. The message event reports whether truncation occurred.
 
 ## Private messages
 
-A private message is a post into the recipient's `PmChannel`. It reaches the recipient's open connections except osu!tourney connections. The sender needs effective `ChatPostPrivate`; the recipient's active restriction can refuse the message with `TargetSilenced`.
+A private message is a post into the recipient's `PmChannel`. It reaches the recipient's open connections except osu!tourney connections. The sender needs effective `Player`; the recipient's active restriction can refuse the message with `TargetSilenced`.
 
-The recipient's block and friends-only setting both apply. A sender with effective `ChatManageMessageAnyone` bypasses those limits. If the recipient has an away message, the same posted-message event carries the automatic reply; a notice does not trigger an away reply.
+The recipient's block and friends-only setting both apply. A sender with effective `Moderator` bypasses those limits. If the recipient has an away message, the same posted-message event carries the automatic reply; a notice does not trigger an away reply.
 
 ## Events and session behavior
 
@@ -88,15 +89,15 @@ These ownership rules keep channel membership on the object being joined and avo
 
 BasilBot is the server's voice, not an authority that users borrow.
 
-BasilBot is online with a permanent `User` and one Stable and one Irc connection that the server opens at startup with no transport behind them; a private message to it is a command. Commands act with the typist's connection and permissions, a room command calls the room through `room.ScopeTo(by)`, and BasilBot owns the room countdowns: it keeps their timers, announces their marks and starts the round with the typist's connection when one elapses. Server-originated bot messages do not go through an ordinary caller's permission check, and the bot never owns room authority.
+BasilBot is online with a permanent `User` and one Stable and one Irc connection that the server opens at startup with no transport behind them; a private message to it is a command. Commands act with the typist's connection and privileges, a room command calls the room through `room.ScopeTo(by)`, and BasilBot owns the room countdowns: it keeps their timers, announces their marks and starts the round with the typist's connection when one elapses. Server-originated bot messages do not go through an ordinary caller's privilege check, and the bot never owns room authority.
 
 ## Invariants
 
 * Each channel belongs to its owner and is opened and closed with that owner.
 * A channel's read and write rules depend on its kind; a transport does not supply authority.
 * Every required general-channel privilege bit must be present; an empty requirement is satisfied.
-* Private-message posting requires `ChatPostPrivate`; recipient blocks and friends-only settings yield to effective `ChatManageMessageAnyone`.
-* Restrictions apply to effective permissions for both sender and recipient.
+* Private-message posting requires `Player`; recipient blocks and friends-only settings yield to effective `Moderator`.
+* A silence stops a sender from posting and a recipient from receiving private messages.
 * Channel events describe the channel that changed, not a relation stored on the sender.
 * BasilBot commands use the typist's authority; the transports must deliver channel messages only to `Channel.RecipientsAsync`.
 
@@ -117,6 +118,6 @@ BasilBot is online with a permanent `User` and one Stable and one Irc connection
 ## See also
 
 * [`multiplayer.md`](multiplayer.md): room authority and room channels
-* [`privileges.md`](privileges.md): permissions, restrictions and `ChatManageMessageAnyone`
+* [`privileges.md`](privileges.md): privileges, silences and `Moderator`
 * [`irc.md`](irc.md): IRC integration
 * [`working-scopes.md`](working-scopes.md): supported and excluded chat features

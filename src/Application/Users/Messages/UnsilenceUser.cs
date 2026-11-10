@@ -6,9 +6,9 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-/// <summary>Asks Users to lift a restriction of an account.</summary>
+/// <summary>Asks Users to lift the silence of an account.</summary>
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
-/// <param name="Restriction">The restriction to lift.</param>
-public sealed record LiftRestriction(Connection Actor, UserRecord Target, UserRestriction Restriction)
+/// <param name="Reason">Why the silence is lifted, if known.</param>
+public sealed record UnsilenceUser(Connection Actor, UserRecord Target, string? Reason)
 	: IRequest<Result<UserOutcome>>;

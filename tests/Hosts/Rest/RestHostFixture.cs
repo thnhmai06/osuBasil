@@ -9,9 +9,9 @@ namespace Basil.Host.Rest.Tests;
 public sealed class RestHostFixture : IAsyncLifetime
 {
 	/// <summary>Staff: manages users and restrictions.</summary>
-	public static readonly UserPermissions StaffPermissions = UserPermissionsGroups.Default |
-	                                                          UserPermissions.UserManage |
-	                                                          UserPermissions.UserManageRestrict;
+	public static readonly UserPrivileges StaffPrivileges = UserPrivilegesExtensions.Default |
+	                                                          UserPrivileges.Owner |
+	                                                          UserPrivileges.Moderator;
 
 	public BasilHost Host { get; private set; } = null!;
 
@@ -55,9 +55,9 @@ public sealed class RestHostFixture : IAsyncLifetime
 	}
 
 	/// <summary>Creates an account and returns a client signed in as it.</summary>
-	public async Task<(RestClient Client, int Id)> SignInAsync(string name, UserPermissions? permissions = null)
+	public async Task<(RestClient Client, int Id)> SignInAsync(string name, UserPrivileges? privileges = null)
 	{
-		var user = await Host.CreateUserAsync(name, "password", permissions);
+		var user = await Host.CreateUserAsync(name, "password", privileges);
 		var client = new RestClient(Host.Url, Host.Domain);
 		await client.LoginAsync(name);
 		return (client, user.Id);

@@ -127,7 +127,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	public async Task A_replaced_account_holds_the_new_data_under_the_same_id()
 	{
 		var replaced = await Users.ReplaceAsync(BasilBot.Id,
-			new UserData { Name = "renamed_bot", Permissions = UserPermissions.None },
+			new UserData { Name = "renamed_bot", Privileges = UserPrivileges.None },
 			TestContext.Current.CancellationToken);
 
 		var found = await Users.GetAsync(BasilBot.Id, TestContext.Current.CancellationToken);
@@ -141,15 +141,15 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_replaced_account_is_stored()
 	{
-		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Permissions = UserPermissions.None },
+		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Privileges = UserPrivileges.None },
 			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
-			"select name, permissions from users where id = @id",
+			"select name, privileges from users where id = @id",
 			new Dictionary<string, object?> { ["@id"] = BasilBot.Id },
 			rows => rows.Count == 1 && rows[0].Text("name") == "stored_bot", "the replaced account",
 			TestContext.Current.CancellationToken);
-		Assert.Equal(0, rows[0].Number("permissions"));
+		Assert.Equal(0, rows[0].Number("privileges"));
 	}
 
 	[Fact]
@@ -410,15 +410,15 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	[Fact]
 	public async Task A_listing_finds_accounts_by_the_permissions_they_hold()
 	{
-		await Users.CreateAsync(new UserData { Name = "plain_user", Permissions = UserPermissions.None },
+		await Users.CreateAsync(new UserData { Name = "plain_user", Privileges = UserPrivileges.None },
 			TestContext.Current.CancellationToken);
 		await Users.CreateAsync(new UserData
 		{
 			Name = "admin_user",
-			Permissions = UserPermissionsGroups.Default | UserPermissions.ServerManageSettings
+			Privileges = UserPrivilegesExtensions.Default | UserPrivileges.Developer
 		}, TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Permissions: UserPermissions.ServerManageSettings),
+		var page = await Users.ListAsync(new UserQuery(Privileges: UserPrivileges.Developer),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
 		Assert.Equal("admin_user", Assert.Single(page.Items).Value.Name);

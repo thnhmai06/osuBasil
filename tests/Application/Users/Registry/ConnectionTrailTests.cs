@@ -52,7 +52,7 @@ public sealed class ConnectionTrailTests
 	public async Task Login_OfEveryKindThatSignsInWithAPassword_RecordsAConnection(SessionType type)
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("Kinds", "password", UserPermissionsGroups.All);
+		var user = await app.CreateUserAsync("Kinds", "password", UserPrivilegesExtensions.All);
 
 		var connection = await app.LoginAsync(user, type);
 
@@ -265,7 +265,7 @@ public sealed class ConnectionTrailTests
 		var target = await app.CreateUserAsync("Watched", "password");
 		var session = await app.LoginAsync(target);
 		var nosy = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
-		var staff = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var staff = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 
 		var (denied, none) = await app.Users.Of(target).ScopeTo(nosy).Sessions
 			.ListConnectionsAsync(session.Session.Id, new PageRequest(0, 10), Token);
@@ -273,7 +273,7 @@ public sealed class ConnectionTrailTests
 		var (allowed, page) = await app.Users.Of(target).ScopeTo(staff).Sessions
 			.ListConnectionsAsync(session.Session.Id, new PageRequest(0, 10), Token);
 
-		Assert.Equal(UserPermissions.UserManageViewSessions, denied.Missing);
+		Assert.Equal(UserPrivileges.Moderator, denied.Missing);
 		Assert.Null(none);
 		Assert.True(allowed.IsOk);
 		Assert.Single(page!.Items);

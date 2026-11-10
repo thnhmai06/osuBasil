@@ -6,7 +6,7 @@ codes. The HTTP routes they mirror are described by the generated API reference,
 
 ## Why
 
-Whoever sits at the console owns the machine, so the console is the one entry point that skips the permission checks.
+Whoever sits at the console owns the machine, so the console is the one entry point that skips the privilege checks.
 It is how the first administrator is created (the server never creates an account by itself), how an operator repairs a
 server whose accounts cannot sign in, and how a deployment script prepares the server before it starts. It is not a chat
 surface: BasilBot's chat commands are separate and keep checking the typist's rights.
@@ -32,7 +32,7 @@ surface: BasilBot's chat commands are separate and keep checking the typist's ri
 A command can be typed in the command box or given on the command line of the executable:
 
 ```text
-Basil users create --username admin --password secret --permissions 1048575
+Basil users create --username admin --password secret --privileges 1048575
 ```
 
 Both use the same parser, print the same output and return the same exit code.
@@ -81,7 +81,7 @@ opened. A command waits for its changes to be stored, so a command that printed 
 | 4    | the operator declined the confirmation                                                   |
 
 The refusal is printed as `error: <code>: <message>`, with the same camelCase code the HTTP API uses (`notFound`,
-`conflict`, `systemAccount`, `invalid`, ...). `permissionDenied` never happens, because the console skips the checks, and
+`conflict`, `systemAccount`, `invalid`, ...). `privilegeDenied` never happens, because the console skips the checks, and
 `locked` never happens either, because the console passes a lock as a manager does.
 
 ### Exit codes of the process
@@ -116,7 +116,7 @@ Console commands mirror the HTTP API one to one. There is a single rule, not a s
 | `GET /v1/x/{id}/y`, `.../{yid}`, `DELETE`        | `x <id> y list`, `x <id> y <yid>`, `x <id> y <yid> delete`      |
 
 * Option names are the query parameter or body field names of the API, in camelCase (`--pmPrivate`, `--readPrivileges`).
-* Values have the API's types. **Flags enums are numeric bitmasks**, never names (`--permissions 1048575`, `--types 12`);
+* Values have the API's types. **Flags enums are numeric bitmasks**, never names (`--privileges 1048575`, `--types 12`);
   an ordinary enum is its camelCase name; a boolean is `true` or `false`; a duration is `30m`, `12h` or `7d`.
 * Every list takes `--offset` and `--limit` as the API does (default 0 and 25, at most 100).
 * A route that returns a file or a stream (replays, beatmap files, avatars, the live `/live` and match streams) and the
@@ -129,7 +129,7 @@ The output is for people and never JSON; there is no `--json` option.
 
 * One object is a list of aligned `label: value` lines.
 * A list is a table with a header row.
-* A bitmask is followed by its flag names: `permissions: 12 (ChatPost, ChatPostPrivate)`.
+* A bitmask is followed by its flag names: `privileges: 12 (ChatPost, ChatPostPrivate)`.
 * Times are shown in the operator's local time zone (injected, so the output of a test does not depend on the machine).
 * The result of an action is one confirmation line.
 * In the dashboard the output is coloured with the theme; from a shell, over the socket and in `--nogui` it is plain
@@ -169,16 +169,14 @@ HTTP diagnostics. Per-core CPU is shown on Linux only.
 | Command                                                                                             | API route                                                     | P   |
 |-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------|-----|
 | `users list [--query <q>] [--offset] [--limit]`                                                     | `GET /v1/users`                                               | yes |
-| `users create --username <name> --password <pw> [--country <cc>] [--permissions <mask>] [--admin]`  | `POST /v1/users`                                              | yes |
+| `users create --username <name> --password <pw> [--country <cc>] [--privileges <mask>] [--admin]`  | `POST /v1/users`                                              | yes |
 | `users <id>`                                                                                        | `GET /v1/users/{id}`                                          | yes |
-| `users <id> set [--username] [--country] [--away] [--pmPrivate] [--permissions <mask>] [--password <pw>]` | `PATCH /v1/users/{id}`; `--password` is `PUT .../password` | yes |
+| `users <id> set [--username] [--country] [--away] [--pmPrivate] [--privileges <mask>] [--password <pw>]` | `PATCH /v1/users/{id}`; `--password` is `PUT .../password` | yes |
 | `users <id> avatar --file <path>`, `users <id> avatar delete`                                       | `PUT`, `DELETE /v1/users/{id}/avatar`                         | yes |
 | `users <id> friends list`                              | `GET /v1/users/{id}/friends`                              | yes |
 | `users <id> blocks list`                                 | `GET /v1/users/{id}/blocks`                               | yes |
-| `users <id> restrictions list`                                                                      | `GET /v1/users/{id}/restrictions`                             | yes |
-| `users <id> restrictions create --permissions <mask> [--duration <d>] [--reason <text>]`            | `POST /v1/users/{id}/restrictions`                            | yes |
-| `users <id> restrictions <rid> lift`                                                                | `POST .../restrictions/{rid}/lift`                            | yes |
-| `users <id> restrictions <rid> delete`                                                              | `DELETE .../restrictions/{rid}`                               | yes |
+| `users <id> silence --duration <d> [--reason <text>]`                                               | `PUT /v1/users/{id}/silence`                                  | yes |
+| `users <id> unsilence`                                                                              | `DELETE /v1/users/{id}/silence`                               | yes |
 | `users <id> sessions list [--state all\|online\|offline] [--types <mask>]`                          | `GET /v1/users/{id}/sessions`                                 | yes |
 | `users <id> sessions <sid>`                                                                         | `GET /v1/users/{id}/sessions/{sid}`                           | yes |
 | `users <id> sessions <sid> connections`                                                             | `GET /v1/users/{id}/sessions/{sid}/connections`               | yes |
@@ -186,8 +184,8 @@ HTTP diagnostics. Per-core CPU is shown on Linux only.
 | `users <id> sessions delete`                                                                        | `DELETE /v1/users/{id}/sessions` (none is kept)               | yes |
 | `users <id> delete`                                                                                 | `DELETE /v1/users/{id}`                                       | yes |
 
-`--password` is the plain password; the server hashes it as it does for the API. `--admin` is a convenience that gives the account every permission (deployment scripts use it to create the first administrator); `-u` and `-p` are short names of `--username` and `--password`. `--duration` replaces the API's
-`endsAt`: the restriction ends that long from now, and no duration means permanent. `--password` and `--new` are masked
+`--password` is the plain password; the server hashes it as it does for the API. `--admin` is a convenience that gives the account every privilege (deployment scripts use it to create the first administrator); `-u` and `-p` are short names of `--username` and `--password`. `--duration` replaces the API's
+`endsAt`: the silence ends that long from now. `--password` and `--new` are masked
 in the log, in the history and in suggestions.
 
 ### channels

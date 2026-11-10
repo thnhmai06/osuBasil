@@ -12,13 +12,13 @@ public readonly struct ScopedGeneralChannel
 	/// <summary>Gets the actor this scope is for.</summary>
 	public Connection Actor { get; }
 
-	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
-	public UserPermissions Rights { get; }
+	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
+	public UserPrivileges Rights { get; }
 
 	/// <summary>Checks whether the actor holds the right an action needs.</summary>
 	/// <param name="required">The right the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPermissions? Require(UserPermissions required)
+	internal UserPrivileges? Require(UserPrivileges required)
 	{
 		return ScopedRights.Require(Rights, required);
 	}
@@ -29,7 +29,7 @@ public readonly struct ScopedGeneralChannel
 	internal ScopedGeneralChannel(GeneralChannel channel, Connection actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePermissions(channel.Context.Clock.GetUtcNow());
+		Rights = actor.EffectivePrivileges(channel.Context.Clock.GetUtcNow());
 		Channel = channel;
 	}
 
@@ -39,28 +39,28 @@ public readonly struct ScopedGeneralChannel
 	/// <summary>Changes the settings of this general channel.</summary>
 	/// <param name="change">The settings to change.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, a denial that names the missing permissions, or Closed when the channel has closed.</returns>
+	/// <returns>Ok, a denial that names the missing privileges, or Closed when the channel has closed.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatManageChannels" />. Members who may no longer read the channel are removed;
+	///     Requires <see cref="UserPrivileges.Moderator" />. Members who may no longer read the channel are removed;
 	///     one <see cref="ChannelConfigured" /> reports the change and removed members.
 	/// </remarks>
-	/// <exception cref="ArgumentException">A permission or the topic in <paramref name="change" /> is invalid.</exception>
+	/// <exception cref="ArgumentException">A privilege or the topic in <paramref name="change" /> is invalid.</exception>
 	public async Task<Result<ChannelOutcome>> ConfigureAsync(GeneralChannelChange change,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.ChatManageChannels) is { } missing) return Result<ChannelOutcome>.Denied(missing);
+		if (Require(UserPrivileges.Moderator) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
 		var now = Channel.Context.Clock.GetUtcNow();
-		return await Channel.ConfigureAsync(change, member => member.EffectivePermissions(now), cancellationToken);
+		return await Channel.ConfigureAsync(change, member => member.EffectivePrivileges(now), cancellationToken);
 	}
 
 	/// <summary>Closes and deletes this general channel.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, or a denial that names the missing permissions.</returns>
-	/// <remarks>Requires <see cref="UserPermissions.ChatManageChannels" />; announces <see cref="ChannelClosed" />.</remarks>
+	/// <returns>Ok, or a denial that names the missing privileges.</returns>
+	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />; announces <see cref="ChannelClosed" />.</remarks>
 	public async Task<Result<ChannelOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.ChatManageChannels) is { } missing) return Result<ChannelOutcome>.Denied(missing);
+		if (Require(UserPrivileges.Moderator) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
 		return await Channel.DeleteAsync(cancellationToken);
 	}

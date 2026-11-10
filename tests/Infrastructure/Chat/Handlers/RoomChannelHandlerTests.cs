@@ -164,7 +164,7 @@ public sealed class RoomChannelHandlerTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var observerRecord = await app.CreateUserAsync("Observer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var observer = (TourneyConnection)await app.LoginAsync(observerRecord, SessionType.StableTourney);
 		var channel = app.RoomChannels.Of(setup.Room);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
@@ -182,7 +182,7 @@ public sealed class RoomChannelHandlerTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var observerRecord = await app.CreateUserAsync("Observer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var observer = (TourneyConnection)await app.LoginAsync(observerRecord, SessionType.StableTourney);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);

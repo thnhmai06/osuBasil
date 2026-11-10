@@ -29,10 +29,10 @@ public sealed class IdleConnectionSweeperTests
 	public async Task ExecuteAsync_ClosesAnIdleGameIrcOrTourneyConnection(SessionType type)
 	{
 		using var app = new TestApplication();
-		var permissions = type is SessionType.StableTourney
-			? UserPermissionsGroups.Default | UserPermissions.RoomObserve
-			: UserPermissionsGroups.Default;
-		var user = await app.CreateUserAsync("Idle", "password", permissions);
+		var privileges = type is SessionType.StableTourney
+			? UserPrivilegesExtensions.Default | UserPrivileges.Tournament
+			: UserPrivilegesExtensions.Default;
+		var user = await app.CreateUserAsync("Idle", "password", privileges);
 		var connection = await app.LoginAsync(user, type);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
 		var closed = NextCloseAsync(app, connection);

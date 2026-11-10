@@ -15,8 +15,8 @@ public static class StableReplies
 	/// <summary>Shown when login is refused because of too many failed attempts.</summary>
 	public const string TooManyAttempts = "Too many failed login attempts. Try again later.";
 
-	/// <summary>Shown when an osu!tourney client lacks the observer permission.</summary>
-	public const string NoTourneyPermission = "This account may not use the osu!tourney client.";
+	/// <summary>Shown when an osu!tourney client lacks the observer privilege.</summary>
+	public const string NoTourneyPrivilege = "This account may not use the osu!tourney client.";
 
 	/// <summary>Shown when login is refused because the address has too many connections.</summary>
 	public const string TooManyConnections = "Too many connections from your address.";

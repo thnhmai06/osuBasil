@@ -77,7 +77,7 @@ public static class IrcReplies
 	/// <summary>Reply to a message the channel's write rules refuse.</summary>
 	public const string CannotSend = "Cannot send to channel";
 
-	/// <summary>Reply when the sender lacks the permission to chat.</summary>
+	/// <summary>Reply when the sender lacks the privilege to chat.</summary>
 	public const string Silenced = "You are not allowed to chat";
 
 	/// <summary>Reply when the recipient does not take messages from the sender.</summary>

@@ -16,7 +16,7 @@ public enum LoginFailure : byte
 	TooManySessions,
 
 	/// <summary>The account may not connect with an osu!tourney client.</summary>
-	NoTourneyPermission,
+	NoTourneyPrivilege,
 
 	/// <summary>The token or key matches no active session.</summary>
 	InvalidToken

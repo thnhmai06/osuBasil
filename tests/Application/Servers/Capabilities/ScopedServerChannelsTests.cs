@@ -8,7 +8,7 @@ using NSubstitute;
 
 namespace Basil.Application.Servers.Tests.Capabilities;
 
-/// <summary>Creating a general channel needs the permission to manage channels, and a name is used once.</summary>
+/// <summary>Creating a general channel needs the privilege to manage channels, and a name is used once.</summary>
 public sealed class ScopedServerChannelsTests
 {
 	private static GeneralChannelRecord Record(string name)
@@ -25,7 +25,7 @@ public sealed class ScopedServerChannelsTests
 		var result = await app.Server.ScopeTo(player).Channels.CreateAsync(Record("#denied"),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.Null(app.Channels.Find("#denied"));
 	}
 
@@ -34,7 +34,7 @@ public sealed class ScopedServerChannelsTests
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "Boss",
-			UserPermissionsGroups.Default | UserPermissions.ChatManageChannels);
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
 		var first = await app.Server.ScopeTo(manager).Channels
 			.CreateAsync(Record("#fresh"), TestContext.Current.CancellationToken);
@@ -54,7 +54,7 @@ public sealed class ScopedServerChannelsTests
 			.Returns(Task.FromException(new IOException("disk full")));
 		using var app = new TestApplication(services => services.AddSingleton(repository));
 		var manager = await RoomFixture.PlayerAsync(app, "Boss",
-			UserPermissionsGroups.Default | UserPermissions.ChatManageChannels);
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 
 		await Assert.ThrowsAsync<IOException>(() => app.Server.ScopeTo(manager).Channels
 			.CreateAsync(Record("#broken"), TestContext.Current.CancellationToken));

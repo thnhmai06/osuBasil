@@ -8,7 +8,7 @@ namespace Basil.Application.Users.Tests.Objects;
 
 /// <summary>
 ///     The account of id <see cref="BasilBot.Id" /> is BasilBot whatever it held before: another account is taken
-///     over, a deleted one is restored and a missing one is created, with no permissions, no password and no
+///     over, a deleted one is restored and a missing one is created, with no privileges, no password and no
 ///     restriction.
 /// </summary>
 public sealed class BotAccountTests
@@ -30,15 +30,15 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_AccountHoldsTheId_RemovesItsPermissions()
+	public async Task EnsureBotAsync_AccountHoldsTheId_RemovesItsPrivileges()
 	{
 		using var app = new TestApplication();
-		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
+		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
 
 		var bot = await app.Users.EnsureBotAsync(Token);
 
-		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
-		Assert.Equal(UserPermissions.None, (await StoredBotAsync(app)).Value.Permissions);
+		Assert.Equal(UserPrivileges.None, bot.Value.Privileges);
+		Assert.Equal(UserPrivileges.None, (await StoredBotAsync(app)).Value.Privileges);
 	}
 
 	[Fact]
@@ -54,47 +54,6 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_AccountHasActiveRestrictions_EndsThem()
-	{
-		using var app = new TestApplication();
-		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret");
-		app.AddRestriction(other, RestrictionData.Silence);
-		app.AddRestriction(other, RestrictionData.Restricted, app.Clock.GetUtcNow().AddDays(7));
-
-		var bot = await app.Users.EnsureBotAsync(Token);
-
-		Assert.Empty(await ActiveRestrictionsAsync(app, bot));
-	}
-
-	[Fact]
-	public async Task EnsureBotAsync_AccountHasRestrictionNotStartedYet_NeverApplies()
-	{
-		using var app = new TestApplication();
-		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret");
-		var startsAt = app.Clock.GetUtcNow().AddDays(1);
-		app.AddRestriction(other, RestrictionData.Silence, startsAt: startsAt);
-
-		var bot = await app.Users.EnsureBotAsync(Token);
-		app.Clock.Advance(TimeSpan.FromDays(2));
-
-		Assert.Empty(await ActiveRestrictionsAsync(app, bot));
-	}
-
-	[Fact]
-	public async Task EnsureBotAsync_AccountHasEndedRestriction_KeepsItInTheHistory()
-	{
-		using var app = new TestApplication();
-		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret");
-		var endedAt = app.Clock.GetUtcNow().AddMinutes(-1);
-		var ended = app.AddRestriction(other, RestrictionData.Silence, endedAt, endedAt.AddHours(-1));
-
-		var bot = await app.Users.EnsureBotAsync(Token);
-
-		var history = await app.Provider.GetRequiredService<IRestrictionRepository>().ListAsync(bot, Token);
-		Assert.Equal(endedAt, Assert.Single(history, restriction => restriction.Id == ended.Id).Value.EndsAt);
-	}
-
-	[Fact]
 	public async Task EnsureBotAsync_IdHoldsDeletedAccount_RestoresItWithTheDefaultName()
 	{
 		using var app = new TestApplication();
@@ -104,7 +63,7 @@ public sealed class BotAccountTests
 
 		Assert.Null(bot.Value.DeletedAt);
 		Assert.Equal(BasilBot.DefaultName, bot.Value.Name);
-		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPrivileges.None, bot.Value.Privileges);
 		Assert.Null((await StoredBotAsync(app)).Value.DeletedAt);
 	}
 
@@ -138,7 +97,7 @@ public sealed class BotAccountTests
 
 		Assert.Equal(BasilBot.Id, bot.Id);
 		Assert.Equal(BasilBot.DefaultName, bot.Value.Name);
-		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPrivileges.None, bot.Value.Privileges);
 		Assert.Null(bot.Value.DeletedAt);
 		Assert.Same(bot, await StoredBotAsync(app));
 	}
@@ -158,7 +117,7 @@ public sealed class BotAccountTests
 	public async Task EnsureBotAsync_AfterTakeover_BotCanComeOnline()
 	{
 		using var app = new TestApplication();
-		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
+		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
 
 		var bot = await app.Users.EnsureBotAsync(Token);
 		var online = await app.Users.ConnectBotAsync(Token);
@@ -184,14 +143,14 @@ public sealed class BotAccountTests
 	public async Task EnsureBotAsync_CalledTwice_ChangesNothing()
 	{
 		using var app = new TestApplication();
-		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
+		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
 		var first = await app.Users.EnsureBotAsync(Token);
 
 		var second = await app.Users.EnsureBotAsync(Token);
 
 		Assert.Same(first, second);
 		Assert.Equal("Somebody", second.Value.Name);
-		Assert.Equal(UserPermissions.None, second.Value.Permissions);
+		Assert.Equal(UserPrivileges.None, second.Value.Privileges);
 		Assert.Null(second.Value.DeletedAt);
 	}
 
@@ -219,24 +178,17 @@ public sealed class BotAccountTests
 		var online = await app.Users.ConnectBotAsync(Token);
 		Assert.NotNull(online);
 		var connections = online.Connections.ToList();
-		bot.Value.Permissions = UserPermissions.RoomManageAny;
+		bot.Value.Privileges = UserPrivileges.Tournament;
 
 		var restored = await app.Users.EnsureBotAsync(Token);
 
 		Assert.All(connections, connection => Assert.False(connection.IsOpen));
-		Assert.Equal(UserPermissions.None, restored.Value.Permissions);
+		Assert.Equal(UserPrivileges.None, restored.Value.Privileges);
 	}
 
 	private static async Task<UserRecord> StoredBotAsync(TestApplication app)
 	{
 		return await app.Provider.GetRequiredService<IUserRepository>().GetAsync(BasilBot.Id, Token)
 		       ?? throw new InvalidOperationException("The bot is not stored.");
-	}
-
-	private static async Task<List<UserRestriction>> ActiveRestrictionsAsync(TestApplication app, UserRecord user)
-	{
-		var now = app.Clock.GetUtcNow();
-		return (await app.Provider.GetRequiredService<IRestrictionRepository>().ListAsync(user, Token))
-			.Where(restriction => restriction.Value.IsActive(now)).ToList();
 	}
 }

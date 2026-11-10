@@ -20,7 +20,7 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>Accounts, their sessions, friends, blocks and restrictions.</summary>
+/// <summary>Accounts, their sessions, friends, blocks and silences.</summary>
 internal static class UserRoutes
 {
 	public static void MapUsers(this RouteGroupBuilder v1)
@@ -30,10 +30,7 @@ internal static class UserRoutes
 
 		users.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve an account.")
 			.WithDescription(
-				"Includes the granted and the effective permissions and the restrictions in force. An account's profile, permissions and restriction history are public.");
-		users.MapGet("/{id:int}/restrictions", RestrictionsAsync)
-			.WithSummary("List the restrictions an account has had, current and past.")
-			.WithDescription("An account's profile, permissions and restriction history are public.");
+				"Includes the granted and the effective privileges and the end of the silence in force. An account's profile and privileges are public.");
 
 		token.MapSpectate();
 		token.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).WithSummary("Search accounts.")
@@ -99,30 +96,18 @@ internal static class UserRoutes
 				RelationAsync(c, id, otherId, (me, other) => new UnblockUser(me, other)))
 			.WithSummary("Unblock an account.");
 
-		token.MapPost("/{id:int}/restrictions", RestrictAsync).WithSummary("Restrict an account.");
-		token.MapPost("/{id:int}/restrictions/{rid:int}/lift", LiftAsync)
-			.WithSummary("End a restriction now and keep it in the history.");
-		token.MapDelete("/{id:int}/restrictions/{rid:int}", DeleteRestrictionAsync)
-			.WithSummary("End a restriction and remove it from the history.");
+		token.MapPut("/{id:int}/silence", SilenceAsync).WithSummary("Silence an account until a given time.")
+			.WithDescription("A silenced account cannot post chat messages and receives no private messages.");
+		token.MapDelete("/{id:int}/silence", UnsilenceAsync).WithSummary("End the silence of an account now.");
 	}
 
-	private static async Task<IResult> GetAsync(int id, IUserRepository users, IRestrictionRepository restrictions,
-		UserRegistry registry, TimeProvider clock, CancellationToken cancellationToken)
+	private static async Task<IResult> GetAsync(int id, IUserRepository users, UserRegistry registry,
+		TimeProvider clock, CancellationToken cancellationToken)
 	{
 		var record = await users.GetAsync(id, cancellationToken);
 		return record is null || record.Value.DeletedAt is not null
 			? Api.NotFound("No such user.")
-			: Api.Ok(UserView.Of(registry, record, clock, await restrictions.ListAsync(record, cancellationToken)));
-	}
-
-	private static async Task<IResult> RestrictionsAsync(int id, IUserRepository users,
-		IRestrictionRepository restrictions,
-		CancellationToken cancellationToken)
-	{
-		var record = await users.GetAsync(id, cancellationToken);
-		if (record is null || record.Value.DeletedAt is not null) return Api.NotFound("No such user.");
-
-		return Api.Ok((await restrictions.ListAsync(record, cancellationToken)).Select(RestrictionView.Of).ToList());
+			: Api.Ok(UserView.Of(registry, record, clock));
 	}
 
 	private static async Task<IResult> SearchAsync(HttpContext context, string? query, int? offset, int? limit,
@@ -131,7 +116,7 @@ internal static class UserRoutes
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var effective = context.Connection().EffectivePermissions(clock.GetUtcNow());
+		var effective = context.Connection().EffectivePrivileges(clock.GetUtcNow());
 		var found = await users.ListAsync(UserQuery.Parse(query ?? string.Empty).LimitTo(effective), page!,
 			cancellationToken);
 		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.HasNext),
@@ -146,11 +131,10 @@ internal static class UserRoutes
 			return Api.Invalid("username and password are required.");
 
 		var data = new UserData { Name = request.Username };
-		UserPermissions? permissions = request.Permissions is { } p ? (UserPermissions)p : null;
-		if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
+				if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
 
 		var (record, result) = await context.Sender().Send(new CreateAccount(context.Connection(), data,
-			new Md5(Encoding.UTF8.GetBytes(request.Password)), permissions), context.RequestAborted);
+			new Md5(Encoding.UTF8.GetBytes(request.Password)), request.Privileges), context.RequestAborted);
 		return result.IsOk ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
 
@@ -161,7 +145,7 @@ internal static class UserRoutes
 
 		var ct = context.RequestAborted;
 		if (await PatchNameAndCountryAsync(context, target, request, ct) is { } refusal) return refusal;
-		if (await PatchSelfAndPermissionsAsync(context, target, request, ct) is { } denied) return denied;
+		if (await PatchSelfAndPrivilegesAsync(context, target, request, ct) is { } denied) return denied;
 
 		return Api.Ok(UserView.Of(registry, registry.Of(target).Record, clock), "Updated successfully");
 	}
@@ -183,7 +167,7 @@ internal static class UserRoutes
 			: null;
 	}
 
-	private static async Task<IResult?> PatchSelfAndPermissionsAsync(HttpContext context, UserRecord target,
+	private static async Task<IResult?> PatchSelfAndPrivilegesAsync(HttpContext context, UserRecord target,
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Away is not null && !await context.Sender().Send(
@@ -192,9 +176,9 @@ internal static class UserRoutes
 		if (request.PmPrivate is { } pm &&
 		    !await context.Sender().Send(new SetUserPmPrivate(context.Connection(), target, pm), ct))
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
-		if (request.Permissions is { } permissions &&
+		if (request.Privileges is { } privileges &&
 		    await context.Sender()
-				    .Send(new SetUserPermissions(context.Connection(), target, (UserPermissions)permissions), ct) is
+				    .Send(new SetUserPrivileges(context.Connection(), target, privileges), ct) is
 			    { IsOk: false } set)
 			return set.Refusal();
 
@@ -369,34 +353,20 @@ internal static class UserRoutes
 			: (await context.Sender().Send(ask(context.Connection(), target), context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> RestrictAsync(HttpContext context, int id, RestrictRequest request)
+	private static async Task<IResult> SilenceAsync(HttpContext context, int id, SilenceRequest request)
 	{
 		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
-		var (result, restriction) = await context.Sender().Send(new RestrictUser(context.Connection(), target,
-			(UserPermissions)request.Permissions, request.EndsAt, request.Reason), context.RequestAborted);
-		return result.IsOk ? Api.Created(RestrictionView.Of(restriction!)) : result.Refusal();
+		return (await context.Sender().Send(new SilenceUser(context.Connection(), target, request.EndsAt,
+			request.Reason), context.RequestAborted)).Answer();
 	}
 
-	private static async Task<IResult> LiftAsync(HttpContext context, int id, int rid, IRestrictionRepository repo)
+	private static async Task<IResult> UnsilenceAsync(HttpContext context, int id)
 	{
 		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
 
-		return await repo.GetAsync(rid, context.RequestAborted) is not { } restriction
-			? Api.NotFound("No such restriction.")
-			: (await context.Sender().Send(new LiftRestriction(context.Connection(), target, restriction),
-				context.RequestAborted)).Answer();
-	}
-
-	private static async Task<IResult> DeleteRestrictionAsync(HttpContext context, int id, int rid,
-		IRestrictionRepository repo)
-	{
-		if (await context.FindAsync(id) is not { } target) return Api.NotFound("No such user.");
-
-		return await repo.GetAsync(rid, context.RequestAborted) is not { } restriction
-			? Api.NotFound("No such restriction.")
-			: (await context.Sender().Send(new DeleteRestriction(context.Connection(), target, restriction),
-				context.RequestAborted)).Answer();
+		return (await context.Sender().Send(new UnsilenceUser(context.Connection(), target, null),
+			context.RequestAborted)).Answer();
 	}
 
 	/// <summary>The fields of an account that can change; absent fields stay as they are.</summary>
@@ -405,13 +375,13 @@ internal static class UserRoutes
 		string? Country,
 		string? Away,
 		bool? PmPrivate,
-		ulong? Permissions);
+		UserPrivileges? Privileges);
 
 	/// <summary>A password change: the current password is needed for one's own account only.</summary>
 	public sealed record PasswordRequest(string? Current, string? New, bool? IncludeCurrent);
 
 	/// <summary>A new account made by staff.</summary>
-	public sealed record CreateUserRequest(string? Username, string? Password, string? Country, ulong? Permissions);
+	public sealed record CreateUserRequest(string? Username, string? Password, string? Country, UserPrivileges? Privileges);
 
 	/// <summary>A request to close all sessions of one's own account.</summary>
 	public sealed record CloseSessionsRequest(bool? KeepCurrent);
@@ -422,6 +392,6 @@ internal static class UserRoutes
 	/// <summary>A new IRC key; the key is shown only here.</summary>
 	public sealed record IrcKeyResponse(long SessionId, string Key);
 
-	/// <summary>A new restriction.</summary>
-	public sealed record RestrictRequest(ulong Permissions, DateTimeOffset? EndsAt, string? Reason);
+	/// <summary>A silence.</summary>
+	public sealed record SilenceRequest(DateTimeOffset EndsAt, string? Reason);
 }

@@ -44,11 +44,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                         },
                         new
                         {
-                            Name = "restriction",
-                            Next = 1L
-                        },
-                        new
-                        {
                             Name = "moderation_log",
                             Next = 1L
                         });
@@ -110,35 +105,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                     b.ToTable("relationships", (string)null);
                 });
 
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.RestrictionRow).FullName!, b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset?>("EndsAt")
-                        .HasColumnName("ends_at");
-
-                    b.Property<long>("Permissions")
-                        .HasColumnName("permissions");
-
-                    b.Property<DateTimeOffset>("StartsAt")
-                        .HasColumnName("starts_at");
-
-                    b.Property<int>("UserId")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_restrictions");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_restrictions_user_id");
-
-                    b.ToTable("restrictions", null, t =>
-                        {
-                            t.HasCheckConstraint("restrictions_id_check", "id >= 1");
-                        });
-                });
-
             modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, b =>
                 {
                     b.Property<int>("Id")
@@ -163,8 +129,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                         .HasMaxLength(255)
                         .HasColumnName("normalized_name");
 
-                    b.Property<long>("Permissions")
-                        .HasColumnName("permissions");
+                    b.Property<int>("Privileges")
+                        .HasColumnName("privileges");
+
+                    b.Property<DateTimeOffset?>("SilencedUntil")
+                        .HasColumnName("silenced_until");
 
                     b.HasKey("Id")
                         .HasName("pk_users");
@@ -216,15 +185,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                         .HasConstraintName("fk_relationships_users_target_id");
                 });
 
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Users.Persistence.RestrictionRow).FullName!, b =>
-                {
-                    b.HasOne(typeof(Basil.Infrastructure.Users.Persistence.UserRow).FullName!, null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_restrictions_users_user_id");
-                });
 #pragma warning restore 612, 618
         }
     }

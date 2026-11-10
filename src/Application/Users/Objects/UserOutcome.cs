@@ -1,6 +1,6 @@
 namespace Basil.Application.Users.Objects;
 
-/// <summary>What happened to an account operation that was not refused for lack of permissions.</summary>
+/// <summary>What happened to an account operation that was not refused for lack of privileges.</summary>
 public enum UserOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>
@@ -12,8 +12,8 @@ public enum UserOutcome : byte
 	/// <summary>The target is BasilBot, whose account record is fixed.</summary>
 	SystemAccount,
 
-	/// <summary>The restriction has no permissions to suspend or ends in the past.</summary>
-	InvalidRestriction,
+	/// <summary>The silence ends in the past.</summary>
+	InvalidSilence,
 
 	/// <summary>A user cannot have a relationship with themself.</summary>
 	Self,

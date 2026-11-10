@@ -131,10 +131,10 @@ public sealed class BasilHost : IAsyncDisposable
 
 	/// <summary>Stores an account with a password.</summary>
 	public async Task<UserRecord> CreateUserAsync(string name, string password = "password",
-		UserPermissions? permissions = null)
+		UserPrivileges? privileges = null)
 	{
 		var user = await Services.GetRequiredService<IUserRepository>()
-			.CreateAsync(new UserData { Name = name, Permissions = permissions ?? UserPermissionsGroups.Default });
+			.CreateAsync(new UserData { Name = name, Privileges = privileges ?? UserPrivilegesExtensions.Default });
 		await Services.GetRequiredService<ICredentialRepository>()
 			.CreateOrUpdateAsync(new Credentials(user, new Md5(Encoding.UTF8.GetBytes(password))));
 		return user;
@@ -171,21 +171,21 @@ public sealed class BasilHost : IAsyncDisposable
 
 	/// <summary>Stores an account with an IRC key and returns an IRC client for it, connected but not registered.</summary>
 	/// <param name="name">The username.</param>
-	/// <param name="permissions">The account's permissions, or the default ones.</param>
+	/// <param name="privileges">The account's privileges, or the default ones.</param>
 	/// <returns>The client and the key.</returns>
 	public async Task<(IrcClient Client, string Key)> NewIrcClientAsync(string name,
-		UserPermissions? permissions = null)
+		UserPrivileges? privileges = null)
 	{
-		await CreateUserAsync(name, "password", permissions);
+		await CreateUserAsync(name, "password", privileges);
 		var key = await CreateIrcKeyAsync(name);
 		return (await IrcClient.ConnectAsync(this), key);
 	}
 
 	/// <summary>Stores an account and returns an osu! client for it, not yet logged in.</summary>
 	public async Task<OsuClient> NewClientAsync(string name, string password = "password",
-		UserPermissions? permissions = null, bool tourney = false)
+		UserPrivileges? privileges = null, bool tourney = false)
 	{
-		await CreateUserAsync(name, password, permissions);
+		await CreateUserAsync(name, password, privileges);
 		return OsuClient.Create(this, name, password, tourney);
 	}
 

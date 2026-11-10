@@ -23,8 +23,8 @@ public readonly struct ScopedServerBeatmapsets
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when the upload was allowed, the result of the import.</returns>
 	/// <remarks>
-	///     Uploading needs <see cref="UserPermissions.BeatmapsetUpload" />. While <see cref="Locks.Beatmapsets" /> is
-	///     locked, only a user holding <see cref="UserPermissions.BeatmapsetManage" /> may upload. A beatmapset the server
+	///     Uploading needs <see cref="UserPrivileges.Player" />. While <see cref="Locks.Beatmapsets" /> is
+	///     locked, only a user holding <see cref="UserPrivileges.Tournament" /> may upload. A beatmapset the server
 	///     already has is never overwritten: the upload is rejected with
 	///     <see cref="BeatmapsetImportFailure.AlreadyExists" />. An archive larger than the upload limit of the
 	///     server settings is refused with <see cref="ServerOutcome.TooLarge" />.
@@ -34,9 +34,9 @@ public readonly struct ScopedServerBeatmapsets
 	{
 		var server = _scoped.Server;
 		if (await server.IsLockedAsync(Locks.Beatmapsets, cancellationToken) &&
-		    _scoped.Needs(UserPermissions.BeatmapsetManage) is not null)
+		    _scoped.Needs(UserPrivileges.Tournament) is not null)
 			return (ServerOutcome.Locked, null);
-		if (_scoped.Needs(UserPermissions.BeatmapsetUpload) is { } missing)
+		if (_scoped.Needs(UserPrivileges.Player) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), null);
 
 		return await server.UploadBeatmapsetAsync(archive, cancellationToken);

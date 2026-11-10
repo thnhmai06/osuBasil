@@ -24,7 +24,10 @@ public enum ChannelOutcome : byte
 	/// <summary>The recipient does not accept private messages from the author.</summary>
 	Blocked,
 
-	/// <summary>The recipient may not post private messages, so the channel refuses messages.</summary>
+	/// <summary>The author is silenced and may not post messages.</summary>
+	Silenced,
+
+	/// <summary>The recipient is silenced, so the channel refuses private messages.</summary>
 	TargetSilenced,
 
 	/// <summary>The kind of channel does not let this connection read or write it.</summary>

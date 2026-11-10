@@ -30,7 +30,8 @@ public partial class InitialCreate : Migration
 				normalized_name = table.Column<string>(maxLength: 255, nullable: false),
 				active_name = table.Column<string>(maxLength: 255, nullable: true),
 				country = table.Column<int>(nullable: false),
-				permissions = table.Column<long>(nullable: false),
+				privileges = table.Column<int>(nullable: false),
+				silenced_until = table.Column<DateTimeOffset>(nullable: true),
 				deleted_at = table.Column<DateTimeOffset>(nullable: true)
 			},
 			constraints: table =>
@@ -89,35 +90,12 @@ public partial class InitialCreate : Migration
 					"id");
 			});
 
-		migrationBuilder.CreateTable(
-			"restrictions",
-			table => new
-			{
-				id = table.Column<int>(nullable: false),
-				user_id = table.Column<int>(nullable: false),
-				permissions = table.Column<long>(nullable: false),
-				starts_at = table.Column<DateTimeOffset>(nullable: false),
-				ends_at = table.Column<DateTimeOffset>(nullable: true)
-			},
-			constraints: table =>
-			{
-				table.PrimaryKey("pk_restrictions", x => x.id);
-				table.CheckConstraint("restrictions_id_check", "id >= 1");
-				table.ForeignKey(
-					"fk_restrictions_users_user_id",
-					x => x.user_id,
-					"users",
-					"id",
-					onDelete: ReferentialAction.Cascade);
-			});
-
 		migrationBuilder.InsertData(
 			"user_id_counters",
 			new[] { "name", "next" },
 			new object[,]
 			{
 				{ "moderation_log", 1L },
-				{ "restriction", 1L },
 				{ "user", 2L }
 			});
 
@@ -136,11 +114,6 @@ public partial class InitialCreate : Migration
 			"ix_relationships_target_id",
 			"relationships",
 			"target_id");
-
-		migrationBuilder.CreateIndex(
-			"ix_restrictions_user_id",
-			"restrictions",
-			"user_id");
 
 		migrationBuilder.CreateIndex(
 			"ix_users_active_name",
@@ -162,9 +135,6 @@ public partial class InitialCreate : Migration
 
 		migrationBuilder.DropTable(
 			"relationships");
-
-		migrationBuilder.DropTable(
-			"restrictions");
 
 		migrationBuilder.DropTable(
 			"user_id_counters");

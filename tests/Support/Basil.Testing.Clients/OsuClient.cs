@@ -402,6 +402,7 @@ public sealed class OsuClient : IDisposable
 			ChannelInfoEnd = 89,
 			UserDmBlocked = 100,
 			TargetIsSilenced = 101,
+			SilenceEnd = 92,
 			AccountRestricted = 104,
 			MatchAbort = 106;
 	}

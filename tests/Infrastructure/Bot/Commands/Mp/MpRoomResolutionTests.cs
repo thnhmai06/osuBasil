@@ -13,8 +13,8 @@ namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 public sealed class MpRoomResolutionTests
 {
 	/// <summary>Everyone who must lock a room they do not create can do so with this, wherever they sit.</summary>
-	private static readonly UserPermissions ManagerPermissions =
-		UserPermissionsGroups.Default | UserPermissions.RoomManageAny;
+	private static readonly UserPrivileges ManagerPrivileges =
+		UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 
 	[Fact]
 	public async Task RoomScopedCommand_WithNoRoomAnywhere_SaysNotInARoom()
@@ -37,7 +37,7 @@ public sealed class MpRoomResolutionTests
 		var seatedIn = await bot.MakeAsync(owner, "Seated");
 		var targeted = await bot.MakeAsync(owner, "Targeted");
 		var channelRoom = await bot.MakeAsync(owner, "Channel");
-		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPermissions);
+		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPrivileges);
 		Assert.True((await seatedIn.ScopeTo(typist).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
 		Assert.True((await bot.TypeAsync(typist, null, $"!mp in {targeted.Id}")).Succeeded);
 
@@ -57,7 +57,7 @@ public sealed class MpRoomResolutionTests
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
 		var first = await bot.MakeAsync(owner, "First");
 		var second = await bot.MakeAsync(owner, "Second");
-		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPermissions);
+		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPrivileges);
 
 		var (_, said) = await bot.TypeAsync(typist, $"#mp_{second.Id}", "!mp lock");
 
@@ -73,7 +73,7 @@ public sealed class MpRoomResolutionTests
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
 		var seatedIn = await bot.MakeAsync(owner, "Seated");
 		var targeted = await bot.MakeAsync(owner, "Targeted");
-		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPermissions);
+		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPrivileges);
 		Assert.True((await seatedIn.ScopeTo(typist).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
 		Assert.True((await bot.TypeAsync(typist, null, $"!mp in {targeted.Id}")).Succeeded);
 
@@ -141,7 +141,7 @@ public sealed class MpRoomResolutionTests
 		using var bot = new BotHarness();
 		var firstOwner = await RoomFixture.PlayerAsync(bot.App, "FirstOwner");
 		var oldRoom = await bot.MakeAsync(firstOwner, "Old");
-		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPermissions);
+		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPrivileges);
 		Assert.True((await bot.TypeAsync(typist, null, $"!mp in {oldRoom.Id}")).Succeeded);
 		Assert.True((await bot.TypeAsync(firstOwner, "#osu", "!mp close")).Succeeded);
 		var secondOwner = await RoomFixture.PlayerAsync(bot.App, "SecondOwner");

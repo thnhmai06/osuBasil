@@ -14,7 +14,7 @@ request commands instead of custom logic for each image type.
 The host also owns the main-menu banner feature: `GET /menu-content.json`, the JSON manifest that the osu! stable client
 fetches during startup. This endpoint naturally belongs with the menu assets it describes.
 
-Write operations remain on `api.<domain>` and require a token with the matching permission. `assets.<domain>` is read-only. When an asset has
+Write operations remain on `api.<domain>` and require a token with the matching privilege. `assets.<domain>` is read-only. When an asset has
 moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to the new location.
 
 ## What

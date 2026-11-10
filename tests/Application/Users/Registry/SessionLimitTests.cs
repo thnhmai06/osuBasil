@@ -16,7 +16,7 @@ namespace Basil.Application.Users.Tests.Registry;
 /// </summary>
 public sealed class SessionLimitTests
 {
-	private static readonly UserPermissions Observer = UserPermissionsGroups.Default | UserPermissions.RoomObserve;
+	private static readonly UserPrivileges Observer = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 
 	private static ServerSettings Limits(int stable = 1, int tourney = 10, int irc = 5, int api = 10)
 	{

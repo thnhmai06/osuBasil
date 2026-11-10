@@ -31,7 +31,7 @@ public sealed class UserRegistryTests
 	{
 		using var app = new TestApplication();
 		var manager = await app.CreateUserAsync("LockManager", "password",
-			UserPermissionsGroups.Default | UserPermissions.UserManage);
+			UserPrivilegesExtensions.Default | UserPrivileges.Owner);
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Accounts });
 		var actor = await app.LoginAsync(manager);
 
@@ -44,7 +44,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task RegisterAsync_DefaultSettings_GrantsThePlayerAndSupporterPermissions()
+	public async Task RegisterAsync_DefaultSettings_GrantsThePlayerAndSupporterPrivileges()
 	{
 		using var app = new TestApplication();
 
@@ -53,16 +53,16 @@ public sealed class UserRegistryTests
 			TestContext.Current.CancellationToken);
 
 		Assert.Null(failure);
-		Assert.Equal(UserPermissionsGroups.Default, user!.Value.Permissions);
+		Assert.Equal(UserPrivilegesExtensions.Default, user!.Value.Privileges);
 	}
 
 	[Fact]
-	public async Task RegisterAsync_DefaultPermissionsChanged_GrantsExactlyThatMask()
+	public async Task RegisterAsync_DefaultPrivilegesChanged_GrantsExactlyThatMask()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
 		{
-			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost }
+			Accounts = new ServerSettings.AccountSettings { DefaultPrivileges = UserPrivileges.Player }
 		});
 
 		var (user, failure) = await app.Users.RegisterAsync(
@@ -70,7 +70,7 @@ public sealed class UserRegistryTests
 			TestContext.Current.CancellationToken);
 
 		Assert.Null(failure);
-		Assert.Equal(UserPermissions.ChatPost, user!.Value.Permissions);
+		Assert.Equal(UserPrivileges.Player, user!.Value.Privileges);
 	}
 
 	[Fact]
@@ -217,11 +217,11 @@ public sealed class UserRegistryTests
 	public async Task LoginAsync_TourneyWithoutRoomObserve_ReturnsNoTourneyPermission()
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("NoTourney", "password", UserPermissionsGroups.Default);
+		var user = await app.CreateUserAsync("NoTourney", "password", UserPrivilegesExtensions.Default);
 
 		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.StableTourney);
 
-		Assert.Equal(LoginFailure.NoTourneyPermission, result.Failure);
+		Assert.Equal(LoginFailure.NoTourneyPrivilege, result.Failure);
 	}
 
 	[Theory]

@@ -10,18 +10,18 @@ public sealed class StoredChangeFailureTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task SetPermissionsAsync_WhenTheStoreRefuses_ThrowsAndKeepsThePermissions()
+	public async Task SetPermissionsAsync_WhenTheStoreRefuses_ThrowsAndKeepsThePrivileges()
 	{
 		using var app = new TestApplication();
-		var staff = await app.LoginAsync(await app.CreateUserAsync("PermStaff", "password", UserPermissionsGroups.All));
+		var staff = await app.LoginAsync(await app.CreateUserAsync("PermStaff", "password", UserPrivilegesExtensions.All));
 		var target = await app.CreateUserAsync("PermRefused", "password");
-		var before = target.Value.Permissions;
+		var before = target.Value.Privileges;
 		app.UserUpdateFailure = new InvalidOperationException("refused");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			app.Users.Of(target).ScopeTo(staff).Permissions.SetAsync(UserPermissions.None, Token));
+			app.Users.Of(target).ScopeTo(staff).Privileges.SetAsync(UserPrivileges.None, Token));
 
-		Assert.Equal(before, target.Value.Permissions);
+		Assert.Equal(before, target.Value.Privileges);
 	}
 
 	[Fact]
@@ -44,7 +44,7 @@ public sealed class StoredChangeFailureTests
 	{
 		using var app = new TestApplication();
 		var staff = await app.LoginAsync(
-			await app.CreateUserAsync("DeleteStaff", "password", UserPermissionsGroups.All));
+			await app.CreateUserAsync("DeleteStaff", "password", UserPrivilegesExtensions.All));
 		var target = await app.CreateUserAsync("DeleteRefused", "password");
 		var scoped = app.Users.Of(target).ScopeTo(staff);
 		app.UserUpdateFailure = new InvalidOperationException("refused");
@@ -64,7 +64,7 @@ public sealed class StoredChangeFailureTests
 		var target = await app.CreateUserAsync("AuditTarget", "password");
 		await app.LoginAsync(target);
 		var staff = await app.LoginAsync(await app.CreateUserAsync("AuditStaff", "password",
-			UserPermissionsGroups.All));
+			UserPrivilegesExtensions.All));
 		app.ModerationLogFailure = new InvalidOperationException("refused");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>

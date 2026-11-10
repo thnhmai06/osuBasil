@@ -16,7 +16,7 @@ public sealed class ServerDiagnostics(TimeProvider clock, ICacheCleaner caches, 
 	/// <returns>The diagnostics operations available to that connection.</returns>
 	public ScopedDiagnostics ScopeTo(Connection actor)
 	{
-		return new ScopedDiagnostics(this, actor.EffectivePermissions(clock.GetUtcNow()));
+		return new ScopedDiagnostics(this, actor.EffectivePrivileges(clock.GetUtcNow()));
 	}
 
 	/// <summary>Deletes the cached files.</summary>

@@ -6,8 +6,8 @@ namespace Basil.Host.Rest.Tests.Content;
 [Collection("REST host")]
 public sealed class MenuTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Manager =
-		UserPermissionsGroups.Default | UserPermissions.ServerManageContent;
+	private static readonly UserPrivileges Manager =
+		UserPrivilegesExtensions.Default | UserPrivileges.Owner;
 
 	private static readonly byte[] Png =
 		File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "avatar-default.png"));

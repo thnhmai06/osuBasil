@@ -20,7 +20,7 @@ public sealed class ScoreSubmitter
 	/// <param name="recorder">Validates and stores a score.</param>
 	/// <param name="events">The publisher for score events.</param>
 	/// <param name="acceptance">Decides about scores on beatmaps the server does not have.</param>
-	/// <param name="clock">The clock the permissions of a scope are evaluated at.</param>
+	/// <param name="clock">The clock the privileges of a scope are evaluated at.</param>
 	internal ScoreSubmitter(IScoreRecorder recorder, IEventPublisher<ScoreEvent> events,
 		IScoreBeatmapAcceptance acceptance, TimeProvider clock)
 	{
@@ -36,12 +36,12 @@ public sealed class ScoreSubmitter
 
 	internal IScoreBeatmapAcceptance Acceptance { get; }
 
-	/// <summary>Scopes score submission to a game client and its permissions.</summary>
+	/// <summary>Scopes score submission to a game client and its privileges.</summary>
 	/// <param name="actor">The game client that submits.</param>
 	/// <returns>A short-lived scope for the client.</returns>
 	public ScopedScoreSubmitter ScopeTo(StableConnection actor)
 	{
-		return new ScopedScoreSubmitter(this, actor, actor.EffectivePermissions(_clock.GetUtcNow()));
+		return new ScopedScoreSubmitter(this, actor, actor.EffectivePrivileges(_clock.GetUtcNow()));
 	}
 
 	/// <summary>Validates and records a score a game client submitted, then publishes <see cref="ScoreSubmitted" />.</summary>

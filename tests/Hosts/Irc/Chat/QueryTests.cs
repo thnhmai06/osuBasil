@@ -24,8 +24,8 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	[Fact]
 	public async Task Names_ChannelManagerHasAtAndWithMultiPrefixBoth()
 	{
-		var permissions = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
-		using var manager = await Host.SignInAsync("QnManager", "multi-prefix userhost-in-names", permissions);
+		var privileges = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
+		using var manager = await Host.SignInAsync("QnManager", "multi-prefix userhost-in-names", privileges);
 
 		Assert.Contains("@+QnManager!QnManager@basil.test", await manager.NamesOfAsync("#osu"));
 	}
@@ -33,8 +33,8 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	[Fact]
 	public async Task Names_WithoutMultiPrefix_ShowsOnlyTheHighestSymbol()
 	{
-		var permissions = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
-		using var manager = await Host.SignInAsync("QnSingle", permissions: permissions);
+		var privileges = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
+		using var manager = await Host.SignInAsync("QnSingle", privileges: privileges);
 
 		Assert.Contains("@QnSingle", await manager.NamesOfAsync("#osu"));
 	}

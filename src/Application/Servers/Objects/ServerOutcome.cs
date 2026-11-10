@@ -1,6 +1,6 @@
 namespace Basil.Application.Servers.Objects;
 
-/// <summary>What happened to a server operation that was not refused for lack of permissions.</summary>
+/// <summary>What happened to a server operation that was not refused for lack of privileges.</summary>
 public enum ServerOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>

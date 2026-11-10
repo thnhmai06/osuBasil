@@ -18,7 +18,7 @@ var scopedRoom = room.ScopeTo(by);
 
 `ScopedRoom` holds the room, caller, room roles and derived `RoomPermissions` for one request or command. Use its parts—`Slots`, `Rounds`, `Settings`, `Authority` and `Members`—rather than asking a service to perform a player's action. Do not retain a scope after the request: its authority is a snapshot.
 
-Each operation returns a `RoomResult` for ordinary outcomes such as success, missing authority or a suspended permission. The caller does not pass permissions through each operation, and connection type alone never grants authority.
+Each operation returns a `RoomResult` for ordinary outcomes such as success, missing authority or a suspended privilege. The caller does not pass privileges through each operation, and connection type alone never grants authority.
 
 The `!mp` command entry point resolves the room and the typist's connection, then calls `room.ScopeTo(by)`; BasilBot only posts the replies.
 
@@ -34,7 +34,7 @@ These roles have different owners and lifetimes:
 
 Every room has a creator. The creator is not in the referee list and ranks above referees. A room created in game seats its creator as the first host. A room opened through the API or BasilBot seats the creator as host only when their game connection is online and not already in a room; the source that opens a room decides this, not a kind of room. A referee keeps authority when disconnected or unseated. There can be at most eight referees in addition to the creator.
 
-### Room roles and permissions
+### Room roles and privileges
 
 `RoomRoles` are calculated for the scoped caller. A caller may hold more than one role:
 
@@ -45,13 +45,12 @@ Every room has a creator. The creator is not in the referee list and ranks above
 | `Referee` | The caller's user is a referee and is not the creator | All room permissions except managing referees |
 | `Creator` | The caller's user is the creator | All room permissions, including managing referees |
 
-`RoomPermissionsGroups.GetPermissions` combines permissions from the caller's `RoomRoles`. The general account permissions then constrain that set:
+`RoomPermissionsGroups.GetPermissions` combines permissions from the caller's `RoomRoles`. The account's privileges then constrain that set:
 
-* With effective `RoomManageAny`, the scope grants all `RoomPermissions` in any room, joined or not: managing every room acts with the creator's authority and a restriction cannot suspend it.
-* Otherwise the effective permissions must include `RoomJoin`; without it the scoped room has no role-derived room permissions.
-* Restrictions remove suspended permissions before the scope is created. A user who manages an area keeps that area's permissions while restricted; for multiplayer, that manager permission is `RoomManageAny`.
+* With effective `Tournament`, the scope grants all `RoomPermissions` in any room, joined or not: managing every room acts with the creator's authority.
+* Otherwise the privileges must include `Player`; without it the scoped room has no role-derived room permissions.
 
-This is why a creator or referee whose room permissions are suspended cannot manage a room, while an effective room manager keeps multiplayer authority. `RoomResult.Silenced` distinguishes a suspended permission from `RoomResult.NotAuthorized`.
+This is why a creator or referee who has lost `Player` cannot manage a room, while a `Tournament` holder keeps multiplayer authority.
 
 ### System-owned operations
 
@@ -59,16 +58,16 @@ Some room work has no user caller. The `Lobby` and the `Room` keep system operat
 
 ## Membership, slots and settings
 
-The room owns membership; Chat keeps its channel in step with the room's events. A join checks the caller's effective `RoomJoin` permission, bans, whether the caller is already playing or observing, the password and available slots. A successful player join also joins the room channel. When a same-user connection replaces a closed seat, the new join must pass its checks first; an open old connection prevents replacement.
+The room owns membership; Chat keeps its channel in step with the room's events. A join checks the caller's effective `Player` privilege, bans, whether the caller is already playing or observing, the password and available slots. A successful player join also joins the room channel. When a same-user connection replaces a closed seat, the new join must pass its checks first; an open old connection prevents replacement.
 
 There are 16 slot positions, numbered 1 through 16. Room size is the number of usable positions, from 1 through 16, not a limit on slot numbers: a player may occupy any slot. The room keeps enough unlocked empty slots for its configured size and locks the others. When a host leaves, the next seated player in slot order becomes host. Locking a room (`!mp lock`) only freezes the slots: players cannot move to another slot or change team, but joining is unaffected, as in osu!.
 
 A room can be private. A private match is hidden from the lobby and from the public match lists, and its history and
 report can be viewed only by (a) a user who took part in it (a `PlayerJoined` event targets them), (b) its managers: the
 creator and the referees that are still referees (a `RefAdded` event not followed by a `RefRemoved` for the same user), and
-(c) a user with the effective permission `RoomManageViewPrivate` (`RoomManageAny` includes it). A public match can be viewed by
+(c) a user with the effective privilege `Tournament` (`Tournament` includes it). A public match can be viewed by
 everyone. Private never changes who can join: whoever knows the room's id can still find it (`Lobby.Find`) and join it, with
-the password if it has one, subject to the usual `RoomJoin` and ban rules. There is no invite-only mode, and an
+the password if it has one, subject to the usual `Player` and ban rules. There is no invite-only mode, and an
 invitation only tells a user where the room is.
 
 The view restriction covers everything the match owns: the match record, its rounds, its events, its report and the
@@ -108,17 +107,17 @@ Room events (closed, round started/aborted, settings changed) -------> BasilBot 
 
 The lobby opens and closes rooms. "Tournament Room" is no longer a concept of the lifecycle: every room follows the same two limits. An empty room remains open for 15 minutes; the lobby announces the scheduled close when it starts and five minutes before it, and a player joining cancels it. If the room becomes empty again, the delay starts over. Each creator may have a limited number of rooms open at once. What still differs is the **source** that opens the room: opening in game needs the creator's own osu! client (or refuses with `AlreadyInRoom`), while opening through the API or BasilBot does not. The osu!tourney client and observers remain a connection type, not a kind of room.
 
-The empty-room close is a background worker, not a timer of the lobby: the lobby records when a room became empty and the worker asks it every 30 seconds to close the rooms that stayed empty for 15 minutes, and to announce the closing of those five minutes from it. The lobby's `CloseEmptyRooms` needs no rights; the room closes as if it closed itself, with no user as actor. The per-creator limit (`RoomManageCreateUnlimited` lifts it) counts every room the creator has open, whichever source opened it.
+The empty-room close is a background worker, not a timer of the lobby: the lobby records when a room became empty and the worker asks it every 30 seconds to close the rooms that stayed empty for 15 minutes, and to announce the closing of those five minutes from it. The lobby's `CloseEmptyRooms` needs no rights; the room closes as if it closed itself, with no user as actor. The per-creator limit (`Tournament` lifts it) counts every room the creator has open, whichever source opened it.
 
-Room state is mutable and shared. Every transition that reads and then mutates is a synchronous method of `Room` (`Join`, `Kick`, `StartRound`, `Configure` and the rest) that takes the room's own lock, checks the state, changes it and publishes its events before releasing the lock; publishing only queues the event, so nothing is awaited under the lock. A closed room answers `RoomClosed`. `ScopedRoom` only checks the caller's permissions, does any asynchronous lookup that must come first, and calls the room's method. Never hold two room locks at once. Do not add another synchronization mechanism for room state.
+Room state is mutable and shared. Every transition that reads and then mutates is a synchronous method of `Room` (`Join`, `Kick`, `StartRound`, `Configure` and the rest) that takes the room's own lock, checks the state, changes it and publishes its events before releasing the lock; publishing only queues the event, so nothing is awaited under the lock. A closed room answers `RoomClosed`. `ScopedRoom` only checks the caller's privileges, does any asynchronous lookup that must come first, and calls the room's method. Never hold two room locks at once. Do not add another synchronization mechanism for room state.
 
 A player is in at most one room. A room's own check cannot see another room's seating that is still under way, so the shell of a join claims the player through `Lobby.TryClaim` before calling the room and releases the claim afterwards; a second room that meets a claim answers `InAnotherRoom`.
 
 ## Invariants
 
 * The creator, referees and host are separate roles; host status alone grants no management authority.
-* Caller-authorized behavior is reached through `room.ScopeTo(by)` and uses effective permissions.
-* A scoped room is short-lived; its role and room-permission snapshot is for one request or command.
+* Caller-authorized behavior is reached through `room.ScopeTo(by)` and uses effective privileges.
+* A scoped room is short-lived; its role and room-privilege snapshot is for one request or command.
 * Every room state transition that reads and mutates runs inside one method of `Room` under the room's lock.
 * The 16 positions are numbered 1–16; room size controls usable positions, not the highest slot number.
 * The next host is selected by slot order.
@@ -130,7 +129,7 @@ A player is in at most one room. A room's own check cannot see another room's se
 ## Related code
 
 * [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): live room and `ScopeTo`
-* [`ScopedRoom.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoom.cs): caller, role and room-permission scope
+* [`ScopedRoom.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoom.cs): caller, role and room-privilege scope
 * [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
 * [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs): room rights
@@ -142,6 +141,6 @@ A player is in at most one room. A room's own check cannot see another room's se
 ## See also
 
 * [`chat.md`](chat.md): channel ownership and room chat
-* [`privileges.md`](privileges.md): account permissions, restrictions and room-manager rights
+* [`privileges.md`](privileges.md): account privileges and room-manager rights
 * [`sse.md`](sse.md): live-stream design
 * [`database.md`](database.md): match history persistence

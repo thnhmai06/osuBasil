@@ -12,7 +12,7 @@ namespace Basil.Host.Rest.Tests.Beatmaps;
 [Collection("REST host")]
 public sealed class BeatmapTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage;
+	private static readonly UserPrivileges Manager = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 
 	private readonly HttpClient _http = new()
 	{
@@ -190,7 +190,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		var hidden = beatmaps.OrderBy(b => b.Id).First();
 		var repository = fixture.Host.Services.GetRequiredService<IBeatmapRepository>();
 		var viewer = await fixture.SignInAsync("BmHiddenViewer",
-			UserPermissionsGroups.Default | UserPermissions.BeatmapsetManageViewHidden);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		hidden.Visible = false;
 		await repository.UpdateAsync(hidden);
 		try

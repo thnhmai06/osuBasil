@@ -197,11 +197,11 @@ public sealed record BeatmapQuery(
 		return result is not null;
 	}
 
-	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
-	/// <param name="effective">The asker's effective permissions.</param>
+	/// <summary>Narrows the query to what a user with the given privileges may see.</summary>
+	/// <param name="effective">The asker's effective privileges.</param>
 	/// <returns>The query, which leaves hidden beatmaps out unless the asker may see them.</returns>
-	public BeatmapQuery LimitTo(UserPermissions effective)
+	public BeatmapQuery LimitTo(UserPrivileges effective)
 	{
-		return effective.Allows(UserPermissions.BeatmapsetManageViewHidden) ? this : this with { Hidden = false };
+		return effective.Allows(UserPrivileges.Tournament) ? this : this with { Hidden = false };
 	}
 }

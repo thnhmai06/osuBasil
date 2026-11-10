@@ -14,7 +14,7 @@ internal static class OpenApiSetup
 
 	                                **Authentication.** Routes marked with a lock need `Authorization: Bearer <token>`; the others are public. Sign in with `POST /v1/auth/login`. To learn the id of your own user, call `GET /v1/auth/session`. `/v1/me` and `/v1/sessions` redirect with 307 to the same route under your own user.
 
-	                                **Envelope.** Every JSON answer has the shape `{ success, code, message, data, meta, errors, timestamp }`. A failed answer carries a stable `errors.code`; a refusal for lack of permissions also carries the missing permission mask in `errors.missing`. Images, files and Server-Sent Events are not wrapped.
+	                                **Envelope.** Every JSON answer has the shape `{ success, code, message, data, meta, errors, timestamp }`. A failed answer carries a stable `errors.code`; a refusal for lack of privileges also carries the missing privilege mask in `errors.missing`. Images, files and Server-Sent Events are not wrapped.
 
 	                                **Paging.** Lists take `offset` (default 0) and `limit` (default 25, at most 100; more is 422).
 
@@ -116,7 +116,7 @@ internal static class OpenApiSetup
 						[new OpenApiSecuritySchemeReference(SchemeId, context.Document)] = []
 					});
 					operation.Responses["401"] = Json("The token is missing, expired or revoked.");
-					operation.Responses["403"] = Json("The caller lacks permissions; `errors.missing` holds the mask.");
+					operation.Responses["403"] = Json("The caller lacks privileges; `errors.missing` holds the mask.");
 				}
 
 				operation.Responses["404"] = Json("The thing does not exist or the caller may not see it.");

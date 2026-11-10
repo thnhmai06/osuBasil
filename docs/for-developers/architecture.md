@@ -159,7 +159,7 @@ numbering; `Protocol.Irc` references nothing.
 `Basil.Host.Stable`, `.Irc`, `.Rest` and `.Cli` translate. Inbound, a host receives a packet, line or request, translates it
 with Protocol into a strongly typed message of the system language (not flattened), and sends it through Mediator to a
 service. Outbound, a host listens to Notifications and translates them to its wire. A host holds no business rule, no
-permission rule and no state. **(target)** A host never calls `ScopeTo`, never references Infrastructure, and never
+privilege rule and no state. **(target)** A host never calls `ScopeTo`, never references Infrastructure, and never
 references another host; today hosts still call `ScopeTo` directly and the migration moves that into handlers module by
 module. `Basil.Host.Shared` holds the views and the table that turns an outcome into an API error code; it holds no
 ASP.NET types.
@@ -173,7 +173,7 @@ ASP.NET types.
   Command with no actor and returns the `Connection`. On Rest the token is resolved by a Query to a `Connection` that is
   attached to the request; on Stable the polling request carries the `osu-token`; on IRC the socket keeps the
   `Connection` after PASS and NICK. Every later message carries the `Connection` as its actor, and the handler
-  calls `object.ScopeTo(message.Actor)`; the capability computes effective permissions and checks them with `Require`.
+  calls `object.ScopeTo(message.Actor)`; the capability computes effective privileges and checks them with `Require`.
 * **Unforgeable.** Only the Users module creates a `Connection` (its constructor is `internal`), so a host cannot build one.
   A bad token resolves to nothing and the host answers 401 before any business message is built.
 
@@ -219,7 +219,7 @@ channel.ScopeTo(actor).Join();
 room.ScopeTo(actor).Members.JoinAsync(password);
 ```
 
-A capability is a `readonly struct` valid for one request. It snapshots the actor's effective permissions once, offers
+A capability is a `readonly struct` valid for one request. It snapshots the actor's effective privileges once, offers
 forwarding getters for the owner's parts, and calls the owner's `internal` raw mutators. Behaviours that can be refused return
 `Result<TOutcome>`. A capability is never stored in a field or property (an architecture test enforces this). System work
 with no caller (startup, event handlers reacting for the server, announcements) calls the object directly.
@@ -230,7 +230,7 @@ A session is the persisted record of a sign-in; a connection is the live socket 
 its connection is idle or closed; the connection leaves memory after the idle window and the next request verifies the
 token against the database. Connection types are Stable, StableTourney (the osu!tourney client and observers), Irc and Api.
 BasilBot is a module bound to user id 1 that holds exactly one Stable and one Irc connection and has no connection type
-of its own; see [`../for-agents/identity-permissions.md`](../for-agents/identity-permissions.md), which also owns the
+of its own; see [`../for-agents/identity-privileges.md`](../for-agents/identity-privileges.md), which also owns the
 per-user session limits.
 
 ## Streaming

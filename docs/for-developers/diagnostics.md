@@ -22,8 +22,8 @@ The diagnostics are streamed over Server-Sent Events, as every live route is (se
 The first event of a stream is a full sample; after that a bundle arrives every second with the newest sample. The generated
 API reference describes the routes; this page explains the design behind them.
 
-Access needs the permission `ServerManageDiagnostics` of the signed-in user. A caller without a token is refused with
-`401`, and one without the permission with `403`.
+Access needs the privilege `Developer` of the signed-in user. A caller without a token is refused with
+`401`, and one without the privilege with `403`.
 
 The categories are:
 
@@ -81,10 +81,10 @@ are counted by type and reason (`basil.connections.rejected`). Labels have a bou
 a name.
 
 The maintenance actions (`caches/clear`, `exceptions/reset`, `gc/collect`) are Mediator requests that carry the sender's
-connection and run through `ScopedDiagnostics`, which checks `ServerManageDiagnostics` before anything is changed. The routes
-and the console hold no permission rule of their own, and the console is the one entry point that skips the check. The
+connection and run through `ScopedDiagnostics`, which checks `Developer` before anything is changed. The routes
+and the console hold no privilege rule of their own, and the console is the one entry point that skips the check. The
 thirty-second minimum between `gc/collect` calls is still enforced by the API route with the gateway's rate limiter, after
-the permission check and only for the API; the console is not limited. Making it an admission policy of the gateway
+the privilege check and only for the API; the console is not limited. Making it an admission policy of the gateway
 ([`gateway.md`](gateway.md)) is not done yet.
 
 Request durations come from one instrument, `basil.http.request.duration`, which the API host records for every web host,
@@ -93,10 +93,10 @@ tagged with the host label and the status class. Exceptions are counted from the
 ## Testing
 
 `tests/Hosts/Rest/Sse/DiagnosticsTests.cs` covers the HTTP contract: the refusals without a token (`401`) and without the
-permission (`403`), a stream's self-seeded first event for every category with one category filtered, the bundle each
+privilege (`403`), a stream's self-seeded first event for every category with one category filtered, the bundle each
 second and the supported actions (an unknown action is `404`). `tests/Infrastructure/Diagnostics` covers the feed (the
 newest sample, dropped older ones, a slow watcher beside a fast one), the intake's merging, the sampler, the request
-timing and the refusal of every maintenance request with its missing permission; `tests/Application/Diagnostics` covers the
+timing and the refusal of every maintenance request with its missing privilege; `tests/Application/Diagnostics` covers the
 capability. `tests/Infrastructure/Users/Handlers/CollectDiagnosticsHandlerTests.cs` pins that every connection type is
 reported, including zero. `tests/Architecture/DiagnosticsContributionTests.cs` checks that every module with handlers has its
 meter and handler (with a positive control), and the dashboard's use of the sample is tested under `tests/Hosts/Cli/Dashboard`.
@@ -104,7 +104,7 @@ meter and handler (with a positive control), and the dashboard's use of the samp
 ## Related code
 
 * [`DiagnosticsRoutes.cs`](../../src/Hosts/Rest/Sse/DiagnosticsRoutes.cs): the routes and the actions
-* [`ScopedDiagnostics.cs`](../../src/Application/Diagnostics/Capabilities/ScopedDiagnostics.cs): the permission gate of the actions
+* [`ScopedDiagnostics.cs`](../../src/Application/Diagnostics/Capabilities/ScopedDiagnostics.cs): the privilege gate of the actions
 * [`DiagnosticsIntake.cs`](../../src/Infrastructure/Diagnostics/Services/DiagnosticsIntake.cs) and [`DiagnosticsFeed.cs`](../../src/Infrastructure/Diagnostics/Services/DiagnosticsFeed.cs): the two services
 * [`RuntimeSampler.cs`](../../src/Infrastructure/Diagnostics/Services/RuntimeSampler.cs): process and runtime measurements
 * [`DiagnosticsSample.cs`](../../src/Application/Common/Diagnostics/DiagnosticsSample.cs): the sample of every category and the contribution contracts beside it
@@ -113,4 +113,4 @@ meter and handler (with a positive control), and the dashboard's use of the samp
 
 * [`sse.md`](sse.md): the live-updates pipeline diagnostics build on
 * [`gateway.md`](gateway.md): the admission policies that count rejections
-* [`configuration.md`](../for-technicians/configuration.md): telemetry export and the permissions that open diagnostics
+* [`configuration.md`](../for-technicians/configuration.md): telemetry export and the privileges that open diagnostics

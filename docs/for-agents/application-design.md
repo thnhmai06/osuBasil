@@ -15,20 +15,18 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   the requirement through `ScopedRights.Require(held, required)`: `null` means the requirement is met, otherwise it returns
   what is missing. A `[Flags]` enum is met when every required bit is held (the result is the missing bits); any other enum
   is ordered levels and is met when the held value is at least the required one (the result is the required level). Most
-  capabilities hold the caller's **effective** `UserPermissions` and pass the missing mask to `Result<TOutcome>.Denied`;
+  capabilities hold the caller's **effective** `UserPrivileges` and pass the missing mask to `Result<TOutcome>.Denied`;
   `ScopedRoom` holds `RoomPermissions`, the rights its roles give, computed once from creator, referee, host and player
-  roles and the global permissions; a role refusal is the outcome `RoleDenied`, or a denial naming `RoomJoin` when the caller
+  roles and the global privileges; a role refusal is the outcome `RoleDenied`, or a denial naming `Player` when the caller
   may not join rooms at all. An implementation never compares rights itself.
 * **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,
-  Permissions? Missing)` shared by all objects. Each object owns one outcome enum (`RoomOutcome`, `ChannelOutcome`,
+  Privileges? Missing)` shared by all objects. Each object owns one outcome enum (`RoomOutcome`, `ChannelOutcome`,
   `UserOutcome`, `BeatmapsetOutcome`, …) with `Ok = 1` and `0` meaning "not set" (so a denied result, whose outcome is
   `default`, can never read as success); the other members are `NotFound` and the object's own reasons. There is no
-  `NotAuthorized`, `Restricted`, `Silenced`, `NoPermission` or `NotPermitted` member and no `bool` or `*Failure`
-  stand-in. A denial is `Missing is not null`. The caller never learns whether a bit was never granted or is suspended
-  by a restriction; it only learns which permissions are missing. Callers test `result.IsOk`.
-* **Granting uses effective permissions, ranking uses granted ones.** An actor can grant only bits that are currently
-  in effect for them; the strict-superset hierarchy test compares the permissions the two accounts were granted, so
-  rank does not change with a temporary restriction.
+  `NotAuthorized`, `Restricted`, `NoPermission` or `NotPermitted` member and no `bool` or `*Failure`
+  stand-in. A denial is `Missing is not null`. The caller only learns which privileges are missing. Callers test `result.IsOk`.
+* **Granting uses the actor's privileges, ranking uses the granted ones.** An actor can grant only privileges they hold;
+  the strict-superset hierarchy test compares the privileges the two accounts were granted.
 * **`ConfigureAwait` is not used** anywhere in the project's source (a server has no synchronization context). An
   architecture test fails on `ConfigureAwait(` in `src/`. This overrides the `code-principles` skill until the skill
   is changed.
@@ -46,14 +44,14 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
   `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
-  restriction, is a plain Domain class named after the concept (`UserRestriction`). A part is reached through its owner
+  restriction, is a plain Domain class named after the concept (`UserRecord`). A part is reached through its owner
   (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
   **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command (see "Scopes and
-  results" below). It snapshots the caller's effective permissions once, and each behaviour checks that snapshot through
-  the base class and returns a `Result<XOutcome>` carrying the missing permissions before it takes the object's lock,
-  keeps the invariants, acts and emits the event. The caller never passes `connection`, permissions or an actor into a
+  results" below). It snapshots the caller's effective privileges once, and each behaviour checks that snapshot through
+  the base class and returns a `Result<XOutcome>` carrying the missing privileges before it takes the object's lock,
+  keeps the invariants, acts and emits the event. The caller never passes `connection`, privileges or an actor into a
   call. **Anything whose actions
-  depend on permissions or privileges is scoped; only a system that needs no check is not** (the server's own work:
+  depend on privileges or privileges is scoped; only a system that needs no check is not** (the server's own work:
   Runtime handlers, startup, the bot's announcements, public reads).
   Internal capability helpers keep only application logic that needs no live object (account checks, beatmapset
   indexing, score validation and recording); coordination between objects belongs to the object that is acted on
@@ -61,10 +59,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   game client's score, `AnticheatReporter` for its anticheat flags, `Beatmapsets` for imports). Five
   anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
   as `Server.X`); **service-centric procedural
-  design** (a service takes an object and does its behaviour for it); **permission plumbing** (rights passed
+  design** (a service takes an object and does its behaviour for it); **privilege plumbing** (rights passed
   through many layers and methods); **exposing mutable state** (callers change internals past the invariants);
   **fake scoping** (`ScopeTo` only wraps while behaviour and checks stay in a central service). The shared
-  authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
+  authority primitives (`Access`, effective privileges, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
 * **The service ladder.** Service > Ports > the three stores (Registry | Repository | Storage) > Objects; a level uses only the
@@ -89,7 +87,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   beatmapset indexing and score validation stays `internal` in the folder of the capability or object it serves;
   objects reach it through `InternalsVisibleTo`.
   Plain data that both layers use in public signatures (login, registration and score submission inputs, import and
-  scan results) lives in the Persistence folder. Callers reach permission-dependent behaviour through
+  scan results) lives in the Persistence folder. Callers reach privilege-dependent behaviour through
   `ScopeTo(connection)` and the server's own work through labelled system operations.
 * **Object or service?** One question decides it: does the operation have a caller whose rights it must
   check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
@@ -108,14 +106,14 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   Because the factories hide dependencies from `ValidateOnBuild`, verify the container by resolving every
   registration with the external storage ports stubbed (see Commands).
 * **A scope is a snapshot: re-check after waiting.** A `ScopedX` is for one request or command and is never kept.
-  The permission snapshot is taken once and is not re-taken. A behaviour that awaits between its check and its change
+  The privilege snapshot is taken once and is not re-taken. A behaviour that awaits between its check and its change
   (a lookup, a repository call, the room gate) re-checks, inside the object's own scope or lock, the state and roles
   the wait could have changed (`IsOpen`, a block, the caller's role in the room, a closed room) before it changes
   anything; a referee removed while waiting for the gate must not act.
-* **A refusal by role is not a missing permission.** Rights that come from a role in one object (creator, referee,
+* **A refusal by role is not a missing privilege.** Rights that come from a role in one object (creator, referee,
   host, player in a room) are decided by that object's own role rules and reported as an outcome named after the role
-  (`NotManager`, `NotHost`) with `Missing` left `null`; `Missing` names only account-level permissions (`RoomJoin`,
-  `RoomCreate`, `ChatPost`, `ScoreSubmit`) checked through `Require`.
+  (`NotManager`, `NotHost`) with `Missing` left `null`; `Missing` names only account-level privileges (`Player`,
+  `Player`, `Player`, `Player`) checked through `Require`.
 * **System operations are labelled.** A public method on an object that skips the rights check (`Lobby.Unwatch`,
   `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.ReceiveScore`, `Server.Notify`) says in its
   XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
@@ -140,13 +138,13 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   computation and the clock (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure handlers read, list and search storage, and
   write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
-  beatmapset), directly through the repository, after the capability has checked the caller's permission (today the hosts still do this themselves; target: they send a Query or Command). Services are only for actions; a service
+  beatmapset), directly through the repository, after the capability has checked the caller's privilege (today the hosts still do this themselves; target: they send a Query or Command). Services are only for actions; a service
   never wraps a plain read or write (a score service's `GetAsync` forwarding to `IScoreRepository.GetAsync` is
   wrong). Runtime state changes only through the behaviour of the object that owns that state; runtime setters
   are `internal`.
 * **Each object enforces its own rules.** An operation keeps the owning object's parts consistent in that same
   operation (a room keeps its channel in step with its players). A consequence that crosses object boundaries
-  (a restriction removes memberships in rooms and spectator streams) is announced as an event; Infrastructure
+  (a closed connection removes memberships in rooms and spectator streams) is announced as an event; Infrastructure
   handlers call the operations owned by those objects.
 * **Background work.** An object declares one run of a background job (`UserRegistry.CloseIdle()`,
   `Beatmapsets.ScanAsync()`); Infrastructure owns the loop, the trigger, the
@@ -158,10 +156,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user is one `User`; each place they log in from is a `Connection`.**
   `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
-  shared (`AwayMessage`, the active `Restrictions`) plus its connections as child data, keyed by
+  shared (`AwayMessage`, the `Silence`) plus its connections as child data, keyed by
   `ConnectionType` (`Stable`, `Tourney`, `Irc`, `Api`), with typed accessors (`Stable`, `Irc`, `Tourneys`,
   `Apis`); how many connections of each type one user may hold is a per-type limit the user registry enforces (target;
-  see [`identity-permissions.md`](identity-permissions.md)).
+  see [`identity-privileges.md`](identity-privileges.md)).
   `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `StableConnection`,
   `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
   (`StableConnection.Status`). Rooms, channels and the lobby hold connections, not users' sessions.
@@ -192,7 +190,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
   on X. Ask "who is acted on?" for every relation, member and event.
 * **Parts are reached through the owning object's scope.** `room.ScopeTo(actor)` exposes `.Slots`, `.Rounds`,
-  `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(actor)` exposes the user's restrictions,
+  `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(actor)` exposes the user's silence,
   relationships and account operations. Channels, sessions, connections, the lobby, beatmapsets and the server
   follow the same pattern. There are no child service trees for object behaviour; coordination that spans objects
   is a method of the object that is acted on (or of the registry that holds them).
@@ -218,7 +216,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   folder of their module (`Objects/Events/`) and its handlers in the Handlers folder of its Infrastructure project. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
-  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
+  event type (`ConnectionHandler`, `SessionEndHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
   modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Infrastructure.Bot`). The shared queue (`EventQueue`) is run by
   `EventDispatcher` in Infrastructure.Common's Workers folder and delivers the events one at a time in the order they
   were published,
@@ -235,9 +233,9 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   wait only queues the work on a bounded queue of its own, with a cap per user and a timeout per item, and returns
   (`CommandWorker` of the bot). A dropped item is logged, never silent.
 * **A consequence reaches everyone, through every path.** What a change does to the people it concerns it does
-  whether they are online or not (a restriction removes an offline referee from the open rooms too), and every
+  whether they are online or not (removing a referee removes an offline referee from the open rooms too), and every
   path that grants the same authority applies the same gate (`ScopedRoom` and `ChannelRules.InRoom` agree on
-  `RoomManageAny` and `RoomJoin`).
+  `Tournament` and `Player`).
 * **Naming: Domain record `XRecord` (with `XData`), the Application object `X`, the object that holds the live
   ones `XRegistry`; an internal capability helper is an internal `XService` with no contract, while a system-facing
   service has a public `IXService` contract and an implementation in Services/.** There is no `*Session`
@@ -249,7 +247,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   `System.Threading.Channels.Channel`: a file that uses both qualifies the .NET one.
 * **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
   to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
-  (`ChannelOpened`, `UserRestricted`). A subject that belongs to another is written `{Parent}{Child}`
+  (`ChannelOpened`, `UserSilenced`). A subject that belongs to another is written `{Parent}{Child}`
   (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserConnectionOpened`). The abstract category
   records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
 * **Chat channels.** Domain stores only what is persisted: `GeneralChannelRecord` (identity: the name with its
@@ -289,7 +287,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
   `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
 * **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its `{Enum}Groups`
-  class (`StableFlagsGroups.CheatSigns`, `UserPermissionsGroups.Chat`) or of the owning type (`UserRestriction.Silence`),
+  class (`StableFlagsGroups.CheatSigns`, `UserPrivilegesExtensions.Chat`) or of the owning type (`UserPrivilegesExtensions.Default`),
   never a combination member of the enum itself; a per-mode factory is a static member of its type
   (`BeatmapObjects.NewFrom(mode)`);
   services use them instead of keeping their own copies.
@@ -307,4 +305,4 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   in the assembly and written to the configuration folder when the file does not exist. The file is watched and reloaded
   while the server runs; an invalid file keeps the last good set and logs a warning; a missing key falls back to its
   default. Reply keys are typed constants owned by the bot; tests reference the keys, never copy the default text.
-* A reply to a refused command names the missing permissions from `Result<TOutcome>.Missing`.
+* A reply to a refused command names the missing privileges from `Result<TOutcome>.Missing`.

@@ -28,7 +28,6 @@ public static class DependencyInjection
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
 			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
 			sp.GetRequiredService<IUserRepository>(),
-			sp.GetRequiredService<IRestrictionRepository>(),
 			sp.GetRequiredService<IModerationLogRepository>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<ISessionRepository>(),

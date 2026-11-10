@@ -53,14 +53,16 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 	{
 		var id = user.Id;
 		var country = (int)user.Value.Country;
-		var permissions = (long)user.Value.Permissions;
+		var privileges = (int)user.Value.Privileges;
+		var silencedUntil = user.Value.SilencedUntil?.ToUniversalTime();
 		var deletedAt = user.Value.DeletedAt?.ToUniversalTime();
 		// A deletion is permanent: a record that does not know it must not take it back.
 		return database.WriteAsync((UsersDbContext context, CancellationToken token) => context.Users
 				.Where(row => row.Id == id)
 				.ExecuteUpdateAsync(set => set
 					.SetProperty(row => row.Country, country)
-					.SetProperty(row => row.Permissions, permissions)
+					.SetProperty(row => row.Privileges, privileges)
+					.SetProperty(row => row.SilencedUntil, silencedUntil)
 					.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt)
 					.SetProperty(row => row.ActiveName,
 						row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null), token),
@@ -146,10 +148,10 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 			users = users.Where(row => codes.Contains(row.Country));
 		}
 
-		if (query.Permissions is { } permissions)
+		if (query.Privileges is { } privileges)
 		{
-			var mask = (long)permissions;
-			users = users.Where(row => (row.Permissions & mask) == mask);
+			var mask = (int)privileges;
+			users = users.Where(row => (row.Privileges & mask) == mask);
 		}
 
 		if (query.Text is { } text)
@@ -176,7 +178,8 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 			NormalizedName = data.NormalizedName,
 			ActiveName = data.DeletedAt is null ? data.NormalizedName : null,
 			Country = (int)data.Country,
-			Permissions = (long)data.Permissions,
+			Privileges = (int)data.Privileges,
+			SilencedUntil = data.SilencedUntil?.ToUniversalTime(),
 			DeletedAt = data.DeletedAt?.ToUniversalTime()
 		};
 	}
@@ -199,7 +202,8 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 			{
 				Name = row.Name,
 				Country = (Country)row.Country,
-				Permissions = (UserPermissions)(ulong)row.Permissions,
+				Privileges = (UserPrivileges)row.Privileges,
+				SilencedUntil = row.SilencedUntil,
 				DeletedAt = row.DeletedAt
 			}
 		};

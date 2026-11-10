@@ -120,4 +120,4 @@ own behaviour; Postman owns the HTTP contract shape: routes, status codes, envel
 
 * [`architecture.md`](architecture.md) — dependency rules the architecture tests enforce
 * [`development.md`](development.md) — building and running locally
-* [`../for-agents/identity-permissions.md`](../for-agents/identity-permissions.md) — permission rules behind refusal tests
+* [`../for-agents/identity-privileges.md`](../for-agents/identity-privileges.md) — privilege rules behind refusal tests

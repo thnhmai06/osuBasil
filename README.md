@@ -44,8 +44,8 @@ requiring third-party online services.
 * **A platform to build on**: features such as BasilBot (the [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)-style
   `!mp` commands), tournament tools and overlays are separate clients that sign in as ordinary users. The server runs
   the same with or without them.
-* **Fine-grained permissions**: every account acts under its own identity and permissions, osu!-style restrictions
-  and silences included; the privileges an osu! client sees are derived from them.
+* **Privileges**: every account acts under its own identity and privileges, osu!-style silences
+  included; the privileges are the ones an osu! client sees.
 * **Live state in memory, durable in PostgreSQL**: live objects run in memory and records are stored in [PostgreSQL](https://www.postgresql.org/) (today written behind the scenes; target: awaited writes with cache-aside reads); stored files live in a local `Data/` directory.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
   external beatmap mirrors.

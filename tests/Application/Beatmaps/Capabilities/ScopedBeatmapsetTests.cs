@@ -11,21 +11,21 @@ namespace Basil.Application.Beatmaps.Tests.Capabilities;
 
 /// <summary>
 ///     Managing a stored beatmapset as a connection: deleting, hiding and locking need
-///     <see cref="UserPermissions.BeatmapsetManage" />, and a locked set cannot be deleted.
+///     <see cref="UserPrivileges.Tournament" />, and a locked set cannot be deleted.
 /// </summary>
 public sealed class ScopedBeatmapsetTests
 {
-	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage;
+	private static readonly UserPrivileges Manager = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 
 	private static async Task<(TestApplication App, BeatmapsetWorld World, Beatmapset Set, Connection Actor)>
 		SetupAsync(
-			UserPermissions? permissions = null, Action<TestApplication, UserRecord>? restrict = null)
+			UserPrivileges? privileges = null, Action<TestApplication, UserRecord>? restrict = null)
 	{
 		var world = new BeatmapsetWorld();
 		var app = world.CreateApplication();
 		var imported = await app.Beatmapsets.ImportAsync(
 			new MemoryStream(Osz.Build(null, new Diff("Easy", "easy file"))), TestContext.Current.CancellationToken);
-		var user = await app.CreateUserAsync("Manager", "password", permissions ?? Manager);
+		var user = await app.CreateUserAsync("Manager", "password", privileges ?? Manager);
 		restrict?.Invoke(app, user);
 		var actor = await app.LoginAsync(user);
 		return (app, world, app.Beatmapsets.Of(imported.Set!), actor);
@@ -48,7 +48,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_ByAnActorThatIsNoConnection_FollowsItsEffectivePermissions()
+	public async Task DeleteAsync_ByAnActorThatIsNoConnection_FollowsItsEffectivePrivileges()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -66,14 +66,14 @@ public sealed class ScopedBeatmapsetTests
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPermissionsGroups.Default)).DeleteAsync(
+		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPrivilegesExtensions.Default)).DeleteAsync(
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.BeatmapsetManage, denied.Missing);
+		Assert.Equal(UserPrivileges.Tournament, denied.Missing);
 		Assert.NotEmpty(world.Sets.Records);
 	}
 
-	/// <summary>An actor with permissions fixed in advance, as a caller other than a connection would be.</summary>
+	/// <summary>An actor with privileges fixed in advance, as a caller other than a connection would be.</summary>
 	[Fact]
 	public async Task NewSet_IsRanked()
 	{
@@ -103,10 +103,10 @@ public sealed class ScopedBeatmapsetTests
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
 
-		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPermissionsGroups.Default)).SetStatusAsync(
+		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPrivilegesExtensions.Default)).SetStatusAsync(
 			BeatmapsetStatus.Loved, TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.BeatmapsetManage, denied.Missing);
+		Assert.Equal(UserPrivileges.Tournament, denied.Missing);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Record.Status);
 	}
 
@@ -129,28 +129,15 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task DeleteAsync_WithoutBeatmapsetManage_IsDeniedWithExactlyThatPermission()
 	{
-		var (app, world, set, actor) = await SetupAsync(UserPermissionsGroups.Default);
+		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
 		var result = await set.ScopeTo(actor).DeleteAsync(TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.Single(world.Sets.Records);
 		Assert.Single(world.Storage.Stored);
-	}
-
-	[Fact]
-	public async Task DeleteAsync_WithBeatmapsetManageSuspended_IsDenied()
-	{
-		var (app, world, set, actor) =
-			await SetupAsync(restrict: (app, user) => app.AddRestriction(user, UserPermissions.BeatmapsetManage));
-		using var _ = app;
-
-		var result = await set.ScopeTo(actor).DeleteAsync(TestContext.Current.CancellationToken);
-
-		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
-		Assert.Single(world.Sets.Records);
 	}
 
 	[Fact]
@@ -214,12 +201,12 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task SetVisibleAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
 	{
-		var (app, _, set, actor) = await SetupAsync(UserPermissionsGroups.Default);
+		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
 		var result = await set.ScopeTo(actor).SetVisibleAsync(false, TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.True(set.Record.Visible);
 	}
 
@@ -252,12 +239,12 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task SetLockedAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
 	{
-		var (app, _, set, actor) = await SetupAsync(UserPermissionsGroups.Default);
+		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
 
 		var result = await set.ScopeTo(actor).SetLockedAsync(true, TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPrivileges.Tournament, result.Missing);
 		Assert.False(set.Record.Locked);
 	}
 
@@ -270,13 +257,13 @@ public sealed class ScopedBeatmapsetTests
 		Assert.Equal(world.Sets.Records.Values.Single(), set.Record);
 	}
 
-	private sealed class FixedActor(UserRecord record, UserPermissions permissions) : IActor
+	private sealed class FixedActor(UserRecord record, UserPrivileges privileges) : IActor
 	{
 		public UserRecord Record { get; } = record;
 
-		public UserPermissions EffectivePermissions(DateTimeOffset now)
+		public UserPrivileges EffectivePrivileges(DateTimeOffset now)
 		{
-			return permissions;
+			return privileges;
 		}
 	}
 }

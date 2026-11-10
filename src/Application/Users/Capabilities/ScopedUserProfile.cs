@@ -40,8 +40,8 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// <returns>The outcome of renaming the account.</returns>
 	/// <remarks>
 	///     A user may change their own profile. Changing another account's profile needs
-	///     <see cref="UserPermissions.UserManage" /> and hierarchy. While profile changes are locked, only a user holding
-	///     <see cref="UserPermissions.UserManage" /> may change a profile.
+	///     <see cref="UserPrivileges.Owner" /> and hierarchy. While profile changes are locked, only a user holding
+	///     <see cref="UserPrivileges.Owner" /> may change a profile.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> RenameAsync(string name, CancellationToken cancellationToken = default)
 	{
@@ -86,14 +86,14 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 		return await scoped.User.Profile.RemoveAvatarAsync(cancellationToken);
 	}
 
-	// BasilBot's metadata changes like any user's; only its permissions, password and sessions are fixed.
+	// BasilBot's metadata changes like any user's; only its privileges, password and sessions are fixed.
 	private async Task<Result<UserOutcome>?> GuardAsync(CancellationToken cancellationToken)
 	{
-		if (await scoped.IsLockedAsync(Locks.Profiles, UserPermissions.UserManage,
+		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner,
 			    cancellationToken))
 			return UserOutcome.Locked;
 		if (scoped.IsSelf) return null;
-		if (scoped.MissingPermissions(UserPermissions.UserManage) is { } missing)
+		if (scoped.Require(UserPrivileges.Owner) is { } missing)
 			return Result<UserOutcome>.Denied(missing);
 
 		return scoped.Outranks ? null : UserOutcome.NotOutranking;

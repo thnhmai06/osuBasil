@@ -18,7 +18,7 @@ Common causes include:
 * an invalid TLS certificate or certificate password;
 * the configured port is already in use;
 * the PostgreSQL database named by `ConnectionStrings:Write` (or `Read`) cannot be reached or refuses the role;
-* the process does not have permission to access required files or bind to the configured port.
+* the process does not have privilege to access required files or bind to the configured port.
 
 If Basil exits immediately after a configuration change, check the most recent entries of the log file of the day:
 
@@ -123,7 +123,7 @@ which works on the storage whether the server is running or not:
 ./Basil users create --username admin --password change-me --admin
 ```
 
-`--admin` gives the account every permission. If an existing administrator lost their password, set a new one with
+`--admin` gives the account every privilege. If an existing administrator lost their password, set a new one with
 `users <id> set --password <new>` (every session of that account is closed). See [`console.md`](console.md).
 
 ---
@@ -247,7 +247,7 @@ Only users who are allowed to participate in the multiplayer match can join its 
 If a user receives:
 
 ```text
-Cannot join channel (no permission)
+Cannot join channel (no privilege)
 ```
 
 the user is not currently permitted to join that match channel.

@@ -11,7 +11,7 @@ namespace Basil.Application.Servers.Tests.Objects;
 /// <summary>
 ///     Behaviour of notifications to osu! clients, from the XML contracts of <see cref="Server" /> and
 ///     <see cref="ScopedServer" />: the server's own operation needs no rights and reaches only open osu! clients; the
-///     scoped one needs <see cref="UserPermissions.ChatManageAnnounce" />.
+///     scoped one needs <see cref="UserPrivileges.Moderator" />.
 /// </summary>
 public sealed class ServerNotifyTests
 {
@@ -30,9 +30,9 @@ public sealed class ServerNotifyTests
 		return (user, client);
 	}
 
-	private static async Task<Connection> AnnouncerAsync(TestApplication app, UserPermissions permissions)
+	private static async Task<Connection> AnnouncerAsync(TestApplication app, UserPrivileges privileges)
 	{
-		var user = await app.CreateUserAsync("Announcer", "password", permissions);
+		var user = await app.CreateUserAsync("Announcer", "password", privileges);
 		return await app.LoginAsync(user);
 	}
 
@@ -115,7 +115,7 @@ public sealed class ServerNotifyTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync($"Only{(int)type}", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		await app.LoginAsync(user, type);
 
 		var sent = app.Server.Notify(Text, user);
@@ -209,7 +209,7 @@ public sealed class ServerNotifyTests
 		await app.LoginAsync(await app.CreateUserAsync("Chatter", "password"), SessionType.Irc);
 		await app.LoginAsync(await app.CreateUserAsync("Integrator", "password"));
 		await app.LoginAsync(await app.CreateUserAsync("Referee", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve), SessionType.StableTourney);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament), SessionType.StableTourney);
 
 		var sent = app.Server.NotifyAll(Text);
 
@@ -262,7 +262,7 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_OneUserWithChatAnnounce_IsOkAndReachesTheClient()
 	{
 		using var app = new TestApplication();
-		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 		var (target, client) = await OnlineClientAsync(app, "Target");
 
 		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, target);
@@ -276,7 +276,7 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_SeveralUsersWithChatAnnounce_IsOkAndCountsClients()
 	{
 		using var app = new TestApplication();
-		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 		var (first, _) = await OnlineClientAsync(app, "First");
 		var (second, _) = await OnlineClientAsync(app, "Second");
 
@@ -290,7 +290,7 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotifyAll_WithChatAnnounce_IsOkAndCountsEveryClient()
 	{
 		using var app = new TestApplication();
-		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 		await OnlineClientAsync(app, "First");
 		await OnlineClientAsync(app, "Second");
 
@@ -304,7 +304,7 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotifyAll_EmptyTextWithChatAnnounce_IsOkAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 		await OnlineClientAsync(app, "Target");
 
 		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll("");
@@ -318,13 +318,13 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_OneUserWithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
 		var (target, _) = await OnlineClientAsync(app, "Target");
 
 		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, target);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
 	}
@@ -333,13 +333,13 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotify_SeveralUsersWithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
 		var (first, _) = await OnlineClientAsync(app, "First");
 		var (second, _) = await OnlineClientAsync(app, "Second");
 
 		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first, second]);
 
-		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
 	}
@@ -348,30 +348,14 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotifyAll_WithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
 	{
 		using var app = new TestApplication();
-		var actor = await AnnouncerAsync(app, UserPermissionsGroups.Default & ~UserPermissions.ChatManageAnnounce);
+		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
 		await OnlineClientAsync(app, "Target");
 
 		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll(Text);
 
-		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
+		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
-	}
-
-	[Fact]
-	public async Task ScopedNotifyAll_ChatAnnounceSuspendedByRestriction_IsDenied()
-	{
-		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("Muted", "password",
-			UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
-		app.AddRestriction(user, UserPermissions.ChatManageAnnounce);
-		var actor = await app.LoginAsync(user);
-		await OnlineClientAsync(app, "Target");
-
-		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll(Text);
-
-		Assert.Equal(UserPermissions.ChatManageAnnounce, result.Missing);
-		Assert.Equal(0, sent);
 	}
 
 	#endregion

@@ -12,12 +12,12 @@ namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 ///     The snapshot is taken once, so a scope is for one request or command: create it with
 ///     <see cref="Objects.Rooms.Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its rights outlive a
 ///     change of
-///     role or restriction.
+///     role or privilege.
 /// </remarks>
 public readonly struct ScopedRoom
 {
-	/// <summary>The permissions the connection has globally, as they were when the scope was created.</summary>
-	private readonly UserPermissions _global;
+	/// <summary>The privileges the connection holds, as they were when the scope was created.</summary>
+	private readonly UserPrivileges _global;
 
 	/// <summary>Gets the connection this scope is for.</summary>
 	public Connection Actor { get; }
@@ -33,14 +33,14 @@ public readonly struct ScopedRoom
 	}
 
 	private ScopedRoom(Room room, Connection actor,
-		(UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
+		(UserPrivileges Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
 	{
 		Actor = actor;
 		Rights = snapshot.Rights;
 		Room = room;
 		_global = snapshot.Global;
 		Roles = snapshot.Roles;
-		ManagesAnyRoom = _global.Allows(UserPermissions.RoomManageAny);
+		ManagesAnyRoom = _global.Allows(UserPrivileges.Tournament);
 	}
 
 	/// <summary>The room this scope is over.</summary>
@@ -67,18 +67,17 @@ public readonly struct ScopedRoom
 	/// <summary>Whether the connection may manage every room.</summary>
 	internal bool ManagesAnyRoom { get; }
 
-	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room,
+	private static (UserPrivileges Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room,
 		Connection actor)
 	{
-		var global = actor.EffectivePermissions(room.Context.Clock.GetUtcNow());
+		var global = actor.EffectivePrivileges(room.Context.Clock.GetUtcNow());
 		var roles = ComputeRoles(room, actor);
 
-		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
-		// because whoever manages an area keeps it in the effective permissions. Otherwise a user who may not join
-		// rooms has no role-derived rights.
-		var rights = global.Allows(UserPermissions.RoomManageAny)
+		// Managing every room acts with the creator's authority, joined or not. Otherwise a user without the player
+		// privilege has no role-derived rights.
+		var rights = global.Allows(UserPrivileges.Tournament)
 			? RoomPermissionsGroups.All
-			: global.Allows(UserPermissions.RoomJoin)
+			: global.Allows(UserPrivileges.Player)
 				? roles.GetPermissions()
 				: RoomPermissions.None;
 
@@ -111,7 +110,7 @@ public readonly struct ScopedRoom
 	/// <summary>Checks that the scoped connection holds the room rights an action needs.</summary>
 	/// <param name="needed">The room rights required.</param>
 	/// <returns>
-	///     <see langword="null" /> when allowed; a denial naming <see cref="UserPermissions.RoomJoin" /> when the caller may
+	///     <see langword="null" /> when allowed; a denial naming <see cref="UserPrivileges.Player" /> when the caller may
 	///     not
 	///     join rooms at all; otherwise <see cref="RoomOutcome.RoleDenied" />.
 	/// </returns>
@@ -130,12 +129,12 @@ public readonly struct ScopedRoom
 	public bool Involves => Room.Involves(Actor, _global);
 
 	/// <summary>Checks whether the connection may join rooms.</summary>
-	/// <returns><see langword="null" /> when allowed, otherwise a denial naming the missing permission.</returns>
+	/// <returns><see langword="null" /> when allowed, otherwise a denial naming the missing privilege.</returns>
 	internal Result<RoomOutcome>? RequireJoin()
 	{
-		return _global.Allows(UserPermissions.RoomJoin)
+		return _global.Allows(UserPrivileges.Player)
 			? null
-			: Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
+			: Result<RoomOutcome>.Denied(UserPrivileges.Player);
 	}
 
 	/// <summary>Closes the room, evicting its players, ending its round and forgetting it.</summary>

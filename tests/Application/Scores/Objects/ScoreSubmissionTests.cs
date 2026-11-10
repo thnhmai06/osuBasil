@@ -21,7 +21,7 @@ namespace Basil.Application.Scores.Tests.Objects;
 
 /// <summary>
 ///     Submitting a score on a game client, as the <c>SubmitAsync</c> contract states it: the client's own
-///     permission, one rejection reason per failed check, no duplicates, the replay rule, the statistics and the
+///     privilege, one rejection reason per failed check, no duplicates, the replay rule, the statistics and the
 ///     association with the latest round of the player's room.
 /// </summary>
 public sealed class ScoreSubmissionTests
@@ -105,19 +105,19 @@ public sealed class ScoreSubmissionTests
 		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, without.Rejection);
 	}
 
-	// ----- permission and ownership -----
+	// ----- privilege and ownership -----
 
 	[Fact]
 	public async Task SubmitScoreAsync_WithoutTheScoreSubmitPermission_IsDeniedWithExactlyThatPermission()
 	{
 		using var f =
-			await ScoreSubmissionFixture.CreateAsync(permissions: UserPermissionsGroups.Default &
-			                                                      ~UserPermissions.ScoreSubmit);
+			await ScoreSubmissionFixture.CreateAsync(privileges: UserPrivilegesExtensions.Default &
+			                                                      ~UserPrivileges.Player);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ScoreSubmit, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 		Assert.Null(rejection);
 		AssertNothingRecorded(f);
 	}

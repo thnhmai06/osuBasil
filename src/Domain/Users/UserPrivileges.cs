@@ -1,88 +1,72 @@
-﻿namespace Basil.Domain.Users;
+namespace Basil.Domain.Users;
 
-/// <summary>The roles osu! knows, as the privilege bitmask reported to an osu! client.</summary>
+/// <summary>The privileges an account holds: the roles osu! knows, which are also the rights the server checks.</summary>
 /// <remarks>
-///     A bitwise combination of the roles a user is reported in. Privileges are derived from the user's effective
-///     <see cref="UserPermissions" />, are never stored or configured, and grant nothing: a client that claims a role it
-///     holds no permission for is refused.
+///     A bitwise combination. The values are the privilege bits an osu! client reports and receives, so they never
+///     change. Privileges are stored on the account and granted by an owner; holding one is what allows its actions.
 /// </remarks>
 [Flags]
 public enum UserPrivileges : byte
 {
-	/// <summary>No role.</summary>
+	/// <summary>No privilege.</summary>
 	None = 0,
 
-	/// <summary>A regular player.</summary>
+	/// <summary>
+	///     A regular player: plays, chats, joins and creates rooms, spectates, submits scores and uploads beatmapsets
+	///     and screenshots.
+	/// </summary>
 	Player = 1 << 0,
 
-	/// <summary>A moderator.</summary>
+	/// <summary>
+	///     A moderator: silences accounts, adds notes, reads sessions, messages anyone, sends announcements, manages
+	///     chat channels and screenshots.
+	/// </summary>
 	Moderator = 1 << 1,
 
-	/// <summary>A supporter; osu!tourney also requires this.</summary>
+	/// <summary>A supporter: downloads beatmapsets in game; osu!tourney also requires this.</summary>
 	Supporter = 1 << 2,
 
-	/// <summary>The server owner.</summary>
+	/// <summary>The server owner: manages accounts, their privileges and the server content.</summary>
 	Owner = 1 << 3,
 
-	/// <summary>A developer.</summary>
+	/// <summary>A developer: manages the server settings and diagnostics.</summary>
 	Developer = 1 << 4,
 
-	/// <summary>A tournament staff member.</summary>
+	/// <summary>
+	///     A tournament staff member: manages any room, watches rooms, posts in any room and manages beatmapsets.
+	/// </summary>
 	Tournament = 1 << 5
 }
 
-/// <summary>The permissions that belong directly to each role.</summary>
-public static class PrivilegesExtensions
+/// <summary>Provides the rules for combining <see cref="UserPrivileges" />.</summary>
+public static class UserPrivilegesExtensions
 {
-	/// <summary>The permissions that belong to the player role.</summary>
-	private const UserPermissions PlayerPermissions =
-		UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.ChatPost |
-		UserPermissions.ChatPostPrivate | UserPermissions.SpectatingWatch |
-		UserPermissions.ScoreSubmit | UserPermissions.BeatmapsetUpload |
-		UserPermissions.ScreenshotUpload;
+	/// <summary>Every privilege the server defines.</summary>
+	public const UserPrivileges All = UserPrivileges.Player | UserPrivileges.Moderator | UserPrivileges.Supporter |
+	                                  UserPrivileges.Owner | UserPrivileges.Developer | UserPrivileges.Tournament;
 
-	/// <summary>The permissions that belong to the tournament role, without the player's.</summary>
-	private const UserPermissions TournamentPermissions =
-		(UserPermissions.RoomObserve | UserPermissions.RoomManageViewPrivate |
-		 UserPermissions.RoomManageAny | UserPermissions.RoomManageCreateUnlimited |
-		 UserPermissions.ChatManagePostAnyRoom | UserPermissions.BeatmapsetManage |
-		 UserPermissions.BeatmapsetManageViewHidden) & ~PlayerPermissions;
+	/// <summary>The privileges a new account holds.</summary>
+	public const UserPrivileges Default = UserPrivileges.Player | UserPrivileges.Supporter;
 
-	/// <param name="role">The roles; a combination is the union of its roles' permissions.</param>
-	extension(UserPrivileges role)
+	/// <param name="held">The privileges held.</param>
+	extension(UserPrivileges held)
 	{
-		/// <summary>Gets the permissions a role holds directly.</summary>
-		/// <returns>The permissions that belong to every role set in <paramref name="role" />, at depth one.</returns>
-		public UserPermissions Permissions
-		{
-			get
-			{
-				var permissions = UserPermissions.None;
-				if ((role & UserPrivileges.Player) != 0) permissions |= PlayerPermissions;
-				if ((role & UserPrivileges.Supporter) != 0) permissions |= UserPermissions.BeatmapsetDirect;
-				if ((role & UserPrivileges.Tournament) != 0) permissions |= TournamentPermissions;
-				if ((role & UserPrivileges.Moderator) != 0)
-					permissions |= UserPermissions.UserManageSilence | UserPermissions.UserManageRestrict |
-					               UserPermissions.UserManageNote |
-					               UserPermissions.UserManageViewSessions |
-					               UserPermissions.ChatManageMessageAnyone | UserPermissions.ChatManageAnnounce |
-					               UserPermissions.ScreenshotManage;
-				if ((role & UserPrivileges.Developer) != 0)
-					permissions |= UserPermissions.ServerManageSettings | UserPermissions.ServerManageDiagnostics;
-				if ((role & UserPrivileges.Owner) != 0)
-					permissions |= UserPermissions.UserManage | UserPermissions.UserManageViewDeleted |
-					               UserPermissions.UserManagePermissions |
-					               UserPermissions.ServerManageContent;
-				return permissions;
-			}
-		}
-
-		/// <summary>Determines whether every required role is held.</summary>
-		/// <param name="required">The roles that must all be held; none is always satisfied.</param>
-		/// <returns><see langword="true" /> if every role in <paramref name="required" /> is held.</returns>
+		/// <summary>Determines whether every privilege of a requirement is held.</summary>
+		/// <param name="required">The privileges that must all be held; none is always satisfied.</param>
+		/// <returns><see langword="true" /> if every privilege in <paramref name="required" /> is held.</returns>
 		public bool Allows(UserPrivileges required)
 		{
-			return (role & required) == required;
+			return (held & required) == required;
+		}
+
+		/// <summary>Adds the privileges that another privilege needs to work.</summary>
+		/// <returns>
+		///     The privileges with <see cref="UserPrivileges.Supporter" /> added when
+		///     <see cref="UserPrivileges.Tournament" /> is held, because osu!tourney requires it.
+		/// </returns>
+		public UserPrivileges Completed()
+		{
+			return held.Allows(UserPrivileges.Tournament) ? held | UserPrivileges.Supporter : held;
 		}
 	}
 }

@@ -53,7 +53,7 @@ The log is for lifecycle events, not traffic:
 * start, stop and shutdown phases, with timings and failures;
 * login and logout of each connection type;
 * rooms opened and closed, rounds started and ended;
-* moderation and restrictions, console commands;
+* moderation and silences, console commands;
 * errors and warnings.
 
 Individual packets, IRC lines and API requests are metrics, visible in the dashboard and `/v1/diagnostics`, not in the

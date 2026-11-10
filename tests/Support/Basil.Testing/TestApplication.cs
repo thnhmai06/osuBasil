@@ -76,7 +76,6 @@ public sealed class TestApplication : IDisposable
 
 	private readonly InMemoryCredentialRepository _credentials;
 	private readonly InMemoryModerationLogRepository _moderationLog;
-	private readonly InMemoryRestrictionRepository _restrictions;
 	private readonly InMemoryConnectionRepository _connections;
 	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemorySettingsRepository _settings;
@@ -97,7 +96,6 @@ public sealed class TestApplication : IDisposable
 		_connections = new InMemoryConnectionRepository();
 		var relationships = new InMemoryRelationshipRepository();
 		_moderationLog = new InMemoryModerationLogRepository();
-		_restrictions = new InMemoryRestrictionRepository(_moderationLog);
 		_settings = new InMemorySettingsRepository();
 
 		var services = new ServiceCollection();
@@ -109,7 +107,6 @@ public sealed class TestApplication : IDisposable
 			new DataPaths(Options.Create(new StorageOptions { Location = UploadsRoot })), Clock));
 		services.AddSingleton<IUserRepository>(_users);
 		services.AddSingleton<ICredentialRepository>(_credentials);
-		services.AddSingleton<IRestrictionRepository>(_restrictions);
 		services.AddSingleton<ISessionRepository>(_sessions);
 		services.AddSingleton<IConnectionRepository>(_connections);
 		services.AddSingleton<IRelationshipRepository>(relationships);
@@ -284,12 +281,12 @@ public sealed class TestApplication : IDisposable
 	/// <summary>Creates and stores an account and its password.</summary>
 	/// <param name="name">The account name.</param>
 	/// <param name="password">The deterministic password used by login attempts.</param>
-	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
+	/// <param name="privileges">The privileges to grant, or the normal new-account privileges.</param>
 	/// <returns>The stored account.</returns>
 	public async Task<UserRecord> CreateUserAsync(string name, string password,
-		UserPermissions? permissions = null)
+		UserPrivileges? privileges = null)
 	{
-		var data = new UserData { Name = name, Permissions = permissions ?? UserPermissionsGroups.Default };
+		var data = new UserData { Name = name, Privileges = privileges ?? UserPrivilegesExtensions.Default };
 		var user = await _users.CreateAsync(data);
 		await _credentials.CreateOrUpdateAsync(new Credentials(user, PasswordHash(password)));
 		return user;
@@ -299,16 +296,16 @@ public sealed class TestApplication : IDisposable
 	/// <param name="id">The id of the account.</param>
 	/// <param name="name">The account name.</param>
 	/// <param name="password">The account password.</param>
-	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
+	/// <param name="privileges">The privileges to grant, or the normal new-account privileges.</param>
 	/// <param name="deletedAt">When the account was deleted, or <see langword="null" /> for a live account.</param>
 	/// <returns>The stored account.</returns>
 	public async Task<UserRecord> SeedAccountAsync(int id, string name, string password,
-		UserPermissions? permissions = null, DateTimeOffset? deletedAt = null)
+		UserPrivileges? privileges = null, DateTimeOffset? deletedAt = null)
 	{
 		var user = _users.Seed(new UserData
 		{
 			Name = name,
-			Permissions = permissions ?? UserPermissionsGroups.Default,
+			Privileges = privileges ?? UserPrivilegesExtensions.Default,
 			DeletedAt = deletedAt
 		}, id);
 		await _credentials.CreateOrUpdateAsync(new Credentials(user, PasswordHash(password)));
@@ -328,7 +325,7 @@ public sealed class TestApplication : IDisposable
 	/// <returns>The stored BasilBot account.</returns>
 	public async Task<UserRecord> SeedBotAsync()
 	{
-		var bot = _users.Seed(new UserData { Name = "BasilBot", Permissions = UserPermissions.None }, BasilBot.Id);
+		var bot = _users.Seed(new UserData { Name = "BasilBot", Privileges = UserPrivileges.None }, BasilBot.Id);
 		await _credentials.CreateOrUpdateAsync(new Credentials(bot, PasswordHash("basil-bot")));
 		return bot;
 	}
@@ -373,16 +370,13 @@ public sealed class TestApplication : IDisposable
 		return result.Connection ?? throw new InvalidOperationException($"Login failed: {result.Failure}.");
 	}
 
-	/// <summary>Adds a previously stored restriction to the fixture's repository.</summary>
-	/// <param name="user">The restricted account.</param>
-	/// <param name="permissions">The permissions to suspend.</param>
-	/// <param name="endsAt">When it ends, or <see langword="null" /> for an open-ended restriction.</param>
-	/// <param name="startsAt">When it starts, or the fixture's current time minus one second.</param>
-	/// <returns>The stored restriction.</returns>
-	public UserRestriction AddRestriction(UserRecord user, UserPermissions permissions, DateTimeOffset? endsAt = null,
-		DateTimeOffset? startsAt = null)
+	/// <summary>Silences a stored account until a moment.</summary>
+	/// <param name="user">The account.</param>
+	/// <param name="until">When the silence ends.</param>
+	public void Silence(UserRecord user, DateTimeOffset until)
 	{
-		return _restrictions.Seed(user, permissions, startsAt ?? Clock.GetUtcNow().AddSeconds(-1), endsAt);
+		user.Value.SilencedUntil = until;
+		_users.UpdateAsync(user).GetAwaiter().GetResult();
 	}
 
 	/// <summary>Stores the server settings the application reads.</summary>
@@ -418,7 +412,7 @@ public sealed class TestApplication : IDisposable
 	{
 		var inMemoryPortTypes = new HashSet<Type>
 		{
-			typeof(IUserRepository), typeof(ICredentialRepository), typeof(IRestrictionRepository),
+			typeof(IUserRepository), typeof(ICredentialRepository),
 			typeof(ISessionRepository), typeof(IConnectionRepository), typeof(IRelationshipRepository), typeof(IModerationLogRepository),
 			typeof(ISettingsRepository)
 		};

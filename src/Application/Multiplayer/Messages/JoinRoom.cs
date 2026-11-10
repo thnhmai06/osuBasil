@@ -10,5 +10,5 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Actor">The connection that acts.</param>
 /// <param name="Room">The room it acts on.</param>
 /// <param name="Password">The password the actor offers.</param>
-/// <remarks>The answer is what the operation answers for the actor's permissions and the room's state.</remarks>
+/// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
 public sealed record JoinRoom(Connection Actor, Room Room, string Password) : IRequest<Result<RoomOutcome>>;

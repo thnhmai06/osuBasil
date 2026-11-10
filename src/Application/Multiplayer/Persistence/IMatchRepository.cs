@@ -39,7 +39,7 @@ public interface IMatchRepository
 	/// <returns>
 	///     <see langword="true" /> when the match is public, or when the user took part in it or manages it (its
 	///     creator, or a referee that is still one); this is the rule <see cref="MatchQuery.VisibleTo" /> applies to a
-	///     listing. A permission that lets a user view every private match is not considered here.
+	///     listing. A privilege that lets a user view every private match is not considered here.
 	/// </returns>
 	Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer, CancellationToken cancellationToken = default);
 }

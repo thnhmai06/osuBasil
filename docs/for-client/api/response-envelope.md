@@ -102,11 +102,11 @@ For example:
 A failed answer also names the failure in `errors`, which is the stable, machine-readable part:
 
 ```json
-{ "success": false, "code": 403, "message": "Missing permissions.", "data": null, "meta": null,
-  "errors": { "code": "permissionDenied", "missing": 4398046511104 }, "timestamp": "2026-08-03T12:00:00Z" }
+{ "success": false, "code": 403, "message": "Missing privileges.", "data": null, "meta": null,
+  "errors": { "code": "privilegeDenied", "missing": 4398046511104 }, "timestamp": "2026-08-03T12:00:00Z" }
 ```
 
-`errors.code` is a camelCase code such as `notFound`, `locked`, `systemAccount`, `wrongPassword`, `rateLimited` or `invalid`. `errors.missing` is the bitmask of the permissions the caller lacks and is present only for a refusal for lack of permissions. The table that maps outcomes to codes and HTTP statuses is in [ADR-009](../../adr/ADR-009-rest-v1.md).
+`errors.code` is a camelCase code such as `notFound`, `locked`, `systemAccount`, `wrongPassword`, `rateLimited` or `invalid`. `errors.missing` is the bitmask of the privileges the caller lacks and is present only for a refusal for lack of privileges. The table that maps outcomes to codes and HTTP statuses is in [ADR-009](../../adr/ADR-009-rest-v1.md).
 
 A parameter or JSON body that cannot be read (a query value that is not a number, a number out of range, malformed JSON) is answered with 400 and `invalid`; a request body above the size limit is 413 and `tooLarge`. A number in the path that does not fit an integer is 422 and `invalid`.
 
@@ -175,7 +175,7 @@ Beatmap references can similarly contain information about both the difficulty a
 
 ## Enum values
 
-Enum fields are serialized as camelCase strings, for example `"status": "loved"`. Sets of permissions and privileges are bitmasks and are serialized as numbers, for example `"permissions": 19`.
+Enum fields are serialized as camelCase strings, for example `"status": "loved"`. Sets of privileges and privileges are bitmasks and are serialized as numbers, for example `"privileges": 19`.
 
 `Country` is a lowercase two-letter country code, for example `"country": "vn"`.
 

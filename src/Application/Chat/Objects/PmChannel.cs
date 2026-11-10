@@ -23,13 +23,13 @@ public sealed class PmChannel : Channel
 	public override string Topic => string.Empty;
 
 	/// <inheritdoc />
-	internal override bool CanRead(Connection connection, UserPermissions permissions)
+	internal override bool CanRead(Connection connection, UserPrivileges privileges)
 	{
 		return ReferenceEquals(connection.User, Owner) && connection.Type is not SessionType.StableTourney;
 	}
 
 	/// <inheritdoc />
-	internal override bool CanWrite(Connection connection, UserPermissions permissions)
+	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
 	{
 		return connection.IsOpen && Owner.IsOnline;
 	}

@@ -11,7 +11,7 @@ namespace Basil.Application.Users.Persistence;
 ///     <see langword="null" /> for any.
 /// </param>
 /// <param name="Countries">The countries a user may be from, or <see langword="null" /> for any.</param>
-/// <param name="Permissions">Permissions a user must all be granted, or <see langword="null" /> for any.</param>
+/// <param name="Privileges">Privileges a user must all be granted, or <see langword="null" /> for any.</param>
 /// <param name="Deleted">
 ///     Whether only deleted (<see langword="true" />) or only existing (<see langword="false" />) users are
 ///     included, or <see langword="null" /> for both; a user's search is narrowed with <see cref="LimitTo" />.
@@ -19,12 +19,12 @@ namespace Basil.Application.Users.Persistence;
 public sealed record UserQuery(
 	string? Text = null,
 	IReadOnlyList<Country>? Countries = null,
-	UserPermissions? Permissions = null,
+	UserPrivileges? Privileges = null,
 	bool? Deleted = null) : IParsable<UserQuery>
 {
 	/// <summary>Reads a query written in the user search syntax.</summary>
 	/// <param name="s">
-	///     The search text, for example <c>country=usvn permission=4 deleted=* bob</c>; a state takes <c>1</c>,
+	///     The search text, for example <c>country=usvn privilege=4 deleted=* bob</c>; a state takes <c>1</c>,
 	///     <c>0</c> or <c>*</c> for both.
 	/// </param>
 	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
@@ -35,7 +35,7 @@ public sealed record UserQuery(
 		ArgumentNullException.ThrowIfNull(s);
 
 		IReadOnlyList<Country>? countries = null;
-		UserPermissions? permissions = null;
+		UserPrivileges? privileges = null;
 		bool? deleted = null;
 
 		var keywords = SearchSyntax.Parse(s, (key, op, rawValue) =>
@@ -46,9 +46,9 @@ public sealed record UserQuery(
 				case "country" when TryParseCountries(rawValue, out var parsedCountries):
 					countries = parsedCountries;
 					return true;
-				case "permission" when ulong.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
+				case "privilege" when ulong.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
 					out var mask):
-					permissions = (UserPermissions)mask;
+					privileges = (UserPrivileges)mask;
 					return true;
 				case "deleted" when SearchSyntax.TryParseState(rawValue, out var state):
 					deleted = state;
@@ -58,7 +58,7 @@ public sealed record UserQuery(
 			}
 		});
 
-		return new UserQuery(keywords, countries, permissions, deleted);
+		return new UserQuery(keywords, countries, privileges, deleted);
 	}
 
 	/// <summary>Reads a query written in the user search syntax.</summary>
@@ -91,11 +91,11 @@ public sealed record UserQuery(
 		return true;
 	}
 
-	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
-	/// <param name="effective">The asker's effective permissions.</param>
+	/// <summary>Narrows the query to what a user with the given privileges may see.</summary>
+	/// <param name="effective">The asker's effective privileges.</param>
 	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
-	public UserQuery LimitTo(UserPermissions effective)
+	public UserQuery LimitTo(UserPrivileges effective)
 	{
-		return effective.Allows(UserPermissions.UserManageViewDeleted) ? this : this with { Deleted = false };
+		return effective.Allows(UserPrivileges.Owner) ? this : this with { Deleted = false };
 	}
 }

@@ -21,7 +21,7 @@ public sealed class User
 		Credentials = new UserCredentials(this);
 		Sessions = new UserSessions(this);
 		Grants = new UserGrants(this);
-		Restrictions = new UserRestrictions(this);
+		Silence = new UserSilence(this);
 		Relationships = new UserRelationships(this);
 	}
 
@@ -38,8 +38,8 @@ public sealed class User
 	public bool IsOnline =>
 		Context.Registry.Online.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
 
-	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
-	public UserRestrictions Restrictions { get; }
+	/// <summary>Gets the silence of this account.</summary>
+	public UserSilence Silence { get; }
 
 	/// <summary>Gets the profile data and settings of this account.</summary>
 	public UserProfile Profile { get; }
@@ -50,7 +50,7 @@ public sealed class User
 	/// <summary>Gets the live connections of this account.</summary>
 	public UserSessions Sessions { get; }
 
-	/// <summary>Gets the permissions granted to this account.</summary>
+	/// <summary>Gets the privileges granted to this account.</summary>
 	public UserGrants Grants { get; }
 
 	/// <summary>Gets the friends and blocks this account has set.</summary>
@@ -86,33 +86,12 @@ public sealed class User
 		return new ScopedUser(this, actor);
 	}
 
-	/// <summary>Gets the user's permissions that are in effect at a moment.</summary>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	/// <returns>The granted permissions not suspended by an active restriction.</returns>
-	public UserPermissions EffectivePermissions(DateTimeOffset now)
+	/// <summary>Gets the user's privileges that are in effect at a moment.</summary>
+	/// <param name="now">The moment to evaluate at.</param>
+	/// <returns>The granted privileges.</returns>
+	public UserPrivileges EffectivePrivileges(DateTimeOffset now)
 	{
 		return Grants.Effective(now);
-	}
-
-	/// <summary>Adds a restriction that has started to the running ones.</summary>
-	/// <param name="restriction">The restriction.</param>
-	internal void AddRestriction(UserRestriction restriction)
-	{
-		Restrictions.Add(restriction);
-	}
-
-	/// <summary>Removes a restriction from the running ones.</summary>
-	/// <param name="restriction">The restriction.</param>
-	internal void RemoveRestriction(UserRestriction restriction)
-	{
-		Restrictions.Remove(restriction);
-	}
-
-	/// <summary>Replaces the running restrictions with the ones the user has now, as at login.</summary>
-	/// <param name="restrictions">The restrictions that have not ended.</param>
-	internal void ReplaceRestrictions(IEnumerable<UserRestriction> restrictions)
-	{
-		Restrictions.Replace(restrictions);
 	}
 
 	/// <summary>Changes the account data, keeping the online user's copy of the record in step.</summary>
@@ -139,7 +118,8 @@ public sealed class User
 			{
 				Name = current.Name,
 				Country = current.Country,
-				Permissions = current.Permissions,
+				Privileges = current.Privileges,
+				SilencedUntil = current.SilencedUntil,
 				DeletedAt = current.DeletedAt
 			};
 		}
@@ -159,7 +139,7 @@ public sealed class User
 		await StoreChangeAsync(data =>
 		{
 			data.DeletedAt = now;
-			data.Permissions = UserPermissions.None;
+			data.Privileges = UserPrivileges.None;
 		}, cancellationToken);
 		Grants.MarkDeleted(now);
 		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);

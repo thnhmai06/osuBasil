@@ -67,31 +67,37 @@ internal sealed class UserNotificationDelivery(Outbox outbox) : INotificationHan
 	}
 }
 
-/// <summary>Tells a user's osu! client that the account was restricted.</summary>
-internal sealed class UserRestrictedDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
-	: INotificationHandler<UserRestricted>
+/// <summary>Tells a user's osu! client how long the account is silenced.</summary>
+internal sealed class UserSilencedDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
+	: INotificationHandler<UserSilenced>
 {
-	public ValueTask Handle(UserRestricted notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSilenced notification, CancellationToken cancellationToken)
 	{
-		var user = registry.Of(notification.User);
-		var privileges = StableView.Privileges(user.EffectivePermissions(clock.GetUtcNow()));
-		outbox.Send(user.Connections, writer =>
-		{
-			writer.AccountRestricted();
-			writer.Privileges(privileges);
-		});
+		var seconds = Math.Max(0, (int)(notification.Until - clock.GetUtcNow()).TotalSeconds);
+		outbox.Send(registry.Of(notification.User).Connections, writer => writer.SilenceEnd(seconds));
+		return ValueTask.CompletedTask;
+	}
+}
+
+/// <summary>Tells a user's osu! client that the silence is over.</summary>
+internal sealed class UserUnsilencedDelivery(UserRegistry registry, Outbox outbox)
+	: INotificationHandler<UserUnsilenced>
+{
+	public ValueTask Handle(UserUnsilenced notification, CancellationToken cancellationToken)
+	{
+		outbox.Send(registry.Of(notification.User).Connections, writer => writer.SilenceEnd(0));
 		return ValueTask.CompletedTask;
 	}
 }
 
 /// <summary>Sends a user's osu! clients their new role bits.</summary>
-internal sealed class UserPermissionsDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
-	: INotificationHandler<UserPermissionsChanged>
+internal sealed class UserPrivilegesDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
+	: INotificationHandler<UserPrivilegesChanged>
 {
-	public ValueTask Handle(UserPermissionsChanged notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserPrivilegesChanged notification, CancellationToken cancellationToken)
 	{
 		var user = registry.Of(notification.User);
-		var privileges = StableView.Privileges(user.EffectivePermissions(clock.GetUtcNow()));
+		var privileges = StableView.Privileges(user.EffectivePrivileges(clock.GetUtcNow()));
 		outbox.Send(user.Connections, writer => writer.Privileges(privileges));
 		return ValueTask.CompletedTask;
 	}

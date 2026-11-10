@@ -79,17 +79,18 @@ public sealed class MpAuthorityTests
 	}
 
 	[Fact]
-	public async Task Lock_ByTheCreatorWhoMayNotJoinRooms_IsNotElevatedByTheBotAndNamesTheMissingPermission()
+	public async Task Lock_ByTheCreatorWhoLostThePlayerPrivilege_IsNotElevatedByTheBotAndNamesTheMissingPrivilege()
 	{
 		using var bot = new BotHarness();
-		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator", UserPermissions.RoomCreate);
+		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
 		var room = await bot.MakeAsync(creator, "Finals");
 		Assert.Equal(creator.Record, room.Authority.Creator);
+		creator.Record.Value.Privileges = UserPrivileges.None;
 
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp lock");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.MissingPermissions, new { permissions = "RoomJoin" })], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.MissingPrivileges, new { privileges = nameof(UserPrivileges.Player) })], said.Here);
 		Assert.False(room.Slots.Locked);
 	}
 
@@ -127,7 +128,7 @@ public sealed class MpAuthorityTests
 				break;
 			case RoomRole.Manager:
 				actor = await RoomFixture.PlayerAsync(bot.App, "Manager",
-					UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
+					UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 				break;
 			default:
 				throw new ArgumentOutOfRangeException(nameof(role), role, "This role is not part of the scenario.");

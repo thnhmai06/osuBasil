@@ -12,13 +12,13 @@ public readonly struct ScopedChannel
 	/// <summary>Gets the actor this scope is for.</summary>
 	public Connection Actor { get; }
 
-	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
-	public UserPermissions Rights { get; }
+	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
+	public UserPrivileges Rights { get; }
 
 	/// <summary>Checks whether the actor holds the right an action needs.</summary>
 	/// <param name="required">The right the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPermissions? Require(UserPermissions required)
+	internal UserPrivileges? Require(UserPrivileges required)
 	{
 		return ScopedRights.Require(Rights, required);
 	}
@@ -29,7 +29,7 @@ public readonly struct ScopedChannel
 	internal ScopedChannel(Channel channel, Connection actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePermissions(channel.Context.Clock.GetUtcNow());
+		Rights = actor.EffectivePrivileges(channel.Context.Clock.GetUtcNow());
 		Channel = channel;
 		General = channel is GeneralChannel general ? new ScopedGeneralChannel(general, actor) : null;
 	}
@@ -64,28 +64,26 @@ public readonly struct ScopedChannel
 	/// <param name="notice">Whether the message is a notice, which never triggers an automatic reply.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
-	///     Ok, or Closed, Empty, InvalidText, NotMember, AccessDenied, Blocked or TargetSilenced; a denial that names the
-	///     missing
-	///     permissions when the sender lacks the permission to post.
+	///     Ok, or Closed, Empty, InvalidText, NotMember, Silenced, AccessDenied, Blocked or TargetSilenced; a denial that
+	///     names the missing privilege when the sender lacks the privilege to post.
 	/// </returns>
 	/// <remarks>
 	///     Messages longer than <see cref="Channel.MaxMessageLength" /> characters are cut. A private message is a
 	///     post into the recipient's channel; their away reply is carried by the same <see cref="ChannelMessagePosted" />.
-	///     Posting requires <see cref="UserPermissions.ChatPost" />, or <see cref="UserPermissions.ChatPostPrivate" /> for a
-	///     private message. Blocks and friends-only settings are bypassed with
-	///     <see cref="UserPermissions.ChatManageMessageAnyone" />.
+	///     Posting requires <see cref="UserPrivileges.Player" /> and no silence. Blocks and friends-only settings are bypassed with
+	///     <see cref="UserPrivileges.Moderator" />.
 	/// </remarks>
 	public async Task<Result<ChannelOutcome>> PostAsync(string text, bool notice = false,
 		CancellationToken cancellationToken = default)
 	{
 		if (Channel.IsClosed) return ChannelOutcome.Closed;
 
-		if (Require(Channel is PmChannel ? UserPermissions.ChatPostPrivate : UserPermissions.ChatPost) is { } missing)
+		if (Require(UserPrivileges.Player) is { } missing)
 			return Result<ChannelOutcome>.Denied(missing);
 
-		var recipientPermissions = Channel is PmChannel pm
-			? pm.Owner.EffectivePermissions(Channel.Context.Clock.GetUtcNow())
-			: (UserPermissions?)null;
-		return await Channel.PostAsync(Actor, Rights, recipientPermissions, text, notice, cancellationToken);
+		var recipientSilenced = Channel is PmChannel pm
+			? pm.Owner.Record.Value.IsSilenced(Channel.Context.Clock.GetUtcNow())
+			: (bool?)null;
+		return await Channel.PostAsync(Actor, Rights, recipientSilenced, text, notice, cancellationToken);
 	}
 }

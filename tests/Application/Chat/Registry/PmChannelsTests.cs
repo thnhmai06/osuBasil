@@ -41,7 +41,7 @@ public sealed class PmChannelsTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Observer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var tourney = await app.LoginAsync(record, SessionType.StableTourney);
 
 		var channel = app.PmChannels.Of(app.Users.Of(record));

@@ -28,10 +28,10 @@ public sealed class ApiSpectatorTests
 	}
 
 	private static async Task<(StableConnection Host, ApiConnection Watcher)> SetUpAsync(TestApplication app,
-		UserPermissions? watcherPermissions = null)
+		UserPrivileges? watcherPrivileges = null)
 	{
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
-		var user = await app.CreateUserAsync("ApiWatcher", "password", watcherPermissions);
+		var user = await app.CreateUserAsync("ApiWatcher", "password", watcherPrivileges);
 		var watcher = (ApiConnection)await app.LoginAsync(user);
 		return (host, watcher);
 	}
@@ -53,12 +53,12 @@ public sealed class ApiSpectatorTests
 	public async Task SpectateAsync_WithoutTheWatchPermission_NamesIt()
 	{
 		using var app = new TestApplication();
-		var (host, watcher) = await SetUpAsync(app, UserPermissionsGroups.Default & ~UserPermissions.SpectatingWatch);
+		var (host, watcher) = await SetUpAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 
 		var result = await host.ScopeTo(watcher).SpectateAsync();
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.SpectatingWatch, result.Missing);
+		Assert.Equal(UserPrivileges.Player, result.Missing);
 		Assert.False(host.HasApiSpectators);
 	}
 

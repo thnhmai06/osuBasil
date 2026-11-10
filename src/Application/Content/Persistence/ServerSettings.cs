@@ -96,13 +96,13 @@ public sealed record ServerSettings
 	/// <summary>The settings of new accounts.</summary>
 	public sealed record AccountSettings
 	{
-		/// <summary>Gets the permissions a new account holds when none are asked for.</summary>
-		/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no permission defines.</exception>
-		public UserPermissions DefaultPermissions
+		/// <summary>Gets the privileges a new account holds when none are asked for.</summary>
+		/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no privilege defines.</exception>
+		public UserPrivileges DefaultPrivileges
 		{
 			get;
 			init => field = value.ThrowIfUndefined();
-		} = UserPermissionsGroups.Default;
+		} = UserPrivilegesExtensions.Default;
 	}
 
 	/// <summary>The lifetimes and limits of sessions and tokens.</summary>

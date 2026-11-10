@@ -61,7 +61,7 @@ public sealed class ConnectionChannelHandlerTests
 	/// <returns>The open channel.</returns>
 	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app, string name, bool autoJoin = false)
 	{
-		var admin = await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password", UserPermissionsGroups.All);
+		var admin = await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password", UserPrivilegesExtensions.All);
 		var actor = await app.LoginAsync(admin);
 		var record = new GeneralChannelRecord
 		{

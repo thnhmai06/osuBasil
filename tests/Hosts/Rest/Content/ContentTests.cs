@@ -9,8 +9,8 @@ namespace Basil.Host.Rest.Tests.Content;
 [Collection("REST host")]
 public sealed class ContentTests(RestHostFixture fixture)
 {
-	private static readonly UserPermissions Settings =
-		UserPermissionsGroups.Default | UserPermissions.ServerManageSettings;
+	private static readonly UserPrivileges Settings =
+		UserPrivilegesExtensions.Default | UserPrivileges.Developer;
 
 	[Fact]
 	public async Task Settings_WithoutPermission_Answer403WithTheMissingMask_AndWithoutAToken401()
@@ -24,7 +24,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 			var (noToken, _) = await anon.CallAsync(HttpMethod.Get, "/v1/settings");
 
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPermissions.ServerManageSettings, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)envelope!["errors"]!["missing"]!);
 			Assert.Equal(403, deniedPatch);
 			Assert.Equal(401, noToken);
 		}
@@ -121,7 +121,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	{
 		var (plain, _) = await fixture.SignInAsync("AnnPlain");
 		var (staff, _) = await fixture.SignInAsync("AnnStaff",
-			UserPermissionsGroups.Default | UserPermissions.ChatManageAnnounce);
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 		using (plain)
 		using (staff)
 		{
@@ -150,7 +150,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 		var id = Path.GetFileName(reference.Value);
 		var (plain, _) = await fixture.SignInAsync("ShotPlain");
 		var (moderator, _) =
-			await fixture.SignInAsync("ShotMod", UserPermissionsGroups.Default | UserPermissions.ScreenshotManage);
+			await fixture.SignInAsync("ShotMod", UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
 		using (plain)
 		using (moderator)
 		{

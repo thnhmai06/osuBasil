@@ -33,7 +33,7 @@ public sealed class OperatorConnectionTests
 		var actor = await app.Users.OperateAsync(Token);
 
 		Assert.Equal(SessionType.Api, actor.Type);
-		Assert.Equal(UserPermissionsGroups.All, actor.EffectivePermissions(app.Clock.GetUtcNow()));
+		Assert.Equal(UserPrivilegesExtensions.All, actor.EffectivePrivileges(app.Clock.GetUtcNow()));
 	}
 
 	[Fact]
@@ -65,24 +65,24 @@ public sealed class OperatorConnectionTests
 		var actor = await app.Users.OperateAsync(Token);
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
-			new UserData { Name = "FirstAdmin" }, new Md5(new byte[16]), UserPermissionsGroups.All,
+			new UserData { Name = "FirstAdmin" }, new Md5(new byte[16]), UserPrivilegesExtensions.All,
 			Token);
 
 		Assert.True(result.IsOk);
-		Assert.Equal(UserPermissionsGroups.All, user!.Value.Permissions);
+		Assert.Equal(UserPrivilegesExtensions.All, user!.Value.Privileges);
 	}
 
 	[Fact]
 	public async Task Operator_OutranksAnAdministrator()
 	{
 		using var app = new TestApplication();
-		var admin = await app.CreateUserAsync("OpTargetAdmin", "password", UserPermissionsGroups.All);
+		var admin = await app.CreateUserAsync("OpTargetAdmin", "password", UserPrivilegesExtensions.All);
 		var actor = await app.Users.OperateAsync(Token);
 
-		var result = await app.Users.Of(admin).ScopeTo(actor).Permissions.SetAsync(UserPermissions.None, Token);
+		var result = await app.Users.Of(admin).ScopeTo(actor).Privileges.SetAsync(UserPrivileges.None, Token);
 
 		Assert.True(result.IsOk);
-		Assert.Equal(UserPermissions.None, admin.Value.Permissions);
+		Assert.Equal(UserPrivileges.None, admin.Value.Privileges);
 	}
 
 	[Fact]
@@ -92,7 +92,7 @@ public sealed class OperatorConnectionTests
 		var actor = await app.Users.OperateAsync(Token);
 		var bot = actor.Record;
 
-		var result = await app.Users.Of(bot).ScopeTo(actor).Permissions.SetAsync(UserPermissionsGroups.All, Token);
+		var result = await app.Users.Of(bot).ScopeTo(actor).Privileges.SetAsync(UserPrivilegesExtensions.All, Token);
 
 		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
 	}
@@ -107,8 +107,8 @@ public sealed class OperatorConnectionTests
 
 		foreach (var connection in bot!.Connections)
 		{
-			var result = await app.Users.Of(target).ScopeTo(connection).Permissions
-				.SetAsync(UserPermissionsGroups.All, Token);
+			var result = await app.Users.Of(target).ScopeTo(connection).Privileges
+				.SetAsync(UserPrivilegesExtensions.All, Token);
 
 			Assert.False(result.IsOk);
 		}
@@ -125,7 +125,7 @@ public sealed class OperatorRelationshipTests
 	{
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("AwayTarget", "password");
-		var admin = await app.CreateUserAsync("AwayAdmin", "password", UserPermissionsGroups.All);
+		var admin = await app.CreateUserAsync("AwayAdmin", "password", UserPrivilegesExtensions.All);
 		var actor = await app.Users.OperateAsync(Token);
 		var adminConnection = await app.LoginAsync(admin);
 

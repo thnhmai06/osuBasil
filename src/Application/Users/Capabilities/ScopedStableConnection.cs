@@ -11,13 +11,13 @@ public readonly struct ScopedStableConnection
 	/// <summary>Gets the actor this scope is for.</summary>
 	public Connection Actor { get; }
 
-	/// <summary>Gets the permissions the actor held when the scope was created.</summary>
-	public UserPermissions Rights { get; }
+	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
+	public UserPrivileges Rights { get; }
 
 	/// <summary>Checks whether the actor holds the right an action needs.</summary>
 	/// <param name="required">The right the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPermissions? Require(UserPermissions required)
+	internal UserPrivileges? Require(UserPrivileges required)
 	{
 		return ScopedRights.Require(Rights, required);
 	}
@@ -28,7 +28,7 @@ public readonly struct ScopedStableConnection
 	internal ScopedStableConnection(StableConnection host, Connection actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePermissions(host.Context.Clock.GetUtcNow());
+		Rights = actor.EffectivePrivileges(host.Context.Clock.GetUtcNow());
 		Host = host;
 	}
 
@@ -36,16 +36,16 @@ public readonly struct ScopedStableConnection
 	public StableConnection Host { get; }
 
 	/// <summary>Starts spectating this client.</summary>
-	/// <returns>The outcome, or the permissions the caller lacks.</returns>
+	/// <returns>The outcome, or the privileges the caller lacks.</returns>
 	/// <remarks>
-	///     Needs <see cref="UserPermissions.SpectatingWatch" />, which <see cref="UserPermissions.RoomObserve" /> includes. A
+	///     Needs <see cref="UserPrivileges.Player" />, which <see cref="UserPrivileges.Tournament" /> includes. A
 	///     host's block of the spectator prevents spectating unless the spectator has
-	///     <see cref="UserPermissions.RoomObserve" /> in effect. The spectator joins the host's spectator channel, and the
+	///     <see cref="UserPrivileges.Tournament" /> in effect. The spectator joins the host's spectator channel, and the
 	///     first spectator brings the host into it too. A connection spectating another client stops spectating it first.
 	///     Spectating this host again announces the spectator, as an osu! client does once it has the beatmap.
 	/// </remarks>
 	/// <exception cref="ArgumentException">
-	///     <see cref="Scoped{TPermissions,TActor}.Actor" /> is an IRC connection, which cannot
+	///     <see cref="Actor" /> is an IRC connection, which cannot
 	///     spectate.
 	/// </exception>
 	public async Task<Result<ConnectionOutcome>> SpectateAsync()
@@ -53,9 +53,9 @@ public readonly struct ScopedStableConnection
 		if (Actor is IrcConnection)
 			throw new ArgumentException("IRC clients cannot spectate.");
 
-		if (Require(UserPermissions.SpectatingWatch) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
+		if (Require(UserPrivileges.Player) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
 
-		if (await Host.HasBlockedAsync(Actor) && Require(UserPermissions.RoomObserve) is not null)
+		if (await Host.HasBlockedAsync(Actor) && Require(UserPrivileges.Tournament) is not null)
 			return ConnectionOutcome.Blocked;
 
 		return Host.Spectate(Actor);

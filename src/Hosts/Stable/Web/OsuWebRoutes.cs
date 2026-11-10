@@ -355,7 +355,7 @@ internal static class OsuWebRoutes
 
 	private static bool MayView(WebAuthentication auth, StableConnection player, BeatmapsetRecord set)
 	{
-		return set.Visible || auth.Effective(player).Allows(UserPermissions.BeatmapsetManageViewHidden);
+		return set.Visible || auth.Effective(player).Allows(UserPrivileges.Tournament);
 	}
 
 	private static string DirectLine(BeatmapsetRecord set)

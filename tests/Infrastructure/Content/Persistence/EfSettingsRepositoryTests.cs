@@ -26,7 +26,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 		{
 			General = new ServerSettings.GeneralSettings { Motd = "Welcome to the server." },
 			Locks = Locks.Accounts | Locks.Rooms | Locks.Profiles,
-			Accounts = new ServerSettings.AccountSettings { DefaultPermissions = UserPermissions.ChatPost },
+			Accounts = new ServerSettings.AccountSettings { DefaultPrivileges = UserPrivileges.Player },
 			Sessions = new ServerSettings.SessionSettings
 			{
 				ApiToken = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.FromDays(3) }

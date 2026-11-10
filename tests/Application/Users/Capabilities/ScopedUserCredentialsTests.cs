@@ -129,7 +129,7 @@ public sealed class ScopedUserCredentialsTests
 	public async Task ChangePasswordAsync_ByStaff_NeedsNoCurrentPassword_SignsOutEverythingAndRecordsIt()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var user = await app.CreateUserAsync("Reset", "old");
 		var api = await app.LoginAsync(user, SessionType.Api, "old");
 		var osu = await app.LoginAsync(user, SessionType.Stable, "old");
@@ -158,7 +158,7 @@ public sealed class ScopedUserCredentialsTests
 		var result = await app.Users.Of(user).ScopeTo(other).Credentials.ChangePasswordAsync(Hash("new"), null,
 			cancellationToken: Token);
 
-		Assert.Equal(UserPermissions.UserManage, result.Missing);
+		Assert.Equal(UserPrivileges.Owner, result.Missing);
 		Assert.True(await app.VerifiesPasswordAsync(user, "old"));
 	}
 
@@ -166,8 +166,8 @@ public sealed class ScopedUserCredentialsTests
 	public async Task ChangePasswordAsync_ByStaffOfEqualRank_IsRefused()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPermissionsGroups.All));
-		var peer = await app.CreateUserAsync("Peer", "old", UserPermissionsGroups.All);
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
+		var peer = await app.CreateUserAsync("Peer", "old", UserPrivilegesExtensions.All);
 
 		var result = await app.Users.Of(peer).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null,
 			cancellationToken: Token);
@@ -197,7 +197,7 @@ public sealed class ScopedUserCredentialsTests
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Profiles });
 		var user = await app.CreateUserAsync("Manager", "old",
-			UserPermissionsGroups.Default | UserPermissions.UserManage);
+			UserPrivilegesExtensions.Default | UserPrivileges.Owner);
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
@@ -211,7 +211,7 @@ public sealed class ScopedUserCredentialsTests
 	public async Task ChangePasswordAsync_OfBasilBot_IsRefusedForEveryone()
 	{
 		using var app = new TestApplication();
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 		var bot = await app.SeedBotAsync();
 
 		var result = await app.Users.Of(bot).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null,
