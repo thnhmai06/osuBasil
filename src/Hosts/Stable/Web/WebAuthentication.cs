@@ -2,7 +2,6 @@ using Basil.Application.Content.Messages;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
@@ -20,7 +19,6 @@ namespace Basil.Host.Stable.Web;
 internal sealed class WebAuthentication(
 	UserRegistry registry,
 	ISender sender,
-	ICredentialRepository credentials,
 	LoginAttemptGuard attempts,
 	TimeProvider clock)
 {
@@ -66,7 +64,7 @@ internal sealed class WebAuthentication(
 
 		if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
 		if (Md5.TryParse(passwordMd5, null, out var digest) &&
-		    await credentials.VerifyAsync(new Credentials(online.Record, digest), ct))
+		    await sender.Send(new VerifyUserPassword(online, digest), ct))
 		{
 			_verified.AddOrUpdate(client, passwordMd5.ToLowerInvariant());
 			return client;
