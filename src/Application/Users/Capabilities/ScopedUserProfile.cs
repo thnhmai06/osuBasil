@@ -12,25 +12,30 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// <summary>Sets or clears the away message other users see.</summary>
 	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>
 	/// <returns>
-	///     <see langword="true" /> if this connection belongs to this user (or is the operator's) and the message was
-	///     set.
+	///     <see langword="true" /> if this connection belongs to this user (or is the operator's), the user exists
+	///     and the message was set.
 	/// </returns>
-	public bool SetAway(string? message)
+	public async Task<bool> SetAwayAsync(string? message)
 	{
-		if (!ReferenceEquals(scoped.Actor.User, scoped.User) && scoped.Actor is not OperatorConnection) return false;
+		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return false;
+		if (await scoped.ResolveAsync() is not { } user) return false;
 
-		scoped.User.Profile.SetAway(message);
+		user.Profile.SetAway(message);
 		return true;
 	}
 
 	/// <summary>Sets whether this user accepts private messages only from their friends.</summary>
 	/// <param name="pmPrivate"><see langword="true" /> to accept private messages only from friends.</param>
-	/// <returns><see langword="true" /> if this connection belongs to this user and the setting was set.</returns>
-	public bool SetPmPrivate(bool pmPrivate)
+	/// <returns>
+	///     <see langword="true" /> if this connection belongs to this user (or is the operator's), the user exists
+	///     and the setting was set.
+	/// </returns>
+	public async Task<bool> SetPmPrivateAsync(bool pmPrivate)
 	{
-		if (!ReferenceEquals(scoped.Actor.User, scoped.User) && scoped.Actor is not OperatorConnection) return false;
+		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return false;
+		if (await scoped.ResolveAsync() is not { } user) return false;
 
-		scoped.User.Profile.SetPmPrivate(pmPrivate);
+		user.Profile.SetPmPrivate(pmPrivate);
 		return true;
 	}
 
@@ -44,8 +49,8 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// </remarks>
 	public async Task<Result<UserOutcome>> RenameAsync(string name)
 	{
-		if (await GuardAsync() is { } refused) return refused;
-		return await scoped.User.Profile.RenameAsync(name);
+		var (user, refusal) = await GuardAsync();
+		return user is null ? refusal : await user.Profile.RenameAsync(name);
 	}
 
 	/// <summary>Sets the country shown on this account's profile.</summary>
@@ -54,8 +59,8 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// <remarks>The same authority applies as to <see cref="RenameAsync" />.</remarks>
 	public async Task<Result<UserOutcome>> SetCountryAsync(Country country)
 	{
-		if (await GuardAsync() is { } refused) return refused;
-		return await scoped.User.Profile.SetCountryAsync(country);
+		var (user, refusal) = await GuardAsync();
+		return user is null ? refusal : await user.Profile.SetCountryAsync(country);
 	}
 
 	/// <summary>Replaces this account's avatar image.</summary>
@@ -69,8 +74,8 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// </remarks>
 	public async Task<Result<UserOutcome>> SetAvatarAsync(Stream image, CancellationToken ct = default)
 	{
-		if (await GuardAsync() is { } refused) return refused;
-		return await scoped.User.Profile.SetAvatarAsync(image, ct);
+		var (user, refusal) = await GuardAsync();
+		return user is null ? refusal : await user.Profile.SetAvatarAsync(image, ct);
 	}
 
 	/// <summary>Removes this account's avatar image, so the default avatar shows.</summary>
@@ -78,19 +83,18 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// <remarks>The same authority applies as to <see cref="RenameAsync" />.</remarks>
 	public async Task<Result<UserOutcome>> RemoveAvatarAsync()
 	{
-		if (await GuardAsync() is { } refused) return refused;
-		return await scoped.User.Profile.RemoveAvatarAsync();
+		var (user, refusal) = await GuardAsync();
+		return user is null ? refusal : await user.Profile.RemoveAvatarAsync();
 	}
 
 	// BasilBot's metadata changes like any user's; only its privileges, password and sessions are fixed.
-	private async Task<Result<UserOutcome>?> GuardAsync()
+	private async Task<(User? User, Result<UserOutcome> Refusal)> GuardAsync()
 	{
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))
-			return UserOutcome.Locked;
-		if (scoped.IsSelf) return null;
-		if (scoped.Require(UserPrivileges.Owner) is { } missing)
-			return Result<UserOutcome>.Denied(missing);
+			return (null, UserOutcome.Locked);
+		if (!scoped.IsSelf && scoped.Deny(UserPrivileges.Owner) is { } denied) return (null, denied);
+		if (await scoped.ResolveAsync() is not { } user) return (null, UserOutcome.NotFound);
 
-		return scoped.Outranks ? null : UserOutcome.NotOutranking;
+		return scoped.IsSelf || scoped.Outranks(user) ? (user, default) : (null, UserOutcome.NotOutranking);
 	}
 }

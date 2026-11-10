@@ -2,6 +2,7 @@ using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
@@ -9,10 +10,15 @@ namespace Basil.Application.Users.Capabilities;
 /// <summary>An account scoped to one connection and its authority snapshot.</summary>
 /// <remarks>
 ///     The snapshot is for one request or command; keeping it longer lets its rights outlive changes to privileges
-///     or a silence.
+///     or a silence. A scope made from a <see cref="UserReference" /> reads nothing until the caller's right to act
+///     has been checked, so a refusal is the same whether or not the account exists.
 /// </remarks>
 public readonly struct ScopedUser
 {
+	private readonly UserRegistry? _registry;
+	private readonly UserReference _target;
+	private readonly User? _user;
+
 	/// <summary>Gets the actor this scope is for.</summary>
 	public Connection Actor { get; }
 
@@ -34,12 +40,22 @@ public readonly struct ScopedUser
 	{
 		Actor = actor;
 		Rights = actor.EffectivePrivileges(user.Context.Clock.GetUtcNow());
-		User = user;
 		Granted = actor.User.Record.Value.Privileges;
+		_user = user;
 	}
 
-	/// <summary>Gets the account this scope is over.</summary>
-	public User User { get; }
+	/// <summary>Creates a scope over an account that is only referenced and is read once the caller is authorized.</summary>
+	/// <param name="registry">The registry that hands out the account.</param>
+	/// <param name="target">The account the caller refers to.</param>
+	/// <param name="actor">The connection acting on the account.</param>
+	internal ScopedUser(UserRegistry registry, UserReference target, Connection actor)
+	{
+		Actor = actor;
+		Rights = actor.EffectivePrivileges(actor.User.Context.Clock.GetUtcNow());
+		Granted = actor.User.Record.Value.Privileges;
+		_registry = registry;
+		_target = target;
+	}
 
 	/// <summary>The profile operations for this account.</summary>
 	public ScopedUserProfile Profile => new(this);
@@ -63,20 +79,47 @@ public readonly struct ScopedUser
 	public ScopedUserRelationships Relationships => new(this);
 
 	/// <summary>Whether the caller is acting on their own account.</summary>
-	internal bool IsSelf => Actor.Record.Equals(User.Record);
+	internal bool IsSelf => _user is { } user ? Actor.Record.Equals(user.Record) : _target.Names(Actor.Record);
 
-	/// <summary>Whether the caller's granted privileges strictly outrank the target's.</summary>
-	internal bool Outranks => Actor.Outranks(Granted, User.Record.Value.Privileges);
+	/// <summary>Gets the account this scope is over.</summary>
+	/// <param name="ct">A token that cancels the read.</param>
+	/// <returns>The account, or <see langword="null" /> when no live account has the referenced id or name.</returns>
+	internal async Task<User?> ResolveAsync(CancellationToken ct = default)
+	{
+		if (_user is { } resolved) return resolved;
 
-	/// <summary>Checks the required privilege and account hierarchy.</summary>
+		var users = Actor.User.Context.Users;
+		var record = _target.Id is { } id
+			? await users.GetAsync(id, ct)
+			: _target.Name is { } name
+				? await users.GetByNameAsync(name, ct)
+				: null;
+		return record is { } found && found.Value.DeletedAt is null ? _registry!.Of(found) : null;
+	}
+
+	/// <summary>Whether the caller's granted privileges strictly outrank an account's.</summary>
+	/// <param name="target">The account acted on.</param>
+	internal bool Outranks(User target)
+	{
+		return Actor.Outranks(Granted, target.Record.Value.Privileges);
+	}
+
+	/// <summary>Refuses an action when the caller lacks the privilege it needs.</summary>
 	/// <param name="needed">The privilege required.</param>
+	/// <returns><see langword="null" /> when the privilege is held; otherwise the refusal naming what is missing.</returns>
+	internal Result<UserOutcome>? Deny(UserPrivileges needed)
+	{
+		return Require(needed) is { } missing ? Result<UserOutcome>.Denied(missing) : null;
+	}
+
+	/// <summary>Checks the account hierarchy for an action aimed at a resolved account.</summary>
+	/// <param name="target">The account acted on.</param>
 	/// <param name="selfAllowed">Whether the caller may act on their own account.</param>
 	/// <returns><see langword="null" /> when allowed; otherwise, why the operation is unavailable.</returns>
-	internal Result<UserOutcome>? Guard(UserPrivileges needed, bool selfAllowed)
+	internal Result<UserOutcome>? Guard(User target, bool selfAllowed)
 	{
-		if (User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
-		if (Require(needed) is { } missing) return Result<UserOutcome>.Denied(missing);
-		return (IsSelf && selfAllowed) || Outranks ? null : UserOutcome.NotOutranking;
+		if (target.Record.IsBasilBot()) return UserOutcome.SystemAccount;
+		return (IsSelf && selfAllowed) || Outranks(target) ? null : UserOutcome.NotOutranking;
 	}
 
 	/// <summary>Checks whether an area is locked for the caller.</summary>
@@ -87,7 +130,7 @@ public readonly struct ScopedUser
 	internal async Task<bool> IsLockedAsync(Locks area, UserPrivileges manager,
 		CancellationToken ct = default)
 	{
-		return (await User.Context.Settings.GetAsync(ct)).Locks.HasFlag(area) &&
+		return (await Actor.User.Context.Settings.GetAsync(ct)).Locks.HasFlag(area) &&
 		       Require(manager) is not null;
 	}
 
@@ -95,7 +138,9 @@ public readonly struct ScopedUser
 	/// <returns>The outcome of deleting the account.</returns>
 	public async Task<Result<UserOutcome>> DeleteAsync()
 	{
-		if (Guard(UserPrivileges.Owner, true) is { } denied) return denied;
-		return await User.DeleteAsync();
+		if (Deny(UserPrivileges.Owner) is { } denied) return denied;
+		if (await ResolveAsync() is not { } user) return UserOutcome.NotFound;
+		if (Guard(user, true) is { } refused) return refused;
+		return await user.DeleteAsync();
 	}
 }

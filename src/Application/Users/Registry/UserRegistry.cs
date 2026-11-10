@@ -103,6 +103,15 @@ public sealed class UserRegistry
 		return new ScopedUserRegistry(this, actor);
 	}
 
+	/// <summary>Scopes an account that is only referenced to a connection and its authority.</summary>
+	/// <param name="actor">The connection acting.</param>
+	/// <param name="target">The account the caller refers to.</param>
+	/// <returns>A short-lived scope that reads the account only once the actor's right to act has been checked.</returns>
+	public ScopedUser ScopeTo(Connection actor, UserReference target)
+	{
+		return new ScopedUser(this, target, actor);
+	}
+
 	/// <summary>Authenticates a login attempt and, on success, opens a connection of the requested kind.</summary>
 	/// <param name="attempt">The claimed username and password.</param>
 	/// <param name="type">The kind of connection requested.</param>

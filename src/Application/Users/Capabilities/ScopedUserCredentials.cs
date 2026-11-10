@@ -27,11 +27,12 @@ public readonly struct ScopedUserCredentials(ScopedUser scoped)
 	public async Task<Result<UserOutcome>> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
 		bool includeCurrent = false)
 	{
-		if (scoped.User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))
 			return UserOutcome.Locked;
-		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Owner, false) is { } denied) return denied;
-		return await scoped.User.Credentials.ChangeAsync(newPasswordHash, currentPasswordHash, scoped.Actor,
+		if (!scoped.IsSelf && scoped.Deny(UserPrivileges.Owner) is { } denied) return denied;
+		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
+		if (scoped.Guard(user, true) is { } refused) return refused;
+		return await user.Credentials.ChangeAsync(newPasswordHash, currentPasswordHash, scoped.Actor,
 			includeCurrent);
 	}
 }

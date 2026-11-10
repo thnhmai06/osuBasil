@@ -21,28 +21,32 @@ public readonly struct ScopedUserRelationships
 	/// <returns>The outcome of adding the friend.</returns>
 	public async Task<Result<UserOutcome>> AddFriendAsync()
 	{
-		return await _scoped.Actor.User.Relationships.AddFriendAsync(_scoped.User.Record);
+		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
+		return await _scoped.Actor.User.Relationships.AddFriendAsync(target.Record);
 	}
 
 	/// <summary>Removes the target as a friend.</summary>
 	/// <returns>The outcome of removing the friend.</returns>
 	public async Task<Result<UserOutcome>> RemoveFriendAsync()
 	{
-		return await _scoped.Actor.User.Relationships.RemoveFriendAsync(_scoped.User.Record);
+		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
+		return await _scoped.Actor.User.Relationships.RemoveFriendAsync(target.Record);
 	}
 
 	/// <summary>Blocks the target.</summary>
 	/// <returns>The outcome of blocking the target.</returns>
 	public async Task<Result<UserOutcome>> BlockAsync()
 	{
-		return await _scoped.Actor.User.Relationships.BlockAsync(_scoped.User.Record);
+		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
+		return await _scoped.Actor.User.Relationships.BlockAsync(target.Record);
 	}
 
 	/// <summary>Removes a block on the target.</summary>
 	/// <returns>The outcome of removing the block.</returns>
 	public async Task<Result<UserOutcome>> UnblockAsync()
 	{
-		return await _scoped.Actor.User.Relationships.UnblockAsync(_scoped.User.Record);
+		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
+		return await _scoped.Actor.User.Relationships.UnblockAsync(target.Record);
 	}
 
 	/// <summary>Lists the users this account has friended.</summary>
@@ -69,6 +73,8 @@ public readonly struct ScopedUserRelationships
 		// The operator reads any account's lists; everyone else reads their own.
 		if (_scoped is { IsSelf: false, Actor: not OperatorConnection }) return (UserOutcome.NotSelf, []);
 
-		return (UserOutcome.Ok, await _scoped.User.Relationships.TargetsAsync(type, ct));
+		if (await _scoped.ResolveAsync(ct) is not { } user) return (UserOutcome.NotFound, []);
+
+		return (UserOutcome.Ok, await user.Relationships.TargetsAsync(type, ct));
 	}
 }

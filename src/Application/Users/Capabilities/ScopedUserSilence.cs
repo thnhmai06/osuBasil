@@ -13,8 +13,10 @@ public readonly struct ScopedUserSilence(ScopedUser scoped)
 	/// <returns>The outcome of silencing the account.</returns>
 	public async Task<Result<UserOutcome>> ImposeAsync(DateTimeOffset endsAt, string? reason = null)
 	{
-		if (scoped.Guard(UserPrivileges.Moderator, false) is { } denied) return denied;
-		return await scoped.User.Silence.ImposeAsync(endsAt, reason, scoped.Actor.Record);
+		if (scoped.Deny(UserPrivileges.Moderator) is { } denied) return denied;
+		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
+		if (scoped.Guard(user, false) is { } refused) return refused;
+		return await user.Silence.ImposeAsync(endsAt, reason, scoped.Actor.Record);
 	}
 
 	/// <summary>Ends the silence of the account now.</summary>
@@ -22,7 +24,9 @@ public readonly struct ScopedUserSilence(ScopedUser scoped)
 	/// <returns>The outcome of lifting the silence.</returns>
 	public async Task<Result<UserOutcome>> LiftAsync(string? reason = null)
 	{
-		if (scoped.Guard(UserPrivileges.Moderator, false) is { } denied) return denied;
-		return await scoped.User.Silence.LiftAsync(reason, scoped.Actor.Record);
+		if (scoped.Deny(UserPrivileges.Moderator) is { } denied) return denied;
+		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
+		if (scoped.Guard(user, false) is { } refused) return refused;
+		return await user.Silence.LiftAsync(reason, scoped.Actor.Record);
 	}
 }

@@ -23,10 +23,10 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 		SessionState state = SessionState.Any, IReadOnlyList<SessionType>? types = null,
 		CancellationToken ct = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
-			return (denied, null);
+		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
+		if (user is null) return (refusal, null);
 
-		var sessions = await scoped.User.Sessions.ListAsync(scoped.Actor, page, state, types, ct);
+		var sessions = await user.Sessions.ListAsync(scoped.Actor, page, state, types, ct);
 		return (UserOutcome.Ok, sessions);
 	}
 
@@ -42,10 +42,10 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	public async Task<(Result<UserOutcome> Result, SessionRecord? Session)> GetAsync(long id,
 		CancellationToken ct = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
-			return (denied, null);
+		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
+		if (user is null) return (refusal, null);
 
-		var (outcome, session) = await scoped.User.Sessions.GetAsync(scoped.Actor, id, ct);
+		var (outcome, session) = await user.Sessions.GetAsync(scoped.Actor, id, ct);
 		return (outcome, session);
 	}
 
@@ -62,11 +62,10 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	public async Task<(Result<UserOutcome> Result, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
 		long id, PageRequest page, CancellationToken ct = default)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
-			return (denied, null);
+		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
+		if (user is null) return (refusal, null);
 
-		var (outcome, connections) =
-			await scoped.User.Sessions.ListConnectionsAsync(scoped.Actor, id, page, ct);
+		var (outcome, connections) = await user.Sessions.ListConnectionsAsync(scoped.Actor, id, page, ct);
 		return (outcome, connections);
 	}
 
@@ -80,8 +79,8 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// </remarks>
 	public async Task<Result<UserOutcome>> CloseAsync(long id)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Owner, false) is { } denied) return denied;
-		return await scoped.User.Sessions.CloseAsync(id);
+		var (user, refusal) = await GuardAsync(UserPrivileges.Owner);
+		return user is null ? refusal : await user.Sessions.CloseAsync(id);
 	}
 
 	/// <summary>Closes every session of this account, whether its client is online or not.</summary>
@@ -95,8 +94,8 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// </remarks>
 	public async Task<Result<UserOutcome>> CloseAllAsync(bool keepCurrent = true)
 	{
-		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Owner, false) is { } denied) return denied;
-		return await scoped.User.Sessions.CloseAllAsync(scoped.Actor, keepCurrent);
+		var (user, refusal) = await GuardAsync(UserPrivileges.Owner);
+		return user is null ? refusal : await user.Sessions.CloseAllAsync(scoped.Actor, keepCurrent);
 	}
 
 	/// <summary>Opens a long-lived IRC key for one IRC client of this account.</summary>
@@ -108,9 +107,21 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)> OpenIrcAsync(string label)
 	{
-		if (scoped.User.Record.IsBasilBot()) return (UserOutcome.SystemAccount, null, null);
 		if (!scoped.IsSelf) return (UserOutcome.NotSelf, null, null);
-		var (outcome, key, session) = await scoped.User.Sessions.OpenIrcAsync(scoped.Actor, label);
+		if (await scoped.ResolveAsync() is not { } user) return (UserOutcome.NotFound, null, null);
+		if (user.Record.IsBasilBot()) return (UserOutcome.SystemAccount, null, null);
+
+		var (outcome, key, session) = await user.Sessions.OpenIrcAsync(scoped.Actor, label);
 		return (outcome, key, session);
+	}
+
+	// Another account's sessions need the privilege; nothing is read before it is held.
+	private async Task<(User? User, Result<UserOutcome> Refusal)> GuardAsync(UserPrivileges needed,
+		CancellationToken ct = default)
+	{
+		if (!scoped.IsSelf && scoped.Deny(needed) is { } denied) return (null, denied);
+		if (await scoped.ResolveAsync(ct) is not { } user) return (null, UserOutcome.NotFound);
+
+		return !scoped.IsSelf && scoped.Guard(user, false) is { } refused ? (null, refused) : (user, default);
 	}
 }
