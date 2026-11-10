@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class RoomRoundStartedRecorder(IRoundRepository rounds) : INotificationHandler<RoomRoundStarted>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRoundStarted @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRoundStarted @event, CancellationToken ct)
 	{
 		await rounds.CreateOrUpdateAsync(@event.Round);
 	}

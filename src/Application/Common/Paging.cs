@@ -8,17 +8,17 @@ public static class Paging
 
 	/// <summary>Reads every page of a listing, from the first, until a page comes back short.</summary>
 	/// <param name="list">Reads one page.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>Every item, in listing order.</returns>
 	public static async Task<IReadOnlyList<T>> ListAllAsync<T>(Func<PageRequest, Task<Page<T>>> list,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var page = new PageRequest(0, PageSize);
 		var all = new List<T>();
 
 		while (true)
 		{
-			cancellationToken.ThrowIfCancellationRequested();
+			ct.ThrowIfCancellationRequested();
 			var paged = await list(page);
 			all.AddRange(paged.Items);
 			if (!paged.HasNext)

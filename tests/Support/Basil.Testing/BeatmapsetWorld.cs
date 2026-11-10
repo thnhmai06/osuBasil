@@ -114,7 +114,7 @@ public sealed class BeatmapsetWorld
 		public int Opened { get; private set; }
 
 		/// <inheritdoc />
-		public override Task<Stream> OpenAsync(CancellationToken cancellationToken = default)
+		public override Task<Stream> OpenAsync(CancellationToken ct = default)
 		{
 			Opened++;
 			return Task.FromResult<Stream>(new MemoryStream(bytes, false));
@@ -154,7 +154,7 @@ public sealed class BeatmapsetWorld
 		public List<MemoryArchive> Quarantined { get; } = [];
 
 		/// <inheritdoc />
-		public Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken cancellationToken = default)
+		public Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken ct = default)
 		{
 			using var copy = new MemoryStream();
 			archive.CopyTo(copy);
@@ -175,7 +175,7 @@ public sealed class BeatmapsetWorld
 
 		/// <inheritdoc />
 		public Task<BeatmapsetArchive?> PackAsync(BeatmapsetFolder folder,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			if (folder is not MemoryFolder { Exists: true, LooseFiles: { } files })
 				return Task.FromResult<BeatmapsetArchive?>(null);
@@ -214,21 +214,21 @@ public sealed class BeatmapsetWorld
 
 		/// <inheritdoc />
 		public Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			return Task.FromResult(Stored.TryGetValue(set.Id, out var stored) && stored.Files.Contains((type, name)));
 		}
 
 		/// <inheritdoc />
 		public Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			return Task.FromResult<Stream?>(null);
 		}
 
 		/// <inheritdoc />
 		public Task<Stream?> OpenArchiveAsync(BeatmapsetRecord set, bool withVideo,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			if (!Stored.TryGetValue(set.Id, out var stored) || (!withVideo && !stored.WithoutVideo))
 				return Task.FromResult<Stream?>(null);
@@ -236,7 +236,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task<IEnumerable<BeatmapsetSource>> ListAsync(CancellationToken cancellationToken = default)
+		public Task<IEnumerable<BeatmapsetSource>> ListAsync(CancellationToken ct = default)
 		{
 			IEnumerable<BeatmapsetSource> all = _waiting.ToList().Concat(Stored.Keys.Select(FolderOf)).ToList();
 			return Task.FromResult(all);
@@ -244,7 +244,7 @@ public sealed class BeatmapsetWorld
 
 		/// <inheritdoc />
 		public async IAsyncEnumerable<BeatmapsetSource> WatchAsync(
-			[EnumeratorCancellation] CancellationToken cancellationToken)
+			[EnumeratorCancellation] CancellationToken ct)
 		{
 			await Task.CompletedTask;
 			yield break;
@@ -352,7 +352,7 @@ public sealed class BeatmapsetWorld
 		public Exception? UpdateFailure { get; set; }
 
 		/// <inheritdoc />
-		public ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+		public ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken ct = default)
 		{
 			return ValueTask.FromResult(Records.GetValueOrDefault(id));
 		}
@@ -367,7 +367,7 @@ public sealed class BeatmapsetWorld
 
 		/// <inheritdoc />
 		public Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			var all = Records.Values.OrderByDescending(set => set.Id).ToList();
 			return Task.FromResult(new Page<BeatmapsetRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(),
@@ -375,7 +375,7 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken cancellationToken = default)
+		public Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken ct = default)
 		{
 			return Task.FromResult<IReadOnlyList<int>>([.. Records.Keys.OrderByDescending(id => id)]);
 		}
@@ -449,20 +449,20 @@ public sealed class BeatmapsetWorld
 		}
 
 		/// <inheritdoc />
-		public ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+		public ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken ct = default)
 		{
 			return ValueTask.FromResult(Records.Values.FirstOrDefault(beatmap => beatmap.Id == id));
 		}
 
 		/// <inheritdoc />
-		public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default)
+		public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken ct = default)
 		{
 			return ValueTask.FromResult(Records.GetValueOrDefault(hash));
 		}
 
 		/// <inheritdoc />
 		public Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			return Task.FromResult<IReadOnlyList<BeatmapRecord>>(Records.Values
 				.Where(beatmap => beatmap.Beatmapset.Equals(set)).OrderBy(beatmap => beatmap.Id).ToList());
@@ -470,7 +470,7 @@ public sealed class BeatmapsetWorld
 
 		/// <inheritdoc />
 		public Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			var all = Records.Values.OrderByDescending(beatmap => beatmap.Beatmapset.Id).ToList();
 			return Task.FromResult(new Page<BeatmapRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(), page.Offset + page.Limit < all.Count));
@@ -537,10 +537,10 @@ public sealed class BeatmapsetWorld
 
 	private sealed class FakeReader : IBeatmapsetReader
 	{
-		public async Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken cancellationToken = default)
+		public async Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken ct = default)
 		{
 			using var reader = new StreamReader(archive, Encoding.UTF8, false, 1024, true);
-			var text = await reader.ReadToEndAsync(cancellationToken);
+			var text = await reader.ReadToEndAsync(ct);
 			var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 			if (lines.Length < 2 || lines[0] != "OSZ" ||
 			    !lines[1].StartsWith("set|", StringComparison.Ordinal)) return null;
@@ -577,7 +577,7 @@ public sealed class BeatmapsetWorld
 
 	private sealed class MemoryFile(string name, byte[] bytes) : BeatmapsetContentFile(name, bytes.Length)
 	{
-		public override Task<Stream> OpenAsync(CancellationToken cancellationToken = default)
+		public override Task<Stream> OpenAsync(CancellationToken ct = default)
 		{
 			return Task.FromResult<Stream>(new MemoryStream(bytes, false));
 		}
@@ -595,7 +595,7 @@ public sealed class BeatmapsetWorld
 	private sealed class FakeAssets : IBeatmapAssets
 	{
 		public Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			return Task.CompletedTask;
 		}

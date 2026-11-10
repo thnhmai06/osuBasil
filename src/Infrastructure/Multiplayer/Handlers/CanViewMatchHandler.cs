@@ -8,8 +8,8 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class CanViewMatchHandler(Lobby lobby) : IRequestHandler<CanViewMatch, bool>
 {
 	/// <inheritdoc />
-	public async ValueTask<bool> Handle(CanViewMatch request, CancellationToken cancellationToken)
+	public async ValueTask<bool> Handle(CanViewMatch request, CancellationToken ct)
 	{
-		return await lobby.ScopeTo(request.Actor).CanViewAsync(request.Match, cancellationToken);
+		return await lobby.ScopeTo(request.Actor).CanViewAsync(request.Match, ct);
 	}
 }

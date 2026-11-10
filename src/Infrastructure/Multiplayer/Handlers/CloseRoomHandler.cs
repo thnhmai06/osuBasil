@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class CloseRoomHandler : IRequestHandler<CloseRoom, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(CloseRoom request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(CloseRoom request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).CloseAsync());

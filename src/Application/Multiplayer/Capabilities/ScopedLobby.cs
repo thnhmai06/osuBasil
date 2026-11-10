@@ -86,14 +86,14 @@ public readonly struct ScopedLobby
 			settings);
 	}
 
-	private async Task<Result<RoomOutcome>?> OpenRefusalAsync(RoomSource source, CancellationToken cancellationToken = default)
+	private async Task<Result<RoomOutcome>?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
 	{
 		var required = source is RoomSource.Api
 			? UserPrivileges.Player
 			: UserPrivileges.Player | UserPrivileges.Player;
 		if (Require(required) is { } missingPrivileges) return Result<RoomOutcome>.Denied(missingPrivileges);
 
-		if (await Lobby.IsRoomCreationLockedAsync(cancellationToken) &&
+		if (await Lobby.IsRoomCreationLockedAsync(ct) &&
 		    Require(UserPrivileges.Tournament) is not null)
 			return RoomOutcome.Locked;
 
@@ -117,22 +117,22 @@ public readonly struct ScopedLobby
 	/// <summary>Lists the matches that were or are being played.</summary>
 	/// <param name="query">The filter to apply; it is narrowed to what the caller may view.</param>
 	/// <param name="page">Which part of the matches to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, one part of the matches, newest first.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Tournament" />.</remarks>
 	public async Task<(Result<RoomOutcome> Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
-		MatchQuery query, PageRequest page, CancellationToken cancellationToken = default)
+		MatchQuery query, PageRequest page, CancellationToken ct = default)
 	{
 		if (Require(UserPrivileges.Tournament) is { } missing)
 			return (Result<RoomOutcome>.Denied(missing), null);
 
 		return (RoomOutcome.Ok,
-			await Lobby.Context.Matches.ListAsync(query.LimitTo(Rights, Actor.Record), page, cancellationToken));
+			await Lobby.Context.Matches.ListAsync(query.LimitTo(Rights, Actor.Record), page, ct));
 	}
 
 	/// <summary>Tells whether the scoped connection's user may view the data that belongs to a match.</summary>
 	/// <param name="match">The match.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> for a public match, and for a private one when the user holds
 	///     <see cref="UserPrivileges.Tournament" />, took part in the match, or manages it (its creator, or a
@@ -145,7 +145,7 @@ public readonly struct ScopedLobby
 	///     scores with their replays and leaderboards, beatmaps and users are read by their own ids as before. The call only
 	///     answers the question; it changes nothing and publishes nothing.
 	/// </remarks>
-	public async Task<bool> CanViewAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public async Task<bool> CanViewAsync(MatchRecord match, CancellationToken ct = default)
 	{
 		ArgumentNullException.ThrowIfNull(match);
 
@@ -158,7 +158,7 @@ public readonly struct ScopedLobby
 
 		return !match.Value.IsPrivate
 		       || Require(UserPrivileges.Tournament) is null
-		       || await Lobby.Context.Matches.IsVisibleToAsync(match, Actor.Record, cancellationToken);
+		       || await Lobby.Context.Matches.IsVisibleToAsync(match, Actor.Record, ct);
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>

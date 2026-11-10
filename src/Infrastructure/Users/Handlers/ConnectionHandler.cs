@@ -11,12 +11,12 @@ internal sealed class ConnectionHandler(UserRegistry registry, ILogger<Connectio
 	: INotificationHandler<UserConnectionClosed>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var connection = @event.Connection;
 		if (registry.FindSpectating(connection) is { } host)
 			HandlerStep.Run(logger, "stop spectating", "the closed connection of user", connection.Record.Id,
-				() => host.ScopeTo(connection).StopSpectating(), cancellationToken);
+				() => host.ScopeTo(connection).StopSpectating(), ct);
 		return ValueTask.CompletedTask;
 	}
 }

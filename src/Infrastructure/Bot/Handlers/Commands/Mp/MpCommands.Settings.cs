@@ -15,7 +15,7 @@ internal sealed partial class MpCommands
 	// ── !mp settings ─────────────────────────────────────────────────────────────────────
 
 	private static async Task<bool> SettingsAsync(CommandContext context, Room room,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var replies = context.Replies;
 		var lines = new List<string>
@@ -47,7 +47,7 @@ internal sealed partial class MpCommands
 			lines.Add(SlotLine(replies, room, slot, player, showTeam));
 		}
 
-		await context.Say(string.Join('\n', lines), cancellationToken);
+		await context.Say(string.Join('\n', lines), ct);
 		return true;
 	}
 
@@ -97,83 +97,83 @@ internal sealed partial class MpCommands
 	// ── !mp lock / unlock ─────────────────────────────────────────────────────────────────
 
 	private async Task<bool> SetLockedAsync(CommandContext context, Room room, bool locked,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var outcome = await sender.Send(new SetRoomLocked(context.Actor, room, locked), cancellationToken);
+		var outcome = await sender.Send(new SetRoomLocked(context.Actor, room, locked), ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		await context.Reply(locked ? MpReplies.LockedMatch : MpReplies.UnlockedMatch, cancellationToken);
+		await context.Reply(locked ? MpReplies.LockedMatch : MpReplies.UnlockedMatch, ct);
 		return true;
 	}
 
 	// ── !mp private ──────────────────────────────────────────────────────────────────────
 
 	private async Task<bool> PrivateAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var actor = context.Actor;
 		if (args.Count == 0)
 		{
 			await context.Reply(MpReplies.MatchIsPrivateNow,
-				new { privacy = room.Settings.IsPrivate ? "private" : "public" }, cancellationToken);
+				new { privacy = room.Settings.IsPrivate ? "private" : "public" }, ct);
 			return true;
 		}
 
 		if (args[0] is not ("0" or "1"))
 		{
-			await context.Reply(MpReplies.PrivateUsage, cancellationToken);
+			await context.Reply(MpReplies.PrivateUsage, ct);
 			return false;
 		}
 
 		var outcome =
 			await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(IsPrivate: args[0] == "1")),
-				cancellationToken);
+				ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
 		await context.Reply(args[0] == "1" ? MpReplies.MatchNowPrivate : MpReplies.MatchNowPublic,
-			cancellationToken);
+			ct);
 		return true;
 	}
 
 	// ── !mp size ─────────────────────────────────────────────────────────────────────────
 
 	private async Task<bool> SetSizeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < 1 or > RoomRules.MaxPlayers)
 		{
-			await context.Reply(MpReplies.SizeUsage, cancellationToken);
+			await context.Reply(MpReplies.SizeUsage, ct);
 			return false;
 		}
 
 		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(Size: size)),
-			cancellationToken);
+			ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		await context.Reply(MpReplies.ChangedMatchSize, new { size }, cancellationToken);
+		await context.Reply(MpReplies.ChangedMatchSize, new { size }, ct);
 		return true;
 	}
 
 	// ── !mp name / password ──────────────────────────────────────────────────────────────
 
 	private async Task<bool> SetNameAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.NameUsage, cancellationToken);
+			await context.Reply(MpReplies.NameUsage, ct);
 			return false;
 		}
 
@@ -181,52 +181,52 @@ internal sealed partial class MpCommands
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
 		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(name)),
-			cancellationToken);
+			ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		await context.Reply(MpReplies.RoomNameUpdated, new { name }, cancellationToken);
+		await context.Reply(MpReplies.RoomNameUpdated, new { name }, ct);
 		return true;
 	}
 
 	private async Task<bool> SetPasswordAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var actor = context.Actor;
 		var password = args.Count == 0 ? string.Empty : string.Join(' ', args);
 		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Password: password)),
-			cancellationToken);
+			ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
 		await context.Reply(args.Count == 0 ? MpReplies.RemovedMatchPassword : MpReplies.ChangedMatchPassword,
-			cancellationToken);
+			ct);
 		return true;
 	}
 
 	// ── !mp set ──────────────────────────────────────────────────────────────────────────
 
 	private async Task<bool> SetAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (!TryParseSetArguments(args, out var teamValue, out var winCondition, out var size))
 		{
-			await context.Reply(MpReplies.SetUsage, cancellationToken);
+			await context.Reply(MpReplies.SetUsage, ct);
 			return false;
 		}
 
 		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
 			Size: size);
-		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, change), cancellationToken);
+		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, change), ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
@@ -236,7 +236,7 @@ internal sealed partial class MpCommands
 				teamType = room.Settings.MatchSettings.TeamType.ToString(),
 				winCondition = room.Settings.MatchSettings.WinCondition.ToString(),
 				size = size?.ToString() ?? "none"
-			}, cancellationToken);
+			}, ct);
 		return true;
 	}
 
@@ -274,11 +274,11 @@ internal sealed partial class MpCommands
 	// ── !mp map ──────────────────────────────────────────────────────────────────────────
 
 	private async Task<bool> SetMapAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var beatmapId))
 		{
-			await context.Reply(MpReplies.MapUsage, cancellationToken);
+			await context.Reply(MpReplies.MapUsage, ct);
 			return false;
 		}
 
@@ -287,17 +287,17 @@ internal sealed partial class MpCommands
 		{
 			if (!int.TryParse(args[1], out var modeValue) || modeValue is < 0 or > 3)
 			{
-				await context.Reply(MpReplies.MapUsage, cancellationToken);
+				await context.Reply(MpReplies.MapUsage, ct);
 				return false;
 			}
 
 			mode = (GameMode)modeValue;
 		}
 
-		var beatmap = await beatmaps.GetAsync(beatmapId, cancellationToken);
+		var beatmap = await beatmaps.GetAsync(beatmapId, ct);
 		if (beatmap is null)
 		{
-			await context.Reply(MpReplies.NoBeatmapWithId, new { beatmap = beatmapId }, cancellationToken);
+			await context.Reply(MpReplies.NoBeatmapWithId, new { beatmap = beatmapId }, ct);
 			return false;
 		}
 
@@ -307,10 +307,10 @@ internal sealed partial class MpCommands
 			await sender.Send(
 				new ConfigureRoom(context.Actor, room,
 					new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode))),
-				cancellationToken);
+				ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
@@ -320,7 +320,7 @@ internal sealed partial class MpCommands
 				artist = beatmap.Beatmapset.Metadata.Artist,
 				title = beatmap.Beatmapset.Metadata.Title,
 				version = beatmap.Metadata.Version
-			}, cancellationToken);
+			}, ct);
 		return true;
 	}
 
@@ -333,12 +333,12 @@ internal sealed partial class MpCommands
 	// ── !mp mods ─────────────────────────────────────────────────────────────────────────
 
 	private async Task<bool> SetModsAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var actor = context.Actor;
 		if (args.Count < 1)
 		{
-			await context.Reply(MpReplies.ModsUsage, cancellationToken);
+			await context.Reply(MpReplies.ModsUsage, ct);
 			return false;
 		}
 
@@ -365,16 +365,16 @@ internal sealed partial class MpCommands
 		mods = mods.RemoveInvalidMods(room.Settings.MatchSettings.Mode);
 		var outcome =
 			await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Mods: mods, Freemods: freemod)),
-				cancellationToken);
+				ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
 		var after = room.Settings.MatchSettings.Mods;
 		var isFreemod = room.Settings.MatchSettings.Freemods;
-		await context.Say(DescribeModChange(context.Replies, before, after, wasFreemod, isFreemod), cancellationToken);
+		await context.Say(DescribeModChange(context.Replies, before, after, wasFreemod, isFreemod), ct);
 		return true;
 	}
 

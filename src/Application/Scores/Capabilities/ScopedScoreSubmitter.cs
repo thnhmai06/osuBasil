@@ -44,7 +44,7 @@ public readonly struct ScopedScoreSubmitter
 	///     The seekable stream of the replay, positioned at its start and left open, or <see langword="null" /> for a
 	///     failed play.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the submission.</param>
+	/// <param name="ct">A token that cancels the submission.</param>
 	/// <returns>
 	///     Ok when the score was stored; otherwise Rejected with the rejection, or the privileges the client lacks.
 	/// </returns>
@@ -60,11 +60,11 @@ public readonly struct ScopedScoreSubmitter
 		BeatmapChecksums? beatmap,
 		SubmittedClient client,
 		Stream? replay,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (Require(UserPrivileges.Player) is { } missing)
 			return (Result<ScoreSubmissionOutcome>.Denied(missing), null);
 
-		return await _submitter.SubmitAsync(Actor, submission, beatmap, client, replay, cancellationToken);
+		return await _submitter.SubmitAsync(Actor, submission, beatmap, client, replay, ct);
 	}
 }

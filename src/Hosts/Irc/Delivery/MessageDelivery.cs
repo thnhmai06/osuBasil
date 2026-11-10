@@ -12,21 +12,21 @@ namespace Basil.Host.Irc.Delivery;
 internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMessagePosted>
 {
-	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken cancellationToken)
+	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken ct)
 	{
 		var prefix = IrcView.Mask(notification.Message.Author, options.Value.Domain).ToString();
 		var command = notification.Message.IsNotice ? "NOTICE" : "PRIVMSG";
 
-		await DeliverToRecipientsAsync(notification, command, prefix, cancellationToken);
+		await DeliverToRecipientsAsync(notification, command, prefix, ct);
 		EchoToPrivateSender(notification, command, prefix);
 		DeliverAwayReply(notification);
 	}
 
 	private async Task DeliverToRecipientsAsync(ChannelMessagePosted notification, string command, string prefix,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var (channel, message) = (notification.Channel, notification.Message);
-		foreach (var connection in await channel.RecipientsAsync(notification, cancellationToken))
+		foreach (var connection in await channel.RecipientsAsync(notification, ct))
 		{
 			if (clients.Find(connection) is not { } session) continue;
 			if (ReferenceEquals(connection, notification.Actor) && !session.Has("echo-message")) continue;

@@ -21,20 +21,20 @@ public abstract class BeatmapsetArchive(string name, ContentStamp stamp) : Beatm
 	public ContentStamp Stamp => stamp;
 
 	/// <summary>Opens the archive from its start.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A new stream of the archive, which the caller disposes.</returns>
-	public abstract Task<Stream> OpenAsync(CancellationToken cancellationToken = default);
+	public abstract Task<Stream> OpenAsync(CancellationToken ct = default);
 
 	/// <summary>Reads the whole archive to take its fingerprint.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The archive's stamp with the MD5 hash of its bytes.</returns>
-	public async Task<ContentFingerprint> FingerprintAsync(CancellationToken cancellationToken = default)
+	public async Task<ContentFingerprint> FingerprintAsync(CancellationToken ct = default)
 	{
-		var stream = await OpenAsync(cancellationToken);
+		var stream = await OpenAsync(ct);
 		await using (stream)
 		{
 			return new ContentFingerprint(stamp,
-				await Md5.ComputeAsync(stream, cancellationToken));
+				await Md5.ComputeAsync(stream, ct));
 		}
 	}
 }

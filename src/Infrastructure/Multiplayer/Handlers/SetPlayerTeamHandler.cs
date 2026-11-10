@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class SetPlayerTeamHandler : IRequestHandler<SetPlayerTeam, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetPlayerTeam request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(SetPlayerTeam request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Slots.SetTeamAsync(request.Player, request.Team));

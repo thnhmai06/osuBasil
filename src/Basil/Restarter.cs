@@ -86,20 +86,20 @@ public static class Restarter
 	/// <param name="isFree">Tells whether the ports can be bound.</param>
 	/// <param name="clock">The clock the waiting uses.</param>
 	/// <param name="timeout">The longest time to wait.</param>
-	/// <param name="cancellationToken">A token that stops the wait.</param>
+	/// <param name="ct">A token that stops the wait.</param>
 	/// <returns>
 	///     <see langword="true" /> when the ports are free; <see langword="false" /> when the time ran out, and the
 	///     server then starts and reports the failure itself.
 	/// </returns>
 	public static async Task<bool> WaitForPortsAsync(Func<bool> isFree, TimeProvider clock, TimeSpan timeout,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var started = clock.GetTimestamp();
 		while (!isFree())
 		{
 			if (clock.GetElapsedTime(started) >= timeout) return false;
 
-			await Task.Delay(TimeSpan.FromMilliseconds(250), clock, cancellationToken);
+			await Task.Delay(TimeSpan.FromMilliseconds(250), clock, ct);
 		}
 
 		return true;

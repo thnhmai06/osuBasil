@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Beatmaps.Handlers;
 internal sealed class ReloadBeatmapsHandler(Rulesets rulesets) : IRequestHandler<ReloadBeatmaps, Result<RulesetOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RulesetOutcome>> Handle(ReloadBeatmaps request, CancellationToken cancellationToken)
+	public ValueTask<Result<RulesetOutcome>> Handle(ReloadBeatmaps request, CancellationToken ct)
 	{
 		return ValueTask.FromResult(rulesets.ScopeTo(request.Actor).Reload());
 	}

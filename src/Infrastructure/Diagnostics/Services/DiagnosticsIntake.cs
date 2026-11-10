@@ -10,11 +10,11 @@ internal sealed class DiagnosticsIntake(
 	IEnumerable<INotificationHandler<CollectDiagnostics>> modules) : IDiagnosticsIntake
 {
 	/// <inheritdoc />
-	public async ValueTask<DiagnosticsSample> TakeSampleAsync(CancellationToken cancellationToken = default)
+	public async ValueTask<DiagnosticsSample> TakeSampleAsync(CancellationToken ct = default)
 	{
 		var reported = new Reported();
 		var question = new CollectDiagnostics(reported);
-		foreach (var module in modules) await module.Handle(question, cancellationToken);
+		foreach (var module in modules) await module.Handle(question, ct);
 
 		var values = new Dictionary<string, object>(runtime.Sample())
 		{

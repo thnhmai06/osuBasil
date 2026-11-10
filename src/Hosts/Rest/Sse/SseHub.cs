@@ -102,14 +102,14 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	public int OpenStreams => _roots.Sum(pair => pair.Value.Count);
 
 	/// <inheritdoc />
-	public Task StartAsync(CancellationToken cancellationToken)
+	public Task StartAsync(CancellationToken ct)
 	{
 		_timer = clock.CreateTimer(_ => Tick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		Announce(false);
 		return Task.CompletedTask;
@@ -182,7 +182,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	/// <param name="connection">The Api connection of the caller, or <see langword="null" /> when the route is public.</param>
 	/// <param name="ip">The address of the caller.</param>
 	/// <param name="snapshot">Builds the full state of the root.</param>
-	/// <param name="cancellationToken">A token that cancels the opening.</param>
+	/// <param name="ct">A token that cancels the opening.</param>
 	/// <param name="poll">
 	///     Reads what changed in the root since the last second, for a root that has no feed of events; used when the
 	///     stream is the first follower of the root.
@@ -190,11 +190,11 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	/// <returns>The stream and its snapshot chunk, or why none was opened.</returns>
 	public async Task<(SseStream? Stream, byte[]? Snapshot, IResult? Refusal)> OpenAsync(string key,
 		ApiConnection? connection, IPAddress ip, Func<CancellationToken, Task<(object Data, string? Id)>> snapshot,
-		CancellationToken cancellationToken, Func<CancellationToken, Task<SsePoll>>? poll = null)
+		CancellationToken ct, Func<CancellationToken, Task<SsePoll>>? poll = null)
 	{
 		if (_stopping) return (null, null, ShuttingDown());
 
-		var current = await settings.GetAsync(cancellationToken);
+		var current = await settings.GetAsync(ct);
 		var limit = current.RateLimits.Connections.PerIp;
 		var addressKey = "ip:" + ip;
 		var userKey = connection is null ? null : "user:" + connection.Record.Id;
@@ -217,7 +217,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 
 		try
 		{
-			var (data, id) = await root.SnapshotAsync(snapshot, Volatile.Read(ref _tick), cancellationToken);
+			var (data, id) = await root.SnapshotAsync(snapshot, Volatile.Read(ref _tick), ct);
 			return (stream, Frame("snapshot", id, data), null);
 		}
 		catch
@@ -406,14 +406,14 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 		/// <summary>Builds the snapshot once for every stream that joins during the same second.</summary>
 		public async Task<(byte[] Data, string? Id)> SnapshotAsync(
 			Func<CancellationToken, Task<(object Data, string? Id)>> build, long tick,
-			CancellationToken cancellationToken)
+			CancellationToken ct)
 		{
-			await _snapshotLock.WaitAsync(cancellationToken);
+			await _snapshotLock.WaitAsync(ct);
 			try
 			{
 				if (_snapshot is null || _snapshotTick != tick)
 				{
-					var (data, id) = await build(cancellationToken);
+					var (data, id) = await build(ct);
 					_snapshot = JsonSerializer.SerializeToUtf8Bytes(data, Api.Json);
 					_snapshotId = id;
 					_snapshotTick = tick;

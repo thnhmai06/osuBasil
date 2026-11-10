@@ -39,15 +39,15 @@ internal sealed class FileReplayStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken ct = default)
 	{
 		return Task.FromResult<Stream?>(Find(score.Id).FirstOrDefault() is { } name ? Files.Open(name) : null);
 	}
 
 	/// <inheritdoc />
-	public async Task<Stream?> OpenFramesAsync(ScoreRecord score, CancellationToken cancellationToken = default)
+	public async Task<Stream?> OpenFramesAsync(ScoreRecord score, CancellationToken ct = default)
 	{
-		if (await OpenAsync(score, cancellationToken) is not { } file) return null;
+		if (await OpenAsync(score, ct) is not { } file) return null;
 
 		if (ReplayFile.TryFindFrames(file, out var offset, out var length))
 			return new SliceStream(file, offset, length);

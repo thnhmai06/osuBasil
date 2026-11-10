@@ -18,7 +18,7 @@ public interface IBeatmapsetStorage
 {
 	/// <summary>Stores an uploaded archive, byte for byte, as an archive waiting to be taken in.</summary>
 	/// <param name="archive">The .osz archive of one beatmapset, read from its current position to its end; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     The stored archive, which becomes a set's archive through
 	///     <see cref="SaveAsync(BeatmapsetRecord, BeatmapsetArchive, CancellationToken)" />.
@@ -27,7 +27,7 @@ public interface IBeatmapsetStorage
 	///     It is neither listed nor watched. One that is not taken in is removed by
 	///     <see cref="DeleteAsync(BeatmapsetArchive, CancellationToken)" />, or when the server starts again.
 	/// </remarks>
-	Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken cancellationToken = default);
+	Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken ct = default);
 
 	/// <summary>Makes an archive lying in the storage the set's archive, moving it byte for byte.</summary>
 	/// <param name="set">The beatmapset the archive holds.</param>
@@ -46,7 +46,7 @@ public interface IBeatmapsetStorage
 
 	/// <summary>Packs a folder of loose files into an archive that waits to be taken in.</summary>
 	/// <param name="folder">The folder; its files are left as they are until the archive is taken in.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     The packed archive, or <see langword="null" /> when the folder is gone, holds no files, or is a set's folder that
 	///     lost its archive (it holds files made from one), which is never packed.
@@ -56,7 +56,7 @@ public interface IBeatmapsetStorage
 	///     <see cref="SaveAsync(BeatmapsetRecord, BeatmapsetArchive, CancellationToken)" />.
 	/// </remarks>
 	Task<BeatmapsetArchive?> PackAsync(BeatmapsetFolder folder,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Removes every file made from a set's archive, keeping the archive.</summary>
 	/// <param name="set">The beatmapset.</param>
@@ -85,40 +85,40 @@ public interface IBeatmapsetStorage
 	/// <param name="set">The beatmapset.</param>
 	/// <param name="type">What the file is.</param>
 	/// <param name="name">The name it is stored under.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> if the file is stored.</returns>
 	Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Opens one file made from a set's archive.</summary>
 	/// <param name="set">The beatmapset.</param>
 	/// <param name="type">What the file is.</param>
 	/// <param name="name">The name it is stored under; ignored for the storyboard.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The file's content, seekable; or <see langword="null" /> when it is not stored. Nothing is made when asked.</returns>
 	Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Opens a set's archive, with or without video.</summary>
 	/// <param name="set">The beatmapset.</param>
 	/// <param name="withVideo">Whether to open the archive as it was given, with its videos.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The archive, seekable; or <see langword="null" /> when it is not stored.</returns>
-	Task<Stream?> OpenArchiveAsync(BeatmapsetRecord set, bool withVideo, CancellationToken cancellationToken = default);
+	Task<Stream?> OpenArchiveAsync(BeatmapsetRecord set, bool withVideo, CancellationToken ct = default);
 
 	/// <summary>Lists every source in the storage: the archives and folders directly in it.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The sources; folders being written or deleted are left out.</returns>
-	Task<IEnumerable<BeatmapsetSource>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<BeatmapsetSource>> ListAsync(CancellationToken ct = default);
 
 	/// <summary>Watches the storage for sources that change, whoever changes them.</summary>
-	/// <param name="cancellationToken">A token that stops watching.</param>
+	/// <param name="ct">A token that stops watching.</param>
 	/// <returns>
 	///     Each source that changed, as it is once its changes have settled; a change inside a folder (its archive above
 	///     all) reports the folder, and a folder that is gone comes back with <see cref="BeatmapsetFolder.Exists" />
 	///     false. Watching starts when this is called; folders being written or deleted are left out.
 	/// </returns>
-	IAsyncEnumerable<BeatmapsetSource> WatchAsync(CancellationToken cancellationToken);
+	IAsyncEnumerable<BeatmapsetSource> WatchAsync(CancellationToken ct);
 
 	/// <summary>Deletes a set's folder with everything in it; deleting a missing set does nothing.</summary>
 	/// <param name="set">The beatmapset whose folder to delete.</param>

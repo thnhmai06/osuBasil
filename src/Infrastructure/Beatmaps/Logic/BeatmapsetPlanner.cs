@@ -16,19 +16,19 @@ internal sealed class BeatmapsetPlanner(
 {
 	/// <summary>Reads an archive lying in the storage, keeping it open while its content lives.</summary>
 	/// <param name="archive">The archive to read.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     What the archive contains and the open stream it is read from; both <see langword="null" /> when it is not a
 	///     readable beatmapset archive. The caller releases the content first and the stream after it.
 	/// </returns>
 	internal async Task<(BeatmapsetContent? Content, Stream? Stream)> ReadAsync(BeatmapsetArchive archive,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var stream = await archive.OpenAsync(cancellationToken);
+		var stream = await archive.OpenAsync(ct);
 		var keep = false;
 		try
 		{
-			var content = await reader.ReadAsync(stream, cancellationToken);
+			var content = await reader.ReadAsync(stream, ct);
 			keep = content is not null;
 			return (content, stream);
 		}
@@ -43,24 +43,24 @@ internal sealed class BeatmapsetPlanner(
 	/// <param name="fingerprint">The archive's fingerprint when it is already taken, or <see langword="null" />.</param>
 	/// <param name="content">What the archive contains.</param>
 	/// <param name="folderId">The id of the stored folder the archive lies in, or <see langword="null" /> when it lies loose.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The archive, the stored beatmapset it belongs to, and the set as read from it.</returns>
 	internal async Task<BeatmapsetPlan> PlanAsync(BeatmapsetArchive archive, ContentFingerprint? fingerprint,
 		BeatmapsetContent content,
-		int? folderId, CancellationToken cancellationToken)
+		int? folderId, CancellationToken ct)
 	{
-		var setFingerprint = fingerprint ?? await archive.FingerprintAsync(cancellationToken);
+		var setFingerprint = fingerprint ?? await archive.FingerprintAsync(ct);
 
 		var hashes = new Dictionary<BeatmapsetDifficulty, Md5>(content.Difficulties.Count);
 		var stored = new Dictionary<BeatmapsetDifficulty, BeatmapRecord?>(content.Difficulties.Count);
 		foreach (var difficulty in content.Difficulties)
 		{
-			var hash = await difficulty.File.HashAsync(cancellationToken);
+			var hash = await difficulty.File.HashAsync(ct);
 			hashes[difficulty] = hash;
-			stored[difficulty] = await beatmaps.GetAsync(hash, cancellationToken);
+			stored[difficulty] = await beatmaps.GetAsync(hash, ct);
 		}
 
-		var existing = await matcher.ResolveAsync(content, hashes, folderId, cancellationToken);
+		var existing = await matcher.ResolveAsync(content, hashes, folderId, ct);
 
 		var backgrounds = StoredFileNames.ChooseNames(content.Difficulties.Select(difficulty => difficulty.Background));
 		var audio = StoredFileNames.ChooseNames(content.Difficulties.Select(difficulty => difficulty.Audio));
@@ -70,7 +70,7 @@ internal sealed class BeatmapsetPlanner(
 
 		foreach (var difficulty in content.Difficulties)
 			synced.Add(await SyncDifficultyAsync(difficulty, hashes[difficulty], stored[difficulty], backgrounds, audio,
-				video, cancellationToken));
+				video, ct));
 
 		var data = new BeatmapsetData(
 			existing is null && content.OnlineSetId is > 0 ? content.OnlineSetId : null,
@@ -80,16 +80,16 @@ internal sealed class BeatmapsetPlanner(
 			synced);
 
 		return new BeatmapsetPlan(archive, existing, data,
-			await matcher.TouchesLockedAsync(existing, content, hashes, stored, cancellationToken));
+			await matcher.TouchesLockedAsync(existing, content, hashes, stored, ct));
 	}
 
 	private async Task<BeatmapData> SyncDifficultyAsync(BeatmapsetDifficulty difficulty, Md5 hash,
 		BeatmapRecord? stored, IReadOnlyDictionary<BeatmapsetContentFile, string> backgrounds,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> audio,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> video,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var analysis = await analyser.AnalyseAsync(difficulty, stored, cancellationToken);
+		var analysis = await analyser.AnalyseAsync(difficulty, stored, ct);
 		var background = difficulty.Background is null ? null : backgrounds[difficulty.Background];
 		var sound = difficulty.Audio is null ? null : audio[difficulty.Audio];
 		var clip = difficulty.Video is null ? null : video[difficulty.Video];
@@ -114,12 +114,12 @@ internal sealed class BeatmapsetPlanner(
 	/// <summary>Describes a stored beatmapset as it is, with its archive's new fingerprint.</summary>
 	/// <param name="set">The stored beatmapset, with its difficulties as they are stored.</param>
 	/// <param name="fingerprint">The fingerprint of the set's archive, unchanged in content.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	internal async Task<BeatmapsetChange> ChangeOfAsync(BeatmapsetRecord set, ContentFingerprint fingerprint,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var synced = (
-			from beatmap in await beatmaps.ListAsync(set, cancellationToken)
+			from beatmap in await beatmaps.ListAsync(set, ct)
 			select new BeatmapData(beatmap.IsLocallyIngested ? null : beatmap.Id, beatmap.Hash, beatmap.Metadata,
 				beatmap.Assets)).ToList();
 

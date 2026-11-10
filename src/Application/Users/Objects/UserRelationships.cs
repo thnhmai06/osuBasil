@@ -16,12 +16,12 @@ public sealed class UserRelationships
 
 	/// <summary>Lists the relationships this account has set, of one kind.</summary>
 	/// <param name="type">The kind of relationship.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The relationships of that kind.</returns>
 	internal async Task<IReadOnlyList<Relationship>> ListAsync(RelationshipType type,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		var all = await _user.Context.Relationships.ListAsync(_user.Record, cancellationToken);
+		var all = await _user.Context.Relationships.ListAsync(_user.Record, ct);
 		return all.Where(relationship => relationship.Type == type).ToList();
 	}
 
@@ -102,12 +102,12 @@ public sealed class UserRelationships
 
 	/// <summary>Lists the users this account has set a relationship toward, of one kind.</summary>
 	/// <param name="type">The kind of relationship.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The users the relationships name.</returns>
 	internal async Task<IReadOnlyList<UserRecord>> TargetsAsync(RelationshipType type,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var relationships = await ListAsync(type, cancellationToken);
+		var relationships = await ListAsync(type, ct);
 		return relationships.Select(relationship => relationship.Target).ToList();
 	}
 }

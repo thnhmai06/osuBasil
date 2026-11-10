@@ -86,7 +86,7 @@ public sealed class EventPublisherTests
 		public List<UserNotificationSent> Received { get; } = [];
 
 		/// <inheritdoc />
-		public ValueTask Handle(UserNotificationSent notification, CancellationToken cancellationToken)
+		public ValueTask Handle(UserNotificationSent notification, CancellationToken ct)
 		{
 			Received.Add(notification);
 			return ValueTask.CompletedTask;
@@ -97,7 +97,7 @@ public sealed class EventPublisherTests
 	private sealed class ThrowingHandler : INotificationHandler<UserNotificationSent>
 	{
 		/// <inheritdoc />
-		public ValueTask Handle(UserNotificationSent notification, CancellationToken cancellationToken)
+		public ValueTask Handle(UserNotificationSent notification, CancellationToken ct)
 		{
 			throw new InvalidOperationException("The handler failed.");
 		}

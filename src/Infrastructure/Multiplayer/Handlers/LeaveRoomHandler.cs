@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class LeaveRoomHandler : IRequestHandler<LeaveRoom, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(LeaveRoom request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(LeaveRoom request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Members.LeaveAsync());

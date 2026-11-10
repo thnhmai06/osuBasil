@@ -22,7 +22,7 @@ internal sealed class AnticheatAnnouncer(
 	: INotificationHandler<AnticheatPlayerFlagged>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(AnticheatPlayerFlagged flagged, CancellationToken cancellationToken)
+	public async ValueTask Handle(AnticheatPlayerFlagged flagged, CancellationToken ct)
 	{
 		if (lobby.RoomOf(flagged.Player) is not { } room || room.IsClosed)
 			return;
@@ -31,14 +31,14 @@ internal sealed class AnticheatAnnouncer(
 		var playerName = flagged.Player.Record.Value.Name;
 		var channelMessage = replies.Text(AnnouncementReplies.AnticheatFlagRoom,
 			new { player = playerName, reason });
-		await server.SayAsync(channels.Of(room), channelMessage, cancellationToken: cancellationToken);
+		await server.SayAsync(channels.Of(room), channelMessage, ct: ct);
 
 		var pmMessage = replies.Text(AnnouncementReplies.AnticheatFlagPm,
 			new { room = room.Id, name = room.Settings.Name, player = playerName, reason });
-		await WhisperStaffAsync(room, pmMessage, cancellationToken);
+		await WhisperStaffAsync(room, pmMessage, ct);
 	}
 
-	private async Task WhisperStaffAsync(Room room, string text, CancellationToken cancellationToken)
+	private async Task WhisperStaffAsync(Room room, string text, CancellationToken ct)
 	{
 		await WhisperIfOnlineAsync(room.Authority.Creator);
 
@@ -49,7 +49,7 @@ internal sealed class AnticheatAnnouncer(
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{
 			if (users.Online.GetValueOrDefault(user) is { } online)
-				await server.WhisperAsync(online, text, cancellationToken: cancellationToken);
+				await server.WhisperAsync(online, text, ct: ct);
 		}
 	}
 }

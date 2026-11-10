@@ -40,7 +40,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 
 			var text = new StringWriter();
 			var created = await ShellRunner.RunAsync(args,
-				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)), text, cancellationToken: TestContext.Current.CancellationToken);
+				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)), text, ct: TestContext.Current.CancellationToken);
 			var again = await OfflineRunner.RunAsync(args,
 				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
 			var missing = await OfflineRunner.RunAsync(["users", "create", "--username", "NoPassword"],

@@ -8,7 +8,7 @@ public sealed class FileUploadSpool(DataPaths paths, TimeProvider time) : IUploa
 {
 	/// <inheritdoc />
 	public async Task<ISpooledUpload> SpoolAsync(Stream content, long maxBytes,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		Directory.CreateDirectory(paths.Spool);
 		var path = Path.Combine(paths.Spool, Guid.NewGuid().ToString("N") + ".tmp");
@@ -27,9 +27,9 @@ public sealed class FileUploadSpool(DataPaths paths, TimeProvider time) : IUploa
 			while (total <= maxBytes)
 			{
 				var allowance = (int)Math.Min(buffer.Length, maxBytes + 1 - total);
-				var read = await content.ReadAsync(buffer.AsMemory(0, allowance), cancellationToken);
+				var read = await content.ReadAsync(buffer.AsMemory(0, allowance), ct);
 				if (read == 0) break;
-				await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+				await file.WriteAsync(buffer.AsMemory(0, read), ct);
 				total += read;
 			}
 
@@ -55,7 +55,7 @@ public sealed class FileUploadSpool(DataPaths paths, TimeProvider time) : IUploa
 
 		public bool TooLarge { get; } = tooLarge;
 
-		public async Task QuarantineAsync(CancellationToken cancellationToken = default)
+		public async Task QuarantineAsync(CancellationToken ct = default)
 		{
 			await file.DisposeAsync();
 			Quarantine.Keep(paths, path, time);

@@ -300,11 +300,11 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	}
 
 	/// <summary>Gets whether opening rooms is locked.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> while room creation is locked.</returns>
-	internal async Task<bool> IsRoomCreationLockedAsync(CancellationToken cancellationToken = default)
+	internal async Task<bool> IsRoomCreationLockedAsync(CancellationToken ct = default)
 	{
-		return (await Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Rooms);
+		return (await Context.Settings.GetAsync(ct)).Locks.HasFlag(Locks.Rooms);
 	}
 
 	/// <summary>Opens a room for a new match and registers it.</summary>

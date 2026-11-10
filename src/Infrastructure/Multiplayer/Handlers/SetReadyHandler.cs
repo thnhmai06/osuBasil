@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class SetReadyHandler : IRequestHandler<SetReady, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetReady request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(SetReady request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Slots.SetReadyAsync(request.Ready));

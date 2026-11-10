@@ -16,29 +16,29 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 	///     The id of the stored folder the content lies in, or <see langword="null" /> when it lies in
 	///     none.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The stored beatmapset the content belongs to, or <see langword="null" /> when it is a new one.</returns>
 	/// <remarks>
 	///     The beatmapset is the stored one that already has a difficulty of the read set; otherwise the stored one with
 	///     the folder's id; otherwise the stored one with the id the read set declares.
 	/// </remarks>
 	public async Task<BeatmapsetRecord?> ResolveAsync(BeatmapsetContent content,
-		IReadOnlyDictionary<BeatmapsetDifficulty, Md5> hashes, int? folderId, CancellationToken cancellationToken)
+		IReadOnlyDictionary<BeatmapsetDifficulty, Md5> hashes, int? folderId, CancellationToken ct)
 	{
 		foreach (var hash in hashes.Values)
 		{
-			var beatmap = await beatmaps.GetAsync(hash, cancellationToken);
+			var beatmap = await beatmaps.GetAsync(hash, ct);
 			if (beatmap is not null) return beatmap.Beatmapset;
 		}
 
 		if (folderId is { } id)
 		{
-			var inFolder = await beatmapsets.GetAsync(id, cancellationToken);
+			var inFolder = await beatmapsets.GetAsync(id, ct);
 			if (inFolder is not null) return inFolder;
 		}
 
 		return content.OnlineSetId is > 0
-			? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken)
+			? await beatmapsets.GetAsync(content.OnlineSetId.Value, ct)
 			: null;
 	}
 
@@ -47,21 +47,21 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 	/// <param name="content">What the archive holds.</param>
 	/// <param name="hashes">The hash of each difficulty.</param>
 	/// <param name="stored">The stored beatmap with each difficulty's hash, or <see langword="null" />.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the set is locked, or a locked beatmap (or a beatmap of a locked set) would be
 	///     taken over, changed or removed.
 	/// </returns>
 	public async Task<bool> TouchesLockedAsync(BeatmapsetRecord? existing, BeatmapsetContent content,
 		Dictionary<BeatmapsetDifficulty, Md5> hashes, Dictionary<BeatmapsetDifficulty, BeatmapRecord?> stored,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (existing is { Locked: true }) return true;
 
 		foreach (var difficulty in content.Difficulties)
 		{
 			var matched = stored[difficulty] ?? (difficulty.OnlineId is > 0
-				? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
+				? await beatmaps.GetAsync(difficulty.OnlineId.Value, ct)
 				: null);
 			if (matched is null) continue;
 			if (!matched.Beatmapset.Equals(existing) && matched.IsLocked()) return true;
@@ -69,7 +69,7 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 
 		if (existing is null) return false;
 		var kept = hashes.Values.ToHashSet();
-		return (await beatmaps.ListAsync(existing, cancellationToken)).Any(beatmap =>
+		return (await beatmaps.ListAsync(existing, ct)).Any(beatmap =>
 			beatmap.Locked && !kept.Contains(beatmap.Hash));
 	}
 }

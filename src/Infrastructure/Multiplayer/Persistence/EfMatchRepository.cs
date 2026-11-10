@@ -54,40 +54,40 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<MatchRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public async ValueTask<MatchRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((MultiplayerDbContext context) => context.Matches
 			.Where(item => item.Id == id)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
-		return row is null ? null : await ToMatchAsync(row, cancellationToken);
+			.FirstOrDefaultAsync(ct), ct);
+		return row is null ? null : await ToMatchAsync(row, ct);
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var fetched = await database.ReadAsync((MultiplayerDbContext context) => Filter(context, context.Matches, query)
 			.OrderByDescending(row => row.StartedAt)
 			.ThenByDescending(row => row.Id)
 			.Skip(page.Offset)
 			.Take(page.Fetch)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		var matches = new List<MatchRecord>();
 		foreach (var row in rows)
-			matches.Add(await ToMatchAsync(row, cancellationToken));
+			matches.Add(await ToMatchAsync(row, ct));
 
 		return new Page<MatchRecord>(matches, hasNext);
 	}
 
 	/// <inheritdoc />
 	public async Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		return await database.ReadAsync((MultiplayerDbContext context) =>
 			WhereVisibleTo(context, context.Matches.Where(row => row.Id == match.Id), viewer.Id)
-				.AnyAsync(cancellationToken), cancellationToken);
+				.AnyAsync(ct), ct);
 	}
 
 	/// <summary>Narrows the matches to the ones a query asks for.</summary>
@@ -125,9 +125,9 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		                                                                 && joined.Type == playerJoined));
 	}
 
-	private async Task<MatchRecord> ToMatchAsync(MatchRow row, CancellationToken cancellationToken)
+	private async Task<MatchRecord> ToMatchAsync(MatchRow row, CancellationToken ct)
 	{
-		var creator = await users.GetAsync(row.CreatorId, cancellationToken)
+		var creator = await users.GetAsync(row.CreatorId, ct)
 		              ?? throw new InvalidDataException($"Stored match {row.Id} has no existing creator.");
 		return new MatchRecord
 		{
@@ -143,9 +143,9 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		};
 	}
 
-	private async Task<MatchData> WithCreatorAsync(MatchData data, CancellationToken cancellationToken = default)
+	private async Task<MatchData> WithCreatorAsync(MatchData data, CancellationToken ct = default)
 	{
-		var creator = await users.GetAsync(data.Creator.Id, cancellationToken) ?? data.Creator;
+		var creator = await users.GetAsync(data.Creator.Id, ct) ?? data.Creator;
 		return new MatchData
 		{
 			Name = data.Name,

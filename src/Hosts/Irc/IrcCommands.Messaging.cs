@@ -12,7 +12,7 @@ namespace Basil.Host.Irc;
 internal sealed partial class IrcCommands
 {
 	private async Task MessageAsync(IrcSession session, Connection actor, IrcMessage message,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var notice = message.Command == "NOTICE";
 		if (message.Parameters.Count == 0)
@@ -52,17 +52,17 @@ internal sealed partial class IrcCommands
 			destination = new ChatTarget.Private(user.Record);
 		}
 
-		if (!await MayChatAsync(session, actor, message.Command, target, cancellationToken)) return;
+		if (!await MayChatAsync(session, actor, message.Command, target, ct)) return;
 
 		var result = await sender.Send(
-			new PostChatMessage(actor, destination, IrcText.Limit(message.Parameters[1]), notice), cancellationToken);
+			new PostChatMessage(actor, destination, IrcText.Limit(message.Parameters[1]), notice), ct);
 		ReplyToPost(session, target, result);
 	}
 
 	private async Task<bool> MayChatAsync(IrcSession session, Connection actor, string command, string target,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var limit = (await settings.GetAsync(cancellationToken)).RateLimits.Chat;
+		var limit = (await settings.GetAsync(ct)).RateLimits.Chat;
 		if (limiter.TryAcquire($"chat:{actor.Record.Id}", limit.Count, limit.Window)) return true;
 
 		if (session.Has("standard-replies"))
@@ -115,7 +115,7 @@ internal sealed partial class IrcCommands
 	}
 
 	private async Task JoinAsync(IrcSession session, Connection actor, IrcMessage message,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -131,7 +131,7 @@ internal sealed partial class IrcCommands
 				continue;
 			}
 
-			var result = await sender.Send(new JoinChannel(actor, IrcTarget(name)), cancellationToken);
+			var result = await sender.Send(new JoinChannel(actor, IrcTarget(name)), ct);
 			switch (result.Outcome)
 			{
 				case ChannelOutcome.Closed or ChannelOutcome.NotFound:
@@ -145,7 +145,7 @@ internal sealed partial class IrcCommands
 	}
 
 	private async Task PartAsync(IrcSession session, Connection actor, IrcMessage message,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -155,7 +155,7 @@ internal sealed partial class IrcCommands
 
 		foreach (var name in message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries))
 		{
-			var result = await sender.Send(new PartChannel(actor, IrcTarget(name)), cancellationToken);
+			var result = await sender.Send(new PartChannel(actor, IrcTarget(name)), ct);
 			if (result.Outcome == ChannelOutcome.NotFound)
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
 			else if (result.Outcome == ChannelOutcome.NotMember)
@@ -171,10 +171,10 @@ internal sealed partial class IrcCommands
 	}
 
 	private async Task AwayAsync(IrcSession session, Connection actor, IrcMessage message,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var text = message.Parameters.Count > 0 && message.Parameters[0].Length > 0 ? message.Parameters[0] : null;
-		await sender.Send(new SetAwayMessage(actor, text), cancellationToken);
+		await sender.Send(new SetAwayMessage(actor, text), ct);
 		session.Numeric(text is null ? IrcNumericReply.RplUnaway : IrcNumericReply.RplNowAway,
 			text is null ? "You are no longer marked as being away" : "You have been marked as being away");
 

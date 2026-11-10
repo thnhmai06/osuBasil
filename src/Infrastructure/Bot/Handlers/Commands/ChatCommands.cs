@@ -21,9 +21,9 @@ internal sealed class ChatCommands(
 	/// <summary>Executes a command if the text starts with the command prefix.</summary>
 	/// <param name="context">The command context.</param>
 	/// <param name="text">The message text.</param>
-	/// <param name="cancellationToken">A cancellation token.</param>
+	/// <param name="ct">A cancellation token.</param>
 	/// <returns>True if a command was executed; otherwise false (no reply sent for unknown commands).</returns>
-	public async Task<bool> ExecuteAsync(CommandContext context, string text, CancellationToken cancellationToken)
+	public async Task<bool> ExecuteAsync(CommandContext context, string text, CancellationToken ct)
 	{
 		if (string.IsNullOrEmpty(text))
 			return false;
@@ -39,19 +39,19 @@ internal sealed class ChatCommands(
 		var segments = CommandLine.Split(commandText);
 
 		if (segments.Count == 1)
-			return await ExecuteSingleAsync(context, segments[0].Text, cancellationToken);
+			return await ExecuteSingleAsync(context, segments[0].Text, ct);
 
-		if (!await IsChainAllowedAsync(context, segments, cancellationToken)) return false;
+		if (!await IsChainAllowedAsync(context, segments, ct)) return false;
 
-		return await ExecuteChainAsync(context, segments, cancellationToken);
+		return await ExecuteChainAsync(context, segments, ct);
 	}
 
 	private async Task<bool> IsChainAllowedAsync(CommandContext context, IReadOnlyList<CommandSegment> segments,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (context.Channel == GeneralChannel.LobbyName)
 		{
-			await context.Reply(BotReplies.ChainNotInLobby, cancellationToken);
+			await context.Reply(BotReplies.ChainNotInLobby, ct);
 			return false;
 		}
 
@@ -63,7 +63,7 @@ internal sealed class ChatCommands(
 			    && string.Equals(tokens[0], "mp", StringComparison.OrdinalIgnoreCase)
 			    && tokens.Count >= 2 && MpCommands.IsChainable(tokens[1])) continue;
 
-			await context.Reply(BotReplies.ChainOnlyMpAllowed, cancellationToken);
+			await context.Reply(BotReplies.ChainOnlyMpAllowed, ct);
 			return false;
 		}
 
@@ -71,7 +71,7 @@ internal sealed class ChatCommands(
 	}
 
 	private async Task<bool> ExecuteChainAsync(CommandContext context, IReadOnlyList<CommandSegment> segments,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var succeeded = true;
 		foreach (var segment in segments)
@@ -85,7 +85,7 @@ internal sealed class ChatCommands(
 				continue;
 
 			var args = tokens.Skip(1).ToArray();
-			succeeded = await mpCommands.ExecuteAsync(context, args, cancellationToken);
+			succeeded = await mpCommands.ExecuteAsync(context, args, ct);
 		}
 
 		return succeeded;
@@ -99,7 +99,7 @@ internal sealed class ChatCommands(
 	}
 
 	private async Task<bool> ExecuteSingleAsync(CommandContext context, string segmentText,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var stripped = StripPrefix(segmentText);
 		var tokens = CommandLine.Tokenize(stripped);
@@ -111,24 +111,24 @@ internal sealed class ChatCommands(
 
 		return trigger switch
 		{
-			"help" => await HandleHelpAsync(context, cancellationToken),
-			"roll" => await HandleRollAsync(context, args, cancellationToken),
-			"where" => await HandleWhereAsync(context, args, cancellationToken),
-			"faq" => await HandleFaqAsync(context, args, cancellationToken),
-			"mp" => await mpCommands.ExecuteAsync(context, args, cancellationToken),
-			"channel" => await channelCommands.ExecuteAsync(context, args, cancellationToken),
+			"help" => await HandleHelpAsync(context, ct),
+			"roll" => await HandleRollAsync(context, args, ct),
+			"where" => await HandleWhereAsync(context, args, ct),
+			"faq" => await HandleFaqAsync(context, args, ct),
+			"mp" => await mpCommands.ExecuteAsync(context, args, ct),
+			"channel" => await channelCommands.ExecuteAsync(context, args, ct),
 			_ => false
 		};
 	}
 
-	private static async Task<bool> HandleHelpAsync(CommandContext context, CancellationToken cancellationToken)
+	private static async Task<bool> HandleHelpAsync(CommandContext context, CancellationToken ct)
 	{
-		await context.SayPrivately(CommandCatalog.Lines(context.Replies, ""), cancellationToken);
+		await context.SayPrivately(CommandCatalog.Lines(context.Replies, ""), ct);
 		return true;
 	}
 
 	private async Task<bool> HandleRollAsync(CommandContext context, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var max = 100;
 		if (args.Count > 0 && int.TryParse(args[0], out var parsed) && parsed > 0)
@@ -136,39 +136,39 @@ internal sealed class ChatCommands(
 
 		var roll = random.NextInt64(0, (long)max + 1);
 		await context.Reply(BotReplies.RollResult, new { user = context.Sender.Value.Name, points = roll },
-			cancellationToken);
+			ct);
 		return true;
 	}
 
 	private async Task<bool> HandleWhereAsync(CommandContext context, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (args.Count == 0)
 		{
-			await context.Reply(BotReplies.WhereUsage, cancellationToken);
+			await context.Reply(BotReplies.WhereUsage, ct);
 			return false;
 		}
 
 		var name = string.Join(" ", args);
-		var user = await users.GetByNameAsync(name, cancellationToken);
+		var user = await users.GetByNameAsync(name, ct);
 
 		if (user is null)
 		{
-			await context.Reply(BotReplies.NotRegistered, new { name }, cancellationToken);
+			await context.Reply(BotReplies.NotRegistered, new { name }, ct);
 			return true;
 		}
 
 		await context.Reply(BotReplies.WhereIsIn,
-			new { name = user.Value.Name, country = user.Value.Country.Describe() }, cancellationToken);
+			new { name = user.Value.Name, country = user.Value.Country.Describe() }, ct);
 		return true;
 	}
 
 	private async Task<bool> HandleFaqAsync(CommandContext context, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (args.Count == 0)
 		{
-			await context.Reply(BotReplies.FaqUsage, cancellationToken);
+			await context.Reply(BotReplies.FaqUsage, ct);
 			return false;
 		}
 
@@ -176,32 +176,32 @@ internal sealed class ChatCommands(
 
 		if (string.Equals(query, "list", StringComparison.OrdinalIgnoreCase))
 		{
-			var entries = (await faqs.ListAsync(cancellationToken)).ToArray();
+			var entries = (await faqs.ListAsync(ct)).ToArray();
 			if (entries.Length == 0)
 			{
-				await context.Reply(BotReplies.NoFaqEntriesAvailable, cancellationToken);
+				await context.Reply(BotReplies.NoFaqEntriesAvailable, ct);
 				return true;
 			}
 
 			await context.Reply(BotReplies.AvailableFaqEntries, new { entries = string.Join(", ", entries) },
-				cancellationToken);
+				ct);
 			return true;
 		}
 
-		var reader = await faqs.ReadAsync(query, cancellationToken);
+		var reader = await faqs.ReadAsync(query, ct);
 		if (reader is null)
 		{
-			await context.Reply(BotReplies.NoFaqEntryFound, new { entry = query }, cancellationToken);
+			await context.Reply(BotReplies.NoFaqEntryFound, new { entry = query }, ct);
 			return true;
 		}
 
 		string text;
 		using (reader)
 		{
-			text = await reader.ReadToEndAsync(cancellationToken);
+			text = await reader.ReadToEndAsync(ct);
 		}
 
-		await context.Say(text, cancellationToken);
+		await context.Say(text, ct);
 		return true;
 	}
 }

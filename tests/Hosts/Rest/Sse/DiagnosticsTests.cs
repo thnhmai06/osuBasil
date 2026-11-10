@@ -17,8 +17,8 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		using (plain)
 		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
 		{
-			var (noToken, _) = await anon.OpenStreamAsync("/v1/diagnostics", cancellationToken: TestContext.Current.CancellationToken);
-			var (denied, _) = await plain.OpenStreamAsync("/v1/diagnostics", cancellationToken: TestContext.Current.CancellationToken);
+			var (noToken, _) = await anon.OpenStreamAsync("/v1/diagnostics", ct: TestContext.Current.CancellationToken);
+			var (denied, _) = await plain.OpenStreamAsync("/v1/diagnostics", ct: TestContext.Current.CancellationToken);
 			var (action, envelope) = await plain.CallAsync(HttpMethod.Post, "/v1/diagnostics/gc/collect");
 			using (noToken)
 			using (denied)
@@ -38,9 +38,9 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		var (staff, _) = await fixture.SignInAsync("DiagStaff", Staff);
 		using (staff)
 		{
-			var (all, allReader) = await staff.OpenStreamAsync("/v1/diagnostics", cancellationToken: TestContext.Current.CancellationToken);
-			var (one, oneReader) = await staff.OpenStreamAsync("/v1/diagnostics/application", cancellationToken: TestContext.Current.CancellationToken);
-			var (unknown, _) = await staff.OpenStreamAsync("/v1/diagnostics/nothing", cancellationToken: TestContext.Current.CancellationToken);
+			var (all, allReader) = await staff.OpenStreamAsync("/v1/diagnostics", ct: TestContext.Current.CancellationToken);
+			var (one, oneReader) = await staff.OpenStreamAsync("/v1/diagnostics/application", ct: TestContext.Current.CancellationToken);
+			var (unknown, _) = await staff.OpenStreamAsync("/v1/diagnostics/nothing", ct: TestContext.Current.CancellationToken);
 			using (all)
 			using (one)
 			using (unknown)
@@ -65,7 +65,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		var (staff, _) = await fixture.SignInAsync("DiagTick", Staff);
 		using (staff)
 		{
-			var (response, reader) = await staff.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
+			var (response, reader) = await staff.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				await reader!.ReadAsync(TestContext.Current.CancellationToken);

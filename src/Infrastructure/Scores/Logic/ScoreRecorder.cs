@@ -31,7 +31,7 @@ internal sealed class ScoreRecorder(
 		BeatmapChecksums checkedBeatmap,
 		SubmittedClient client,
 		Stream? replay,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client) is { } rejection)
 			return new ScoreOutcome(rejection, null, null);

@@ -10,11 +10,11 @@ namespace Basil.Infrastructure.Beatmaps.Persistence;
 internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvider time) : IBeatmapsetRepository
 {
 	/// <inheritdoc />
-	public async ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public async ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmapsets
 			.Where(s => s.Id == id)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(ct), ct);
 		return row?.ToRecord();
 	}
 
@@ -45,7 +45,7 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 
 	/// <inheritdoc />
 	public async Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var fetched = await database.ReadAsync((BeatmapsDbContext context) =>
 		{
@@ -55,21 +55,21 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 				.OrderByDescending(set => set.Id)
 				.Skip(page.Offset)
 				.Take(page.Fetch)
-				.ToListAsync(cancellationToken);
-		}, cancellationToken);
+				.ToListAsync(ct);
+		}, ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<BeatmapsetRecord>([.. rows.Select(row => row.ToRecord())], hasNext);
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken ct = default)
 	{
 		return await database.ReadAsync(async (BeatmapsDbContext context) => await context.Beatmapsets
 			.OrderByDescending(set => set.Id)
 			.Select(set => set.Id)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 	}
 
 	/// <summary>Stores every change in one transaction, keeping what a replaced beatmapset was stored with.</summary>

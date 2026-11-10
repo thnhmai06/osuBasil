@@ -14,7 +14,7 @@ public interface IRoundScoreRepository
 	/// <summary>Lists the scores of a round, in submission order.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> scores are returned, the earliest ones.</remarks>
 	/// <param name="round">The round.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The round's scores.</returns>
-	Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken ct = default);
 }

@@ -146,20 +146,20 @@ public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <summary>Stores the bytes of a stream as a file, replacing the file already there.</summary>
 	/// <param name="name">The name to store the file under.</param>
 	/// <param name="content">The bytes to store; the stream is read to its end.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <remarks>A save that does not complete leaves the previous file.</remarks>
-	public Task SaveAsync(string name, Stream content, CancellationToken cancellationToken)
+	public Task SaveAsync(string name, Stream content, CancellationToken ct)
 	{
-		return SaveAsync(name, (output, token) => content.CopyToAsync(output, token), cancellationToken);
+		return SaveAsync(name, (output, token) => content.CopyToAsync(output, token), ct);
 	}
 
 	/// <summary>Stores what a writer produces as a file, replacing the file already there.</summary>
 	/// <param name="name">The name to store the file under.</param>
 	/// <param name="write">Writes the file's bytes to the stream it is given, which it does not dispose.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <remarks>A save that does not complete leaves the previous file.</remarks>
 	public async Task SaveAsync(string name, Func<Stream, CancellationToken, Task> write,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var path = Resolve(name);
 		Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
@@ -176,7 +176,7 @@ public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 				             BufferSize = BufferSize
 			             }))
 			{
-				await write(stream, cancellationToken);
+				await write(stream, ct);
 			}
 
 			File.Move(temporary, path, true);

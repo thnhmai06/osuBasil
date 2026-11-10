@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class PmConnectionOpenedHandler(PmChannels channels) : INotificationHandler<UserConnectionOpened>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(UserConnectionOpened @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionOpened @event, CancellationToken ct)
 	{
 		if (@event.Connection.Type is not SessionType.StableTourney)
 			channels.Of(@event.Connection.User).ScopeTo(@event.Connection).Join();

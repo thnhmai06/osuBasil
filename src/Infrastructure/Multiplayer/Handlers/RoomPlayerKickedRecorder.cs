@@ -11,7 +11,7 @@ internal sealed class RoomPlayerKickedRecorder(
 	IMatchEventRepository matchEvents) : INotificationHandler<RoomPlayerKicked>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomPlayerKicked @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomPlayerKicked @event, CancellationToken ct)
 	{
 		if (@event.RoundProgress is { Completed: true } progress)
 			await rounds.CreateOrUpdateAsync(progress.Round);

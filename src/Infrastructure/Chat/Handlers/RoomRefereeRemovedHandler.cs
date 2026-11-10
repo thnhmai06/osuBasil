@@ -9,7 +9,7 @@ internal sealed class RoomRefereeRemovedHandler(RoomChannels channels, TimeProvi
 	: INotificationHandler<RoomRefereeRemoved>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(RoomRefereeRemoved @event, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRefereeRemoved @event, CancellationToken ct)
 	{
 		if (channels.Find(@event.Room) is not { } channel) return ValueTask.CompletedTask;
 

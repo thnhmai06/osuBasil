@@ -47,7 +47,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 		using (player)
 		using (watcher)
 		{
-			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", cancellationToken: TestContext.Current.CancellationToken);
+			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.NotNull(reader);
@@ -75,7 +75,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 		using (player)
 		using (watcher)
 		{
-			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", cancellationToken: TestContext.Current.CancellationToken);
+			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				await reader!.ReadAsync(TestContext.Current.CancellationToken);
@@ -96,7 +96,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 		var (player, watcher, id) = await StartAsync("SpecLeaver", "SpecStays");
 		using (watcher)
 		{
-			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", cancellationToken: TestContext.Current.CancellationToken);
+			var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{id}/spectate", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				await reader!.ReadAsync(TestContext.Current.CancellationToken);

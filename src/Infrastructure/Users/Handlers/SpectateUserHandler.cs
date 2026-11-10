@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class SpectateUserHandler : IRequestHandler<SpectateUser, Result<ConnectionOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<ConnectionOutcome>> Handle(SpectateUser request, CancellationToken cancellationToken)
+	public async ValueTask<Result<ConnectionOutcome>> Handle(SpectateUser request, CancellationToken ct)
 	{
 		return await request.Host.ScopeTo(request.Actor).SpectateAsync();
 	}

@@ -10,19 +10,19 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 	: IHostedService
 {
 	/// <summary>Creates the data directories, brings the database up to date and loads resident data.</summary>
-	/// <param name="cancellationToken">A token that cancels the startup work.</param>
-	public async Task StartAsync(CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the startup work.</param>
+	public async Task StartAsync(CancellationToken ct)
 	{
 		paths.CreateDirectories();
-		await migrator.MigrateAsync(cancellationToken);
+		await migrator.MigrateAsync(ct);
 		foreach (var resident in residents)
-			await resident.LoadAsync(cancellationToken);
+			await resident.LoadAsync(ct);
 	}
 
 	/// <summary>Does nothing; the storage needs no shutdown work.</summary>
-	/// <param name="cancellationToken">A token that cancels the shutdown work.</param>
+	/// <param name="ct">A token that cancels the shutdown work.</param>
 	/// <returns>A completed task.</returns>
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}

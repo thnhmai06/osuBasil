@@ -11,7 +11,7 @@ namespace Basil.Host.Irc.Delivery;
 internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberJoined>
 {
-	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
 		if (channel is PmChannel or SpectatorChannel) return ValueTask.CompletedTask;
@@ -34,7 +34,7 @@ internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence pres
 internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
 	: INotificationHandler<ChannelMemberParted>
 {
-	public ValueTask Handle(ChannelMemberParted notification, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelMemberParted notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
 		if (channel is PmChannel or SpectatorChannel) return ValueTask.CompletedTask;
@@ -66,7 +66,7 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence presence)
 	: INotificationHandler<ChannelClosed>
 {
-	public ValueTask Handle(ChannelClosed notification, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelClosed notification, CancellationToken ct)
 	{
 		presence.Remove(notification.Channel);
 		foreach (var session in clients.Of(notification.Members))
@@ -78,7 +78,7 @@ internal sealed class ChannelClosedDelivery(IrcClients clients, IrcPresence pres
 /// <summary>Tells the IRC clients that a channel's new read rules removed them from it.</summary>
 internal sealed class ChannelConfiguredDelivery(IrcClients clients) : INotificationHandler<ChannelConfigured>
 {
-	public ValueTask Handle(ChannelConfigured notification, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelConfigured notification, CancellationToken ct)
 	{
 		foreach (var session in clients.Of(notification.Removed))
 			session.Deliver(ChannelPartedDelivery.Kick(session, notification.Channel,

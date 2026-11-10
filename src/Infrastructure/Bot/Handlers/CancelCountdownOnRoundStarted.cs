@@ -8,8 +8,8 @@ namespace Basil.Infrastructure.Bot.Handlers;
 internal sealed class CancelCountdownOnRoundStarted(RoomCountdowns countdowns) : INotificationHandler<RoomRoundStarted>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRoundStarted notification, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRoundStarted notification, CancellationToken ct)
 	{
-		await countdowns.CancelAsync(notification.Room, CountdownCancelReason.RoundStarted, false, cancellationToken);
+		await countdowns.CancelAsync(notification.Room, CountdownCancelReason.RoundStarted, false, ct);
 	}
 }

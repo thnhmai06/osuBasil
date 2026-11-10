@@ -12,8 +12,8 @@ public interface IBeatmapAssets
 	/// <summary>Makes the derived files of a set: an audio preview of each audio track its difficulties use.</summary>
 	/// <param name="set">The beatmapset, whose audio is already stored.</param>
 	/// <param name="beatmaps">The set's difficulties, naming their audio and preview times.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <remarks>A preview that cannot be made is left out; the set stays usable without it.</remarks>
 	Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 }

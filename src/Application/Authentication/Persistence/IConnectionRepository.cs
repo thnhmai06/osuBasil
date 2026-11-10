@@ -45,10 +45,10 @@ public interface IConnectionRepository
 	/// <summary>Lists the connections of a session, newest first.</summary>
 	/// <param name="sessionId">The session whose connections to list.</param>
 	/// <param name="page">Which part of the listing to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>One part of the session's connections, newest first.</returns>
 	ValueTask<Page<ConnectionRecord>> ListAsync(long sessionId, PageRequest page,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Closes every connection still open, at the moment it was last active.</summary>
 	/// <param name="reason">Why the connections closed.</param>

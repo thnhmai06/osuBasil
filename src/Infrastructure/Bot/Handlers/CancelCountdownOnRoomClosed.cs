@@ -8,8 +8,8 @@ namespace Basil.Infrastructure.Bot.Handlers;
 internal sealed class CancelCountdownOnRoomClosed(RoomCountdowns countdowns) : INotificationHandler<LobbyRoomClosed>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(LobbyRoomClosed notification, CancellationToken cancellationToken)
+	public async ValueTask Handle(LobbyRoomClosed notification, CancellationToken ct)
 	{
-		await countdowns.CancelAsync(notification.Room, CountdownCancelReason.RoomClosed, false, cancellationToken);
+		await countdowns.CancelAsync(notification.Room, CountdownCancelReason.RoomClosed, false, ct);
 	}
 }

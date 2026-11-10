@@ -12,8 +12,8 @@ internal sealed class UpdateRulesetsHandler(Rulesets rulesets)
 {
 	/// <inheritdoc />
 	public async ValueTask<(Result<RulesetOutcome> Result, RulesetStageResult? Stage)> Handle(UpdateRulesets request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		return await rulesets.ScopeTo(request.Actor).UpdateAsync(cancellationToken);
+		return await rulesets.ScopeTo(request.Actor).UpdateAsync(ct);
 	}
 }

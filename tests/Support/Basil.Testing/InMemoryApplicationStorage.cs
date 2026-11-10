@@ -74,24 +74,24 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		return Task.FromResult(true);
 	}
 
-	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return ValueTask.FromResult(_users.GetValueOrDefault(id));
 	}
 
-	public ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+	public ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		var normalized = UserData.NormalizeName(name);
 		return ValueTask.FromResult(_users.Values.FirstOrDefault(user =>
 			user.Value.NormalizedName == normalized));
 	}
 
 	public Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult(new Page<UserRecord>([], false));
 	}
 
@@ -109,9 +109,9 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 {
 	private readonly Dictionary<int, Md5> _passwords = [];
 
-	public Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
+	public Task<bool> VerifyAsync(Credentials credentials, CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult(_passwords.TryGetValue(credentials.User.Id, out var password) &&
 		                       password == credentials.PasswordHash);
 	}
@@ -153,9 +153,9 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 	}
 
 	public ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		var entries = _entries.Where(entry => entry.Value.User.Equals(query.User) &&
 		                                      (query.Types is null || query.Types.Contains(entry.Value.Type)) &&
 		                                      query.State switch
@@ -168,13 +168,13 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 			page.Offset + page.Limit < entries.Count));
 	}
 
-	public Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken cancellationToken = default)
+	public Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
 	{
 		return Task.FromResult(_entries.FirstOrDefault(entry => entry.Id == id && entry.Value.User.Equals(user)));
 	}
 
 	public Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var found = _entries.FirstOrDefault(entry => entry.Value.Type == type && entry.Value.End is null &&
 		                                             entry.Value.TokenHash == tokenHash &&
@@ -314,7 +314,7 @@ internal sealed class InMemoryConnectionRepository : IConnectionRepository
 	}
 
 	public ValueTask<Page<ConnectionRecord>> ListAsync(long sessionId, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var entries = _entries.Where(entry => entry.Value.SessionId == sessionId).Reverse().ToList();
 		return ValueTask.FromResult(new Page<ConnectionRecord>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
@@ -363,9 +363,9 @@ internal sealed class InMemoryRelationshipRepository : IRelationshipRepository
 	}
 
 	public Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult<IReadOnlyList<Relationship>>(
 			_relationships.Where(relationship => relationship.Actor.Equals(actor)).ToList());
 	}
@@ -391,9 +391,9 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 	}
 
 	public ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
-		PageRequest page, CancellationToken cancellationToken = default)
+		PageRequest page, CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		var entries = _entries.Where(entry => entry.Value.Target.Equals(target) &&
 		                                      (within is null || within.Value.Contains(entry.Value.Timestamp)))
 			.Reverse().ToList();
@@ -420,16 +420,16 @@ internal sealed class InMemoryMatchRepository(InMemoryMatchEventRepository event
 		return Task.CompletedTask;
 	}
 
-	public ValueTask<MatchRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<MatchRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return ValueTask.FromResult(_matches.GetValueOrDefault(id));
 	}
 
 	public Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		var matches = _matches.Values
 			.Where(match => query.Ended is not { } ended || match.Value.EndedAt is not null == ended)
 			.Where(match => query.Private is not { } isPrivate || match.Value.IsPrivate == isPrivate)
@@ -441,9 +441,9 @@ internal sealed class InMemoryMatchRepository(InMemoryMatchEventRepository event
 	}
 
 	public Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult(IsVisibleTo(match, viewer.Id));
 	}
 
@@ -471,9 +471,9 @@ internal sealed class InMemoryRoundRepository : IRoundRepository
 		return Task.CompletedTask;
 	}
 
-	public Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult<IReadOnlyList<Round>>(_rounds.Where(round => round.Match.Equals(match)).ToList());
 	}
 }
@@ -488,9 +488,9 @@ internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
 		return Task.CompletedTask;
 	}
 
-	public Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match, CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult<IReadOnlyList<MatchEvent>>(_events.Where(matchEvent =>
 			matchEvent.Match.Equals(match)).ToList());
 	}
@@ -505,9 +505,9 @@ internal sealed class InMemorySettingsRepository : ISettingsRepository
 {
 	public ServerSettings Current { get; private set; } = new();
 
-	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
+	public ValueTask<ServerSettings> GetAsync(CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return ValueTask.FromResult(Current);
 	}
 

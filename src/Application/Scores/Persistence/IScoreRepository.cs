@@ -24,17 +24,17 @@ public interface IScoreRepository
 
 	/// <summary>Gets a score by id.</summary>
 	/// <param name="id">The score id.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The score, or <see langword="null" /> when no score has that id.</returns>
-	ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken ct = default);
 
 	/// <summary>Gets the scores that have the given ids.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> scores are returned.</remarks>
 	/// <param name="ids">The score ids; an id no score has is left out.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The stored scores among them, in ascending order of id.</returns>
 	Task<IReadOnlyList<ScoreRecord>> GetManyAsync(IReadOnlyCollection<int> ids,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>
 	///     Lists matching scores. Beatmap or per-player-best listings are ordered by total score descending, then
@@ -42,8 +42,8 @@ public interface IScoreRepository
 	/// </summary>
 	/// <param name="query">Which scores to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A page of scores.</returns>
 	Task<Page<ScoreRecord>> ListAsync(ScoreQuery query, PageRequest page,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 }

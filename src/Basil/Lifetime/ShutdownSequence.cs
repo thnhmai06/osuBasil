@@ -38,19 +38,19 @@ public sealed class ShutdownSequence(TimeProvider clock, ILogger<ShutdownSequenc
 {
 	/// <summary>Runs the steps in order.</summary>
 	/// <param name="steps">The steps.</param>
-	/// <param name="cancellationToken">
+	/// <param name="ct">
 	///     A token that ends the whole shutdown at once: the running step is cancelled and the
 	///     rest are skipped.
 	/// </param>
 	/// <returns>What happened to each step that started.</returns>
 	public async Task<IReadOnlyList<ShutdownStepResult>> RunAsync(IEnumerable<ShutdownStep> steps,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var results = new List<ShutdownStepResult>();
 		foreach (var step in steps)
 		{
 			var started = clock.GetTimestamp();
-			var outcome = await RunStepAsync(step, cancellationToken);
+			var outcome = await RunStepAsync(step, ct);
 			var result = new ShutdownStepResult(step.Name, outcome, clock.GetElapsedTime(started));
 			results.Add(result);
 			switch (outcome)
@@ -73,14 +73,14 @@ public sealed class ShutdownSequence(TimeProvider clock, ILogger<ShutdownSequenc
 		return results;
 	}
 
-	private async Task<ShutdownStepOutcome> RunStepAsync(ShutdownStep step, CancellationToken cancellationToken)
+	private async Task<ShutdownStepOutcome> RunStepAsync(ShutdownStep step, CancellationToken ct)
 	{
-		if (cancellationToken.IsCancellationRequested) return ShutdownStepOutcome.Cancelled;
+		if (ct.IsCancellationRequested) return ShutdownStepOutcome.Cancelled;
 
-		using var stepToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		using var stepToken = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		try
 		{
-			await step.Run(stepToken.Token).WaitAsync(step.Timeout, clock, cancellationToken);
+			await step.Run(stepToken.Token).WaitAsync(step.Timeout, clock, ct);
 			return ShutdownStepOutcome.Completed;
 		}
 		catch (TimeoutException)
@@ -88,7 +88,7 @@ public sealed class ShutdownSequence(TimeProvider clock, ILogger<ShutdownSequenc
 			await stepToken.CancelAsync();
 			return ShutdownStepOutcome.TimedOut;
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (ct.IsCancellationRequested)
 		{
 			return ShutdownStepOutcome.Cancelled;
 		}

@@ -46,29 +46,29 @@ public readonly struct ScopedUserRelationships
 	}
 
 	/// <summary>Lists the users this account has friended.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the friends; only the account's own user may read them.</returns>
 	public Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> FriendsAsync(
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		return ListAsync(RelationshipType.Friend, cancellationToken);
+		return ListAsync(RelationshipType.Friend, ct);
 	}
 
 	/// <summary>Lists the users this account has blocked.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the blocked users; only the account's own user may read them.</returns>
 	public Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> BlocksAsync(
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		return ListAsync(RelationshipType.Block, cancellationToken);
+		return ListAsync(RelationshipType.Block, ct);
 	}
 
 	private async Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> ListAsync(
-		RelationshipType type, CancellationToken cancellationToken)
+		RelationshipType type, CancellationToken ct)
 	{
 		// The operator reads any account's lists; everyone else reads their own.
 		if (_scoped is { IsSelf: false, Actor: not OperatorConnection }) return (UserOutcome.NotSelf, []);
 
-		return (UserOutcome.Ok, await _scoped.User.Relationships.TargetsAsync(type, cancellationToken));
+		return (UserOutcome.Ok, await _scoped.User.Relationships.TargetsAsync(type, ct));
 	}
 }

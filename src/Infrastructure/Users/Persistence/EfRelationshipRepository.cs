@@ -37,7 +37,7 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var actorId = actor.Id;
 		var rows = await database.ReadAsync((UsersDbContext context) =>
@@ -45,8 +45,8 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 					where relationship.ActorId == actorId
 					join target in context.Users on relationship.TargetId equals target.Id
 					orderby relationship.CreatedAt, relationship.TargetId
-					select new { relationship, target }).Take(ListLimits.Ceiling).ToListAsync(cancellationToken),
-			cancellationToken);
+					select new { relationship, target }).Take(ListLimits.Ceiling).ToListAsync(ct),
+			ct);
 
 		return
 		[

@@ -11,7 +11,7 @@ internal sealed class SetUserPrivilegesHandler(UserRegistry registry)
 	: IRequestHandler<SetUserPrivileges, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(SetUserPrivileges request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(SetUserPrivileges request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Privileges
 			.SetAsync(request.Privileges);

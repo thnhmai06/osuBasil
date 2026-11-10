@@ -12,15 +12,15 @@ public interface IMenuBannerRepository
 
 	/// <summary>Gets a banner by its image.</summary>
 	/// <param name="image">The image to look up.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The banner, or <see langword="null" /> when none shows that image.</returns>
-	ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken cancellationToken = default);
+	ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken ct = default);
 
 	/// <summary>Lists every banner, whether or not it is shown now, oldest first.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> banners are returned.</remarks>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>All stored banners.</returns>
-	Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken ct = default);
 
 	/// <summary>Deletes a banner; deleting a missing one does nothing.</summary>
 	/// <param name="banner">The banner to delete.</param>

@@ -28,11 +28,11 @@ public readonly record struct Md5 : IParsable<Md5>
 
 	/// <summary>Computes the MD5 hash of a content read to its end.</summary>
 	/// <param name="content">The content, read from its current position; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The hash of the content.</returns>
-	public static async Task<Md5> ComputeAsync(Stream content, CancellationToken cancellationToken = default)
+	public static async Task<Md5> ComputeAsync(Stream content, CancellationToken ct = default)
 	{
-		var hash = await MD5.HashDataAsync(content, cancellationToken);
+		var hash = await MD5.HashDataAsync(content, ct);
 		return new Md5(Convert.ToHexStringLower(hash));
 	}
 

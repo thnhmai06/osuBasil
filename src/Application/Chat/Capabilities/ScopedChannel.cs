@@ -62,7 +62,7 @@ public readonly struct ScopedChannel
 	/// <summary>Posts a message to the channel.</summary>
 	/// <param name="text">The text of the message.</param>
 	/// <param name="notice">Whether the message is a notice, which never triggers an automatic reply.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     Ok, or Closed, Empty, InvalidText, NotMember, Silenced, AccessDenied, Blocked or TargetSilenced; a denial that
 	///     names the missing privilege when the sender lacks the privilege to post.
@@ -74,7 +74,7 @@ public readonly struct ScopedChannel
 	///     <see cref="UserPrivileges.Moderator" />.
 	/// </remarks>
 	public async Task<Result<ChannelOutcome>> PostAsync(string text, bool notice = false,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (Channel.IsClosed) return ChannelOutcome.Closed;
 
@@ -84,6 +84,6 @@ public readonly struct ScopedChannel
 		var recipientSilenced = Channel is PmChannel pm
 			? pm.Owner.Record.Value.IsSilenced(Channel.Context.Clock.GetUtcNow())
 			: (bool?)null;
-		return await Channel.PostAsync(Actor, Rights, recipientSilenced, text, notice, cancellationToken);
+		return await Channel.PostAsync(Actor, Rights, recipientSilenced, text, notice, ct);
 	}
 }

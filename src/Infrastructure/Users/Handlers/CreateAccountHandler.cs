@@ -13,7 +13,7 @@ internal sealed class CreateAccountHandler(UserRegistry registry)
 {
 	/// <inheritdoc />
 	public async ValueTask<(UserRecord? User, Result<UserOutcome> Result)> Handle(CreateAccount request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor).CreateAccountAsync(request.Data, request.PasswordHash,
 			request.Privileges);

@@ -13,9 +13,9 @@ public interface IMenuIconStorage
 	Task<ContentReference> SaveAsync(string name, Stream content);
 
 	/// <summary>Opens the stored icon image.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The icon's reference and bytes, or <see langword="null" /> when no icon is stored.</returns>
-	Task<(ContentReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default);
+	Task<(ContentReference Reference, Stream Content)?> OpenAsync(CancellationToken ct = default);
 
 	/// <summary>Deletes the stored icon; deleting when none is stored does nothing.</summary>
 	Task DeleteAsync();

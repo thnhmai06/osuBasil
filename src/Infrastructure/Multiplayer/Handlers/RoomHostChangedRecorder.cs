@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class RoomHostChangedRecorder(IMatchEventRepository matchEvents) : INotificationHandler<RoomHostChanged>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomHostChanged @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomHostChanged @event, CancellationToken ct)
 	{
 		if (@event.Host is { } host)
 			await matchEvents.RecordAsync(

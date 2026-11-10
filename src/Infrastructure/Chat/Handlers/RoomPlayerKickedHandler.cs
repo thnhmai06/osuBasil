@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class RoomPlayerKickedHandler(RoomChannels channels) : INotificationHandler<RoomPlayerKicked>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(RoomPlayerKicked @event, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomPlayerKicked @event, CancellationToken ct)
 	{
 		if (channels.Find(@event.Room) is { } channel && !@event.Room.Authority.IsManagedBy(@event.Player.Record))
 			channel.ScopeTo(@event.Player).Part();

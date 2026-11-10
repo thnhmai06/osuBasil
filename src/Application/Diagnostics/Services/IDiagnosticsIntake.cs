@@ -9,7 +9,7 @@ namespace Basil.Application.Diagnostics.Services;
 public interface IDiagnosticsIntake
 {
 	/// <summary>Takes the sample of this moment; the process measurements are shared within the same second.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The value of every category.</returns>
-	ValueTask<DiagnosticsSample> TakeSampleAsync(CancellationToken cancellationToken = default);
+	ValueTask<DiagnosticsSample> TakeSampleAsync(CancellationToken ct = default);
 }

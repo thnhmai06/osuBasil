@@ -11,7 +11,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class PmConnectionClosedHandler(PmChannels channels) : INotificationHandler<UserConnectionClosed>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var user = @event.Connection.User;
 		if (channels.Find(user) is { } channel)

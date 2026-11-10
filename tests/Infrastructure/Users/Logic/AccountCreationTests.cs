@@ -27,7 +27,7 @@ public sealed class AccountCreationTests
 
 	private sealed class RefusingCredentials : ICredentialRepository
 	{
-		public Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
+		public Task<bool> VerifyAsync(Credentials credentials, CancellationToken ct = default)
 		{
 			return Task.FromResult(false);
 		}

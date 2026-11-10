@@ -11,16 +11,16 @@ public static class HandlerStep
 	/// <param name="subject">Whom the step is for, as it reads before the user id.</param>
 	/// <param name="userId">The id of the user the step concerns.</param>
 	/// <param name="action">The step to run.</param>
-	/// <param name="cancellationToken">A token that, once cancelled, lets the cancellation of the step pass unlogged.</param>
+	/// <param name="ct">A token that, once cancelled, lets the cancellation of the step pass unlogged.</param>
 	public static async Task RunAsync(ILogger logger, string step, string subject, int userId, Func<Task> action,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		try
 		{
 			await action();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !cancellationToken.IsCancellationRequested)
+		                                  !ct.IsCancellationRequested)
 		{
 			logger.LogError(exception, "Could not {Step} for {Subject} {UserId}", step, subject, userId);
 		}
@@ -32,16 +32,16 @@ public static class HandlerStep
 	/// <param name="subject">Whom the step is for, as it reads before the user id.</param>
 	/// <param name="userId">The id of the user the step concerns.</param>
 	/// <param name="action">The step to run.</param>
-	/// <param name="cancellationToken">A token that, once cancelled, lets the cancellation of the step pass unlogged.</param>
+	/// <param name="ct">A token that, once cancelled, lets the cancellation of the step pass unlogged.</param>
 	public static void Run(ILogger logger, string step, string subject, int userId, Action action,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		try
 		{
 			action();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !cancellationToken.IsCancellationRequested)
+		                                  !ct.IsCancellationRequested)
 		{
 			logger.LogError(exception, "Could not {Step} for {Subject} {UserId}", step, subject, userId);
 		}

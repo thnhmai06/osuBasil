@@ -28,9 +28,9 @@ internal sealed class CappedStream(Stream inner, long limit) : Stream
 	}
 
 	public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		return Counted(await inner.ReadAsync(buffer, cancellationToken));
+		return Counted(await inner.ReadAsync(buffer, ct));
 	}
 
 	private int Counted(int read)

@@ -38,12 +38,12 @@ internal sealed class StableLogin(
 	/// <summary>Handles a request that carries no token: a login.</summary>
 	/// <param name="context">The request.</param>
 	/// <param name="body">The login body.</param>
-	/// <param name="cancellationToken">A token that cancels the login.</param>
+	/// <param name="ct">A token that cancels the login.</param>
 	/// <returns>The token for the client (or a placeholder) and the packets to answer with.</returns>
 	public async Task<(string Token, byte[] Reply)> LoginAsync(HttpContext context, byte[] body,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var rules = (await settings.GetAsync(cancellationToken)).RateLimits;
+		var rules = (await settings.GetAsync(ct)).RateLimits;
 		var ip = ClientAddress.Resolve(context);
 		if (!state.AcceptingLogins) return Fail(LoginFailureReason.ErrorOccurred, StableReplies.ServerStopping);
 
@@ -65,7 +65,7 @@ internal sealed class StableLogin(
 		{
 			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5(request.PasswordMd5)), type,
 				ip,
-				client, request.UtcOffset, cancellationToken);
+				client, request.UtcOffset, ct);
 		}
 		catch (ArgumentException)
 		{
@@ -78,8 +78,8 @@ internal sealed class StableLogin(
 			return FailureReply(result.Failure);
 		}
 
-		if (request.BlockNonFriendDms) await sender.Send(new SetPmPrivate(connection, true), cancellationToken);
-		return (connection.Token, await WelcomeAsync(connection, cancellationToken));
+		if (request.BlockNonFriendDms) await sender.Send(new SetPmPrivate(connection, true), ct);
+		return (connection.Token, await WelcomeAsync(connection, ct));
 	}
 
 	private static bool TryParse(byte[] body, out LoginRequest request, out OsuClient client)
@@ -117,22 +117,22 @@ internal sealed class StableLogin(
 		};
 	}
 
-	private async Task<byte[]> WelcomeAsync(Connection connection, CancellationToken cancellationToken)
+	private async Task<byte[]> WelcomeAsync(Connection connection, CancellationToken ct)
 	{
 		var user = connection.User;
 		var now = clock.GetUtcNow();
 		var effective = user.EffectivePrivileges(now);
 		var roles = StableView.Roles(effective);
 		var privileges = (int)roles;
-		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
-		var friends = (await sender.Send(new ListFriends(connection, user.Record), cancellationToken)).Users;
+		var motd = (await settings.GetAsync(ct)).General.Motd;
+		var friends = (await sender.Send(new ListFriends(connection, user.Record), ct)).Users;
 		var silenceSeconds = user.Record.Value.IsSilenced(now)
 			? (int)(user.Record.Value.SilencedUntil!.Value - now).TotalSeconds
 			: 0;
 		var others = new List<(User User, UserStats Stats)>();
 		foreach (var other in registry.Online.Values.Where(other => !ReferenceEquals(other, user)))
 			others.Add((other, await statsRepository.GetAsync(other.Record,
-				other.Stable?.Status.GameMode ?? GameMode.Standard, cancellationToken)));
+				other.Stable?.Status.GameMode ?? GameMode.Standard, ct)));
 
 		var welcome = Outbox.Build(writer =>
 		{

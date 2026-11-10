@@ -110,7 +110,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 
 		var statuses = new List<int>();
 		for (var i = 0; i < 3; i++) statuses.Add((await anon.CallAsync(HttpMethod.Get, "/v1/users/1")).Status);
-		using var limited = await anon.SendAsync(HttpMethod.Get, "/v1/users/1", cancellationToken: TestContext.Current.CancellationToken);
+		using var limited = await anon.SendAsync(HttpMethod.Get, "/v1/users/1", ct: TestContext.Current.CancellationToken);
 		var health = (await anon.CallAsync(HttpMethod.Get, "/health")).Status;
 
 		Assert.Equal(429, statuses[2]);
@@ -161,9 +161,9 @@ public sealed class LimitTests(RestHostFixture fixture)
 			RateLimits = s.RateLimits with { Connections = new ServerSettings.ConnectionLimitSettings { PerIp = 2 } }
 		});
 
-		var (first, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
-		var (second, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
-		var (third, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
+		var (first, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
+		var (second, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
+		var (third, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
 		using (first)
 		using (second)
 		using (third)
@@ -185,8 +185,8 @@ public sealed class LimitTests(RestHostFixture fixture)
 			Sessions = s.Sessions with { MaxPerUser = new ServerSettings.MaxSessionsSettings { Api = 1 } }
 		});
 
-		var (first, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
-		var (second, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
+		var (first, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
+		var (second, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
 		using (first)
 		using (second)
 		{
@@ -202,7 +202,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
 		using var client = new RestClient(host.Url, host.Domain);
 		await client.LoginAsync("LimitStop");
-		var (response, reader) = await client.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
+		var (response, reader) = await client.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			await reader!.ReadAsync(TestContext.Current.CancellationToken);
@@ -210,7 +210,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 			await host.Services.GetRequiredService<SseHub>().StopAsync(CancellationToken.None);
 			var final = await reader.ReadAsync(TestContext.Current.CancellationToken);
 			var end = await reader.ReadAsync(TestContext.Current.CancellationToken);
-			var (late, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", cancellationToken: TestContext.Current.CancellationToken);
+			var (late, _) = await client.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
 			using var lateResponse = late;
 
 			Assert.Equal("server", final!.Value.Event);

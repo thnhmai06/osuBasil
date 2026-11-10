@@ -12,9 +12,9 @@ internal sealed class SubmitScoreHandler(ScoreSubmitter submitter)
 {
 	/// <inheritdoc />
 	public async ValueTask<(Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> Handle(
-		SubmitScore request, CancellationToken cancellationToken)
+		SubmitScore request, CancellationToken ct)
 	{
 		return await submitter.ScopeTo(request.Actor).SubmitAsync(request.Submission, request.Beatmap, request.Client,
-			request.Replay, cancellationToken);
+			request.Replay, ct);
 	}
 }

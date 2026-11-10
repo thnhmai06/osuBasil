@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class ToggleTeamHandler : IRequestHandler<ToggleTeam, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(ToggleTeam request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(ToggleTeam request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Slots.ToggleTeamAsync());

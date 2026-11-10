@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class WatchLobbyHandler(Lobby lobby) : IRequestHandler<WatchLobby>
 {
 	/// <inheritdoc />
-	public ValueTask<Unit> Handle(WatchLobby request, CancellationToken cancellationToken)
+	public ValueTask<Unit> Handle(WatchLobby request, CancellationToken ct)
 	{
 		lobby.ScopeTo(request.Actor).Watch();
 		return ValueTask.FromResult(Unit.Value);

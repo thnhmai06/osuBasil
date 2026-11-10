@@ -24,7 +24,7 @@ internal sealed class FileBeatmapsetStorage(
 	private readonly Dictionary<int, SetLock> _setLocks = [];
 
 	/// <inheritdoc />
-	public async Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken cancellationToken = default)
+	public async Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken ct = default)
 	{
 		var path = Incoming(".osz");
 		try
@@ -33,7 +33,7 @@ internal sealed class FileBeatmapsetStorage(
 				FileOptions.Asynchronous);
 			await using (output)
 			{
-				await archive.CopyToAsync(output, cancellationToken);
+				await archive.CopyToAsync(output, ct);
 			}
 		}
 		catch
@@ -111,7 +111,7 @@ internal sealed class FileBeatmapsetStorage(
 
 	/// <inheritdoc />
 	public async Task<BeatmapsetArchive?> PackAsync(BeatmapsetFolder folder,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (folder is not FileBeatmapsetFolder placed)
 			throw new ArgumentException("The folder does not belong to this storage.", nameof(folder));
@@ -132,7 +132,7 @@ internal sealed class FileBeatmapsetStorage(
 		var path = Incoming(".osz");
 		try
 		{
-			await PackFilesAsync(placed.Path, files, path, cancellationToken);
+			await PackFilesAsync(placed.Path, files, path, ct);
 		}
 		catch
 		{
@@ -251,9 +251,9 @@ internal sealed class FileBeatmapsetStorage(
 
 	/// <inheritdoc />
 	public Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		var folder = FindFolder(set.Id, FolderName(set));
 		if (folder is null) return Task.FromResult(false);
 
@@ -269,9 +269,9 @@ internal sealed class FileBeatmapsetStorage(
 
 	/// <inheritdoc />
 	public Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		var folder = FindFolder(set.Id, FolderName(set));
 		if (folder is null) return Task.FromResult<Stream?>(null);
 
@@ -290,9 +290,9 @@ internal sealed class FileBeatmapsetStorage(
 
 	/// <inheritdoc />
 	public Task<Stream?> OpenArchiveAsync(BeatmapsetRecord set, bool withVideo,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		var folder = FindFolder(set.Id, FolderName(set));
 		if (folder is null) return Task.FromResult<Stream?>(null);
 
@@ -302,16 +302,16 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<IEnumerable<BeatmapsetSource>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<BeatmapsetSource>> ListAsync(CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult(ListEntries());
 	}
 
 	/// <inheritdoc />
-	public IAsyncEnumerable<BeatmapsetSource> WatchAsync(CancellationToken cancellationToken)
+	public IAsyncEnumerable<BeatmapsetSource> WatchAsync(CancellationToken ct)
 	{
-		return new FileBeatmapsetWatcher(paths.Beatmapsets.Path, time, logger, ListEntries, cancellationToken);
+		return new FileBeatmapsetWatcher(paths.Beatmapsets.Path, time, logger, ListEntries, ct);
 	}
 
 	/// <inheritdoc />
@@ -404,9 +404,9 @@ internal sealed class FileBeatmapsetStorage(
 
 	/// <summary>Waits for the turn on one beatmapset; operations on different sets do not wait for each other.</summary>
 	/// <param name="id">The id of the beatmapset.</param>
-	/// <param name="cancellationToken">A token that cancels the wait.</param>
+	/// <param name="ct">A token that cancels the wait.</param>
 	/// <returns>The turn; releasing it lets the next operation on the set run.</returns>
-	private async Task<SetLock> LockAsync(int id, CancellationToken cancellationToken = default)
+	private async Task<SetLock> LockAsync(int id, CancellationToken ct = default)
 	{
 		SetLock gate;
 		lock (_setLocks)
@@ -418,7 +418,7 @@ internal sealed class FileBeatmapsetStorage(
 
 		try
 		{
-			await gate.Semaphore.WaitAsync(cancellationToken);
+			await gate.Semaphore.WaitAsync(ct);
 		}
 		catch
 		{
@@ -454,9 +454,9 @@ internal sealed class FileBeatmapsetStorage(
 	/// <param name="folder">The folder's full path.</param>
 	/// <param name="files">The full paths of the files to pack, all inside the folder.</param>
 	/// <param name="target">The new archive's full path.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	private static async Task PackFilesAsync(string folder, IEnumerable<string> files, string target,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var stream = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, BufferSize,
 			FileOptions.Asynchronous);
@@ -465,17 +465,17 @@ internal sealed class FileBeatmapsetStorage(
 			await using var zip = new ZipArchive(stream, ZipArchiveMode.Create, true);
 			foreach (var file in files)
 			{
-				cancellationToken.ThrowIfCancellationRequested();
+				ct.ThrowIfCancellationRequested();
 				var entry = zip.CreateEntry(Path.GetRelativePath(folder, file).Replace('\\', '/'),
 					CompressionLevel.Optimal);
 				var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize,
 					FileOptions.Asynchronous);
 				await using (input)
 				{
-					var output = await entry.OpenAsync(cancellationToken);
+					var output = await entry.OpenAsync(ct);
 					await using (output)
 					{
-						await input.CopyToAsync(output, cancellationToken);
+						await input.CopyToAsync(output, ct);
 					}
 				}
 			}

@@ -440,12 +440,12 @@ public sealed class TestApplication : IDisposable
 			return new RulesetVersions("test", null);
 		}
 
-		public Task<RulesetCheck> CheckAsync(CancellationToken cancellationToken = default)
+		public Task<RulesetCheck> CheckAsync(CancellationToken ct = default)
 		{
 			return Task.FromResult(new RulesetCheck(Version(), "test"));
 		}
 
-		public Task<RulesetStageResult> StageAsync(CancellationToken cancellationToken = default)
+		public Task<RulesetStageResult> StageAsync(CancellationToken ct = default)
 		{
 			return Task.FromResult(new RulesetStageResult("test", false));
 		}

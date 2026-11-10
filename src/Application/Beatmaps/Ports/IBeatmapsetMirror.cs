@@ -7,9 +7,9 @@ namespace Basil.Application.Beatmaps.Ports;
 public interface IBeatmapMirrorSettings
 {
 	/// <summary>Gets the search and download endpoints in effect for the request.</summary>
-	/// <param name="cancellationToken">A token that cancels the read.</param>
+	/// <param name="ct">A token that cancels the read.</param>
 	/// <returns>The search endpoint followed by the download endpoint; either may be <see langword="null" />.</returns>
-	Task<(Uri? SearchEndpoint, Uri? DownloadEndpoint)> GetAsync(CancellationToken cancellationToken = default);
+	Task<(Uri? SearchEndpoint, Uri? DownloadEndpoint)> GetAsync(CancellationToken ct = default);
 }
 
 /// <summary>Finds and serves beatmapsets the server does not have, from a beatmap mirror.</summary>
@@ -19,18 +19,18 @@ public interface IBeatmapsetMirror
 	/// <param name="text">The search text, or <see langword="null" /> for any.</param>
 	/// <param name="mode">The game mode, or <see langword="null" /> for any.</param>
 	/// <param name="page">Which part of the results to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The matching beatmapsets, or <see langword="null" /> when no mirror is set or the mirror failed.</returns>
 	Task<IReadOnlyList<MirrorBeatmapset>?> SearchAsync(string? text, GameMode? mode, PageRequest page,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Gets where a beatmapset can be downloaded from the mirror.</summary>
 	/// <param name="beatmapsetId">The beatmapset id.</param>
 	/// <param name="withVideo">Whether the download includes video files.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The download address, or <see langword="null" /> when no mirror is set.</returns>
 	Task<Uri?> GetDownloadAddressAsync(int beatmapsetId, bool withVideo,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 }
 
 /// <summary>A beatmapset as a mirror describes it.</summary>

@@ -52,26 +52,26 @@ public sealed class EventQueue
 	}
 
 	/// <summary>Delivers what is queued now and returns when no delivery is queued or still running.</summary>
-	/// <param name="cancellationToken">A token that cancels the delivery.</param>
-	public async Task DrainAsync(CancellationToken cancellationToken = default)
+	/// <param name="ct">A token that cancels the delivery.</param>
+	public async Task DrainAsync(CancellationToken ct = default)
 	{
 		while (true)
 			if (_deliveries.Reader.TryRead(out var delivery))
-				await DeliverAsync(delivery, cancellationToken);
+				await DeliverAsync(delivery, ct);
 			else if (Outstanding == 0)
 				return;
 			else
 				// A delivery taken by the running loop is not finished yet; wait for it.
-				await Task.Delay(TimeSpan.FromMilliseconds(1), cancellationToken);
+				await Task.Delay(TimeSpan.FromMilliseconds(1), ct);
 	}
 
-	private async Task DeliverAsync(IEventDelivery delivery, CancellationToken cancellationToken)
+	private async Task DeliverAsync(IEventDelivery delivery, CancellationToken ct)
 	{
 		try
 		{
-			await delivery.DeliverAsync(cancellationToken);
+			await delivery.DeliverAsync(ct);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (ct.IsCancellationRequested)
 		{
 			throw;
 		}

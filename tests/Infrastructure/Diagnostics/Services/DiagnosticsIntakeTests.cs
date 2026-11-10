@@ -59,7 +59,7 @@ public sealed class DiagnosticsIntakeTests
 
 	private sealed class Module(params DiagnosticsValue[] values) : INotificationHandler<CollectDiagnostics>
 	{
-		public ValueTask Handle(CollectDiagnostics notification, CancellationToken cancellationToken)
+		public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 		{
 			foreach (var value in values) notification.Collector.Add(value);
 			return ValueTask.CompletedTask;

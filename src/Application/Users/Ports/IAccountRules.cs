@@ -10,9 +10,9 @@ internal interface IAccountRules
 {
 	/// <summary>Checks whether an account may be registered with the given attempt.</summary>
 	/// <param name="attempt">The registration the client asked for.</param>
-	/// <param name="cancellationToken">A token that cancels the check.</param>
+	/// <param name="ct">A token that cancels the check.</param>
 	/// <returns><see langword="null" /> when the attempt may be registered; otherwise the reason it may not.</returns>
-	Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt, CancellationToken cancellationToken);
+	Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt, CancellationToken ct);
 
 	/// <summary>Creates an account with the given data and its password.</summary>
 	/// <param name="data">The data of the new account.</param>
@@ -26,8 +26,8 @@ internal interface IAccountRules
 
 	/// <summary>Finds the account a login attempt names and checks its password.</summary>
 	/// <param name="attempt">The login the client sent.</param>
-	/// <param name="cancellationToken">A token that cancels the lookup.</param>
+	/// <param name="ct">A token that cancels the lookup.</param>
 	/// <returns>The account to sign in, or <see langword="null" /> and the reason the attempt fails.</returns>
 	Task<(UserRecord? User, LoginFailure? Failure)> FindLoginUserAsync(LoginAttempt attempt,
-		CancellationToken cancellationToken);
+		CancellationToken ct);
 }

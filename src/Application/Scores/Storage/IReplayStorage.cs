@@ -15,16 +15,16 @@ public interface IReplayStorage
 
 	/// <summary>Opens the stored replay of a score as a complete <c>.osr</c> file.</summary>
 	/// <param name="score">The score the replay belongs to.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The file's bytes, or <see langword="null" /> when no replay is stored for the score.</returns>
-	Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken cancellationToken = default);
+	Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken ct = default);
 
 	/// <summary>Opens the frames of the stored replay of a score, as the osu! client submitted them.</summary>
 	/// <param name="score">The score the replay belongs to.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     The frames' bytes, or <see langword="null" /> when no replay is stored for the score or the stored file is
 	///     not a readable replay.
 	/// </returns>
-	Task<Stream?> OpenFramesAsync(ScoreRecord score, CancellationToken cancellationToken = default);
+	Task<Stream?> OpenFramesAsync(ScoreRecord score, CancellationToken ct = default);
 }

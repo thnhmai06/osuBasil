@@ -153,7 +153,7 @@ public sealed class CliLifetime(ShutdownController controller) : IHostLifetime, 
 	}
 
 	/// <inheritdoc />
-	public Task WaitForStartAsync(CancellationToken cancellationToken)
+	public Task WaitForStartAsync(CancellationToken ct)
 	{
 		_registrations.Add(PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
 		{
@@ -174,7 +174,7 @@ public sealed class CliLifetime(ShutdownController controller) : IHostLifetime, 
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		controller.Finish();
 		return Task.CompletedTask;

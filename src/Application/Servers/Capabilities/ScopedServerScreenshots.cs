@@ -19,7 +19,7 @@ public readonly struct ScopedServerScreenshots
 
 	/// <summary>Stores a screenshot under a new unique name.</summary>
 	/// <param name="content">The image, read to its end; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Player" />. The image may be at most the screenshot size
@@ -27,25 +27,25 @@ public readonly struct ScopedServerScreenshots
 	///     limit in pixels per side, told from its content, never from a name.
 	/// </remarks>
 	public async Task<(ContentReference? Screenshot, Result<ServerOutcome> Result)> UploadAsync(Stream content,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (_scoped.Needs(UserPrivileges.Player) is { } missing)
 			return (null, Result<ServerOutcome>.Denied(missing));
 
-		return await _scoped.Server.UploadScreenshotAsync(content, cancellationToken);
+		return await _scoped.Server.UploadScreenshotAsync(content, ct);
 	}
 
 	/// <summary>Lists the stored screenshots.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the references of the screenshots.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />.</remarks>
 	public async Task<(Result<ServerOutcome> Result, IReadOnlyList<ContentReference> Screenshots)> ListAsync(
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), []);
 
-		return (ServerOutcome.Ok, await _scoped.Server.ListScreenshotsAsync(cancellationToken));
+		return (ServerOutcome.Ok, await _scoped.Server.ListScreenshotsAsync(ct));
 	}
 
 	/// <summary>Deletes a stored screenshot.</summary>

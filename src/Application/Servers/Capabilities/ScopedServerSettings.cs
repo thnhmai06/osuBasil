@@ -16,15 +16,15 @@ public readonly struct ScopedServerSettings
 	}
 
 	/// <summary>Reads the settings in force.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the settings.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Developer" />.</remarks>
 	public async Task<(Result<ServerOutcome> Result, ServerSettings? Settings)> GetAsync(
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		return _scoped.Needs(UserPrivileges.Developer) is { } missing
 			? (Result<ServerOutcome>.Denied(missing), null)
-			: (ServerOutcome.Ok, await _scoped.Server.GetSettingsAsync(cancellationToken));
+			: (ServerOutcome.Ok, await _scoped.Server.GetSettingsAsync(ct));
 	}
 
 	/// <summary>Replaces the settings; the change applies at once and survives a restart.</summary>

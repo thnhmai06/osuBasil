@@ -40,9 +40,9 @@ public static class ControlSocket
 	/// <summary>Reads a framed reply: writes the output lines and returns the exit code.</summary>
 	/// <returns>The exit code, or <see langword="null" /> when the reply ended without one.</returns>
 	public static async Task<int?> ReadReplyAsync(StreamReader reader, TextWriter output,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		while (await reader.ReadLineAsync(cancellationToken) is { } line)
+		while (await reader.ReadLineAsync(ct) is { } line)
 			if (line.StartsWith(OutputPrefix, StringComparison.Ordinal))
 				await output.WriteLineAsync(line[OutputPrefix.Length..]);
 			else if (line.StartsWith(ExitPrefix, StringComparison.Ordinal) &&
@@ -55,14 +55,14 @@ public static class ControlSocket
 	/// <summary>Connects to a socket.</summary>
 	/// <returns>The connected socket, or <see langword="null" /> when nothing listens there.</returns>
 	public static async Task<System.Net.Sockets.Socket?> TryConnectAsync(string path,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (path.Length > MaxPathLength || !File.Exists(path)) return null;
 
 		var socket = new System.Net.Sockets.Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
 		try
 		{
-			await socket.ConnectAsync(new UnixDomainSocketEndPoint(path), cancellationToken);
+			await socket.ConnectAsync(new UnixDomainSocketEndPoint(path), ct);
 			return socket;
 		}
 		catch (SocketException)
@@ -78,11 +78,11 @@ public static class ControlClient
 {
 	/// <summary>Opens a connection to the running server.</summary>
 	/// <param name="path">The path of the socket.</param>
-	/// <param name="cancellationToken">A token that cancels the connection.</param>
+	/// <param name="ct">A token that cancels the connection.</param>
 	/// <returns>The open connection, or <see langword="null" /> when no server is running.</returns>
-	public static async Task<ControlConnection?> ConnectAsync(string path, CancellationToken cancellationToken)
+	public static async Task<ControlConnection?> ConnectAsync(string path, CancellationToken ct)
 	{
-		return await ControlSocket.TryConnectAsync(path, cancellationToken) is { } socket
+		return await ControlSocket.TryConnectAsync(path, ct) is { } socket
 			? new ControlConnection(socket)
 			: null;
 	}
@@ -100,15 +100,15 @@ public sealed class ControlConnection(System.Net.Sockets.Socket socket) : IDispo
 	/// <summary>Sends a command and writes the reply as it arrives.</summary>
 	/// <param name="args">The words of the command line.</param>
 	/// <param name="output">Where the output goes.</param>
-	/// <param name="cancellationToken">A token that cancels the wait.</param>
+	/// <param name="ct">A token that cancels the wait.</param>
 	/// <returns>The exit code of the command.</returns>
-	public async Task<int> RunAsync(IReadOnlyList<string> args, TextWriter output, CancellationToken cancellationToken)
+	public async Task<int> RunAsync(IReadOnlyList<string> args, TextWriter output, CancellationToken ct)
 	{
 		await using var stream = new NetworkStream(socket, false);
 		var request = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(args) + "\n");
-		await stream.WriteAsync(request, cancellationToken);
+		await stream.WriteAsync(request, ct);
 		using var reader = new StreamReader(stream, Encoding.UTF8);
-		return await ControlSocket.ReadReplyAsync(reader, output, cancellationToken) ?? ExitCodes.NotRunning;
+		return await ControlSocket.ReadReplyAsync(reader, output, ct) ?? ExitCodes.NotRunning;
 	}
 }
 
@@ -122,7 +122,7 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 	private System.Net.Sockets.Socket? _listener;
 
 	/// <inheritdoc />
-	public override async Task StartAsync(CancellationToken cancellationToken)
+	public override async Task StartAsync(CancellationToken ct)
 	{
 		if (path.Length > ControlSocket.MaxPathLength)
 		{
@@ -132,7 +132,7 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 			return;
 		}
 
-		if (await ControlSocket.TryConnectAsync(path, cancellationToken) is { } other)
+		if (await ControlSocket.TryConnectAsync(path, ct) is { } other)
 		{
 			other.Dispose();
 			throw new InvalidOperationException($"Another Basil server is running: it answers on {path}.");
@@ -145,7 +145,7 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 		if (!OperatingSystem.IsWindows())
 			File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
 		_listener.Listen(8);
-		await base.StartAsync(cancellationToken);
+		await base.StartAsync(ct);
 	}
 
 	/// <inheritdoc />
@@ -175,9 +175,9 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 	}
 
 	/// <inheritdoc />
-	public override async Task StopAsync(CancellationToken cancellationToken)
+	public override async Task StopAsync(CancellationToken ct)
 	{
-		await base.StopAsync(cancellationToken);
+		await base.StopAsync(ct);
 		_listener?.Dispose();
 		_listener = null;
 		try

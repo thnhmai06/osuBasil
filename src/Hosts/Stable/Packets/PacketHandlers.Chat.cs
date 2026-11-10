@@ -8,23 +8,23 @@ namespace Basil.Host.Stable.Packets;
 
 internal sealed partial class PacketHandlers
 {
-	private async Task JoinChannelAsync(StableConnection osu, string name, CancellationToken cancellationToken)
+	private async Task JoinChannelAsync(StableConnection osu, string name, CancellationToken ct)
 	{
-		var result = await sender.Send(new JoinChannel(osu, TargetOf(name)), cancellationToken);
+		var result = await sender.Send(new JoinChannel(osu, TargetOf(name)), ct);
 		if (!result.IsOk && result.Outcome != ChannelOutcome.AlreadyMember)
 			outbox.Send(osu, writer => writer.ChannelKick(name));
 	}
 
-	private async Task PartChannelAsync(StableConnection osu, string name, CancellationToken cancellationToken)
+	private async Task PartChannelAsync(StableConnection osu, string name, CancellationToken ct)
 	{
 		// The client leaves the match and spectator channels together with the match or the host.
 		if (name is StableView.MultiplayerAlias or StableView.SpectatorAlias) return;
-		await sender.Send(new PartChannel(osu, TargetOf(name)), cancellationToken);
+		await sender.Send(new PartChannel(osu, TargetOf(name)), ct);
 	}
 
-	private async Task<bool> MayChatAsync(StableConnection osu, CancellationToken cancellationToken)
+	private async Task<bool> MayChatAsync(StableConnection osu, CancellationToken ct)
 	{
-		var limit = (await settings.GetAsync(cancellationToken)).RateLimits.Chat;
+		var limit = (await settings.GetAsync(ct)).RateLimits.Chat;
 		if (limiter.TryAcquire($"chat:{osu.Record.Id}", limit.Count, limit.Window)) return true;
 		outbox.Send(osu, writer => writer.Notification(StableReplies.ChatTooFast));
 		return false;
@@ -47,21 +47,21 @@ internal sealed partial class PacketHandlers
 	}
 
 	private async Task PublicMessageAsync(StableConnection osu, StableMessage message,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		if (!await MayChatAsync(osu, cancellationToken)) return;
+		if (!await MayChatAsync(osu, ct)) return;
 		await sender.Send(new PostChatMessage(osu, TargetOf(message.Recipient), Limit(message.Text)),
-			cancellationToken);
+			ct);
 	}
 
 	private async Task PrivateMessageAsync(StableConnection osu, StableMessage message,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		if (await users.GetByNameAsync(message.Recipient, cancellationToken) is not { } record) return;
+		if (await users.GetByNameAsync(message.Recipient, ct) is not { } record) return;
 		if (!registry.Of(record).IsOnline) return;
-		if (!await MayChatAsync(osu, cancellationToken)) return;
+		if (!await MayChatAsync(osu, ct)) return;
 		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record), Limit(message.Text)),
-			cancellationToken);
+			ct);
 		switch (result.Outcome)
 		{
 			case ChannelOutcome.Blocked when result.Missing is null:

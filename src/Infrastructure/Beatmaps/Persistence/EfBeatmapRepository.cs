@@ -30,39 +30,39 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public async ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 			.Include(b => b.Set)
-			.FirstOrDefaultAsync(b => b.Id == id, cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(b => b.Id == id, ct), ct);
 		return row is null ? null : ToBeatmap(row, row.Set.ToRecord());
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default)
+	public async ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 			.Include(b => b.Set)
 			.Where(b => b.Hash == hash.HashValue)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(ct), ct);
 		return row is null ? null : ToBeatmap(row, row.Set.ToRecord());
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 			.Where(b => b.BeatmapsetId == set.Id)
 			.OrderBy(b => b.Id)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 		return [.. rows.Select(row => ToBeatmap(row, set))];
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var fetched = await database.ReadAsync((BeatmapsDbContext context) => BeatmapQueryFilter
 			.Apply(context.Beatmaps, query)
@@ -72,7 +72,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			.ThenBy(b => b.Id)
 			.Skip(page.Offset)
 			.Take(page.Fetch)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<BeatmapRecord>([.. rows.Select(row => ToBeatmap(row, row.Set.ToRecord()))], hasNext);

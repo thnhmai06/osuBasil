@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class ConfigureRoomHandler : IRequestHandler<ConfigureRoom, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(ConfigureRoom request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(ConfigureRoom request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Settings.ConfigureAsync(request.Change));

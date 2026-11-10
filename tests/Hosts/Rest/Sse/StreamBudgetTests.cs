@@ -35,7 +35,7 @@ public sealed class StreamBudgetTests(RestHostFixture fixture)
 		await LimitAsync(host, 4);
 
 		var opened = await Task.WhenAll(Enumerable.Range(0, 5).Select(i =>
-			client.OpenStreamAsync(Paths[i % 2], cancellationToken: TestContext.Current.CancellationToken)));
+			client.OpenStreamAsync(Paths[i % 2], ct: TestContext.Current.CancellationToken)));
 		foreach (var (response, _) in opened)
 			using (response)
 			{
@@ -56,8 +56,8 @@ public sealed class StreamBudgetTests(RestHostFixture fixture)
 		await LimitAsync(host, 2);
 		var hub = host.Services.GetRequiredService<SseHub>();
 
-		var (first, _) = await client.OpenStreamAsync(Paths[0], cancellationToken: TestContext.Current.CancellationToken);
-		var (second, _) = await client.OpenStreamAsync(Paths[1], cancellationToken: TestContext.Current.CancellationToken);
+		var (first, _) = await client.OpenStreamAsync(Paths[0], ct: TestContext.Current.CancellationToken);
+		var (second, _) = await client.OpenStreamAsync(Paths[1], ct: TestContext.Current.CancellationToken);
 		first.Dispose();
 		second.Dispose();
 		using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -67,8 +67,8 @@ public sealed class StreamBudgetTests(RestHostFixture fixture)
 			await Task.Yield();
 		}
 
-		var (third, _) = await client.OpenStreamAsync(Paths[0], cancellationToken: TestContext.Current.CancellationToken);
-		var (fourth, _) = await client.OpenStreamAsync(Paths[1], cancellationToken: TestContext.Current.CancellationToken);
+		var (third, _) = await client.OpenStreamAsync(Paths[0], ct: TestContext.Current.CancellationToken);
+		var (fourth, _) = await client.OpenStreamAsync(Paths[1], ct: TestContext.Current.CancellationToken);
 		using (third)
 		using (fourth)
 		{

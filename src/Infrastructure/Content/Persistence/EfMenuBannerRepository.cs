@@ -40,21 +40,21 @@ internal sealed class EfMenuBannerRepository(
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken cancellationToken = default)
+	public async ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken ct = default)
 	{
 		var name = image.ToString();
 		var row = await database.ReadAsync((ContentDbContext context) => context.MenuBanners
-			.FirstOrDefaultAsync(item => item.Image == name, cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(item => item.Image == name, ct), ct);
 		return row is null ? null : TryRead(row);
 	}
 
 	/// <inheritdoc />
-	public async Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken cancellationToken = default)
+	public async Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((ContentDbContext context) => context.MenuBanners
 			.OrderBy(row => row.CreatedAt)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 		return rows.Select(TryRead).OfType<MenuBanner>().ToList();
 	}
 

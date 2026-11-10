@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class BlockUserHandler(UserRegistry registry) : IRequestHandler<BlockUser, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(BlockUser request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(BlockUser request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.BlockAsync();
 	}

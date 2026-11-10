@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class RoomObserverLeftHandler(RoomChannels channels) : INotificationHandler<RoomObserverLeft>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(RoomObserverLeft @event, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomObserverLeft @event, CancellationToken ct)
 	{
 		if (channels.Find(@event.Room) is { } channel && !@event.Room.Authority.IsManagedBy(@event.Observer.Record))
 			channel.ScopeTo(@event.Observer).Part();

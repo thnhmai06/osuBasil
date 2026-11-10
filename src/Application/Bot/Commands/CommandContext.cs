@@ -22,35 +22,35 @@ internal sealed record CommandContext(
 
 	/// <summary>Answers where the command came from.</summary>
 	/// <param name="reply">The reply to say.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public Task Reply(Reply reply, CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the operation.</param>
+	public Task Reply(Reply reply, CancellationToken ct)
 	{
-		return Say(Replies.Text(reply), cancellationToken);
+		return Say(Replies.Text(reply), ct);
 	}
 
 	/// <summary>Answers where the command came from.</summary>
 	/// <param name="reply">The reply to say.</param>
 	/// <param name="arguments">The values of the reply's arguments, as an object with a property for each.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public Task Reply(Reply reply, object arguments, CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the operation.</param>
+	public Task Reply(Reply reply, object arguments, CancellationToken ct)
 	{
-		return Say(Replies.Text(reply, arguments), cancellationToken);
+		return Say(Replies.Text(reply, arguments), ct);
 	}
 
 	/// <summary>Answers in the sender's private messages.</summary>
 	/// <param name="reply">The reply to say.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public Task ReplyPrivately(Reply reply, CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the operation.</param>
+	public Task ReplyPrivately(Reply reply, CancellationToken ct)
 	{
-		return SayPrivately(Replies.Text(reply), cancellationToken);
+		return SayPrivately(Replies.Text(reply), ct);
 	}
 
 	/// <summary>Answers in the sender's private messages.</summary>
 	/// <param name="reply">The reply to say.</param>
 	/// <param name="arguments">The values of the reply's arguments, as an object with a property for each.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public Task ReplyPrivately(Reply reply, object arguments, CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the operation.</param>
+	public Task ReplyPrivately(Reply reply, object arguments, CancellationToken ct)
 	{
-		return SayPrivately(Replies.Text(reply, arguments), cancellationToken);
+		return SayPrivately(Replies.Text(reply, arguments), ct);
 	}
 }

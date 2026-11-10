@@ -9,7 +9,7 @@ internal sealed class CollectDiagnosticsHandler(GeneralChannelRegistry channels)
 	: INotificationHandler<CollectDiagnostics>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(CollectDiagnostics notification, CancellationToken cancellationToken)
+	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		notification.Collector.Add(new DiagnosticsValue("application", "channels", channels.All.Count));
 		return ValueTask.CompletedTask;

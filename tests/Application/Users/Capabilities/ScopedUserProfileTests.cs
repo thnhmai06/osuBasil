@@ -334,7 +334,7 @@ public sealed class ScopedUserProfileTests
 			Images[user.Id] = copy.ToArray();
 		}
 
-		public Task<Stream?> OpenAsync(UserRecord user, CancellationToken cancellationToken = default)
+		public Task<Stream?> OpenAsync(UserRecord user, CancellationToken ct = default)
 		{
 			return Task.FromResult<Stream?>(Images.TryGetValue(user.Id, out var image)
 				? new MemoryStream(image)
@@ -354,9 +354,9 @@ public sealed class ScopedUserProfileTests
 		public long BytesRead { get; private set; }
 
 		public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
-			var read = await base.ReadAsync(buffer, cancellationToken);
+			var read = await base.ReadAsync(buffer, ct);
 			BytesRead += read;
 			return read;
 		}

@@ -45,7 +45,7 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 	}
 
 	/// <inheritdoc />
-	public Task StartAsync(CancellationToken cancellationToken)
+	public Task StartAsync(CancellationToken ct)
 	{
 		lock (_gate)
 		{
@@ -57,7 +57,7 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		Dispose();
 		return Task.CompletedTask;

@@ -68,13 +68,13 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 	}
 
 	/// <summary>Reads the reports; ending the read stops watching.</summary>
-	/// <param name="cancellationToken">A token that ends the read.</param>
+	/// <param name="ct">A token that ends the read.</param>
 	/// <returns>Each entry that changed, as it is once its changes have settled.</returns>
-	public async IAsyncEnumerator<BeatmapsetSource> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+	public async IAsyncEnumerator<BeatmapsetSource> GetAsyncEnumerator(CancellationToken ct = default)
 	{
 		try
 		{
-			await foreach (var name in _settled.Reader.ReadAllAsync(cancellationToken))
+			await foreach (var name in _settled.Reader.ReadAllAsync(ct))
 			{
 				var entry = FileBeatmapsetEntryReader.EntryOf(_root, name);
 				if (entry is not null) yield return entry;

@@ -190,7 +190,7 @@ public sealed class SessionLimitTests
 
 		await app.AttemptLoginAsync(user.Value.Name, "password");
 		var reused = await app.Users.LoginWithTokenAsync(SessionType.Api, first.Token, IPAddress.Loopback,
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(new SessionEnd(evictedAt, SessionEndReason.Replaced), first.End);
 		Assert.Null(reused.Connection);

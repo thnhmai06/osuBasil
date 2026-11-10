@@ -43,12 +43,12 @@ internal sealed class BeatmapReloader(
 	}
 
 	/// <summary>Recomputes every beatmap and ends the running state; a failure is logged, never thrown.</summary>
-	/// <param name="cancellationToken">A token that stops the reload.</param>
-	internal async Task RunAsync(CancellationToken cancellationToken)
+	/// <param name="ct">A token that stops the reload.</param>
+	internal async Task RunAsync(CancellationToken ct)
 	{
 		try
 		{
-			var (done, failed) = await ReloadAllAsync(cancellationToken);
+			var (done, failed) = await ReloadAllAsync(ct);
 			logger.LogInformation("Reloaded {Done} beatmaps ({Failed} could not be reloaded)", done, failed);
 		}
 		catch (OperationCanceledException)
@@ -67,19 +67,19 @@ internal sealed class BeatmapReloader(
 
 	/// <summary>Walks the sets page by page and recomputes the beatmaps of each.</summary>
 	/// <returns>How many beatmaps were recomputed and how many were left as they were.</returns>
-	internal async Task<(int Done, int Failed)> ReloadAllAsync(CancellationToken cancellationToken)
+	internal async Task<(int Done, int Failed)> ReloadAllAsync(CancellationToken ct)
 	{
 		int done = 0, failed = 0, offset = 0;
 		while (true)
 		{
-			var page = await sets.ListAsync(new BeatmapQuery(), new PageRequest(offset, PageSize), cancellationToken);
+			var page = await sets.ListAsync(new BeatmapQuery(), new PageRequest(offset, PageSize), ct);
 			if (page.Items.Count == 0) return (done, failed);
 
 			offset += page.Items.Count;
 			foreach (var set in page.Items)
-			foreach (var beatmap in await beatmaps.ListAsync(set, cancellationToken))
+			foreach (var beatmap in await beatmaps.ListAsync(set, ct))
 			{
-				if (await ReloadAsync(beatmap, cancellationToken)) done++;
+				if (await ReloadAsync(beatmap, ct)) done++;
 				else failed++;
 
 				if ((done + failed) % ProgressEvery == 0)
@@ -88,12 +88,12 @@ internal sealed class BeatmapReloader(
 		}
 	}
 
-	private async Task<bool> ReloadAsync(BeatmapRecord beatmap, CancellationToken cancellationToken)
+	private async Task<bool> ReloadAsync(BeatmapRecord beatmap, CancellationToken ct)
 	{
 		try
 		{
 			var stream = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
-				cancellationToken);
+				ct);
 			if (stream is null) return false;
 
 			BeatmapAnalysis analysis;

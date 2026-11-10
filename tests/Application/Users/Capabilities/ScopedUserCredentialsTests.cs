@@ -29,7 +29,7 @@ public sealed class ScopedUserCredentialsTests
 
 	private static Task<LoginResult> OpenWithTokenAsync(TestApplication app, SessionType type, string token)
 	{
-		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
+		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, ct: Token);
 	}
 
 	private static async Task<string> OpenIrcKeyAsync(TestApplication app, Connection actor)

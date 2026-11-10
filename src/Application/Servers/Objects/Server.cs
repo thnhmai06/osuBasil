@@ -33,22 +33,22 @@ public sealed partial class Server
 	///     Recovers the runtime when the server itself calls it at startup: opens the stored general channels, makes
 	///     sure BasilBot's account exists and brings it online, and ends the matches left unfinished; it needs no rights.
 	/// </summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     What the recovery did: how many general channels were opened, whether BasilBot is online, how many
 	///     matches were ended and how many connections were closed.
 	/// </returns>
-	public async Task<ServerRecovery> RecoverAsync(CancellationToken cancellationToken = default)
+	public async Task<ServerRecovery> RecoverAsync(CancellationToken ct = default)
 	{
 		var openedChannels = 0;
-		foreach (var channel in await Context.Channels.ListAsync(cancellationToken))
+		foreach (var channel in await Context.Channels.ListAsync(ct))
 			if (OpenChannel(channel) is not null)
 				openedChannels++;
 
 		var registry = Context.Connections.Registry;
 		var closedConnections = await registry.CloseStoppedAsync();
-		await registry.EnsureBotAsync(cancellationToken);
-		var botOnline = await registry.ConnectBotAsync(cancellationToken) is not null;
+		await registry.EnsureBotAsync(ct);
+		var botOnline = await registry.ConnectBotAsync(ct) is not null;
 
 		var closedMatches = await Context.Lobby.CloseUnfinishedAsync();
 		return new ServerRecovery(openedChannels, botOnline, closedMatches, closedConnections);
@@ -66,7 +66,7 @@ public sealed partial class Server
 	/// <param name="channel">The channel to speak in.</param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the message was posted; otherwise, <see langword="false" /> when the channel is
 	///     closed, the text is empty or holds a control character, or BasilBot's record is unavailable.
@@ -76,13 +76,13 @@ public sealed partial class Server
 	///     the connection that typed them, not this method, to act for a user.
 	/// </remarks>
 	public async Task<bool> SayAsync(Channel channel, string text, bool notice = false,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (channel.IsClosed || channel is PmChannel { Owner.IsOnline: false } || string.IsNullOrEmpty(text) ||
 		    !Message.IsValidContent(text))
 			return false;
 
-		var bot = await Context.Users.GetAsync(BasilBot.Id, cancellationToken);
+		var bot = await Context.Users.GetAsync(BasilBot.Id, ct);
 		if (bot is null || channel.IsClosed) return false;
 
 		channel.PostMessage(bot, text, notice, Context.Connections.Clock.GetUtcNow(), null);
@@ -93,17 +93,17 @@ public sealed partial class Server
 	/// <param name="to">The recipient.</param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the message was posted; otherwise, <see langword="false" />.</returns>
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
 	///     the connection that typed them, not this method, to act for a user. Messages are not delivered offline.
 	/// </remarks>
 	public Task<bool> WhisperAsync(User to, string text, bool notice = false,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (!to.IsOnline) return Task.FromResult(false);
-		return SayAsync(Context.PmChannels.Of(to), text, notice, cancellationToken);
+		return SayAsync(Context.PmChannels.Of(to), text, notice, ct);
 	}
 
 	/// <summary>Finds an open channel the bot may speak in by the name clients use.</summary>

@@ -20,9 +20,9 @@ internal sealed class FileBeatmapsetArchive(string path, string name, ContentSta
 	internal string? PackedFrom => packedFrom;
 
 	/// <inheritdoc />
-	public override Task<Stream> OpenAsync(CancellationToken cancellationToken = default)
+	public override Task<Stream> OpenAsync(CancellationToken ct = default)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
+		ct.ThrowIfCancellationRequested();
 		return Task.FromResult<Stream>(new FileStream(path, FileMode.Open, FileAccess.Read,
 			FileShare.Read | FileShare.Delete, 81920, FileOptions.Asynchronous));
 	}

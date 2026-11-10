@@ -7,7 +7,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class ReportSpectatingFailedHandler : IRequestHandler<ReportSpectatingFailed, bool>
 {
 	/// <inheritdoc />
-	public ValueTask<bool> Handle(ReportSpectatingFailed request, CancellationToken cancellationToken)
+	public ValueTask<bool> Handle(ReportSpectatingFailed request, CancellationToken ct)
 	{
 		return ValueTask.FromResult(request.Host.ScopeTo(request.Actor).ReportSpectatingFailed());
 	}

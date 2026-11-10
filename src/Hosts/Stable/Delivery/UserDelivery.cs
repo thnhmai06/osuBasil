@@ -15,12 +15,12 @@ internal sealed class UserOnlineDelivery(
 	IUserStatsRepository statsRepository,
 	TimeProvider clock) : INotificationHandler<UserConnectionOpened>
 {
-	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken cancellationToken)
+	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken ct)
 	{
 		if (!notification.CameOnline || notification.Connection.Type is not SessionType.Stable) return;
 		var user = notification.Connection.User;
 		var stats = await statsRepository.GetAsync(user.Record, user.Stable?.Status.GameMode ?? GameMode.Standard,
-			cancellationToken);
+			ct);
 		var now = clock.GetUtcNow();
 		outbox.Send(registry.OpenStableClients(), writer =>
 		{
@@ -34,7 +34,7 @@ internal sealed class UserOnlineDelivery(
 internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
 	: INotificationHandler<UserConnectionClosed>
 {
-	public ValueTask Handle(UserConnectionClosed notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Connection;
 		outbox.Remove(connection);
@@ -49,10 +49,10 @@ internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
 internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, IUserStatsRepository statsRepository)
 	: INotificationHandler<UserConnectionStatusChanged>
 {
-	public async ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken cancellationToken)
+	public async ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken ct)
 	{
 		var user = notification.Connection.User;
-		var stats = await statsRepository.GetAsync(user.Record, notification.Status.GameMode, cancellationToken);
+		var stats = await statsRepository.GetAsync(user.Record, notification.Status.GameMode, ct);
 		outbox.Send(registry.OpenStableClients(), writer => StableView.WriteStats(writer, user, stats));
 	}
 }
@@ -60,7 +60,7 @@ internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, I
 /// <summary>Shows a notification on the osu! clients the server addressed.</summary>
 internal sealed class UserNotificationDelivery(Outbox outbox) : INotificationHandler<UserNotificationSent>
 {
-	public ValueTask Handle(UserNotificationSent notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserNotificationSent notification, CancellationToken ct)
 	{
 		outbox.Send(notification.Recipients, writer => writer.Notification(notification.Text));
 		return ValueTask.CompletedTask;
@@ -71,7 +71,7 @@ internal sealed class UserNotificationDelivery(Outbox outbox) : INotificationHan
 internal sealed class UserSilencedDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
 	: INotificationHandler<UserSilenced>
 {
-	public ValueTask Handle(UserSilenced notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSilenced notification, CancellationToken ct)
 	{
 		var seconds = Math.Max(0, (int)(notification.Until - clock.GetUtcNow()).TotalSeconds);
 		outbox.Send(registry.Of(notification.User).Connections, writer => writer.SilenceEnd(seconds));
@@ -83,7 +83,7 @@ internal sealed class UserSilencedDelivery(UserRegistry registry, Outbox outbox,
 internal sealed class UserUnsilencedDelivery(UserRegistry registry, Outbox outbox)
 	: INotificationHandler<UserUnsilenced>
 {
-	public ValueTask Handle(UserUnsilenced notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserUnsilenced notification, CancellationToken ct)
 	{
 		outbox.Send(registry.Of(notification.User).Connections, writer => writer.SilenceEnd(0));
 		return ValueTask.CompletedTask;
@@ -94,7 +94,7 @@ internal sealed class UserUnsilencedDelivery(UserRegistry registry, Outbox outbo
 internal sealed class UserPrivilegesDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
 	: INotificationHandler<UserPrivilegesChanged>
 {
-	public ValueTask Handle(UserPrivilegesChanged notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserPrivilegesChanged notification, CancellationToken ct)
 	{
 		var user = registry.Of(notification.User);
 		var privileges = StableView.Privileges(user.EffectivePrivileges(clock.GetUtcNow()));
@@ -106,7 +106,7 @@ internal sealed class UserPrivilegesDelivery(UserRegistry registry, Outbox outbo
 /// <summary>Tells a host and its fellow spectators that someone started spectating.</summary>
 internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHandler<UserSpectatorJoined>
 {
-	public ValueTask Handle(UserSpectatorJoined notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSpectatorJoined notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
 		var others = host.Spectators.Where(other => !ReferenceEquals(other, spectator)).ToList();
@@ -123,7 +123,7 @@ internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHand
 /// <summary>Tells a host and its fellow spectators that someone stopped spectating.</summary>
 internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandler<UserSpectatorLeft>
 {
-	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
 		outbox.Send(host, writer => writer.SpectatorLeft(spectator.Record.Id));
@@ -135,7 +135,7 @@ internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandle
 /// <summary>Tells a host that a spectator lacks the beatmap.</summary>
 internal sealed class SpectatorFailedDelivery(Outbox outbox) : INotificationHandler<UserSpectatorFailed>
 {
-	public ValueTask Handle(UserSpectatorFailed notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSpectatorFailed notification, CancellationToken ct)
 	{
 		outbox.Send(notification.Host, writer => writer.SpectatorCantSpectate(notification.Spectator.Record.Id));
 		return ValueTask.CompletedTask;

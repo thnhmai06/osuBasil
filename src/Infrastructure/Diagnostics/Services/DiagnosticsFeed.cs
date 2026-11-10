@@ -28,7 +28,7 @@ internal sealed class DiagnosticsFeed : IDiagnosticsFeed
 
 	/// <inheritdoc />
 	public IAsyncEnumerable<DiagnosticsSample> Watch(string? category = null,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		category = category?.ToLowerInvariant();
 		if (category is not null && !DiagnosticsSample.Categories.Contains(category))
@@ -41,7 +41,7 @@ internal sealed class DiagnosticsFeed : IDiagnosticsFeed
 			_watchers.Add(watcher);
 		}
 
-		return Read(watcher, cancellationToken);
+		return Read(watcher, ct);
 	}
 
 	/// <summary>Gives a sample to every watcher, replacing the one it has not read yet.</summary>
@@ -59,11 +59,11 @@ internal sealed class DiagnosticsFeed : IDiagnosticsFeed
 	}
 
 	private async IAsyncEnumerable<DiagnosticsSample> Read(Watcher watcher,
-		[EnumeratorCancellation] CancellationToken cancellationToken)
+		[EnumeratorCancellation] CancellationToken ct)
 	{
 		try
 		{
-			await foreach (var sample in watcher.Queue.Reader.ReadAllAsync(cancellationToken)) yield return sample;
+			await foreach (var sample in watcher.Queue.Reader.ReadAllAsync(ct)) yield return sample;
 		}
 		finally
 		{

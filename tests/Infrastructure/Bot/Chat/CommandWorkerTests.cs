@@ -177,12 +177,12 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	{
 		var started = NewSignal();
 		var cancelled = NewSignal();
-		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		Assert.True(_worker.Enqueue(1, async ct =>
 		{
 			started.SetResult();
 			try
 			{
-				await Task.Delay(Timeout.Infinite, cancellationToken);
+				await Task.Delay(Timeout.Infinite, ct);
 			}
 			catch (OperationCanceledException)
 			{
@@ -201,9 +201,9 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	{
 		var started = NewSignal();
 		CancellationToken seen = default;
-		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		Assert.True(_worker.Enqueue(1, async ct =>
 		{
-			seen = cancellationToken;
+			seen = ct;
 			started.SetResult();
 			await _gate.Task.WaitAsync(HangGuard);
 		}));
@@ -218,10 +218,10 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	public async Task The_commands_after_one_that_timed_out_still_run()
 	{
 		var started = NewSignal();
-		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		Assert.True(_worker.Enqueue(1, async ct =>
 		{
 			started.SetResult();
-			await Task.Delay(Timeout.Infinite, cancellationToken);
+			await Task.Delay(Timeout.Infinite, ct);
 		}));
 		var ran = NewSignal();
 		Assert.True(_worker.Enqueue(2, Signal(ran)));
@@ -236,10 +236,10 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	public async Task A_user_whose_command_timed_out_can_enqueue_again()
 	{
 		var started = NewSignal();
-		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		Assert.True(_worker.Enqueue(1, async ct =>
 		{
 			started.SetResult();
-			await Task.Delay(Timeout.Infinite, cancellationToken);
+			await Task.Delay(Timeout.Infinite, ct);
 		}));
 		await started.Task.WaitAsync(HangGuard, Token);
 		_time.Advance(CommandWorker.CommandTimeout);
@@ -264,10 +264,10 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	private async Task BlockWorkerAsync(int userId)
 	{
 		var started = NewSignal();
-		Assert.True(_worker.Enqueue(userId, async cancellationToken =>
+		Assert.True(_worker.Enqueue(userId, async ct =>
 		{
 			started.SetResult();
-			await _gate.Task.WaitAsync(cancellationToken);
+			await _gate.Task.WaitAsync(ct);
 		}));
 		await started.Task.WaitAsync(HangGuard, Token);
 	}

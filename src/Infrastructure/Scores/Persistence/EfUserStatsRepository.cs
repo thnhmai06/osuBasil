@@ -12,13 +12,13 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 {
 	/// <inheritdoc />
 	public async ValueTask<UserStats> GetAsync(UserRecord user, GameMode mode,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var userId = user.Id;
 		var storedMode = (int)mode;
 		var row = await database.ReadAsync((ScoresDbContext context) => context.UserStats
 			.Where(stats => stats.UserId == userId && stats.Mode == storedMode)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(ct), ct);
 		return row is null ? new UserStats { UserId = userId, Mode = mode } : ToStats(row);
 	}
 

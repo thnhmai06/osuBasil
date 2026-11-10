@@ -221,9 +221,9 @@ public sealed class HttpBeatmapsetMirrorTests
 	[Fact]
 	public async Task SearchAsync_LetsTheCallersCancellationThrough()
 	{
-		var handler = new FakeHttpHandler((_, cancellationToken) =>
+		var handler = new FakeHttpHandler((_, ct) =>
 		{
-			cancellationToken.ThrowIfCancellationRequested();
+			ct.ThrowIfCancellationRequested();
 			return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
 		});
 		var mirror = Mirror(handler, "https://mirror.test/search");

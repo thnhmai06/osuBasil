@@ -32,86 +32,86 @@ internal sealed class RoomAnnouncer(
 	private readonly ConcurrentSet<Room> _closingRooms = [];
 
 	/// <inheritdoc />
-	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken cancellationToken)
+	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken ct)
 	{
 		_closingRooms.Remove(@event.Room);
 		return ValueTask.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public async ValueTask Handle(LobbyRoomClosingAnnounced @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(LobbyRoomClosingAnnounced @event, CancellationToken ct)
 	{
-		await AnnounceClosingAsync(@event, cancellationToken);
+		await AnnounceClosingAsync(@event, ct);
 	}
 
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomPlayerJoined @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomPlayerJoined @event, CancellationToken ct)
 	{
 		if (_closingRooms.Remove(@event.Room))
 			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoomPlayerJoinedClosing),
-				cancellationToken);
+				ct);
 	}
 
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRoundAborted @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRoundAborted @event, CancellationToken ct)
 	{
-		await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoundAborted), cancellationToken);
+		await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoundAborted), ct);
 	}
 
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRoundDecided @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRoundDecided @event, CancellationToken ct)
 	{
 		if (!_awaitingScores.Remove(@event.Round)) return;
 
 		if (@event.Missing.Count == 0)
 		{
-			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.ScoresReceived), cancellationToken);
+			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.ScoresReceived), ct);
 			return;
 		}
 
-		await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.ScoresReceivedExcept), cancellationToken);
+		await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.ScoresReceivedExcept), ct);
 		foreach (var player in @event.Missing)
 			await SayInRoomAsync(@event.Room,
 				replies.Text(AnnouncementReplies.ScoreMissing, new { player = player.Value.Name }),
-				cancellationToken);
+				ct);
 	}
 
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRoundEnded @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRoundEnded @event, CancellationToken ct)
 	{
 		var seconds = (int)Math.Round(@event.ScoreWait.TotalSeconds);
 		_awaitingScores.Add(@event.Round);
 		await SayInRoomAsync(@event.Room,
 			replies.Text(AnnouncementReplies.RoundEnded, new { id = @event.Round.Index, seconds }),
-			cancellationToken);
+			ct);
 	}
 
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRoundStarted @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRoundStarted @event, CancellationToken ct)
 	{
 		if (@event.Players.Count == 0)
 			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoundStartedNoPlayers),
-				cancellationToken);
+				ct);
 	}
 
-	private async Task AnnounceClosingAsync(LobbyRoomClosingAnnounced e, CancellationToken cancellationToken)
+	private async Task AnnounceClosingAsync(LobbyRoomClosingAnnounced e, CancellationToken ct)
 	{
 		var minutesUntilClose = (int)Math.Ceiling((e.ClosesAt - timeProvider.GetUtcNow()).TotalMinutes);
 		var text = replies.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes = minutesUntilClose });
 
 		_closingRooms.Add(e.Room);
-		await SayInRoomAsync(e.Room, text, cancellationToken);
-		await WhisperStaffAsync(e.Room, text, cancellationToken);
+		await SayInRoomAsync(e.Room, text, ct);
+		await WhisperStaffAsync(e.Room, text, ct);
 	}
 
-	private Task SayInRoomAsync(Room room, string text, CancellationToken cancellationToken)
+	private Task SayInRoomAsync(Room room, string text, CancellationToken ct)
 	{
 		return room.IsClosed
 			? Task.CompletedTask
-			: server.SayAsync(channels.Of(room), text, cancellationToken: cancellationToken);
+			: server.SayAsync(channels.Of(room), text, ct: ct);
 	}
 
-	private async Task WhisperStaffAsync(Room room, string text, CancellationToken cancellationToken)
+	private async Task WhisperStaffAsync(Room room, string text, CancellationToken ct)
 	{
 		await WhisperIfOnlineAsync(room.Authority.Creator);
 
@@ -122,7 +122,7 @@ internal sealed class RoomAnnouncer(
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{
 			if (users.Online.GetValueOrDefault(user) is { } online)
-				await server.WhisperAsync(online, text, cancellationToken: cancellationToken);
+				await server.WhisperAsync(online, text, ct: ct);
 		}
 	}
 }

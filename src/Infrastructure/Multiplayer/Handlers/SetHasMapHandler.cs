@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class SetHasMapHandler : IRequestHandler<SetHasMap, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetHasMap request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(SetHasMap request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Slots.SetHasMapAsync(request.Has));

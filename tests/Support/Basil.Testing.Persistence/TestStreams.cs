@@ -104,7 +104,7 @@ public static class TestStreams
 		}
 
 		public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			switch (_stage++)
 			{
@@ -114,7 +114,7 @@ public static class TestStreams
 					_started.TrySetResult();
 					return firstBytes.Length;
 				case 1:
-					await _released.Task.WaitAsync(cancellationToken);
+					await _released.Task.WaitAsync(ct);
 					var lastBytes = Encoding.UTF8.GetBytes(last);
 					lastBytes.CopyTo(buffer);
 					return lastBytes.Length;

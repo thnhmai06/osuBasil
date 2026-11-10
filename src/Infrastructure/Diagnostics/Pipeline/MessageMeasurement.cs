@@ -11,12 +11,12 @@ internal sealed class MessageMeasurement<TMessage, TResponse> : IPipelineBehavio
 {
 	/// <inheritdoc />
 	public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var started = Stopwatch.GetTimestamp();
 		try
 		{
-			return await next(message, cancellationToken);
+			return await next(message, ct);
 		}
 		finally
 		{

@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class KickPlayerHandler : IRequestHandler<KickPlayer, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(KickPlayer request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(KickPlayer request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Members.KickAsync(request.Player));

@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class SpectatorLeftHandler(SpectatorChannels channels) : INotificationHandler<UserSpectatorLeft>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(UserSpectatorLeft @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSpectatorLeft @event, CancellationToken ct)
 	{
 		if (@event.Spectator is ApiConnection || channels.Find(@event.Host) is not { } channel)
 			return ValueTask.CompletedTask;

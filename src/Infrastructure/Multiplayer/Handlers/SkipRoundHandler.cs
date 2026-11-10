@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class SkipRoundHandler : IRequestHandler<SkipRound, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SkipRound request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(SkipRound request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Rounds.SkipAsync());

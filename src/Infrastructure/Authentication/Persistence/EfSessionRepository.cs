@@ -28,7 +28,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 	/// <inheritdoc />
 	public async ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var user = query.User;
 		var types = query.Types;
@@ -50,32 +50,32 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 				.ThenByDescending(row => row.Id)
 				.Skip(page.Offset)
 				.Take(page.Fetch)
-				.ToListAsync(cancellationToken);
-		}, cancellationToken);
+				.ToListAsync(ct);
+		}, ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<SessionRecord>(rows.Select(row => ToRecord(row, user)).ToList(), hasNext);
 	}
 
 	/// <inheritdoc />
-	public async Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken cancellationToken = default)
+	public async Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
-				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, cancellationToken),
-			cancellationToken);
+				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, ct),
+			ct);
 		return row is null ? null : ToRecord(row, user);
 	}
 
 	/// <inheritdoc />
 	public async Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var at = now.ToUniversalTime();
 		var hash = Convert.FromHexString(tokenHash.HashValue);
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.TokenHash == hash && item.Type == type && item.EndedAt == null &&
-				                             (item.ExpiresAt == null || item.ExpiresAt > at), cancellationToken),
-			cancellationToken);
+				                             (item.ExpiresAt == null || item.ExpiresAt > at), ct),
+			ct);
 		return row is null
 			? null
 			: new StoredSession(row.Id, row.UserId, row.Type, row.Ip, row.ClientInfo, row.StartedAt, row.ExpiresAt);

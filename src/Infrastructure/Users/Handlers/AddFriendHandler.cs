@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class AddFriendHandler(UserRegistry registry) : IRequestHandler<AddFriend, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(AddFriend request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(AddFriend request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.AddFriendAsync();
 	}

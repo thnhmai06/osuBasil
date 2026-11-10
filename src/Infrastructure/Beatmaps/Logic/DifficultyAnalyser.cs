@@ -13,17 +13,17 @@ internal sealed class DifficultyAnalyser(IBeatmapAnalyser analyser)
 	/// </summary>
 	/// <param name="difficulty">The difficulty to analyse.</param>
 	/// <param name="stored">The stored beatmap of the same file, or <see langword="null" /> when there is none.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
 	public async Task<BeatmapAnalysis> AnalyseAsync(BeatmapsetDifficulty difficulty, BeatmapRecord? stored,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (stored is { Metadata.Difficulty.Star: > 0 })
 			return new BeatmapAnalysis(stored.Metadata.Difficulty, stored.Metadata.Objects);
 
 		try
 		{
-			var stream = await difficulty.File.OpenAsync(cancellationToken);
+			var stream = await difficulty.File.OpenAsync(ct);
 			await using (stream)
 			{
 				return analyser.Analyze(stream, difficulty.Mode, GameMods.NoMod);

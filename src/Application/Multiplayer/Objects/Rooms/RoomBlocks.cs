@@ -18,14 +18,14 @@ internal sealed class RoomBlocks
 	/// <summary>Gets whether one user blocks another.</summary>
 	/// <param name="blocker">The user whose blocks are checked.</param>
 	/// <param name="who">The user who may be blocked.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when <paramref name="blocker" /> blocks <paramref name="who" />.</returns>
 	/// <remarks>BasilBot blocks nobody.</remarks>
-	internal async ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken = default)
+	internal async ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken ct = default)
 	{
 		if (blocker.IsFriendOfEveryone()) return false;
 
-		var relationships = await _relationships.ListAsync(blocker, cancellationToken);
+		var relationships = await _relationships.ListAsync(blocker, ct);
 		return relationships.Any(relationship => relationship.Target.Equals(who) &&
 		                                         relationship.Type == RelationshipType.Block);
 	}

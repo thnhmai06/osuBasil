@@ -299,7 +299,7 @@ public sealed class ContentHandlerTests
 	{
 		public Dictionary<string, string> Entries { get; } = [];
 
-		public Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken = default)
+		public Task<IEnumerable<string>> ListAsync(CancellationToken ct = default)
 		{
 			return Task.FromResult<IEnumerable<string>>(Entries.Keys.ToList());
 		}
@@ -309,7 +309,7 @@ public sealed class ContentHandlerTests
 			return Task.FromResult<IFaqEntryWriter>(new Writer(Entries, entry));
 		}
 
-		public Task<StreamReader?> ReadAsync(string entry, CancellationToken cancellationToken = default)
+		public Task<StreamReader?> ReadAsync(string entry, CancellationToken ct = default)
 		{
 			return Task.FromResult<StreamReader?>(Entries.TryGetValue(entry, out var text)
 				? new StreamReader(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text)))

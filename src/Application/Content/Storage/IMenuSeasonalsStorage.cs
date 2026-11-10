@@ -6,9 +6,9 @@ namespace Basil.Application.Content.Storage;
 public interface IMenuSeasonalsStorage
 {
 	/// <summary>Lists the stored backgrounds.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>References to the stored backgrounds.</returns>
-	Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<ContentReference>> ListAsync(CancellationToken ct = default);
 
 	/// <summary>Stores a background under a name, replacing any background with that name.</summary>
 	/// <param name="name">The name to store the background under.</param>
@@ -19,9 +19,9 @@ public interface IMenuSeasonalsStorage
 
 	/// <summary>Opens a stored background.</summary>
 	/// <param name="background">The reference of the background to open.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The image bytes, or <see langword="null" /> when the reference names no background stored here.</returns>
-	Task<Stream?> OpenAsync(ContentReference background, CancellationToken cancellationToken = default);
+	Task<Stream?> OpenAsync(ContentReference background, CancellationToken ct = default);
 
 	/// <summary>Renames a stored background.</summary>
 	/// <param name="background">The reference of the background to rename.</param>

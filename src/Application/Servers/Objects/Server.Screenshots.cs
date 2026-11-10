@@ -6,17 +6,17 @@ public sealed partial class Server
 {
 	/// <summary>Stores a screenshot under a new unique name after checking its size and picture.</summary>
 	/// <param name="content">The image, read to its end; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     Ok and the reference of the stored screenshot, or TooLarge, InvalidImage or DimensionsTooLarge and no
 	///     reference.
 	/// </returns>
 	internal async Task<(ContentReference? Screenshot, ServerOutcome Outcome)> UploadScreenshotAsync(Stream content,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var limits = (await Context.Settings.GetAsync(cancellationToken)).Uploads;
+		var limits = (await Context.Settings.GetAsync(ct)).Uploads;
 
-		await using var upload = await Context.Spool.SpoolAsync(content, limits.ScreenshotMaxSize, cancellationToken);
+		await using var upload = await Context.Spool.SpoolAsync(content, limits.ScreenshotMaxSize, ct);
 		if (upload.TooLarge) return (null, ServerOutcome.TooLarge);
 
 		var info = await Context.Inspector.InspectAsync(upload.Content);
@@ -38,11 +38,11 @@ public sealed partial class Server
 	}
 
 	/// <summary>Lists the stored screenshots.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The references of the screenshots.</returns>
-	internal async Task<IReadOnlyList<ContentReference>> ListScreenshotsAsync(CancellationToken cancellationToken)
+	internal async Task<IReadOnlyList<ContentReference>> ListScreenshotsAsync(CancellationToken ct)
 	{
-		return [.. await Context.Screenshots.ListAsync(cancellationToken)];
+		return [.. await Context.Screenshots.ListAsync(ct)];
 	}
 
 	/// <summary>Deletes a stored screenshot.</summary>

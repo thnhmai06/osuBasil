@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class SilenceUserHandler(UserRegistry registry) : IRequestHandler<SilenceUser, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(SilenceUser request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(SilenceUser request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Silence
 			.ImposeAsync(request.EndsAt, request.Reason);

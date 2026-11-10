@@ -8,8 +8,8 @@ internal sealed class ZipBeatmapsetContentFile(ZipArchiveEntry entry, string nam
 	: BeatmapsetContentFile(name, entry.Length)
 {
 	/// <inheritdoc />
-	public override async Task<Stream> OpenAsync(CancellationToken cancellationToken = default)
+	public override async Task<Stream> OpenAsync(CancellationToken ct = default)
 	{
-		return await entry.OpenAsync(cancellationToken);
+		return await entry.OpenAsync(ct);
 	}
 }

@@ -25,7 +25,7 @@ internal sealed class ChatHandler(
 	private const int MaxMessageLength = 2000;
 
 	/// <inheritdoc />
-	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken ct)
 	{
 		if (posted.Actor is not { } actor || IsIgnored(posted.Message))
 			return ValueTask.CompletedTask;
@@ -54,10 +54,10 @@ internal sealed class ChatHandler(
 			privateMessage ? null : posted.Channel.Name,
 			replies,
 			(text, sendToken) => SendSplitAsync(text, (piece, token) => privateMessage
-				? server.WhisperAsync(actor.User, piece, cancellationToken: token)
-				: server.SayAsync(posted.Channel, piece, cancellationToken: token), sendToken),
+				? server.WhisperAsync(actor.User, piece, ct: token)
+				: server.SayAsync(posted.Channel, piece, ct: token), sendToken),
 			(text, sendToken) =>
-				SendSplitAsync(text, (piece, token) => server.WhisperAsync(actor.User, piece, cancellationToken: token),
+				SendSplitAsync(text, (piece, token) => server.WhisperAsync(actor.User, piece, ct: token),
 					sendToken));
 	}
 
@@ -77,10 +77,10 @@ internal sealed class ChatHandler(
 	private static async Task SendSplitAsync(
 		string text,
 		Func<string, CancellationToken, Task<bool>> send,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		foreach (var piece in SplitForSend(text))
-			await send(piece, cancellationToken);
+			await send(piece, ct);
 	}
 
 	private static IEnumerable<string> SplitForSend(string text)

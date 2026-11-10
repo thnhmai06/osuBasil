@@ -16,15 +16,15 @@ internal sealed class ConnectionChannelHandler(
 	INotificationHandler<UserConnectionClosed>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		HandlerStep.Run(logger, "part its channels", "the closed connection of user", @event.Connection.Record.Id,
-			() => channels.PartAll(@event.Connection), cancellationToken);
+			() => channels.PartAll(@event.Connection), ct);
 		return ValueTask.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public ValueTask Handle(UserConnectionOpened @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionOpened @event, CancellationToken ct)
 	{
 		channels.JoinAutoChannels(@event.Connection);
 		return ValueTask.CompletedTask;

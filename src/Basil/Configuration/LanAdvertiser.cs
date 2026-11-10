@@ -22,7 +22,7 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		_service = null;
 	}
 
-	public Task StartAsync(CancellationToken cancellationToken)
+	public Task StartAsync(CancellationToken ct)
 	{
 		var server = options.Value;
 		var multicast = server.Multicast;
@@ -59,7 +59,7 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		return Task.CompletedTask;
 	}
 
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		Dispose();
 		return Task.CompletedTask;

@@ -29,13 +29,13 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 	/// <remarks>
 	///     Blank artist, title, or creator resolve to <c>Unknown</c>, because the domain rejects blank values.
 	/// </remarks>
-	public async Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken cancellationToken = default)
+	public async Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken ct = default)
 	{
 		ZipArchive zip;
 		try
 		{
 			zip = await ZipArchive.CreateAsync(archive, ZipArchiveMode.Read, true,
-				null, cancellationToken);
+				null, ct);
 		}
 		catch (InvalidDataException)
 		{
@@ -52,7 +52,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 
 			if (!IsAcceptable(files)) return null;
 
-			var content = await ReadContentAsync(files, zip, cancellationToken);
+			var content = await ReadContentAsync(files, zip, ct);
 			keepArchive = content is not null;
 			return content;
 		}
@@ -64,7 +64,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 
 	/// <summary>Decodes the difficulties of a set's files and assembles what the set contains.</summary>
 	private static async Task<BeatmapsetContent?> ReadContentAsync(IReadOnlyList<BeatmapsetContentFile> files,
-		IAsyncDisposable? source, CancellationToken cancellationToken)
+		IAsyncDisposable? source, CancellationToken ct)
 	{
 		var byName = new Dictionary<string, BeatmapsetContentFile>(StringComparer.OrdinalIgnoreCase);
 		foreach (var file in files) byName.TryAdd(Normalise(file.Name), file);
@@ -78,7 +78,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			if (file.Name.Contains('/') || !file.Name.EndsWith(".osu", StringComparison.OrdinalIgnoreCase)) continue;
 			if (file.Length > MaxOsuBytes) continue;
 
-			var decoded = await TryDecodeAsync(file, cancellationToken);
+			var decoded = await TryDecodeAsync(file, ct);
 			if (decoded is null) continue;
 
 			first ??= decoded.Beatmap;
@@ -123,11 +123,11 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 
 	/// <summary>Decodes one <c>.osu</c> file, or <see langword="null" /> when it is malformed.</summary>
 	private static async Task<DecodedDifficulty?> TryDecodeAsync(BeatmapsetContentFile file,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		try
 		{
-			var content = await file.OpenAsync(cancellationToken);
+			var content = await file.OpenAsync(ct);
 			await using var contentScope = content;
 			using var buffer = new MemoryStream();
 			var chunk = new byte[BufferSize];
@@ -135,7 +135,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			while (read <= MaxOsuBytes)
 			{
 				var count = await content.ReadAsync(chunk.AsMemory(0, Math.Min(chunk.Length, MaxOsuBytes + 1 - read)),
-					cancellationToken);
+					ct);
 				if (count == 0) break;
 				buffer.Write(chunk, 0, count);
 				read += count;
@@ -150,7 +150,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 				beatmap = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
 			}
 
-			var (video, storyboard) = await ReadEventsAsync(buffer, cancellationToken);
+			var (video, storyboard) = await ReadEventsAsync(buffer, ct);
 			return new DecodedDifficulty(beatmap, video, storyboard);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
@@ -165,7 +165,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 	///     none) and whether that section holds a storyboard object.
 	/// </summary>
 	private static async Task<(string? Video, bool Storyboard)> ReadEventsAsync(Stream content,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		content.Position = 0;
 		using var reader = new StreamReader(content, Encoding.UTF8, true,
@@ -173,7 +173,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		var section = "";
 		string? video = null;
 		var storyboard = false;
-		while (await reader.ReadLineAsync(cancellationToken) is { } line)
+		while (await reader.ReadLineAsync(ct) is { } line)
 		{
 			if (line.StartsWith('[') && line.EndsWith(']'))
 			{

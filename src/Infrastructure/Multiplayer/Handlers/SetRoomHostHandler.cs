@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class SetRoomHostHandler : IRequestHandler<SetRoomHost, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetRoomHost request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(SetRoomHost request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Authority.SetHostAsync(request.Host));

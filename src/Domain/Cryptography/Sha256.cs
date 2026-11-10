@@ -30,11 +30,11 @@ public readonly record struct Sha256
 
 	/// <summary>Computes the SHA-256 hash of a content read to its end.</summary>
 	/// <param name="content">The content, read from its current position; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The hash of the content.</returns>
-	public static async Task<Sha256> ComputeAsync(Stream content, CancellationToken cancellationToken = default)
+	public static async Task<Sha256> ComputeAsync(Stream content, CancellationToken ct = default)
 	{
-		var hash = await SHA256.HashDataAsync(content, cancellationToken);
+		var hash = await SHA256.HashDataAsync(content, ct);
 		return new Sha256(Convert.ToHexStringLower(hash));
 	}
 

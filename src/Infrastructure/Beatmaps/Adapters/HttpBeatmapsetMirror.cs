@@ -51,21 +51,21 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<MirrorBeatmapset>?> SearchAsync(string? text, GameMode? mode, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		var (endpoint, _) = await _settings.GetAsync(cancellationToken);
+		var (endpoint, _) = await _settings.GetAsync(ct);
 		if (endpoint is null) return null;
 
 		var url = SearchUrl(endpoint, text, mode, page);
 
 		try
 		{
-			var payload = await _http.GetFromJsonAsync<List<RawSet>>(url, JsonOptions, cancellationToken);
+			var payload = await _http.GetFromJsonAsync<List<RawSet>>(url, JsonOptions, ct);
 			return payload?.Where(set => set.ChildrenBeatmaps is not null).Select(ToBeatmapset).ToList();
 		}
 		catch (Exception exception) when (
 			exception is HttpRequestException or JsonException or TaskCanceledException &&
-			!cancellationToken.IsCancellationRequested)
+			!ct.IsCancellationRequested)
 		{
 			_logger.LogWarning(exception, "Mirror search request failed: {Endpoint}",
 				endpoint.GetLeftPart(UriPartial.Path));
@@ -75,9 +75,9 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 
 	/// <inheritdoc />
 	public async Task<Uri?> GetDownloadAddressAsync(int beatmapsetId, bool withVideo,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		var (_, endpoint) = await _settings.GetAsync(cancellationToken);
+		var (_, endpoint) = await _settings.GetAsync(ct);
 		if (endpoint is null) return null;
 
 		var baseAddress = endpoint.ToString().TrimEnd('/');

@@ -144,7 +144,7 @@ public sealed class EventQueueTests
 		: IEventDelivery
 	{
 		/// <inheritdoc />
-		public async ValueTask DeliverAsync(CancellationToken cancellationToken)
+		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
 			started.SetResult();
 			await release.Task;
@@ -156,9 +156,9 @@ public sealed class EventQueueTests
 	private sealed class RecordingDelivery(string name, Channel<string> done) : IEventDelivery
 	{
 		/// <inheritdoc />
-		public async ValueTask DeliverAsync(CancellationToken cancellationToken)
+		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
-			await done.Writer.WriteAsync(name, cancellationToken);
+			await done.Writer.WriteAsync(name, ct);
 		}
 	}
 
@@ -166,7 +166,7 @@ public sealed class EventQueueTests
 	private sealed class ThrowingDelivery : IEventDelivery
 	{
 		/// <inheritdoc />
-		public ValueTask DeliverAsync(CancellationToken cancellationToken)
+		public ValueTask DeliverAsync(CancellationToken ct)
 		{
 			throw new InvalidOperationException("The delivery failed.");
 		}
@@ -176,9 +176,9 @@ public sealed class EventQueueTests
 	private sealed class BlockedDelivery : IEventDelivery
 	{
 		/// <inheritdoc />
-		public async ValueTask DeliverAsync(CancellationToken cancellationToken)
+		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
-			await Task.Delay(Timeout.Infinite, cancellationToken);
+			await Task.Delay(Timeout.Infinite, ct);
 		}
 	}
 }

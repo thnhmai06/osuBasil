@@ -29,15 +29,15 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.RoundScores
 			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 
-		var found = (await scores.GetManyAsync([.. rows.Select(row => row.ScoreId)], cancellationToken))
+		var found = (await scores.GetManyAsync([.. rows.Select(row => row.ScoreId)], ct))
 			.ToDictionary(score => score.Id);
 		return
 		[

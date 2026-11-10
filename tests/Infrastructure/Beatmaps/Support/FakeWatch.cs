@@ -92,19 +92,19 @@ internal sealed class FakeWatchStream : IAsyncEnumerable<BeatmapsetSource>
 	public Task Ending => _released.Task;
 
 	/// <inheritdoc />
-	public IAsyncEnumerator<BeatmapsetSource> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+	public IAsyncEnumerator<BeatmapsetSource> GetAsyncEnumerator(CancellationToken ct = default)
 	{
-		return EnumerateAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
+		return EnumerateAsync(ct).GetAsyncEnumerator(ct);
 	}
 
 	private async IAsyncEnumerable<BeatmapsetSource> EnumerateAsync(
-		[EnumeratorCancellation] CancellationToken cancellationToken)
+		[EnumeratorCancellation] CancellationToken ct)
 	{
 		try
 		{
 			await Task.Yield();
 			if (Failure is not null) throw Failure;
-			await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+			await Task.Delay(Timeout.InfiniteTimeSpan, ct);
 		}
 		finally
 		{

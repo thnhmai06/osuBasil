@@ -11,12 +11,12 @@ internal sealed class StartRoomCountdownHandler(ISender sender, RoomCountdowns c
 	: IRequestHandler<StartRoomCountdown, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<RoomOutcome>> Handle(StartRoomCountdown request, CancellationToken cancellationToken)
+	public async ValueTask<Result<RoomOutcome>> Handle(StartRoomCountdown request, CancellationToken ct)
 	{
-		var allowed = await sender.Send(new CheckRoundStart(request.Actor, request.Room), cancellationToken);
+		var allowed = await sender.Send(new CheckRoundStart(request.Actor, request.Room), ct);
 		return allowed.IsOk
 			? await countdowns.StartAsync(request.Actor, request.Room, request.Duration, request.StartsRound,
-				cancellationToken)
+				ct)
 			: allowed;
 	}
 }

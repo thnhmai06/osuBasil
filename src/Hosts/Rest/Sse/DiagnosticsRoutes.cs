@@ -40,9 +40,9 @@ internal static class DiagnosticsRoutes
 	}
 
 	private static async Task<object> SampleAsync(IDiagnosticsIntake intake, string? category,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var sample = await intake.TakeSampleAsync(cancellationToken);
+		var sample = await intake.TakeSampleAsync(ct);
 		return category is null ? sample.All : sample[category];
 	}
 

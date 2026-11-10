@@ -90,7 +90,7 @@ internal static class SpectateRoutes
 /// <summary>Feeds the frames of a player to the stream of their Api spectators.</summary>
 internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<UserSpectatorFramesReceived>
 {
-	public ValueTask Handle(UserSpectatorFramesReceived notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSpectatorFramesReceived notification, CancellationToken ct)
 	{
 		hub.Publish(SpectateRoutes.KeyOf(notification.Host.Record.Id), SpectateRoutes.BundleOf(notification.Bundle));
 		return ValueTask.CompletedTask;
@@ -100,7 +100,7 @@ internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<User
 /// <summary>Feeds the status changes of a player to the stream of their Api spectators.</summary>
 internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<UserConnectionStatusChanged>
 {
-	public ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken ct)
 	{
 		hub.Publish(SpectateRoutes.KeyOf(notification.Connection.Record.Id),
 			new { type = "status", status = SpectateRoutes.StatusOf(notification.Status) });
@@ -111,7 +111,7 @@ internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<User
 /// <summary>Ends the stream of an Api spectator when the spectating ends, for example when the player goes offline.</summary>
 internal sealed class SpectateEnd(SseHub hub) : INotificationHandler<UserSpectatorLeft>
 {
-	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken ct)
 	{
 		if (notification.Spectator is ApiConnection)
 			hub.Close(SpectateRoutes.KeyOf(notification.Host.Record.Id), notification.Spectator);

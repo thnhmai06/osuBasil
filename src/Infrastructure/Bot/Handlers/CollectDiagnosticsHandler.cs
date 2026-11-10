@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Bot.Handlers;
 internal sealed class CollectDiagnosticsHandler(RoomCountdowns countdowns) : INotificationHandler<CollectDiagnostics>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(CollectDiagnostics notification, CancellationToken cancellationToken)
+	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		notification.Collector.Add(new DiagnosticsValue("application", "countdowns", countdowns.Count));
 		return ValueTask.CompletedTask;

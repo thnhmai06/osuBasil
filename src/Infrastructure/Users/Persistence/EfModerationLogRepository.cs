@@ -18,7 +18,7 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 
 	/// <inheritdoc />
 	public async ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
-		PageRequest page, CancellationToken cancellationToken = default)
+		PageRequest page, CancellationToken ct = default)
 	{
 		var targetId = target.Id;
 		var minTimestamp = within?.Min?.ToUniversalTime();
@@ -46,8 +46,8 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 			return await (from row in paged
 				join actor in context.Users on row.ById equals actor.Id
 				orderby row.Timestamp descending, row.Id descending
-				select new { row, actor }).ToListAsync(cancellationToken);
-		}, cancellationToken);
+				select new { row, actor }).ToListAsync(ct);
+		}, ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<ModerationLog>([

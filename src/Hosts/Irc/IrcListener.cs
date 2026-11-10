@@ -36,7 +36,7 @@ internal sealed class IrcListener(
 	public int Port => ((IPEndPoint)_listener!.LocalEndpoint).Port;
 
 	/// <inheritdoc />
-	public override Task StartAsync(CancellationToken cancellationToken)
+	public override Task StartAsync(CancellationToken ct)
 	{
 		try
 		{
@@ -51,7 +51,7 @@ internal sealed class IrcListener(
 		}
 
 		state.Port = Port;
-		return base.StartAsync(cancellationToken);
+		return base.StartAsync(ct);
 	}
 
 	/// <inheritdoc />
@@ -91,13 +91,13 @@ internal sealed class IrcListener(
 	}
 
 	/// <inheritdoc />
-	public override async Task StopAsync(CancellationToken cancellationToken)
+	public override async Task StopAsync(CancellationToken ct)
 	{
 		state.AcceptingLogins = false;
 		_listener?.Stop();
 		Announce(false);
 		await Task.WhenAny(Task.WhenAll(_sessions.Select(pair => pair.Value)), Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None));
-		await base.StopAsync(cancellationToken);
+		await base.StopAsync(ct);
 	}
 
 	private async Task RunAsync(IrcSession session, TcpClient tcp, CancellationToken stoppingToken)
@@ -156,7 +156,7 @@ internal sealed class IrcListener(
 		_sessions.TryRemove(session, out _);
 	}
 
-	private async Task HandleLineAsync(IrcSession session, string? text, CancellationToken cancellationToken)
+	private async Task HandleLineAsync(IrcSession session, string? text, CancellationToken ct)
 	{
 		if (text is null || Encoding.UTF8.GetByteCount(BodyOf(text)) > IrcReplies.MaxBodyBytes)
 		{
@@ -180,7 +180,7 @@ internal sealed class IrcListener(
 
 		try
 		{
-			await commands.HandleAsync(session, message, cancellationToken);
+			await commands.HandleAsync(session, message, ct);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{

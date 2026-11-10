@@ -23,7 +23,7 @@ internal sealed class BeatmapPreviewMaker(
 
 	/// <inheritdoc />
 	public async Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var previews = new Dictionary<string, TimeSpan?>(StringComparer.OrdinalIgnoreCase);
 		foreach (var beatmap in beatmaps)
@@ -35,7 +35,7 @@ internal sealed class BeatmapPreviewMaker(
 		foreach (var (audio, previewTime) in previews)
 			try
 			{
-				await BuildPreviewAsync(set, audio, previewTime ?? TimeSpan.Zero, cancellationToken);
+				await BuildPreviewAsync(set, audio, previewTime ?? TimeSpan.Zero, ct);
 			}
 			catch (OperationCanceledException)
 			{
@@ -52,11 +52,11 @@ internal sealed class BeatmapPreviewMaker(
 	/// <param name="set">The beatmapset, whose audio is already stored.</param>
 	/// <param name="audio">The name of the audio track in the set.</param>
 	/// <param name="start">Where the preview starts.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	private async Task BuildPreviewAsync(BeatmapsetRecord set, string audio, TimeSpan start,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var source = await storage.OpenAsync(set, BeatmapsetFileType.Audio, audio, cancellationToken);
+		var source = await storage.OpenAsync(set, BeatmapsetFileType.Audio, audio, ct);
 		if (source is null) return;
 		await using var sourceScope = source;
 
@@ -71,11 +71,11 @@ internal sealed class BeatmapPreviewMaker(
 				BufferSize, FileOptions.Asynchronous);
 			await using (file)
 			{
-				await source.CopyToAsync(file, cancellationToken);
+				await source.CopyToAsync(file, ct);
 			}
 
 			// The content, not the name, says whether this is audio, how long it is and how many bytes it takes.
-			var analysis = await FFProbe.AnalyseAsync(audioPath, FfmpegOptions, cancellationToken);
+			var analysis = await FFProbe.AnalyseAsync(audioPath, FfmpegOptions, ct);
 			if (analysis.PrimaryAudioStream is null) return;
 
 			if (logger.IsEnabled(LogLevel.Debug))
@@ -86,7 +86,7 @@ internal sealed class BeatmapPreviewMaker(
 			// A preview point past the end of the track starts the preview at the beginning.
 			if (start >= analysis.Duration) start = TimeSpan.Zero;
 
-			await RunFfmpegAsync(audioPath, start, outputPath, cancellationToken);
+			await RunFfmpegAsync(audioPath, start, outputPath, ct);
 
 			var preview = File.OpenRead(outputPath);
 			await using var previewScope = preview;
@@ -101,7 +101,7 @@ internal sealed class BeatmapPreviewMaker(
 
 	/// <summary>Cuts the ten-second preview clip with ffmpeg.</summary>
 	private Task<bool> RunFfmpegAsync(string audioPath, TimeSpan start, string outputPath,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		return FFMpegArguments
 			.FromFileInput(audioPath, true, input => input.Seek(start))
@@ -111,7 +111,7 @@ internal sealed class BeatmapPreviewMaker(
 				.WithAudioCodec(AudioCodec.LibMp3Lame)
 				.WithAudioBitrate(128)
 				.WithCustomArgument("-af afade=t=out:st=9:d=1"))
-			.CancellableThrough(cancellationToken)
+			.CancellableThrough(ct)
 			.ProcessAsynchronously(true, FfmpegOptions);
 	}
 }

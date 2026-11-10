@@ -10,7 +10,7 @@ internal sealed class LobbyConnectionReleasedHandler(Lobby lobby, RoomChannels c
 	: INotificationHandler<LobbyConnectionReleased>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(LobbyConnectionReleased @event, CancellationToken cancellationToken)
+	public ValueTask Handle(LobbyConnectionReleased @event, CancellationToken ct)
 	{
 		foreach (var room in lobby.Rooms.Values)
 			if (channels.Find(room) is { } channel)

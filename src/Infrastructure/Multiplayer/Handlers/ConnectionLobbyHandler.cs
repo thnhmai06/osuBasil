@@ -14,13 +14,13 @@ internal sealed class ConnectionLobbyHandler(Lobby lobby, ILogger<ConnectionLobb
 	private const string Subject = "the closed connection of user";
 
 	/// <inheritdoc />
-	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var connection = @event.Connection;
 		await HandlerStep.RunAsync(logger, "release its room", Subject, connection.Record.Id,
-			() => lobby.ReleaseAsync(connection), cancellationToken);
+			() => lobby.ReleaseAsync(connection), ct);
 		if (connection is StableConnection stable)
 			HandlerStep.Run(logger, "leave the lobby", Subject, connection.Record.Id, () => lobby.Unwatch(stable),
-				cancellationToken);
+				ct);
 	}
 }

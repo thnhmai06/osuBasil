@@ -15,7 +15,7 @@ internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<Ses
 		.CreateCounter<long>("basil.sessions.update.failed", description: "Sessions whose closing was not stored.");
 
 	/// <inheritdoc />
-	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var session = @event.Connection.Snapshot();
 		try
@@ -23,7 +23,7 @@ internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<Ses
 			await sessions.CreateOrUpdateAsync(session);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !cancellationToken.IsCancellationRequested)
+		                                  !ct.IsCancellationRequested)
 		{
 			UpdateFailures.Add(1);
 			logger.LogError(exception, "Could not store the closing of session {SessionId} of user {UserId}",

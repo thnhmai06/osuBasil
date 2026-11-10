@@ -11,7 +11,7 @@ internal sealed class ChangeUserPasswordHandler(UserRegistry registry)
 	: IRequestHandler<ChangeUserPassword, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(ChangeUserPassword request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(ChangeUserPassword request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Credentials
 			.ChangePasswordAsync(request.NewPasswordHash, request.CurrentPasswordHash, request.IncludeCurrent);

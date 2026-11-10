@@ -74,11 +74,11 @@ public sealed class UserSessions
 	/// <param name="page">Which part of the history to return.</param>
 	/// <param name="state">Whether to include active sessions, ended sessions, or both.</param>
 	/// <param name="types">The kinds of session to include, or <see langword="null" /> for every kind.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>One part of the sessions, newest first.</returns>
 	/// <remarks>Reading another account's sessions is recorded in the moderation log.</remarks>
 	internal async Task<Page<SessionRecord>> ListAsync(Connection viewer, PageRequest page, SessionState state,
-		IReadOnlyList<SessionType>? types, CancellationToken cancellationToken)
+		IReadOnlyList<SessionType>? types, CancellationToken ct)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
 		if (!viewer.Record.Equals(_user.Record))
@@ -91,22 +91,22 @@ public sealed class UserSessions
 			});
 
 		return await _user.Context.Sessions.ListAsync(new SessionQuery(_user.Record, state, types, now), page,
-			cancellationToken);
+			ct);
 	}
 
 	/// <summary>Reads one session of this account.</summary>
 	/// <param name="viewer">The connection reading the session.</param>
 	/// <param name="id">The session's public identifier.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the session.</returns>
 	/// <remarks>
 	///     Reading another account's session is recorded in the moderation log. A session that does not belong to this
 	///     account is not found.
 	/// </remarks>
 	internal async Task<(UserOutcome Outcome, SessionRecord? Session)> GetAsync(Connection viewer, long id,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var session = await _user.Context.Sessions.GetAsync(_user.Record, id, cancellationToken);
+		var session = await _user.Context.Sessions.GetAsync(_user.Record, id, ct);
 		if (session is null) return (UserOutcome.NotFound, null);
 
 		if (!viewer.Record.Equals(_user.Record))
@@ -125,19 +125,19 @@ public sealed class UserSessions
 	/// <param name="viewer">The connection reading the connections.</param>
 	/// <param name="id">The session's public identifier.</param>
 	/// <param name="page">Which part of the trail to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, one part of the connections, newest first.</returns>
 	/// <remarks>
 	///     Reading another account's connections is recorded in the moderation log. A session that does not belong to
 	///     this account is not found.
 	/// </remarks>
 	internal async Task<(UserOutcome Outcome, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
-		Connection viewer, long id, PageRequest page, CancellationToken cancellationToken)
+		Connection viewer, long id, PageRequest page, CancellationToken ct)
 	{
-		var (outcome, _) = await GetAsync(viewer, id, cancellationToken);
+		var (outcome, _) = await GetAsync(viewer, id, ct);
 		if (outcome is not UserOutcome.Ok) return (outcome, null);
 
-		return (UserOutcome.Ok, await _user.Context.Connections.ListAsync(id, page, cancellationToken));
+		return (UserOutcome.Ok, await _user.Context.Connections.ListAsync(id, page, ct));
 	}
 
 	/// <summary>Closes one session of this account, whether its client is online or not.</summary>

@@ -64,26 +64,26 @@ public interface ISessionRepository
 	/// <summary>Lists the sessions of a user, newest first.</summary>
 	/// <param name="query">Whose sessions to list and which of them to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>One part of the user's sessions, newest first, with how many sessions match in total.</returns>
 	ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Gets one session of a user.</summary>
 	/// <param name="user">The user the session must belong to.</param>
 	/// <param name="id">The session's public identifier.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The session, or <see langword="null" /> when the user has no session with that id.</returns>
-	Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken cancellationToken = default);
+	Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default);
 
 	/// <summary>Finds the session a token or key opens.</summary>
 	/// <param name="type">The kind of session the token or key is for.</param>
 	/// <param name="tokenHash">The SHA-256 hash of the token or key.</param>
 	/// <param name="now">The moment that decides whether the token has expired.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The session, or <see langword="null" /> when none is active and unexpired with that hash.</returns>
 	Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Ends the unended sessions of a user that match a selection.</summary>
 	/// <param name="user">The user whose sessions end.</param>

@@ -17,7 +17,7 @@ public interface IRoundRepository
 	///     rounds are returned, the earliest ones.
 	/// </remarks>
 	/// <param name="match">The match whose rounds to list.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The rounds of the match.</returns>
-	Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken ct = default);
 }

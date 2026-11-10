@@ -12,50 +12,50 @@ internal sealed partial class MpCommands
 	// ── !mp start / timer / aborttimer / abort ────────────────────────────────────────────
 
 	private async Task<bool> StartAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
-			return await StartCountdownAsync(context, room, seconds, true, cancellationToken);
+			return await StartCountdownAsync(context, room, seconds, true, ct);
 
-		var outcome = await sender.Send(new StartRound(context.Actor, room), cancellationToken);
+		var outcome = await sender.Send(new StartRound(context.Actor, room), ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		await context.Reply(MpReplies.MatchStarted, cancellationToken);
+		await context.Reply(MpReplies.MatchStarted, ct);
 		return true;
 	}
 
 	private async Task<bool> TimerAsync(CommandContext context, Room room, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var seconds = DefaultTimerSeconds;
 		if (args.Count > 0)
 			if (!int.TryParse(args[0], out seconds) || seconds <= 0)
 			{
-				await context.Reply(MpReplies.TimerUsage, cancellationToken);
+				await context.Reply(MpReplies.TimerUsage, ct);
 				return false;
 			}
 
-		return await StartCountdownAsync(context, room, seconds, false, cancellationToken);
+		return await StartCountdownAsync(context, room, seconds, false, ct);
 	}
 
 	private async Task<bool> AbortTimerAsync(CommandContext context, Room room,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var actor = context.Actor;
-		var outcome = await sender.Send(new CancelRoomCountdown(actor, room), cancellationToken);
+		var outcome = await sender.Send(new CancelRoomCountdown(actor, room), ct);
 		if (outcome is { IsOk: false, Outcome: RoomOutcome.NotInProgress })
 		{
-			await context.Reply(MpReplies.NoCountdownRunning, cancellationToken);
+			await context.Reply(MpReplies.NoCountdownRunning, ct);
 			return false;
 		}
 
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
@@ -68,40 +68,40 @@ internal sealed partial class MpCommands
 	/// <param name="room">The room the countdown runs in.</param>
 	/// <param name="seconds">How long the countdown runs.</param>
 	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when it started; otherwise the reason was replied.</returns>
 	private async Task<bool> StartCountdownAsync(CommandContext context, Room room, int seconds,
 		bool startsRound,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var actor = context.Actor;
 		if (seconds < 1 || TimeSpan.FromSeconds(seconds) > RoomCountdown.Max)
 		{
-			await context.Reply(MpReplies.CountdownOutOfRange, cancellationToken);
+			await context.Reply(MpReplies.CountdownOutOfRange, ct);
 			return false;
 		}
 
 		var outcome = await sender.Send(new StartRoomCountdown(actor, room, TimeSpan.FromSeconds(seconds), startsRound),
-			cancellationToken);
+			ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
 		return true;
 	}
 
-	private async Task<bool> AbortAsync(CommandContext context, Room room, CancellationToken cancellationToken)
+	private async Task<bool> AbortAsync(CommandContext context, Room room, CancellationToken ct)
 	{
-		var outcome = await sender.Send(new AbortRound(context.Actor, room), cancellationToken);
+		var outcome = await sender.Send(new AbortRound(context.Actor, room), ct);
 		if (!outcome.IsOk)
 		{
-			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		await context.Reply(MpReplies.AbortedMatch, cancellationToken);
+		await context.Reply(MpReplies.AbortedMatch, ct);
 		return true;
 	}
 }

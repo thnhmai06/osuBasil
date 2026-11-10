@@ -106,31 +106,31 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public async ValueTask<UserRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((UsersDbContext context) => context.Users
 			.Where(candidate => candidate.Id == id)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(ct), ct);
 		return row is null ? null : ToUser(row);
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+	public async ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default)
 	{
 		var normalized = UserData.NormalizeName(name);
 		var row = await database.ReadAsync((UsersDbContext context) => context.Users
 			.Where(candidate => candidate.NormalizedName == normalized && candidate.DeletedAt == null)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(ct), ct);
 		return row is null ? null : ToUser(row);
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var fetched = await database.ReadAsync((UsersDbContext context) => Filter(context.Users, query)
 			.OrderBy(row => row.Id).Skip(page.Offset).Take(page.Fetch)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<UserRecord>([.. rows.Select(ToUser)], hasNext);

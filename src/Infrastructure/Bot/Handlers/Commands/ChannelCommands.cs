@@ -21,28 +21,28 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 	/// <summary>Runs a <c>!channel &lt;subcommand&gt; [args...]</c> command for the sender.</summary>
 	/// <param name="context">Who sent the command, where it was sent, and how to answer it.</param>
 	/// <param name="args">The tokens after <c>!channel</c>; <paramref name="args" />[0] is the subcommand.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the command succeeded; otherwise <see langword="false" />.</returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		switch (args.Count > 0 ? args[0].ToLowerInvariant() : string.Empty)
 		{
 			case "list" when args.Count == 1:
-				return await ListAsync(context, cancellationToken);
+				return await ListAsync(context, ct);
 			case "create" when args.Count >= 2:
-				return await CreateAsync(context, args[1], args.Skip(2), cancellationToken);
+				return await CreateAsync(context, args[1], args.Skip(2), ct);
 			case "set" when args.Count >= 3:
-				return await SetAsync(context, args[1], args.Skip(2), cancellationToken);
+				return await SetAsync(context, args[1], args.Skip(2), ct);
 			case "delete" when args.Count == 2:
-				return await DeleteAsync(context, args[1], cancellationToken);
+				return await DeleteAsync(context, args[1], ct);
 			default:
-				await context.Reply(ChannelReplies.Usage, cancellationToken);
+				await context.Reply(ChannelReplies.Usage, ct);
 				return false;
 		}
 	}
 
-	private async Task<bool> ListAsync(CommandContext context, CancellationToken cancellationToken)
+	private async Task<bool> ListAsync(CommandContext context, CancellationToken ct)
 	{
 		var lines = channels.VisibleTo(context.Actor).Select(channel => context.Replies.Text(ChannelReplies.ListEntry,
 			new
@@ -54,18 +54,18 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 				visible = channel.Record.Value.Visible,
 				topic = channel.Topic
 			})).ToList();
-		if (lines.Count == 0) await context.Reply(ChannelReplies.NoChannels, cancellationToken);
-		else await context.Say(string.Join('\n', lines), cancellationToken);
+		if (lines.Count == 0) await context.Reply(ChannelReplies.NoChannels, ct);
+		else await context.Say(string.Join('\n', lines), ct);
 		return true;
 	}
 
 	private async Task<bool> CreateAsync(CommandContext context, string name, IEnumerable<string> options,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		GeneralChannelRecord record;
 		try
 		{
-			if (!TryParse(options, out var change)) return await InvalidAsync(context, cancellationToken);
+			if (!TryParse(options, out var change)) return await InvalidAsync(context, ct);
 			record = new GeneralChannelRecord
 			{
 				Name = name,
@@ -81,47 +81,47 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 		}
 		catch (ArgumentException)
 		{
-			return await InvalidAsync(context, cancellationToken);
+			return await InvalidAsync(context, ct);
 		}
 
-		var result = await sender.Send(new CreateGeneralChannel(context.Actor, record), cancellationToken);
+		var result = await sender.Send(new CreateGeneralChannel(context.Actor, record), ct);
 		var (reply, arguments) = ChannelReplies.Of(result, name);
-		await context.Reply(reply, arguments, cancellationToken);
+		await context.Reply(reply, arguments, ct);
 		return result.IsOk;
 	}
 
 	private async Task<bool> SetAsync(CommandContext context, string name, IEnumerable<string> options,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		if (!TryParse(options, out var change)) return await InvalidAsync(context, cancellationToken);
+		if (!TryParse(options, out var change)) return await InvalidAsync(context, ct);
 
 		GeneralChannelAnswer answer;
 		try
 		{
-			answer = await sender.Send(new ConfigureGeneralChannel(context.Actor, name, change), cancellationToken);
+			answer = await sender.Send(new ConfigureGeneralChannel(context.Actor, name, change), ct);
 		}
 		catch (ArgumentException)
 		{
-			return await InvalidAsync(context, cancellationToken);
+			return await InvalidAsync(context, ct);
 		}
 
 		var (result, channel) = answer;
 		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Updated);
-		await context.Reply(reply, arguments, cancellationToken);
+		await context.Reply(reply, arguments, ct);
 		return result.IsOk;
 	}
 
-	private async Task<bool> DeleteAsync(CommandContext context, string name, CancellationToken cancellationToken)
+	private async Task<bool> DeleteAsync(CommandContext context, string name, CancellationToken ct)
 	{
-		var (result, channel) = await sender.Send(new DeleteGeneralChannel(context.Actor, name), cancellationToken);
+		var (result, channel) = await sender.Send(new DeleteGeneralChannel(context.Actor, name), ct);
 		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Deleted);
-		await context.Reply(reply, arguments, cancellationToken);
+		await context.Reply(reply, arguments, ct);
 		return result.IsOk;
 	}
 
-	private static async Task<bool> InvalidAsync(CommandContext context, CancellationToken cancellationToken)
+	private static async Task<bool> InvalidAsync(CommandContext context, CancellationToken ct)
 	{
-		await context.Reply(ChannelReplies.InvalidArguments, cancellationToken);
+		await context.Reply(ChannelReplies.InvalidArguments, ct);
 		return false;
 	}
 

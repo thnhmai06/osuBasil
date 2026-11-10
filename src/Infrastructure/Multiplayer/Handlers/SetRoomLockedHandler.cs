@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class SetRoomLockedHandler : IRequestHandler<SetRoomLocked, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetRoomLocked request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(SetRoomLocked request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Settings.SetLockedAsync(request.Locked));

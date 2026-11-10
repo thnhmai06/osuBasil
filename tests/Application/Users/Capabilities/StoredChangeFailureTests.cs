@@ -68,7 +68,7 @@ public sealed class StoredChangeFailureTests
 		app.ModerationLogFailure = new InvalidOperationException("refused");
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			app.Users.Of(target).ScopeTo(staff).Sessions.ListAsync(new PageRequest(0, 10), cancellationToken: Token));
+			app.Users.Of(target).ScopeTo(staff).Sessions.ListAsync(new PageRequest(0, 10), ct: Token));
 
 		Assert.Empty(app.ModerationEntries);
 	}

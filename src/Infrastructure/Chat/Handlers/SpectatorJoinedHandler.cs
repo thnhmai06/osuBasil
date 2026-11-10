@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class SpectatorJoinedHandler(SpectatorChannels channels) : INotificationHandler<UserSpectatorJoined>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(UserSpectatorJoined @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserSpectatorJoined @event, CancellationToken ct)
 	{
 		// An HTTP API connection only watches: it takes no part in the spectator chat.
 		if (@event.Spectator is ApiConnection) return ValueTask.CompletedTask;

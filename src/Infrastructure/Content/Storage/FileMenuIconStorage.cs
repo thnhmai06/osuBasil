@@ -18,7 +18,7 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 	}
 
 	/// <inheritdoc />
-	public Task<(ContentReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default)
+	public Task<(ContentReference Reference, Stream Content)?> OpenAsync(CancellationToken ct = default)
 	{
 		var key = Files.Keys.Order(StringComparer.Ordinal).FirstOrDefault();
 		if (key is null)

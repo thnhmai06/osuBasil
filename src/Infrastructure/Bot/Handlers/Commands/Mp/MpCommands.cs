@@ -47,31 +47,31 @@ internal sealed partial class MpCommands(
 	/// </summary>
 	/// <param name="context">Who sent the command, where it was sent, and how to answer it.</param>
 	/// <param name="args">The tokens after <c>!mp</c>; <paramref name="args" />[0] is the subcommand.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the command was recognized and the server reported success;
 	///     <see langword="false" /> for usage errors, unknown subcommands, and any non-<see cref="RoomOutcome.Ok" />
 	///     result from the server.
 	/// </returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var subcommand = args.Count > 0 ? args[0] : "";
 		var subArgs = args.Count > 1 ? args.Skip(1).ToArray() : Array.Empty<string>();
 
 		if (subcommand.Equals("help", StringComparison.OrdinalIgnoreCase) || subcommand.Length == 0)
 		{
-			await context.SayPrivately(CommandCatalog.Lines(context.Replies, "mp"), cancellationToken);
+			await context.SayPrivately(CommandCatalog.Lines(context.Replies, "mp"), ct);
 			return true;
 		}
 
 		return subcommand.ToLowerInvariant() switch
 		{
-			"make" => await MakeAsync(context, subArgs, false, cancellationToken),
-			"makeprivate" => await MakeAsync(context, subArgs, true, cancellationToken),
-			"join" => await JoinAsync(context, subArgs, cancellationToken),
-			"in" => await InAsync(context, subArgs, cancellationToken),
-			_ => await ScopedAsync(context, subcommand, subArgs, cancellationToken)
+			"make" => await MakeAsync(context, subArgs, false, ct),
+			"makeprivate" => await MakeAsync(context, subArgs, true, ct),
+			"join" => await JoinAsync(context, subArgs, ct),
+			"in" => await InAsync(context, subArgs, ct),
+			_ => await ScopedAsync(context, subcommand, subArgs, ct)
 		};
 	}
 
@@ -90,12 +90,12 @@ internal sealed partial class MpCommands(
 	}
 
 	private async Task<bool> ScopedAsync(CommandContext context, string subcommand, IReadOnlyList<string> args,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var room = ResolveRoom(context);
 		if (room is null)
 		{
-			await context.Reply(MpReplies.NotInARoom, cancellationToken);
+			await context.Reply(MpReplies.NotInARoom, ct);
 			return false;
 		}
 
@@ -103,34 +103,34 @@ internal sealed partial class MpCommands(
 
 		return subcommand.ToLowerInvariant() switch
 		{
-			"settings" => await SettingsAsync(context, room, cancellationToken),
-			"lock" => await SetLockedAsync(context, room, true, cancellationToken),
-			"unlock" => await SetLockedAsync(context, room, false, cancellationToken),
-			"private" => await PrivateAsync(context, room, args, cancellationToken),
-			"size" => await SetSizeAsync(context, room, args, cancellationToken),
-			"move" => await MoveAsync(context, room, args, cancellationToken),
-			"host" => await HostAsync(context, room, args, cancellationToken),
-			"clearhost" => await ClearHostAsync(context, room, cancellationToken),
-			"name" => await SetNameAsync(context, room, args, cancellationToken),
-			"password" => await SetPasswordAsync(context, room, args, cancellationToken),
-			"invite" => await InviteAsync(context, room, args, cancellationToken),
-			"addref" => await AddRefereeAsync(context, room, args, cancellationToken),
-			"removeref" => await RemoveRefereeAsync(context, room, args, cancellationToken),
-			"listrefs" => await ListRefsAsync(context, room, cancellationToken),
-			"banlist" => await BanListAsync(context, room, cancellationToken),
-			"team" => await SetTeamAsync(context, room, args, cancellationToken),
-			"map" => await SetMapAsync(context, room, args, cancellationToken),
-			"mods" => await SetModsAsync(context, room, args, cancellationToken),
-			"set" => await SetAsync(context, room, args, cancellationToken),
-			"start" => await StartAsync(context, room, args, cancellationToken),
-			"timer" => await TimerAsync(context, room, args, cancellationToken),
-			"aborttimer" => await AbortTimerAsync(context, room, cancellationToken),
-			"abort" => await AbortAsync(context, room, cancellationToken),
-			"kick" => await KickAsync(context, room, args, cancellationToken),
-			"ban" => await BanAsync(context, room, args, cancellationToken),
-			"unban" => await UnbanAsync(context, room, args, cancellationToken),
-			"close" => await CloseAsync(context, room, cancellationToken),
-			_ => await UnknownSubcommandAsync(context, subcommand, cancellationToken)
+			"settings" => await SettingsAsync(context, room, ct),
+			"lock" => await SetLockedAsync(context, room, true, ct),
+			"unlock" => await SetLockedAsync(context, room, false, ct),
+			"private" => await PrivateAsync(context, room, args, ct),
+			"size" => await SetSizeAsync(context, room, args, ct),
+			"move" => await MoveAsync(context, room, args, ct),
+			"host" => await HostAsync(context, room, args, ct),
+			"clearhost" => await ClearHostAsync(context, room, ct),
+			"name" => await SetNameAsync(context, room, args, ct),
+			"password" => await SetPasswordAsync(context, room, args, ct),
+			"invite" => await InviteAsync(context, room, args, ct),
+			"addref" => await AddRefereeAsync(context, room, args, ct),
+			"removeref" => await RemoveRefereeAsync(context, room, args, ct),
+			"listrefs" => await ListRefsAsync(context, room, ct),
+			"banlist" => await BanListAsync(context, room, ct),
+			"team" => await SetTeamAsync(context, room, args, ct),
+			"map" => await SetMapAsync(context, room, args, ct),
+			"mods" => await SetModsAsync(context, room, args, ct),
+			"set" => await SetAsync(context, room, args, ct),
+			"start" => await StartAsync(context, room, args, ct),
+			"timer" => await TimerAsync(context, room, args, ct),
+			"aborttimer" => await AbortTimerAsync(context, room, ct),
+			"abort" => await AbortAsync(context, room, ct),
+			"kick" => await KickAsync(context, room, args, ct),
+			"ban" => await BanAsync(context, room, args, ct),
+			"unban" => await UnbanAsync(context, room, args, ct),
+			"close" => await CloseAsync(context, room, ct),
+			_ => await UnknownSubcommandAsync(context, subcommand, ct)
 		};
 	}
 
@@ -153,8 +153,8 @@ internal sealed partial class MpCommands(
 		{
 			Say = context.Channel == RoomChannel.NameFor(roomId)
 				? context.Say
-				: (text, cancellationToken) => context.Say(NameLines(text), cancellationToken),
-			SayPrivately = (text, cancellationToken) => context.SayPrivately(NameLines(text), cancellationToken)
+				: (text, ct) => context.Say(NameLines(text), ct),
+			SayPrivately = (text, ct) => context.SayPrivately(NameLines(text), ct)
 		};
 
 		string NameLines(string text)
@@ -200,18 +200,18 @@ internal sealed partial class MpCommands(
 	// ── unknown subcommand ───────────────────────────────────────────────────────────────
 
 	private static async Task<bool> UnknownSubcommandAsync(CommandContext context, string subcommand,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		await context.Reply(MpReplies.UnknownMpSubcommand, new { subcommand }, cancellationToken);
+		await context.Reply(MpReplies.UnknownMpSubcommand, new { subcommand }, ct);
 		return false;
 	}
 
 	// ── helpers ──────────────────────────────────────────────────────────────────────────
 
-	private async ValueTask<UserRecord?> ResolveUserAsync(string raw, CancellationToken cancellationToken)
+	private async ValueTask<UserRecord?> ResolveUserAsync(string raw, CancellationToken ct)
 	{
 		if (raw.StartsWith('#') && int.TryParse(raw[1..], out var id))
-			return await users.GetAsync(id, cancellationToken);
-		return await users.GetByNameAsync(raw, cancellationToken);
+			return await users.GetAsync(id, ct);
+		return await users.GetByNameAsync(raw, ct);
 	}
 }

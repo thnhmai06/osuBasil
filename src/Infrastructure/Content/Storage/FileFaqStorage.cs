@@ -9,7 +9,7 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	private DataStorage Files => paths.Faqs;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<string>> ListAsync(CancellationToken ct = default)
 	{
 		return Task.FromResult(
 			Files.Keys.Where(key => key.EndsWith(".txt", StringComparison.Ordinal))
@@ -24,7 +24,7 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	}
 
 	/// <inheritdoc />
-	public Task<StreamReader?> ReadAsync(string entry, CancellationToken cancellationToken = default)
+	public Task<StreamReader?> ReadAsync(string entry, CancellationToken ct = default)
 	{
 		var fileName = FileNameOf(entry);
 		Files.Resolve(fileName); // an unsafe entry name is refused, not reported as missing

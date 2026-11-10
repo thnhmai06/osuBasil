@@ -51,15 +51,15 @@ internal sealed partial class IrcCommands(
 	/// <summary>Handles one line from a client.</summary>
 	/// <param name="session">The socket that sent it.</param>
 	/// <param name="message">The parsed line.</param>
-	/// <param name="cancellationToken">A token that cancels the handling.</param>
-	public async Task HandleAsync(IrcSession session, IrcMessage message, CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the handling.</param>
+	public async Task HandleAsync(IrcSession session, IrcMessage message, CancellationToken ct)
 	{
 		if (session.Connection is { } connection) registry.MarkActive(connection);
 
 		switch (message.Command)
 		{
 			case "CAP":
-				await CapAsync(session, message, cancellationToken);
+				await CapAsync(session, message, ct);
 				return;
 			case "PING":
 				Ping(session, message);
@@ -73,8 +73,8 @@ internal sealed partial class IrcCommands(
 				return;
 		}
 
-		if (session.Registered) await RegisteredAsync(session, message, cancellationToken);
-		else await RegisteringAsync(session, message, cancellationToken);
+		if (session.Registered) await RegisteredAsync(session, message, ct);
+		else await RegisteringAsync(session, message, ct);
 	}
 
 	private void Ping(IrcSession session, IrcMessage message)
@@ -86,7 +86,7 @@ internal sealed partial class IrcCommands(
 				{ ForceTrailing = true });
 	}
 
-	private async Task RegisteringAsync(IrcSession session, IrcMessage message, CancellationToken cancellationToken)
+	private async Task RegisteringAsync(IrcSession session, IrcMessage message, CancellationToken ct)
 	{
 		var parameters = message.Parameters;
 		switch (message.Command)
@@ -104,17 +104,17 @@ internal sealed partial class IrcCommands(
 				else session.UserGiven = true;
 				break;
 			case "AUTHENTICATE":
-				await AuthenticateAsync(session, message, cancellationToken);
+				await AuthenticateAsync(session, message, ct);
 				return;
 			default:
 				session.Numeric(IrcNumericReply.ErrNotRegistered, IrcReplies.NotRegistered);
 				return;
 		}
 
-		await TryCompleteAsync(session, cancellationToken);
+		await TryCompleteAsync(session, ct);
 	}
 
-	private async Task TryCompleteAsync(IrcSession session, CancellationToken cancellationToken)
+	private async Task TryCompleteAsync(IrcSession session, CancellationToken ct)
 	{
 		if (session.Registered || session.Negotiating || session.RequestedNick is not { } nick || !session.UserGiven)
 			return;
@@ -127,22 +127,22 @@ internal sealed partial class IrcCommands(
 				return;
 			}
 
-			if (await SignInAsync(session, key, nick, cancellationToken) is { } failure)
+			if (await SignInAsync(session, key, nick, ct) is { } failure)
 			{
 				Fail(session, IrcNumericReply.ErrPasswdMismatch, failure);
 				return;
 			}
 		}
 
-		await WelcomeAsync(session, cancellationToken);
+		await WelcomeAsync(session, ct);
 	}
 
 	/// <summary>Opens the connection a key belongs to, if the key's owner is the claimed account.</summary>
 	/// <returns><see langword="null" /> on success, otherwise the text to close the socket with.</returns>
 	private async Task<string?> SignInAsync(IrcSession session, string key, string claimed,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var rules = (await settings.GetAsync(cancellationToken)).RateLimits;
+		var rules = (await settings.GetAsync(ct)).RateLimits;
 		var ipKey = $"irc-login-fail:{session.Address}";
 		var pairKey = $"{ipKey}:{claimed.ToLowerInvariant()}";
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
@@ -151,7 +151,7 @@ internal sealed partial class IrcCommands(
 		if (!clients.Reserve(key, session)) return IrcReplies.KeyInUse;
 
 		var result = await registry.LoginWithTokenAsync(SessionType.Irc, key, session.Address,
-			owner => IrcView.IsNick(owner, claimed), cancellationToken);
+			owner => IrcView.IsNick(owner, claimed), ct);
 		if (result.Connection is IrcConnection connection)
 		{
 			session.Key = key;
@@ -176,7 +176,7 @@ internal sealed partial class IrcCommands(
 		session.Numeric(IrcNumericReply.ErrNeedMoreParams, command, IrcReplies.NeedMoreParams);
 	}
 
-	private async Task WelcomeAsync(IrcSession session, CancellationToken cancellationToken)
+	private async Task WelcomeAsync(IrcSession session, CancellationToken ct)
 	{
 		var connection = session.Connection!;
 		var nick = session.Nick;
@@ -185,7 +185,7 @@ internal sealed partial class IrcCommands(
 
 		var serverName = Options.ServerName;
 		var mask = IrcView.Mask(connection.Record, Options.Domain);
-		var motd = (await settings.GetAsync(cancellationToken)).General.Motd;
+		var motd = (await settings.GetAsync(ct)).General.Motd;
 		session.Registered = true;
 		session.Numeric(IrcNumericReply.RplWelcome, $"Welcome to the {IrcReplies.Network} IRC network, {mask}");
 		session.Numeric(IrcNumericReply.RplYourHost,
@@ -213,19 +213,19 @@ internal sealed partial class IrcCommands(
 		session.Numeric(IrcNumericReply.RplEndOfMotd, "End of /MOTD command.");
 	}
 
-	private async Task RegisteredAsync(IrcSession session, IrcMessage message, CancellationToken cancellationToken)
+	private async Task RegisteredAsync(IrcSession session, IrcMessage message, CancellationToken ct)
 	{
 		var connection = session.Connection!;
 		switch (message.Command)
 		{
 			case "PRIVMSG" or "NOTICE":
-				await MessageAsync(session, connection, message, cancellationToken);
+				await MessageAsync(session, connection, message, ct);
 				break;
 			case "JOIN":
-				await JoinAsync(session, connection, message, cancellationToken);
+				await JoinAsync(session, connection, message, ct);
 				break;
 			case "PART":
-				await PartAsync(session, connection, message, cancellationToken);
+				await PartAsync(session, connection, message, ct);
 				break;
 			case "NAMES":
 				Names(session, connection, message);
@@ -246,7 +246,7 @@ internal sealed partial class IrcCommands(
 				UserHost(session, message);
 				break;
 			case "AWAY":
-				await AwayAsync(session, connection, message, cancellationToken);
+				await AwayAsync(session, connection, message, ct);
 				break;
 			case "TOPIC":
 				Topic(session, connection, message);
@@ -255,7 +255,7 @@ internal sealed partial class IrcCommands(
 				Mode(session, connection, message);
 				break;
 			case "MOTD":
-				SendMotd(session, (await settings.GetAsync(cancellationToken)).General.Motd);
+				SendMotd(session, (await settings.GetAsync(ct)).General.Motd);
 				break;
 			case "KICK" or "INVITE":
 				Management(session, message);
@@ -272,7 +272,7 @@ internal sealed partial class IrcCommands(
 		}
 	}
 
-	private async Task CapAsync(IrcSession session, IrcMessage message, CancellationToken cancellationToken)
+	private async Task CapAsync(IrcSession session, IrcMessage message, CancellationToken ct)
 	{
 		var who = session.Registered ? session.Nick : "*";
 
@@ -300,7 +300,7 @@ internal sealed partial class IrcCommands(
 				break;
 			case "END":
 				session.Negotiating = false;
-				await TryCompleteAsync(session, cancellationToken);
+				await TryCompleteAsync(session, ct);
 				break;
 			default:
 				session.Numeric(IrcNumericReply.ErrUnknownCommand, "CAP", IrcReplies.UnknownCommand);
@@ -333,7 +333,7 @@ internal sealed partial class IrcCommands(
 		}
 	}
 
-	private async Task AuthenticateAsync(IrcSession session, IrcMessage message, CancellationToken cancellationToken)
+	private async Task AuthenticateAsync(IrcSession session, IrcMessage message, CancellationToken ct)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -370,7 +370,7 @@ internal sealed partial class IrcCommands(
 		if (data != "+") session.Sasl.Append(data);
 		if (data.Length == 400) return;
 
-		await FinishSaslAsync(session, cancellationToken);
+		await FinishSaslAsync(session, ct);
 	}
 
 	private static void StartSasl(IrcSession session, string mechanism)
@@ -387,12 +387,12 @@ internal sealed partial class IrcCommands(
 		}
 	}
 
-	private async Task FinishSaslAsync(IrcSession session, CancellationToken cancellationToken)
+	private async Task FinishSaslAsync(IrcSession session, CancellationToken ct)
 	{
 		var payload = session.Sasl!.ToString();
 		session.Sasl = null;
 		if (!TryDecodePlain(payload, out var account, out var key) ||
-		    await SignInAsync(session, key, account, cancellationToken) is not null)
+		    await SignInAsync(session, key, account, ct) is not null)
 		{
 			session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");
 			return;
@@ -403,7 +403,7 @@ internal sealed partial class IrcCommands(
 			$"You are now logged in as {user.Value.Name}");
 		session.Numeric(IrcNumericReply.RplSaslSuccess, "SASL authentication successful");
 		session.SaslDone = true;
-		await TryCompleteAsync(session, cancellationToken);
+		await TryCompleteAsync(session, ct);
 	}
 
 	private static bool TryDecodePlain(string payload, out string account, out string key)

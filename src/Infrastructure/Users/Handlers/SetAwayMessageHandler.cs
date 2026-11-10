@@ -7,7 +7,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class SetAwayMessageHandler : IRequestHandler<SetAwayMessage, bool>
 {
 	/// <inheritdoc />
-	public ValueTask<bool> Handle(SetAwayMessage request, CancellationToken cancellationToken)
+	public ValueTask<bool> Handle(SetAwayMessage request, CancellationToken ct)
 	{
 		return ValueTask.FromResult(request.Actor.User.ScopeTo(request.Actor).Profile.SetAway(request.Message));
 	}

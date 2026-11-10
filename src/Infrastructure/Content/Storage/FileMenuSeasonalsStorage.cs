@@ -10,7 +10,7 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	private DataStorage Files => paths.MenuSeasonals;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken ct = default)
 	{
 		return Task.FromResult(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
@@ -24,7 +24,7 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(ContentReference background, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ContentReference background, CancellationToken ct = default)
 	{
 		return Task.FromResult<Stream?>(Files.TryGetName(background, out var name) ? Files.Open(name) : null);
 	}

@@ -24,10 +24,10 @@ public sealed class CommandRunner(
 	/// <param name="output">Where the command prints.</param>
 	/// <param name="serverRunning">Whether the server is running; commands that need it are refused when it is not.</param>
 	/// <param name="session">Where the command was typed; <see langword="null" /> for a shell or a test.</param>
-	/// <param name="cancellationToken">A token that cancels the command.</param>
+	/// <param name="ct">A token that cancels the command.</param>
 	/// <returns>The exit code of the command.</returns>
 	public async Task<int> RunAsync(IReadOnlyList<string> args, ICommandOutput output, bool serverRunning,
-		CommandSession? session, CancellationToken cancellationToken)
+		CommandSession? session, CancellationToken ct)
 	{
 		var (parsed, failure) = catalog.Parse(args);
 		if (parsed is null)
@@ -50,7 +50,7 @@ public sealed class CommandRunner(
 		}
 
 		logger.LogInformation("Console command: {Command}", Redactor.Redact(catalog, args));
-		var call = new CommandCall(services, output, formatter, parsed.Words, parsed.Options, cancellationToken,
+		var call = new CommandCall(services, output, formatter, parsed.Words, parsed.Options, ct,
 			session);
 		try
 		{

@@ -10,8 +10,8 @@ internal interface IBeatmapsetImporter
 	/// <param name="replaceExisting">
 	///     Whether an archive of a beatmapset the server already has replaces it; otherwise it is rejected.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The result of the import and the beatmapset taken in, or <see langword="null" /> when it was rejected.</returns>
 	Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
-		bool replaceExisting, CancellationToken cancellationToken = default);
+		bool replaceExisting, CancellationToken ct = default);
 }

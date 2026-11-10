@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class LobbyRoomClosedHandler(RoomChannels channels) : INotificationHandler<LobbyRoomClosed>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken cancellationToken)
+	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken ct)
 	{
 		channels.Remove(@event.Room)?.Close();
 		return ValueTask.CompletedTask;

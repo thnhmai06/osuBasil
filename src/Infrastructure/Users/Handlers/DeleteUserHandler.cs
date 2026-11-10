@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class DeleteUserHandler(UserRegistry registry) : IRequestHandler<DeleteUser, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(DeleteUser request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(DeleteUser request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).DeleteAsync();
 	}

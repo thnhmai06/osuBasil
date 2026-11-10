@@ -11,7 +11,7 @@ internal sealed class JoinChannelHandler(ChannelDirectory directory)
 	: IRequestHandler<JoinChannel, Result<ChannelOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<ChannelOutcome>> Handle(JoinChannel request, CancellationToken cancellationToken)
+	public ValueTask<Result<ChannelOutcome>> Handle(JoinChannel request, CancellationToken ct)
 	{
 		var result = directory.Find(request.Target, request.Actor) is { } channel
 			? channel.ScopeTo(request.Actor).Join()

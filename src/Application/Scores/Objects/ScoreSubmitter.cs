@@ -50,11 +50,11 @@ public sealed class ScoreSubmitter
 	/// <param name="beatmap">The beatmap the server knows for the submission, or <see langword="null" />.</param>
 	/// <param name="client">The osu! client information sent with the submission.</param>
 	/// <param name="replay">The seekable replay stream, or <see langword="null" /> for a failed play.</param>
-	/// <param name="cancellationToken">A token that cancels the submission.</param>
+	/// <param name="ct">A token that cancels the submission.</param>
 	/// <returns>Ok when the score was stored; otherwise Rejected with the rejection.</returns>
 	internal async Task<(ScoreSubmissionOutcome Outcome, ScoreRejectionReason? Rejection)> SubmitAsync(
 		StableConnection actor, Submission submission, BeatmapChecksums? beatmap, SubmittedClient client,
-		Stream? replay, CancellationToken cancellationToken)
+		Stream? replay, CancellationToken ct)
 	{
 		var checkedBeatmap = beatmap ??
 		                     (Acceptance.AcceptsUnknown(actor.Record, client.BeatmapHash)
@@ -64,7 +64,7 @@ public sealed class ScoreSubmitter
 
 		var outcome = await Recorder.ValidateAndRecordAsync(
 			actor.Record, actor.Session.Value.Fingerprint.Client!, submission, checkedBeatmap, client, replay,
-			cancellationToken);
+			ct);
 		if (outcome.Rejection is { } rejection) return (ScoreSubmissionOutcome.Rejected, rejection);
 
 		Events.Publish(new ScoreSubmitted(actor.Record, outcome.Score!, outcome.Stats!));

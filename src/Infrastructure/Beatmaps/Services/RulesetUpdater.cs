@@ -22,15 +22,15 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 	}
 
 	/// <inheritdoc />
-	public async Task<RulesetCheck> CheckAsync(CancellationToken cancellationToken = default)
+	public async Task<RulesetCheck> CheckAsync(CancellationToken ct = default)
 	{
-		return new RulesetCheck(Version(), await LatestAsync(cancellationToken));
+		return new RulesetCheck(Version(), await LatestAsync(ct));
 	}
 
 	/// <inheritdoc />
-	public async Task<RulesetStageResult> StageAsync(CancellationToken cancellationToken = default)
+	public async Task<RulesetStageResult> StageAsync(CancellationToken ct = default)
 	{
-		var check = await CheckAsync(cancellationToken);
+		var check = await CheckAsync(ct);
 		if (!check.UpdateAvailable) return new RulesetStageResult(check.Latest, false);
 
 		var version = check.Latest;
@@ -43,11 +43,11 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 			foreach (var ruleset in RulesetStore.Rulesets)
 			{
 				var id = (RulesetStore.PackagePrefix + ruleset).ToLowerInvariant();
-				var expected = await ExpectedHashAsync(id, version, cancellationToken);
+				var expected = await ExpectedHashAsync(id, version, ct);
 				var file = Path.Combine(work, id + ".nupkg");
 				await DownloadAsync($"{Feed}-flatcontainer/{id}/{version}/{id}.{version}.nupkg", file,
-					cancellationToken);
-				if (!await HashMatchesAsync(file, expected, cancellationToken))
+					ct);
+				if (!await HashMatchesAsync(file, expected, ct))
 					throw new RulesetUpdateException(
 						$"The package {id} {version} does not match the hash the feed publishes.");
 
@@ -75,13 +75,13 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 		}
 	}
 
-	private async Task<string> LatestAsync(CancellationToken cancellationToken)
+	private async Task<string> LatestAsync(CancellationToken ct)
 	{
 		try
 		{
 			var id = (RulesetStore.PackagePrefix + RulesetStore.Rulesets[0]).ToLowerInvariant();
 			var index = await http.GetFromJsonAsync<VersionIndex>($"{Feed}-flatcontainer/{id}/index.json",
-				cancellationToken);
+				ct);
 			return index?.Versions.LastOrDefault(version => !version.Contains('-'))
 			       ?? throw new RulesetUpdateException("The feed lists no stable version of the osu! rulesets.");
 		}
@@ -92,30 +92,30 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 	}
 
 	/// <summary>Reads the SHA-512 the feed publishes for a package (base64).</summary>
-	private async Task<string> ExpectedHashAsync(string id, string version, CancellationToken cancellationToken)
+	private async Task<string> ExpectedHashAsync(string id, string version, CancellationToken ct)
 	{
 		var leaf = await http.GetFromJsonAsync<RegistrationLeaf>($"{Feed}/registration5-gz-semver2/{id}/{version}.json",
-			cancellationToken);
+			ct);
 		var entry = leaf is null
 			? null
-			: await http.GetFromJsonAsync<CatalogEntry>(leaf.CatalogEntry, cancellationToken);
+			: await http.GetFromJsonAsync<CatalogEntry>(leaf.CatalogEntry, ct);
 		return entry is { PackageHash: { Length: > 0 } hash, PackageHashAlgorithm: "SHA512" }
 			? hash
 			: throw new RulesetUpdateException($"The feed publishes no SHA-512 hash for {id} {version}.");
 	}
 
-	private async Task DownloadAsync(string address, string file, CancellationToken cancellationToken)
+	private async Task DownloadAsync(string address, string file, CancellationToken ct)
 	{
-		using var response = await http.GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+		using var response = await http.GetAsync(address, HttpCompletionOption.ResponseHeadersRead, ct);
 		response.EnsureSuccessStatusCode();
 		await using var target = File.Create(file);
-		await response.Content.CopyToAsync(target, cancellationToken);
+		await response.Content.CopyToAsync(target, ct);
 	}
 
-	private static async Task<bool> HashMatchesAsync(string file, string expected, CancellationToken cancellationToken)
+	private static async Task<bool> HashMatchesAsync(string file, string expected, CancellationToken ct)
 	{
 		await using var stream = File.OpenRead(file);
-		var actual = Convert.ToBase64String(await SHA512.HashDataAsync(stream, cancellationToken));
+		var actual = Convert.ToBase64String(await SHA512.HashDataAsync(stream, ct));
 		return CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(actual),
 			Encoding.ASCII.GetBytes(expected));
 	}

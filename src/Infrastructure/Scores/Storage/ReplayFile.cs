@@ -20,9 +20,9 @@ internal static class ReplayFile
 	/// <param name="frames">
 	///     The LZMA-compressed frames exactly as the client submitted them, from the current position to the end.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	public static async Task WriteAsync(Stream output, ScoreRecord score, string playerName, OsuVersion clientVersion,
-		Stream frames, CancellationToken cancellationToken = default)
+		Stream frames, CancellationToken ct = default)
 	{
 		var data = score.Value;
 		var (counts, totalScore, maxCombo, _, isFullCombo) = data.LastState;
@@ -57,7 +57,7 @@ internal static class ReplayFile
 		}
 
 		var start = output.Position;
-		await frames.CopyToAsync(output, cancellationToken);
+		await frames.CopyToAsync(output, ct);
 		var end = output.Position;
 		output.Position = start - sizeof(int);
 		using (var writer = new BinaryWriter(output, Encoding.UTF8, true))

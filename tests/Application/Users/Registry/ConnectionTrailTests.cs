@@ -21,7 +21,7 @@ public sealed class ConnectionTrailTests
 
 	private static Task<LoginResult> OpenAsync(TestApplication app, string token, IPAddress ip)
 	{
-		return app.Users.LoginWithTokenAsync(SessionType.Api, token, ip, cancellationToken: Token);
+		return app.Users.LoginWithTokenAsync(SessionType.Api, token, ip, ct: Token);
 	}
 
 	private static async Task LetGoAsync(TestApplication app, TimeSpan idleFor)
@@ -69,7 +69,7 @@ public sealed class ConnectionTrailTests
 		Assert.True(result.IsOk);
 
 		var irc = await app.Users.LoginWithTokenAsync(SessionType.Irc, key!, IPAddress.Loopback,
-			cancellationToken: Token);
+			ct: Token);
 
 		Assert.True(irc.Succeeded);
 		Assert.Single(app.StoredConnections, entry => entry.Value.SessionId == session!.Id);

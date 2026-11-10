@@ -13,8 +13,8 @@ internal sealed class ListBlocksHandler(UserRegistry registry)
 {
 	/// <inheritdoc />
 	public async ValueTask<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> Handle(ListBlocks request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.BlocksAsync(cancellationToken);
+		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.BlocksAsync(ct);
 	}
 }

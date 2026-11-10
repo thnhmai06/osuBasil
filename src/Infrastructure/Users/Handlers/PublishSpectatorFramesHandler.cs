@@ -7,7 +7,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class PublishSpectatorFramesHandler : IRequestHandler<PublishSpectatorFrames, bool>
 {
 	/// <inheritdoc />
-	public ValueTask<bool> Handle(PublishSpectatorFrames request, CancellationToken cancellationToken)
+	public ValueTask<bool> Handle(PublishSpectatorFrames request, CancellationToken ct)
 	{
 		return ValueTask.FromResult(request.Actor.ScopeTo(request.Actor).PublishFrames(request.Bundle));
 	}

@@ -316,12 +316,12 @@ public sealed class DashboardApp
 		}
 	}
 
-	private Task<bool> AskAsync(string question, CancellationToken cancellationToken)
+	private Task<bool> AskAsync(string question, CancellationToken ct)
 	{
 		var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 		_confirmation = source;
 		_model.Notice = question + " (y/N)";
-		cancellationToken.Register(() => source.TrySetCanceled());
+		ct.Register(() => source.TrySetCanceled());
 		return source.Task;
 	}
 

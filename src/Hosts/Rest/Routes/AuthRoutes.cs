@@ -70,11 +70,11 @@ internal static class AuthRoutes
 			"Signed in");
 	}
 
-	private static async Task<IResult> LogoutAsync(HttpContext context, CancellationToken cancellationToken)
+	private static async Task<IResult> LogoutAsync(HttpContext context, CancellationToken ct)
 	{
 		var connection = context.Connection();
 		var result = await context.Sender().Send(
-			new CloseUserSession(connection, connection.User.Record, connection.Session.Id), cancellationToken);
+			new CloseUserSession(connection, connection.User.Record, connection.Session.Id), ct);
 		return result.Answer();
 	}
 

@@ -52,56 +52,56 @@ internal sealed partial class PacketHandlers(
 	/// <summary>Handles one packet from a connection.</summary>
 	/// <param name="actor">The connection that sent it.</param>
 	/// <param name="packet">The packet.</param>
-	/// <param name="cancellationToken">A token that cancels the handling.</param>
-	public Task HandleAsync(Connection actor, ClientPacket packet, CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the handling.</param>
+	public Task HandleAsync(Connection actor, ClientPacket packet, CancellationToken ct)
 	{
 		var reader = PacketReader.ForPayload(packet.Payload);
 		return packet.Type switch
 		{
 			ClientPacketType.Logout => Run(() => registry.Close(actor, SessionEndReason.LoggedOut)),
 			ClientPacketType.UserStatsRequest => StatsRequestAsync(actor, reader.ReadInt32List().Take(MaxRequestedIds),
-				cancellationToken),
+				ct),
 			ClientPacketType.UserPresenceRequest => PresenceRequestAsync(actor,
-				reader.ReadInt32List().Take(MaxRequestedIds), cancellationToken),
+				reader.ReadInt32List().Take(MaxRequestedIds), ct),
 			ClientPacketType.UserPresenceRequestAll => PresenceRequestAsync(actor,
-				registry.Online.Keys.Select(user => user.Id).ToList(), cancellationToken),
+				registry.Online.Keys.Select(user => user.Id).ToList(), ct),
 			ClientPacketType.TournamentMatchInfoRequest => TourneyInfoAsync(actor, reader.ReadInt32(),
-				cancellationToken),
+				ct),
 			ClientPacketType.TournamentJoinMatchChannel => TourneyJoinAsync(actor, reader.ReadInt32(),
-				cancellationToken),
+				ct),
 			ClientPacketType.TournamentLeaveMatchChannel =>
-				TourneyLeaveAsync(actor, reader.ReadInt32(), cancellationToken),
+				TourneyLeaveAsync(actor, reader.ReadInt32(), ct),
 			_ when actor is StableConnection osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,
-				cancellationToken),
+				ct),
 			_ => Task.CompletedTask
 		};
 	}
 
 	private Task HandleOsuAsync(StableConnection osu, ClientPacketType type, byte[] payload, PacketReader reader,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		return type switch
 		{
-			ClientPacketType.ChangeAction => ChangeActionAsync(osu, reader, cancellationToken),
-			ClientPacketType.RequestStatusUpdate => StatsRequestAsync(osu, [osu.Record.Id], cancellationToken),
-			ClientPacketType.FriendAdd => FriendAsync(osu, reader.ReadInt32(), true, cancellationToken),
-			ClientPacketType.FriendRemove => FriendAsync(osu, reader.ReadInt32(), false, cancellationToken),
-			ClientPacketType.SetAwayMessage => SetAwayAsync(osu, reader.ReadMessage().Text, cancellationToken),
+			ClientPacketType.ChangeAction => ChangeActionAsync(osu, reader, ct),
+			ClientPacketType.RequestStatusUpdate => StatsRequestAsync(osu, [osu.Record.Id], ct),
+			ClientPacketType.FriendAdd => FriendAsync(osu, reader.ReadInt32(), true, ct),
+			ClientPacketType.FriendRemove => FriendAsync(osu, reader.ReadInt32(), false, ct),
+			ClientPacketType.SetAwayMessage => SetAwayAsync(osu, reader.ReadMessage().Text, ct),
 			ClientPacketType.ToggleBlockNonFriendDms => sender
-				.Send(new SetPmPrivate(osu, reader.ReadInt32() == 1), cancellationToken).AsTask(),
+				.Send(new SetPmPrivate(osu, reader.ReadInt32() == 1), ct).AsTask(),
 			ClientPacketType.BeatmapInfoRequest => BeatmapInfoAsync(osu, reader.ReadBeatmapInfoRequest(),
-				cancellationToken),
-			ClientPacketType.ChannelJoin => JoinChannelAsync(osu, reader.ReadOsuString(), cancellationToken),
-			ClientPacketType.ChannelPart => PartChannelAsync(osu, reader.ReadOsuString(), cancellationToken),
-			ClientPacketType.SendPublicMessage => PublicMessageAsync(osu, reader.ReadMessage(), cancellationToken),
-			ClientPacketType.SendPrivateMessage => PrivateMessageAsync(osu, reader.ReadMessage(), cancellationToken),
-			ClientPacketType.JoinLobby => sender.Send(new WatchLobby(osu), cancellationToken).AsTask(),
-			ClientPacketType.PartLobby => sender.Send(new UnwatchLobby(osu), cancellationToken).AsTask(),
-			ClientPacketType.StartSpectating => StartSpectatingAsync(osu, reader.ReadInt32(), cancellationToken),
-			ClientPacketType.StopSpectating => StopSpectatingAsync(osu, cancellationToken),
-			ClientPacketType.CantSpectate => ReportSpectatingFailedAsync(osu, cancellationToken),
-			ClientPacketType.SpectateFrames => ForwardFramesAsync(osu, payload, cancellationToken),
-			_ => HandleRoomAsync(osu, type, reader, cancellationToken)
+				ct),
+			ClientPacketType.ChannelJoin => JoinChannelAsync(osu, reader.ReadOsuString(), ct),
+			ClientPacketType.ChannelPart => PartChannelAsync(osu, reader.ReadOsuString(), ct),
+			ClientPacketType.SendPublicMessage => PublicMessageAsync(osu, reader.ReadMessage(), ct),
+			ClientPacketType.SendPrivateMessage => PrivateMessageAsync(osu, reader.ReadMessage(), ct),
+			ClientPacketType.JoinLobby => sender.Send(new WatchLobby(osu), ct).AsTask(),
+			ClientPacketType.PartLobby => sender.Send(new UnwatchLobby(osu), ct).AsTask(),
+			ClientPacketType.StartSpectating => StartSpectatingAsync(osu, reader.ReadInt32(), ct),
+			ClientPacketType.StopSpectating => StopSpectatingAsync(osu, ct),
+			ClientPacketType.CantSpectate => ReportSpectatingFailedAsync(osu, ct),
+			ClientPacketType.SpectateFrames => ForwardFramesAsync(osu, payload, ct),
+			_ => HandleRoomAsync(osu, type, reader, ct)
 		};
 	}
 
@@ -111,13 +111,13 @@ internal sealed partial class PacketHandlers(
 		return Task.CompletedTask;
 	}
 
-	private async Task<UserRecord?> FindUserAsync(int id, CancellationToken cancellationToken)
+	private async Task<UserRecord?> FindUserAsync(int id, CancellationToken ct)
 	{
-		return await users.GetAsync(id, cancellationToken);
+		return await users.GetAsync(id, ct);
 	}
 
 	private async Task ChangeActionAsync(StableConnection osu, PacketReader reader,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var action = reader.ReadChangeAction();
 		Md5? hash = null;
@@ -134,17 +134,17 @@ internal sealed partial class PacketHandlers(
 		    WireMap.Known<GameMode>(action.Mode) is not { } mode) return;
 		var status = new PlayerStatus(activity, action.InfoText, hash,
 			action.MapId == 0 ? null : action.MapId, WireMap.Mods(action.Mods), mode);
-		await sender.Send(new SetPlayerStatus(osu, status), cancellationToken);
+		await sender.Send(new SetPlayerStatus(osu, status), ct);
 	}
 
-	private async Task StatsRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken cancellationToken)
+	private async Task StatsRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken ct)
 	{
 		var wanted = OnlineUsers(ids);
 
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
 			stats.Add(await statsRepository.GetAsync(user.Record, user.Stable?.Status.GameMode ?? GameMode.Standard,
-				cancellationToken));
+				ct));
 		outbox.Send(actor, writer =>
 		{
 			for (var index = 0; index < wanted.Count; index++)
@@ -152,7 +152,7 @@ internal sealed partial class PacketHandlers(
 		});
 	}
 
-	private async Task PresenceRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken cancellationToken)
+	private async Task PresenceRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken ct)
 	{
 		var wanted = OnlineUsers(ids);
 
@@ -160,7 +160,7 @@ internal sealed partial class PacketHandlers(
 		var stats = new List<UserStats>();
 		foreach (var user in wanted)
 			stats.Add(await statsRepository.GetAsync(user.Record, user.Stable?.Status.GameMode ?? GameMode.Standard,
-				cancellationToken));
+				ct));
 		outbox.Send(actor, writer =>
 		{
 			for (var index = 0; index < wanted.Count; index++)
@@ -178,26 +178,26 @@ internal sealed partial class PacketHandlers(
 		return [.. asked.Where(online.ContainsKey).Select(id => online[id])];
 	}
 
-	private async Task FriendAsync(StableConnection osu, int id, bool add, CancellationToken cancellationToken)
+	private async Task FriendAsync(StableConnection osu, int id, bool add, CancellationToken ct)
 	{
-		if (await FindUserAsync(id, cancellationToken) is not { } target) return;
-		if (add) await sender.Send(new AddFriend(osu, target), cancellationToken);
-		else await sender.Send(new RemoveFriend(osu, target), cancellationToken);
+		if (await FindUserAsync(id, ct) is not { } target) return;
+		if (add) await sender.Send(new AddFriend(osu, target), ct);
+		else await sender.Send(new RemoveFriend(osu, target), ct);
 	}
 
-	private async Task SetAwayAsync(StableConnection osu, string text, CancellationToken cancellationToken)
+	private async Task SetAwayAsync(StableConnection osu, string text, CancellationToken ct)
 	{
-		await sender.Send(new SetAwayMessage(osu, string.IsNullOrEmpty(text) ? null : text), cancellationToken);
+		await sender.Send(new SetAwayMessage(osu, string.IsNullOrEmpty(text) ? null : text), ct);
 	}
 
 	private async Task BeatmapInfoAsync(StableConnection osu, BeatmapInfoRequest request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var entries = new List<BeatmapInfoResponse>();
 		for (var index = 0; index < Math.Min(request.Filenames.Count, MaxRequestedFilenames); index++)
 		{
 			var page = await beatmaps.ListAsync(new BeatmapQuery(
-				FileName: request.Filenames[index]), new PageRequest(0, 1), cancellationToken);
+				FileName: request.Filenames[index]), new PageRequest(0, 1), ct);
 			if (page.Items.FirstOrDefault() is { } map)
 				entries.Add(new BeatmapInfoResponse((short)index, map.Id,
 					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1,

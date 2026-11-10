@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class RoomPlayerJoinedHandler(RoomChannels channels) : INotificationHandler<RoomPlayerJoined>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(RoomPlayerJoined @event, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomPlayerJoined @event, CancellationToken ct)
 	{
 		if (@event.Room.IsClosed || channels.Find(@event.Room) is not { } channel)
 			return ValueTask.CompletedTask;

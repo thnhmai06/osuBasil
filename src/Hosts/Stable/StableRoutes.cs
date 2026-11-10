@@ -71,17 +71,17 @@ public static class StableRoutes
 	}
 
 	private static async Task<IResult> ExchangeAsync(HttpContext context, UserRegistry registry, StableLogin login,
-		PacketDispatcher dispatcher, Outbox outbox, CancellationToken cancellationToken)
+		PacketDispatcher dispatcher, Outbox outbox, CancellationToken ct)
 	{
 		using var buffer = new MemoryStream();
-		await context.Request.Body.CopyToAsync(buffer, cancellationToken);
+		await context.Request.Body.CopyToAsync(buffer, ct);
 		var body = buffer.ToArray();
 		context.Response.Headers.ContentType = "text/html; charset=UTF-8";
 
 		var token = context.Request.Headers["osu-token"].ToString();
 		if (string.IsNullOrEmpty(token))
 		{
-			var (newToken, reply) = await login.LoginAsync(context, body, cancellationToken);
+			var (newToken, reply) = await login.LoginAsync(context, body, ct);
 			context.Response.Headers["cho-token"] = newToken;
 			return Results.Bytes(reply, "text/html; charset=UTF-8");
 		}
@@ -91,7 +91,7 @@ public static class StableRoutes
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 
 		registry.MarkActive(connection);
-		await dispatcher.DispatchAsync(connection, body, cancellationToken);
+		await dispatcher.DispatchAsync(connection, body, ct);
 		return Results.Bytes(outbox.Drain(connection), "text/html; charset=UTF-8");
 	}
 }

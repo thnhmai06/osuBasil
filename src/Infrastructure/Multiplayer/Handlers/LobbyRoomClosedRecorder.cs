@@ -12,7 +12,7 @@ internal sealed class LobbyRoomClosedRecorder(
 	IMatchEventRepository matchEvents) : INotificationHandler<LobbyRoomClosed>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(LobbyRoomClosed @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(LobbyRoomClosed @event, CancellationToken ct)
 	{
 		if (@event.AbortedRound is { } abortedRound)
 			await rounds.CreateOrUpdateAsync(abortedRound);

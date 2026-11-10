@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class StopObservingRoomHandler : IRequestHandler<StopObservingRoom, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(StopObservingRoom request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(StopObservingRoom request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Members.ObserverLeaveAsync());

@@ -66,7 +66,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		var (_, room) = await rest.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "stopping room" });
 		var roomId = (int)room!["data"]!["id"]!;
 		var (roomResponse, roomReader) = await rest.OpenStreamAsync($"/v1/rooms/{roomId}/live",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 		await roomReader!.ReadAsync(TestContext.Current.CancellationToken);
 
 		host.Services.GetRequiredService<ShutdownController>().Terminate();
@@ -74,7 +74,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		var running = shutdown.StoppingAsync(CancellationToken.None);
 
 		using var refused = await rest.SendAsync(HttpMethod.Get, "/v1/auth/session",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 		await host.CreateUserAsync("E2eStopLate");
 		using var lateOsu = OsuClient.Create(host, "E2eStopLate", "password");
 		await lateOsu.LoginAsync();
@@ -141,7 +141,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		var (_, room) = await rest.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "restarting room" });
 		var roomId = (int)room!["data"]!["id"]!;
 		var (response, reader) = await rest.OpenStreamAsync($"/v1/rooms/{roomId}/live",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 		await reader!.ReadAsync(TestContext.Current.CancellationToken);
 		host.Services.GetRequiredService<ShutdownController>().RequestShutdown(true);
 

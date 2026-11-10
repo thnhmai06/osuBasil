@@ -20,7 +20,7 @@ public readonly struct ScopedServerBeatmapsets
 
 	/// <summary>Uploads a beatmapset archive as a new beatmapset.</summary>
 	/// <param name="archive">The .osz archive of one beatmapset, read from its current position; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when the upload was allowed, the result of the import.</returns>
 	/// <remarks>
 	///     Uploading needs <see cref="UserPrivileges.Player" />. While <see cref="Locks.Beatmapsets" /> is
@@ -30,15 +30,15 @@ public readonly struct ScopedServerBeatmapsets
 	///     server settings is refused with <see cref="ServerOutcome.TooLarge" />.
 	/// </remarks>
 	public async Task<(Result<ServerOutcome> Result, BeatmapsetImportResult? Import)> UploadAsync(Stream archive,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var server = _scoped.Server;
-		if (await server.IsLockedAsync(Locks.Beatmapsets, cancellationToken) &&
+		if (await server.IsLockedAsync(Locks.Beatmapsets, ct) &&
 		    _scoped.Needs(UserPrivileges.Tournament) is not null)
 			return (ServerOutcome.Locked, null);
 		if (_scoped.Needs(UserPrivileges.Player) is { } missing)
 			return (Result<ServerOutcome>.Denied(missing), null);
 
-		return await server.UploadBeatmapsetAsync(archive, cancellationToken);
+		return await server.UploadBeatmapsetAsync(archive, ct);
 	}
 }

@@ -32,7 +32,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 		Assert.Equal(200, locked);
 
 		var (response, reader) = await rest.OpenStreamAsync($"/v1/rooms/{roomId}/live",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.NotNull(reader);
@@ -67,7 +67,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 		using var anon = new RestClient(Host.Url, Host.Domain);
 
 		var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -103,7 +103,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 		await watcher.LoginAsync("E2eSpecWatch");
 
 		var (response, reader) = await watcher.OpenStreamAsync($"/v1/users/{player.LoginCode}/spectate",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.NotNull(reader);

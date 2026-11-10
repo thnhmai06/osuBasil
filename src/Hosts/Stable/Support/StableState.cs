@@ -37,10 +37,10 @@ internal sealed class StableShutdown(StableState state, UserRegistry registry, O
 	/// <summary>Queues the server-restart packet for every open osu! client and waits for them to poll.</summary>
 	/// <param name="reconnectAfter">How long the clients wait before they connect again.</param>
 	/// <param name="pollWindow">The longest time to wait for the clients to poll.</param>
-	/// <param name="cancellationToken">A token that stops the wait.</param>
+	/// <param name="ct">A token that stops the wait.</param>
 	/// <returns>How many clients had not taken the packet when the wait ended.</returns>
 	public async Task<int> AnnounceAsync(TimeSpan reconnectAfter, TimeSpan pollWindow,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		StopAccepting();
 		var clients = registry.Online.Values.SelectMany(user => user.Connections)
@@ -69,7 +69,7 @@ internal sealed class StableShutdown(StableState state, UserRegistry registry, O
 		{
 			outbox.Send(clients, writer => writer.RestartServer((int)reconnectAfter.TotalMilliseconds));
 			Check();
-			await Task.WhenAny(done.Task, Task.Delay(pollWindow, clock, cancellationToken));
+			await Task.WhenAny(done.Task, Task.Delay(pollWindow, clock, ct));
 		}
 		finally
 		{

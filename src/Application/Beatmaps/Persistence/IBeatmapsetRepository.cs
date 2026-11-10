@@ -8,9 +8,9 @@ public interface IBeatmapsetRepository
 {
 	/// <summary>Gets a beatmapset by id.</summary>
 	/// <param name="id">The beatmapset id.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The beatmapset, or <see langword="null" /> when none has that id.</returns>
-	ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken ct = default);
 
 	/// <summary>Stores the new values of a created beatmapset, replacing the stored ones.</summary>
 	/// <param name="set">The beatmapset to store.</param>
@@ -19,16 +19,16 @@ public interface IBeatmapsetRepository
 	/// <summary>Lists the beatmapsets that have at least one beatmap the query includes, newest id first.</summary>
 	/// <param name="query">Which beatmaps to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A page of beatmapsets.</returns>
 	Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Lists the ids of the stored beatmapsets, newest first.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The ids.</returns>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> ids are returned.</remarks>
-	Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken ct = default);
 
 	/// <summary>Stores what one scan or import changes, all at once.</summary>
 	/// <param name="changes">The beatmapsets to store and to remove.</param>

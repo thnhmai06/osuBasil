@@ -17,7 +17,7 @@ public interface IRelationshipRepository
 	/// <summary>Lists the relationships a user holds, oldest first.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> relationships are returned.</remarks>
 	/// <param name="actor">The user whose relationships to list.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The relationships the user holds.</returns>
-	Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor, CancellationToken ct = default);
 }

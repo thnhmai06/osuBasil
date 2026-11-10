@@ -7,29 +7,29 @@ namespace Basil.Host.Stable.Packets;
 
 internal sealed partial class PacketHandlers
 {
-	private async Task StartSpectatingAsync(StableConnection osu, int hostId, CancellationToken cancellationToken)
+	private async Task StartSpectatingAsync(StableConnection osu, int hostId, CancellationToken ct)
 	{
-		if (await FindUserAsync(hostId, cancellationToken) is not { } record ||
+		if (await FindUserAsync(hostId, ct) is not { } record ||
 		    registry.OpenStableClient(record) is not { } host)
 			return;
 
-		await sender.Send(new SpectateUser(osu, host), cancellationToken);
+		await sender.Send(new SpectateUser(osu, host), ct);
 	}
 
-	private async Task StopSpectatingAsync(StableConnection osu, CancellationToken cancellationToken)
+	private async Task StopSpectatingAsync(StableConnection osu, CancellationToken ct)
 	{
 		if (registry.FindSpectating(osu) is { } host)
-			await sender.Send(new StopSpectating(osu, host), cancellationToken);
+			await sender.Send(new StopSpectating(osu, host), ct);
 	}
 
-	private async Task ReportSpectatingFailedAsync(StableConnection osu, CancellationToken cancellationToken)
+	private async Task ReportSpectatingFailedAsync(StableConnection osu, CancellationToken ct)
 	{
 		if (registry.FindSpectating(osu) is { } host)
-			await sender.Send(new ReportSpectatingFailed(osu, host), cancellationToken);
+			await sender.Send(new ReportSpectatingFailed(osu, host), ct);
 	}
 
 	/// <summary>Relays the bytes of a frame bundle to the spectators; decodes it once only when an API client watches.</summary>
-	private async Task ForwardFramesAsync(StableConnection osu, byte[] raw, CancellationToken cancellationToken)
+	private async Task ForwardFramesAsync(StableConnection osu, byte[] raw, CancellationToken ct)
 	{
 		if (osu.Spectators.Count == 0) return;
 		outbox.Send(osu.Spectators, writer => writer.SpectateFrames(raw));
@@ -45,6 +45,6 @@ internal sealed partial class PacketHandlers
 		}
 
 		if (bundle.Action != SpectatorAction.Standard) return;
-		await sender.Send(new PublishSpectatorFrames(osu, bundle), cancellationToken);
+		await sender.Send(new PublishSpectatorFrames(osu, bundle), ct);
 	}
 }

@@ -9,7 +9,7 @@ namespace Basil.Host.Stable.Delivery;
 /// <summary>Tells a client that it joined a channel.</summary>
 internal sealed class ChannelJoinedDelivery(Outbox outbox) : INotificationHandler<ChannelMemberJoined>
 {
-	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelMemberJoined notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
 		if (channel is PmChannel) return ValueTask.CompletedTask;
@@ -23,7 +23,7 @@ internal sealed class ChannelJoinedDelivery(Outbox outbox) : INotificationHandle
 /// <summary>Tells a client that the server removed it from a channel.</summary>
 internal sealed class ChannelPartedDelivery(Outbox outbox) : INotificationHandler<ChannelMemberParted>
 {
-	public ValueTask Handle(ChannelMemberParted notification, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelMemberParted notification, CancellationToken ct)
 	{
 		var channel = notification.Channel;
 		if (channel is PmChannel) return ValueTask.CompletedTask;
@@ -37,7 +37,7 @@ internal sealed class ChannelPartedDelivery(Outbox outbox) : INotificationHandle
 /// <summary>Tells the members of a channel that it closed.</summary>
 internal sealed class ChannelClosedDelivery(Outbox outbox) : INotificationHandler<ChannelClosed>
 {
-	public ValueTask Handle(ChannelClosed notification, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelClosed notification, CancellationToken ct)
 	{
 		if (notification.Channel is PmChannel) return ValueTask.CompletedTask;
 		var name = StableView.ChannelName(notification.Channel);
@@ -49,12 +49,12 @@ internal sealed class ChannelClosedDelivery(Outbox outbox) : INotificationHandle
 /// <summary>Delivers a posted message to the osu! clients that may receive it.</summary>
 internal sealed class MessageDelivery(Outbox outbox) : INotificationHandler<ChannelMessagePosted>
 {
-	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken cancellationToken)
+	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken ct)
 	{
 		var (channel, message) = (notification.Channel, notification.Message);
 		var author = message.Author;
 		var target = channel is PmChannel pm ? pm.Owner.Record.Value.Name : StableView.ChannelName(channel);
-		var recipients = (await channel.RecipientsAsync(notification, cancellationToken))
+		var recipients = (await channel.RecipientsAsync(notification, ct))
 			.Where(recipient => !(recipient.Type is SessionType.Stable && recipient.Record.Equals(author)));
 		outbox.Send(recipients, writer =>
 			writer.SendMessage(author.Value.Name, message.Content, target, author.Id));

@@ -10,7 +10,7 @@ internal sealed class ConfigureGeneralChannelHandler(Server server)
 {
 	/// <inheritdoc />
 	public async ValueTask<GeneralChannelAnswer> Handle(ConfigureGeneralChannel request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var (found, channel) = server.ScopeTo(request.Actor).Channels.Find(request.Name);
 		if (channel is null) return new GeneralChannelAnswer(found, null);

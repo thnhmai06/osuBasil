@@ -12,12 +12,12 @@ internal sealed class BeatmapsetImporter(
 {
 	/// <inheritdoc />
 	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
-		bool replaceExisting, CancellationToken cancellationToken = default)
+		bool replaceExisting, CancellationToken ct = default)
 	{
-		var uploaded = await storage.SaveAsync(archive, cancellationToken);
+		var uploaded = await storage.SaveAsync(archive, ct);
 		try
 		{
-			var (content, stream) = await planner.ReadAsync(uploaded, cancellationToken);
+			var (content, stream) = await planner.ReadAsync(uploaded, ct);
 			if (content is null)
 			{
 				await storage.QuarantineAsync(uploaded);
@@ -28,7 +28,7 @@ internal sealed class BeatmapsetImporter(
 			await using (stream!)
 			await using (content)
 			{
-				item = await planner.PlanAsync(uploaded, null, content, null, cancellationToken);
+				item = await planner.PlanAsync(uploaded, null, content, null, ct);
 			}
 
 			if (item.Locked)

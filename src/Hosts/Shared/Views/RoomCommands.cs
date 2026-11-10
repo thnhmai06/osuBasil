@@ -56,9 +56,9 @@ public sealed record PrivateRequest(bool Private);
 public readonly record struct RoomCall(ISender Sender, Connection Actor, Room Room)
 {
 	/// <summary>Sends a room request and returns its answer.</summary>
-	public Task<Result<RoomOutcome>> Ask(IRequest<Result<RoomOutcome>> request, CancellationToken cancellationToken)
+	public Task<Result<RoomOutcome>> Ask(IRequest<Result<RoomOutcome>> request, CancellationToken ct)
 	{
-		return Sender.Send(request, cancellationToken).AsTask();
+		return Sender.Send(request, ct).AsTask();
 	}
 }
 

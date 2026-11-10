@@ -10,20 +10,20 @@ public static class StoredRows
 	/// <param name="connectionString">How to reach the database.</param>
 	/// <param name="sql">The query that reads the rows.</param>
 	/// <param name="parameters">The values the query needs, by parameter name.</param>
-	/// <param name="cancellationToken">A token that cancels the read.</param>
+	/// <param name="ct">A token that cancels the read.</param>
 	/// <returns>The rows the query returned.</returns>
 	public static async Task<IReadOnlyList<StoredRow>> ReadAsync(string connectionString, string sql,
-		IReadOnlyDictionary<string, object?>? parameters, CancellationToken cancellationToken)
+		IReadOnlyDictionary<string, object?>? parameters, CancellationToken ct)
 	{
-		await using var connection = await TestServer.OpenAsync(connectionString, cancellationToken);
+		await using var connection = await TestServer.OpenAsync(connectionString, ct);
 		await using var command = Command(connection, sql, parameters);
-		await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+		await using var reader = await command.ExecuteReaderAsync(ct);
 		var rows = new List<StoredRow>();
-		while (await reader.ReadAsync(cancellationToken))
+		while (await reader.ReadAsync(ct))
 		{
 			var values = new Dictionary<string, object?>(reader.FieldCount, StringComparer.OrdinalIgnoreCase);
 			for (var column = 0; column < reader.FieldCount; column++)
-				values[reader.GetName(column)] = await reader.IsDBNullAsync(column, cancellationToken)
+				values[reader.GetName(column)] = await reader.IsDBNullAsync(column, ct)
 					? null
 					: reader.GetValue(column);
 			rows.Add(new StoredRow(values));
@@ -36,27 +36,27 @@ public static class StoredRows
 	/// <param name="connectionString">How to reach the database.</param>
 	/// <param name="sql">The statement to run.</param>
 	/// <param name="parameters">The values the statement needs, by parameter name.</param>
-	/// <param name="cancellationToken">A token that cancels the statement.</param>
+	/// <param name="ct">A token that cancels the statement.</param>
 	/// <returns>How many rows the statement changed.</returns>
 	public static async Task<int> ExecuteAsync(string connectionString, string sql,
-		IReadOnlyDictionary<string, object?>? parameters, CancellationToken cancellationToken)
+		IReadOnlyDictionary<string, object?>? parameters, CancellationToken ct)
 	{
-		await using var connection = await TestServer.OpenAsync(connectionString, cancellationToken);
+		await using var connection = await TestServer.OpenAsync(connectionString, ct);
 		await using var command = Command(connection, sql, parameters);
-		return await command.ExecuteNonQueryAsync(cancellationToken);
+		return await command.ExecuteNonQueryAsync(ct);
 	}
 
 	/// <summary>Stores rows into a table in one transaction, for tests that need more rows than a repository makes.</summary>
 	/// <param name="connectionString">How to reach the database.</param>
 	/// <param name="table">The table to insert into.</param>
 	/// <param name="rows">The rows, each as the value of its columns; every row names the same columns.</param>
-	/// <param name="cancellationToken">A token that cancels the insert.</param>
+	/// <param name="ct">A token that cancels the insert.</param>
 	/// <returns>How many rows were stored.</returns>
 	public static async Task<int> InsertAsync(string connectionString, string table,
-		IEnumerable<IReadOnlyDictionary<string, object?>> rows, CancellationToken cancellationToken)
+		IEnumerable<IReadOnlyDictionary<string, object?>> rows, CancellationToken ct)
 	{
-		await using var connection = await TestServer.OpenAsync(connectionString, cancellationToken);
-		await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+		await using var connection = await TestServer.OpenAsync(connectionString, ct);
+		await using var transaction = await connection.BeginTransactionAsync(ct);
 		var stored = 0;
 		foreach (var row in rows)
 		{
@@ -66,10 +66,10 @@ public static class StoredRows
 			await using var command = Command(connection, sql,
 				row.ToDictionary(pair => "@" + pair.Key, pair => pair.Value));
 			command.Transaction = transaction;
-			stored += await command.ExecuteNonQueryAsync(cancellationToken);
+			stored += await command.ExecuteNonQueryAsync(ct);
 		}
 
-		await transaction.CommitAsync(cancellationToken);
+		await transaction.CommitAsync(ct);
 		return stored;
 	}
 
@@ -97,21 +97,21 @@ public static class StoredRows
 	/// <param name="parameters">The values the query needs, by parameter name.</param>
 	/// <param name="satisfied">What the rows must look like.</param>
 	/// <param name="what">What is waited for, named in the failure message.</param>
-	/// <param name="cancellationToken">A token that cancels the wait.</param>
+	/// <param name="ct">A token that cancels the wait.</param>
 	/// <returns>The rows the query returned.</returns>
 	public static async Task<IReadOnlyList<StoredRow>> WaitForAsync(string connectionString, string sql,
 		IReadOnlyDictionary<string, object?>? parameters, Func<IReadOnlyList<StoredRow>, bool> satisfied,
-		string what, CancellationToken cancellationToken)
+		string what, CancellationToken ct)
 	{
 		var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
 		while (true)
 		{
-			var rows = await ReadAsync(connectionString, sql, parameters, cancellationToken);
+			var rows = await ReadAsync(connectionString, sql, parameters, ct);
 			if (satisfied(rows)) return rows;
 			if (DateTime.UtcNow >= deadline)
 				throw new TimeoutException(
 					$"The database did not hold {what} before the deadline; the query returned {rows.Count} rows.");
-			await Task.Delay(50, cancellationToken);
+			await Task.Delay(50, ct);
 		}
 	}
 }

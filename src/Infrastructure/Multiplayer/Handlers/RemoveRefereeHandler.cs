@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class RemoveRefereeHandler : IRequestHandler<RemoveReferee, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(RemoveReferee request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(RemoveReferee request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Authority.RemoveRefereeAsync(request.User));

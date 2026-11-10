@@ -7,7 +7,7 @@ namespace Basil.Infrastructure.Beatmaps.Storage;
 internal sealed class IncomingLeftovers(DataPaths paths) : IResident
 {
 	/// <inheritdoc />
-	public Task LoadAsync(CancellationToken cancellationToken)
+	public Task LoadAsync(CancellationToken ct)
 	{
 		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path)
 			         .Where(folder => FileBeatmapsetNames.IsHidden(Path.GetFileName(folder))))

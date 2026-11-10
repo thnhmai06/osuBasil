@@ -12,8 +12,8 @@ internal sealed class GetFriendsHandler
 {
 	/// <inheritdoc />
 	public async ValueTask<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> Handle(GetFriends request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		return await request.Actor.User.ScopeTo(request.Actor).Relationships.FriendsAsync(cancellationToken);
+		return await request.Actor.User.ScopeTo(request.Actor).Relationships.FriendsAsync(ct);
 	}
 }

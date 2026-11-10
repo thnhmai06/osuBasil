@@ -38,7 +38,7 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 	}
 
 	/// <inheritdoc />
-	public Task StartAsync(CancellationToken cancellationToken)
+	public Task StartAsync(CancellationToken ct)
 	{
 		catalog.Load();
 
@@ -68,7 +68,7 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		Dispose();
 		return Task.CompletedTask;

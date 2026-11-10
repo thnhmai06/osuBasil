@@ -69,7 +69,7 @@ public sealed class CommandCall
 
 	/// <summary>Creates a call.</summary>
 	public CommandCall(IServiceProvider services, ICommandOutput output, ViewFormatter formatter,
-		Dictionary<string, string> words, Dictionary<string, string> options, CancellationToken cancellationToken,
+		Dictionary<string, string> words, Dictionary<string, string> options, CancellationToken ct,
 		CommandSession? session = null)
 	{
 		Session = session ?? CommandSession.Plain;
@@ -78,7 +78,7 @@ public sealed class CommandCall
 		Formatter = formatter;
 		_words = words;
 		_options = options;
-		CancellationToken = cancellationToken;
+		CancellationToken = ct;
 	}
 
 	/// <summary>Gets where the command was typed.</summary>

@@ -11,7 +11,7 @@ internal sealed class RemoveUserAvatarHandler(UserRegistry registry)
 	: IRequestHandler<RemoveUserAvatar, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(RemoveUserAvatar request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(RemoveUserAvatar request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile.RemoveAvatarAsync();
 	}

@@ -162,7 +162,7 @@ public sealed class ScopedChannelRulesTests
 		var before = app.ChannelEvents.Events.Count;
 
 		var result = await channel.ScopeTo(member)
-			.PostAsync("anyone?", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("anyone?", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Closed, result.Outcome);
 		Assert.Equal(before, app.ChannelEvents.Events.Count);
@@ -182,7 +182,7 @@ public sealed class ScopedChannelRulesTests
 
 		await new PmConnectionClosedHandler(app.PmChannels).Handle(closed, TestContext.Current.CancellationToken);
 
-		var result = await pm.ScopeTo(sender).PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+		var result = await pm.ScopeTo(sender).PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Closed, result.Outcome);
 	}
@@ -200,7 +200,7 @@ public sealed class ScopedChannelRulesTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("CarefulSender", "password"));
 
 		var result = await pm.ScopeTo(sender)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Closed, result.Outcome);
 		Assert.DoesNotContain(app.ChannelEvents.Events, @event => @event is ChannelMessagePosted);
@@ -219,7 +219,7 @@ public sealed class ScopedChannelRulesTests
 		}
 
 		public Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor,
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
 			onList();
 			return Task.FromResult<IReadOnlyList<Relationship>>([]);
@@ -235,7 +235,7 @@ public sealed class ScopedChannelRulesTests
 		channel.ScopeTo(member).Join();
 		var text = new string('b', Channel.MaxMessageLength);
 
-		await channel.ScopeTo(member).PostAsync(text, cancellationToken: TestContext.Current.CancellationToken);
+		await channel.ScopeTo(member).PostAsync(text, ct: TestContext.Current.CancellationToken);
 
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
 		Assert.False(posted.Truncated);
@@ -265,7 +265,7 @@ public sealed class ScopedChannelRulesTests
 		channel.ScopeTo(moderator).Join();
 
 		var result = await channel.ScopeTo(moderator)
-			.PostAsync("official", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("official", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 	}
@@ -282,7 +282,7 @@ public sealed class ScopedChannelRulesTests
 			new GeneralChannelChange(WritePrivileges: UserPrivileges.Moderator));
 
 		var result = await channel.ScopeTo(player)
-			.PostAsync("still here", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("still here", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
 		Assert.Contains(player, channel.Members);
@@ -300,7 +300,7 @@ public sealed class ScopedChannelRulesTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("Innocent", "password"));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 	}
@@ -316,7 +316,7 @@ public sealed class ScopedChannelRulesTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Moderator));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(staff)
-			.PostAsync("official", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("official", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 	}
@@ -333,7 +333,7 @@ public sealed class ScopedChannelRulesTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Moderator));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(staff)
-			.PostAsync("hello?", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hello?", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.TargetSilenced, result.Outcome);
 	}
@@ -347,7 +347,7 @@ public sealed class ScopedChannelRulesTests
 		app.Users.Of(owner).ScopeTo(connection).Profile.SetAway("brb");
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(connection)
-			.PostAsync("note to self", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("note to self", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 		Assert.Null(Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]).AwayReply);

@@ -35,7 +35,7 @@ public sealed class Beatmapsets
 
 	/// <summary>Imports an uploaded beatmapset archive, adding or replacing the beatmapset it belongs to.</summary>
 	/// <param name="archive">The .osz archive of one beatmapset, read from its current position; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The result of the import.</returns>
 	/// <remarks>
 	///     <para>This system operation needs no rights because the server itself calls it.</para>
@@ -50,9 +50,9 @@ public sealed class Beatmapsets
 	///         id the server gives it. Difficulties the new version no longer has are removed.
 	///     </para>
 	/// </remarks>
-	public Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default)
+	public Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken ct = default)
 	{
-		return ImportAsync(archive, true, cancellationToken);
+		return ImportAsync(archive, true, ct);
 	}
 
 	/// <summary>Imports an uploaded beatmapset archive.</summary>
@@ -61,20 +61,20 @@ public sealed class Beatmapsets
 	///     Whether an archive of a beatmapset the server already has replaces it; otherwise it is rejected with
 	///     <see cref="BeatmapsetImportFailure.AlreadyExists" />.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The result of the import.</returns>
 	/// <remarks>This system operation needs no rights; the caller that serves a user checks them.</remarks>
 	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, bool replaceExisting,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		var (result, imported) = await _importer.ImportAsync(archive, replaceExisting, cancellationToken);
+		var (result, imported) = await _importer.ImportAsync(archive, replaceExisting, ct);
 		if (imported is not null)
 			_context.Events.Publish(new BeatmapsetImported(imported.Set, imported.Beatmaps));
 		return result;
 	}
 
 	/// <summary>Takes in everything waiting in the storage and brings every beatmapset in step with its archive.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it.
@@ -85,16 +85,16 @@ public sealed class Beatmapsets
 	///     Every change of the records is stored at once, after all of that. A set that needs no indexing but misses a
 	///     file made from its archive gets that file made again. Run when the server starts, before it serves clients.
 	/// </remarks>
-	public async Task<BeatmapsetScanResult> ScanAsync(CancellationToken cancellationToken = default)
+	public async Task<BeatmapsetScanResult> ScanAsync(CancellationToken ct = default)
 	{
-		var outcome = await _scanner.ScanAsync(cancellationToken);
+		var outcome = await _scanner.ScanAsync(ct);
 		Publish(outcome);
 		return outcome.Result;
 	}
 
 	/// <summary>Brings the server in step with one entry of the storage after it changed.</summary>
 	/// <param name="entry">The entry as it is now.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it.
@@ -106,9 +106,9 @@ public sealed class Beatmapsets
 	///     are left as they are. A locked set is not changed. Scanning an unchanged entry again changes nothing.
 	/// </remarks>
 	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		var outcome = await _scanner.ScanAsync(entry, cancellationToken);
+		var outcome = await _scanner.ScanAsync(entry, ct);
 		Publish(outcome);
 		return outcome.Result;
 	}

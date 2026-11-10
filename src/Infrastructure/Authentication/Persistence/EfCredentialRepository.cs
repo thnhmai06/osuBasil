@@ -17,12 +17,12 @@ internal sealed class EfCredentialRepository(DatabaseSession database) : ICreden
 	private readonly CacheAside<int, string> _hashes = new();
 
 	/// <inheritdoc />
-	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
+	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken ct = default)
 	{
 		var userId = credentials.User.Id;
 		var stored = await _hashes.GetAsync(userId, () => database.ReadAsync((AuthenticationDbContext context) =>
 			context.Credentials.Where(c => c.UserId == userId).Select(c => c.PasswordHash).FirstOrDefaultAsync(
-				cancellationToken), cancellationToken));
+				ct), ct));
 		if (stored is null)
 		{
 			BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, AbsentAccountHash);

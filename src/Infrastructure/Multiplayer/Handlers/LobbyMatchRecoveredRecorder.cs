@@ -12,7 +12,7 @@ internal sealed class LobbyMatchRecoveredRecorder(
 	IMatchEventRepository matchEvents) : INotificationHandler<LobbyMatchRecovered>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(LobbyMatchRecovered @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(LobbyMatchRecovered @event, CancellationToken ct)
 	{
 		foreach (var round in @event.AbortedRounds)
 			await rounds.CreateOrUpdateAsync(round);

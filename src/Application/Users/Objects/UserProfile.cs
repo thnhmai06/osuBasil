@@ -86,15 +86,15 @@ public sealed class UserProfile
 
 	/// <summary>Replaces the avatar image.</summary>
 	/// <param name="image">The image, read from its current position; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome of setting the avatar.</returns>
 	/// <remarks>A refused image leaves the previous avatar untouched.</remarks>
-	internal async Task<UserOutcome> SetAvatarAsync(Stream image, CancellationToken cancellationToken)
+	internal async Task<UserOutcome> SetAvatarAsync(Stream image, CancellationToken ct)
 	{
 		var context = _user.Context;
-		var limits = (await context.Settings.GetAsync(cancellationToken)).Uploads;
+		var limits = (await context.Settings.GetAsync(ct)).Uploads;
 
-		await using var upload = await context.Spool.SpoolAsync(image, limits.AvatarMaxSize, cancellationToken);
+		await using var upload = await context.Spool.SpoolAsync(image, limits.AvatarMaxSize, ct);
 		if (upload.TooLarge) return UserOutcome.TooLarge;
 
 		var info = await context.Inspector.InspectAsync(upload.Content);

@@ -7,7 +7,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class SetPmPrivateHandler : IRequestHandler<SetPmPrivate, bool>
 {
 	/// <inheritdoc />
-	public ValueTask<bool> Handle(SetPmPrivate request, CancellationToken cancellationToken)
+	public ValueTask<bool> Handle(SetPmPrivate request, CancellationToken ct)
 	{
 		return ValueTask.FromResult(request.Actor.User.ScopeTo(request.Actor).Profile.SetPmPrivate(request.PmPrivate));
 	}

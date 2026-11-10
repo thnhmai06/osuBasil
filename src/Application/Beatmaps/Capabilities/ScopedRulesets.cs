@@ -33,15 +33,15 @@ public readonly struct ScopedRulesets
 	}
 
 	/// <summary>Downloads and stages the newest version; it takes effect after a restart.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when allowed, what was staged.</returns>
 	/// <exception cref="RulesetUpdateException">The feed could not be read or a package failed verification.</exception>
 	public async Task<(Result<RulesetOutcome> Result, RulesetStageResult? Stage)> UpdateAsync(
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		return Require() is { } missing
 			? (Result<RulesetOutcome>.Denied(missing), null)
-			: (RulesetOutcome.Ok, await _rulesets.Updater.StageAsync(cancellationToken));
+			: (RulesetOutcome.Ok, await _rulesets.Updater.StageAsync(ct));
 	}
 
 	/// <summary>Starts recomputing every stored beatmap with the rulesets in use, in the background.</summary>

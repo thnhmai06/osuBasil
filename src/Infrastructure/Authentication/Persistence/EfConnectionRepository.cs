@@ -71,7 +71,7 @@ internal sealed class EfConnectionRepository(DatabaseSession database) : IConnec
 
 	/// <inheritdoc />
 	public async ValueTask<Page<ConnectionRecord>> ListAsync(long sessionId, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var fetched = await database.ReadAsync((AuthenticationDbContext context) => context.Connections
 			.Where(row => row.SessionId == sessionId)
@@ -79,7 +79,7 @@ internal sealed class EfConnectionRepository(DatabaseSession database) : IConnec
 			.ThenByDescending(row => row.Id)
 			.Skip(page.Offset)
 			.Take(page.Fetch)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<ConnectionRecord>(rows.Select(ToRecord).ToList(), hasNext);

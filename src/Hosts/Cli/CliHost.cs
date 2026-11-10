@@ -127,7 +127,7 @@ internal sealed class DisplayService(
 	private readonly CancellationTokenSource _stopped = new();
 	private Thread? _thread;
 
-	public Task StartAsync(CancellationToken cancellationToken)
+	public Task StartAsync(CancellationToken ct)
 	{
 		if (setting.Mode == CliMode.NoGui)
 		{
@@ -156,7 +156,7 @@ internal sealed class DisplayService(
 		return Task.CompletedTask;
 	}
 
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		shutdown.Message -= Log;
 		_stopped.Cancel();

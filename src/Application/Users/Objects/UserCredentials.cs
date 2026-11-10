@@ -22,11 +22,11 @@ public sealed class UserCredentials
 
 	/// <summary>Checks whether a claimed password is the account's password.</summary>
 	/// <param name="passwordHash">The MD5 digest of the claimed password.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the password is the account's.</returns>
-	internal Task<bool> IsPasswordAsync(Md5 passwordHash, CancellationToken cancellationToken = default)
+	internal Task<bool> IsPasswordAsync(Md5 passwordHash, CancellationToken ct = default)
 	{
-		return _user.Context.Credentials.IsPasswordAsync(_user.Record, passwordHash, cancellationToken);
+		return _user.Context.Credentials.IsPasswordAsync(_user.Record, passwordHash, ct);
 	}
 
 	/// <summary>Replaces the account's password.</summary>

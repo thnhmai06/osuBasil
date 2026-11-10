@@ -32,20 +32,20 @@ internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepo
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.MatchEvents
 			.Where(row => row.MatchId == match.Id)
 			.OrderBy(row => row.Timestamp)
 			.ThenBy(row => row.Id)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 
 		var events = new List<MatchEvent>(rows.Count);
 		foreach (var row in rows)
 		{
-			var actor = row.ActorId is { } actorId ? await users.GetAsync(actorId, cancellationToken) : null;
-			var target = row.TargetId is { } targetId ? await users.GetAsync(targetId, cancellationToken) : null;
+			var actor = row.ActorId is { } actorId ? await users.GetAsync(actorId, ct) : null;
+			var target = row.TargetId is { } targetId ? await users.GetAsync(targetId, ct) : null;
 			events.Add(new MatchEvent(match, (MatchEventType)row.Type, row.Timestamp, actor, target, row.Detail));
 		}
 

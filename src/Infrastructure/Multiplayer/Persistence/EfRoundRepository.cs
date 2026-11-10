@@ -22,13 +22,13 @@ internal sealed class EfRoundRepository(DatabaseSession database) : IRoundReposi
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.Rounds
 			.Where(row => row.MatchId == match.Id)
 			.OrderBy(row => row.Number)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 		return [.. rows.Select(row => ToRound(match, row))];
 	}
 

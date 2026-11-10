@@ -13,7 +13,7 @@ public interface IMatchEventRepository
 	/// <summary>Lists the events of a match in the order they happened.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> events are returned, the earliest ones.</remarks>
 	/// <param name="match">The match whose events to list.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The events of the match.</returns>
-	Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match, CancellationToken ct = default);
 }

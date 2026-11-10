@@ -18,20 +18,20 @@ public abstract class BeatmapsetContentFile(string name, long length)
 	public long Length => length;
 
 	/// <summary>Opens the file's content from its start.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A new stream of the content, which the caller disposes.</returns>
 	/// <remarks>Files of one beatmapset are read one at a time.</remarks>
-	public abstract Task<Stream> OpenAsync(CancellationToken cancellationToken = default);
+	public abstract Task<Stream> OpenAsync(CancellationToken ct = default);
 
 	/// <summary>Computes the MD5 hash of the file's content.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The MD5 hash of the content, read to its end.</returns>
-	public async Task<Md5> HashAsync(CancellationToken cancellationToken = default)
+	public async Task<Md5> HashAsync(CancellationToken ct = default)
 	{
-		var stream = await OpenAsync(cancellationToken);
+		var stream = await OpenAsync(ct);
 		await using (stream)
 		{
-			return await Md5.ComputeAsync(stream, cancellationToken);
+			return await Md5.ComputeAsync(stream, ct);
 		}
 	}
 }

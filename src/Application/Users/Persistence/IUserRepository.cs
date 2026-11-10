@@ -47,20 +47,20 @@ public interface IUserRepository
 
 	/// <summary>Gets a user by id.</summary>
 	/// <param name="id">The user id.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The user, or <see langword="null" /> when no user has that id.</returns>
-	ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<UserRecord?> GetAsync(int id, CancellationToken ct = default);
 
 	/// <summary>Gets a user by name, ignoring case and treating spaces and underscores as equal.</summary>
 	/// <param name="name">The username to look up.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The user, or <see langword="null" /> when no user has that name.</returns>
-	ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default);
+	ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default);
 
 	/// <summary>Lists the users a query includes, ordered by id.</summary>
 	/// <param name="query">Which users to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A page of users.</returns>
-	Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page, CancellationToken cancellationToken = default);
+	Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page, CancellationToken ct = default);
 }

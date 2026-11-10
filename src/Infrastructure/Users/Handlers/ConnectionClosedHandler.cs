@@ -13,7 +13,7 @@ internal sealed class ConnectionClosedHandler(
 	: INotificationHandler<UserConnectionClosed>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var connection = @event.Connection;
 		if (connection.IsServerOwned) return;
@@ -24,7 +24,7 @@ internal sealed class ConnectionClosedHandler(
 				@event.Reason);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !cancellationToken.IsCancellationRequested)
+		                                  !ct.IsCancellationRequested)
 		{
 			SessionEndHandler.UpdateFailures.Add(1);
 			logger.LogError(exception, "Could not store the closing of a connection of session {SessionId}",

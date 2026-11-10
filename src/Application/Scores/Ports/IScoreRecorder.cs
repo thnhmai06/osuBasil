@@ -18,9 +18,9 @@ internal interface IScoreRecorder
 	///     The seekable stream of the replay, positioned at its start and left open, or <see langword="null" /> when
 	///     none is kept.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The rejection, or the stored score and updated statistics.</returns>
 	Task<ScoreOutcome> ValidateAndRecordAsync(UserRecord player, OsuClient loginClient, Submission submission,
 		BeatmapChecksums checkedBeatmap, SubmittedClient client, Stream? replay,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 }

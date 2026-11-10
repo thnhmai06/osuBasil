@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class SetModsHandler : IRequestHandler<SetMods, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetMods request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(SetMods request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Slots.SetModsAsync(request.Mods));

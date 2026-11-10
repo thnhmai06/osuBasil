@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class ToggleSlotLockHandler : IRequestHandler<ToggleSlotLock, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(ToggleSlotLock request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(ToggleSlotLock request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Slots.ToggleLockAsync(request.Index));

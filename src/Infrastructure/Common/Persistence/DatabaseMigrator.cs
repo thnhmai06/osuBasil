@@ -7,10 +7,10 @@ namespace Basil.Infrastructure.Common.Persistence;
 public sealed class DatabaseMigrator(Database database, IEnumerable<IModuleMigration> modules)
 {
 	/// <summary>Applies every migration the database has not seen yet.</summary>
-	/// <param name="cancellationToken">A token that cancels the migration.</param>
-	public async Task MigrateAsync(CancellationToken cancellationToken = default)
+	/// <param name="ct">A token that cancels the migration.</param>
+	public async Task MigrateAsync(CancellationToken ct = default)
 	{
 		foreach (var module in modules)
-			await module.MigrateAsync(database, cancellationToken);
+			await module.MigrateAsync(database, ct);
 	}
 }

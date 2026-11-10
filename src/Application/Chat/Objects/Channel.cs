@@ -81,7 +81,7 @@ public abstract class Channel
 
 	/// <summary>Lists the members a posted message is shown to.</summary>
 	/// <param name="posted">The message as the channel announced it.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The members who do not block the author; every member when nobody blocks them.</returns>
 	/// <remarks>
 	///     A member who blocks the author is not shown the message, silently, and the author is not told. A block
@@ -89,7 +89,7 @@ public abstract class Channel
 	///     itself, reach every member. The author's own connections are kept; the transport decides whether to echo.
 	/// </remarks>
 	public async Task<IReadOnlyList<Connection>> RecipientsAsync(ChannelMessagePosted posted,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var author = posted.Message.Author;
 		var members = Members.ToArray();
@@ -98,7 +98,7 @@ public abstract class Channel
 		var blockers = new HashSet<UserRecord>();
 		foreach (var user in members.Select(member => member.Record).Where(user => !user.Equals(author)).Distinct())
 		{
-			var relationships = await Context.Relationships.ListAsync(user, cancellationToken);
+			var relationships = await Context.Relationships.ListAsync(user, ct);
 			if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
 			                                      relationship.Target.Equals(author)))
 				blockers.Add(user);
@@ -180,10 +180,10 @@ public abstract class Channel
 	/// </param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>Ok, Closed, Empty, InvalidText, NotMember, Silenced, AccessDenied, Blocked or TargetSilenced.</returns>
 	internal async Task<ChannelOutcome> PostAsync(Connection actor, UserPrivileges privileges,
-		bool? recipientSilenced, string text, bool notice, CancellationToken cancellationToken)
+		bool? recipientSilenced, string text, bool notice, CancellationToken ct)
 	{
 		if (IsClosed) return ChannelOutcome.Closed;
 		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
@@ -196,7 +196,7 @@ public abstract class Channel
 
 		var mayMessageAnyone = privileges.Allows(UserPrivileges.Moderator);
 		if (this is PmChannel pm && recipientSilenced is { } recipient &&
-		    await PrivateMessageRefusalAsync(pm, actor, mayMessageAnyone, recipient, cancellationToken) is { } refusal)
+		    await PrivateMessageRefusalAsync(pm, actor, mayMessageAnyone, recipient, ct) is { } refusal)
 			return refusal;
 
 		if (IsClosed) return ChannelOutcome.Closed;
@@ -206,11 +206,11 @@ public abstract class Channel
 	}
 
 	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, Connection actor,
-		bool mayMessageAnyone, bool recipientSilenced, CancellationToken cancellationToken)
+		bool mayMessageAnyone, bool recipientSilenced, CancellationToken ct)
 	{
 		if (!mayMessageAnyone)
 		{
-			var relationships = await Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
+			var relationships = await Context.Relationships.ListAsync(pm.Owner.Record, ct);
 			var self = actor.Record;
 			var blocked = relationships.Any(relationship =>
 				relationship.Type == RelationshipType.Block && relationship.Target.Equals(self));

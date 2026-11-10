@@ -4,7 +4,7 @@ namespace Basil.Application.Common.Events;
 public interface IEventDelivery
 {
 	/// <summary>Hands the event to every handler that observes it, in turn.</summary>
-	/// <param name="cancellationToken">A token that cancels the delivery when the server stops.</param>
+	/// <param name="ct">A token that cancels the delivery when the server stops.</param>
 	/// <remarks>A handler that fails is reported and does not stop the handlers after it.</remarks>
-	ValueTask DeliverAsync(CancellationToken cancellationToken);
+	ValueTask DeliverAsync(CancellationToken ct);
 }

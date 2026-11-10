@@ -49,9 +49,9 @@ public abstract class StreamImageProvider : IImageProvider
 
 	/// <summary>Opens the image for a request path.</summary>
 	/// <param name="path">The request path.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The image, or <see langword="null" /> when there is none or it must not be seen.</returns>
-	protected abstract Task<Stream?> OpenAsync(PathString path, CancellationToken cancellationToken);
+	protected abstract Task<Stream?> OpenAsync(PathString path, CancellationToken ct);
 
 	private sealed class BufferedResolver(byte[] content) : IImageResolver
 	{

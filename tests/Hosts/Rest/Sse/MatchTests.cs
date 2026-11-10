@@ -44,7 +44,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 	{
 		using var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
-		var (response, _) = await anon.OpenStreamAsync("/v1/matches/999999", cancellationToken: TestContext.Current.CancellationToken);
+		var (response, _) = await anon.OpenStreamAsync("/v1/matches/999999", ct: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.Equal(404, (int)response.StatusCode);
@@ -60,8 +60,8 @@ public sealed class MatchTests(RestHostFixture fixture)
 		{
 			var (_, matchId) = await OpenAsync(owner, "Secret", true);
 
-			var (hidden, _) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
-			var (shown, reader) = await owner.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
+			var (hidden, _) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
+			var (shown, reader) = await owner.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
 			using (hidden)
 			using (shown)
 			{
@@ -82,7 +82,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 			var (roomId, matchId) = await OpenAsync(owner, "Live");
 			await fixture.Host.DrainEventsAsync();
 
-			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
+			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.NotNull(reader);
@@ -120,7 +120,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 				if (list!["data"]!.AsArray().All(r => (int)r!["id"]! != roomId)) break;
 			}
 
-			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", cancellationToken: TestContext.Current.CancellationToken);
+			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
 			string lastId;
 			using (response)
 			{

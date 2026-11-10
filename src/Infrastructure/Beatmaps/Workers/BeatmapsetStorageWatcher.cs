@@ -25,41 +25,41 @@ internal sealed class BeatmapsetStorageWatcher(
 	private IAsyncEnumerable<BeatmapsetSource>? _changes;
 
 	/// <summary>Starts watching the storage, scans it fully, and only then starts serving the changed entries.</summary>
-	/// <param name="cancellationToken">A token that cancels starting.</param>
+	/// <param name="ct">A token that cancels starting.</param>
 	/// <remarks>
 	///     Watching begins before the scan, so no change made during the scan is lost. The scan finishes here, before
 	///     the server serves clients; a scan that fails for any reason other than cancellation is logged and the server
 	///     starts anyway.
 	/// </remarks>
-	public override async Task StartAsync(CancellationToken cancellationToken)
+	public override async Task StartAsync(CancellationToken ct)
 	{
 		_changes = storage.WatchAsync(_stopping.Token);
 		try
 		{
-			var result = await beatmapsets.ScanAsync(cancellationToken);
+			var result = await beatmapsets.ScanAsync(ct);
 			logger.LogInformation(
 				"Scanned the beatmapset storage: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
 				result.Imported, result.Updated, result.Forgotten);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !cancellationToken.IsCancellationRequested)
+		                                  !ct.IsCancellationRequested)
 		{
 			logger.LogError(exception, "Could not scan the beatmapset storage");
 		}
 
-		await base.StartAsync(cancellationToken);
+		await base.StartAsync(ct);
 	}
 
 	/// <summary>Stops watching the storage, then lets the remaining hosted services stop.</summary>
-	/// <param name="cancellationToken">A token that cancels stopping.</param>
+	/// <param name="ct">A token that cancels stopping.</param>
 	/// <remarks>
 	///     A start-up that was cancelled ends before the watch is read; stopping reads it here instead, so the storage
 	///     is not left watched.
 	/// </remarks>
-	public override async Task StopAsync(CancellationToken cancellationToken)
+	public override async Task StopAsync(CancellationToken ct)
 	{
 		await _stopping.CancelAsync();
-		await base.StopAsync(cancellationToken);
+		await base.StopAsync(ct);
 
 		if (Interlocked.Exchange(ref _changes, null) is not { } changes) return;
 

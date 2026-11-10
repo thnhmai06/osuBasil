@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class RoomSettingsChangedRecorder(IMatchRepository matches) : INotificationHandler<RoomSettingsChanged>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomSettingsChanged @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomSettingsChanged @event, CancellationToken ct)
 	{
 		if (@event.Change.Name is not null || @event.Change.IsPrivate is not null)
 			await matches.UpdateAsync(@event.Room.Match);

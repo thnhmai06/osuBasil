@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class CollectDiagnosticsHandler(UserRegistry registry) : INotificationHandler<CollectDiagnostics>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(CollectDiagnostics notification, CancellationToken cancellationToken)
+	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		var collector = notification.Collector;
 		collector.Add(new DiagnosticsValue("application", "usersOnline", registry.Online.Count));

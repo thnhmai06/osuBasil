@@ -63,39 +63,39 @@ internal sealed class GracefulShutdown(
 	public IReadOnlyList<ShutdownStepResult> Results { get; private set; } = [];
 
 	/// <inheritdoc />
-	public async Task StoppingAsync(CancellationToken cancellationToken)
+	public async Task StoppingAsync(CancellationToken ct)
 	{
 		var restarting = control.RestartRequested;
 		logger.LogInformation("{Msg}", restarting ? "Restarting the server" : "Shutting down the server");
-		Results = await sequence.RunAsync(Steps(restarting), cancellationToken);
+		Results = await sequence.RunAsync(Steps(restarting), ct);
 	}
 
 	/// <inheritdoc />
-	public Task StartingAsync(CancellationToken cancellationToken)
+	public Task StartingAsync(CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public Task StartAsync(CancellationToken cancellationToken)
+	public Task StartAsync(CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public Task StartedAsync(CancellationToken cancellationToken)
+	public Task StartedAsync(CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public Task StoppedAsync(CancellationToken cancellationToken)
+	public Task StoppedAsync(CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}

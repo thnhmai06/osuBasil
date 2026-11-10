@@ -11,12 +11,12 @@ namespace Basil.Infrastructure.Chat.Persistence;
 internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRepository
 {
 	/// <inheritdoc />
-	public async Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken cancellationToken = default)
+	public async Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((ChatDbContext context) => context.Channels
 			.OrderBy(row => row.Name)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 		return rows.Select(ToRecord).OrderBy(channel => channel.Name, StringComparer.Ordinal).ToList();
 	}
 

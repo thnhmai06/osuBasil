@@ -11,14 +11,14 @@ internal sealed class CancelRoomCountdownHandler(ISender sender, RoomCountdowns 
 	: IRequestHandler<CancelRoomCountdown, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<RoomOutcome>> Handle(CancelRoomCountdown request, CancellationToken cancellationToken)
+	public async ValueTask<Result<RoomOutcome>> Handle(CancelRoomCountdown request, CancellationToken ct)
 	{
-		var allowed = await sender.Send(new CheckRoundStart(request.Actor, request.Room), cancellationToken);
+		var allowed = await sender.Send(new CheckRoundStart(request.Actor, request.Room), ct);
 		if (!allowed.IsOk) return allowed;
 
 		if (request.Room.IsClosed) return RoomOutcome.RoomClosed;
 
-		return await countdowns.CancelAsync(request.Room, CountdownCancelReason.Aborted, false, cancellationToken)
+		return await countdowns.CancelAsync(request.Room, CountdownCancelReason.Aborted, false, ct)
 			? RoomOutcome.Ok
 			: RoomOutcome.NotInProgress;
 	}

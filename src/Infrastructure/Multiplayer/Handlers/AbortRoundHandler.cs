@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class AbortRoundHandler : IRequestHandler<AbortRound, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(AbortRound request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(AbortRound request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Rounds.AbortAsync());

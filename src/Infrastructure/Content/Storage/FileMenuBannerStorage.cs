@@ -10,7 +10,7 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	private DataStorage Files => paths.MenuBanners;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken ct = default)
 	{
 		return Task.FromResult(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
@@ -24,7 +24,7 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(ContentReference image, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ContentReference image, CancellationToken ct = default)
 	{
 		return Task.FromResult<Stream?>(Files.TryGetName(image, out var name) ? Files.Open(name) : null);
 	}

@@ -11,7 +11,7 @@ internal sealed class DeleteBeatmapsetHandler(Beatmapsets beatmapsets)
 {
 	/// <inheritdoc />
 	public async ValueTask<Result<BeatmapsetOutcome>> Handle(DeleteBeatmapset request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		return await beatmapsets.Of(request.Set).ScopeTo(request.Actor).DeleteAsync();
 	}

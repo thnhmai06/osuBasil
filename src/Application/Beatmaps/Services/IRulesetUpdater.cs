@@ -26,16 +26,16 @@ public interface IRulesetUpdater
 	RulesetVersions Version();
 
 	/// <summary>Asks the feed for the newest stable version without downloading it.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <exception cref="RulesetUpdateException">The feed could not be read.</exception>
-	Task<RulesetCheck> CheckAsync(CancellationToken cancellationToken = default);
+	Task<RulesetCheck> CheckAsync(CancellationToken ct = default);
 
 	/// <summary>Downloads the newest stable version, verifies it against the hash the feed publishes, and stages it.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>What was staged.</returns>
 	/// <remarks>When any package fails verification, nothing is staged and nothing of it is kept.</remarks>
 	/// <exception cref="RulesetUpdateException">The feed could not be read or a package failed verification.</exception>
-	Task<RulesetStageResult> StageAsync(CancellationToken cancellationToken = default);
+	Task<RulesetStageResult> StageAsync(CancellationToken ct = default);
 }
 
 /// <summary>A new version of the rulesets could not be found or staged.</summary>

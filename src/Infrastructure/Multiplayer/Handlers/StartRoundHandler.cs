@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class StartRoundHandler : IRequestHandler<StartRound, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(StartRound request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(StartRound request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Rounds.StartAsync());

@@ -12,7 +12,7 @@ internal sealed class GetRulesetVersionHandler(Rulesets rulesets)
 {
 	/// <inheritdoc />
 	public ValueTask<(Result<RulesetOutcome> Result, RulesetVersions? Versions)> Handle(GetRulesetVersion request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		return ValueTask.FromResult(rulesets.ScopeTo(request.Actor).Version());
 	}

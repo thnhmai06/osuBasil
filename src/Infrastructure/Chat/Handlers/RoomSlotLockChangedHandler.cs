@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class RoomSlotLockChangedHandler(RoomChannels channels) : INotificationHandler<RoomSlotLockChanged>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(RoomSlotLockChanged @event, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomSlotLockChanged @event, CancellationToken ct)
 	{
 		if (@event.Evicted is { } evicted && channels.Find(@event.Room) is { } channel &&
 		    !@event.Room.Authority.IsManagedBy(evicted.Record))

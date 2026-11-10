@@ -13,7 +13,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// <param name="page">Which part of the history to return.</param>
 	/// <param name="state">Whether to include active sessions, ended sessions, or both.</param>
 	/// <param name="types">The kinds of session to include, or <see langword="null" /> for every kind.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, one part of the sessions, newest first.</returns>
 	/// <remarks>
 	///     A user may read their own sessions. Reading another account's sessions needs
@@ -21,18 +21,18 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)> ListAsync(PageRequest page,
 		SessionState state = SessionState.Any, IReadOnlyList<SessionType>? types = null,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
 			return (denied, null);
 
-		var sessions = await scoped.User.Sessions.ListAsync(scoped.Actor, page, state, types, cancellationToken);
+		var sessions = await scoped.User.Sessions.ListAsync(scoped.Actor, page, state, types, ct);
 		return (UserOutcome.Ok, sessions);
 	}
 
 	/// <summary>Reads one session of this account.</summary>
 	/// <param name="id">The session's public identifier.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the session.</returns>
 	/// <remarks>
 	///     A user may read their own sessions. Reading another account's session needs
@@ -40,19 +40,19 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     does not belong to this account is not found.
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, SessionRecord? Session)> GetAsync(long id,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
 			return (denied, null);
 
-		var (outcome, session) = await scoped.User.Sessions.GetAsync(scoped.Actor, id, cancellationToken);
+		var (outcome, session) = await scoped.User.Sessions.GetAsync(scoped.Actor, id, ct);
 		return (outcome, session);
 	}
 
 	/// <summary>Reads the connections of one session of this account: when and from where each client connected.</summary>
 	/// <param name="id">The session's public identifier.</param>
 	/// <param name="page">Which part of the trail to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, one part of the connections, newest first.</returns>
 	/// <remarks>
 	///     A user may read the connections of their own sessions. Reading another account's needs
@@ -60,13 +60,13 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     does not belong to this account is not found.
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
-		long id, PageRequest page, CancellationToken cancellationToken = default)
+		long id, PageRequest page, CancellationToken ct = default)
 	{
 		if (!scoped.IsSelf && scoped.Guard(UserPrivileges.Moderator, false) is { } denied)
 			return (denied, null);
 
 		var (outcome, connections) =
-			await scoped.User.Sessions.ListConnectionsAsync(scoped.Actor, id, page, cancellationToken);
+			await scoped.User.Sessions.ListConnectionsAsync(scoped.Actor, id, page, ct);
 		return (outcome, connections);
 	}
 

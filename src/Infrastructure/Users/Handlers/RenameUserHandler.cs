@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class RenameUserHandler(UserRegistry registry) : IRequestHandler<RenameUser, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(RenameUser request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(RenameUser request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile
 			.RenameAsync(request.Name);

@@ -5,9 +5,9 @@ public interface IScreenshotInspector
 {
 	/// <summary>Reads a picture's format and dimensions without decoding it.</summary>
 	/// <param name="content">The content stream, read from its current position and left open.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The picture's format and dimensions, or <see langword="null" /> when it is not PNG or JPEG.</returns>
-	Task<ScreenshotInfo?> InspectAsync(Stream content, CancellationToken cancellationToken = default);
+	Task<ScreenshotInfo?> InspectAsync(Stream content, CancellationToken ct = default);
 }
 
 /// <summary>The supported format and dimensions of an uploaded picture.</summary>

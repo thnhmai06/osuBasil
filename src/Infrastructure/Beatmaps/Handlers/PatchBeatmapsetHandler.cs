@@ -11,7 +11,7 @@ internal sealed class PatchBeatmapsetHandler(Beatmapsets beatmapsets)
 {
 	/// <inheritdoc />
 	public async ValueTask<Result<BeatmapsetOutcome>> Handle(PatchBeatmapset request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		var scoped = beatmapsets.Of(request.Set).ScopeTo(request.Actor);
 		if (request.Status is { } status && await scoped.SetStatusAsync(status) is { IsOk: false } a)

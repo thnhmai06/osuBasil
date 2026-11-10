@@ -109,7 +109,7 @@ public sealed class UserRegistry
 	/// <param name="ip">The IP address the login came from.</param>
 	/// <param name="client">The osu! client that logged in, or <see langword="null" /> for IRC and the HTTP API.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login; used only by osu! game clients.</param>
-	/// <param name="cancellationToken">A token that cancels the login.</param>
+	/// <param name="ct">A token that cancels the login.</param>
 	/// <returns>The login's outcome: the new connection on success, or the reason it failed.</returns>
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="type" /> is not a defined value.</exception>
 	/// <exception cref="ArgumentException">
@@ -124,16 +124,16 @@ public sealed class UserRegistry
 	///     recorded.
 	/// </remarks>
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, SessionType type, IPAddress ip,
-		OsuClient? client, int utcOffset, CancellationToken cancellationToken = default)
+		OsuClient? client, int utcOffset, CancellationToken ct = default)
 	{
 		ThrowIfInvalidLogin(type, client);
 
-		var (record, failure) = await _accounts.FindLoginUserAsync(attempt, cancellationToken);
+		var (record, failure) = await _accounts.FindLoginUserAsync(attempt, ct);
 		if (failure is { } loginFailure) return LoginResult.Fail(loginFailure);
 		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 
 		var now = _context.Clock.GetUtcNow();
-		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
+		var lifetime = (await _context.Settings.GetAsync(ct)).Sessions.ApiToken.Lifetime;
 		var token = NewToken();
 		var session = NewLoginSession(record, type, ip, client, now, lifetime, token);
 		var connection = NewConnection(session, token, utcOffset, lifetime);
@@ -198,7 +198,7 @@ public sealed class UserRegistry
 	///     Decides, before anything is opened, whether the key's owner is the account the client claims to be;
 	///     <see langword="null" /> accepts every owner.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The connection the token opens, or why none could be opened.</returns>
 	/// <remarks>
 	///     A token that is not held by an open connection is verified against the stored sessions; only a valid one
@@ -208,7 +208,7 @@ public sealed class UserRegistry
 	/// </remarks>
 	/// <exception cref="ArgumentException"><paramref name="type" /> is not Api or Irc.</exception>
 	public async Task<LoginResult> LoginWithTokenAsync(SessionType type, string token, IPAddress ip,
-		Func<UserRecord, bool>? accepts = null, CancellationToken cancellationToken = default)
+		Func<UserRecord, bool>? accepts = null, CancellationToken ct = default)
 	{
 		if (type is not (SessionType.Api or SessionType.Irc))
 			throw new ArgumentException("Only an API token or an IRC key opens a connection.", nameof(type));
@@ -216,11 +216,11 @@ public sealed class UserRegistry
 		var now = _context.Clock.GetUtcNow();
 		if (ReuseOpenConnection(type, token, accepts, now) is { } reused) return reused;
 
-		var stored = await _context.Sessions.FindByTokenAsync(type, HashToken(token), now, cancellationToken);
-		var record = stored is null ? null : await _context.Users.GetAsync(stored.UserId, cancellationToken);
+		var stored = await _context.Sessions.FindByTokenAsync(type, HashToken(token), now, ct);
+		var record = stored is null ? null : await _context.Users.GetAsync(stored.UserId, ct);
 		if (StoredTokenRefusal(stored, record, accepts) is { } refusal) return LoginResult.Fail(refusal);
 
-		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
+		var lifetime = (await _context.Settings.GetAsync(ct)).Sessions.ApiToken.Lifetime;
 		var session = ResumedSession(stored!, record!, type, ip, token);
 		var connection = NewConnection(session, token, 0, lifetime);
 
@@ -314,24 +314,24 @@ public sealed class UserRegistry
 
 	/// <summary>Checks a registration attempt without creating the account.</summary>
 	/// <param name="attempt">The registration attempt to check.</param>
-	/// <param name="cancellationToken">A token that cancels the check.</param>
+	/// <param name="ct">A token that cancels the check.</param>
 	/// <returns><see langword="null" /> when the attempt would succeed; otherwise, why it would fail.</returns>
 	/// <remarks>Registration is refused while account creation is locked.</remarks>
 	public Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		return _accounts.CheckRegistrationAsync(attempt, cancellationToken);
+		return _accounts.CheckRegistrationAsync(attempt, ct);
 	}
 
 	/// <summary>Creates the account a registration attempt asks for.</summary>
 	/// <param name="attempt">The registration attempt.</param>
-	/// <param name="cancellationToken">A token that cancels the registration.</param>
+	/// <param name="ct">A token that cancels the registration.</param>
 	/// <returns>The new user, or why the registration failed.</returns>
 	/// <remarks>Registration is refused while account creation is locked.</remarks>
 	public async Task<(UserRecord? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		var failure = await CheckRegistrationAsync(attempt, cancellationToken);
+		var failure = await CheckRegistrationAsync(attempt, ct);
 		if (failure is not null) return (null, failure);
 
 		return await _accounts.CreateAsync(new UserData { Name = attempt.Username }, attempt.PasswordHash,
@@ -391,7 +391,7 @@ public sealed class UserRegistry
 	}
 
 	/// <summary>Makes the account with BasilBot's fixed id the bot, whatever that id holds.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The bot's account.</returns>
 	/// <remarks>
 	///     <para>
@@ -408,9 +408,9 @@ public sealed class UserRegistry
 	/// <exception cref="AlreadyExistsException">
 	///     The id holds a deleted account or nothing, and another user already has <see cref="BasilBot.DefaultName" />.
 	/// </exception>
-	public async Task<UserRecord> EnsureBotAsync(CancellationToken cancellationToken = default)
+	public async Task<UserRecord> EnsureBotAsync(CancellationToken ct = default)
 	{
-		var stored = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
+		var stored = await _context.Users.GetAsync(BasilBot.Id, ct);
 		var isBot = stored is { Value: { DeletedAt: null, Privileges: UserPrivileges.None, SilencedUntil: null } };
 
 		if (!isBot && stored is not null) CloseAll(stored, SessionEndReason.Revoked);
@@ -427,23 +427,23 @@ public sealed class UserRegistry
 	}
 
 	/// <summary>Opens the operator's connection, which acts as BasilBot and skips the rights checks.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A connection for the console; it is not registered, so it never appears online.</returns>
 	/// <remarks>
 	///     Only the server's own console calls this. BasilBot's account is created first when it does not exist yet, as the
 	///     server does at startup.
 	/// </remarks>
-	public async Task<OperatorConnection> OperateAsync(CancellationToken cancellationToken = default)
+	public async Task<OperatorConnection> OperateAsync(CancellationToken ct = default)
 	{
-		var bot = await _context.Users.GetAsync(BasilBot.Id, cancellationToken) ??
-		          await EnsureBotAsync(cancellationToken);
+		var bot = await _context.Users.GetAsync(BasilBot.Id, ct) ??
+		          await EnsureBotAsync(ct);
 		var token = NewToken();
 		var login = NewServerSession(bot, SessionType.Api, token);
 		return new OperatorConnection(login, token) { User = Of(bot), IsOpen = true };
 	}
 
 	/// <summary>Brings BasilBot online with one osu! game client connection and one IRC connection of its own.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     The online bot, or <see langword="null" /> when its record is not stored or a connection could not be opened.
 	/// </returns>
@@ -452,9 +452,9 @@ public sealed class UserRegistry
 	///     missing is opened, the game client one first, so calling it again changes nothing. No transport sits behind
 	///     either connection.
 	/// </remarks>
-	public async Task<User?> ConnectBotAsync(CancellationToken cancellationToken = default)
+	public async Task<User?> ConnectBotAsync(CancellationToken ct = default)
 	{
-		var user = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
+		var user = await _context.Users.GetAsync(BasilBot.Id, ct);
 		if (user is null) return null;
 
 		foreach (var type in (ReadOnlySpan<SessionType>)[SessionType.Stable, SessionType.Irc])

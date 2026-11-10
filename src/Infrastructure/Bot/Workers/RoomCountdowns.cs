@@ -61,10 +61,10 @@ internal sealed class RoomCountdowns(
 	/// <param name="room">The room.</param>
 	/// <param name="length">How long the countdown runs.</param>
 	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
-	/// <param name="cancellationToken">A token that cancels the announcements.</param>
+	/// <param name="ct">A token that cancels the announcements.</param>
 	/// <returns>Ok, InvalidSettings (out of range), InProgress or RoomClosed.</returns>
 	public async Task<Result<RoomOutcome>> StartAsync(Connection actor, Room room, TimeSpan length, bool startsRound,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (room.IsClosed) return RoomOutcome.RoomClosed;
 		if (length < RoomCountdown.Min || length > RoomCountdown.Max) return RoomOutcome.InvalidSettings;
@@ -99,13 +99,13 @@ internal sealed class RoomCountdowns(
 			replaced.Dispose();
 			var remaining = Math.Max(0, (int)Math.Round((replaced.Countdown.EndsAt - clock.GetUtcNow()).TotalSeconds));
 			await SayAsync(room, replies.Text(AnnouncementReplies.CountdownReplaced, new { seconds = remaining }),
-				cancellationToken);
+				ct);
 		}
 
 		var seconds = (int)length.TotalSeconds;
 		await SayAsync(room, startsRound
 			? replies.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds })
-			: replies.Text(AnnouncementReplies.CountdownStarted, new { seconds }), cancellationToken);
+			: replies.Text(AnnouncementReplies.CountdownStarted, new { seconds }), ct);
 		return RoomOutcome.Ok;
 	}
 
@@ -113,10 +113,10 @@ internal sealed class RoomCountdowns(
 	/// <param name="room">The room.</param>
 	/// <param name="reason">Why the countdown is cancelled.</param>
 	/// <param name="onlyIfStartsRound">Whether a countdown that starts no round is left running.</param>
-	/// <param name="cancellationToken">A token that cancels the announcement.</param>
+	/// <param name="ct">A token that cancels the announcement.</param>
 	/// <returns><see langword="true" /> when a countdown was cancelled.</returns>
 	public async Task<bool> CancelAsync(Room room, CountdownCancelReason reason, bool onlyIfStartsRound,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (!_running.TryGetValue(room, out var running) || (onlyIfStartsRound && !running.Countdown.StartsRound) ||
 		    !_running.TryRemove(new KeyValuePair<Room, Running>(room, running)))
@@ -131,7 +131,7 @@ internal sealed class RoomCountdowns(
 			CountdownCancelReason.RoundAborted => AnnouncementReplies.CountdownCancelledByRoundAbort,
 			_ => null
 		};
-		if (reply is not null) await SayAsync(room, replies.Text(reply), cancellationToken);
+		if (reply is not null) await SayAsync(room, replies.Text(reply), ct);
 		return true;
 	}
 
@@ -200,11 +200,11 @@ internal sealed class RoomCountdowns(
 		return _running.TryGetValue(room, out var current) && ReferenceEquals(current, running);
 	}
 
-	private Task SayAsync(Room room, string text, CancellationToken cancellationToken)
+	private Task SayAsync(Room room, string text, CancellationToken ct)
 	{
 		return room.IsClosed
 			? Task.CompletedTask
-			: server.SayAsync(channels.Of(room), text, cancellationToken: cancellationToken);
+			: server.SayAsync(channels.Of(room), text, ct: ct);
 	}
 
 	/// <summary>A countdown and the timers that announce its marks and its end.</summary>

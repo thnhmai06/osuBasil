@@ -41,10 +41,10 @@ internal sealed class EfSettingsRepository(
 	private ServerSettings? _settings;
 
 	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
+	public async Task LoadAsync(CancellationToken ct)
 	{
 		var rows = await database.ReadAsync((ContentDbContext context) => context.Settings
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
 		// A category without a row, or whose row cannot be read, keeps its defaults.
@@ -70,7 +70,7 @@ internal sealed class EfSettingsRepository(
 			"Server settings are read before the storage has started.");
 
 	/// <inheritdoc />
-	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
+	public ValueTask<ServerSettings> GetAsync(CancellationToken ct = default)
 	{
 		return ValueTask.FromResult(Volatile.Read(ref _settings)
 		                            ?? throw new InvalidOperationException(

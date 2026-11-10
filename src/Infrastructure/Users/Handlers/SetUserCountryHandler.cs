@@ -11,7 +11,7 @@ internal sealed class SetUserCountryHandler(UserRegistry registry)
 	: IRequestHandler<SetUserCountry, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(SetUserCountry request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(SetUserCountry request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile
 			.SetCountryAsync(request.Country);

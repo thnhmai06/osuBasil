@@ -22,12 +22,12 @@ public class DatabaseSession(Database database, TimeProvider time)
 	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
 	/// <typeparam name="T">The type of the result.</typeparam>
 	/// <param name="query">The query to run.</param>
-	/// <param name="cancellationToken">A token that cancels the read.</param>
+	/// <param name="ct">A token that cancels the read.</param>
 	/// <returns>The result of the query.</returns>
 	public async Task<T> ReadAsync<TContext, T>(Func<TContext, Task<T>> query,
-		CancellationToken cancellationToken = default) where TContext : DbContext, IDatabaseContext<TContext>
+		CancellationToken ct = default) where TContext : DbContext, IDatabaseContext<TContext>
 	{
-		await _readSlots.WaitAsync(cancellationToken);
+		await _readSlots.WaitAsync(ct);
 		try
 		{
 			await using var context = database.CreateReadContext<TContext>();

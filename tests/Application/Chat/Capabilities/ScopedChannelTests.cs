@@ -155,7 +155,7 @@ public sealed class ScopedChannelTests
 		var connection = await MemberOfAsync(app, channel, "Talker");
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hello", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
@@ -173,7 +173,7 @@ public sealed class ScopedChannelTests
 		var connection = await MemberOfAsync(app, channel, "Rambler");
 
 		await channel.ScopeTo(connection).PostAsync(new string('a', Channel.MaxMessageLength + 1),
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
 		Assert.True(posted.Truncated);
@@ -189,7 +189,7 @@ public sealed class ScopedChannelTests
 		var before = app.ChannelEvents.Events.Count;
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync("", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Empty, result.Outcome);
 		Assert.Equal(before, app.ChannelEvents.Events.Count);
@@ -203,7 +203,7 @@ public sealed class ScopedChannelTests
 		var connection = await MemberOfAsync(app, channel, "Mute");
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync("   ", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("   ", ct: TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
@@ -218,7 +218,7 @@ public sealed class ScopedChannelTests
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Lurker", "password"));
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.NotMember, result.Outcome);
 	}
@@ -232,7 +232,7 @@ public sealed class ScopedChannelTests
 			await MemberOfAsync(app, channel, "NoVoice", UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Player, result.Missing);
@@ -249,7 +249,7 @@ public sealed class ScopedChannelTests
 		Assert.True(channel.ScopeTo(connection).Join().IsOk);
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Silenced, result.Outcome);
 	}
@@ -262,7 +262,7 @@ public sealed class ScopedChannelTests
 		var connection = await MemberOfAsync(app, channel, "ReadOnlyPlayer");
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
 	}
@@ -281,7 +281,7 @@ public sealed class ScopedChannelTests
 		var pm = app.PmChannels.Of(app.Users.Of(owner));
 
 		var result = await pm.ScopeTo(sender)
-			.PostAsync("psst", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("psst", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
@@ -298,7 +298,7 @@ public sealed class ScopedChannelTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("OfflineSender", "password"));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
-			.PostAsync("anyone?", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("anyone?", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
 	}
@@ -314,7 +314,7 @@ public sealed class ScopedChannelTests
 		var before = app.ChannelEvents.Events.Count;
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync(text, cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync(text, ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.InvalidText, result.Outcome);
 		Assert.Equal(before, app.ChannelEvents.Events.Count);
@@ -330,7 +330,7 @@ public sealed class ScopedChannelTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("AwaySender", "password"));
 
 		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
-			.PostAsync("hey", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hey", ct: TestContext.Current.CancellationToken);
 
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
 		Assert.Equal("brb", posted.AwayReply?.Content);
@@ -362,7 +362,7 @@ public sealed class ScopedChannelTests
 			UserPrivilegesExtensions.Default & ~UserPrivileges.Player));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Player, result.Missing);
@@ -380,7 +380,7 @@ public sealed class ScopedChannelTests
 			.BlockAsync();
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Blocked, result.Outcome);
 	}
@@ -398,7 +398,7 @@ public sealed class ScopedChannelTests
 			.BlockAsync();
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(staff)
-			.PostAsync("notice", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("notice", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 	}
@@ -418,9 +418,9 @@ public sealed class ScopedChannelTests
 		var pm = app.PmChannels.Of(app.Users.Of(owner));
 
 		var fromFriend =
-			await pm.ScopeTo(friend).PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			await pm.ScopeTo(friend).PostAsync("hi", ct: TestContext.Current.CancellationToken);
 		var fromStranger = await pm.ScopeTo(stranger)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, fromFriend.Outcome);
 		Assert.Equal(ChannelOutcome.Blocked, fromStranger.Outcome);
@@ -436,7 +436,7 @@ public sealed class ScopedChannelTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("SilencedSender", "password"));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
-			.PostAsync("hi", cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.TargetSilenced, result.Outcome);
 	}
@@ -451,7 +451,7 @@ public sealed class ScopedChannelTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("BotAsker", "password"));
 
 		var result = await app.PmChannels.Of(app.Users.Of(app.Users.Online.Keys.Single(user => user.IsBasilBot())))
-			.ScopeTo(sender).PostAsync("!help", cancellationToken: TestContext.Current.CancellationToken);
+			.ScopeTo(sender).PostAsync("!help", ct: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
 	}

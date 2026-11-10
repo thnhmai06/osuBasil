@@ -158,9 +158,9 @@ public static class DependencyInjection
 	private sealed class BeatmapMirrorSettingsReader(ISettingsRepository settings) : IBeatmapMirrorSettings
 	{
 		public async Task<(Uri? SearchEndpoint, Uri? DownloadEndpoint)> GetAsync(
-			CancellationToken cancellationToken = default)
+			CancellationToken ct = default)
 		{
-			var mirror = (await settings.GetAsync(cancellationToken)).Beatmaps.Mirror;
+			var mirror = (await settings.GetAsync(ct)).Beatmaps.Mirror;
 			return (mirror.SearchEndpoint, mirror.DownloadEndpoint);
 		}
 	}

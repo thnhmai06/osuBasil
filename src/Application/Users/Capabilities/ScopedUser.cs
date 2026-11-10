@@ -82,12 +82,12 @@ public readonly struct ScopedUser
 	/// <summary>Checks whether an area is locked for the caller.</summary>
 	/// <param name="area">The area to check.</param>
 	/// <param name="manager">The privilege that manages the area and bypasses its lock.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the area is locked and the caller does not hold <paramref name="manager" />.</returns>
 	internal async Task<bool> IsLockedAsync(Locks area, UserPrivileges manager,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
-		return (await User.Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(area) &&
+		return (await User.Context.Settings.GetAsync(ct)).Locks.HasFlag(area) &&
 		       Require(manager) is not null;
 	}
 

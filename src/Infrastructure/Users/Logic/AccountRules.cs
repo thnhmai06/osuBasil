@@ -19,14 +19,14 @@ internal sealed class AccountRules(
 {
 	/// <inheritdoc />
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		if ((await settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Accounts))
+		if ((await settings.GetAsync(ct)).Locks.HasFlag(Locks.Accounts))
 			return RegistrationFailure.Locked;
 
 		if (!UserData.IsValidName(attempt.Username)) return RegistrationFailure.InvalidName;
 
-		return await users.GetByNameAsync(attempt.Username, cancellationToken) is not null
+		return await users.GetByNameAsync(attempt.Username, ct) is not null
 			? RegistrationFailure.NameTaken
 			: null;
 	}
@@ -62,12 +62,12 @@ internal sealed class AccountRules(
 
 	/// <inheritdoc />
 	public async Task<(UserRecord? User, LoginFailure? Failure)> FindLoginUserAsync(LoginAttempt attempt,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		var user = await users.GetByNameAsync(attempt.Username, cancellationToken);
+		var user = await users.GetByNameAsync(attempt.Username, ct);
 		if (user is null || user.IsBasilBot()) return (null, LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return (null, LoginFailure.AccountDeleted);
-		if (!await credentials.IsPasswordAsync(user, attempt.PasswordHash, cancellationToken))
+		if (!await credentials.IsPasswordAsync(user, attempt.PasswordHash, ct))
 			return (null, LoginFailure.WrongPassword);
 
 		return (user, null);

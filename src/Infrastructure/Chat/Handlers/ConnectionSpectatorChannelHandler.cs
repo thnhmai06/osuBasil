@@ -10,7 +10,7 @@ internal sealed class ConnectionSpectatorChannelHandler(SpectatorChannels channe
 	: INotificationHandler<UserConnectionClosed>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(UserConnectionClosed @event, CancellationToken cancellationToken)
+	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		if (@event.Connection is StableConnection host && channels.Remove(host) is { } channel)
 			channel.Close();

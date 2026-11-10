@@ -13,8 +13,8 @@ internal sealed class ListFriendsHandler(UserRegistry registry)
 {
 	/// <inheritdoc />
 	public async ValueTask<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> Handle(ListFriends request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
-		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.FriendsAsync(cancellationToken);
+		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.FriendsAsync(ct);
 	}
 }

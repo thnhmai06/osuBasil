@@ -7,8 +7,8 @@ public interface IModuleMigration
 {
 	/// <summary>Applies the module's pending migrations.</summary>
 	/// <param name="database">The shared database.</param>
-	/// <param name="cancellationToken">A token that cancels the migration.</param>
-	Task MigrateAsync(Database database, CancellationToken cancellationToken);
+	/// <param name="ct">A token that cancels the migration.</param>
+	Task MigrateAsync(Database database, CancellationToken ct);
 }
 
 /// <summary>Migrates the context of a module; the migrator runs the modules in the order it was given them.</summary>
@@ -17,9 +17,9 @@ public sealed class ModuleMigration<TContext> : IModuleMigration
 	where TContext : DbContext, IDatabaseContext<TContext>
 {
 	/// <inheritdoc />
-	public async Task MigrateAsync(Database database, CancellationToken cancellationToken)
+	public async Task MigrateAsync(Database database, CancellationToken ct)
 	{
 		await using var context = database.CreateConfirmedContext<TContext>();
-		await context.Database.MigrateAsync(cancellationToken);
+		await context.Database.MigrateAsync(ct);
 	}
 }

@@ -22,7 +22,7 @@ public sealed class ScopedUserSessionsTests
 
 	private static Task<LoginResult> OpenWithTokenAsync(TestApplication app, SessionType type, string token)
 	{
-		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
+		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, ct: Token);
 	}
 
 	/// <summary>Opens an IRC key for a user acting on their own account.</summary>
@@ -290,9 +290,9 @@ public sealed class ScopedUserSessionsTests
 		var staff = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
 
 		var (denied, none) = await app.Users.Of(target).ScopeTo(nosy).Sessions.ListAsync(new PageRequest(0, 10),
-			cancellationToken: Token);
+			ct: Token);
 		var (allowed, page) = await app.Users.Of(target).ScopeTo(staff).Sessions.ListAsync(new PageRequest(0, 10),
-			cancellationToken: Token);
+			ct: Token);
 
 		Assert.Equal(UserPrivileges.Moderator, denied.Missing);
 		Assert.Null(none);

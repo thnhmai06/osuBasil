@@ -7,7 +7,7 @@ namespace Basil.Infrastructure.Scores.Handlers;
 internal sealed class CollectDiagnosticsHandler : INotificationHandler<CollectDiagnostics>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(CollectDiagnostics notification, CancellationToken cancellationToken)
+	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		return ValueTask.CompletedTask;
 	}

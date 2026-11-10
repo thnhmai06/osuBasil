@@ -7,7 +7,7 @@ namespace Basil.Host.Rest.Sse;
 internal sealed class OpenStreamsDiagnostics(SseHub hub) : INotificationHandler<CollectDiagnostics>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(CollectDiagnostics notification, CancellationToken cancellationToken)
+	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		notification.Collector.Add(new DiagnosticsValue("application", "openStreams", hub.OpenStreams));
 		return ValueTask.CompletedTask;

@@ -13,7 +13,7 @@ internal sealed class OpenIrcSessionHandler(UserRegistry registry)
 {
 	/// <inheritdoc />
 	public async ValueTask<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)> Handle(
-		OpenIrcSession request, CancellationToken cancellationToken)
+		OpenIrcSession request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
 			.OpenIrcAsync(request.Label);

@@ -12,16 +12,16 @@ internal sealed class SseResult(SseHub hub, SseStream stream, byte[] snapshot, A
 		response.ContentType = "text/event-stream";
 		response.Headers.CacheControl = "no-cache";
 		response.Headers["X-Accel-Buffering"] = "no";
-		var cancellationToken = httpContext.RequestAborted;
+		var ct = httpContext.RequestAborted;
 		try
 		{
-			await response.Body.WriteAsync(snapshot, cancellationToken);
-			await response.Body.FlushAsync(cancellationToken);
+			await response.Body.WriteAsync(snapshot, ct);
+			await response.Body.FlushAsync(ct);
 			hub.Touch(stream);
-			await foreach (var chunk in stream.Reader.ReadAllAsync(cancellationToken))
+			await foreach (var chunk in stream.Reader.ReadAllAsync(ct))
 			{
-				await response.Body.WriteAsync(chunk, cancellationToken);
-				await response.Body.FlushAsync(cancellationToken);
+				await response.Body.WriteAsync(chunk, ct);
+				await response.Body.FlushAsync(ct);
 				hub.Touch(stream);
 			}
 		}

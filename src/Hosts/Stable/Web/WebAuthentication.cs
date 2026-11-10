@@ -46,18 +46,18 @@ internal sealed class WebAuthentication(
 	/// <param name="context">The request, whose caller address the failed attempts are counted against.</param>
 	/// <param name="username">The username the client sent.</param>
 	/// <param name="passwordMd5">The MD5 digest of the password the client sent.</param>
-	/// <param name="cancellationToken">A token that cancels the check.</param>
+	/// <param name="ct">A token that cancels the check.</param>
 	/// <returns>The client's connection, or <see langword="null" /> when nobody online has that name and password.</returns>
 	public async Task<StableConnection?> AuthenticateAsync(HttpContext context, string? username,
 		string? passwordMd5,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passwordMd5)) return null;
 		var normalized = UserData.NormalizeName(username);
-		if (await users.GetByNameAsync(username, cancellationToken) is not { } record) return null;
+		if (await users.GetByNameAsync(username, ct) is not { } record) return null;
 		var online = registry.Of(record);
 		if (online.Stable is not { IsOpen: true } client) return null;
-		var rules = (await settings.GetAsync(cancellationToken)).RateLimits.Login;
+		var rules = (await settings.GetAsync(ct)).RateLimits.Login;
 		var ipKey = $"login-fail:{ClientAddress.Resolve(context)}";
 		var pairKey = $"{ipKey}:{normalized}";
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.MaxAttempts, rules.Window);
@@ -65,7 +65,7 @@ internal sealed class WebAuthentication(
 
 		if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
 		if (Md5.TryParse(passwordMd5, null, out var digest) &&
-		    await credentials.VerifyAsync(new Credentials(online.Record, digest), cancellationToken))
+		    await credentials.VerifyAsync(new Credentials(online.Record, digest), ct))
 		{
 			_verified.AddOrUpdate(client, passwordMd5.ToLowerInvariant());
 			return client;

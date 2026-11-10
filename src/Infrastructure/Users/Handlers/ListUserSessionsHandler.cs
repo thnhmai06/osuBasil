@@ -13,9 +13,9 @@ internal sealed class ListUserSessionsHandler(UserRegistry registry)
 {
 	/// <inheritdoc />
 	public async ValueTask<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)> Handle(ListUserSessions request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
-			.ListAsync(request.Page, request.State, request.Types, cancellationToken);
+			.ListAsync(request.Page, request.State, request.Types, ct);
 	}
 }

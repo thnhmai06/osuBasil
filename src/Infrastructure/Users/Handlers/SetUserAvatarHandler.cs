@@ -10,9 +10,9 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class SetUserAvatarHandler(UserRegistry registry) : IRequestHandler<SetUserAvatar, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(SetUserAvatar request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(SetUserAvatar request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Profile
-			.SetAvatarAsync(request.Image, cancellationToken);
+			.SetAvatarAsync(request.Image, ct);
 	}
 }

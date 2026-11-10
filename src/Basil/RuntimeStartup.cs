@@ -9,9 +9,9 @@ namespace Basil;
 internal sealed class RuntimeStartup(Server server, ILogger<RuntimeStartup> logger) : IHostedService
 {
 	/// <inheritdoc />
-	public async Task StartAsync(CancellationToken cancellationToken)
+	public async Task StartAsync(CancellationToken ct)
 	{
-		var recovery = await server.RecoverAsync(cancellationToken);
+		var recovery = await server.RecoverAsync(ct);
 		logger.LogInformation("Opened {ChannelCount} general channels", recovery.OpenedChannels);
 		if (recovery.BotOnline)
 			logger.LogInformation("BasilBot is online");
@@ -22,7 +22,7 @@ internal sealed class RuntimeStartup(Server server, ILogger<RuntimeStartup> logg
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken)
+	public Task StopAsync(CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}

@@ -10,7 +10,7 @@ internal sealed class RoomRefereeAddedRecorder(IMatchEventRepository matchEvents
 	: INotificationHandler<RoomRefereeAdded>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRefereeAdded @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRefereeAdded @event, CancellationToken ct)
 	{
 		await matchEvents.RecordAsync(
 			new MatchEvent(@event.Room.Match, MatchEventType.RefAdded, @event.Timestamp, @event.Actor, @event.Referee));

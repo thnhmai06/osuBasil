@@ -20,7 +20,7 @@ public sealed class DiagnosticsEndToEndTests(HostEndToEndFixture fixture)
 		using var rest = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 		await rest.LoginAsync("E2eDiag");
 		var (response, reader) = await rest.OpenStreamAsync("/v1/diagnostics/application",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 		using (response)
 		{
 			Assert.NotNull(reader);

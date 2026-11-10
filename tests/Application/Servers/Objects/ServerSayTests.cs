@@ -30,7 +30,7 @@ public sealed class ServerSayTests
 		var channel = await OpenChannelAsync(app);
 
 		var said = await app.Server.SayAsync(channel, "Hello",
-			cancellationToken: TestContext.Current.CancellationToken);
+			ct: TestContext.Current.CancellationToken);
 
 		Assert.True(said);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events.Last());
@@ -45,7 +45,7 @@ public sealed class ServerSayTests
 		await app.SeedBotAsync();
 		var channel = await OpenChannelAsync(app);
 
-		var said = await app.Server.SayAsync(channel, "  ", cancellationToken: TestContext.Current.CancellationToken);
+		var said = await app.Server.SayAsync(channel, "  ", ct: TestContext.Current.CancellationToken);
 
 		Assert.True(said);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events.Last());
@@ -62,7 +62,7 @@ public sealed class ServerSayTests
 		var channel = await OpenChannelAsync(app);
 		var before = app.ChannelEvents.Events.Count;
 
-		var said = await app.Server.SayAsync(channel, text, cancellationToken: TestContext.Current.CancellationToken);
+		var said = await app.Server.SayAsync(channel, text, ct: TestContext.Current.CancellationToken);
 
 		Assert.False(said);
 		Assert.Equal(before, app.ChannelEvents.Events.Count);

@@ -19,13 +19,13 @@ public static class TestServer
 
 	/// <summary>Opens a connection to a database.</summary>
 	/// <param name="connectionString">How to reach the database.</param>
-	/// <param name="cancellationToken">A token that cancels the opening.</param>
+	/// <param name="ct">A token that cancels the opening.</param>
 	/// <returns>The open connection.</returns>
-	public static async ValueTask<DbConnection> OpenAsync(string connectionString, CancellationToken cancellationToken)
+	public static async ValueTask<DbConnection> OpenAsync(string connectionString, CancellationToken ct)
 	{
 		DbConnection connection =
 			IsMySql ? new MySqlConnection(connectionString) : new NpgsqlConnection(connectionString);
-		await connection.OpenAsync(cancellationToken);
+		await connection.OpenAsync(ct);
 		return connection;
 	}
 

@@ -16,7 +16,7 @@ internal sealed class FileUserAvatarStorage(DataPaths paths) : IUserAvatarStorag
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(UserRecord user, CancellationToken ct = default)
 	{
 		return Task.FromResult<Stream?>(Files.Open($"{user.Id}"));
 	}

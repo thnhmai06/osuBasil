@@ -30,9 +30,9 @@ internal sealed class FakeHttpHandler(Func<HttpRequestMessage, CancellationToken
 
 	/// <inheritdoc />
 	protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-		CancellationToken cancellationToken)
+		CancellationToken ct)
 	{
 		Requests.Add(request);
-		return send(request, cancellationToken);
+		return send(request, ct);
 	}
 }

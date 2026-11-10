@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Diagnostics.Handlers;
 internal sealed class CollectDiagnosticsHandler(DiagnosticsFeed feed) : INotificationHandler<CollectDiagnostics>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(CollectDiagnostics notification, CancellationToken cancellationToken)
+	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		notification.Collector.Add(new DiagnosticsValue("application", "diagnosticsWatchers", feed.Watchers));
 		return ValueTask.CompletedTask;

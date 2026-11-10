@@ -10,7 +10,7 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 	private DataStorage Files => paths.Screenshots;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken ct = default)
 	{
 		return Task.FromResult(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
@@ -28,7 +28,7 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ContentReference screenshot, CancellationToken ct = default)
 	{
 		return Task.FromResult<Stream?>(Files.TryGetName(screenshot, out var name) ? Files.Open(name) : null);
 	}

@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class UnwatchLobbyHandler(Lobby lobby) : IRequestHandler<UnwatchLobby>
 {
 	/// <inheritdoc />
-	public ValueTask<Unit> Handle(UnwatchLobby request, CancellationToken cancellationToken)
+	public ValueTask<Unit> Handle(UnwatchLobby request, CancellationToken ct)
 	{
 		lobby.ScopeTo(request.Actor).Unwatch();
 		return ValueTask.FromResult(Unit.Value);

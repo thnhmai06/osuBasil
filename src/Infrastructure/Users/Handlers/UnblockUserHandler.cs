@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Handlers;
 internal sealed class UnblockUserHandler(UserRegistry registry) : IRequestHandler<UnblockUser, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(UnblockUser request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(UnblockUser request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Relationships.UnblockAsync();
 	}

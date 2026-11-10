@@ -10,12 +10,12 @@ internal sealed class MatchReportRepository(
 	IMatchEventRepository events) : IMatchReportRepository
 {
 	/// <inheritdoc />
-	public async ValueTask<MatchReport> GetAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public async ValueTask<MatchReport> GetAsync(MatchRecord match, CancellationToken ct = default)
 	{
 		// The report shows the match as it is stored now, not the copy the caller read earlier.
-		match = await matches.GetAsync(match.Id, cancellationToken) ?? match;
-		var matchRounds = await rounds.ListAsync(match, cancellationToken);
-		var matchEvents = await events.ListAsync(match, cancellationToken);
+		match = await matches.GetAsync(match.Id, ct) ?? match;
+		var matchRounds = await rounds.ListAsync(match, ct);
+		var matchEvents = await events.ListAsync(match, ct);
 		return new MatchReport(match,
 			[.. matchRounds.Cast<IMatchEntry>().Concat(matchEvents).OrderBy(record => record.Timestamp)]);
 	}

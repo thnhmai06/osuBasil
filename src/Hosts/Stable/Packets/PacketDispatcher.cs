@@ -9,8 +9,8 @@ internal sealed class PacketDispatcher(PacketHandlers handlers, ILogger<PacketDi
 	/// <summary>Handles every packet of a request body for a connection.</summary>
 	/// <param name="actor">The connection that sent the body.</param>
 	/// <param name="body">The raw request body.</param>
-	/// <param name="cancellationToken">A token that cancels the handling.</param>
-	public async Task DispatchAsync(Connection actor, byte[] body, CancellationToken cancellationToken)
+	/// <param name="ct">A token that cancels the handling.</param>
+	public async Task DispatchAsync(Connection actor, byte[] body, CancellationToken ct)
 	{
 		IReadOnlyList<ClientPacket> packets;
 		try
@@ -26,7 +26,7 @@ internal sealed class PacketDispatcher(PacketHandlers handlers, ILogger<PacketDi
 		foreach (var packet in packets)
 			try
 			{
-				await handlers.HandleAsync(actor, packet, cancellationToken);
+				await handlers.HandleAsync(actor, packet, ct);
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{

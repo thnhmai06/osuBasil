@@ -40,7 +40,7 @@ internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 internal abstract class RoomRefreshDelivery<TEvent>(RoomAudience audience) : INotificationHandler<TEvent>
 	where TEvent : RoomEvent
 {
-	public ValueTask Handle(TEvent notification, CancellationToken cancellationToken)
+	public ValueTask Handle(TEvent notification, CancellationToken ct)
 	{
 		audience.Refresh(notification.Room);
 		return ValueTask.CompletedTask;
@@ -68,7 +68,7 @@ internal sealed class RoomPlayerLeftDelivery(RoomAudience audience) : RoomRefres
 /// <summary>Sends the host the packet that makes it the host, then the new state.</summary>
 internal sealed class RoomHostDelivery(RoomAudience audience, Outbox outbox) : INotificationHandler<RoomHostChanged>
 {
-	public ValueTask Handle(RoomHostChanged notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomHostChanged notification, CancellationToken ct)
 	{
 		if (notification.Host is { } host) outbox.Send(host, writer => writer.MatchTransferHost());
 		audience.Refresh(notification.Room);
@@ -80,7 +80,7 @@ internal sealed class RoomHostDelivery(RoomAudience audience, Outbox outbox) : I
 internal sealed class RoomPlayerJoinedDelivery(RoomAudience audience, Outbox outbox)
 	: INotificationHandler<RoomPlayerJoined>
 {
-	public ValueTask Handle(RoomPlayerJoined notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomPlayerJoined notification, CancellationToken ct)
 	{
 		var match = StableView.Match(notification.Room);
 		outbox.Send(notification.Player, writer => writer.MatchJoinSuccess(match));
@@ -93,7 +93,7 @@ internal sealed class RoomPlayerJoinedDelivery(RoomAudience audience, Outbox out
 internal sealed class RoomPlayerKickedDelivery(RoomAudience audience, Outbox outbox)
 	: INotificationHandler<RoomPlayerKicked>
 {
-	public ValueTask Handle(RoomPlayerKicked notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomPlayerKicked notification, CancellationToken ct)
 	{
 		outbox.Send(notification.Player, writer => writer.DisposeMatch(notification.Room.Id));
 		audience.Refresh(notification.Room);
@@ -105,7 +105,7 @@ internal sealed class RoomPlayerKickedDelivery(RoomAudience audience, Outbox out
 internal sealed class RoomPlayerBannedDelivery(RoomAudience audience, Outbox outbox)
 	: INotificationHandler<RoomPlayerBanned>
 {
-	public ValueTask Handle(RoomPlayerBanned notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomPlayerBanned notification, CancellationToken ct)
 	{
 		if (notification.Evicted is { } evicted)
 			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
@@ -118,7 +118,7 @@ internal sealed class RoomPlayerBannedDelivery(RoomAudience audience, Outbox out
 internal sealed class RoomSlotLockDelivery(RoomAudience audience, Outbox outbox)
 	: INotificationHandler<RoomSlotLockChanged>
 {
-	public ValueTask Handle(RoomSlotLockChanged notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomSlotLockChanged notification, CancellationToken ct)
 	{
 		if (notification.Evicted is { } evicted)
 			outbox.Send(evicted, writer => writer.DisposeMatch(notification.Room.Id));
@@ -130,7 +130,7 @@ internal sealed class RoomSlotLockDelivery(RoomAudience audience, Outbox outbox)
 /// <summary>Shows the match to a tournament observer that joined.</summary>
 internal sealed class RoomObserverDelivery(Outbox outbox) : INotificationHandler<RoomObserverJoined>
 {
-	public ValueTask Handle(RoomObserverJoined notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomObserverJoined notification, CancellationToken ct)
 	{
 		var match = StableView.Match(notification.Room);
 		outbox.Send(notification.Observer, writer => writer.UpdateMatch(match, false));
@@ -141,7 +141,7 @@ internal sealed class RoomObserverDelivery(Outbox outbox) : INotificationHandler
 /// <summary>Invites a user to a room.</summary>
 internal sealed class RoomInviteDelivery(UserRegistry registry, Outbox outbox) : INotificationHandler<RoomPlayerInvited>
 {
-	public ValueTask Handle(RoomPlayerInvited notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomPlayerInvited notification, CancellationToken ct)
 	{
 		if (registry.OpenStableClient(notification.Player) is { } target)
 			outbox.Send(target, writer => writer.MatchInvite(notification.Actor.Id, notification.Actor.Value.Name,
@@ -154,7 +154,7 @@ internal sealed class RoomInviteDelivery(UserRegistry registry, Outbox outbox) :
 /// <summary>Shows a new room to the lobby and seats the creator.</summary>
 internal sealed class LobbyRoomOpenedDelivery(Lobby lobby, Outbox outbox) : INotificationHandler<LobbyRoomOpened>
 {
-	public ValueTask Handle(LobbyRoomOpened notification, CancellationToken cancellationToken)
+	public ValueTask Handle(LobbyRoomOpened notification, CancellationToken ct)
 	{
 		var match = StableView.Match(notification.Room);
 		if (!notification.Room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.NewMatch(match, false));
@@ -166,7 +166,7 @@ internal sealed class LobbyRoomOpenedDelivery(Lobby lobby, Outbox outbox) : INot
 /// <summary>Removes a closed room from the lobby and from the screens of its players.</summary>
 internal sealed class LobbyRoomClosedDelivery(Lobby lobby, Outbox outbox) : INotificationHandler<LobbyRoomClosed>
 {
-	public ValueTask Handle(LobbyRoomClosed notification, CancellationToken cancellationToken)
+	public ValueTask Handle(LobbyRoomClosed notification, CancellationToken ct)
 	{
 		var id = notification.Room.Id;
 		outbox.Send(lobby.Watchers.Concat<Connection>(notification.Evicted), writer => writer.DisposeMatch(id));
@@ -177,7 +177,7 @@ internal sealed class LobbyRoomClosedDelivery(Lobby lobby, Outbox outbox) : INot
 /// <summary>Lists the open rooms to a client that opened the lobby.</summary>
 internal sealed class LobbyWatcherDelivery(Lobby lobby, Outbox outbox) : INotificationHandler<LobbyWatcherJoined>
 {
-	public ValueTask Handle(LobbyWatcherJoined notification, CancellationToken cancellationToken)
+	public ValueTask Handle(LobbyWatcherJoined notification, CancellationToken ct)
 	{
 		var matches = lobby.Rooms.Values.Where(room => room is { IsClosed: false, Settings.IsPrivate: false })
 			.Select(StableView.Match).ToList();
@@ -192,7 +192,7 @@ internal sealed class LobbyWatcherDelivery(Lobby lobby, Outbox outbox) : INotifi
 /// <summary>Starts the round on the screens of the room.</summary>
 internal sealed class RoundStartedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundStarted>
 {
-	public ValueTask Handle(RoomRoundStarted notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRoundStarted notification, CancellationToken ct)
 	{
 		var match = StableView.Match(notification.Room);
 		audience.ToRoom(notification.Room, writer => writer.MatchStart(match));
@@ -203,7 +203,7 @@ internal sealed class RoundStartedDelivery(RoomAudience audience) : INotificatio
 
 internal sealed class RoundAllLoadedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundAllLoaded>
 {
-	public ValueTask Handle(RoomRoundAllLoaded notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRoundAllLoaded notification, CancellationToken ct)
 	{
 		audience.ToRoom(notification.Room, writer => writer.MatchAllPlayersLoaded());
 		return ValueTask.CompletedTask;
@@ -212,7 +212,7 @@ internal sealed class RoundAllLoadedDelivery(RoomAudience audience) : INotificat
 
 internal sealed class RoundPlayerSkippedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundPlayerSkipped>
 {
-	public ValueTask Handle(RoomRoundPlayerSkipped notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRoundPlayerSkipped notification, CancellationToken ct)
 	{
 		if (notification.Room.Slots[notification.Slot].Player is { } player)
 			audience.ToRoom(notification.Room, writer => writer.MatchPlayerSkipped(player.Record.Id));
@@ -223,7 +223,7 @@ internal sealed class RoundPlayerSkippedDelivery(RoomAudience audience) : INotif
 
 internal sealed class RoundAllSkippedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundAllSkipped>
 {
-	public ValueTask Handle(RoomRoundAllSkipped notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRoundAllSkipped notification, CancellationToken ct)
 	{
 		audience.ToRoom(notification.Room, writer => writer.MatchSkip());
 		return ValueTask.CompletedTask;
@@ -232,7 +232,7 @@ internal sealed class RoundAllSkippedDelivery(RoomAudience audience) : INotifica
 
 internal sealed class RoundPlayerFailedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundPlayerFailed>
 {
-	public ValueTask Handle(RoomRoundPlayerFailed notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRoundPlayerFailed notification, CancellationToken ct)
 	{
 		audience.ToRoom(notification.Room, writer => writer.MatchPlayerFailed(notification.Slot));
 		return ValueTask.CompletedTask;
@@ -241,7 +241,7 @@ internal sealed class RoundPlayerFailedDelivery(RoomAudience audience) : INotifi
 
 internal sealed class RoundCompletedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundCompleted>
 {
-	public ValueTask Handle(RoomRoundCompleted notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRoundCompleted notification, CancellationToken ct)
 	{
 		audience.ToRoom(notification.Room, writer => writer.MatchComplete());
 		audience.Refresh(notification.Room);
@@ -251,7 +251,7 @@ internal sealed class RoundCompletedDelivery(RoomAudience audience) : INotificat
 
 internal sealed class RoundAbortedDelivery(RoomAudience audience) : INotificationHandler<RoomRoundAborted>
 {
-	public ValueTask Handle(RoomRoundAborted notification, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomRoundAborted notification, CancellationToken ct)
 	{
 		audience.ToRoom(notification.Room, writer => writer.MatchAbort());
 		audience.Refresh(notification.Room);

@@ -8,9 +8,9 @@ public interface IChannelRepository
 {
 	/// <summary>Lists every general channel, by name.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> channels are returned.</remarks>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The general channels.</returns>
-	Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken ct = default);
 
 	/// <summary>Stores a general channel, adding it or replacing the stored channel with the same name.</summary>
 	/// <param name="channel">The channel to store.</param>

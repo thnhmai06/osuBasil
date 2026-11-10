@@ -23,16 +23,16 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 	/// <param name="method">The HTTP method.</param>
 	/// <param name="path">The path and query.</param>
 	/// <param name="body">A JSON body, or <see langword="null" />.</param>
-	/// <param name="cancellationToken">A token that cancels the request.</param>
+	/// <param name="ct">A token that cancels the request.</param>
 	public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body = null,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		using var request = new HttpRequestMessage(method, path);
 		request.Headers.Host = $"api.{domain}";
 		if (Bearer is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Bearer);
 		if (body is not null)
 			request.Content = JsonContent.Create(body, options: new JsonSerializerOptions(JsonSerializerDefaults.Web));
-		return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+		return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 	}
 
 	/// <summary>Sends a multipart form with an optional file and text fields.</summary>
@@ -73,9 +73,9 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 	}
 
 	/// <summary>Sends a GET request.</summary>
-	public Task<HttpResponseMessage> GetAsync(string path, CancellationToken cancellationToken = default)
+	public Task<HttpResponseMessage> GetAsync(string path, CancellationToken ct = default)
 	{
-		return SendAsync(HttpMethod.Get, path, null, cancellationToken);
+		return SendAsync(HttpMethod.Get, path, null, ct);
 	}
 
 	/// <summary>Opens a Server-Sent Events stream; the caller disposes the response to end it.</summary>
@@ -83,17 +83,17 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 	/// <param name="lastEventId">The <c>Last-Event-ID</c> to send, or <see langword="null" />.</param>
 	/// <returns>The response with its headers read, and a reader over its events when it is a stream.</returns>
 	public async Task<(HttpResponseMessage Response, SseReader? Reader)> OpenStreamAsync(string path,
-		string? lastEventId = null, CancellationToken cancellationToken = default)
+		string? lastEventId = null, CancellationToken ct = default)
 	{
 		using var request = new HttpRequestMessage(HttpMethod.Get, path);
 		request.Headers.Host = $"api.{domain}";
 		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 		if (Bearer is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Bearer);
 		if (lastEventId is not null) request.Headers.TryAddWithoutValidation("Last-Event-ID", lastEventId);
-		var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+		var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 		return (response, response.IsSuccessStatusCode &&
 		                  response.Content.Headers.ContentType?.MediaType == "text/event-stream"
-			? new SseReader(await response.Content.ReadAsStreamAsync(cancellationToken))
+			? new SseReader(await response.Content.ReadAsStreamAsync(ct))
 			: null);
 	}
 
@@ -125,12 +125,12 @@ public sealed class SseReader(Stream stream)
 	public string? LastId { get; private set; }
 
 	/// <summary>Reads the next event, or <see langword="null" /> at the end of the stream; comments are skipped.</summary>
-	public async Task<(string Event, string Data)?> ReadAsync(CancellationToken cancellationToken = default)
+	public async Task<(string Event, string Data)?> ReadAsync(CancellationToken ct = default)
 	{
 		string eventName = "message", data = string.Empty;
 		var any = false;
 		// A stream that says nothing for this long is a failed test, not a slow one.
-		using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		timeout.CancelAfter(TimeSpan.FromSeconds(15));
 		while (await _reader.ReadLineAsync(timeout.Token) is { } line)
 		{

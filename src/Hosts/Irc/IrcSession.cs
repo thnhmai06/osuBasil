@@ -188,13 +188,13 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 
 	/// <summary>Writes the queued lines to the socket until the queue is closed.</summary>
 	/// <param name="stream">The socket stream.</param>
-	/// <param name="cancellationToken">A token that stops writing.</param>
-	public async Task WriteAsync(Stream stream, CancellationToken cancellationToken)
+	/// <param name="ct">A token that stops writing.</param>
+	public async Task WriteAsync(Stream stream, CancellationToken ct)
 	{
 		var buffer = new StringBuilder();
 		try
 		{
-			while (await _lines.Reader.WaitToReadAsync(cancellationToken))
+			while (await _lines.Reader.WaitToReadAsync(ct))
 			{
 				buffer.Clear();
 				while (_lines.Reader.TryRead(out var line))
@@ -203,7 +203,7 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 					buffer.Append(line).Append("\r\n");
 				}
 
-				await stream.WriteAsync(Encoding.UTF8.GetBytes(buffer.ToString()), cancellationToken);
+				await stream.WriteAsync(Encoding.UTF8.GetBytes(buffer.ToString()), ct);
 			}
 		}
 		catch (Exception ex) when (ex is IOException or SocketException or ObjectDisposedException

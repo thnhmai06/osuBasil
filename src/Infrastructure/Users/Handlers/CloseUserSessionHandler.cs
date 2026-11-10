@@ -11,7 +11,7 @@ internal sealed class CloseUserSessionHandler(UserRegistry registry)
 	: IRequestHandler<CloseUserSession, Result<UserOutcome>>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(CloseUserSession request, CancellationToken cancellationToken)
+	public async ValueTask<Result<UserOutcome>> Handle(CloseUserSession request, CancellationToken ct)
 	{
 		return await registry.Of(request.Target).ScopeTo(request.Actor).Sessions
 			.CloseAsync(request.SessionId);

@@ -9,10 +9,10 @@ internal sealed class CancelCountdownOnSettingsChanged(RoomCountdowns countdowns
 	: INotificationHandler<RoomSettingsChanged>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomSettingsChanged notification, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomSettingsChanged notification, CancellationToken ct)
 	{
 		if (notification.Change.AltersTheRound)
 			await countdowns.CancelAsync(notification.Room, CountdownCancelReason.SettingsChanged, true,
-				cancellationToken);
+				ct);
 	}
 }

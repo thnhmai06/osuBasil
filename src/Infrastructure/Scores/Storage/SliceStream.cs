@@ -52,20 +52,20 @@ internal sealed class SliceStream : Stream
 		return read;
 	}
 
-	public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+	public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
 	{
 		var window = Window(buffer.Length);
 		if (window == 0) return 0;
 
 		_inner.Position = _start + _position;
-		var read = await _inner.ReadAsync(buffer[..window], cancellationToken);
+		var read = await _inner.ReadAsync(buffer[..window], ct);
 		_position += read;
 		return read;
 	}
 
-	public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+	public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct)
 	{
-		return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+		return ReadAsync(buffer.AsMemory(offset, count), ct).AsTask();
 	}
 
 	public override long Seek(long offset, SeekOrigin origin)

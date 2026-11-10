@@ -41,30 +41,30 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public async ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((ScoresDbContext context) => context.Scores
 			.Where(score => score.Id == id)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+			.FirstOrDefaultAsync(ct), ct);
 		return row is null ? null : ToScore(row);
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<ScoreRecord>> GetManyAsync(IReadOnlyCollection<int> ids,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var wanted = ids.ToArray();
 		var rows = await database.ReadAsync((ScoresDbContext context) => context.Scores
 			.Where(score => wanted.Contains(score.Id))
 			.OrderBy(score => score.Id)
 			.Take(ListLimits.Ceiling)
-			.ToListAsync(cancellationToken), cancellationToken);
+			.ToListAsync(ct), ct);
 		return [.. rows.Select(ToScore)];
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery scoreQuery, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		var fetched = await database.ReadAsync(async (ScoresDbContext context) =>
 		{
@@ -84,8 +84,8 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 			return await q
 				.Skip(page.Offset)
 				.Take(page.Fetch)
-				.ToListAsync(cancellationToken);
-		}, cancellationToken);
+				.ToListAsync(ct);
+		}, ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
 		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), hasNext);

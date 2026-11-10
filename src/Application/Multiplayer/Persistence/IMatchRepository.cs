@@ -18,26 +18,26 @@ public interface IMatchRepository
 
 	/// <summary>Gets a match by id.</summary>
 	/// <param name="id">The match id.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The match, or <see langword="null" /> when no match has that id.</returns>
-	ValueTask<MatchRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<MatchRecord?> GetAsync(int id, CancellationToken ct = default);
 
 	/// <summary>Lists the matches a query includes, newest first.</summary>
 	/// <param name="query">Which matches to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A page of matches.</returns>
 	Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
-		CancellationToken cancellationToken = default);
+		CancellationToken ct = default);
 
 	/// <summary>Tells whether a user may view a match's history and report.</summary>
 	/// <param name="match">The match.</param>
 	/// <param name="viewer">The user asking.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the match is public, or when the user took part in it or manages it (its
 	///     creator, or a referee that is still one); this is the rule <see cref="MatchQuery.VisibleTo" /> applies to a
 	///     listing. A privilege that lets a user view every private match is not considered here.
 	/// </returns>
-	Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer, CancellationToken cancellationToken = default);
+	Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer, CancellationToken ct = default);
 }

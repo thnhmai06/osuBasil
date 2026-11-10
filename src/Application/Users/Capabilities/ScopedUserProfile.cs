@@ -60,17 +60,17 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 
 	/// <summary>Replaces this account's avatar image.</summary>
 	/// <param name="image">The image, read from its current position; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels reading the image.</param>
+	/// <param name="ct">A token that cancels reading the image.</param>
 	/// <returns>The outcome of setting the avatar.</returns>
 	/// <remarks>
 	///     The same authority applies as to <see cref="RenameAsync" />. The image must be a PNG or JPEG picture within the
 	///     configured byte and pixel limits, told from its content, never from a name; a refused image leaves the previous
 	///     avatar untouched.
 	/// </remarks>
-	public async Task<Result<UserOutcome>> SetAvatarAsync(Stream image, CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> SetAvatarAsync(Stream image, CancellationToken ct = default)
 	{
 		if (await GuardAsync() is { } refused) return refused;
-		return await scoped.User.Profile.SetAvatarAsync(image, cancellationToken);
+		return await scoped.User.Profile.SetAvatarAsync(image, ct);
 	}
 
 	/// <summary>Removes this account's avatar image, so the default avatar shows.</summary>

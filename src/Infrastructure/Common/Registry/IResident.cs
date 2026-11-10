@@ -4,5 +4,5 @@ namespace Basil.Infrastructure.Common.Registry;
 public interface IResident
 {
 	/// <summary>Loads the data into memory; called once at startup, after the database is up to date.</summary>
-	Task LoadAsync(CancellationToken cancellationToken);
+	Task LoadAsync(CancellationToken ct);
 }

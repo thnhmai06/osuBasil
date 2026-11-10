@@ -9,7 +9,7 @@ internal sealed class RoomRoundScoreSubmittedRecorder(IRoundScoreRepository roun
 	: INotificationHandler<RoomRoundScoreSubmitted>
 {
 	/// <inheritdoc />
-	public async ValueTask Handle(RoomRoundScoreSubmitted @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(RoomRoundScoreSubmitted @event, CancellationToken ct)
 	{
 		await roundScores.RecordAsync(@event.Score);
 	}

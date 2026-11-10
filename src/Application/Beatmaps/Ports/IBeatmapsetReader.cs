@@ -8,13 +8,13 @@ public interface IBeatmapsetReader
 {
 	/// <summary>Reads a beatmapset archive.</summary>
 	/// <param name="archive">The .osz archive, read from its current position; not disposed.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>
 	///     What the archive contains, or <see langword="null" /> when it is not a readable beatmapset archive: not an
 	///     archive, no readable difficulty, a file named outside the set or named twice, or too many or too large files.
 	/// </returns>
 	/// <remarks>The content's files are read from the archive, which must stay open until the content is disposed.</remarks>
-	Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken cancellationToken = default);
+	Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken ct = default);
 }
 
 /// <summary>What a beatmapset contains.</summary>

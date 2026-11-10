@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Chat.Handlers;
 internal sealed class RoomObserverJoinedHandler(RoomChannels channels) : INotificationHandler<RoomObserverJoined>
 {
 	/// <inheritdoc />
-	public ValueTask Handle(RoomObserverJoined @event, CancellationToken cancellationToken)
+	public ValueTask Handle(RoomObserverJoined @event, CancellationToken ct)
 	{
 		if (!@event.Room.IsClosed && channels.Find(@event.Room) is { } channel)
 			channel.ScopeTo(@event.Observer).Join();

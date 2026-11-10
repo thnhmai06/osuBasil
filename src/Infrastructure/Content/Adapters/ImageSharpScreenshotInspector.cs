@@ -16,11 +16,11 @@ internal sealed class ImageSharpScreenshotInspector : IScreenshotInspector
 	};
 
 	/// <inheritdoc />
-	public async Task<ScreenshotInfo?> InspectAsync(Stream content, CancellationToken cancellationToken = default)
+	public async Task<ScreenshotInfo?> InspectAsync(Stream content, CancellationToken ct = default)
 	{
 		try
 		{
-			var info = await Image.IdentifyAsync(Options, content, cancellationToken);
+			var info = await Image.IdentifyAsync(Options, content, ct);
 			var extension = info.Metadata.DecodedImageFormat switch
 			{
 				PngFormat => "png",

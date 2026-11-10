@@ -11,7 +11,7 @@ internal sealed class PartChannelHandler(ChannelDirectory directory)
 	: IRequestHandler<PartChannel, Result<ChannelOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<ChannelOutcome>> Handle(PartChannel request, CancellationToken cancellationToken)
+	public ValueTask<Result<ChannelOutcome>> Handle(PartChannel request, CancellationToken ct)
 	{
 		var result = directory.Find(request.Target, request.Actor) is { } channel
 			? channel.ScopeTo(request.Actor).Part()

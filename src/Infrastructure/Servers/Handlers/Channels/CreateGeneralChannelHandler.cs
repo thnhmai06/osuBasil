@@ -10,7 +10,7 @@ internal sealed class CreateGeneralChannelHandler(Server server)
 	: IRequestHandler<CreateGeneralChannel, Result<ServerOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<ServerOutcome>> Handle(CreateGeneralChannel request, CancellationToken cancellationToken)
+	public ValueTask<Result<ServerOutcome>> Handle(CreateGeneralChannel request, CancellationToken ct)
 	{
 		return new ValueTask<Result<ServerOutcome>>(
 			server.ScopeTo(request.Actor).Channels.CreateAsync(request.Record));

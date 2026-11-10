@@ -29,11 +29,11 @@ public static class ShellRunner
 	/// <param name="configure">Changes the builder before it is built; the tests use it to point at their storage.</param>
 	/// <param name="output">Where the output goes (default: the console).</param>
 	/// <param name="input">Where the confirmation is read from (default: the console).</param>
-	/// <param name="cancellationToken">A token that cancels the command.</param>
+	/// <param name="ct">A token that cancels the command.</param>
 	/// <returns>The exit code of the command.</returns>
 	public static async Task<int> RunAsync(string[] args, Action<WebApplicationBuilder>? configure = null,
 		TextWriter? output = null,
-		TextReader? input = null, CancellationToken cancellationToken = default)
+		TextReader? input = null, CancellationToken ct = default)
 	{
 		output ??= Console.Out;
 		input ??= Console.In;
@@ -53,9 +53,9 @@ public static class ShellRunner
 
 		var path = ControlSocket.PathIn(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value
 			.Location);
-		using (var running = await ControlClient.ConnectAsync(path, cancellationToken))
+		using (var running = await ControlClient.ConnectAsync(path, ct))
 		{
-			if (running is not null) return await ForwardAsync(running, parsed, args, output, input, cancellationToken);
+			if (running is not null) return await ForwardAsync(running, parsed, args, output, input, ct);
 		}
 
 		if (!parsed.Command.Offline)
@@ -66,16 +66,16 @@ public static class ShellRunner
 
 		var runner = app.Services.GetRequiredService<CommandRunner>();
 		if (!parsed.Command.NeedsStorage)
-			return await runner.RunAsync(args, new PlainOutput(output), false, null, cancellationToken);
+			return await runner.RunAsync(args, new PlainOutput(output), false, null, ct);
 
 		var started = app.Services.GetServices<IHostedService>()
 			.Where(service => OfflineServices.Contains(service.GetType().Name)).ToList();
-		return await RunWithServicesAsync(runner, started, args, output, cancellationToken);
+		return await RunWithServicesAsync(runner, started, args, output, ct);
 	}
 
 	private static async Task<int> ForwardAsync(ControlConnection running, ParsedCommand parsed, string[] args,
 		TextWriter output,
-		TextReader input, CancellationToken cancellationToken)
+		TextReader input, CancellationToken ct)
 	{
 		var forwarded = args;
 		if (IsShutdown(parsed) && !parsed.Options.ContainsKey("now"))
@@ -90,20 +90,20 @@ public static class ShellRunner
 			forwarded = [.. args, "--now"];
 		}
 
-		return await running.RunAsync(forwarded, output, cancellationToken);
+		return await running.RunAsync(forwarded, output, ct);
 	}
 
 	private static async Task<int> RunWithServicesAsync(CommandRunner runner, List<IHostedService> started,
 		string[] args,
-		TextWriter output, CancellationToken cancellationToken)
+		TextWriter output, CancellationToken ct)
 	{
 		var lifecycle = started.OfType<IHostedLifecycleService>().ToList();
-		foreach (var service in lifecycle) await service.StartingAsync(cancellationToken);
-		foreach (var service in started) await service.StartAsync(cancellationToken);
-		foreach (var service in lifecycle) await service.StartedAsync(cancellationToken);
+		foreach (var service in lifecycle) await service.StartingAsync(ct);
+		foreach (var service in started) await service.StartAsync(ct);
+		foreach (var service in lifecycle) await service.StartedAsync(ct);
 		try
 		{
-			return await runner.RunAsync(args, new PlainOutput(output), false, null, cancellationToken);
+			return await runner.RunAsync(args, new PlainOutput(output), false, null, ct);
 		}
 		finally
 		{

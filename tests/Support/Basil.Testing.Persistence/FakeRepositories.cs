@@ -13,7 +13,7 @@ public sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 {
 	public UserRecord? User { get; set; } = user;
 
-	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		return ValueTask.FromResult(User is { } found && found.Id == id ? found : null);
 	}
@@ -43,13 +43,13 @@ public sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 		throw new NotSupportedException();
 	}
 
-	public ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+	public ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken ct = default)
 	{
 		throw new NotSupportedException();
 	}
 
 	public Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		throw new NotSupportedException();
 	}
@@ -60,7 +60,7 @@ public sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRepo
 {
 	public BeatmapRecord? Beatmap { get; set; } = beatmap;
 
-	public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default)
+	public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken ct = default)
 	{
 		return ValueTask.FromResult(Beatmap is { } found && found.Hash == hash ? found : null);
 	}
@@ -70,19 +70,19 @@ public sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRepo
 		throw new NotSupportedException();
 	}
 
-	public ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		return ValueTask.FromResult(Beatmap is { } found && found.Id == id ? found : null);
 	}
 
 	public Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		throw new NotSupportedException();
 	}
 
 	public Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
+		CancellationToken ct = default)
 	{
 		throw new NotSupportedException();
 	}

@@ -13,11 +13,11 @@ public sealed partial class AvatarProvider(IUserRepository users, IUserAvatarSto
 	: StreamImageProvider("a", path => AvatarPath().IsMatch(path.Value ?? ""))
 {
 	/// <inheritdoc />
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken cancellationToken)
+	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var id = int.Parse(AvatarPath().Match(path.Value!).Groups[1].Value);
-		if (await users.GetAsync(id, cancellationToken) is { } user &&
-		    await avatars.OpenAsync(user, cancellationToken) is { } own)
+		if (await users.GetAsync(id, ct) is { } user &&
+		    await avatars.OpenAsync(user, ct) is { } own)
 			return own;
 
 		return typeof(AvatarProvider).Assembly.GetManifestResourceStream("Avatars.default.png");
@@ -34,26 +34,26 @@ public sealed partial class MenuImageProvider(
 	IMenuIconStorage icon) : StreamImageProvider("assets", path => MenuPath().IsMatch(path.Value ?? ""))
 {
 	/// <inheritdoc />
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken cancellationToken)
+	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var match = MenuPath().Match(path.Value!);
 		var name = match.Groups["name"].Value;
 		return match.Groups["kind"].Value switch
 		{
-			"icon" => (await icon.OpenAsync(cancellationToken))?.Content,
-			"banners" => await OpenNamedAsync(await banners.ListAsync(cancellationToken), name, banners.OpenAsync,
-				cancellationToken),
-			_ => await OpenNamedAsync(await seasonals.ListAsync(cancellationToken), name, seasonals.OpenAsync,
-				cancellationToken)
+			"icon" => (await icon.OpenAsync(ct))?.Content,
+			"banners" => await OpenNamedAsync(await banners.ListAsync(ct), name, banners.OpenAsync,
+				ct),
+			_ => await OpenNamedAsync(await seasonals.ListAsync(ct), name, seasonals.OpenAsync,
+				ct)
 		};
 	}
 
 	internal static async Task<Stream?> OpenNamedAsync(IEnumerable<ContentReference> list, string name,
-		Func<ContentReference, CancellationToken, Task<Stream?>> open, CancellationToken cancellationToken)
+		Func<ContentReference, CancellationToken, Task<Stream?>> open, CancellationToken ct)
 	{
 		foreach (var reference in list)
 			if (Path.GetFileName(reference.Value).Equals(name, StringComparison.OrdinalIgnoreCase))
-				return await open(reference, cancellationToken);
+				return await open(reference, ct);
 
 		return null;
 	}
@@ -67,16 +67,16 @@ public sealed partial class ScreenshotProvider(IScreenshotStorage screenshots)
 	: StreamImageProvider("osu", path => ScreenshotPath().IsMatch(path.Value ?? ""))
 {
 	/// <inheritdoc />
-	protected override Task<Stream?> OpenAsync(PathString path, CancellationToken cancellationToken)
+	protected override Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var name = ScreenshotPath().Match(path.Value!).Groups["name"].Value;
-		return OpenByName(name, cancellationToken);
+		return OpenByName(name, ct);
 	}
 
-	private async Task<Stream?> OpenByName(string name, CancellationToken cancellationToken)
+	private async Task<Stream?> OpenByName(string name, CancellationToken ct)
 	{
-		return await MenuImageProvider.OpenNamedAsync(await screenshots.ListAsync(cancellationToken), name,
-			screenshots.OpenAsync, cancellationToken);
+		return await MenuImageProvider.OpenNamedAsync(await screenshots.ListAsync(ct), name,
+			screenshots.OpenAsync, ct);
 	}
 
 	[GeneratedRegex(@"^/ss/(?<name>[0-9a-fA-F-]+\.[A-Za-z0-9]{1,8})$")]
@@ -113,19 +113,19 @@ public sealed partial class BeatmapImageProvider(
 	}
 
 	/// <inheritdoc />
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken cancellationToken)
+	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var match = CoverPath().Match(path.Value!);
 		if (!Variants.ContainsKey(match.Groups["variant"].Value)) return null;
-		if (await sets.GetAsync(int.Parse(match.Groups["id"].Value), cancellationToken) is not { Visible: true } set)
+		if (await sets.GetAsync(int.Parse(match.Groups["id"].Value), ct) is not { Visible: true } set)
 			return null;
 
-		var map = (await beatmaps.ListAsync(set, cancellationToken)).OrderBy(b => b.Id)
+		var map = (await beatmaps.ListAsync(set, ct)).OrderBy(b => b.Id)
 			.FirstOrDefault(b => b is { Visible: true, Assets.BackgroundFile: not null });
 		return map is null
 			? null
 			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,
-				cancellationToken);
+				ct);
 	}
 
 	[GeneratedRegex(@"^/beatmapsets/(?<id>\d+)/covers/(?<variant>[a-z]+)\.jpg$")]
@@ -151,17 +151,17 @@ public sealed partial class BeatmapThumbnailProvider(
 	}
 
 	/// <inheritdoc />
-	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken cancellationToken)
+	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var id = int.Parse(ThumbPath().Match(path.Value!).Groups["id"].Value);
-		if (await sets.GetAsync(id, cancellationToken) is not { Visible: true } set) return null;
+		if (await sets.GetAsync(id, ct) is not { Visible: true } set) return null;
 
-		var map = (await beatmaps.ListAsync(set, cancellationToken)).OrderBy(b => b.Id)
+		var map = (await beatmaps.ListAsync(set, ct)).OrderBy(b => b.Id)
 			.FirstOrDefault(b => b is { Visible: true, Assets.BackgroundFile: not null });
 		return map is null
 			? null
 			: await storage.OpenAsync(set, BeatmapsetFileType.Background, map.Assets.BackgroundFile!,
-				cancellationToken);
+				ct);
 	}
 
 	[GeneratedRegex(@"^/thumb/(?<id>\d+)(?<large>l)?\.jpg$")]

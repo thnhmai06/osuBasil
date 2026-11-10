@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class BanPlayerHandler : IRequestHandler<BanPlayer, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(BanPlayer request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(BanPlayer request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Members.BanAsync(request.Player));

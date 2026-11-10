@@ -126,7 +126,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 	private sealed class FeedHandler(string latest, string? corrupt) : HttpMessageHandler
 	{
 		protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-			CancellationToken cancellationToken)
+			CancellationToken ct)
 		{
 			var path = request.RequestUri!.AbsolutePath;
 			var text = path switch

@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Multiplayer.Handlers;
 internal sealed class JoinRoomHandler : IRequestHandler<JoinRoom, Result<RoomOutcome>>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(JoinRoom request, CancellationToken cancellationToken)
+	public ValueTask<Result<RoomOutcome>> Handle(JoinRoom request, CancellationToken ct)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
 			request.Room.ScopeTo(request.Actor).Members.JoinAsync(request.Password));
