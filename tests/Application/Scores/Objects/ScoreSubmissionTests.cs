@@ -67,7 +67,7 @@ public sealed class ScoreSubmissionTests
 		Assert.Empty(f.App.ScoreEvents.Events);
 	}
 
-	// ----- the submission checksum is the legacy osu! formula -----
+	#region The submission checksum is the legacy osu! formula
 
 	[Fact]
 	public async Task SubmitScoreAsync_WithTheChecksumOfTheLegacyFormula_IsAccepted()
@@ -105,7 +105,9 @@ public sealed class ScoreSubmissionTests
 		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, without.Rejection);
 	}
 
-	// ----- privilege and ownership -----
+	#endregion
+
+	#region Privilege and ownership
 
 	[Fact]
 	public async Task SubmitScoreAsync_WithoutTheScoreSubmitPermission_IsDeniedWithExactlyThatPermission()
@@ -122,7 +124,9 @@ public sealed class ScoreSubmissionTests
 		AssertNothingRecorded(f);
 	}
 
-	// ----- one test per rejection reason -----
+	#endregion
+
+	#region One test per rejection reason
 
 	[Fact]
 	public async Task SubmitScoreAsync_WithAnotherClientVersion_IsRejectedAsVersionMismatch()
@@ -270,7 +274,9 @@ public sealed class ScoreSubmissionTests
 		Assert.Equal(ScoreRejectionReason.VersionMismatch, version.Rejection);
 	}
 
-	// ----- duplicates -----
+	#endregion
+
+	#region Duplicates
 
 	[Fact]
 	public async Task SubmitScoreAsync_WithAChecksumAlreadyStored_IsRejectedAsDuplicate()
@@ -313,7 +319,9 @@ public sealed class ScoreSubmissionTests
 		Assert.Equal(1000, stats.TotalScore);
 	}
 
-	// ----- recording -----
+	#endregion
+
+	#region Recording
 
 	[Fact]
 	public async Task SubmitScoreAsync_WithAValidScore_StoresItForThePlayerAndPublishesOneScoreSubmitted()
@@ -399,7 +407,9 @@ public sealed class ScoreSubmissionTests
 		Assert.Null(f.StatsOf(GameMode.Standard));
 	}
 
-	// ----- replay: only a passed play, only 24 bytes or more -----
+	#endregion
+
+	#region Replay: only a passed play, only 24 bytes or more
 
 	[Theory]
 	[InlineData(24)]
@@ -467,7 +477,9 @@ public sealed class ScoreSubmissionTests
 		Assert.True(replay.CanRead);
 	}
 
-	// ----- rounds -----
+	#endregion
+
+	#region Rounds
 
 	private static async Task<Room> StartRoundAsync(ScoreSubmissionFixture f,
 		GameTeamType teamType = GameTeamType.HeadToHead)
@@ -561,4 +573,6 @@ public sealed class ScoreSubmissionTests
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
 		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 	}
+
+	#endregion
 }

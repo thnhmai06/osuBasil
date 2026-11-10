@@ -55,9 +55,9 @@ internal sealed class BeatmapReloader(
 		{
 			logger.LogInformation("Reloading beatmaps was stopped");
 		}
-		catch (Exception e)
+		catch (Exception exception)
 		{
-			logger.LogError(e, "Reloading beatmaps failed:");
+			logger.LogError(exception, "Reloading beatmaps failed:");
 		}
 		finally
 		{

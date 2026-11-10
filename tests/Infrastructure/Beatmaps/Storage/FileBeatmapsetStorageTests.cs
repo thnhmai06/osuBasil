@@ -37,7 +37,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		_data.Dispose();
 	}
 
-	// ---- Listing ----------------------------------------------------------------------------------------------
+	#region Listing
 
 	[Fact]
 	public async Task Nothing_is_listed_when_the_storage_is_empty()
@@ -194,7 +194,9 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			(await archive.FingerprintAsync(TestContext.Current.CancellationToken)).Hash);
 	}
 
-	// ---- Uploading, packing and taking in ----------------------------------------------------------------------
+	#endregion
+
+	#region Uploading, packing and taking in
 
 	[Fact]
 	public async Task An_uploaded_archive_is_stored_byte_for_byte_and_is_not_listed()
@@ -538,7 +540,9 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			TempData.FilesUnder(Path.Combine(Sets, "7 Lost - Archive")));
 	}
 
-	// ---- Files made from an archive ----------------------------------------------------------------------------
+	#endregion
+
+	#region Files made from an archive
 
 	[Theory]
 	[InlineData(BeatmapsetFileType.Version, "d41d8cd98f00b204e9800998ecf8427e.osu",
@@ -827,7 +831,9 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		Assert.Empty(Directory.GetFileSystemEntries(Sets));
 	}
 
-	// ---- Deleting ----------------------------------------------------------------------------------------------
+	#endregion
+
+	#region Deleting
 
 	[Fact]
 	public async Task A_deleted_set_loses_its_folder_with_everything_in_it_and_no_other_set_does()
@@ -939,7 +945,9 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		Assert.True(File.Exists(Path.Combine(folder, "archive.osz")));
 	}
 
-	// ---- Serialising operations on a set -----------------------------------------------------------------------
+	#endregion
+
+	#region Serialising operations on a set
 
 	[Fact]
 	public async Task A_second_operation_on_the_same_set_waits_for_the_first_to_finish()
@@ -980,7 +988,9 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			TestContext.Current.CancellationToken));
 	}
 
-	// ---- Watching ----------------------------------------------------------------------------------------------
+	#endregion
+
+	#region Watching
 
 	[Fact]
 	public async Task A_change_inside_a_set_folder_reports_the_folder_as_it_is_once_the_change_settled()
@@ -1084,7 +1094,9 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		Assert.True(failure is null or OperationCanceledException, failure?.ToString());
 	}
 
-	// ---- Helpers -----------------------------------------------------------------------------------------------
+	#endregion
+
+	#region Helpers
 
 	private static int NewId()
 	{
@@ -1251,4 +1263,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 				next.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
 		}
 	}
+
+	#endregion
 }

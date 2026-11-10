@@ -37,7 +37,7 @@ public sealed class BeatmapsetsScanTests
 		return id;
 	}
 
-	// ----- the whole storage -----
+	#region The whole storage
 
 	[Fact]
 	public async Task ScanAsync_OfAnEmptyStorage_ChangesNothing()
@@ -362,7 +362,9 @@ public sealed class BeatmapsetsScanTests
 		Assert.Equal(events, app.BeatmapsetEvents.Events.Count);
 	}
 
-	// ----- one entry -----
+	#endregion
+
+	#region One entry
 
 	[Fact]
 	public async Task ScanAsync_OfALooseArchive_TakesItInAndPublishesOneImport()
@@ -553,4 +555,6 @@ public sealed class BeatmapsetsScanTests
 		Assert.Single(world.Beatmaps.Records);
 		Assert.Equal(events, app.BeatmapsetEvents.Events.Count);
 	}
+
+	#endregion
 }
