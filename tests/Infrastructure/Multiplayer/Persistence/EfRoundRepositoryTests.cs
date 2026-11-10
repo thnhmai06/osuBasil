@@ -19,7 +19,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	private IRoundRepository Rounds => Get<IRoundRepository>();
 
 	[Fact]
-	public async Task A_listing_reads_no_more_rounds_than_the_ceiling()
+	public async Task Listing_RespectsRoundCeiling()
 	{
 		var match = await CreateMatchAsync("long_round_match");
 		await StoredRows.InsertAsync(ConnectionString, "rounds", Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g =>
@@ -36,7 +36,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_stored_round_is_listed_under_its_match()
+	public async Task StoredRound_ListedUnderMatch()
 	{
 		var match = await CreateMatchAsync("rounds_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
@@ -47,7 +47,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_just_given_to_the_repository_is_listed_at_once()
+	public async Task JustGivenRound_ListedAtOnce()
 	{
 		var match = await CreateMatchAsync("pending_round_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -59,7 +59,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_rounds_of_a_match_are_listed_in_the_order_they_were_played()
+	public async Task MatchRounds_ListedInOrder()
 	{
 		var match = await CreateMatchAsync("ordered_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 2, Second));
@@ -72,7 +72,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_is_stored_after_it_was_given_to_the_repository()
+	public async Task GivenRound_EventuallyStored()
 	{
 		var match = await CreateMatchAsync("stored_round_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
@@ -85,7 +85,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_end_of_a_round_is_stored_after_it_was_given_to_the_repository()
+	public async Task GivenRoundEnd_Stored()
 	{
 		var match = await CreateMatchAsync("ended_round_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -103,7 +103,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_abortion_of_a_round_is_stored_after_it_was_given_to_the_repository()
+	public async Task GivenRoundAbortion_Stored()
 	{
 		var match = await CreateMatchAsync("aborted_round_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -121,7 +121,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_decision_of_a_round_is_stored_and_read_by_a_server_that_starts_afterwards()
+	public async Task RoundDecision_SurvivesRestart()
 	{
 		var match = await CreateMatchAsync("decision_round_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -142,7 +142,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_server_that_starts_afterwards_lists_the_stored_rounds_of_a_match()
+	public async Task FreshServer_ListsStoredRounds()
 	{
 		var match = await CreateMatchAsync("restart_round_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -163,7 +163,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_of_a_match_that_is_not_stored_is_refused_to_the_caller()
+	public async Task UnknownMatchRound_Refused()
 	{
 		var match = await CreateMatchAsync("unstored_round_match");
 		var round = StoredMatches.Round(new MatchRecord { Id = match.Id + 1000, Value = match.Value }, 1, First);
@@ -173,7 +173,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_keeps_the_beatmap_it_is_played_on()
+	public async Task Round_KeepsBeatmap()
 	{
 		var match = await CreateMatchAsync("hash_match");
 		var hash = StoredScores.Hash("round_beatmap");
@@ -185,7 +185,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_keeps_the_mode_it_is_played_in()
+	public async Task Round_KeepsMode()
 	{
 		var match = await CreateMatchAsync("mode_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, settings: new MatchSettings
@@ -199,7 +199,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_keeps_the_mods_it_is_played_with()
+	public async Task Round_KeepsMods()
 	{
 		var match = await CreateMatchAsync("mods_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, settings: new MatchSettings
@@ -213,7 +213,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_keeps_the_team_arrangement_it_is_played_with()
+	public async Task Round_KeepsTeamArrangement()
 	{
 		var match = await CreateMatchAsync("team_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.TeamRound(match, 1, First));
@@ -224,7 +224,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_keeps_the_match_it_belongs_to()
+	public async Task Round_KeepsMatch()
 	{
 		var match = await CreateMatchAsync("owning_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
@@ -235,7 +235,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_round_with_the_number_of_a_stored_round_replaces_it()
+	public async Task RepeatedRoundNumber_ReplacesStored()
 	{
 		var match = await CreateMatchAsync("replaced_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
@@ -247,7 +247,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_rounds_of_another_match_are_left_out()
+	public async Task OtherMatchRounds_LeftOut()
 	{
 		var match = await CreateMatchAsync("own_match");
 		var other = await CreateMatchAsync("other_match");
@@ -260,7 +260,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_match_without_a_round_lists_none()
+	public async Task MatchWithoutRounds_ListsNone()
 	{
 		var match = await CreateMatchAsync("empty_match");
 

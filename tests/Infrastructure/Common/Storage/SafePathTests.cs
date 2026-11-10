@@ -11,7 +11,7 @@ public sealed class SafePathTests
 	[InlineData("")]
 	[InlineData(" ")]
 	[InlineData("\t")]
-	public void A_blank_name_is_refused(string name)
+	public void BlankName_Refused(string name)
 	{
 		Assert.ThrowsAny<ArgumentException>(() => SafePath.Combine(Root, name));
 	}
@@ -27,7 +27,7 @@ public sealed class SafePathTests
 	[InlineData("./file.txt")]
 	[InlineData("folder/./file.txt")]
 	[InlineData("folder/..")]
-	public void A_name_with_a_dot_or_dot_dot_segment_is_refused(string name)
+	public void DotSegment_Refused(string name)
 	{
 		Assert.Throws<ArgumentException>(() => SafePath.Combine(Root, name));
 	}
@@ -36,7 +36,7 @@ public sealed class SafePathTests
 	[InlineData("/rooted.txt")]
 	[InlineData(@"\rooted.txt")]
 	[InlineData(@"\\server\share\file.txt")]
-	public void A_rooted_name_is_refused(string name)
+	public void RootedName_Refused(string name)
 	{
 		Assert.Throws<ArgumentException>(() => SafePath.Combine(Root, name));
 	}
@@ -45,7 +45,7 @@ public sealed class SafePathTests
 	[InlineData(@"C:\file.txt")]
 	[InlineData("C:file.txt")]
 	[InlineData("a:b")]
-	public void A_name_with_a_drive_letter_is_refused_on_Windows(string name)
+	public void DriveLetterName_RefusedOnWindows(string name)
 	{
 		Assert.SkipUnless(OperatingSystem.IsWindows(), "A drive letter names a drive only on Windows.");
 
@@ -53,7 +53,7 @@ public sealed class SafePathTests
 	}
 
 	[Fact]
-	public void A_name_with_a_null_character_is_refused()
+	public void NullCharacterName_Refused()
 	{
 		Assert.Throws<ArgumentException>(() => SafePath.Combine(Root, "file\0.txt"));
 	}
@@ -63,19 +63,19 @@ public sealed class SafePathTests
 	[InlineData("a b.txt")]
 	[InlineData("..hidden")]
 	[InlineData("a..b")]
-	public void A_plain_name_is_placed_in_the_root(string name)
+	public void PlainName_PlacedInRoot(string name)
 	{
 		Assert.Equal(Path.Combine(Root, name), SafePath.Combine(Root, name));
 	}
 
 	[Fact]
-	public void A_name_with_folders_is_placed_under_them_in_the_root()
+	public void FolderedName_PlacedUnderRoot()
 	{
 		Assert.Equal(Path.Combine(Root, "folder", "file.txt"), SafePath.Combine(Root, "folder/file.txt"));
 	}
 
 	[Fact]
-	public void A_root_with_a_trailing_separator_places_names_the_same()
+	public void TrailingSeparatorRoot_SamePlacement()
 	{
 		var withSeparator = Root + Path.DirectorySeparatorChar;
 

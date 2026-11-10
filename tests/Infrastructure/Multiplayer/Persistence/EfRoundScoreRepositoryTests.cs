@@ -26,7 +26,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	private IScoreRepository Scores => Get<IScoreRepository>();
 
 	[Fact]
-	public async Task A_listing_reads_no_more_round_scores_than_the_ceiling()
+	public async Task Listing_RespectsScoreCeiling()
 	{
 		var match = await CreateMatchAsync("crowded_round_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -57,7 +57,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_stored_round_score_is_listed_under_its_round()
+	public async Task StoredRoundScore_ListedUnderRound()
 	{
 		var match = await CreateMatchAsync("round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -72,7 +72,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_round_score_just_recorded_is_listed_at_once()
+	public async Task RecordedRoundScore_ListedAtOnce()
 	{
 		var match = await CreateMatchAsync("pending_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -86,7 +86,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_round_score_of_a_score_that_is_not_stored_is_refused_to_the_caller()
+	public async Task UnknownScore_RoundScoreRefused()
 	{
 		var match = await CreateMatchAsync("refused_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -100,7 +100,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_round_score_is_stored_after_it_was_recorded()
+	public async Task RecordedRoundScore_Stored()
 	{
 		var match = await CreateMatchAsync("stored_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -120,7 +120,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_scores_of_a_round_are_listed_in_the_order_they_were_submitted()
+	public async Task RoundScores_ListedInOrder()
 	{
 		var match = await CreateMatchAsync("ordered_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -137,7 +137,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_server_that_starts_afterwards_lists_the_recorded_scores_of_a_round()
+	public async Task FreshServer_ListsRecordedScores()
 	{
 		var match = await CreateMatchAsync("restart_round_score_match");
 		var round = await CreateTeamRoundAsync(match, 1);
@@ -159,7 +159,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_round_score_keeps_the_team_it_was_set_for()
+	public async Task RoundScore_KeepsTeam()
 	{
 		var match = await CreateMatchAsync("team_round_score_match");
 		var round = await CreateTeamRoundAsync(match, 1);
@@ -174,7 +174,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_team_of_a_round_score_is_stored()
+	public async Task RoundScoreTeam_Stored()
 	{
 		var match = await CreateMatchAsync("stored_team_round_score_match");
 		var round = await CreateTeamRoundAsync(match, 1);
@@ -191,7 +191,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_round_score_keeps_the_round_it_was_played_in()
+	public async Task RoundScore_KeepsRound()
 	{
 		var match = await CreateMatchAsync("owning_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -206,7 +206,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_scores_of_another_round_are_left_out()
+	public async Task OtherRoundScores_LeftOut()
 	{
 		var match = await CreateMatchAsync("own_round_score_match");
 		var round = await CreateRoundAsync(match, 1);

@@ -40,13 +40,13 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	#region Listing
 
 	[Fact]
-	public async Task Nothing_is_listed_when_the_storage_is_empty()
+	public async Task EmptyStorage_ListsNothing()
 	{
 		Assert.Empty(await _storage.ListAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task Set_folders_and_loose_archives_are_listed_with_their_names()
+	public async Task FoldersAndArchives_ListedWithNames()
 	{
 		PlaceFolder(1, "Artist1", "Title1", Osz(("a.osu", "x")));
 		PlaceFolder(2, "Artist2", "Title2", Osz(("a.osu", "x")));
@@ -65,7 +65,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	[InlineData("123 Artist - Title", 123)]
 	[InlineData("5 A - B", 5)]
 	[InlineData("Artist - Title", null)]
-	public async Task A_folder_carries_the_beatmapset_id_its_name_starts_with(string name, int? id)
+	public async Task FolderName_CarriesBeatmapsetId(string name, int? id)
 	{
 		Directory.CreateDirectory(Path.Combine(Sets, name));
 
@@ -76,7 +76,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_folder_holding_an_archive_gives_it_and_one_without_gives_none()
+	public async Task FolderWithArchive_GivesIt()
 	{
 		var bytes = Osz(("a.osu", "x"));
 		PlaceFolder(1, "With", "Archive", bytes);
@@ -92,7 +92,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_archive_and_a_folder_of_the_same_set_are_both_listed()
+	public async Task ArchiveAndFolder_BothListed()
 	{
 		PlaceFolder(5, "Artist", "Title", Osz(("a.osu", "x")));
 		PlaceArchive("5 Artist - Title.osz", Osz(("a.osu", "y")));
@@ -104,7 +104,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Files_that_are_not_archives_and_archives_nested_in_folders_are_not_sources()
+	public async Task NonArchivesNested_NotSources()
 	{
 		File.WriteAllText(Path.Combine(Sets, "pack.zip"), "zip");
 		File.WriteAllText(Path.Combine(Sets, "loose.osu"), "osu");
@@ -118,7 +118,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Names_marked_incoming_are_never_listed()
+	public async Task IncomingNames_NeverListed()
 	{
 		File.WriteAllBytes(Path.Combine(Sets, ".incoming_upload.osz"), Osz(("a.osu", "x")));
 		Directory.CreateDirectory(Path.Combine(Sets, ".incoming_folder"));
@@ -130,7 +130,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_folder_named_like_a_deleted_one_is_an_ordinary_entry()
+	public async Task DeletedLikeFolder_OrdinaryEntry()
 	{
 		Directory.CreateDirectory(Path.Combine(Sets, "5 Artist - Title.deleted_0123"));
 		Directory.CreateDirectory(Path.Combine(Sets, ".deleted_other"));
@@ -142,7 +142,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_archive_is_listed_with_its_size_and_modification_time_and_a_replaced_one_with_the_new_ones()
+	public async Task Archive_ListedWithSize()
 	{
 		var modified = new DateTime(2024, 5, 6, 7, 8, 9, DateTimeKind.Utc);
 		var original = Osz(("a.osu", "x"));
@@ -163,7 +163,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_listed_archive_opens_from_its_start_each_time_and_fingerprints_its_bytes()
+	public async Task ListedArchive_OpensFromStart()
 	{
 		var bytes = Osz(("a.osu", "x"));
 		PlaceArchive("1 Artist - Title.osz", bytes);
@@ -178,7 +178,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_corrupt_archive_is_listed_as_it_is_and_does_not_hide_the_other_sources()
+	public async Task CorruptArchive_ListedOthersShown()
 	{
 		var corrupt = Encoding.UTF8.GetBytes("this is not a zip file");
 		PlaceArchive("99 Corrupt.osz", corrupt);
@@ -199,7 +199,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	#region Uploading, packing and taking in
 
 	[Fact]
-	public async Task An_uploaded_archive_is_stored_byte_for_byte_and_is_not_listed()
+	public async Task UploadedArchive_StoredNotListed()
 	{
 		var bytes = Osz(("a.osu", "x"));
 
@@ -211,7 +211,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Two_uploaded_archives_are_stored_apart()
+	public async Task TwoUploads_StoredApart()
 	{
 		var first = await _storage.SaveAsync(new MemoryStream(Osz(("a.osu", "first"))),
 			TestContext.Current.CancellationToken);
@@ -223,7 +223,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_upload_that_fails_leaves_nothing_in_the_storage()
+	public async Task FailedUpload_LeavesNothing()
 	{
 		await Assert.ThrowsAsync<IOException>(() =>
 			_storage.SaveAsync(new TestStreams.Failing(), TestContext.Current.CancellationToken));
@@ -232,7 +232,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_removed_upload_leaves_nothing_in_the_storage()
+	public async Task RemovedUpload_LeavesNothing()
 	{
 		var archive =
 			await _storage.SaveAsync(new MemoryStream(Osz(("a.osu", "x"))), TestContext.Current.CancellationToken);
@@ -243,7 +243,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_quarantined_upload_leaves_the_storage_and_is_kept_in_the_quarantine()
+	public async Task QuarantinedUpload_KeptInQuarantine()
 	{
 		var bytes = Osz(("a.osu", "x"));
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
@@ -256,7 +256,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_taken_in_upload_becomes_the_archive_of_a_set_folder_named_after_the_set()
+	public async Task TakenInUpload_BecomesSetArchive()
 	{
 		var bytes = Osz(("a.osu", "x"));
 		var id = NewId();
@@ -272,7 +272,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_taken_in_loose_archive_leaves_its_place_in_the_storage()
+	public async Task LooseArchiveTaken_LeavesStorage()
 	{
 		var bytes = Osz(("a.osu", "x"));
 		var id = NewId();
@@ -290,7 +290,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_new_archive_replaces_the_folder_already_stored_under_the_same_name_with_nothing_stale()
+	public async Task NewArchive_ReplacesFolder()
 	{
 		var id = NewId();
 		var set = Set(id, "Artist", "Title");
@@ -308,7 +308,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replaced_folder_leaves_no_set_aside_copy_in_the_storage()
+	public async Task ReplacedFolder_NoCopy()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "old")), ("versions/stale.osu", "stale"));
@@ -321,7 +321,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_folder_moved_over_an_existing_target_leaves_only_the_target()
+	public async Task MovedSetFolder_OnlyTargetLeft()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Old Artist", "Old Title", Osz(("a.osu", "old")), ("versions/stale.osu", "stale"));
@@ -334,7 +334,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_new_archive_deletes_the_other_folder_stored_for_the_set()
+	public async Task NewArchive_DeletesOtherFolder()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Old Artist", "Old Title", Osz(("a.osu", "old")));
@@ -347,7 +347,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_folders_own_archive_stays_in_place_and_the_folder_is_renamed_to_the_name_of_the_set()
+	public async Task OwnArchiveKept_FolderRenamed()
 	{
 		var id = NewId();
 		var bytes = Osz(("a.osu", "x"));
@@ -366,7 +366,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_folder_whose_name_differs_only_in_letter_case_is_renamed_and_keeps_its_files()
+	public async Task CaseOnlyRename_FilesKept()
 	{
 		var id = NewId();
 		var bytes = Osz(("a.osu", "x"));
@@ -385,7 +385,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Renaming_a_set_folder_only_in_letter_case_reports_no_name_but_the_old_and_the_new()
+	public async Task CaseOnlyRename_ReportsBoth()
 	{
 		var id = NewId();
 		PlaceFolder(id, "artist", "title", Osz(("a.osu", "x")));
@@ -401,7 +401,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_with_a_long_title_in_a_multi_byte_script_is_stored_and_found()
+	public async Task LongMultibyteTitle_StoredAndFound()
 	{
 		var id = NewId();
 		var set = Set(id, "Artist", new string('\u6f22', 100));
@@ -419,7 +419,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_folder_name_has_none_of_the_characters_a_folder_may_not_have_and_still_finds_the_set()
+	public async Task UnsafeFolderCharacters_StillFindsSet()
 	{
 		var id = NewId();
 		var set = Set(id, "AC/DC", "What? \"Yes\" <no> | *maybe* : C:\\x...");
@@ -437,7 +437,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_with_a_very_long_artist_and_title_is_stored_and_found()
+	public async Task LongArtistTitle_StoredAndFound()
 	{
 		var id = NewId();
 		var set = Set(id, new string('a', 300), new string('t', 300));
@@ -451,7 +451,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_packed_folder_becomes_an_archive_of_its_files_that_is_not_listed_as_a_source_of_its_own()
+	public async Task PackedFolder_ArchiveNotSource()
 	{
 		PlaceFolder(7, "Loose", "Folder", null, ("diff1.osu", "one"), ("diff2.osu", "two"), ("sb/bg.jpg", "jpg"));
 		var folder = await FolderSourceAsync("7 Loose - Folder");
@@ -466,7 +466,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Packing_leaves_the_loose_files_as_they_are_until_the_archive_is_taken_in()
+	public async Task Packing_KeepsLooseFiles()
 	{
 		PlaceFolder(7, "Loose", "Folder", null, ("diff1.osu", "one"), ("sb/bg.jpg", "jpg"));
 		var folder = await FolderSourceAsync("7 Loose - Folder");
@@ -477,7 +477,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Taking_in_a_packed_archive_removes_the_loose_files_and_keeps_the_archive_as_the_sets()
+	public async Task TakeInPacked_RemovesLooseFiles()
 	{
 		PlaceFolder(7, "Loose", "Folder", null, ("diff1.osu", "one"), ("sb/bg.jpg", "jpg"));
 		var folder = await FolderSourceAsync("7 Loose - Folder");
@@ -495,7 +495,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_removed_packed_archive_leaves_the_loose_files()
+	public async Task RemovedPackedArchive_LeavesLooseFiles()
 	{
 		PlaceFolder(7, "Loose", "Folder", null, ("diff1.osu", "one"));
 		var folder = await FolderSourceAsync("7 Loose - Folder");
@@ -509,7 +509,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_folder_that_is_gone_packs_to_null()
+	public async Task GoneFolder_PacksNull()
 	{
 		PlaceFolder(7, "Loose", "Folder", null, ("diff1.osu", "one"));
 		var folder = await FolderSourceAsync("7 Loose - Folder");
@@ -519,7 +519,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_folder_without_files_packs_to_null()
+	public async Task EmptyFolder_PacksNull()
 	{
 		Directory.CreateDirectory(Path.Combine(Sets, "7 Empty - Folder"));
 		var folder = await FolderSourceAsync("7 Empty - Folder");
@@ -530,7 +530,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	[Theory]
 	[InlineData("versions/hash.osu")]
 	[InlineData("archive-novideo.osz")]
-	public async Task A_set_folder_that_lost_its_archive_packs_to_null_and_stays_as_it_is(string madeFromTheArchive)
+	public async Task LostArchiveSet_PacksNullUnchanged(string madeFromTheArchive)
 	{
 		PlaceFolder(7, "Lost", "Archive", null, (madeFromTheArchive, "made from the archive"), ("diff1.osu", "one"));
 		var folder = await FolderSourceAsync("7 Lost - Archive");
@@ -568,7 +568,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_storyboard_is_stored_whatever_name_is_given()
+	public async Task Storyboard_StoredWhateverName()
 	{
 		var set = StoredSet(out var folder);
 
@@ -579,7 +579,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_stored_storyboard_is_found_and_opened_whatever_name_is_given()
+	public async Task StoredStoryboard_FoundAndOpened()
 	{
 		var set = StoredSet(out var folder);
 		await File.WriteAllTextAsync(Path.Combine(folder, "storyboard.osb"), "storyboard",
@@ -593,7 +593,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_stored_file_is_replaced_by_one_saved_under_the_same_name()
+	public async Task SameNameSave_ReplacesStoredFile()
 	{
 		var set = StoredSet(out _);
 		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("old and longer"));
@@ -606,7 +606,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_opened_file_can_be_sought()
+	public async Task OpenedFile_Seekable()
 	{
 		var set = StoredSet(out _);
 		await _storage.SaveAsync(set, BeatmapsetFileType.Audio, "song.mp3", TestStreams.Of("content"));
@@ -619,7 +619,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_save_that_fails_keeps_the_stored_file_and_leaves_nothing_else()
+	public async Task FailedSave_KeepsStoredFile()
 	{
 		var set = StoredSet(out var folder);
 		await _storage.SaveAsync(set, BeatmapsetFileType.Background, "bg.jpg", TestStreams.Of("previous"));
@@ -670,7 +670,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	[InlineData("..")]
 	[InlineData("")]
 	[InlineData("CON")]
-	public async Task A_name_that_is_not_a_plain_file_name_is_not_stored_and_reads_nothing(string name)
+	public async Task UnsafeFileName_NotStored(string name)
 	{
 		var set = StoredSet(out _);
 
@@ -681,7 +681,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_file_that_is_not_stored_is_absent_and_asking_makes_nothing()
+	public async Task UnstoredFile_Absent()
 	{
 		var set = StoredSet(out _);
 		var before = Everything();
@@ -698,7 +698,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_without_a_folder_has_no_files_and_no_archive()
+	public async Task SetWithoutFolder_NoFiles()
 	{
 		var set = Set(NewId(), "Nobody", "Home");
 
@@ -711,7 +711,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_archive_opens_with_or_without_video_and_both_can_be_sought()
+	public async Task Archive_OpensEitherWay()
 	{
 		var id = NewId();
 		var bytes = Osz(("a.osu", "x"));
@@ -731,7 +731,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_archive_without_video_keeps_every_entry_but_the_videos_and_the_archive_stays_as_it_was()
+	public async Task WithoutVideo_KeepsNonVideos()
 	{
 		var id = NewId();
 		var bytes = Osz(("a.osu", "difficulty"), ("bg.jpg", "background"), ("sub/song.mp3", "audio"),
@@ -750,7 +750,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_archive_without_video_drops_a_declared_video_whatever_its_extension_or_letter_case()
+	public async Task WithoutVideo_DropsDeclaredVideo()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title",
@@ -765,7 +765,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_archive_without_video_keeps_a_file_with_a_video_extension_that_no_difficulty_declares()
+	public async Task UndeclaredVideoFile_Kept()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "difficulty"), ("storyboard.mp4", "an animation")));
@@ -779,7 +779,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_archive_without_video_of_a_corrupt_archive_is_not_made_and_the_archive_is_kept()
+	public async Task CorruptWithoutVideo_NotMade()
 	{
 		var id = NewId();
 		var corrupt = Encoding.UTF8.GetBytes("this is not a zip file");
@@ -797,7 +797,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Clearing_a_set_removes_every_file_made_from_its_archive_and_keeps_the_archive()
+	public async Task ClearingSet_RemovesExtracted()
 	{
 		var id = NewId();
 		var bytes = Osz(("a.osu", "x"));
@@ -817,7 +817,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Clearing_a_set_without_a_folder_does_nothing()
+	public async Task ClearWithoutFolder_Nothing()
 	{
 		await _storage.ClearAsync(Set(NewId(), "Nobody", "Home"));
 
@@ -829,7 +829,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	#region Deleting
 
 	[Fact]
-	public async Task A_deleted_set_loses_its_folder_with_everything_in_it_and_no_other_set_does()
+	public async Task DeletedSet_LosesFolderOnly()
 	{
 		var id = NewId();
 		var other = NewId();
@@ -844,7 +844,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_a_set_deletes_every_folder_stored_for_it()
+	public async Task DeletingSet_DeletesEveryFolder()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Old", "Name", Osz(("a.osu", "x")));
@@ -856,7 +856,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_a_set_leaves_no_renamed_leftover_beside_the_other_folders()
+	public async Task DeletingSet_NoRenamedLeftover()
 	{
 		var id = NewId();
 		var other = NewId();
@@ -870,7 +870,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_a_set_with_nested_files_removes_all_of_them_at_once()
+	public async Task NestedSetDeletion_RemovesAll()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")), ("audio/preview_a.mp3", "p"), ("versions/h.osu", "v"));
@@ -881,7 +881,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_a_set_that_is_not_stored_does_nothing()
+	public async Task UnstoredSetDeletion_Nothing()
 	{
 		PlaceFolder(NewId(), "Artist", "Title", Osz(("a.osu", "x")));
 		var before = Everything();
@@ -892,7 +892,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_with_a_file_in_use_keeps_its_folder_and_deleting_it_fails_with_an_IO_error()
+	public async Task FileInUse_DeletionFails()
 	{
 		Assert.SkipUnless(OperatingSystem.IsWindows(),
 			"Only Windows refuses to delete a folder with an open file in it; no portable way to make a deletion fail.");
@@ -912,7 +912,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_archive_placed_by_hand_is_not_removed_as_an_upload()
+	public async Task HandPlacedArchive_NotRemoved()
 	{
 		var path = PlaceArchive("1 Artist - Title.osz", Osz(("a.osu", "x")));
 		var archive =
@@ -926,7 +926,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_set_folders_own_archive_is_not_removed_as_an_upload()
+	public async Task OwnArchive_NotRemoved()
 	{
 		var id = NewId();
 		var folder = PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")));
@@ -943,7 +943,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	#region Serialising operations on a set
 
 	[Fact]
-	public async Task A_second_operation_on_the_same_set_waits_for_the_first_to_finish()
+	public async Task SecondSetOperation_Waits()
 	{
 		var set = StoredSet(out _);
 		var gated = new TestStreams.Gated("part ", "rest");
@@ -961,7 +961,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_operation_on_another_set_does_not_wait_for_the_first()
+	public async Task OtherSetOperation_DoesNotWait()
 	{
 		var set = StoredSet(out _);
 		var other = StoredSet(out _);
@@ -984,7 +984,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	#region Watching
 
 	[Fact]
-	public async Task A_change_inside_a_set_folder_reports_the_folder_as_it_is_once_the_change_settled()
+	public async Task SettledChange_ReportsFolder()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")));
@@ -1001,7 +1001,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_new_loose_archive_is_reported_as_an_archive()
+	public async Task NewLooseArchive_ReportedAsArchive()
 	{
 		await using var watching = Watching.Start(_storage, _time);
 
@@ -1014,7 +1014,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_folder_that_is_gone_is_reported_as_not_existing()
+	public async Task GoneFolder_ReportedMissing()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")));
@@ -1030,7 +1030,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Watching_starts_when_the_watch_is_asked_for_not_when_it_is_first_read()
+	public async Task Watching_StartsWhenAsked()
 	{
 		var id = NewId();
 		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")));
@@ -1046,7 +1046,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Names_marked_incoming_are_never_reported()
+	public async Task IncomingNames_NeverReported()
 	{
 		await using var watching = Watching.Start(_storage, _time);
 
@@ -1061,7 +1061,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_folder_that_vanishes_right_after_its_change_does_not_stop_the_watch()
+	public async Task FolderVanishes_WatchContinues()
 	{
 		await using var watching = Watching.Start(_storage, _time);
 
@@ -1076,7 +1076,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Cancelling_the_watch_ends_it()
+	public async Task CancelWatch_Ends()
 	{
 		await using var watching = Watching.Start(_storage, _time);
 

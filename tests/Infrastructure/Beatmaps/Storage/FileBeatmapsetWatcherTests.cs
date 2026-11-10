@@ -22,7 +22,7 @@ public sealed class FileBeatmapsetWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public void Cancelling_the_token_stops_a_watch_nobody_reads()
+	public void CancelToken_StopsUnreadWatch()
 	{
 		using var watcher = Start();
 
@@ -32,7 +32,7 @@ public sealed class FileBeatmapsetWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public void Disposing_the_watch_stops_it()
+	public void DisposeWatch_Stops()
 	{
 		var watcher = Start();
 
@@ -42,7 +42,7 @@ public sealed class FileBeatmapsetWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_burst_of_changes_to_one_name_is_reported_once_after_it_settled()
+	public async Task BurstOfChanges_ReportedOnce()
 	{
 		Directory.CreateDirectory(Path.Combine(Sets, "1 Burst - Folder"));
 		Directory.CreateDirectory(Path.Combine(Sets, "2 Sentinel - Folder"));
@@ -67,7 +67,7 @@ public sealed class FileBeatmapsetWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Reading_ends_when_the_watch_is_stopped()
+	public async Task StoppedWatch_ReadingEnds()
 	{
 		using var watcher = Start();
 		await using var reports = watcher.GetAsyncEnumerator(TestContext.Current.CancellationToken);

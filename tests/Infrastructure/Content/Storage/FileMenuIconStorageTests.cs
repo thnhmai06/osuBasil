@@ -28,13 +28,13 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Nothing_is_stored_at_first()
+	public async Task FreshStorage_StoresNothing()
 	{
 		Assert.Null(await StoredAsync());
 	}
 
 	[Fact]
-	public async Task The_saved_icon_opens_with_its_reference_and_the_bytes_it_was_saved_with()
+	public async Task SavedIcon_ReferenceAndBytes()
 	{
 		var reference =
 			await _icon.SaveAsync("icon.png", TestStreams.Of("icon"));
@@ -47,7 +47,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Saving_an_icon_under_the_same_name_replaces_it()
+	public async Task SameIconName_Replaced()
 	{
 		await _icon.SaveAsync("icon.png", TestStreams.Of("old and longer"));
 
@@ -57,7 +57,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Saving_an_icon_under_another_name_replaces_any_stored_icon()
+	public async Task NewIconName_ReplacesStoredIcon()
 	{
 		await _icon.SaveAsync("old.png", TestStreams.Of("old"));
 
@@ -71,7 +71,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_save_that_fails_keeps_the_stored_icon()
+	public async Task FailedSave_KeepsStoredIcon()
 	{
 		await _icon.SaveAsync("old.png", TestStreams.Of("previous"));
 
@@ -85,7 +85,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	[MemberData(nameof(EscapingNames))]
 	[MemberData(nameof(DeviceNames))]
 	[MemberData(nameof(NotCanonicalNames))]
-	public async Task Saving_under_a_name_that_is_not_safe_is_refused_and_keeps_the_stored_icon(string name)
+	public async Task UnsafeSaveName_RefusedKeepingIcon(string name)
 	{
 		await _icon.SaveAsync("old.png", TestStreams.Of("previous"));
 
@@ -97,7 +97,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_deleted_icon_is_no_longer_stored()
+	public async Task DeletedIcon_NoLongerStored()
 	{
 		await _icon.SaveAsync("icon.png", TestStreams.Of("icon"));
 
@@ -107,7 +107,7 @@ public sealed class FileMenuIconStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_when_no_icon_is_stored_does_nothing()
+	public async Task NoStoredIcon_DeleteDoesNothing()
 	{
 		await _icon.DeleteAsync();
 

@@ -6,7 +6,7 @@ namespace Basil.Infrastructure.Common.Tests.Registry;
 public sealed class CacheAsideTests
 {
 	[Fact]
-	public async Task A_value_is_loaded_once_and_then_served_from_the_cache()
+	public async Task ValueLoadedOnce_ServedFromCache()
 	{
 		var cache = new CacheAside<int, string>();
 		var loads = 0;
@@ -25,7 +25,7 @@ public sealed class CacheAsideTests
 	}
 
 	[Fact]
-	public async Task A_missing_value_is_not_cached()
+	public async Task MissingValue_NotCached()
 	{
 		var cache = new CacheAside<int, string>();
 		var loads = 0;
@@ -43,7 +43,7 @@ public sealed class CacheAsideTests
 	}
 
 	[Fact]
-	public async Task A_removed_value_is_loaded_again()
+	public async Task RemovedValue_LoadedAgain()
 	{
 		var cache = new CacheAside<int, string>();
 		var current = "old";
@@ -55,7 +55,7 @@ public sealed class CacheAsideTests
 	}
 
 	[Fact]
-	public async Task A_value_loaded_while_its_entry_was_removed_is_not_cached()
+	public async Task EntryRemovedConcurrently_NotCached()
 	{
 		var cache = new CacheAside<int, string>();
 		var current = "old";

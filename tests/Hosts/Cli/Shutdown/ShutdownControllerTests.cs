@@ -22,7 +22,7 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void Two_presses_in_the_window_stop_the_application_once()
+	public void TwoPresses_StopOnce()
 	{
 		var (controller, lifetime, _, messages, _) = Create(CliMode.Full);
 
@@ -36,7 +36,7 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void The_window_running_out_hides_the_warning_and_stops_nothing()
+	public void WindowTimeout_HidesWarning()
 	{
 		var (controller, lifetime, clock, messages, _) = Create(CliMode.Full);
 
@@ -49,7 +49,7 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void A_slow_shutdown_warns_with_the_wording_of_the_specification_and_a_press_then_forces_exit_code_1()
+	public void SlowShutdown_WarnsThenForces()
 	{
 		var (controller, _, clock, messages, exits) = Create(CliMode.NoGui);
 		controller.Interrupt();
@@ -64,7 +64,7 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void Terminate_stops_at_once_and_a_command_shutdown_does_the_same()
+	public void TerminateAndCommand_StopAtOnce()
 	{
 		var (controller, lifetime, _, _, _) = Create(CliMode.Full);
 
@@ -76,7 +76,7 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void A_restart_command_makes_the_process_exit_with_the_restart_code()
+	public void RestartCommand_ExitCodeRestart()
 	{
 		var (controller, lifetime, _, _, _) = Create(CliMode.Full);
 
@@ -88,7 +88,7 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void The_first_press_with_typed_text_asks_the_display_to_clear_the_line()
+	public void FirstPressText_AsksLineClear()
 	{
 		var (controller, lifetime, _, messages, _) = Create(CliMode.Full);
 
@@ -114,7 +114,7 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void The_display_arguments_are_not_left_for_the_configuration()
+	public void DisplayArguments_NotInConfiguration()
 	{
 		Assert.Equal(["--urls", "http://x"], CliModes.Strip(["--nogui", "--urls", "http://x", "--noconsole"]));
 	}

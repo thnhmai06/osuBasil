@@ -23,7 +23,7 @@ public sealed class SettingsGatewayLimitsTests
 	}
 
 	[Fact]
-	public void The_limits_mirror_the_settings()
+	public void Limits_MirrorSettings()
 	{
 		var settings = Substitute.For<ISettingsRepository>();
 		settings.Current.Returns(WithRequests(7));
@@ -36,7 +36,7 @@ public sealed class SettingsGatewayLimitsTests
 	}
 
 	[Fact]
-	public void A_changed_setting_applies_to_the_next_admit_without_a_restart()
+	public void ChangedSetting_AppliesWithoutRestart()
 	{
 		var settings = Substitute.For<ISettingsRepository>();
 		settings.Current.Returns(WithRequests(1));

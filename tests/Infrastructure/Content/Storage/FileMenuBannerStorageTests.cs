@@ -28,7 +28,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_saved_image_opens_with_the_bytes_it_was_saved_with()
+	public async Task SavedImage_OpensWithBytes()
 	{
 		var reference = await _banners.SaveAsync("summer.png", TestStreams.Of("summer"));
 
@@ -37,7 +37,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_reference_of_a_saved_image_is_listed_with_those_of_the_others()
+	public async Task SavedImage_ListedWithOthers()
 	{
 		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("1"));
 		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("2"));
@@ -49,13 +49,13 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Nothing_is_listed_when_nothing_is_stored()
+	public async Task NothingStored_ListsNothing()
 	{
 		Assert.Empty(await _banners.ListAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task Saving_under_a_name_in_use_replaces_that_image_only()
+	public async Task ExistingName_ReplacesOnlyImage()
 	{
 		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("old and longer"));
 		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("winter"));
@@ -72,7 +72,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_save_that_fails_keeps_the_image_stored_under_the_name()
+	public async Task FailedSave_KeepsStoredImage()
 	{
 		var reference = await _banners.SaveAsync("summer.png", TestStreams.Of("previous"));
 
@@ -85,7 +85,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_deleted_image_is_no_longer_stored_and_the_others_are()
+	public async Task DeletedImage_GoneOthersKept()
 	{
 		var summer = await _banners.SaveAsync("summer.png", TestStreams.Of("1"));
 		var winter = await _banners.SaveAsync("winter.png", TestStreams.Of("2"));
@@ -98,7 +98,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_reference_to_no_stored_image_opens_as_null()
+	public async Task UnknownImageReference_OpensNull()
 	{
 		var reference = new ContentReference("Menu/Banners/missing.png");
 
@@ -106,7 +106,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_reference_to_another_storage_or_an_address_opens_as_null_and_deletes_nothing()
+	public async Task ForeignReference_OpensNullOnly()
 	{
 		var stored =
 			await _banners.SaveAsync("summer.png", TestStreams.Of("kept"));
@@ -128,7 +128,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_an_image_that_is_not_stored_does_nothing()
+	public async Task MissingImageDelete_DoesNothing()
 	{
 		await _banners.DeleteAsync(new ContentReference("Menu/Banners/missing.png"));
 
@@ -139,7 +139,7 @@ public sealed class FileMenuBannerStorageTests : IDisposable
 	[MemberData(nameof(EscapingNames))]
 	[MemberData(nameof(DeviceNames))]
 	[MemberData(nameof(NotCanonicalNames))]
-	public async Task Saving_under_a_name_that_is_not_safe_is_refused_and_stores_nothing(string name)
+	public async Task UnsafeSaveName_RefusedStoringNothing(string name)
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
 			_banners.SaveAsync(name, TestStreams.Of("data")));

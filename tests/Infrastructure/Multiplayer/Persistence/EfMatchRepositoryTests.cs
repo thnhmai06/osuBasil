@@ -18,7 +18,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	private IMatchRepository Matches => Get<IMatchRepository>();
 
 	[Fact]
-	public async Task A_created_match_is_given_an_id_by_the_store()
+	public async Task CreatedMatch_GetsStoreId()
 	{
 		var match = await CreateStoredMatchAsync("first_match", First);
 
@@ -26,7 +26,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Created_matches_are_given_increasing_ids()
+	public async Task CreatedMatches_GetIncreasingIds()
 	{
 		var first = await CreateStoredMatchAsync("older_match", First);
 		var second = await CreateStoredMatchAsync("newer_match", Second);
@@ -35,7 +35,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_created_match_is_stored()
+	public async Task CreatedMatch_Stored()
 	{
 		var match = await CreateStoredMatchAsync("stored_match", First);
 
@@ -48,7 +48,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_created_match_keeps_the_name_it_was_created_with()
+	public async Task CreatedMatch_KeepsName()
 	{
 		var match = await CreateStoredMatchAsync("named_match", First);
 
@@ -56,7 +56,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_created_match_keeps_the_creator_it_was_created_with()
+	public async Task CreatedMatch_KeepsCreator()
 	{
 		var creator = await Get<IUserRepository>().CreateAsync(new UserData { Name = "creator_user" });
 
@@ -66,7 +66,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_match_is_found_by_its_id()
+	public async Task MatchById_Found()
 	{
 		var created = await CreateStoredMatchAsync("found_match", First);
 
@@ -77,7 +77,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_table_refuses_a_match_without_a_creator()
+	public async Task CreatorlessMatch_RefusedByTable()
 	{
 		await Assert.ThrowsAnyAsync<DbException>(() => StoredRows.InsertAsync(ConnectionString,
 			"matches", [
@@ -90,13 +90,13 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_match_that_was_never_created_is_not_found()
+	public async Task UncreatedMatch_NotFound()
 	{
 		Assert.Null(await Matches.GetAsync(987654, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task An_update_changes_the_name_of_the_match_the_store_returns()
+	public async Task Update_ChangesReturnedName()
 	{
 		var match = await CreateStoredMatchAsync("before_rename", First);
 		match.Value.Name = "after_rename";
@@ -108,7 +108,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task An_update_changes_the_end_of_the_match_the_store_returns()
+	public async Task Update_ChangesReturnedEnd()
 	{
 		var match = await CreateStoredMatchAsync("ended_match", First);
 		match.Value.EndedAt = Second;
@@ -120,7 +120,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task An_update_changes_the_privacy_of_the_match_the_store_returns()
+	public async Task Update_ChangesReturnedPrivacy()
 	{
 		var match = await CreateStoredMatchAsync("private_match", First);
 		match.Value.IsPrivate = true;
@@ -132,7 +132,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task An_update_is_stored()
+	public async Task Update_Stored()
 	{
 		var match = await CreateStoredMatchAsync("updated_match", First);
 		match.Value.Name = "renamed_match";
@@ -151,7 +151,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_shows_the_newest_match_first()
+	public async Task Listing_NewestMatchFirst()
 	{
 		await CreateStoredMatchAsync("oldest_match", First);
 		await CreateStoredMatchAsync("newest_match", Third);
@@ -165,7 +165,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_leaves_out_the_matches_that_ended()
+	public async Task Listing_SkipsEndedMatches()
 	{
 		await CreateStoredMatchAsync("running_match", First);
 		await CreateStoredMatchAsync("ended_match", Second, Second);
@@ -177,7 +177,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_shows_only_the_matches_that_ended()
+	public async Task Listing_OnlyEndedMatches()
 	{
 		await CreateStoredMatchAsync("running_match", First);
 		await CreateStoredMatchAsync("ended_match", Second, Second);
@@ -189,7 +189,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_leaves_out_the_private_matches()
+	public async Task Listing_SkipsPrivateMatches()
 	{
 		await CreateStoredMatchAsync("public_match", First);
 		await CreateStoredMatchAsync("private_match", Second, isPrivate: true);
@@ -201,7 +201,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_shows_only_the_private_matches()
+	public async Task Listing_OnlyPrivateMatches()
 	{
 		await CreateStoredMatchAsync("public_match", First);
 		await CreateStoredMatchAsync("private_match", Second, isPrivate: true);
@@ -213,7 +213,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_returns_the_requested_part()
+	public async Task Listing_ReturnsRequestedPage()
 	{
 		await CreateStoredMatchAsync("first_match", First);
 		await CreateStoredMatchAsync("second_match", Second);
@@ -227,7 +227,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_tells_whether_more_matches_follow_the_page()
+	public async Task Listing_ReportsMoreMatches()
 	{
 		await CreateStoredMatchAsync("first_match", First);
 		await CreateStoredMatchAsync("second_match", Second);

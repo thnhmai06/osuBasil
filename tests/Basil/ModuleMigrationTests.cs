@@ -27,7 +27,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	];
 
 	[Fact]
-	public void Module_migrations_create_only_tables_owned_by_their_context()
+	public void ModuleMigrations_OwnTablesOnly()
 	{
 		var migrationsAssembly = typeof(PostgresDatabaseProvider).Assembly;
 		foreach (var (module, ownedTables) in Modules)
@@ -50,7 +50,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public void Every_module_context_has_no_model_change_the_migrations_miss()
+	public void EveryModelChange_Migrated()
 	{
 		var create = typeof(Database).GetMethod(nameof(Database.CreateConfirmedContext))!;
 		var database = Get<Database>();
@@ -63,7 +63,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public async Task Both_engines_name_the_same_tables_and_columns()
+	public async Task BothEngines_SameSchema()
 	{
 		var create = typeof(Database).GetMethod(nameof(Database.CreateConfirmedContext))!;
 		foreach (var (module, _) in Modules)
@@ -96,7 +96,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public async Task Module_migrations_are_applied_in_the_documented_order()
+	public async Task ModuleMigrations_DocumentedOrder()
 	{
 		// A module with several migrations has several rows; the order of the modules is what is pinned.
 		var rows = await StoredRows.ReadAsync(ConnectionString, SchemaQueries.MigrationOrder, null,
@@ -107,7 +107,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public async Task Migrating_creates_every_foreign_key()
+	public async Task Migrating_CreatesForeignKeys()
 	{
 		var rows = await StoredRows.ReadAsync(ConnectionString, SchemaQueries.ForeignKeys, null,
 			TestContext.Current.CancellationToken);

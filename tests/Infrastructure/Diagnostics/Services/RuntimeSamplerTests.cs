@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Diagnostics.Tests.Services;
 public sealed class RuntimeSamplerTests
 {
 	[Fact]
-	public void Unknown_host_labels_are_counted_as_other()
+	public void UnknownHostLabels_CountedAsOther()
 	{
 		using var sampler = new RuntimeSampler(new FakeTimeProvider());
 		using var meter = new Meter("Basil.Test");

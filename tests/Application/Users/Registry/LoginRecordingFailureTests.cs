@@ -6,7 +6,7 @@ namespace Basil.Application.Users.Tests.Registry;
 public sealed class LoginRecordingFailureTests
 {
 	[Fact]
-	public async Task A_login_whose_session_cannot_be_recorded_fails_and_leaves_the_user_offline()
+	public async Task UnrecordableSession_LoginFails()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Unrecorded", "password");

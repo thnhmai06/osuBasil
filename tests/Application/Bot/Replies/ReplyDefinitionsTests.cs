@@ -26,34 +26,34 @@ public sealed class ReplyDefinitionsTests : IDisposable
 	}
 
 	[Fact]
-	public void The_replies_of_the_bot_are_found()
+	public void BotReplies_Found()
 	{
 		Assert.NotEmpty(All);
 	}
 
 	[Fact]
-	public void No_two_replies_share_a_key()
+	public void ReplyKeys_Distinct()
 	{
 		Assert.Equal(All.Count, All.Select(reply => reply.Key).Distinct(StringComparer.Ordinal).Count());
 	}
 
 	[Theory]
 	[MemberData(nameof(Keys))]
-	public void A_key_names_the_surface_that_says_the_reply_and_the_reply(string key)
+	public void ReplyKey_SurfaceAndReply(string key)
 	{
 		Assert.Matches(KeyShapePattern, key);
 	}
 
 	[Theory]
 	[MemberData(nameof(Keys))]
-	public void A_reply_has_a_default_wording(string key)
+	public void Reply_DefaultWording(string key)
 	{
 		Assert.False(string.IsNullOrWhiteSpace(Find(key).Default));
 	}
 
 	[Theory]
 	[MemberData(nameof(Keys))]
-	public void The_default_wording_of_a_reply_uses_every_argument_the_reply_declares(string key)
+	public void DefaultWording_UsesDeclaredArguments(string key)
 	{
 		var reply = Find(key);
 
@@ -63,7 +63,7 @@ public sealed class ReplyDefinitionsTests : IDisposable
 
 	[Theory]
 	[MemberData(nameof(Keys))]
-	public void The_default_wording_of_a_reply_is_valid_message_format_with_its_declared_arguments(string key)
+	public void DefaultWording_ValidMessageFormat(string key)
 	{
 		var reply = Find(key);
 		var catalog = NewCatalog();
@@ -75,7 +75,7 @@ public sealed class ReplyDefinitionsTests : IDisposable
 	}
 
 	[Fact]
-	public void Loading_with_the_replies_of_the_bot_writes_a_file_that_is_read_back_without_a_problem()
+	public void BotRepliesLoad_WritesReadableFile()
 	{
 		var logger = new CapturingLogger<ReplyCatalog>();
 		var catalog = NewCatalog(logger);
@@ -88,7 +88,7 @@ public sealed class ReplyDefinitionsTests : IDisposable
 	}
 
 	[Fact]
-	public void Reading_back_the_file_the_first_load_wrote_leaves_a_reply_without_arguments_with_its_default_wording()
+	public void ReloadedFile_DefaultWordingKept()
 	{
 		var catalog = NewCatalog();
 		catalog.Load();

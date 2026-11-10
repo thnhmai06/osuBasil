@@ -22,7 +22,7 @@ public sealed class FileUploadSpoolTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_spooled_upload_reads_back_from_its_start()
+	public async Task SpooledUpload_ReadsFromStart()
 	{
 		await using var upload = await Spool.SpoolAsync(TestStreams.Of("picture"), 100, Cancel);
 
@@ -32,7 +32,7 @@ public sealed class FileUploadSpoolTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_upload_of_exactly_the_limit_is_not_too_large()
+	public async Task UploadAtLimit_NotTooLarge()
 	{
 		await using var upload = await Spool.SpoolAsync(TestStreams.Of("12345"), 5, Cancel);
 
@@ -40,7 +40,7 @@ public sealed class FileUploadSpoolTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_upload_one_byte_past_the_limit_is_too_large_and_is_not_read_further()
+	public async Task PastLimitUpload_TooLarge()
 	{
 		await using var upload = await Spool.SpoolAsync(TestStreams.Of("123456789"), 5, Cancel);
 
@@ -49,7 +49,7 @@ public sealed class FileUploadSpoolTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_disposed_upload_leaves_no_file()
+	public async Task DisposedUpload_LeavesNoFile()
 	{
 		var upload = await Spool.SpoolAsync(TestStreams.Of("picture"), 100, Cancel);
 		await upload.DisposeAsync();
@@ -59,7 +59,7 @@ public sealed class FileUploadSpoolTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_failed_read_leaves_no_file()
+	public async Task FailedRead_LeavesNoFile()
 	{
 		await Assert.ThrowsAsync<IOException>(() => Spool.SpoolAsync(new TestStreams.Failing(), 100, Cancel));
 
@@ -67,7 +67,7 @@ public sealed class FileUploadSpoolTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_quarantined_upload_is_kept_under_a_name_of_its_own()
+	public async Task QuarantinedUpload_GetsOwnName()
 	{
 		await using var upload = await Spool.SpoolAsync(TestStreams.Of("not a picture"), 100, Cancel);
 		await upload.QuarantineAsync(Cancel);
@@ -78,7 +78,7 @@ public sealed class FileUploadSpoolTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_quarantined_upload_older_than_seven_days_is_deleted_by_the_next_quarantine()
+	public async Task WeekOldQuarantine_Deleted()
 	{
 		await using (var old = await Spool.SpoolAsync(TestStreams.Of("old"), 100, Cancel))
 		{

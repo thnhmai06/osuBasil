@@ -11,7 +11,7 @@ public sealed class OutputTests
 	private static readonly ViewFormatter Utc = new(TimeZoneInfo.Utc);
 
 	[Fact]
-	public void Fields_are_aligned_label_colon_value_lines()
+	public void Fields_AlignedLabelLines()
 	{
 		var output = new CollectedOutput();
 
@@ -21,7 +21,7 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void A_table_has_a_header_row_and_columns_as_wide_as_their_widest_cell()
+	public void Table_WidestColumnsHeader()
 	{
 		var output = new CollectedOutput();
 
@@ -32,7 +32,7 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void A_bitmask_is_followed_by_the_names_of_its_flags()
+	public void Bitmask_FollowedByFlags()
 	{
 		var mask = (ulong)(UserPrivileges.Player | UserPrivileges.Moderator);
 
@@ -42,20 +42,20 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void A_connection_type_mask_names_the_kinds()
+	public void ConnectionTypeMask_NamesKinds()
 	{
 		Assert.Equal("12 (Irc, Api)", ViewFormatter.Mask("types", 12));
 	}
 
 	[Fact]
-	public void A_number_that_is_not_a_mask_stays_a_number()
+	public void NonMaskNumber_StaysNumber()
 	{
 		Assert.Equal("12", ViewFormatter.Mask("limit", 12));
 		Assert.Equal("0", ViewFormatter.Mask("privileges", 0));
 	}
 
 	[Fact]
-	public void Times_are_shown_in_the_zone_of_the_formatter()
+	public void Times_FormatterZone()
 	{
 		var plusSeven = new ViewFormatter(TimeZoneInfo.CreateCustomTimeZone("x", TimeSpan.FromHours(7), "x", "x"));
 		var moment = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -65,7 +65,7 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void A_view_prints_its_fields_with_api_names_booleans_and_dashes_for_nothing()
+	public void View_ApiNamesDashes()
 	{
 		var output = new CollectedOutput();
 		var view = new UserView(3, "alice", "vn", (ulong)UserPrivileges.Player, (ulong)UserPrivileges.Player, null);
@@ -78,7 +78,7 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void A_list_of_users_prints_as_a_table_with_a_name_and_id_for_a_reference()
+	public void UserList_NamesAndIds()
 	{
 		var output = new CollectedOutput();
 		var room = new RoomView(1, 2, "R", false, false, false, false, new UserRef(7, "bob"), null, [], [], null,
@@ -91,7 +91,7 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void No_output_is_json()
+	public void Output_NotJson()
 	{
 		var output = new CollectedOutput();
 		Utc.Print(output, new UserView(1, "a", "vn", 0, 0, null));
@@ -100,7 +100,7 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void A_refusal_is_one_error_line_with_the_api_code()
+	public void Refusal_SingleLineCode()
 	{
 		var output = new CollectedOutput();
 
@@ -110,7 +110,7 @@ public sealed class OutputTests
 	}
 
 	[Fact]
-	public void Codes_are_humanized_into_sentences()
+	public void Codes_HumanizedSentences()
 	{
 		Assert.Equal("Room closed.", CommandReporting.Humanize("roomClosed"));
 	}

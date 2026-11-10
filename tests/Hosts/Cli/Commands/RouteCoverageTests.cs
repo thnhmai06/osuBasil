@@ -57,7 +57,7 @@ public sealed partial class RouteCoverageTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Every_route_that_a_console_can_use_has_a_command()
+	public async Task EveryRoute_HasCommand()
 	{
 		var covered = CommandCatalogFactory.Create().All.SelectMany(command => command.AllRoutes)
 			.Select(route => CatchAll().Replace(route, "{$1}")).ToHashSet();
@@ -69,7 +69,7 @@ public sealed partial class RouteCoverageTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Every_exclusion_is_a_real_route_so_the_list_cannot_go_stale()
+	public async Task EveryExclusion_RealRoute()
 	{
 		var routes = await RoutesAsync();
 
@@ -79,7 +79,7 @@ public sealed partial class RouteCoverageTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Every_command_that_names_a_route_names_one_that_exists()
+	public async Task NamedRoutes_Exist()
 	{
 		var routes = (await RoutesAsync(true)).ToHashSet();
 		var documented = CommandCatalogFactory.Create().All.SelectMany(command => command.AllRoutes)

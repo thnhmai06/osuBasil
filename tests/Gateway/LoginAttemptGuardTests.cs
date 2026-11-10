@@ -18,7 +18,7 @@ public sealed class LoginAttemptGuardTests
 	}
 
 	[Fact]
-	public void Wrong_credentials_keep_the_attempt_counted_until_the_pair_limit()
+	public void WrongCredentials_CountedUntilLimit()
 	{
 		var guard = Create();
 		for (var i = 0; i < 3; i++) guard.TryReserve(Ip, Pair, 3, Window)!.Keep();
@@ -27,7 +27,7 @@ public sealed class LoginAttemptGuardTests
 	}
 
 	[Fact]
-	public void An_attempt_that_is_not_wrong_credentials_is_given_back()
+	public void NonCredentialAttempt_CountRefunded()
 	{
 		var guard = Create();
 		for (var i = 0; i < 10; i++) guard.TryReserve(Ip, Pair, 3, Window)!.Dispose();
@@ -36,7 +36,7 @@ public sealed class LoginAttemptGuardTests
 	}
 
 	[Fact]
-	public void The_address_limit_is_four_times_the_pair_limit_and_spans_accounts()
+	public void AddressLimit_QuadrupleSpansAccounts()
 	{
 		var guard = Create();
 		for (var i = 0; i < 12; i++) guard.TryReserve(Ip, $"{Ip}:user{i}", 3, Window)!.Keep();
@@ -45,7 +45,7 @@ public sealed class LoginAttemptGuardTests
 	}
 
 	[Fact]
-	public void A_refused_address_does_not_burn_an_attempt_of_the_pair()
+	public void RefusedAddress_PairAttemptKept()
 	{
 		var guard = Create();
 		for (var i = 0; i < 12; i++) guard.TryReserve(Ip, $"{Ip}:user{i}", 3, Window)!.Keep();
@@ -57,7 +57,7 @@ public sealed class LoginAttemptGuardTests
 	}
 
 	[Fact]
-	public void The_window_forgets_old_attempts()
+	public void OldAttempts_Forgotten()
 	{
 		var clock = new FakeTimeProvider();
 		var guard = Create(clock);
@@ -69,7 +69,7 @@ public sealed class LoginAttemptGuardTests
 	}
 
 	[Fact]
-	public async Task Parallel_wrong_attempts_never_exceed_the_limit()
+	public async Task ParallelWrongAttempts_NeverExceedLimit()
 	{
 		var guard = Create();
 		var granted = 0;

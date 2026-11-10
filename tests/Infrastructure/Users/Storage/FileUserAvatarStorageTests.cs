@@ -25,13 +25,13 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_user_without_an_avatar_opens_as_null()
+	public async Task NoAvatar_OpensNull()
 	{
 		Assert.Null(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task A_saved_avatar_opens_with_the_bytes_it_was_saved_with()
+	public async Task SavedAvatar_OpensWithBytes()
 	{
 		await _avatars.SaveAsync(Alice, TestStreams.Of("alice"));
 
@@ -40,7 +40,7 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Saving_an_avatar_replaces_the_one_stored_for_the_user()
+	public async Task ExistingAvatar_ReplacedForUser()
 	{
 		await _avatars.SaveAsync(Alice, TestStreams.Of("old and longer"));
 
@@ -52,7 +52,7 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_user_keeps_their_own_avatar_whatever_another_user_saves_or_deletes()
+	public async Task OtherUserChanges_OwnAvatarKept()
 	{
 		await _avatars.SaveAsync(Alice, TestStreams.Of("alice"));
 		await _avatars.SaveAsync(Bob, TestStreams.Of("bob"));
@@ -65,7 +65,7 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_save_that_fails_keeps_the_stored_avatar()
+	public async Task FailedSave_KeepsStoredAvatar()
 	{
 		await _avatars.SaveAsync(Alice, TestStreams.Of("previous"));
 
@@ -78,7 +78,7 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_deleted_avatar_is_no_longer_stored()
+	public async Task DeletedAvatar_NoLongerStored()
 	{
 		await _avatars.SaveAsync(Alice, TestStreams.Of("alice"));
 
@@ -88,7 +88,7 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_a_missing_avatar_does_nothing()
+	public async Task MissingAvatarDelete_DoesNothing()
 	{
 		await _avatars.DeleteAsync(Alice);
 

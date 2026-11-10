@@ -23,13 +23,13 @@ public sealed class DataStorageTests : IDisposable
 	[InlineData("/rooted.txt")]
 	[InlineData("")]
 	[InlineData("  ")]
-	public void Resolve_refuses_a_name_that_is_not_safe(string name)
+	public void UnsafeName_RefusedByResolve(string name)
 	{
 		Assert.ThrowsAny<ArgumentException>(() => Storage.Resolve(name));
 	}
 
 	[Fact]
-	public async Task A_file_placed_by_hand_under_a_name_no_reference_can_refer_to_is_not_listed()
+	public async Task UnreferencableFile_NotListed()
 	{
 		await Storage.SaveAsync("fine.txt", TestStreams.Of("kept"), TestContext.Current.CancellationToken);
 		// Only a path in the extended form lets Windows keep a name that is a device name.
@@ -44,13 +44,13 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public void Resolve_places_a_name_inside_the_directory()
+	public void PlainName_ResolvedInsideDirectory()
 	{
 		Assert.Equal(Path.Combine(Storage.Path, "folder", "file.txt"), Storage.Resolve("folder/file.txt"));
 	}
 
 	[Fact]
-	public async Task SaveAsync_stores_a_new_file_and_creates_its_folders()
+	public async Task NewFile_SavedWithFolders()
 	{
 		await Storage.SaveAsync("folder/deeper/file.txt", TestStreams.Of("hello"),
 			TestContext.Current.CancellationToken);
@@ -59,7 +59,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task SaveAsync_replaces_the_file_already_there()
+	public async Task ExistingFile_Replaced()
 	{
 		await Storage.SaveAsync("file.txt", TestStreams.Of("old content that is longer"),
 			TestContext.Current.CancellationToken);
@@ -70,7 +70,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task SaveAsync_that_fails_keeps_the_previous_file_and_leaves_nothing_else()
+	public async Task FailedSave_KeepsPreviousFile()
 	{
 		await Storage.SaveAsync("file.txt", TestStreams.Of("previous"), TestContext.Current.CancellationToken);
 
@@ -82,7 +82,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task SaveAsync_that_fails_for_a_new_file_stores_nothing()
+	public async Task FailedNewSave_StoresNothing()
 	{
 		await Assert.ThrowsAsync<IOException>(() =>
 			Storage.SaveAsync("file.txt", new TestStreams.Failing(), TestContext.Current.CancellationToken));
@@ -92,7 +92,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task SaveAsync_refuses_an_unsafe_name_and_stores_nothing()
+	public async Task UnsafeName_RefusedStoringNothing()
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
 			Storage.SaveAsync("../escape.txt", TestStreams.Of("data"), TestContext.Current.CancellationToken));
@@ -101,7 +101,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_reader_sees_the_previous_file_until_the_save_completes()
+	public async Task SaveInProgress_PreviousFileVisible()
 	{
 		await Storage.SaveAsync("file.txt", TestStreams.Of("previous"), TestContext.Current.CancellationToken);
 		var gated = new TestStreams.Gated("new ", "content");
@@ -117,7 +117,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_save_in_progress_writes_to_a_temporary_file_named_after_none_of_the_name()
+	public async Task SaveInProgress_WritesTemporaryFile()
 	{
 		var gated = new TestStreams.Gated("part ", "rest");
 
@@ -137,7 +137,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public void Temporary_names_of_one_target_differ_and_lie_in_the_directory_of_the_target()
+	public void TemporaryNames_UniquePerTarget()
 	{
 		var target = Storage.Resolve("folder/target.txt");
 
@@ -149,7 +149,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Keys_lists_the_stored_files_by_their_names_with_slashes_between_folders()
+	public async Task Keys_ListStoredPaths()
 	{
 		await Storage.SaveAsync("a.txt", TestStreams.Of("1"), TestContext.Current.CancellationToken);
 		await Storage.SaveAsync("folder/b.txt", TestStreams.Of("2"), TestContext.Current.CancellationToken);
@@ -161,7 +161,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public void Reading_a_directory_that_does_not_exist_finds_no_files()
+	public void MissingDirectory_ReadsNoFiles()
 	{
 		var missing = new DataStorage(_data.Root, "Missing");
 
@@ -171,7 +171,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_stored_file_is_found_by_name_and_an_unsafe_or_missing_name_is_not()
+	public async Task KnownOrUnsafe_OnlyKnownFound()
 	{
 		await Storage.SaveAsync("file.txt", TestStreams.Of("12345"), TestContext.Current.CancellationToken);
 
@@ -186,7 +186,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Open_gives_a_read_only_stream_of_the_file()
+	public async Task Open_ReadOnlyStream()
 	{
 		await Storage.SaveAsync("file.txt", TestStreams.Of("content"), TestContext.Current.CancellationToken);
 
@@ -201,7 +201,7 @@ public sealed class DataStorageTests : IDisposable
 	[InlineData("missing.txt")]
 	[InlineData("../file.txt")]
 	[InlineData("")]
-	public async Task Open_gives_null_for_a_missing_or_unsafe_name(string name)
+	public async Task MissingOrUnsafe_OpenGivesNull(string name)
 	{
 		await File.WriteAllTextAsync(Path.Combine(_data.Root, "file.txt"), "outside",
 			TestContext.Current.CancellationToken);
@@ -210,7 +210,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Move_renames_a_file_and_keeps_its_content()
+	public async Task Move_RenamesKeepingContent()
 	{
 		await Storage.SaveAsync("from.txt", TestStreams.Of("data"), TestContext.Current.CancellationToken);
 
@@ -221,14 +221,14 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public void Move_of_a_missing_file_does_nothing()
+	public void MissingFileMove_DoesNothing()
 	{
 		Assert.False(Storage.Move("missing.txt", "to.txt"));
 		Assert.Empty(Storage.Keys);
 	}
 
 	[Fact]
-	public async Task Move_onto_a_taken_name_changes_neither_file()
+	public async Task TakenNameMove_ChangesNeitherFile()
 	{
 		await Storage.SaveAsync("from.txt", TestStreams.Of("from"), TestContext.Current.CancellationToken);
 		await Storage.SaveAsync("to.txt", TestStreams.Of("to"), TestContext.Current.CancellationToken);
@@ -240,7 +240,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Move_refuses_an_unsafe_new_name_and_keeps_the_file()
+	public async Task UnsafeMoveName_RefusedKeepingFile()
 	{
 		await Storage.SaveAsync("from.txt", TestStreams.Of("data"), TestContext.Current.CancellationToken);
 
@@ -251,7 +251,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Delete_removes_the_file_and_only_that_file()
+	public async Task Delete_RemovesOnlyFile()
 	{
 		await Storage.SaveAsync("gone.txt", TestStreams.Of("1"), TestContext.Current.CancellationToken);
 		await Storage.SaveAsync("kept.txt", TestStreams.Of("2"), TestContext.Current.CancellationToken);
@@ -264,7 +264,7 @@ public sealed class DataStorageTests : IDisposable
 	[Theory]
 	[InlineData("missing.txt")]
 	[InlineData("../outside.txt")]
-	public async Task Delete_of_a_missing_or_unsafe_name_does_nothing(string name)
+	public async Task MissingOrUnsafe_DeleteDoesNothing(string name)
 	{
 		await File.WriteAllTextAsync(Path.Combine(_data.Root, "outside.txt"), "outside",
 			TestContext.Current.CancellationToken);
@@ -275,7 +275,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task DeleteAllExcept_keeps_only_the_named_file()
+	public async Task DeleteAllExcept_KeepsNamedFile()
 	{
 		await Storage.SaveAsync("keep.txt", TestStreams.Of("1"), TestContext.Current.CancellationToken);
 		await Storage.SaveAsync("other.txt", TestStreams.Of("2"), TestContext.Current.CancellationToken);
@@ -287,7 +287,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task DeleteAllExcept_nothing_deletes_every_file()
+	public async Task EmptyKeepSet_DeletesEveryFile()
 	{
 		await Storage.SaveAsync("a.txt", TestStreams.Of("1"), TestContext.Current.CancellationToken);
 		await Storage.SaveAsync("folder/b.txt", TestStreams.Of("2"), TestContext.Current.CancellationToken);
@@ -298,7 +298,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Search_lists_the_names_of_the_files_directly_in_the_directory_that_match()
+	public async Task Search_ListsMatchingNames()
 	{
 		await Storage.SaveAsync("a.txt", TestStreams.Of("1"), TestContext.Current.CancellationToken);
 		await Storage.SaveAsync("b.log", TestStreams.Of("2"), TestContext.Current.CancellationToken);
@@ -308,7 +308,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public void A_reference_to_a_file_names_the_directory_and_gives_the_name_back()
+	public void FileReference_DirectoryAndName()
 	{
 		var storage = _data.Paths.MenuBanners;
 
@@ -320,7 +320,7 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
-	public void A_reference_to_another_directory_or_to_an_address_names_no_file()
+	public void ForeignOrAddress_FindsNoFile()
 	{
 		var storage = _data.Paths.MenuBanners;
 

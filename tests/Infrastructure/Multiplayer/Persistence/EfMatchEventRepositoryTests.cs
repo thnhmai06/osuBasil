@@ -20,7 +20,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	private IMatchEventRepository Events => Get<IMatchEventRepository>();
 
 	[Fact]
-	public async Task A_listing_reads_no_more_events_than_the_ceiling()
+	public async Task Listing_RespectsEventCeiling()
 	{
 		var match = await CreateMatchAsync("busy_event_match");
 		await StoredRows.InsertAsync(ConnectionString, "match_events",
@@ -37,7 +37,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_recorded_event_is_stored()
+	public async Task RecordedEvent_Stored()
 	{
 		var match = await CreateMatchAsync("event_match");
 		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First));
@@ -52,7 +52,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task An_event_of_a_match_that_is_not_stored_is_refused_to_the_caller()
+	public async Task UnknownMatchEvent_Refused()
 	{
 		var match = await CreateMatchAsync("unstored_event_match");
 		var unstored = new MatchRecord { Id = match.Id + 1000, Value = match.Value };
@@ -62,7 +62,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_events_of_a_match_are_listed_in_the_order_they_happened()
+	public async Task MatchEvents_ListedInOrder()
 	{
 		var match = await CreateMatchAsync("ordered_event_match");
 		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Closed, Third));
@@ -77,7 +77,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_recorded_event_names_the_account_that_performed_it()
+	public async Task RecordedEvent_NamesPerformer()
 	{
 		var match = await CreateMatchAsync("actor_event_match");
 		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_actor" });
@@ -90,7 +90,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_recorded_event_names_the_account_it_affected()
+	public async Task RecordedEvent_NamesTarget()
 	{
 		var match = await CreateMatchAsync("target_event_match");
 		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_target" });
@@ -103,7 +103,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_recorded_event_keeps_its_detail()
+	public async Task RecordedEvent_KeepsDetail()
 	{
 		var match = await CreateMatchAsync("detailed_event_match");
 		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.RefAdded, First, detail: "A referee."));
@@ -115,7 +115,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_events_of_another_match_are_left_out()
+	public async Task OtherMatchEvents_LeftOut()
 	{
 		var match = await CreateMatchAsync("own_event_match");
 		var other = await CreateMatchAsync("other_event_match");
@@ -129,7 +129,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_match_without_an_event_lists_none()
+	public async Task MatchWithoutEvents_ListsNone()
 	{
 		var match = await CreateMatchAsync("empty_event_match");
 

@@ -33,7 +33,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	private ISessionRepository Sessions => Get<ISessionRepository>();
 
 	[Fact]
-	public async Task A_recorded_session_is_stored()
+	public async Task RecordedSession_Stored()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" });
@@ -72,7 +72,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_session_without_an_osu_client_is_stored_without_client_data()
+	public async Task NoClientSession_StoredWithoutData()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" });
@@ -97,7 +97,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_session_list_is_ordered_by_start_time_newest_first()
+	public async Task SessionList_NewestFirst()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" });
@@ -117,7 +117,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_session_list_returns_the_requested_page()
+	public async Task SessionList_ReturnsRequestedPage()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" });
@@ -133,7 +133,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task An_ended_session_persists_its_last_activity_and_end_reason()
+	public async Task EndedSession_PersistsActivityReason()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "closed_session" });
@@ -159,7 +159,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_stored_osu_session_is_read_back_with_its_client()
+	public async Task StoredOsuSession_ReadWithClient()
 	{
 		var user = await UserAsync();
 		await RecordAsync(user, First, FirstId);
@@ -177,7 +177,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_stored_token_session_is_read_back_with_its_credential()
+	public async Task StoredTokenSession_ReadWithCredential()
 	{
 		var user = await UserAsync();
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
@@ -214,7 +214,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_token_hash_that_another_session_holds_is_refused()
+	public async Task DuplicateTokenHash_Refused()
 	{
 		var user = await UserAsync();
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
@@ -228,7 +228,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_token_finds_its_active_unexpired_session_of_its_kind()
+	public async Task Token_FindsActiveUnexpired()
 	{
 		var user = await UserAsync();
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
@@ -244,7 +244,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_token_finds_nothing_once_it_expired_ended_or_is_of_another_kind_or_hash()
+	public async Task ExpiredEndedToken_FindsNothing()
 	{
 		var user = await UserAsync();
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Second);
@@ -259,7 +259,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_key_without_an_expiry_never_expires()
+	public async Task KeyWithoutExpiry_NeverExpires()
 	{
 		var user = await UserAsync();
 		await RecordTokenAsync(user, FirstId, SessionType.Irc, Hash);
@@ -269,7 +269,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task Ending_sessions_ends_the_unended_ones_of_the_user_and_spares_the_one_kept()
+	public async Task EndUserSessions_SparesKeptOne()
 	{
 		var user = await UserAsync();
 		var other = await UserAsync("other_user");
@@ -294,7 +294,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task Ending_one_session_leaves_the_others()
+	public async Task EndOneSession_OthersLeft()
 	{
 		var user = await UserAsync();
 		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
@@ -308,7 +308,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_session_of_another_user_is_not_found()
+	public async Task OtherUsersSession_NotFound()
 	{
 		var user = await UserAsync();
 		var other = await UserAsync("other_user");
@@ -318,7 +318,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task Deleting_ended_sessions_keeps_the_active_ones()
+	public async Task DeleteEndedSessions_KeepsActive()
 	{
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
@@ -337,7 +337,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task Deleting_ended_sessions_keeps_the_ones_that_ended_after_the_cutoff()
+	public async Task DeleteEndedSessions_KeepsAfterCutoff()
 	{
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
@@ -349,7 +349,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_session_list_filters_by_state_and_kind()
+	public async Task SessionList_StateAndKind()
 	{
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
@@ -389,7 +389,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	/// <summary>Waits until the given number of sessions is stored.</summary>
 	/// <param name="count">How many sessions to wait for.</param>
 	[Fact]
-	public async Task A_recorded_session_is_in_the_database_when_the_write_returns()
+	public async Task RecordedSession_PresentOnReturn()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" });
@@ -402,7 +402,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task Storing_a_session_twice_keeps_one_session_with_the_latest_state()
+	public async Task StoredTwice_LatestStateKept()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "login_user" });
@@ -418,7 +418,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_session_of_an_account_that_does_not_exist_is_refused_to_the_caller()
+	public async Task MissingAccountSession_Refused()
 	{
 		var ghost = new UserRecord { Id = 9999, Value = new UserData { Name = "ghost" } };
 

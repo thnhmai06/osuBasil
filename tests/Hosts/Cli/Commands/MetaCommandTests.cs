@@ -89,7 +89,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Help_ListsTheCommands_AndOneCommandShowsItsSyntaxAndRoute()
+	public async Task Help_CommandsAndSyntax()
 	{
 		var (code, all) = await fixture.RunAsync("help");
 		var (_, one) = await fixture.RunAsync("help users");
@@ -103,7 +103,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Status_ShowsTheVersionUptimeAndCounts()
+	public async Task Status_VersionUptimeCounts()
 	{
 		var (code, text) = await fixture.RunAsync("status");
 
@@ -116,7 +116,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Status_TheBotIsOnline_CountsNoneOfItsConnectionsAsClients()
+	public async Task BotOnline_NoClientConnections()
 	{
 		var bot = fixture.Host.Services.GetRequiredService<UserRegistry>().Online
 			.Single(pair => pair.Key.IsBasilBot()).Value;
@@ -129,7 +129,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Shutdown_WithNow_AsksNoQuestionAndRequestsTheShutdown()
+	public async Task ShutdownWithNow_NoQuestion()
 	{
 		var (runner, control) = RunnerWithControl();
 
@@ -151,7 +151,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Shutdown_AsksForConfirmation_AndDecliningEndsWithCode4WithoutShuttingDown()
+	public async Task ShutdownDecline_Code4NoStop()
 	{
 		var (runner, control) = RunnerWithControl();
 		string? asked = null;
@@ -170,7 +170,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Shutdown_Confirmed_ShutsDown()
+	public async Task ShutdownConfirmed_ShutsDown()
 	{
 		var (runner, control) = RunnerWithControl();
 
@@ -182,7 +182,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Shutdown_WhereNobodyCanBeAsked_NeedsNow()
+	public async Task ShutdownNobodyAsked_NeedsNow()
 	{
 		var (runner, control) = RunnerWithControl();
 
@@ -194,7 +194,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_command_that_needs_the_server_is_refused_with_code3_when_it_is_not_running()
+	public async Task ServerNeeded_RefusedWithCode3()
 	{
 		var (runner, _) = RunnerWithControl();
 
@@ -205,7 +205,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Theme_IsOnlyForTheDashboard_ListsAndChangesAndRefusesUnknownNames()
+	public async Task Theme_DashboardOnlyRefused()
 	{
 		var (outside, _) = await fixture.RunAsync("theme");
 		var dashboard = new CommandSession(true);
@@ -226,7 +226,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_command_is_logged_with_its_passwords_hidden()
+	public async Task LoggedCommand_PasswordsHidden()
 	{
 		var log = new CapturedLog();
 		var (runner, _) = RunnerWithControl(log);
@@ -240,7 +240,7 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task An_unknown_command_is_a_usage_error()
+	public async Task UnknownCommand_UsageError()
 	{
 		var (code, text) = await fixture.RunAsync("frobnicate now");
 

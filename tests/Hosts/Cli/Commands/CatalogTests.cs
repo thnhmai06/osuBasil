@@ -13,13 +13,13 @@ public sealed class CatalogTests
 		new[] { "users", "create", "--username", "two words", "--password", "x" })]
 	[InlineData("  a   b  ", new[] { "a", "b" })]
 	[InlineData("say \"a \\\"quoted\\\" word\"", new[] { "say", "a \"quoted\" word" })]
-	public void Split_follows_the_quoting_rules(string line, string[] expected)
+	public void Split_FollowsQuotingRules(string line, string[] expected)
 	{
 		Assert.Equal(expected, CommandCatalog.Split(line));
 	}
 
 	[Fact]
-	public void A_literal_word_beats_a_value_word()
+	public void LiteralWord_BeatsValueWord()
 	{
 		var (parsed, _) = Catalog.Parse(["users", "create", "--username", "a", "--password", "b"]);
 
@@ -27,7 +27,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void A_number_after_users_is_the_id_of_an_account()
+	public void NumberAfterUsers_AccountId()
 	{
 		var (parsed, _) = Catalog.Parse(["users", "42"]);
 
@@ -36,7 +36,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void A_word_that_is_not_a_number_is_not_an_account_id()
+	public void NonNumericWord_NotAccountId()
 	{
 		var (parsed, failure) = Catalog.Parse(["users", "nobody"]);
 
@@ -45,7 +45,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void Options_are_read_with_a_space_or_an_equals_sign()
+	public void Options_SpaceOrEquals()
 	{
 		var (parsed, _) = Catalog.Parse(["users", "list", "--query=abc", "--limit", "5"]);
 
@@ -54,7 +54,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void A_boolean_option_without_a_value_means_true_and_does_not_eat_the_next_option()
+	public void BooleanWithoutValue_MeansTrue()
 	{
 		var (parsed, _) = Catalog.Parse(["channels", "create", "--name", "#a", "--autoJoin", "--visible", "false"]);
 
@@ -63,7 +63,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void The_short_names_of_users_create_work()
+	public void UsersShortNames_CreateWork()
 	{
 		var (parsed, _) = Catalog.Parse(["users", "create", "-u", "name", "-p", "secret", "--admin"]);
 
@@ -73,7 +73,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void A_missing_required_option_is_named()
+	public void MissingRequiredOption_Named()
 	{
 		var (parsed, failure) = Catalog.Parse(["users", "create", "--username", "a"]);
 
@@ -82,7 +82,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void An_unknown_option_is_refused()
+	public void UnknownOption_Refused()
 	{
 		var (parsed, failure) = Catalog.Parse(["users", "list", "--bogus", "1"]);
 
@@ -91,7 +91,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void An_option_without_a_value_is_refused()
+	public void ValuelessOption_Refused()
 	{
 		var (parsed, _) = Catalog.Parse(["users", "list", "--query"]);
 
@@ -99,7 +99,7 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void Settings_set_takes_any_dotted_field()
+	public void SettingsSet_AnyDottedField()
 	{
 		var (parsed, _) = Catalog.Parse(["settings", "rateLimits", "set", "--chat.count", "5"]);
 
@@ -107,20 +107,20 @@ public sealed class CatalogTests
 	}
 
 	[Fact]
-	public void A_session_id_must_be_a_number()
+	public void SessionId_MustBeNumber()
 	{
 		Assert.NotNull(Catalog.Parse(["users", "1", "sessions", "12345"]).Parsed);
 		Assert.Null(Catalog.Parse(["users", "1", "sessions", "x"]).Parsed);
 	}
 
 	[Fact]
-	public void Every_pattern_is_unique()
+	public void Patterns_Unique()
 	{
 		Assert.Equal(Catalog.All.Count, Catalog.All.Select(command => command.Pattern).Distinct().Count());
 	}
 
 	[Fact]
-	public void Every_flag_option_that_the_api_names_is_in_camel_case()
+	public void FlagOptions_CamelCase()
 	{
 		Assert.All(Catalog.All.SelectMany(command => command.Options),
 			option => Assert.True(char.IsLower(option.Name[0]), option.Name));
@@ -131,14 +131,14 @@ public sealed class CatalogTests
 	[InlineData("users 3 set --password=hunter2 --away x", "users 3 set --password=*** --away x")]
 	[InlineData("users create -u a -p hunter2", "users create -u a -p ***")]
 	[InlineData("rooms 1 password --password hunter2", "rooms 1 password --password ***")]
-	public void Secrets_are_hidden_wherever_a_command_is_recorded(string line, string expected)
+	public void RecordedCommands_SecretsHidden(string line, string expected)
 	{
 		Assert.Equal(expected, Redactor.Redact(Catalog, line));
 		Assert.DoesNotContain("hunter2", Redactor.Redact(Catalog, line));
 	}
 
 	[Fact]
-	public void A_word_that_looks_like_a_secret_value_but_is_a_command_word_is_kept()
+	public void SecretValueLookalike_Kept()
 	{
 		Assert.Equal("users list --query password", Redactor.Redact(Catalog, "users list --query password"));
 	}

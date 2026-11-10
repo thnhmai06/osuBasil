@@ -37,7 +37,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_WithRoomToSpare_AcceptsTheCommandAndRunsIt()
+	public async Task RoomToSpare_AcceptsAndRuns()
 	{
 		var ran = NewSignal();
 
@@ -48,7 +48,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Commands_RunInTheOrderTheyWereEnqueued()
+	public async Task Commands_EnqueueOrder()
 	{
 		List<int> order = [];
 		var last = NewSignal();
@@ -66,7 +66,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_WhenTheUserAlreadyHasTheMostCommandsWaiting_DropsTheNextOne()
+	public async Task UserAtLimit_DropsNext()
 	{
 		await FillUserAsync(1);
 
@@ -76,7 +76,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_ADroppedCommand_NeverRuns()
+	public async Task DroppedCommand_NeverRuns()
 	{
 		await FillUserAsync(1);
 		var droppedRan = false;
@@ -93,7 +93,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_WhenOneUserIsAtTheLimit_StillAcceptsAnotherUsersCommand()
+	public async Task UserAtLimit_OthersAccepted()
 	{
 		await FillUserAsync(1);
 
@@ -103,7 +103,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_AfterTheUsersCommandsFinished_AcceptsTheirNextCommand()
+	public async Task CommandsFinished_NextAccepted()
 	{
 		await FillUserAsync(1);
 		_gate.SetResult();
@@ -117,7 +117,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Commands_AfterOneThatFails_StillRun()
+	public async Task AfterFailedCommand_RestStillRun()
 	{
 		var ran = NewSignal();
 
@@ -128,7 +128,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_AfterTheUsersCommandFailed_AcceptsTheirNextCommands()
+	public async Task AfterFailedCommand_NextAccepted()
 	{
 		await FillUserAsync(1, _ => Task.FromException(new InvalidOperationException()));
 		_gate.SetResult();
@@ -142,7 +142,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_WhenTheQueueIsFull_DropsTheNextCommandEvenFromAnotherUser()
+	public async Task FullQueue_DropsAnyCommand()
 	{
 		await BlockWorkerAsync(0);
 		for (var user = 1; user <= CommandWorker.QueueCapacity; user++)
@@ -154,7 +154,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Enqueue_WhenTheQueueIsFull_AcceptsCommandsAgainOnceTheyRan()
+	public async Task FullQueue_AcceptsAfterDrain()
 	{
 		await BlockWorkerAsync(0);
 		var lastRan = NewSignal();
@@ -173,7 +173,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task A_command_that_runs_for_the_whole_timeout_is_cancelled()
+	public async Task CommandOutlastingTimeout_Cancelled()
 	{
 		var started = NewSignal();
 		var cancelled = NewSignal();
@@ -197,7 +197,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task A_command_is_not_cancelled_before_the_timeout()
+	public async Task CommandBeforeTimeout_NotCancelled()
 	{
 		var started = NewSignal();
 		CancellationToken seen = default;
@@ -215,7 +215,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task The_commands_after_one_that_timed_out_still_run()
+	public async Task AfterTimeout_RestStillRun()
 	{
 		var started = NewSignal();
 		Assert.True(_worker.Enqueue(1, async ct =>
@@ -233,7 +233,7 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task A_user_whose_command_timed_out_can_enqueue_again()
+	public async Task AfterTimeout_UserEnqueuesAgain()
 	{
 		var started = NewSignal();
 		Assert.True(_worker.Enqueue(1, async ct =>

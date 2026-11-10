@@ -30,7 +30,7 @@ public sealed class ReplayFileTests
 	}
 
 	[Fact]
-	public void Build_writes_the_header_the_frames_and_the_score_id_in_the_order_of_the_format()
+	public void Build_KeepsFieldOrder()
 	{
 		var file = Build(Score(), "cookiezi", Version, Frames);
 
@@ -38,7 +38,7 @@ public sealed class ReplayFileTests
 	}
 
 	[Fact]
-	public void Build_adds_the_extra_value_of_target_practice_after_the_score_id()
+	public void TargetPracticeBuild_AppendsExtraValue()
 	{
 		var plain = Build(Score(), "cookiezi", Version, Frames);
 
@@ -49,7 +49,7 @@ public sealed class ReplayFileTests
 	}
 
 	[Fact]
-	public void Build_keeps_a_hit_count_beyond_sixteen_bits_at_the_largest_value()
+	public void LargeHitCount_SurvivesMaxValue()
 	{
 		var counts = new HitCounts(70_000, 5, 3, 100, 2, 1);
 
@@ -59,7 +59,7 @@ public sealed class ReplayFileTests
 	}
 
 	[Fact]
-	public void TryFindFrames_finds_the_frames_a_built_file_carries()
+	public void BuiltFile_FramesFound()
 	{
 		var file = Build(Score(), "cookiezi", Version, Frames);
 
@@ -68,7 +68,7 @@ public sealed class ReplayFileTests
 	}
 
 	[Fact]
-	public void TryFindFrames_finds_the_frames_of_a_replay_with_no_player_and_no_beatmap()
+	public void PlayerlessReplay_FramesFound()
 	{
 		var score = new ScoreRecord
 		{
@@ -82,13 +82,13 @@ public sealed class ReplayFileTests
 	}
 
 	[Fact]
-	public void TryFindFrames_refuses_bytes_that_are_only_frames()
+	public void FramesOnlyBytes_Refused()
 	{
 		Assert.False(ReplayFile.TryFindFrames(new MemoryStream(Frames), out _, out _));
 	}
 
 	[Fact]
-	public void TryFindFrames_refuses_a_file_cut_inside_its_header_or_its_frames()
+	public void CutReplayFile_Refused()
 	{
 		var file = Build(Score(), "cookiezi", Version, Frames);
 

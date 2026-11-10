@@ -26,7 +26,7 @@ public sealed class HostLabelsTests
 	}
 
 	[Fact]
-	public void A_thousand_random_hosts_produce_at_most_the_known_labels_and_other()
+	public void ManyRandomHosts_KnownLabelsOnly()
 	{
 		var random = new Random(1);
 		var labels = Enumerable.Range(0, 1000).Select(_ =>

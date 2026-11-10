@@ -17,7 +17,7 @@ public sealed class FileBeatmapsetEntryReaderTests : IDisposable
 	}
 
 	[Fact]
-	public void A_folder_that_vanishes_while_it_is_read_reads_as_a_folder_that_does_not_exist()
+	public void VanishingFolder_ReadsAsMissing()
 	{
 		Directory.CreateDirectory(Path.Combine(Sets, "7 Artist - Title"));
 
@@ -29,7 +29,7 @@ public sealed class FileBeatmapsetEntryReaderTests : IDisposable
 	}
 
 	[Fact]
-	public void An_archive_that_vanishes_while_it_is_read_is_no_entry()
+	public void VanishingArchive_NoEntry()
 	{
 		File.WriteAllBytes(Path.Combine(Sets, "7 Artist - Title.osz"), [1]);
 

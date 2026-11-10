@@ -28,7 +28,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_reply_without_a_replies_file_has_its_default_wording_with_the_arguments_filled_in()
+	public void NoRepliesFile_DefaultWordingFilled()
 	{
 		var catalog = NewCatalog();
 
@@ -36,7 +36,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_reply_without_arguments_needs_none()
+	public void ReplyWithoutArguments_NeedsNone()
 	{
 		var catalog = NewCatalog();
 
@@ -47,7 +47,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	[InlineData(1, "1 map found")]
 	[InlineData(2, "2 maps found")]
 	[InlineData(0, "0 maps found")]
-	public void A_plural_picks_the_form_for_the_number(int count, string expected)
+	public void Plural_PicksNumberForm(int count, string expected)
 	{
 		var catalog = NewCatalog();
 
@@ -55,7 +55,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_reply_cannot_be_said_without_an_argument_it_declares()
+	public void MissingDeclaredArgument_CannotSay()
 	{
 		var catalog = NewCatalog();
 
@@ -63,7 +63,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void Arguments_can_be_given_as_a_dictionary()
+	public void DictionaryArguments_Accepted()
 	{
 		var catalog = NewCatalog();
 
@@ -73,7 +73,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void Loading_without_a_replies_file_writes_one_with_the_default_wording_of_every_reply()
+	public void NoRepliesFile_WritesEveryDefault()
 	{
 		var catalog = NewCatalog();
 
@@ -86,7 +86,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void The_file_written_at_the_first_load_leaves_every_reply_with_its_default_wording()
+	public void FirstWrittenFile_EveryReplyDefault()
 	{
 		var catalog = NewCatalog();
 
@@ -97,7 +97,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void Loading_keeps_a_replies_file_that_already_exists()
+	public void Loading_KeepsExistingFile()
 	{
 		WriteFile(new Dictionary<string, string> { [Plain.Key] = "Not in a match." });
 		var catalog = NewCatalog();
@@ -108,7 +108,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_in_the_file_replaces_the_default_wording()
+	public void FileText_ReplacesDefault()
 	{
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "{name} (match {room}) is open" });
 		var catalog = NewCatalog();
@@ -119,7 +119,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_reply_the_file_does_not_mention_keeps_its_default_wording()
+	public void UnmentionedReply_KeepsDefault()
 	{
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "{name} is open" });
 		var catalog = NewCatalog();
@@ -130,7 +130,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_may_leave_out_arguments_of_its_reply()
+	public void Text_MayOmitArguments()
 	{
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "A match is open" });
 		var catalog = NewCatalog();
@@ -141,7 +141,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_may_use_plurals()
+	public void Text_MayUsePlurals()
 	{
 		WriteFile(new Dictionary<string, string>
 			{ [Count.Key] = "{count, plural, =0 {nothing} one {a map} other {# maps}}" });
@@ -154,7 +154,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_for_a_key_that_is_no_reply_is_ignored()
+	public void UnknownKeyText_Ignored()
 	{
 		WriteFile(new Dictionary<string, string> { ["test.unknown"] = "hello", [Plain.Key] = "Not in a match." });
 		var catalog = NewCatalog();
@@ -165,7 +165,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_that_uses_an_argument_its_reply_does_not_declare_leaves_the_default_wording()
+	public void UndeclaredArgumentText_KeepsDefault()
 	{
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "Joined {server}" });
 		var catalog = NewCatalog();
@@ -176,7 +176,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_that_cannot_be_used_is_reported_when_the_file_is_read_not_when_it_is_first_said()
+	public void UnusableText_ReportedAtLoad()
 	{
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "Joined {server}" });
 		var logger = new CapturingLogger<ReplyCatalog>();
@@ -190,7 +190,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_file_that_cannot_be_parsed_is_reported()
+	public void UnparsableFile_Reported()
 	{
 		WriteFile(new Dictionary<string, string>());
 		var logger = new CapturingLogger<ReplyCatalog>();
@@ -204,7 +204,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_that_is_not_valid_message_format_leaves_the_default_wording()
+	public void InvalidMessageFormat_KeepsDefault()
 	{
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "Joined {room" });
 		var catalog = NewCatalog();
@@ -215,7 +215,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void An_invalid_text_does_not_stop_the_valid_texts_of_the_same_file()
+	public void InvalidText_OtherTextsApply()
 	{
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "Joined {room", [Plain.Key] = "Not in a match." });
 		var catalog = NewCatalog();
@@ -226,7 +226,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_value_that_is_not_a_string_leaves_the_default_wording()
+	public void NonStringValue_KeepsDefault()
 	{
 		Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
 		File.WriteAllText(FilePath, """{ "test.plain": 5 }""");
@@ -238,7 +238,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_text_that_fails_when_it_is_filled_in_says_the_default_wording_instead()
+	public void FillInFailure_SaysDefault()
 	{
 		// Valid with the numbers the file is checked with, but the room is given as text.
 		WriteFile(new Dictionary<string, string> { [Joined.Key] = "{room, plural, one {# room} other {# rooms}}" });
@@ -251,7 +251,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void Reloading_takes_the_new_wording_of_the_file()
+	public void Reloading_TakesNewWording()
 	{
 		var catalog = NewCatalog();
 		catalog.Load();
@@ -264,7 +264,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void Reloading_a_file_without_a_text_returns_that_reply_to_its_default_wording()
+	public void ReloadWithoutText_ReturnsDefault()
 	{
 		WriteFile(new Dictionary<string, string> { [Plain.Key] = "Not in a match." });
 		var catalog = NewCatalog();
@@ -277,7 +277,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_file_that_cannot_be_parsed_leaves_the_wording_that_was_in_use()
+	public void UnparsableReload_KeepsWording()
 	{
 		WriteFile(new Dictionary<string, string> { [Plain.Key] = "Not in a match." });
 		var catalog = NewCatalog();
@@ -291,7 +291,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_file_that_holds_no_object_leaves_the_wording_that_was_in_use()
+	public void EmptyObjectFile_KeepsWording()
 	{
 		WriteFile(new Dictionary<string, string> { [Plain.Key] = "Not in a match." });
 		var catalog = NewCatalog();
@@ -305,7 +305,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_file_that_has_been_deleted_leaves_the_wording_that_was_in_use()
+	public void DeletedFile_KeepsWording()
 	{
 		WriteFile(new Dictionary<string, string> { [Plain.Key] = "Not in a match." });
 		var catalog = NewCatalog();
@@ -319,7 +319,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void A_replies_file_in_a_folder_that_cannot_be_written_leaves_the_default_wording()
+	public void UnwritableFolder_KeepsDefault()
 	{
 		var blocked = Path.Combine(_directory, "blocked");
 		Directory.CreateDirectory(_directory);
@@ -334,7 +334,7 @@ public sealed class ReplyCatalogTests : IDisposable
 	}
 
 	[Fact]
-	public void An_apostrophe_in_a_text_is_said_as_it_is_written()
+	public void ApostropheText_SaidAsWritten()
 	{
 		WriteFile(new Dictionary<string, string> { [Plain.Key] = "You aren't in a match, and it's fine." });
 		var catalog = NewCatalog();

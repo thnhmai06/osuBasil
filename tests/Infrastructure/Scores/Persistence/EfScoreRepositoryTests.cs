@@ -22,7 +22,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	private IScoreRepository Scores => Get<IScoreRepository>();
 
 	[Fact]
-	public async Task A_created_score_is_given_an_id_by_the_store()
+	public async Task CreatedScore_GetsStoreId()
 	{
 		var player = await CreatePlayerAsync("scored_player");
 		var score = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -31,7 +31,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Created_scores_are_given_increasing_ids()
+	public async Task CreatedScores_GetIncreasingIds()
 	{
 		var player = await CreatePlayerAsync("scored_twice");
 		var first = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -41,7 +41,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_created_score_is_stored()
+	public async Task CreatedScore_Stored()
 	{
 		var player = await CreatePlayerAsync("stored_score");
 		var score = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1234, First);
@@ -56,7 +56,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_score_and_its_play_are_stored_together()
+	public async Task ScoreAndPlay_StoredTogether()
 	{
 		var player = await CreatePlayerAsync("played_once");
 
@@ -68,7 +68,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_score_is_not_stored_when_its_play_cannot_be_added_to_the_statistics()
+	public async Task PlayNotCounted_ScoreNotStored()
 	{
 		var player = await CreatePlayerAsync("at_the_limit");
 		var data = StoredScores.Data(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -84,7 +84,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Scores_are_got_by_their_ids_in_ascending_order_and_unknown_ids_are_left_out()
+	public async Task ScoresById_AscendingSkippingUnknown()
 	{
 		var player = await CreatePlayerAsync("got_many");
 		var first = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -96,7 +96,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Getting_many_scores_reads_no_more_than_the_ceiling()
+	public async Task ManyScores_RespectsCeiling()
 	{
 		var player = await CreatePlayerAsync("got_ceiling");
 		var original = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -117,7 +117,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_score_whose_checksum_another_score_has_is_refused()
+	public async Task DuplicateChecksumScore_Refused()
 	{
 		var player = await CreatePlayerAsync("checksum_player");
 		var checksum = StoredScores.Hash("checksum_one");
@@ -128,7 +128,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_score_whose_checksum_a_stored_score_has_is_refused()
+	public async Task StoredChecksumScore_Refused()
 	{
 		var player = await CreatePlayerAsync("stored_checksum");
 		var checksum = StoredScores.Hash("checksum_two");
@@ -141,7 +141,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_score_is_found_by_its_id()
+	public async Task ScoreById_Found()
 	{
 		var player = await CreatePlayerAsync("found_score");
 		var score = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -153,13 +153,13 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_score_that_was_never_created_is_not_found()
+	public async Task UncreatedScore_NotFound()
 	{
 		Assert.Null(await Scores.GetAsync(987654, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task A_listing_shows_the_scores_of_one_player()
+	public async Task Listing_OnePlayerScores()
 	{
 		var player = await CreatePlayerAsync("listed_player");
 		var other = await CreatePlayerAsync("other_player");
@@ -173,7 +173,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_shows_the_scores_of_one_beatmap()
+	public async Task Listing_OneBeatmapScores()
 	{
 		var player = await CreatePlayerAsync("hash_player");
 		var hash = StoredScores.Hash("listed_beatmap");
@@ -187,7 +187,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_shows_the_scores_of_one_mod_combination()
+	public async Task Listing_OneModScores()
 	{
 		var player = await CreatePlayerAsync("mods_player");
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First, mods: GameMods.Hidden);
@@ -200,7 +200,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_shows_the_scores_of_the_named_players()
+	public async Task Listing_NamedPlayerScores()
 	{
 		var player = await CreatePlayerAsync("named_player");
 		var other = await CreatePlayerAsync("other_named");
@@ -214,7 +214,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_best_per_player_listing_keeps_the_highest_score_of_a_player()
+	public async Task BestPerPlayer_KeepsHighestScore()
 	{
 		var player = await CreatePlayerAsync("best_player");
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -227,7 +227,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_best_per_player_listing_keeps_the_earlier_play_of_a_tie()
+	public async Task BestPerPlayer_KeepsEarlierPlay()
 	{
 		var player = await CreatePlayerAsync("tied_player");
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -240,7 +240,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_best_per_player_listing_keeps_the_lower_id_of_a_tie()
+	public async Task BestPerPlayer_KeepsLowerId()
 	{
 		var player = await CreatePlayerAsync("same_moment");
 		var first = await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -253,7 +253,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_beatmap_listing_is_ordered_by_the_total_score()
+	public async Task BeatmapListing_ByTotalScore()
 	{
 		var player = await CreatePlayerAsync("ordered_player");
 		var hash = StoredScores.Hash("ordered_beatmap");
@@ -267,7 +267,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_without_a_beatmap_is_ordered_by_the_moment()
+	public async Task NoBeatmapListing_OrderedByMoment()
 	{
 		var player = await CreatePlayerAsync("moment_player");
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -280,7 +280,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_returns_the_requested_part()
+	public async Task Listing_ReturnsRequestedPage()
 	{
 		var player = await CreatePlayerAsync("paged_player");
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -295,7 +295,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_tells_whether_more_scores_follow_the_page()
+	public async Task Listing_ReportsMoreScores()
 	{
 		var player = await CreatePlayerAsync("counted_player");
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
@@ -310,7 +310,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Scores_created_at_once_with_one_checksum_by_one_player_store_exactly_one()
+	public async Task RepeatedPlayerChecksum_StoresOne()
 	{
 		var player = await CreatePlayerAsync("racing_player");
 		var checksum = StoredScores.Hash("racing_checksum");
@@ -321,7 +321,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Scores_created_at_once_with_one_checksum_by_different_players_store_exactly_one()
+	public async Task PlayersShareChecksum_StoresOne()
 	{
 		var players = new List<UserRecord>();
 		for (var i = 0; i < Racers; i++)
@@ -334,7 +334,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Scores_created_at_once_with_one_checksum_leave_the_winner_findable()
+	public async Task ConcurrentSameChecksum_WinnerFindable()
 	{
 		var player = await CreatePlayerAsync("racing_found");
 		var checksum = StoredScores.Hash("racing_checksum_found");

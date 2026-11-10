@@ -12,7 +12,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	private ISettingsRepository Settings => Get<ISettingsRepository>();
 
 	[Fact]
-	public async Task The_settings_have_their_defaults_when_nothing_is_stored()
+	public async Task NothingStored_SettingsDefault()
 	{
 		var settings = await Settings.GetAsync(TestContext.Current.CancellationToken);
 
@@ -20,7 +20,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	}
 
 	[Fact]
-	public async Task The_stored_settings_are_read_back_by_a_fresh_server()
+	public async Task FreshServer_ReadsStoredSettings()
 	{
 		var settings = new ServerSettings
 		{
@@ -66,7 +66,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	}
 
 	[Fact]
-	public async Task The_stored_settings_keep_their_unset_values()
+	public async Task StoredSettings_KeepUnsetValues()
 	{
 		var settings = new ServerSettings
 		{
@@ -85,7 +85,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	}
 
 	[Fact]
-	public async Task The_settings_are_stored_when_storing_them_returns()
+	public async Task StoredSettings_PersistedOnReturn()
 	{
 		var settings = new ServerSettings
 			{ General = new ServerSettings.GeneralSettings { Motd = "Welcome to the server." } };
@@ -100,7 +100,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	}
 
 	[Fact]
-	public async Task Settings_the_database_refuses_leave_the_settings_unchanged()
+	public async Task RefusedSettings_LeftUnchanged()
 	{
 		var before = await Settings.GetAsync(TestContext.Current.CancellationToken);
 		await StoredRows.ExecuteAsync(ConnectionString, "drop table settings", null,
@@ -117,7 +117,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	}
 
 	[Fact]
-	public async Task Of_two_concurrent_changes_of_the_settings_the_ones_stored_last_are_read()
+	public async Task ConcurrentSettingChanges_LastStoredWins()
 	{
 		var changes = new[]
 		{
@@ -142,7 +142,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	[InlineData("sessions", "not json")]
 	[InlineData("multiplayer", "{\"Rounds\":{\"ScoreWait\":\"00:00:00\"}}")]
 	[InlineData("rate_limits", "{\"Chat\":{\"Count\":0,\"Window\":\"00:00:05\"}}")]
-	public async Task A_stored_category_that_is_not_valid_keeps_its_defaults(string name, string value)
+	public async Task InvalidStoredCategory_KeepsDefaults(string name, string value)
 	{
 		await StoredRows.InsertAsync(ConnectionString, "settings", [
 			new Dictionary<string, object?> { ["name"] = name, ["value"] = value }

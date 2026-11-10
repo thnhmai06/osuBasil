@@ -23,7 +23,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Commit_stores_the_written_text()
+	public async Task Commit_StoresWrittenText()
 	{
 		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("New contents");
@@ -33,7 +33,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task DisposeWithoutCommit_keeps_the_previous_entry_text()
+	public async Task DisposeWithoutCommit_KeepsPreviousText()
 	{
 		await StoreAsync(Entry, "Version 1");
 
@@ -45,7 +45,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task DisposeAfterCommit_keeps_the_committed_text()
+	public async Task DisposeAfterCommit_KeepsCommittedText()
 	{
 		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("Committed text");
@@ -56,7 +56,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_entry_keeps_its_previous_text_until_the_writer_commits()
+	public async Task BeforeCommit_PreviousTextKept()
 	{
 		await StoreAsync(Entry, "Version 1");
 
@@ -84,7 +84,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Committing_again_changes_nothing()
+	public async Task SecondCommit_ChangesNothing()
 	{
 		var writer = await _faqs.CreateOrUpdateAsync(Entry);
 		await writer.WriteAsync("Committed text");
@@ -96,7 +96,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_discarded_update_of_one_entry_leaves_the_others_as_they_were_committed()
+	public async Task DiscardedUpdate_OthersUnchanged()
 	{
 		await StoreAsync("Rules:A", "A1");
 		await StoreAsync("Rules:B", "B1");
@@ -113,7 +113,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_listed_names_are_those_of_the_stored_entries_with_colons_for_folders()
+	public async Task ListedNames_UseColonSeparators()
 	{
 		await StoreAsync("General", "1");
 		await StoreAsync("Rules:ScoreSubmission", "2");
@@ -125,13 +125,13 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Nothing_is_listed_when_no_entry_is_stored()
+	public async Task NothingStored_ListEmpty()
 	{
 		Assert.Empty(await _faqs.ListAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task A_nested_entry_reads_back_under_its_nested_name()
+	public async Task NestedEntry_ReadBack()
 	{
 		await StoreAsync("Rules:Conduct:Chat", "Be kind");
 
@@ -139,13 +139,13 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Reading_an_entry_that_is_not_stored_gives_null()
+	public async Task MissingEntry_ReadGivesNull()
 	{
 		Assert.Null(await _faqs.ReadAsync("Missing:Entry", TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task A_deleted_entry_is_no_longer_stored_and_the_others_are()
+	public async Task DeletedEntry_GoneOthersKept()
 	{
 		await StoreAsync("Gone", "1");
 		await StoreAsync("Kept", "2");
@@ -157,7 +157,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Deleting_an_entry_that_is_not_stored_does_nothing()
+	public async Task MissingEntryDelete_DoesNothing()
 	{
 		await _faqs.DeleteAsync("Missing:Entry");
 
@@ -165,7 +165,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_entry_name_that_climbs_out_of_the_directory_writes_nothing_outside_it()
+	public async Task EscapingName_WritesNothingOutside()
 	{
 		var outside = Path.Combine(_data.Root, "escape.txt");
 
@@ -180,7 +180,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_entry_name_that_climbs_out_of_the_directory_reads_nothing_outside_it()
+	public async Task EscapingName_ReadsNothingOutside()
 	{
 		await File.WriteAllTextAsync(Path.Combine(_data.Root, "secret.txt"), "Secret",
 			TestContext.Current.CancellationToken);
@@ -197,7 +197,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task An_entry_name_that_climbs_out_of_the_directory_deletes_nothing_outside_it()
+	public async Task EscapingName_DeletesNothingOutside()
 	{
 		var outside = Path.Combine(_data.Root, "secret.txt");
 		await File.WriteAllTextAsync(outside, "Secret", TestContext.Current.CancellationToken);
@@ -215,7 +215,7 @@ public sealed class FileFaqStorageTests : IDisposable
 	[InlineData("COM1")]
 	[InlineData("LPT1")]
 	[InlineData("Rules:CON")]
-	public async Task An_entry_name_that_names_no_file_or_a_device_is_refused_and_stores_nothing(string entry)
+	public async Task DeviceOrNameless_RefusedStoringNothing(string entry)
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(async () =>
 		{

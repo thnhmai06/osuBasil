@@ -16,7 +16,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void First_press_with_typed_text_clears_the_line_in_the_full_mode()
+	public void FirstPressText_ClearsLine()
 	{
 		var (machine, _) = Create(CliMode.Full);
 
@@ -25,7 +25,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void First_press_with_nothing_typed_warns_and_opens_the_window()
+	public void FirstPressEmpty_WarnsOpensWindow()
 	{
 		var (machine, _) = Create(CliMode.Full);
 
@@ -34,7 +34,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void No_console_mode_has_no_line_to_clear_so_the_first_press_always_warns()
+	public void NoConsoleMode_FirstPressWarns()
 	{
 		var (machine, _) = Create(CliMode.NoConsole);
 
@@ -42,7 +42,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void Second_press_within_three_seconds_begins_the_shutdown()
+	public void SecondPressWindow_StartsShutdown()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Press();
@@ -53,7 +53,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void Second_press_after_the_window_is_a_first_press_again()
+	public void PressAfterWindow_FirstAgain()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Press();
@@ -64,7 +64,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void The_window_ending_is_reported_by_a_tick_and_returns_to_running()
+	public void WindowEnd_TickReportsRunning()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Press();
@@ -75,7 +75,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void A_tick_inside_the_window_does_nothing()
+	public void TickInsideWindow_Nothing()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Press();
@@ -86,7 +86,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void No_gui_mode_begins_the_shutdown_on_the_first_press()
+	public void NoGuiMode_FirstPressStops()
 	{
 		var (machine, _) = Create(CliMode.NoGui);
 
@@ -97,7 +97,7 @@ public sealed class CtrlCMachineTests
 	[InlineData(CliMode.Full)]
 	[InlineData(CliMode.NoConsole)]
 	[InlineData(CliMode.NoGui)]
-	public void Terminate_begins_the_shutdown_at_once_in_every_mode(CliMode mode)
+	public void Terminate_StopsEveryMode(CliMode mode)
 	{
 		var (machine, _) = Create(mode);
 
@@ -105,7 +105,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void Terminate_during_the_confirmation_window_begins_the_shutdown()
+	public void TerminateInWindow_BeginsShutdown()
 	{
 		var (machine, _) = Create(CliMode.Full);
 		machine.Press();
@@ -114,7 +114,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void Terminate_during_a_shutdown_does_nothing()
+	public void TerminateDuringShutdown_Nothing()
 	{
 		var (machine, _) = Create(CliMode.Full);
 		machine.Terminate();
@@ -126,7 +126,7 @@ public sealed class CtrlCMachineTests
 	[InlineData(CliMode.Full)]
 	[InlineData(CliMode.NoConsole)]
 	[InlineData(CliMode.NoGui)]
-	public void Presses_in_the_first_thirty_seconds_of_a_shutdown_are_ignored(CliMode mode)
+	public void EarlyPresses_Ignored(CliMode mode)
 	{
 		var (machine, clock) = Create(mode);
 		machine.Terminate();
@@ -142,7 +142,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void After_thirty_seconds_a_tick_warns_once_and_the_next_press_forces_the_exit()
+	public void LateTick_WarnsThenForces()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Terminate();
@@ -155,7 +155,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void A_press_after_thirty_seconds_that_comes_before_the_warning_shows_the_warning_instead_of_forcing()
+	public void PressBeforeWarning_ShowsWarning()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Terminate();
@@ -166,7 +166,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void Thirty_seconds_are_counted_from_the_start_of_the_shutdown_not_from_the_first_press()
+	public void ThirtySeconds_FromShutdownStart()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Press();
@@ -180,7 +180,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void After_the_shutdown_finished_nothing_happens()
+	public void FinishedShutdown_Nothing()
 	{
 		var (machine, clock) = Create(CliMode.Full);
 		machine.Terminate();
@@ -194,7 +194,7 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void The_confirmation_and_the_force_stages_are_separate()
+	public void ConfirmationAndForce_Separate()
 	{
 		var (machine, clock) = Create(CliMode.NoGui);
 		Assert.Equal(CtrlCAction.BeginShutdown, machine.Press());

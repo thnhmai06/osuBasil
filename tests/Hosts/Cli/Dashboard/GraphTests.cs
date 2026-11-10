@@ -8,7 +8,7 @@ namespace Basil.Host.Cli.Tests.Dashboard;
 public sealed class GraphTests
 {
 	[Fact]
-	public void A_series_keeps_the_most_recent_samples_oldest_first()
+	public void Series_OldestFirstRecent()
 	{
 		var series = new Series(3);
 		foreach (var value in new double[] { 1, 2, 3, 4, 5 }) series.Add(value);
@@ -20,7 +20,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void An_empty_series_is_zero()
+	public void EmptySeries_Zero()
 	{
 		var series = new Series(3);
 
@@ -30,7 +30,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void The_dashboard_keeps_fifteen_minutes_of_one_second_samples()
+	public void Dashboard_FifteenMinuteHistory()
 	{
 		Assert.Equal(900, DashboardModel.HistorySeconds);
 		var model = new DashboardModel();
@@ -41,7 +41,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void A_value_at_the_maximum_fills_every_dot_of_the_column()
+	public void MaxValue_FillsEveryDot()
 	{
 		var surface = new GridSurface(2, 1);
 
@@ -53,7 +53,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void A_value_of_zero_fills_only_the_bottom_dot_row()
+	public void ZeroValue_FillsBottomRow()
 	{
 		var surface = new GridSurface(1, 1);
 
@@ -64,7 +64,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void The_newest_sample_is_at_the_right_edge_and_older_columns_stay_blank()
+	public void NewestSample_RightEdgeBlank()
 	{
 		var surface = new GridSurface(3, 1);
 
@@ -76,7 +76,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void A_value_above_the_maximum_is_clamped_to_the_top()
+	public void AboveMaxValue_ClampedToTop()
 	{
 		var surface = new GridSurface(1, 1);
 
@@ -86,7 +86,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void A_graph_taller_than_one_row_rises_with_the_value()
+	public void TallGraph_RisesWithValue()
 	{
 		var surface = new GridSurface(1, 2);
 
@@ -97,7 +97,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void The_meter_fills_in_proportion_and_shows_its_caption()
+	public void Meter_FillsWithCaption()
 	{
 		var surface = new GridSurface(40, 1);
 
@@ -111,7 +111,7 @@ public sealed class GraphTests
 	}
 
 	[Fact]
-	public void Drawing_in_an_empty_area_does_nothing()
+	public void EmptyArea_DrawsNothing()
 	{
 		var surface = new GridSurface(5, 5);
 

@@ -26,7 +26,7 @@ public sealed class RepliesWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Starting_reads_the_replies_file()
+	public async Task Starting_ReadsRepliesFile()
 	{
 		WriteFile("Not in a match.");
 		var (catalog, watcher) = New();
@@ -38,7 +38,7 @@ public sealed class RepliesWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Starting_without_a_replies_file_writes_it_with_the_default_wording()
+	public async Task NoRepliesFile_WritesDefaults()
 	{
 		var (_, watcher) = New();
 
@@ -49,7 +49,7 @@ public sealed class RepliesWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_change_of_the_file_takes_effect_once_it_has_settled()
+	public async Task SettledChange_TakesEffect()
 	{
 		WriteFile("Not in a match.");
 		var (catalog, watcher) = New();
@@ -64,7 +64,7 @@ public sealed class RepliesWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_change_does_not_take_effect_before_it_has_settled()
+	public async Task UnsettledChange_NoEffect()
 	{
 		WriteFile("Not in a match.");
 		var (catalog, watcher) = New();
@@ -79,7 +79,7 @@ public sealed class RepliesWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Several_changes_in_a_row_are_read_once_after_the_last()
+	public async Task RapidChanges_ReadOnce()
 	{
 		WriteFile("Not in a match.");
 		var (catalog, watcher) = New();
@@ -99,7 +99,7 @@ public sealed class RepliesWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_change_to_a_file_that_cannot_be_parsed_leaves_the_wording_in_use()
+	public async Task UnparsableChange_KeepsWording()
 	{
 		WriteFile("Not in a match.");
 		var (catalog, watcher) = New();
@@ -114,7 +114,7 @@ public sealed class RepliesWatcherTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_change_after_stopping_is_not_read()
+	public async Task ChangeAfterStop_NotRead()
 	{
 		WriteFile("Not in a match.");
 		var (catalog, watcher) = New();

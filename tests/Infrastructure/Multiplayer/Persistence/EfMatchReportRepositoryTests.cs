@@ -28,7 +28,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	private IScoreRepository Scores => Get<IScoreRepository>();
 
 	[Fact]
-	public async Task A_report_names_the_match_it_describes()
+	public async Task Report_NamesItsMatch()
 	{
 		var match = await CreateMatchAsync("reported_match");
 
@@ -38,7 +38,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_shows_the_match_as_stored_now_not_the_copy_the_caller_holds()
+	public async Task StaleCopy_ReportShowsStored()
 	{
 		var match = await CreateMatchAsync("ended_report_match");
 		var stale = (await Matches.GetAsync(match.Id, TestContext.Current.CancellationToken))!;
@@ -51,7 +51,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_holds_the_rounds_of_the_match()
+	public async Task Report_HoldsMatchRounds()
 	{
 		var match = await CreateMatchAsync("round_report_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
@@ -62,7 +62,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_holds_the_events_of_the_match()
+	public async Task Report_HoldsMatchEvents()
 	{
 		var match = await CreateMatchAsync("event_report_match");
 		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First));
@@ -73,7 +73,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_holds_the_rounds_and_the_events_in_the_order_they_happened()
+	public async Task Report_HoldsOrderedHistory()
 	{
 		var match = await CreateMatchAsync("ordered_report_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, Second));
@@ -87,7 +87,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_shows_the_decision_stored_for_a_round()
+	public async Task Report_ShowsStoredDecision()
 	{
 		var match = await CreateMatchAsync("decided_report_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -107,7 +107,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_shows_the_stored_decision_even_when_the_rules_would_decide_differently_now()
+	public async Task OutdatedStoredDecision_StillShown()
 	{
 		var match = await CreateMatchAsync("rules_changed_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -128,7 +128,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_leaves_a_round_nobody_decided_without_a_result_and_decides_nothing()
+	public async Task UndecidedRound_LeftWithoutResult()
 	{
 		var match = await CreateMatchAsync("undecided_report_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -142,7 +142,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_report_of_a_match_without_a_round_holds_no_records()
+	public async Task RoundlessMatchReport_HoldsNoRecords()
 	{
 		var match = await CreateMatchAsync("empty_report_match");
 

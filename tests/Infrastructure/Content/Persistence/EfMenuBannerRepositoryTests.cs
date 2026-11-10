@@ -14,7 +14,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	private IMenuBannerRepository Banners => Get<IMenuBannerRepository>();
 
 	[Fact]
-	public async Task A_listing_reads_no_more_banners_than_the_ceiling()
+	public async Task Listing_RespectsCeiling()
 	{
 		await StoredRows.InsertAsync(ConnectionString, "menu_banners",
 			Enumerable.Range(1, ListLimits.Ceiling + 1).Select(g =>
@@ -29,7 +29,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_stored_banner_is_found()
+	public async Task StoredBanner_Found()
 	{
 		var banner = Banner("banners/one.png", Moment);
 
@@ -39,7 +39,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_banner_is_found_by_its_image()
+	public async Task BannerByImage_Found()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner);
@@ -51,7 +51,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_banner_is_stored_when_storing_it_returns()
+	public async Task StoredBanner_VisibleOnReturn()
 	{
 		var banner = Banner("banners/one.png", Moment);
 
@@ -69,7 +69,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_banners_are_listed_by_the_instant_they_were_created_at()
+	public async Task Listing_ByCreationInstant()
 	{
 		var first = Banner("banners/one.png", Moment);
 		var second = Banner("banners/two.png", Moment.AddMinutes(1));
@@ -82,7 +82,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_stored_banner_is_read_back_from_the_database()
+	public async Task StoredBanner_ReadBack()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner);
@@ -95,7 +95,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_banner_is_deleted()
+	public async Task ExistingBanner_Deleted()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner);
@@ -106,7 +106,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_deleted_banner_is_gone_from_the_database_when_deleting_it_returns()
+	public async Task DeletedBanner_GoneOnReturn()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner);
@@ -122,7 +122,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_banner_is_replaced()
+	public async Task ExistingBanner_Replaced()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner);
@@ -135,7 +135,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_replaced_banner_is_stored_when_storing_it_returns()
+	public async Task ReplacedBanner_StoredOnReturn()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner);
@@ -151,7 +151,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_replaced_banner_keeps_the_instant_it_was_created_at()
+	public async Task ReplacedBanner_KeepsCreationInstant()
 	{
 		var created = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(created);
@@ -171,7 +171,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Of_two_concurrent_changes_of_a_banner_the_one_stored_last_is_read()
+	public async Task ConcurrentBannerChanges_LastStoredWins()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner);
@@ -198,7 +198,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	/// <param name="image">The path of the image the banner shows.</param>
 	/// <param name="createdAt">The instant the banner was created at.</param>
 	[Fact]
-	public async Task A_banner_can_be_moved_to_a_window_that_starts_after_the_old_one_ended()
+	public async Task LaterWindow_MoveAllowed()
 	{
 		var banner = Banner("banners/moving.png", Moment);
 		banner.StartsAt = Moment;
@@ -215,7 +215,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_banner_can_be_moved_to_a_window_that_ends_before_the_old_one_started()
+	public async Task EarlierWindow_MoveAllowed()
 	{
 		var banner = Banner("banners/moving.png", Moment);
 		banner.StartsAt = Moment.AddDays(10);
@@ -234,7 +234,7 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 	[Theory]
 	[InlineData("banners/bad_url.png", "http://[invalid")]
 	[InlineData("../escape.png", "https://example.com/banner")]
-	public async Task A_stored_banner_that_is_not_valid_is_left_out_without_stopping_the_others(string image,
+	public async Task InvalidStoredBanner_Skipped(string image,
 		string url)
 	{
 		var good = Banner("banners/good.png", Moment);

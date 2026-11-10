@@ -28,7 +28,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_saved_background_opens_with_the_bytes_it_was_saved_with()
+	public async Task SavedBackground_OpensWithBytes()
 	{
 		var reference = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
 
@@ -38,7 +38,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_reference_of_a_saved_background_is_listed_with_those_of_the_others()
+	public async Task SavedBackground_ListedWithOthers()
 	{
 		var autumn =
 			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("1"));
@@ -52,13 +52,13 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Nothing_is_listed_when_nothing_is_stored()
+	public async Task NothingStored_ListsNothing()
 	{
 		Assert.Empty(await _seasonals.ListAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task Saving_under_a_name_in_use_replaces_that_background_only()
+	public async Task ExistingName_ReplacesOnlyBackground()
 	{
 		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("old and longer"));
 		var spring = await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("spring"));
@@ -73,7 +73,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_save_that_fails_keeps_the_background_stored_under_the_name()
+	public async Task FailedSave_KeepsStoredBackground()
 	{
 		var reference = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("previous"));
 
@@ -86,7 +86,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_deleted_background_is_no_longer_stored_and_the_others_are()
+	public async Task DeletedBackground_GoneOthersKept()
 	{
 		var autumn =
 			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("1"));
@@ -101,7 +101,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_reference_to_no_stored_background_opens_as_null_and_deletes_nothing()
+	public async Task UnknownBackgroundReference_NullNoDelete()
 	{
 		var reference = new ContentReference("Menu/Seasonals/missing.jpg");
 
@@ -110,7 +110,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_reference_to_another_storage_or_an_address_opens_as_null_and_deletes_nothing()
+	public async Task ForeignReference_OpensNullOnly()
 	{
 		var stored =
 			await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("kept"));
@@ -130,7 +130,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_renamed_background_opens_under_its_new_reference_with_its_bytes_and_no_longer_under_the_old()
+	public async Task RenamedBackground_NewReferenceOnly()
 	{
 		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
 
@@ -147,7 +147,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Renaming_a_reference_to_no_stored_background_gives_null()
+	public async Task UnknownRenameReference_GivesNull()
 	{
 		var renamed = await _seasonals.RenameAsync(new ContentReference("Menu/Seasonals/missing.jpg"), "fall.jpg");
 
@@ -156,7 +156,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Renaming_onto_a_taken_name_gives_null_and_changes_neither_background()
+	public async Task TakenRenameName_NullAndUnchanged()
 	{
 		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
 		var spring = await _seasonals.SaveAsync("spring.jpg", TestStreams.Of("spring"));
@@ -174,7 +174,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[MemberData(nameof(EscapingNames))]
 	[MemberData(nameof(DeviceNames))]
 	[MemberData(nameof(NotCanonicalNames))]
-	public async Task Renaming_to_a_name_that_is_not_safe_is_refused_and_keeps_the_background(string newName)
+	public async Task UnsafeRenameName_RefusedKeepingBackground(string newName)
 	{
 		var autumn = await _seasonals.SaveAsync("autumn.jpg", TestStreams.Of("autumn"));
 
@@ -190,7 +190,7 @@ public sealed class FileMenuSeasonalsStorageTests : IDisposable
 	[MemberData(nameof(EscapingNames))]
 	[MemberData(nameof(DeviceNames))]
 	[MemberData(nameof(NotCanonicalNames))]
-	public async Task Saving_under_a_name_that_is_not_safe_is_refused_and_stores_nothing(string name)
+	public async Task UnsafeSaveName_RefusedStoringNothing(string name)
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
 			_seasonals.SaveAsync(name, TestStreams.Of("data")));

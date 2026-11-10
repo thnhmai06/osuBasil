@@ -14,7 +14,7 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	private DatabaseSession Database => Get<DatabaseSession>();
 
 	[Fact]
-	public async Task A_write_is_stored_when_it_returns()
+	public async Task Write_StoredOnReturn()
 	{
 		var user = await NewUserAsync("session_user");
 
@@ -26,7 +26,7 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public async Task A_write_of_a_value_that_is_already_stored_reports_that_it_exists()
+	public async Task DuplicateWrite_ReportsExists()
 	{
 		var user = await NewUserAsync("session_user");
 		await Database.WriteAsync(AddCredential(user.Id));
@@ -36,7 +36,7 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public async Task A_transaction_that_fails_stores_nothing()
+	public async Task FailedTransaction_StoresNothing()
 	{
 		var first = await NewUserAsync("first_user");
 
@@ -53,7 +53,7 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public async Task A_transaction_that_succeeds_stores_every_change()
+	public async Task SuccessfulTransaction_StoresEveryChange()
 	{
 		var first = await NewUserAsync("first_user");
 		var second = await NewUserAsync("second_user");
@@ -70,7 +70,7 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	}
 
 	[Fact]
-	public async Task A_read_sees_what_a_write_stored()
+	public async Task Read_SeesStoredWrite()
 	{
 		var user = await NewUserAsync("session_user");
 		await Database.WriteAsync(AddCredential(user.Id));

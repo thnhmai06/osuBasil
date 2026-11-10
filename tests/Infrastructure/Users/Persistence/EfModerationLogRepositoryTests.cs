@@ -17,7 +17,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	private IModerationLogRepository Log => Get<IModerationLogRepository>();
 
 	[Fact]
-	public async Task A_recorded_action_is_stored()
+	public async Task RecordedAction_Stored()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -46,7 +46,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_recorded_action_against_an_account_the_database_does_not_hold_is_refused_to_the_caller()
+	public async Task UnknownTargetAction_Refused()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -62,7 +62,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_moderation_history_is_listed_newest_first()
+	public async Task ModerationHistory_NewestFirst()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -82,7 +82,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_moderation_history_names_the_users_it_is_about()
+	public async Task ModerationHistory_NamesItsUsers()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -100,7 +100,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_moderation_history_returns_the_requested_part()
+	public async Task ModerationHistory_ReturnsRequestedPage()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -118,7 +118,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_moderation_history_holds_the_moments_the_interval_covers()
+	public async Task History_HoldsCoveredMoments()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -136,7 +136,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_moderation_history_leaves_out_the_moments_the_interval_excludes()
+	public async Task History_SkipsExcludedMoments()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -155,7 +155,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_moderation_history_holds_the_earliest_moment_the_interval_covers()
+	public async Task History_HoldsEarliestMoment()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });
@@ -173,7 +173,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_moderation_history_of_one_account_leaves_out_the_others()
+	public async Task OneAccountHistory_SkipsOthers()
 	{
 		var moderator = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "moderator" });

@@ -16,7 +16,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	private IUserRepository Users => Get<IUserRepository>();
 
 	[Fact]
-	public async Task A_created_user_is_given_an_id_by_the_store()
+	public async Task CreatedUser_GetsStoreId()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "first_user" });
 
@@ -24,7 +24,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task Created_users_are_given_increasing_ids()
+	public async Task CreatedUsers_GetIncreasingIds()
 	{
 		var first = await Users.CreateAsync(new UserData { Name = "older_user" });
 		var second =
@@ -34,7 +34,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_name_that_differs_only_in_case_is_the_name_of_another_account()
+	public async Task CaseDifference_MeansOtherAccount()
 	{
 		await Users.CreateAsync(new UserData { Name = "same_name" });
 
@@ -43,7 +43,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_name_that_differs_only_in_spaces_is_the_name_of_another_account()
+	public async Task SpaceDifference_MeansOtherAccount()
 	{
 		await Users.CreateAsync(new UserData { Name = "some_name" });
 
@@ -52,7 +52,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_name_another_account_holds_in_the_database_is_refused()
+	public async Task TakenName_Refused()
 	{
 		await using var other = new StorageComposition(ConnectionString);
 		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" });
@@ -62,7 +62,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task An_account_is_found_by_a_name_that_differs_only_in_case_and_spaces()
+	public async Task CaseSpaceDifference_AccountFound()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "some_name" });
 
@@ -73,7 +73,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_deleted_account_frees_its_name()
+	public async Task DeletedAccount_FreesName()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "freed_name" });
 		await DeleteAsync(user);
@@ -85,7 +85,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_name_is_taken_as_soon_as_its_account_is_deleted()
+	public async Task DeletedName_ImmediatelyTaken()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "taken_name" });
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
@@ -98,7 +98,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_deleted_account_is_still_found_by_id()
+	public async Task DeletedAccount_FoundById()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "deleted_user" });
 		await DeleteAsync(user);
@@ -111,7 +111,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_deleted_account_is_not_found_by_name()
+	public async Task DeletedAccount_NameLookupFails()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "hidden_name" });
 		await DeleteAsync(user);
@@ -120,7 +120,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_replaced_account_holds_the_new_data_under_the_same_id()
+	public async Task ReplacedAccount_NewDataKept()
 	{
 		var replaced = await Users.ReplaceAsync(BasilBot.Id,
 			new UserData { Name = "renamed_bot", Privileges = UserPrivileges.None });
@@ -134,7 +134,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_replaced_account_is_stored()
+	public async Task ReplacedAccount_Stored()
 	{
 		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Privileges = UserPrivileges.None });
 
@@ -147,7 +147,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_deleted_account_is_restored_by_replacing_it()
+	public async Task DeletedAccount_RestoredByReplace()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "was_deleted" });
 		await DeleteAsync(user);
@@ -163,7 +163,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task An_id_the_store_holds_nothing_under_is_created_by_replacing()
+	public async Task UnknownId_CreatedByReplace()
 	{
 		const int id = 5000;
 
@@ -177,7 +177,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task Replacing_an_account_with_a_name_another_account_has_is_refused()
+	public async Task ReplacementTakenName_Refused()
 	{
 		await Users.CreateAsync(new UserData { Name = "name_in_use" });
 
@@ -186,7 +186,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task Replacing_an_account_leaves_the_ids_the_store_gives_out_unchanged()
+	public async Task Replace_KeepsIssuedIds()
 	{
 		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "bot_again" });
 
@@ -196,7 +196,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task Two_reads_of_one_account_return_the_same_account()
+	public async Task RepeatedRead_SameAccount()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "same_one" });
 
@@ -209,7 +209,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task An_update_is_seen_at_once()
+	public async Task Update_SeenAtOnce()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "updated_user", Country = Country.Jp });
 		user.Value.Country = Country.De;
@@ -221,7 +221,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task An_update_is_stored()
+	public async Task Update_Stored()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "stored_user", Country = Country.Jp });
 		user.Value.Country = Country.De;
@@ -236,7 +236,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_deleted_account_is_never_restored()
+	public async Task DeletedAccount_NeverRestored()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "never_back" });
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
@@ -245,7 +245,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_discarded_account_is_gone_and_its_name_is_free()
+	public async Task DiscardedAccount_GoneNameFree()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "discarded_user" });
 
@@ -257,7 +257,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task An_update_by_a_record_that_does_not_know_the_deletion_does_not_restore_the_account()
+	public async Task StaleUpdate_DoesNotRestore()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "stale_record" });
 		await DeleteAsync(user);
@@ -272,7 +272,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_rename_to_a_free_name_gives_the_account_the_new_name()
+	public async Task FreeNameRename_Applied()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "before_rename" });
 
@@ -284,7 +284,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_rename_frees_the_old_name()
+	public async Task Rename_FreesOldName()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "before_rename" });
 		await Users.RenameAsync(user, "after_rename");
@@ -293,7 +293,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_rename_to_a_taken_name_leaves_the_account_alone()
+	public async Task TakenRename_AccountUnchanged()
 	{
 		await Users.CreateAsync(new UserData { Name = "taken_first" });
 		var second =
@@ -306,7 +306,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_rename_to_the_same_name_in_another_case_succeeds()
+	public async Task CaseOnlyRename_Allowed()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "case_user" });
 
@@ -316,7 +316,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_rename_to_a_name_another_account_holds_in_the_database_is_refused()
+	public async Task StoredNameRename_Refused()
 	{
 		await using var other = new StorageComposition(ConnectionString);
 		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" });
@@ -328,7 +328,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_finds_accounts_by_a_part_of_their_name()
+	public async Task Listing_NamePartFound()
 	{
 		await Users.CreateAsync(new UserData { Name = "alpha_one" });
 		await Users.CreateAsync(new UserData { Name = "beta_two" });
@@ -340,7 +340,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_finds_accounts_by_a_name_that_holds_an_underscore()
+	public async Task Listing_FindsUnderscoreName()
 	{
 		await Users.CreateAsync(new UserData { Name = "alpha_one" });
 		await Users.CreateAsync(new UserData { Name = "beta_two" });
@@ -352,7 +352,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_ignores_the_case_and_the_spaces_of_the_text()
+	public async Task Listing_CaseSpaceInsensitive()
 	{
 		await Users.CreateAsync(new UserData { Name = "alpha_one" });
 		await Users.CreateAsync(new UserData { Name = "beta_two" });
@@ -364,7 +364,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_finds_an_account_by_its_id()
+	public async Task Listing_FindsById()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "id_user" });
 		await Users.CreateAsync(new UserData { Name = "other_one" });
@@ -376,7 +376,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_finds_accounts_by_their_country()
+	public async Task Listing_FindsByCountry()
 	{
 		await Users.CreateAsync(new UserData { Name = "from_jp", Country = Country.Jp });
 		await Users.CreateAsync(new UserData { Name = "from_de", Country = Country.De });
@@ -388,7 +388,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_finds_accounts_by_the_permissions_they_hold()
+	public async Task Listing_FindsByPrivileges()
 	{
 		await Users.CreateAsync(new UserData { Name = "plain_user", Privileges = UserPrivileges.None });
 		await Users.CreateAsync(new UserData
@@ -404,7 +404,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_without_a_state_shows_deleted_and_existing_accounts()
+	public async Task NoStateListing_ShowsBoth()
 	{
 		await TwoAccountsOneDeletedAsync();
 
@@ -415,7 +415,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_of_existing_accounts_leaves_deleted_accounts_out()
+	public async Task ExistingListing_SkipsDeleted()
 	{
 		await TwoAccountsOneDeletedAsync();
 
@@ -426,7 +426,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_of_deleted_accounts_shows_only_deleted_accounts()
+	public async Task DeletedListing_OnlyDeleted()
 	{
 		await TwoAccountsOneDeletedAsync();
 
@@ -438,7 +438,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_returns_the_requested_part()
+	public async Task Listing_ReturnsRequestedPage()
 	{
 		await Users.CreateAsync(new UserData { Name = "page_one" });
 		await Users.CreateAsync(new UserData { Name = "page_two" });
@@ -451,7 +451,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_returns_no_more_accounts_than_asked_for()
+	public async Task Listing_RespectsPageSize()
 	{
 		await Users.CreateAsync(new UserData { Name = "page_one" });
 		await Users.CreateAsync(new UserData { Name = "page_two" });
@@ -464,7 +464,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task A_listing_is_ordered_by_id()
+	public async Task Listing_OrderedById()
 	{
 		var first = await Users.CreateAsync(new UserData { Name = "order_one" });
 		var second =

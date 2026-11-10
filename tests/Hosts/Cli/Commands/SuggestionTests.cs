@@ -8,7 +8,7 @@ public sealed class SuggestionTests
 	private static readonly CommandSuggestions Suggestions = new(CommandCatalogFactory.Create(), new Source());
 
 	[Fact]
-	public void The_first_word_completes_to_the_commands_that_start_with_it()
+	public void FirstWord_CompletesCommands()
 	{
 		var (words, start, length) = Suggestions.Suggest("us");
 
@@ -18,7 +18,7 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
-	public void After_a_space_the_next_word_of_the_command_is_offered()
+	public void AfterSpace_NextWordOffered()
 	{
 		var (words, _, _) = Suggestions.Suggest("channels ");
 
@@ -27,7 +27,7 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
-	public void An_id_position_offers_the_ids_that_exist()
+	public void IdPosition_OffersExistingIds()
 	{
 		var (words, _, _) = Suggestions.Suggest("users 1");
 
@@ -35,7 +35,7 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
-	public void A_channel_position_offers_the_channel_names()
+	public void ChannelPosition_OffersNames()
 	{
 		var (words, _, _) = Suggestions.Suggest("channels #o");
 
@@ -43,7 +43,7 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
-	public void A_complete_command_offers_its_options_that_are_not_given_yet()
+	public void CompleteCommand_OffersMissingOptions()
 	{
 		var (words, _, _) = Suggestions.Suggest("users create --username a ");
 
@@ -52,13 +52,13 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
-	public void Describe_gives_the_pattern_and_the_summary()
+	public void Describe_PatternAndSummary()
 	{
 		Assert.StartsWith("users list  ", Suggestions.Describe("users list"));
 	}
 
 	[Fact]
-	public void Highlight_tells_commands_values_and_options_apart()
+	public void Highlight_TellsTokensApart()
 	{
 		const string line = "users 5 set --away hello";
 		var kinds = Suggestions.Highlight(line).Select(token => token.Kind).ToArray();
@@ -68,7 +68,7 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
-	public void Highlight_gives_each_token_its_position_in_the_line()
+	public void Highlight_TokenPositions()
 	{
 		var tokens = Suggestions.Highlight("users list");
 
@@ -77,7 +77,7 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
-	public void A_word_no_command_accepts_is_unknown()
+	public void UnacceptedWord_Unknown()
 	{
 		Assert.Equal(TokenKind.Unknown, Suggestions.Highlight("nonsense")[0].Kind);
 	}

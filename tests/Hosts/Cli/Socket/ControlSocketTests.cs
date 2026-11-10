@@ -32,7 +32,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_running_server_answers_a_command_over_its_socket_and_streams_the_output_with_the_exit_code()
+	public async Task RunningServer_AnswersAndStreams()
 	{
 		using var connection = await ControlClient.ConnectAsync(SocketPath, TestContext.Current.CancellationToken);
 		var output = new StringWriter();
@@ -44,7 +44,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_command_through_the_socket_has_its_effect_in_the_server()
+	public async Task SocketCommand_EffectInServer()
 	{
 		var name = CliFixture.Name("viasock");
 		using var connection = await ControlClient.ConnectAsync(SocketPath, TestContext.Current.CancellationToken);
@@ -57,7 +57,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Multi_line_output_is_framed_per_line_so_a_line_cannot_pass_for_the_exit_code()
+	public async Task MultiLineOutput_FramedPerLine()
 	{
 		var entry = CliFixture.Name("faqsock");
 		var file = Path.GetTempFileName();
@@ -75,7 +75,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_garbage_request_is_answered_with_the_invalid_exit_code()
+	public async Task GarbageRequest_InvalidExitCode()
 	{
 		using var socket = await ControlSocket.TryConnectAsync(SocketPath, TestContext.Current.CancellationToken);
 		await using var stream = new NetworkStream(socket!, false);
@@ -89,7 +89,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task The_socket_is_readable_and_writable_by_its_owner_only()
+	public async Task Socket_OwnerOnlyAccess()
 	{
 		Assert.True(File.Exists(SocketPath));
 		if (OperatingSystem.IsWindows()) return;
@@ -99,7 +99,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_second_server_on_the_same_socket_refuses_to_start()
+	public async Task SecondServer_SameSocketRefused()
 	{
 		var other = NewServer(SocketPath);
 
@@ -111,7 +111,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_leftover_socket_file_of_a_crashed_server_is_replaced()
+	public async Task LeftoverSocket_Replaced()
 	{
 		var directory = ShortDirectory();
 		var path = ControlSocket.PathIn(directory);
@@ -134,7 +134,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Stopping_the_server_removes_the_socket_and_a_client_then_finds_nobody()
+	public async Task ServerStop_SocketRemoved()
 	{
 		var directory = ShortDirectory();
 		var path = ControlSocket.PathIn(directory);
@@ -149,7 +149,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_path_too_long_for_a_unix_socket_runs_the_server_without_one()
+	public async Task LongSocketPath_RunsWithoutSocket()
 	{
 		var directory = Path.Combine(Path.GetTempPath(), new string('d', 120));
 		Directory.CreateDirectory(directory);
@@ -170,7 +170,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task The_shell_forwards_to_the_running_server_and_prints_its_output()
+	public async Task Shell_ForwardsAndPrints()
 	{
 		var output = new StringWriter();
 		var dataDirectory = fixture.Host.Services.GetRequiredService<IOptions<StorageOptions>>().Value.Location;
@@ -185,7 +185,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task The_shell_asks_in_the_calling_terminal_before_it_shuts_a_server_down_and_adds_now()
+	public async Task ShellShutdown_AsksAddsNow()
 	{
 		var directory = ShortDirectory();
 		var path = ControlSocket.PathIn(directory);
@@ -224,7 +224,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task With_now_the_shell_asks_nothing()
+	public async Task WithNow_ShellAsksNothing()
 	{
 		var directory = ShortDirectory();
 		var path = ControlSocket.PathIn(directory);
@@ -252,7 +252,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Without_a_server_a_command_that_needs_it_fails_with_code3_and_shutdown_asks_nothing()
+	public async Task NoServer_Code3ShutdownQuiet()
 	{
 		var directory = ShortDirectory();
 		Action<WebApplicationBuilder> configure = b =>
@@ -280,7 +280,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Without_a_server_help_runs_without_touching_the_storage()
+	public async Task NoServerHelp_LeavesStorage()
 	{
 		var directory = ShortDirectory();
 		try
@@ -305,7 +305,7 @@ public sealed class ControlSocketTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Without_a_server_an_offline_command_stores_its_change_before_it_returns()
+	public async Task OfflineCommand_StoresChange()
 	{
 		var name = "basil-cli-offline-" + Guid.NewGuid().ToString("N");
 		var connection = await fixture.Database.CreateDatabaseAsync(name);

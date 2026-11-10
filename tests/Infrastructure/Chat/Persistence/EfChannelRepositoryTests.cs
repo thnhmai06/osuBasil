@@ -12,7 +12,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	private IChannelRepository Channels => Get<IChannelRepository>();
 
 	[Fact]
-	public async Task A_listing_reads_no_more_channels_than_the_ceiling()
+	public async Task ChannelListing_RespectsCeiling()
 	{
 		await StoredRows.InsertAsync(ConnectionString, "channels", Enumerable.Range(1, ListLimits.Ceiling).Select(g =>
 			(IReadOnlyDictionary<string, object?>)new Dictionary<string, object?>
@@ -27,7 +27,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task The_seeded_channels_are_offered()
+	public async Task SeededChannels_Offered()
 	{
 		var channels = (await Channels.ListAsync(TestContext.Current.CancellationToken)).ToList();
 
@@ -35,7 +35,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task The_osu_channel_is_offered()
+	public async Task OsuChannel_Offered()
 	{
 		var channels = (await Channels.ListAsync(TestContext.Current.CancellationToken)).ToList();
 
@@ -45,7 +45,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task The_lobby_channel_is_offered()
+	public async Task LobbyChannel_Offered()
 	{
 		var channels = (await Channels.ListAsync(TestContext.Current.CancellationToken)).ToList();
 
@@ -55,7 +55,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_channel_is_added()
+	public async Task Channel_Added()
 	{
 		await Channels.CreateOrUpdateAsync(new GeneralChannelRecord
 		{
@@ -69,7 +69,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_channel_is_stored_when_storing_it_returns()
+	public async Task Channel_StoredOnReturn()
 	{
 		await Channels.CreateOrUpdateAsync(new GeneralChannelRecord
 		{
@@ -89,7 +89,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_channel_is_changed()
+	public async Task Channel_Changed()
 	{
 		await Channels.CreateOrUpdateAsync(new GeneralChannelRecord
 		{
@@ -103,7 +103,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_changed_channel_is_stored_when_storing_it_returns()
+	public async Task ChangedChannel_StoredOnReturn()
 	{
 		await Channels.CreateOrUpdateAsync(new GeneralChannelRecord
 		{
@@ -118,7 +118,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_channel_is_deleted()
+	public async Task Channel_Deleted()
 	{
 		var channel = new GeneralChannelRecord
 		{
@@ -134,7 +134,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_deleted_channel_is_gone_from_the_database_when_deleting_it_returns()
+	public async Task DeletedChannel_GoneOnReturn()
 	{
 		var channel = new GeneralChannelRecord
 		{
@@ -151,7 +151,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_channel_the_database_refuses_leaves_the_channels_unchanged()
+	public async Task RefusedChannel_LeavesUnchanged()
 	{
 		var refused = new GeneralChannelRecord
 		{
@@ -167,7 +167,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task Of_two_concurrent_changes_of_a_channel_the_one_stored_last_is_listed()
+	public async Task ConcurrentChanges_LastStoredListed()
 	{
 		var changes = new[]
 		{
@@ -183,7 +183,7 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_channel_stored_by_another_server_is_listed()
+	public async Task OtherServerChannel_Listed()
 	{
 		await StoredRows.InsertAsync(ConnectionString, "channels", [
 			new Dictionary<string, object?>

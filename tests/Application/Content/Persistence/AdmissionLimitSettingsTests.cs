@@ -9,7 +9,7 @@ namespace Basil.Application.Content.Tests.Persistence;
 public class AdmissionLimitSettingsTests
 {
 	[Fact]
-	public void The_defaults_are_the_gateways_standard_limits()
+	public void DefaultLimits_GatewayStandard()
 	{
 		var limits = new ServerSettings().RateLimits.Admission;
 
@@ -24,7 +24,7 @@ public class AdmissionLimitSettingsTests
 	}
 
 	[Fact]
-	public void A_hard_shed_load_of_exactly_one_is_accepted()
+	public void HardShedOne_Accepted()
 	{
 		var limits = new ServerSettings.AdmissionLimitSettings(120, TimeSpan.FromMinutes(1), 4, 256, 32, 8, 1024, 0.5,
 			0.7, 1,

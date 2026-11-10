@@ -13,7 +13,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	private IUserStatsRepository Stats => Get<IUserStatsRepository>();
 
 	[Fact]
-	public async Task The_statistics_of_an_account_that_played_nothing_are_zero()
+	public async Task UnplayedAccount_StatisticsZero()
 	{
 		var player = await CreatePlayerAsync("statless_player");
 
@@ -25,7 +25,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task The_statistics_of_an_account_that_played_nothing_name_the_account()
+	public async Task UnplayedAccount_StatisticsNameAccount()
 	{
 		var player = await CreatePlayerAsync("statless_named");
 
@@ -36,7 +36,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task A_stored_statistic_is_read_back()
+	public async Task StoredStatistic_ReadBack()
 	{
 		var player = await CreatePlayerAsync("stored_stats");
 		await Stats.CreateOrUpdateAsync(new UserStats
@@ -56,7 +56,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task A_stored_statistic_reaches_the_table()
+	public async Task StoredStatistic_ReachesTable()
 	{
 		var player = await CreatePlayerAsync("table_stats");
 		await Stats.CreateOrUpdateAsync(new UserStats
@@ -79,7 +79,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task A_stored_statistic_replaces_the_one_stored_before()
+	public async Task StoredStatistic_ReplacesPrevious()
 	{
 		var player = await CreatePlayerAsync("replaced_stats");
 		await Stats.CreateOrUpdateAsync(new UserStats
@@ -106,7 +106,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task The_statistics_of_another_mode_are_kept_apart()
+	public async Task OtherModeStatistics_KeptApart()
 	{
 		var player = await CreatePlayerAsync("modes_stats");
 		await Stats.CreateOrUpdateAsync(new UserStats
@@ -132,7 +132,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task The_statistics_of_an_account_survive_a_fresh_composition()
+	public async Task AccountStatistics_SurviveRecomposition()
 	{
 		var player = await CreatePlayerAsync("surviving_stats");
 		await Stats.CreateOrUpdateAsync(new UserStats
@@ -157,7 +157,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task A_play_is_added_to_the_statistics()
+	public async Task PlayAdded_CountedInStatistics()
 	{
 		var player = await CreatePlayerAsync("added_play");
 
@@ -170,7 +170,7 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 	}
 
 	[Fact]
-	public async Task Plays_added_at_once_are_all_counted_in_memory_and_in_the_table()
+	public async Task ConcurrentPlays_AllCounted()
 	{
 		const int plays = 400;
 		var player = await CreatePlayerAsync("racing_stats");

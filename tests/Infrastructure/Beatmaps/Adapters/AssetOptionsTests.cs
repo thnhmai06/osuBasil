@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 public sealed class AssetOptionsTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	[Fact]
-	public void Without_configuration_the_preview_directory_is_under_the_cache_of_the_storage_location()
+	public void NoConfiguration_PreviewUnderCache()
 	{
 		var directory = Get<IOptions<AssetOptions>>().Value.CacheDirectory;
 
@@ -21,7 +21,7 @@ public sealed class AssetOptionsTests(PersistenceFixture container) : DatabaseTe
 	}
 
 	[Fact]
-	public void The_assets_section_of_the_configuration_sets_the_directory_and_the_ffmpeg_folder()
+	public void AssetsSection_DirectoryAndFfmpeg()
 	{
 		var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{

@@ -36,7 +36,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task ReplacedReplay_keeps_only_the_new_name()
+	public async Task ReplacedReplay_KeepsNewName()
 	{
 		await _replays.SaveAsync(Score(), Version, Bytes("first"));
 
@@ -48,7 +48,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task FailedSaveAfterRename_keeps_the_previous_replay()
+	public async Task FailedRenameSave_KeepsPrevious()
 	{
 		await _replays.SaveAsync(Score(), Version, Bytes("first"));
 
@@ -61,13 +61,13 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task OpenAsync_returns_null_for_a_score_without_replay()
+	public async Task ScoreWithoutReplay_OpenReturnsNull()
 	{
 		Assert.Null(await _replays.OpenAsync(Score(), TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task A_saved_replay_opens_with_the_bytes_it_was_saved_with()
+	public async Task SavedReplay_OpensWithBytes()
 	{
 		await _replays.SaveAsync(Score(), Version, Bytes("first"));
 
@@ -75,7 +75,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replay_is_named_like_an_osu_replay_export()
+	public async Task Replay_MimicsOsuExport()
 	{
 		await _replays.SaveAsync(Score(), Version, Bytes("replay"));
 
@@ -89,7 +89,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	[InlineData(GameMode.Taiko, "Taiko")]
 	[InlineData(GameMode.Catch, "CatchTheBeat")]
 	[InlineData(GameMode.Mania, "OsuMania")]
-	public async Task A_replay_name_ends_with_the_name_osu_gives_the_game_mode(GameMode mode, string modeName)
+	public async Task ReplayName_EndsWithMode(GameMode mode, string modeName)
 	{
 		await _replays.SaveAsync(Score(mode: mode), Version, Bytes("replay"));
 
@@ -98,7 +98,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replay_is_found_by_its_score_id_alone_and_not_by_a_longer_id_that_starts_with_it()
+	public async Task ReplayScoreId_ExactOnly()
 	{
 		await _replays.SaveAsync(Score(170), Version, Bytes("longer id"));
 
@@ -111,7 +111,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replay_of_a_score_whose_player_is_unknown_is_still_stored_and_found()
+	public async Task UnknownPlayerReplay_StoredAndFound()
 	{
 		_users.User = null;
 
@@ -121,7 +121,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replay_of_a_score_whose_beatmap_is_unknown_is_still_stored_and_found()
+	public async Task UnknownBeatmapReplay_StoredAndFound()
 	{
 		_beatmaps.Beatmap = null;
 
@@ -131,7 +131,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replay_name_has_no_character_a_file_name_may_not_have()
+	public async Task ReplayName_ExcludesForbiddenCharacters()
 	{
 		SetBeatmapNames("AC/DC", "What? \"Yes\" <no> | *maybe* : C:\\x");
 
@@ -145,7 +145,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replay_name_too_long_for_the_file_system_is_shortened_by_bytes_without_splitting_a_character()
+	public async Task OverlongReplayName_ShortenedByBytes()
 	{
 		// 100 emoji are 400 UTF-8 bytes in surrogate pairs, so the cut falls inside a character unless it is placed.
 		SetBeatmapNames("Camellia", string.Concat(Enumerable.Repeat("\U0001F600", 100)));
@@ -162,7 +162,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_replay_stored_under_a_shortened_name_is_replaced_by_the_next_save()
+	public async Task ShortenedReplay_ReplacedNextSave()
 	{
 		SetBeatmapNames("Camellia", new string('x', 400));
 		await _replays.SaveAsync(Score(), Version, Bytes("first"));
@@ -194,7 +194,7 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task OpenFramesAsync_gives_a_seekable_stream_as_long_as_the_frames()
+	public async Task OpenFrames_SeekableFrameStream()
 	{
 		await _replays.SaveAsync(Score(), Version, Bytes("frames"));
 
@@ -209,13 +209,13 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task OpenFramesAsync_returns_null_for_a_score_without_replay()
+	public async Task ScoreWithoutReplay_OpenFramesNull()
 	{
 		Assert.Null(await _replays.OpenFramesAsync(Score(), TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task OpenFramesAsync_returns_null_for_a_stored_file_that_is_not_a_replay()
+	public async Task NonReplayFile_OpenFramesNull()
 	{
 		Directory.CreateDirectory(ReplayDirectory);
 		await File.WriteAllBytesAsync(Path.Combine(ReplayDirectory, $"{ScoreId}.osr"), Bytes30(),

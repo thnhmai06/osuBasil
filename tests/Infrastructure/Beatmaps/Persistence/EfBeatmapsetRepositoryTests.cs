@@ -18,7 +18,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	private IBeatmapsetRepository Sets => Get<IBeatmapsetRepository>();
 
 	[Fact]
-	public async Task A_committed_set_keeps_the_osu_id_it_was_committed_with()
+	public async Task CommittedSet_KeepsOsuId()
 	{
 		var stored = await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper"));
 
@@ -26,7 +26,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_set_without_an_osu_id_is_given_a_local_id()
+	public async Task OsuIdlessSet_LocalId()
 	{
 		var stored = await CommitAsync(StoredBeatmaps.Data(null, "Camellia", "Title", "Mapper"));
 
@@ -34,7 +34,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Sets_without_an_osu_id_are_given_increasing_local_ids()
+	public async Task OsuIdlessSets_IncreasingIds()
 	{
 		var first = await CommitAsync(StoredBeatmaps.Data(null, "Camellia", "First", "Mapper"));
 		var second = await CommitAsync(StoredBeatmaps.Data(null, "Camellia", "Second", "Mapper"));
@@ -43,7 +43,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Committed_sets_are_given_in_the_order_they_were_committed()
+	public async Task CommittedSets_GivenInOrder()
 	{
 		var stored = await Sets.CommitAsync(new BeatmapsetChanges(
 		[
@@ -55,7 +55,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_replaced_set_takes_the_new_metadata()
+	public async Task ReplacedSet_TakesNewMetadata()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
@@ -66,7 +66,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_replaced_set_keeps_the_moment_it_was_created()
+	public async Task ReplacedSet_KeepsCreationMoment()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
@@ -77,7 +77,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_replaced_set_keeps_its_lock()
+	public async Task ReplacedSet_KeepsLock()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 		set.Locked = true;
@@ -89,7 +89,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_replaced_set_keeps_its_visibility()
+	public async Task ReplacedSet_KeepsVisibility()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 		set.Visible = false;
@@ -101,7 +101,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_difficulty_the_set_no_longer_has_is_deleted()
+	public async Task DroppedDifficulty_Deleted()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy"), StoredBeatmaps.Difficulty(302, HardHash, "Hard")])));
@@ -120,7 +120,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_removed_set_is_not_found_any_more()
+	public async Task RemovedSet_NotFound()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
@@ -130,7 +130,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_removed_set_is_deleted_with_its_difficulties()
+	public async Task RemovedSet_DeletedWithDifficulties()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")])));
@@ -150,7 +150,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_new_set_that_has_the_id_another_stored_set_has_is_refused()
+	public async Task DuplicateSetId_Refused()
 	{
 		await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "First", "Mapper"));
 
@@ -159,7 +159,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_new_set_whose_difficulty_has_the_hash_another_stored_difficulty_has_is_refused()
+	public async Task NewSetHash_Refused()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "First", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")]));
@@ -170,7 +170,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_committed_set_stores_its_difficulties()
+	public async Task CommittedSet_StoresDifficulties()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")])));
@@ -183,7 +183,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_new_difficulty_that_has_the_id_another_stored_difficulty_has_is_refused()
+	public async Task DuplicateDifficultyId_Refused()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "First", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")]));
@@ -194,7 +194,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_committed_set_is_found_under_the_id_the_commit_returned()
+	public async Task CommittedSet_FoundById()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
@@ -204,7 +204,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task An_update_changes_the_lock_of_the_set_the_store_returns()
+	public async Task Update_ReturnedLockChanged()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 		var changed = Changed(set, true);
@@ -216,7 +216,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task An_update_changes_the_visibility_of_the_set_the_store_returns()
+	public async Task Update_ChangesReturnedVisibility()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 		var changed = Changed(set, visible: false);
@@ -228,7 +228,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task An_update_is_stored()
+	public async Task Update_Stored()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 		await Sets.UpdateAsync(Changed(set, true, false));
@@ -243,7 +243,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_deleted_set_is_not_found_at_once()
+	public async Task DeletedSet_ImmediatelyGone()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
@@ -253,7 +253,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_deleted_set_is_removed_from_the_table()
+	public async Task DeletedSet_RemovedFromTable()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
@@ -267,7 +267,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_set_whose_deletion_is_queued_is_not_listed()
+	public async Task QueuedDeletion_NotListed()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")])));
@@ -280,7 +280,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_listing_finds_the_set_one_of_whose_difficulties_matches()
+	public async Task MatchingDifficulty_FindsSet()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "First", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")]));
@@ -294,7 +294,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_listing_shows_the_newest_set_first()
+	public async Task Listing_NewestSetFirst()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "First", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")]));
@@ -308,7 +308,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_listing_returns_the_requested_part()
+	public async Task Listing_ReturnsRequestedPart()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "First", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")]));
@@ -325,7 +325,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_commit_after_an_update_replaces_what_the_update_stored()
+	public async Task CommitAfterUpdate_ReplacesUpdate()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, EasyHash, "Easy")])));
@@ -347,7 +347,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_beatmap_update_the_database_refuses_reaches_the_caller()
+	public async Task RefusedBeatmapUpdate_ReachesCaller()
 	{
 		// The beatmap belongs to a set that is not stored, which breaks the foreign key.
 		var orphan = StoredBeatmaps.Beatmap(777);

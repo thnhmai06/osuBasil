@@ -21,7 +21,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	private IBeatmapRepository Beatmaps => Get<IBeatmapRepository>();
 
 	[Fact]
-	public async Task A_listing_of_a_set_reads_no_more_beatmaps_than_the_ceiling()
+	public async Task SetListing_RespectsCeiling()
 	{
 		await CommitAsync(StoredBeatmaps.Data(43, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(null, OtherHash, "Easy")]));
@@ -44,7 +44,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_retained_deletion_is_stored_when_the_call_returns()
+	public async Task RetainedDeletion_StoredOnReturn()
 	{
 		var sets = Get<IBeatmapsetRepository>();
 		var beatmaps = Get<IBeatmapRepository>();
@@ -62,7 +62,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_difficulty_without_an_osu_id_is_given_a_local_id()
+	public async Task OsuIdlessDifficulty_LocalId()
 	{
 		await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(null, OtherHash, "Easy")]));
@@ -75,7 +75,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_difficulty_is_found_by_its_id()
+	public async Task ById_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -87,7 +87,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_difficulty_is_found_by_its_hash()
+	public async Task ByHash_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -99,7 +99,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task The_difficulties_of_a_set_are_listed_in_the_order_they_are_stored()
+	public async Task SetDifficulties_StoredOrder()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 		[
@@ -116,7 +116,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_by_the_text_of_its_artist()
+	public async Task ArtistText_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -130,7 +130,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_by_the_text_of_its_title()
+	public async Task TitleText_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -144,7 +144,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_by_the_text_of_its_mapper()
+	public async Task MapperText_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "FirstMapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -158,7 +158,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_by_the_text_of_its_name()
+	public async Task NameText_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Insane")]));
@@ -172,7 +172,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_ignores_the_case_of_the_text()
+	public async Task TextCase_Ignored()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -186,7 +186,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_takes_a_percent_in_the_text_literally()
+	public async Task PercentInText_Literal()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "100%", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -200,7 +200,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_takes_an_underscore_in_the_text_literally()
+	public async Task UnderscoreInText_Literal()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "a_b", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -218,7 +218,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	[InlineData(200, 1)]
 	[InlineData(99, 0)]
 	[InlineData(201, 0)]
-	public async Task A_listing_holds_the_difficulties_whose_circle_count_is_in_the_range(int circles, int expected)
+	public async Task CircleCountRange_FiltersDifficulties(int circles, int expected)
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy", circles: circles)]));
@@ -234,7 +234,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	[InlineData(240, 1)]
 	[InlineData(119, 0)]
 	[InlineData(241, 0)]
-	public async Task A_listing_holds_the_difficulties_whose_length_is_in_the_range(int seconds, int expected)
+	public async Task LengthRange_FiltersDifficulties(int seconds, int expected)
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy", lengthSeconds: seconds)]));
@@ -250,7 +250,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	[InlineData(5, 1)]
 	[InlineData(3.9, 0)]
 	[InlineData(5.1, 0)]
-	public async Task A_listing_holds_the_difficulties_whose_circle_size_is_in_the_range(double cs, int expected)
+	public async Task CircleSizeRange_FiltersDifficulties(double cs, int expected)
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy", cs: cs)]));
@@ -266,7 +266,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	[InlineData(10, 1)]
 	[InlineData(8.9, 0)]
 	[InlineData(10.1, 0)]
-	public async Task A_listing_holds_the_difficulties_whose_approach_rate_is_in_the_range(double ar, int expected)
+	public async Task ApproachRateRange_FiltersDifficulties(double ar, int expected)
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy", ar: ar)]));
@@ -282,7 +282,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	[InlineData(9, 1)]
 	[InlineData(7.9, 0)]
 	[InlineData(9.1, 0)]
-	public async Task A_listing_holds_the_difficulties_whose_overall_difficulty_is_in_the_range(double od, int expected)
+	public async Task OverallDifficultyRange_Filters(double od, int expected)
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy", od: od)]));
@@ -298,7 +298,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	[InlineData(6, 1)]
 	[InlineData(4.9, 0)]
 	[InlineData(6.1, 0)]
-	public async Task A_listing_holds_the_difficulties_whose_health_drain_is_in_the_range(double hp, int expected)
+	public async Task HealthDrainRange_FiltersDifficulties(double hp, int expected)
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Title", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy", hp: hp)]));
@@ -310,7 +310,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_by_its_mode()
+	public async Task ByMode_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -324,7 +324,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_the_difficulties_of_a_ranked_set()
+	public async Task RankedSet_FindsDifficulties()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -338,7 +338,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_leaves_out_every_difficulty_when_another_status_is_asked_for()
+	public async Task OtherStatus_LeavesEveryDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -350,7 +350,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_by_its_file_name()
+	public async Task FileName_FindsDifficulty()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -364,7 +364,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_by_its_file_name_whatever_the_letter_case()
+	public async Task FileNameCase_Finds()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -376,7 +376,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_finds_a_difficulty_whose_names_hold_characters_a_file_name_cannot_hold()
+	public async Task UnsafeNameCharacters_StillFound()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "A:B/C", "100%_Sure*?", "Map|per",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Hard <1>")]));
@@ -390,7 +390,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_listing_returns_the_requested_part()
+	public async Task Listing_ReturnsRequestedPart()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -407,7 +407,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_difficulty_whose_hash_another_difficulty_has_is_refused()
+	public async Task DuplicateDifficultyHash_Refused()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
@@ -420,7 +420,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	[Fact]
-	public async Task A_difficulty_whose_hash_a_stored_difficulty_has_is_refused()
+	public async Task StoredDifficultyHash_Refused()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));

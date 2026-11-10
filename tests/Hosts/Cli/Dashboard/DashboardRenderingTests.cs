@@ -28,7 +28,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_tab_bar_names_the_six_tabs_and_marks_the_one_in_view()
+	public void TabBar_SixTabsMarked()
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Logs;
@@ -42,7 +42,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_users_tab_lists_the_accounts_online_and_marks_the_selected_row()
+	public void UsersTab_OnlineAndSelected()
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Users;
@@ -65,7 +65,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_users_filter_keeps_the_matching_rows_only()
+	public void UsersFilter_MatchingRowsOnly()
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Users;
@@ -83,7 +83,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_rooms_tab_lists_rooms_and_the_slots_of_the_selected_one()
+	public void RoomsTab_SelectedSlots()
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Rooms;
@@ -103,7 +103,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_log_tab_colours_lines_by_level_filters_by_level_and_text_and_can_stand_still()
+	public void LogTab_ColourFilterFreeze()
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Logs;
@@ -133,7 +133,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_chat_tab_shows_channel_author_and_text_and_filters_by_channel()
+	public void ChatTab_ShowsChannelFilter()
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Chat;
@@ -149,7 +149,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_command_output_has_a_place_at_the_bottom_in_the_full_mode_only()
+	public void CommandOutput_FullModeBottom()
 	{
 		var (model, renderer) = Create();
 		model.AddOutput(new OutputLine(OutputKind.Error, "error: notFound: No such user."));
@@ -159,7 +159,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_warning_of_the_ctrl_c_rules_is_shown_above_the_tab()
+	public void CtrlCWarning_AboveTab()
 	{
 		var (model, renderer) = Create();
 		model.Notice = "Press Ctrl+C again within 3 seconds to shut down the server.";
@@ -168,7 +168,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void A_wide_terminal_draws_the_big_graphs_and_a_narrow_one_hides_them()
+	public void WideTerminal_DrawsGraphs()
 	{
 		var (model, renderer) = Create();
 		for (var i = 0; i < 200; i++) model.Cpu.Add(i % 100);
@@ -183,7 +183,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_overview_shows_the_current_numbers_and_one_meter_per_core()
+	public void Overview_NumbersAndMeters()
 	{
 		var (model, renderer) = Create();
 		model.UsersOnline.Add(7);
@@ -200,7 +200,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void The_metrics_tab_lists_the_diagnostics_by_dotted_name()
+	public void MetricsTab_DottedNames()
 	{
 		var (model, renderer) = Create();
 		model.Tab = DashboardTab.Metrics;
@@ -214,7 +214,7 @@ public sealed class DashboardRenderingTests
 	}
 
 	[Fact]
-	public void Painting_on_a_tiny_surface_does_not_throw()
+	public void TinySurface_DoesNotThrow()
 	{
 		var (model, renderer) = Create();
 		foreach (var tab in Enum.GetValues<DashboardTab>())

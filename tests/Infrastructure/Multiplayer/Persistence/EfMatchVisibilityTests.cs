@@ -24,7 +24,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	private IMatchEventRepository Events => Get<IMatchEventRepository>();
 
 	[Fact]
-	public async Task A_stranger_sees_a_public_match_and_not_a_private_one()
+	public async Task Stranger_PublicOnly()
 	{
 		var creator = await UserAsync("creator");
 		var stranger = await UserAsync("stranger");
@@ -37,7 +37,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task The_creator_sees_the_private_match()
+	public async Task Creator_SeesPrivateMatch()
 	{
 		var creator = await UserAsync("creator");
 		var match = await MatchAsync("private_match", creator, true);
@@ -46,7 +46,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_referee_sees_the_private_match()
+	public async Task Referee_SeesPrivateMatch()
 	{
 		var (match, referee) = await PrivateMatchWithAsync(MatchEventType.RefAdded);
 
@@ -54,7 +54,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_player_who_joined_sees_the_private_match()
+	public async Task JoinedPlayer_SeesPrivateMatch()
 	{
 		var (match, player) = await PrivateMatchWithAsync(MatchEventType.PlayerJoined);
 
@@ -62,7 +62,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_removed_referee_who_never_joined_does_not_see_the_private_match()
+	public async Task RemovedReferee_DeniedPrivateMatch()
 	{
 		var (match, referee) = await PrivateMatchWithAsync(MatchEventType.RefAdded, MatchEventType.RefRemoved);
 
@@ -70,7 +70,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_referee_removed_and_added_again_sees_the_private_match()
+	public async Task ReaddedReferee_SeesPrivateMatch()
 	{
 		var (match, referee) = await PrivateMatchWithAsync(MatchEventType.RefAdded, MatchEventType.RefRemoved,
 			MatchEventType.RefAdded);
@@ -79,7 +79,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_removed_referee_who_joined_as_a_player_sees_the_private_match()
+	public async Task RemovedRefereeJoined_SeesPrivateMatch()
 	{
 		var (match, referee) = await PrivateMatchWithAsync(MatchEventType.RefAdded, MatchEventType.RefRemoved,
 			MatchEventType.PlayerJoined);
@@ -88,7 +88,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_referee_added_to_a_match_does_not_open_it_to_a_stranger()
+	public async Task AddedReferee_StrangerStillDenied()
 	{
 		var creator = await UserAsync("creator");
 		var referee = await UserAsync("referee");
@@ -100,7 +100,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_referee_of_one_match_does_not_see_another_private_match()
+	public async Task OtherMatchReferee_DeniedPrivate()
 	{
 		var creator = await UserAsync("creator");
 		var referee = await UserAsync("referee");
@@ -112,7 +112,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Asking_for_private_matches_lists_only_the_ones_the_asker_may_see()
+	public async Task PrivateMatchRequest_OnlyVisibleOnes()
 	{
 		var creator = await UserAsync("creator");
 		var player = await UserAsync("player");
@@ -127,7 +127,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task Asking_for_public_matches_lists_only_public_ones()
+	public async Task PublicMatchRequest_OnlyPublicOnes()
 	{
 		var creator = await UserAsync("creator");
 		await MatchAsync("own_private_match", creator, true);
@@ -139,7 +139,7 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task A_listing_without_a_viewer_shows_every_match()
+	public async Task NoViewerListing_ShowsEveryMatch()
 	{
 		var creator = await UserAsync("creator");
 		await MatchAsync("private_match", creator, true);

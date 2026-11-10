@@ -22,7 +22,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_saved_screenshot_opens_with_the_bytes_it_was_saved_with()
+	public async Task SavedScreenshot_OpensWithBytes()
 	{
 		var reference =
 			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png");
@@ -33,7 +33,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_screenshot_is_stored_under_a_uuid_name_with_the_extension()
+	public async Task Screenshot_UuidWithExtension()
 	{
 		var reference =
 			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png");
@@ -45,7 +45,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Two_screenshots_get_different_references_and_neither_replaces_the_other()
+	public async Task TwoScreenshots_DistinctReferences()
 	{
 		var first = await _screenshots.SaveAsync(TestStreams.Of("first"), "png");
 		var second =
@@ -56,7 +56,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task The_references_of_the_saved_screenshots_are_listed()
+	public async Task SavedScreenshots_ReferencesListed()
 	{
 		var first = await _screenshots.SaveAsync(TestStreams.Of("1"), "png");
 		var second = await _screenshots.SaveAsync(TestStreams.Of("2"), "jpg");
@@ -68,7 +68,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Nothing_is_listed_when_nothing_is_stored()
+	public async Task NothingStored_ListsNothing()
 	{
 		Assert.Empty(await _screenshots.ListAsync(TestContext.Current.CancellationToken));
 	}
@@ -79,7 +79,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	[InlineData("jpeg")]
 	[InlineData("12345678")]
 	[InlineData("PNG")]
-	public async Task An_extension_of_one_to_eight_ascii_letters_or_digits_is_accepted(string extension)
+	public async Task ValidExtension_Accepted(string extension)
 	{
 		var reference =
 			await _screenshots.SaveAsync(TestStreams.Of("shot"), extension);
@@ -101,7 +101,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	[InlineData("png ")]
 	[InlineData("pñg")]
 	[InlineData("p\0g")]
-	public async Task Any_other_extension_is_refused_and_stores_nothing(string extension)
+	public async Task InvalidExtension_RefusedStoringNothing(string extension)
 	{
 		await Assert.ThrowsAnyAsync<ArgumentException>(() =>
 			_screenshots.SaveAsync(TestStreams.Of("shot"), extension));
@@ -111,7 +111,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_save_that_fails_stores_nothing()
+	public async Task FailedSave_StoresNothing()
 	{
 		await Assert.ThrowsAsync<IOException>(() =>
 			_screenshots.SaveAsync(new TestStreams.Failing(), "png"));
@@ -121,7 +121,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_deleted_screenshot_is_no_longer_stored_and_the_others_are()
+	public async Task DeletedScreenshot_GoneOthersKept()
 	{
 		var gone = await _screenshots.SaveAsync(TestStreams.Of("gone"), "png");
 		var kept = await _screenshots.SaveAsync(TestStreams.Of("kept"), "png");
@@ -134,7 +134,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_reference_to_no_stored_screenshot_opens_as_null_and_deletes_nothing()
+	public async Task UnknownScreenshotReference_NullNoDelete()
 	{
 		var reference = new ContentReference("Screenshots/missing.png");
 
@@ -143,7 +143,7 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_reference_to_another_storage_or_an_address_opens_as_null_and_deletes_nothing()
+	public async Task ForeignReference_OpensNullOnly()
 	{
 		var stored = await _screenshots.SaveAsync(TestStreams.Of("kept"), "png");
 		var banner = new ContentReference("Menu/Banners/shot.png");

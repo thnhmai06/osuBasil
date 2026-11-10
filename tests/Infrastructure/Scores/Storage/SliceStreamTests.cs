@@ -8,7 +8,7 @@ public sealed class SliceStreamTests
 	private static readonly byte[] Source = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 	[Fact]
-	public void The_view_has_the_length_of_the_part_and_starts_at_its_beginning()
+	public void View_MatchesPartBounds()
 	{
 		using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 
@@ -17,7 +17,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public void Reading_to_the_end_gives_only_the_part()
+	public void EndRead_GivesOnlyPart()
 	{
 		using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 
@@ -25,7 +25,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public void A_read_larger_than_the_part_stops_at_its_end_and_the_next_read_gives_nothing()
+	public void OversizedRead_StopsAtEnd()
 	{
 		using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 		var buffer = new byte[10];
@@ -35,7 +35,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public void Reading_does_not_depend_on_where_the_inner_stream_was_left()
+	public void Reading_IgnoresInnerPosition()
 	{
 		var inner = new MemoryStream(Source) { Position = 8 };
 		using var slice = new SliceStream(inner, 3, 4);
@@ -47,7 +47,7 @@ public sealed class SliceStreamTests
 	[InlineData(SeekOrigin.Begin, 1, new byte[] { 4, 5, 6 })]
 	[InlineData(SeekOrigin.Current, 2, new byte[] { 5, 6 })]
 	[InlineData(SeekOrigin.End, -1, new byte[] { 6 })]
-	public void Seeking_moves_within_the_part(SeekOrigin origin, long offset, byte[] expected)
+	public void Seeking_MovesWithinPart(SeekOrigin origin, long offset, byte[] expected)
 	{
 		using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 
@@ -57,7 +57,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public void Setting_the_position_reads_from_there()
+	public void SetPosition_ReadsFromThere()
 	{
 		using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 
@@ -67,7 +67,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public void A_negative_position_is_refused()
+	public void NegativePosition_Refused()
 	{
 		using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 
@@ -75,7 +75,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public async Task Reading_asynchronously_gives_only_the_part()
+	public async Task AsyncRead_GivesOnlyPart()
 	{
 		await using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 		using var copy = new MemoryStream();
@@ -86,7 +86,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public void The_view_cannot_be_written()
+	public void View_NotWritable()
 	{
 		using var slice = new SliceStream(new MemoryStream(Source), 3, 4);
 
@@ -96,7 +96,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public void Disposing_the_view_disposes_the_stream_it_reads_from()
+	public void ViewDisposed_InnerStreamDisposed()
 	{
 		var inner = new MemoryStream(Source);
 
@@ -106,7 +106,7 @@ public sealed class SliceStreamTests
 	}
 
 	[Fact]
-	public async Task Disposing_the_view_asynchronously_disposes_the_stream_it_reads_from()
+	public async Task AsyncViewDisposal_DisposesInner()
 	{
 		var inner = new MemoryStream(Source);
 

@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Common.Tests.Persistence;
 public sealed class DatabaseMigratorTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	[Fact]
-	public async Task Migrating_a_migrated_database_applies_no_further_migration()
+	public async Task MigratedDatabase_NoFurtherMigration()
 	{
 		var before = await AppliedMigrationsAsync();
 
@@ -21,7 +21,7 @@ public sealed class DatabaseMigratorTests(PersistenceFixture container) : Databa
 	}
 
 	[Fact]
-	public async Task Migrating_a_migrated_database_keeps_the_data()
+	public async Task MigratedDatabase_KeepsData()
 	{
 		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "kept_user" });
 

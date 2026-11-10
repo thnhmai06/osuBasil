@@ -17,7 +17,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	private ICredentialRepository Credentials => Get<ICredentialRepository>();
 
 	[Fact]
-	public async Task A_stored_credential_verifies_the_right_password()
+	public async Task StoredCredential_VerifiesRightPassword()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -29,7 +29,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_stored_credential_rejects_a_wrong_password()
+	public async Task StoredCredential_RejectsWrongPassword()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -40,7 +40,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task An_account_without_a_credential_verifies_nothing()
+	public async Task AccountWithoutCredential_VerifiesNothing()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "no_cred" });
@@ -50,7 +50,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_stored_credential_replaces_the_earlier_one()
+	public async Task StoredCredential_ReplacesEarlier()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -64,7 +64,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_deleted_credential_verifies_nothing()
+	public async Task DeletedCredential_VerifiesNothing()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -77,7 +77,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_deleted_credential_is_removed_from_the_database()
+	public async Task DeletedCredential_RemovedFromDatabase()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -94,7 +94,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Deleting_the_credential_of_an_account_without_one_changes_nothing()
+	public async Task DeleteMissingCredential_ChangesNothing()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "no_cred" });
@@ -106,7 +106,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_stored_credential_is_not_the_password()
+	public async Task StoredCredential_NotPassword()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -123,7 +123,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_stored_credential_is_in_the_database_when_the_write_returns()
+	public async Task StoredCredential_PresentOnReturn()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -136,7 +136,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_credential_for_an_account_that_does_not_exist_is_refused_to_the_caller()
+	public async Task MissingAccountCredential_Refused()
 	{
 		var ghost = new UserRecord { Id = 9999, Value = new UserData { Name = "ghost" } };
 
@@ -148,7 +148,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_replaced_password_takes_effect_after_the_old_one_was_verified()
+	public async Task ReplacedPassword_EffectiveAfterVerified()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });
@@ -165,7 +165,7 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_deleted_credential_verifies_nothing_after_it_was_verified()
+	public async Task DeletedAfterVerify_VerifiesNothing()
 	{
 		var user = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "cred_user" });

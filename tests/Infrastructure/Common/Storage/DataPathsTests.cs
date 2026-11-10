@@ -15,7 +15,7 @@ public sealed class DataPathsTests : IDisposable
 	}
 
 	[Fact]
-	public void A_relative_data_directory_is_resolved_against_the_directory_the_server_runs_from()
+	public void RelativePath_UsesRunDirectory()
 	{
 		var paths = new DataPaths(Options.Create(new StorageOptions { Location = "Data" }));
 
@@ -23,7 +23,7 @@ public sealed class DataPathsTests : IDisposable
 	}
 
 	[Fact]
-	public void An_absolute_data_directory_is_used_as_it_is()
+	public void AbsolutePath_UsedAsIs()
 	{
 		Assert.Equal(_data.Root, _data.Paths.Root);
 	}
@@ -38,7 +38,7 @@ public sealed class DataPathsTests : IDisposable
 	[InlineData("Faqs")]
 	[InlineData("Screenshots")]
 	[InlineData("Cache")]
-	public void Every_stored_kind_has_the_directory_the_documentation_names(string relative)
+	public void EveryKind_HasDocumentedDirectory(string relative)
 	{
 		var storages = new[]
 		{
@@ -52,7 +52,7 @@ public sealed class DataPathsTests : IDisposable
 	}
 
 	[Fact]
-	public void Computing_the_paths_creates_nothing_on_disk()
+	public void ComputingPaths_CreatesNothing()
 	{
 		_ = _data.Paths.Replays.Path;
 
@@ -60,7 +60,7 @@ public sealed class DataPathsTests : IDisposable
 	}
 
 	[Fact]
-	public void CreateDirectories_creates_the_data_directory_and_every_storage_directory()
+	public void CreateDirectories_CreatesEveryDirectory()
 	{
 		_data.Paths.CreateDirectories();
 
@@ -73,7 +73,7 @@ public sealed class DataPathsTests : IDisposable
 	}
 
 	[Fact]
-	public void CreateDirectories_twice_keeps_what_is_stored()
+	public void CreateDirectoriesTwice_KeepsStoredFiles()
 	{
 		_data.Paths.CreateDirectories();
 		File.WriteAllText(Path.Combine(_data.Paths.Faqs.Path, "kept.txt"), "kept");

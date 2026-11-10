@@ -45,7 +45,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task An_opened_connection_is_stored_open()
+	public async Task OpenedConnection_StoredOpen()
 	{
 		var session = await SessionAsync();
 
@@ -62,7 +62,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Closing_stores_when_the_connection_was_last_used_when_it_closed_and_why()
+	public async Task Closing_StoresLastUse()
 	{
 		var session = await SessionAsync();
 		await Connections.OpenAsync(session, Home, null, T0, Window);
@@ -76,7 +76,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Closing_leaves_the_connections_that_already_closed_as_they_were()
+	public async Task Closing_AlreadyClosedUnchanged()
 	{
 		var session = await SessionAsync();
 		await Connections.OpenAsync(session, Home, null, T0, Window);
@@ -90,7 +90,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_connection_from_the_same_address_inside_the_window_continues_the_last_one()
+	public async Task SameAddressWindow_ContinuesLast()
 	{
 		var session = await SessionAsync();
 		await Connections.OpenAsync(session, Home, null, T0, Window);
@@ -106,7 +106,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_connection_exactly_at_the_end_of_the_window_continues_the_last_one()
+	public async Task WindowEndConnection_ContinuesLast()
 	{
 		var session = await SessionAsync();
 		await Connections.OpenAsync(session, Home, null, T0, Window);
@@ -118,7 +118,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_connection_after_the_window_is_a_new_one()
+	public async Task AfterWindow_NewConnection()
 	{
 		var session = await SessionAsync();
 		await Connections.OpenAsync(session, Home, null, T0, Window);
@@ -130,7 +130,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_connection_from_another_address_is_a_new_one()
+	public async Task OtherAddress_NewConnection()
 	{
 		var session = await SessionAsync();
 		await Connections.OpenAsync(session, Home, null, T0, Window);
@@ -143,7 +143,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_trail_is_listed_newest_first_and_paged()
+	public async Task Trail_NewestFirstPaged()
 	{
 		var session = await SessionAsync();
 		foreach (var minutes in new[] { 0, 60, 120 })
@@ -163,7 +163,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task The_trails_of_two_sessions_are_kept_apart()
+	public async Task TwoSessionTrails_KeptApart()
 	{
 		var first = await SessionAsync("first_user", 1);
 		var second = await SessionAsync("second_user", 2);
@@ -177,7 +177,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Activity_is_stored_for_the_open_connection_only()
+	public async Task Activity_OpenConnectionOnly()
 	{
 		var open = await SessionAsync("open_user", 1);
 		var closed = await SessionAsync("closed_user", 2);
@@ -193,7 +193,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Storing_no_activity_changes_nothing()
+	public async Task NoActivity_NothingChanged()
 	{
 		var session = await SessionAsync();
 		await Connections.OpenAsync(session, Home, null, T0, Window);
@@ -204,7 +204,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Closing_what_is_open_closes_it_at_its_last_activity_and_counts_it()
+	public async Task ClosingOpen_AtLastActivity()
 	{
 		var open = await SessionAsync("open_user", 1);
 		var done = await SessionAsync("done_user", 2);
@@ -223,7 +223,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task Deleting_a_session_deletes_its_trail()
+	public async Task SessionDelete_TrailDeleted()
 	{
 		var session = await SessionAsync();
 		var user = (await Sessions.GetAsync((await Get<IUserRepository>().GetByNameAsync("trail_user", Cancel))!, session,
@@ -238,13 +238,13 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	}
 
 	[Fact]
-	public async Task A_connection_of_a_session_that_does_not_exist_is_refused()
+	public async Task MissingSession_ConnectionRefused()
 	{
 		await Assert.ThrowsAnyAsync<Exception>(() => Connections.OpenAsync(404, Home, null, T0, Window));
 	}
 
 	[Fact]
-	public async Task Ending_the_open_sessions_of_some_kinds_ends_them_at_their_last_activity()
+	public async Task SomeKindsEnding_AtLastActivity()
 	{
 		var stable = await SessionAsync("stable_user", 1, SessionType.Stable);
 		var api = await SessionAsync("api_user", 2);

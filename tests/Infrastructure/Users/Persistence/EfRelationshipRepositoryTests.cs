@@ -14,7 +14,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	private IRelationshipRepository Relationships => Get<IRelationshipRepository>();
 
 	[Fact]
-	public async Task A_listing_reads_no_more_relationships_than_the_ceiling()
+	public async Task Listing_RespectsRelationshipCeiling()
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "many_friends" });
@@ -39,7 +39,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	}
 
 	[Fact]
-	public async Task A_relationship_is_added()
+	public async Task NewRelationship_Added()
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "actor_one" });
@@ -62,7 +62,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	}
 
 	[Fact]
-	public async Task A_relationship_toward_an_account_the_database_does_not_hold_is_refused_to_the_caller()
+	public async Task UnknownTargetRelationship_Refused()
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "actor_alone" });
@@ -78,7 +78,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	}
 
 	[Fact]
-	public async Task A_relationship_toward_the_same_account_replaces_the_earlier_one()
+	public async Task SameTargetRelationship_ReplacesEarlier()
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "actor_one" });
@@ -114,7 +114,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	}
 
 	[Fact]
-	public async Task A_replaced_relationship_is_listed_once()
+	public async Task ReplacedRelationship_ListedOnce()
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "actor_one" });
@@ -142,7 +142,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	}
 
 	[Fact]
-	public async Task A_relationship_is_deleted()
+	public async Task ExistingRelationship_Deleted()
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "actor_one" });
@@ -164,7 +164,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	}
 
 	[Fact]
-	public async Task A_deleted_relationship_is_stored_as_gone()
+	public async Task DeletedRelationship_StoredAsGone()
 	{
 		var actor = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "actor_one" });
@@ -193,7 +193,7 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 	}
 
 	[Fact]
-	public async Task A_user_lists_only_the_relationships_they_hold()
+	public async Task UserListing_OnlyOwnRelationships()
 	{
 		var first = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "actor_one" });

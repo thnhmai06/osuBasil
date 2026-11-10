@@ -17,7 +17,7 @@ public sealed class DatabaseSessionOpenRetryTests
 	private readonly RecordingClock _clock = new();
 
 	[Fact]
-	public async Task A_write_whose_connection_opens_on_the_third_try_runs_its_change_once()
+	public async Task ThirdTry_ChangeRunsOnce()
 	{
 		var session = new UnreachableSession(_clock, 2);
 		var runs = 0;
@@ -33,7 +33,7 @@ public sealed class DatabaseSessionOpenRetryTests
 	}
 
 	[Fact]
-	public async Task A_write_whose_connection_never_opens_fails_after_three_retries_without_running_its_change()
+	public async Task ConnectionNeverOpens_FailsAfterRetries()
 	{
 		var session = new UnreachableSession(_clock, int.MaxValue);
 		var runs = 0;
@@ -50,7 +50,7 @@ public sealed class DatabaseSessionOpenRetryTests
 	}
 
 	[Fact]
-	public async Task A_change_that_fails_after_the_connection_opened_is_not_retried()
+	public async Task FailsAfterOpen_NotRetried()
 	{
 		var session = new UnreachableSession(_clock, 0);
 		var runs = 0;

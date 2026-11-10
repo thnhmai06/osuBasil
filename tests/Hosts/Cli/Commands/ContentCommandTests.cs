@@ -22,7 +22,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Beatmapsets_Create_ImportsAnOsz_ThenShowListAndBeatmapsPrintIt()
+	public async Task BeatmapsetsCreate_ImportsAndLists()
 	{
 		var (code, text) =
 			await fixture.RunAsync($"beatmapsets create --file {SamplePath("hopes-and-dreams-catch.osz")}");
@@ -48,7 +48,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Beatmapsets_Set_ChangesStatusVisibilityAndLock_AndABadStatusIsInvalid()
+	public async Task BeatmapsetsSet_UpdatesAndValidates()
 	{
 		var maps = await fixture.Host.ImportSampleAsync("Sets/selene-ui-mania.osz");
 		var set = maps[0].Beatmapset;
@@ -68,7 +68,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Beatmapsets_Delete_RemovesTheSet()
+	public async Task BeatmapsetsDelete_RemovesSet()
 	{
 		var maps = await fixture.Host.ImportSampleAsync("Sets/mosi-mosi-taiko.osz");
 		var set = maps[0].Beatmapset;
@@ -82,7 +82,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Beatmapsets_Reload_StartsTheReload_AndRefreshIsNoLongerACommand()
+	public async Task BeatmapsetsReload_StartsRefreshRemoved()
 	{
 		var (code, text) = await fixture.RunAsync("beatmapsets reload");
 		var (refresh, _) = await fixture.RunAsync("beatmapsets refresh");
@@ -93,7 +93,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Version_PrintsTheAppAndTheRulesetVersion_AndRulesetVersionShowsNoStagedVersion()
+	public async Task Version_AppRulesetOnly()
 	{
 		var (code, text) = await fixture.RunAsync("version");
 		var (rulesetCode, rulesetText) = await fixture.RunAsync("ruleset version");
@@ -107,7 +107,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Beatmaps_AndScores_UnknownIds_AreNotFound_AndAnEmptyScoreListPrints()
+	public async Task UnknownIds_NotFoundEmpty()
 	{
 		Assert.Equal(1, (await fixture.RunAsync("beatmaps 999999")).Code);
 		Assert.Equal(1, (await fixture.RunAsync("scores 999999")).Code);
@@ -121,7 +121,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_ShowPrintsEveryCategoryAsDottedFields_AndACategoryAlone()
+	public async Task SettingsShow_PrintsDottedCategories()
 	{
 		var (code, text) = await fixture.RunAsync("settings");
 		var (_, category) = await fixture.RunAsync("settings rateLimits");
@@ -134,7 +134,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Set_ChangesAnAdmissionLimit()
+	public async Task SettingsSet_ChangesAdmissionLimit()
 	{
 		var before = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 
@@ -148,7 +148,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Set_ChangesANestedFieldAndKeepsTheRest()
+	public async Task SettingsSet_NestedKeepsRest()
 	{
 		var before = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 
@@ -163,7 +163,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Set_SessionLimits_ChangesOneKind_AndNonPositiveIsInvalid()
+	public async Task SessionLimits_RejectsNonPositive()
 	{
 		var before = await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
 
@@ -179,7 +179,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Set_Locks_TakesBooleans_AndAnInvalidValueIsInvalid()
+	public async Task LocksSet_AcceptsOnlyBooleans()
 	{
 		var before = (await Get<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).Locks;
 
@@ -196,13 +196,13 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Set_WithoutAField_IsInvalid()
+	public async Task SettingsSet_NoFieldInvalid()
 	{
 		Assert.Equal(2, (await fixture.RunAsync("settings general set")).Code);
 	}
 
 	[Fact]
-	public async Task The_console_passes_a_lock_as_a_manager_does()
+	public async Task ConsoleLock_PassedAsManager()
 	{
 		await fixture.RunAsync("settings locks set --accounts true");
 		var name = CliFixture.Name("locked");
@@ -214,7 +214,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Faqs_SetShowListDelete_RoundTripATextFile()
+	public async Task FaqsCrud_RoundTripsFile()
 	{
 		var entry = CliFixture.Name("faq");
 		var file = Path.GetTempFileName();
@@ -241,7 +241,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Menu_IconAndSeasonalsAndBanners_ListWhenEmpty_AndRefuseUnknowns()
+	public async Task MenuLists_EmptyRefusesUnknowns()
 	{
 		Assert.Equal(0, (await fixture.RunAsync("menu icon")).Code);
 		Assert.Equal(0, (await fixture.RunAsync("menu banners list")).Code);
@@ -251,7 +251,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Announce_ToNobodyOnline_SendsZero_AndAnUnknownRecipientIsNotFound()
+	public async Task AnnounceNobody_SendsZeroUnknown()
 	{
 		var (code, text) = await fixture.RunAsync("announce create --text \"hello all\"");
 		var (bad, badText) = await fixture.RunAsync("announce create --text hi --to 999999");
@@ -263,7 +263,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Screenshots_ListIsEmpty_AndAnUnknownScreenshotIsNotFound()
+	public async Task Screenshots_EmptyUnknownRefused()
 	{
 		var (code, text) = await fixture.RunAsync("screenshots list");
 
@@ -273,7 +273,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Diagnostics_Actions_Run()
+	public async Task DiagnosticsActions_Run()
 	{
 		Assert.Equal(0, (await fixture.RunAsync("diagnostics gc collect")).Code);
 		Assert.Equal(0, (await fixture.RunAsync("diagnostics caches clear")).Code);

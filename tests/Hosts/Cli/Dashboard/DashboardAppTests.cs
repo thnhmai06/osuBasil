@@ -48,7 +48,7 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task The_dashboard_shows_the_tab_bar_and_the_command_box()
+	public async Task Dashboard_TabBarBox()
 	{
 		await using var run = Start();
 
@@ -58,7 +58,7 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_function_key_changes_the_tab()
+	public async Task FunctionKey_ChangesTab()
 	{
 		await using var run = Start();
 		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
@@ -69,7 +69,7 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_typed_command_runs_and_its_output_appears_above_the_command_box()
+	public async Task TypedCommand_OutputAboveBox()
 	{
 		await using var run = Start();
 		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
@@ -83,7 +83,7 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task A_password_in_a_typed_command_is_hidden_in_the_history_shown()
+	public async Task TypedPassword_HiddenInHistory()
 	{
 		await using var run = Start();
 		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
@@ -99,7 +99,7 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Ctrl_c_twice_asks_for_the_shutdown_and_stops_the_application()
+	public async Task CtrlCTwice_AsksAndStops()
 	{
 		await using var run = Start();
 		await Eventually.TrueAsync(() => run.Screen.Contains("Overview"), "the dashboard is drawn");
