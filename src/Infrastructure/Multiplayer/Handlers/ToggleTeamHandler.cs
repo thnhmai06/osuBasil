@@ -12,6 +12,6 @@ internal sealed class ToggleTeamHandler : IRequestHandler<ToggleTeam, Result<Roo
 	public ValueTask<Result<RoomOutcome>> Handle(ToggleTeam request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Slots.ToggleTeamAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Slots.ToggleTeamAsync());
 	}
 }

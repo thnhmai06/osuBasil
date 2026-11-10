@@ -12,6 +12,6 @@ internal sealed class InvitePlayerHandler : IRequestHandler<InvitePlayer, Result
 	public ValueTask<Result<RoomOutcome>> Handle(InvitePlayer request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Members.InviteAsync(request.Target, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Members.InviteAsync(request.Target));
 	}
 }

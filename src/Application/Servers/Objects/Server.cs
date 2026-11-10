@@ -50,7 +50,7 @@ public sealed partial class Server
 		await registry.EnsureBotAsync(cancellationToken);
 		var botOnline = await registry.ConnectBotAsync(cancellationToken) is not null;
 
-		var closedMatches = await Context.Lobby.CloseUnfinishedAsync(cancellationToken);
+		var closedMatches = await Context.Lobby.CloseUnfinishedAsync();
 		return new ServerRecovery(openedChannels, botOnline, closedMatches, closedConnections);
 	}
 

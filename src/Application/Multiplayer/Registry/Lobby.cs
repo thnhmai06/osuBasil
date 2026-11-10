@@ -302,7 +302,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <summary>Gets whether opening rooms is locked.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> while room creation is locked.</returns>
-	internal async Task<bool> IsRoomCreationLockedAsync(CancellationToken cancellationToken)
+	internal async Task<bool> IsRoomCreationLockedAsync(CancellationToken cancellationToken = default)
 	{
 		return (await Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Rooms);
 	}
@@ -315,11 +315,9 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <param name="isPrivate">Whether the room is private.</param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
 	/// <param name="seatsFromGame">Whether the room is opened in game, which fails when the client already plays in a room.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The opened room and Ok; otherwise no room and AlreadyInRoom, InvalidSettings or NoRoomId.</returns>
 	internal async Task<(Room? Room, RoomOutcome Outcome)> OpenRoomAsync(UserRecord creator, StableConnection? seat,
-		bool seatsFromGame, string name, string password, bool isPrivate, MatchSettings? settings,
-		CancellationToken cancellationToken)
+		bool seatsFromGame, string name, string password, bool isPrivate, MatchSettings? settings)
 	{
 		var now = Context.Clock.GetUtcNow();
 		if (seatsFromGame && RoomOf(seat!) is not null) return (null, RoomOutcome.AlreadyInRoom);
@@ -329,7 +327,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
 		if (Reserve() is not { } id) return (null, RoomOutcome.NoRoomId);
 
-		var match = await CreateMatchAsync(id, name, creator, isPrivate, now, cancellationToken);
+		var match = await CreateMatchAsync(id, name, creator, isPrivate, now);
 		var room = Establish(id, match, settings, password, seat);
 
 		var closesAt = !room.Slots.Any(slot => slot.Player is not null) ? StartEmptyClock(room) : (DateTimeOffset?)null;
@@ -338,7 +336,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	}
 
 	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
-		DateTimeOffset now, CancellationToken cancellationToken)
+		DateTimeOffset now)
 	{
 		try
 		{
@@ -349,7 +347,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 				EndedAt = null,
 				Creator = creator,
 				IsPrivate = isPrivate
-			}, cancellationToken);
+			});
 		}
 		catch
 		{
@@ -409,8 +407,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	/// <summary>Releases a connection from room memberships when the server itself calls it; it needs no rights.</summary>
 	/// <param name="connection">The connection to release.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	public Task ReleaseAsync(Connection connection, CancellationToken cancellationToken = default)
+	public Task ReleaseAsync(Connection connection)
 	{
 		switch (connection)
 		{
@@ -450,19 +447,17 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	}
 
 	/// <summary>Closes unfinished matches when the server itself calls it at startup; it needs no rights.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many matches were ended.</returns>
-	public async Task<int> CloseUnfinishedAsync(CancellationToken cancellationToken = default)
+	public async Task<int> CloseUnfinishedAsync()
 	{
 		var allMatches = await Paging.ListAllAsync(
-			page => Context.Matches.ListAsync(new MatchQuery(false), page, cancellationToken),
-			cancellationToken);
+			page => Context.Matches.ListAsync(new MatchQuery(false), page));
 
 		var now = Context.Clock.GetUtcNow();
 
 		foreach (var match in allMatches)
 		{
-			var aborted = (await Context.Rounds.ListAsync(match, cancellationToken)).Where(r => r.EndedAt is null)
+			var aborted = (await Context.Rounds.ListAsync(match)).Where(r => r.EndedAt is null)
 				.ToList();
 			foreach (var round in aborted)
 			{

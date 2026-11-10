@@ -484,14 +484,12 @@ public sealed class ScoreSubmissionTests
 	private static async Task<Room> StartRoundAsync(ScoreSubmissionFixture f,
 		GameTeamType teamType = GameTeamType.HeadToHead)
 	{
-		var (room, opened) = await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
 		var scope = room!.ScopeTo(f.Client);
 		Assert.True((await scope.Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType),
-			TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await scope.Rounds.StartAsync(TestContext.Current.CancellationToken)).IsOk);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType))).IsOk);
+		Assert.True((await scope.Rounds.StartAsync()).IsOk);
 		return room;
 	}
 
@@ -518,7 +516,7 @@ public sealed class ScoreSubmissionTests
 		var submitted = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
 
 		await new ScoreHandler(f.App.Lobby).Handle(submitted, TestContext.Current.CancellationToken);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()).IsOk);
 
 		var taken = Assert.Single(f.App.RoomEvents.Events.OfType<RoomRoundScoreSubmitted>());
 		Assert.Equal(submitted.Score, taken.Score.Score);
@@ -534,9 +532,9 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
 		var stays = await RoomFixture.PlayerAsync(f.App, "Stays");
-		Assert.True((await room.ScopeTo(stays).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync(TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await room.ScopeTo(f.Client).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(stays).Members.JoinAsync("")).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Members.LeaveAsync()).IsOk);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
@@ -550,7 +548,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()).IsOk);
 		f.App.Clock.Advance(ScoreWait);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),

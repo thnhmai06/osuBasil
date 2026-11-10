@@ -22,7 +22,7 @@ public sealed class LobbyTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		await app.Lobby.ReleaseAsync(setup.Player, TestContext.Current.CancellationToken);
+		await app.Lobby.ReleaseAsync(setup.Player);
 
 		Assert.Null(setup.Room.Slots.Find(setup.Player));
 		Assert.IsType<RoomPlayerLeft>(app.RoomEvents.Events[^1]);
@@ -36,10 +36,9 @@ public sealed class LobbyTests
 		var observerUser = await app.CreateUserAsync("Observer", "password",
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var observer = (TourneyConnection)await app.LoginAsync(observerUser, SessionType.StableTourney);
-		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync()).IsOk);
 
-		await app.Lobby.ReleaseAsync(observer, TestContext.Current.CancellationToken);
+		await app.Lobby.ReleaseAsync(observer);
 
 		Assert.DoesNotContain(observer, setup.Room.Members.Observers);
 		Assert.IsType<RoomObserverLeft>(app.RoomEvents.Events[^1]);
@@ -50,11 +49,10 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
 
-		var ended = await app.Lobby.CloseUnfinishedAsync(TestContext.Current.CancellationToken);
+		var ended = await app.Lobby.CloseUnfinishedAsync();
 
 		Assert.Equal(1, ended);
 		Assert.NotNull(room!.Match.Value.EndedAt);
@@ -67,8 +65,7 @@ public sealed class LobbyTests
 		using var app = new TestApplication();
 		var first = await RoomFixture.CreateAsync(app);
 		var creator = await RoomFixture.PlayerAsync(app, "SecondCreator");
-		var (second, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("second room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (second, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("second room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
 
 		var open = app.Lobby.Rooms.Count;
@@ -109,7 +106,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 
-		var ended = await app.Lobby.CloseUnfinishedAsync(TestContext.Current.CancellationToken);
+		var ended = await app.Lobby.CloseUnfinishedAsync();
 
 		Assert.Equal(0, ended);
 	}
@@ -136,8 +133,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, result) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("private room", "", RoomSource.Game, true,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, result) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("private room", "", RoomSource.Game, true);
 		Assert.True(result.IsOk);
 
 		Assert.Same(room, app.Lobby.Find(room!.Id));
@@ -148,7 +144,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()).IsOk);
 
 		Assert.Null(app.Lobby.Find(setup.Room.Id));
 	}
@@ -160,10 +156,9 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", source, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", source, false);
 		Assert.True(opened.IsOk);
-		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync()).IsOk);
 
 		app.Clock.Advance(Lobby.EmptyRoomTimeout - OneSecond);
 		var early = app.Lobby.CloseEmptyRooms();
@@ -181,8 +176,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"));
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Api, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Api, false);
 		Assert.True(opened.IsOk);
 
 		app.Clock.Advance(Lobby.EmptyRoomTimeout);
@@ -196,8 +190,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
 
 		app.Clock.Advance(Lobby.EmptyRoomTimeout * 2);
@@ -211,13 +204,12 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"));
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Api, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Api, false);
 		Assert.True(opened.IsOk);
 		app.Clock.Advance(TimeSpan.FromMinutes(10));
 		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await room.ScopeTo(player).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("")).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.LeaveAsync()).IsOk);
 
 		app.Clock.Advance(Lobby.EmptyRoomTimeout - OneSecond);
 		var early = app.Lobby.CloseEmptyRooms();
@@ -233,10 +225,9 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
-		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync()).IsOk);
 		var closesAt = app.Clock.GetUtcNow() + Lobby.EmptyRoomTimeout;
 		var announcedAtLeave = app.LobbyEvents.Events.OfType<LobbyRoomClosingAnnounced>().Count();
 

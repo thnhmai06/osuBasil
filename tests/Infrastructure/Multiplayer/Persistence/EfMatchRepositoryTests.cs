@@ -60,8 +60,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 	{
 		var creator = await Get<IUserRepository>().CreateAsync(new UserData { Name = "creator_user" });
 
-		var match = await Matches.CreateAsync(StoredMatches.Data("owned_match", First, creator),
-			TestContext.Current.CancellationToken);
+		var match = await Matches.CreateAsync(StoredMatches.Data("owned_match", First, creator));
 
 		Assert.Equal(creator.Id, match.Value.Creator.Id);
 	}
@@ -102,7 +101,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 		var match = await CreateStoredMatchAsync("before_rename", First);
 		match.Value.Name = "after_rename";
 
-		await Matches.UpdateAsync(match, TestContext.Current.CancellationToken);
+		await Matches.UpdateAsync(match);
 
 		var found = await Matches.GetAsync(match.Id, TestContext.Current.CancellationToken);
 		Assert.Equal("after_rename", found!.Value.Name);
@@ -114,7 +113,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 		var match = await CreateStoredMatchAsync("ended_match", First);
 		match.Value.EndedAt = Second;
 
-		await Matches.UpdateAsync(match, TestContext.Current.CancellationToken);
+		await Matches.UpdateAsync(match);
 
 		var found = await Matches.GetAsync(match.Id, TestContext.Current.CancellationToken);
 		Assert.Equal(Second, found!.Value.EndedAt);
@@ -126,7 +125,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 		var match = await CreateStoredMatchAsync("private_match", First);
 		match.Value.IsPrivate = true;
 
-		await Matches.UpdateAsync(match, TestContext.Current.CancellationToken);
+		await Matches.UpdateAsync(match);
 
 		var found = await Matches.GetAsync(match.Id, TestContext.Current.CancellationToken);
 		Assert.True(found!.Value.IsPrivate);
@@ -139,7 +138,7 @@ public sealed class EfMatchRepositoryTests(PersistenceFixture container) : Datab
 		match.Value.Name = "renamed_match";
 		match.Value.EndedAt = Second;
 
-		await Matches.UpdateAsync(match, TestContext.Current.CancellationToken);
+		await Matches.UpdateAsync(match);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select name, ended_at from matches where id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },

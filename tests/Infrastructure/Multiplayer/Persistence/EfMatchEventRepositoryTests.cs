@@ -40,8 +40,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	public async Task A_recorded_event_is_stored()
 	{
 		var match = await CreateMatchAsync("event_match");
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select type, timestamp from match_events where match_id = @id",
@@ -59,19 +58,16 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 		var unstored = new MatchRecord { Id = match.Id + 1000, Value = match.Value };
 
 		await Assert.ThrowsAnyAsync<Exception>(() => Events.RecordAsync(
-			StoredMatches.Event(unstored, MatchEventType.Created, First), TestContext.Current.CancellationToken));
+			StoredMatches.Event(unstored, MatchEventType.Created, First)));
 	}
 
 	[Fact]
 	public async Task The_events_of_a_match_are_listed_in_the_order_they_happened()
 	{
 		var match = await CreateMatchAsync("ordered_event_match");
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Closed, Third),
-			TestContext.Current.CancellationToken);
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First),
-			TestContext.Current.CancellationToken);
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerJoined, Second),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Closed, Third));
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First));
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerJoined, Second));
 		await WaitForEventsAsync(match, 3);
 
 		var listed = await Events.ListAsync(match, TestContext.Current.CancellationToken);
@@ -85,8 +81,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	{
 		var match = await CreateMatchAsync("actor_event_match");
 		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_actor" });
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerJoined, First, actor),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerJoined, First, actor));
 		await WaitForEventsAsync(match, 1);
 
 		var listed = await Events.ListAsync(match, TestContext.Current.CancellationToken);
@@ -99,8 +94,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	{
 		var match = await CreateMatchAsync("target_event_match");
 		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "event_target" });
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerLeft, First, null, target),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.PlayerLeft, First, null, target));
 		await WaitForEventsAsync(match, 1);
 
 		var listed = await Events.ListAsync(match, TestContext.Current.CancellationToken);
@@ -112,8 +106,7 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	public async Task A_recorded_event_keeps_its_detail()
 	{
 		var match = await CreateMatchAsync("detailed_event_match");
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.RefAdded, First, detail: "A referee."),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.RefAdded, First, detail: "A referee."));
 		await WaitForEventsAsync(match, 1);
 
 		var listed = await Events.ListAsync(match, TestContext.Current.CancellationToken);
@@ -126,10 +119,8 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 	{
 		var match = await CreateMatchAsync("own_event_match");
 		var other = await CreateMatchAsync("other_event_match");
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First),
-			TestContext.Current.CancellationToken);
-		await Events.RecordAsync(StoredMatches.Event(other, MatchEventType.Created, First),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First));
+		await Events.RecordAsync(StoredMatches.Event(other, MatchEventType.Created, First));
 		await WaitForEventsAsync(match, 1);
 
 		var listed = await Events.ListAsync(match, TestContext.Current.CancellationToken);

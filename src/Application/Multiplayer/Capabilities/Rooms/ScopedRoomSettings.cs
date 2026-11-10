@@ -18,7 +18,6 @@ public readonly struct ScopedRoomSettings
 
 	/// <summary>Changes the room's settings in one step.</summary>
 	/// <param name="change">The settings to change.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, InProgress, InvalidSettings, InvalidMods or RoomClosed when the room has closed.</returns>
 	/// <remarks>
 	///     Nothing changes unless every field is valid. Selecting or clearing the beatmap sets ready players back to not
@@ -31,8 +30,7 @@ public readonly struct ScopedRoomSettings
 	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
 	///     round.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> ConfigureAsync(RoomSettingsChange change,
-		CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> ConfigureAsync(RoomSettingsChange change)
 	{
 		// Build required permissions from the change
 		var required = RoomPermissions.SettingsChange;
@@ -46,12 +44,11 @@ public readonly struct ScopedRoomSettings
 
 	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
 	/// <param name="locked">The lock state to set.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does
 	///     nothing.
 	/// </returns>
-	public Task<Result<RoomOutcome>> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> SetLockedAsync(bool locked)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.SlotsMovePlayers) ??
 		                       _scoped.Room.SetLocked(locked));

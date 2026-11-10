@@ -14,9 +14,8 @@ internal sealed class RoomPlayerLeftRecorder(
 	public async ValueTask Handle(RoomPlayerLeft @event, CancellationToken cancellationToken)
 	{
 		if (@event.RoundProgress is { Completed: true } progress)
-			await rounds.CreateOrUpdateAsync(progress.Round, cancellationToken);
+			await rounds.CreateOrUpdateAsync(progress.Round);
 		await matchEvents.RecordAsync(
-			new MatchEvent(@event.Room.Match, MatchEventType.PlayerLeft, @event.Timestamp, null, @event.Player.Record),
-			cancellationToken);
+			new MatchEvent(@event.Room.Match, MatchEventType.PlayerLeft, @event.Timestamp, null, @event.Player.Record));
 	}
 }

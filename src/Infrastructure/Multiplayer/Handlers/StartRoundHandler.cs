@@ -12,6 +12,6 @@ internal sealed class StartRoundHandler : IRequestHandler<StartRound, Result<Roo
 	public ValueTask<Result<RoomOutcome>> Handle(StartRound request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Rounds.StartAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Rounds.StartAsync());
 	}
 }

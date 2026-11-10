@@ -11,7 +11,7 @@ internal sealed class OpenRoomHandler(Lobby lobby) : IRequestHandler<OpenRoom, O
 	public async ValueTask<OpenedRoom> Handle(OpenRoom request, CancellationToken cancellationToken)
 	{
 		var (room, result) = await lobby.ScopeTo(request.Actor).OpenRoomAsync(request.Name, request.Password,
-			request.Source, request.IsPrivate, request.Settings, cancellationToken);
+			request.Source, request.IsPrivate, request.Settings);
 		return new OpenedRoom(room, result);
 	}
 }

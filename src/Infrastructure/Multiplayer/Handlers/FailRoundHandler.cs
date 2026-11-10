@@ -12,6 +12,6 @@ internal sealed class FailRoundHandler : IRequestHandler<FailRound, Result<RoomO
 	public ValueTask<Result<RoomOutcome>> Handle(FailRound request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Rounds.FailAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Rounds.FailAsync());
 	}
 }

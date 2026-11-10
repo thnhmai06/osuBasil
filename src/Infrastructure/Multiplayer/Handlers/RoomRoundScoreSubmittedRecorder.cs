@@ -11,6 +11,6 @@ internal sealed class RoomRoundScoreSubmittedRecorder(IRoundScoreRepository roun
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundScoreSubmitted @event, CancellationToken cancellationToken)
 	{
-		await roundScores.RecordAsync(@event.Score, cancellationToken);
+		await roundScores.RecordAsync(@event.Score);
 	}
 }

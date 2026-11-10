@@ -12,6 +12,6 @@ internal sealed class CloseRoomHandler : IRequestHandler<CloseRoom, Result<RoomO
 	public ValueTask<Result<RoomOutcome>> Handle(CloseRoom request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).CloseAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).CloseAsync());
 	}
 }

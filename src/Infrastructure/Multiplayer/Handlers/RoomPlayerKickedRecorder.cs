@@ -14,9 +14,9 @@ internal sealed class RoomPlayerKickedRecorder(
 	public async ValueTask Handle(RoomPlayerKicked @event, CancellationToken cancellationToken)
 	{
 		if (@event.RoundProgress is { Completed: true } progress)
-			await rounds.CreateOrUpdateAsync(progress.Round, cancellationToken);
+			await rounds.CreateOrUpdateAsync(progress.Round);
 		await matchEvents.RecordAsync(
 			new MatchEvent(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.Actor,
-				@event.Player.Record, "Kicked"), cancellationToken);
+				@event.Player.Record, "Kicked"));
 	}
 }

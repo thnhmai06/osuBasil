@@ -12,6 +12,6 @@ internal sealed class ConfigureRoomHandler : IRequestHandler<ConfigureRoom, Resu
 	public ValueTask<Result<RoomOutcome>> Handle(ConfigureRoom request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Settings.ConfigureAsync(request.Change, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Settings.ConfigureAsync(request.Change));
 	}
 }

@@ -15,11 +15,11 @@ internal sealed class LobbyMatchRecoveredRecorder(
 	public async ValueTask Handle(LobbyMatchRecovered @event, CancellationToken cancellationToken)
 	{
 		foreach (var round in @event.AbortedRounds)
-			await rounds.CreateOrUpdateAsync(round, cancellationToken);
+			await rounds.CreateOrUpdateAsync(round);
 		await matchEvents.RecordAsync(
 			new MatchEvent(@event.Match, MatchEventType.Closed, @event.Timestamp, null, null,
-				MatchEvent.ServerStoppedDetail), cancellationToken);
+				MatchEvent.ServerStoppedDetail));
 		// The match reads as ended only once its report is complete.
-		await matches.UpdateAsync(@event.Match, cancellationToken);
+		await matches.UpdateAsync(@event.Match);
 	}
 }

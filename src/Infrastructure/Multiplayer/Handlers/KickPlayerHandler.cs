@@ -12,6 +12,6 @@ internal sealed class KickPlayerHandler : IRequestHandler<KickPlayer, Result<Roo
 	public ValueTask<Result<RoomOutcome>> Handle(KickPlayer request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Members.KickAsync(request.Player, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Members.KickAsync(request.Player));
 	}
 }

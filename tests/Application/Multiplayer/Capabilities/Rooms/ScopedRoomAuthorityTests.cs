@@ -50,8 +50,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Slots.Find(target.Record)?.Index;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Slots.MoveAsync(target.Record, 5,
-			TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Slots.MoveAsync(target.Record, 5);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -92,8 +91,7 @@ public sealed class ScopedRoomAuthorityTests
 			new SlotArrangement(5, target.Record, null, false)
 		};
 
-		var result = await room.ScopeTo(caller).Slots.ArrangeAsync(arrangement,
-			TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Slots.ArrangeAsync(arrangement);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -126,12 +124,11 @@ public sealed class ScopedRoomAuthorityTests
 		var caller = setup.ConnectionFor(role);
 		var target = setup.Player;
 		await room.ScopeTo(setup.Manager).Settings.ConfigureAsync(
-			new RoomSettingsChange(TeamType: GameTeamType.TeamVs), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(TeamType: GameTeamType.TeamVs));
 		var before = room.Slots.Find(target.Record)?.Team;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Slots.SetTeamAsync(target.Record, GameTeam.Blue,
-			TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Slots.SetTeamAsync(target.Record, GameTeam.Blue);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -165,7 +162,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Slots.At(6)!.Locked;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Slots.ToggleLockAsync(6, TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Slots.ToggleLockAsync(6);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -199,7 +196,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Slots.Locked;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Settings.SetLockedAsync(true, TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Settings.SetLockedAsync(true);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -233,8 +230,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Settings.Name;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Settings.ConfigureAsync(new RoomSettingsChange("renamed"),
-			TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Settings.ConfigureAsync(new RoomSettingsChange("renamed"));
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -265,11 +261,11 @@ public sealed class ScopedRoomAuthorityTests
 		var room = setup.RoomFor(role);
 		var caller = setup.ConnectionFor(role);
 		await room.ScopeTo(setup.Manager).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));
 		var before = room.Rounds.LastRound;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Rounds.StartAsync();
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -329,12 +325,12 @@ public sealed class ScopedRoomAuthorityTests
 		var room = setup.RoomFor(role);
 		var caller = setup.ConnectionFor(role);
 		await room.ScopeTo(setup.Manager).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken);
-		await room.ScopeTo(setup.Manager).Rounds.StartAsync(TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));
+		await room.ScopeTo(setup.Manager).Rounds.StartAsync();
 		var before = room.Rounds.CurrentRound;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Rounds.AbortAsync(TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Rounds.AbortAsync();
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -368,7 +364,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Slots.Find(target.Record)?.Index;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Members.KickAsync(target.Record, TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Members.KickAsync(target.Record);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -402,7 +398,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Members.Banned.Contains(target.Record);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Members.BanAsync(target.Record, TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Members.BanAsync(target.Record);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -434,12 +430,12 @@ public sealed class ScopedRoomAuthorityTests
 		var room = setup.RoomFor(role);
 		var caller = setup.ConnectionFor(role);
 		var target = setup.Player;
-		await room.ScopeTo(setup.Manager).Members.BanAsync(target.Record, TestContext.Current.CancellationToken);
+		await room.ScopeTo(setup.Manager).Members.BanAsync(target.Record);
 		var before = room.Members.Banned.Contains(target.Record);
 		var events = app.RoomEvents.Events.Count;
 
 		var result = await room.ScopeTo(caller).Members
-			.UnbanAsync(target.Record, TestContext.Current.CancellationToken);
+			.UnbanAsync(target.Record);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -472,7 +468,7 @@ public sealed class ScopedRoomAuthorityTests
 		var target = app.Users.Of(setup.Outsider.Record);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Members.InviteAsync(target, TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Members.InviteAsync(target);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -506,8 +502,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Authority.Referees.Contains(target);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Authority.AddRefereeAsync(target,
-			TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Authority.AddRefereeAsync(target);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -542,8 +537,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Authority.Referees.Contains(target);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Authority.RemoveRefereeAsync(target,
-			TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Authority.RemoveRefereeAsync(target);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -576,8 +570,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Authority.Host;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Authority.SetHostAsync(setup.Player,
-			TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).Authority.SetHostAsync(setup.Player);
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -610,7 +603,7 @@ public sealed class ScopedRoomAuthorityTests
 		var events = app.RoomEvents.Events.Count;
 		var lobbyEvents = app.LobbyEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).CloseAsync(TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(caller).CloseAsync();
 
 		if (expected == RoomExpectation.Allowed)
 		{
@@ -648,8 +641,7 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Creator.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Creator.Record);
 
 		Assert.Equal(RoomOutcome.IsCreator, result.Outcome);
 		Assert.DoesNotContain(setup.Creator.Record, setup.Room.Authority.Referees);
@@ -661,8 +653,7 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Referee.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(setup.Referee.Record);
 
 		Assert.Equal(RoomOutcome.AlreadyReferee, result.Outcome);
 	}
@@ -675,13 +666,11 @@ public sealed class ScopedRoomAuthorityTests
 		for (var index = 1; index < RoomAuthority.MaxReferees; index++)
 		{
 			var user = await RoomFixture.PlayerAsync(app, $"Referee{index}");
-			Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(user.Record,
-				TestContext.Current.CancellationToken)).IsOk);
+			Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(user.Record)).IsOk);
 		}
 
 		var ninth = await RoomFixture.PlayerAsync(app, "Ninth");
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(ninth.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(ninth.Record);
 
 		Assert.Equal(RoomOutcome.TooManyReferees, result.Outcome);
 		Assert.Equal(RoomAuthority.MaxReferees, setup.Room.Authority.Referees.Count);
@@ -693,8 +682,7 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(setup.Outsider.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(setup.Outsider.Record);
 
 		Assert.Equal(RoomOutcome.NotReferee, result.Outcome);
 	}
@@ -705,8 +693,7 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Outsider,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Outsider);
 
 		Assert.Equal(RoomOutcome.NotInRoom, result.Outcome);
 		Assert.Same(setup.Host, setup.Room.Authority.Host);

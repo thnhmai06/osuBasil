@@ -12,6 +12,6 @@ internal sealed class SetRoomHostHandler : IRequestHandler<SetRoomHost, Result<R
 	public ValueTask<Result<RoomOutcome>> Handle(SetRoomHost request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Authority.SetHostAsync(request.Host, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Authority.SetHostAsync(request.Host));
 	}
 }

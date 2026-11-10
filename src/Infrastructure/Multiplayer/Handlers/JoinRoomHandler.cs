@@ -12,6 +12,6 @@ internal sealed class JoinRoomHandler : IRequestHandler<JoinRoom, Result<RoomOut
 	public ValueTask<Result<RoomOutcome>> Handle(JoinRoom request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Members.JoinAsync(request.Password, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Members.JoinAsync(request.Password));
 	}
 }

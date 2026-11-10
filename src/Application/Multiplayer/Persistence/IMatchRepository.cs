@@ -9,14 +9,12 @@ public interface IMatchRepository
 {
 	/// <summary>Stores a new match and assigns its id.</summary>
 	/// <param name="data">The data of the new match.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored match.</returns>
-	Task<MatchRecord> CreateAsync(MatchData data, CancellationToken cancellationToken = default);
+	Task<MatchRecord> CreateAsync(MatchData data);
 
 	/// <summary>Stores the new values of a created match, replacing the stored ones.</summary>
 	/// <param name="match">The match to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task UpdateAsync(MatchRecord match, CancellationToken cancellationToken = default);
+	Task UpdateAsync(MatchRecord match);
 
 	/// <summary>Gets a match by id.</summary>
 	/// <param name="id">The match id.</param>

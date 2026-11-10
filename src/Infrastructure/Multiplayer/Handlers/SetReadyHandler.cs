@@ -12,6 +12,6 @@ internal sealed class SetReadyHandler : IRequestHandler<SetReady, Result<RoomOut
 	public ValueTask<Result<RoomOutcome>> Handle(SetReady request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Slots.SetReadyAsync(request.Ready, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Slots.SetReadyAsync(request.Ready));
 	}
 }

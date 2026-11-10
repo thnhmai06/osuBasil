@@ -12,6 +12,6 @@ internal sealed class CompleteRoundHandler : IRequestHandler<CompleteRound, Resu
 	public ValueTask<Result<RoomOutcome>> Handle(CompleteRound request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Rounds.CompleteAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Rounds.CompleteAsync());
 	}
 }

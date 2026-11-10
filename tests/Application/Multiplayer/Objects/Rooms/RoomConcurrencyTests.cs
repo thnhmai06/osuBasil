@@ -17,13 +17,13 @@ public sealed class RoomConcurrencyTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Size: 4), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Size: 4));
 		var first = await RoomFixture.PlayerAsync(app, "First");
 		var second = await RoomFixture.PlayerAsync(app, "Second");
 
 		var results = await Task.WhenAll(
-			Task.Run(() => setup.Room.ScopeTo(first).Members.JoinAsync("", TestContext.Current.CancellationToken)),
-			Task.Run(() => setup.Room.ScopeTo(second).Members.JoinAsync("", TestContext.Current.CancellationToken)));
+			Task.Run(() => setup.Room.ScopeTo(first).Members.JoinAsync("")),
+			Task.Run(() => setup.Room.ScopeTo(second).Members.JoinAsync("")));
 
 		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Ok));
 		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Full));
@@ -37,10 +37,8 @@ public sealed class RoomConcurrencyTests
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var results = await Task.WhenAll(
-			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Host,
-				TestContext.Current.CancellationToken)),
-			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Player,
-				TestContext.Current.CancellationToken)));
+			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Host)),
+			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Player)));
 
 		Assert.All(results, result => Assert.Equal(RoomOutcome.Ok, result.Outcome));
 		var host = setup.Room.Authority.Host;
@@ -59,15 +57,15 @@ public sealed class RoomConcurrencyTests
 			var racer = await RoomFixture.PlayerAsync(app, $"Racer{attempt}");
 
 			var results = await Task.WhenAll(
-				Task.Run(() => setup.Room.ScopeTo(racer).Members.JoinAsync("", TestContext.Current.CancellationToken)),
+				Task.Run(() => setup.Room.ScopeTo(racer).Members.JoinAsync("")),
 				Task.Run(() => setup.SuspendedRoom.ScopeTo(racer).Members
-					.JoinAsync("", TestContext.Current.CancellationToken)));
+					.JoinAsync("")));
 
 			Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Ok));
 			Assert.Equal(1,
 				new[] { setup.Room, setup.SuspendedRoom }.Count(room => room.Slots.Find(racer) is not null));
 
-			await app.Lobby.ReleaseAsync(racer, TestContext.Current.CancellationToken);
+			await app.Lobby.ReleaseAsync(racer);
 		}
 	}
 
@@ -77,11 +75,11 @@ public sealed class RoomConcurrencyTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));
 
 		var results = await Task.WhenAll(
-			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken)),
-			Task.Run(() => setup.Room.ScopeTo(setup.Referee).Rounds.StartAsync(TestContext.Current.CancellationToken)));
+			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync()),
+			Task.Run(() => setup.Room.ScopeTo(setup.Referee).Rounds.StartAsync()));
 
 		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Ok));
 		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.InProgress));
@@ -98,22 +96,21 @@ public sealed class RoomConcurrencyTests
 		{
 			var owner = await RoomFixture.PlayerAsync(app, $"Owner{attempt}");
 			var (room, opened) = await app.Lobby.ScopeTo(owner).OpenRoomAsync($"race {attempt}", "", RoomSource.Game,
-				false,
-				cancellationToken: TestContext.Current.CancellationToken);
+				false);
 			Assert.True(opened.IsOk);
 			var joiner = await RoomFixture.PlayerAsync(app, $"Joiner{attempt}");
 
 			var results = await Task.WhenAll(
-				Task.Run(() => room!.ScopeTo(joiner).Members.JoinAsync("", TestContext.Current.CancellationToken)),
-				Task.Run(() => room!.ScopeTo(owner).CloseAsync(TestContext.Current.CancellationToken)));
+				Task.Run(() => room!.ScopeTo(joiner).Members.JoinAsync("")),
+				Task.Run(() => room!.ScopeTo(owner).CloseAsync()));
 
 			Assert.Contains(results[0].Outcome, new[] { RoomOutcome.Ok, RoomOutcome.RoomClosed });
 			Assert.True(room!.IsClosed);
 			Assert.Null(room.Slots.Find(joiner));
 			Assert.Null(app.Lobby.RoomOf(joiner));
 			Assert.True((await setup.SuspendedRoom.ScopeTo(joiner).Members
-				.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
-			await app.Lobby.ReleaseAsync(joiner, TestContext.Current.CancellationToken);
+				.JoinAsync("")).IsOk);
+			await app.Lobby.ReleaseAsync(joiner);
 		}
 	}
 }

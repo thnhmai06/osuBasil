@@ -29,7 +29,7 @@ public sealed class MatchRecorderTests
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Match == setup.Room.Match &&
 			matchEvent.Type == MatchEventType.Created &&
-			matchEvent.Actor == setup.Creator.Record), Arg.Any<CancellationToken>());
+			matchEvent.Actor == setup.Creator.Record));
 	}
 
 	[Fact]
@@ -39,12 +39,12 @@ public sealed class MatchRecorderTests
 		var recorder = new RecordingRecorder();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 		var started = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundStarted>());
 
 		await new RoomRoundStartedRecorder(recorder.Rounds).Handle(started, TestContext.Current.CancellationToken);
 
-		await recorder.Rounds.Received(1).CreateOrUpdateAsync(started.Round, Arg.Any<CancellationToken>());
+		await recorder.Rounds.Received(1).CreateOrUpdateAsync(started.Round);
 	}
 
 	[Fact]
@@ -54,14 +54,14 @@ public sealed class MatchRecorderTests
 		var recorder = new RecordingRecorder();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 		await CompleteRoundAsync(setup);
 		var completed = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundCompleted>());
 		Assert.NotNull(completed.Round.EndedAt);
 
 		await new RoomRoundCompletedRecorder(recorder.Rounds).Handle(completed, TestContext.Current.CancellationToken);
 
-		await recorder.Rounds.Received(1).CreateOrUpdateAsync(completed.Round, Arg.Any<CancellationToken>());
+		await recorder.Rounds.Received(1).CreateOrUpdateAsync(completed.Round);
 	}
 
 	[Fact]
@@ -79,7 +79,7 @@ public sealed class MatchRecorderTests
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.PlayerJoined &&
 			matchEvent.Target == setup.Player.Record &&
-			matchEvent.Actor == null), Arg.Any<CancellationToken>());
+			matchEvent.Actor == null));
 	}
 
 	[Fact]
@@ -95,7 +95,7 @@ public sealed class MatchRecorderTests
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.RefAdded &&
 			matchEvent.Actor == setup.Creator.Record &&
-			matchEvent.Target == setup.Referee.Record), Arg.Any<CancellationToken>());
+			matchEvent.Target == setup.Referee.Record));
 	}
 
 	[Fact]
@@ -111,7 +111,7 @@ public sealed class MatchRecorderTests
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.HostGranted &&
 			matchEvent.Actor == setup.Creator.Record &&
-			matchEvent.Target == setup.Host.Record), Arg.Any<CancellationToken>());
+			matchEvent.Target == setup.Host.Record));
 	}
 
 	[Fact]
@@ -120,17 +120,17 @@ public sealed class MatchRecorderTests
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
 		var setup = await RoomFixture.CreateAsync(app);
-		await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).CloseAsync();
 		var closed = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomClosed>());
 
 		await new LobbyRoomClosedRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(closed,
 			TestContext.Current.CancellationToken);
 
-		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match, Arg.Any<CancellationToken>());
+		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match);
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.Closed &&
 			matchEvent.Actor == setup.Creator.Record &&
-			matchEvent.Detail == null), Arg.Any<CancellationToken>());
+			matchEvent.Detail == null));
 	}
 
 	[Fact]
@@ -139,10 +139,10 @@ public sealed class MatchRecorderTests
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
 		var setup = await RoomFixture.CreateAsync(app);
-		await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).CloseAsync();
 		var closed = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomClosed>());
 		var closingStoredWhenEnded = false;
-		recorder.Matches.UpdateAsync(Arg.Any<MatchRecord>(), Arg.Any<CancellationToken>()).Returns(_ =>
+		recorder.Matches.UpdateAsync(Arg.Any<MatchRecord>()).Returns(_ =>
 		{
 			closingStoredWhenEnded = recorder.MatchEvents.ReceivedCalls().Any();
 			return Task.CompletedTask;
@@ -161,7 +161,7 @@ public sealed class MatchRecorderTests
 		var recorder = new RecordingRecorder();
 		var setup = await RoomFixture.CreateAsync(app);
 		var closingStoredWhenEnded = false;
-		recorder.Matches.UpdateAsync(Arg.Any<MatchRecord>(), Arg.Any<CancellationToken>()).Returns(_ =>
+		recorder.Matches.UpdateAsync(Arg.Any<MatchRecord>()).Returns(_ =>
 		{
 			closingStoredWhenEnded = recorder.MatchEvents.ReceivedCalls().Any();
 			return Task.CompletedTask;
@@ -185,11 +185,11 @@ public sealed class MatchRecorderTests
 		await new LobbyMatchRecoveredRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(recovered,
 			TestContext.Current.CancellationToken);
 
-		await recorder.Rounds.Received(1).CreateOrUpdateAsync(round, Arg.Any<CancellationToken>());
-		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match, Arg.Any<CancellationToken>());
+		await recorder.Rounds.Received(1).CreateOrUpdateAsync(round);
+		await recorder.Matches.Received(1).UpdateAsync(setup.Room.Match);
 		await recorder.MatchEvents.Received(1).RecordAsync(Arg.Is<MatchEvent>(matchEvent =>
 			matchEvent.Type == MatchEventType.Closed && matchEvent.Actor == null &&
-			matchEvent.Detail == MatchEvent.ServerStoppedDetail), Arg.Any<CancellationToken>());
+			matchEvent.Detail == MatchEvent.ServerStoppedDetail));
 	}
 
 	[Fact]
@@ -205,7 +205,7 @@ public sealed class MatchRecorderTests
 			new RoomRoundScoreSubmitted(setup.Room, round, setup.Player.Record, roundScore),
 			TestContext.Current.CancellationToken);
 
-		await recorder.RoundScores.Received(1).RecordAsync(roundScore, Arg.Any<CancellationToken>());
+		await recorder.RoundScores.Received(1).RecordAsync(roundScore);
 	}
 
 	[Fact]
@@ -219,7 +219,7 @@ public sealed class MatchRecorderTests
 		await new RoomRoundDecidedRecorder(recorder.Rounds).Handle(new RoomRoundDecided(setup.Room, round, null, []),
 			TestContext.Current.CancellationToken);
 
-		await recorder.Rounds.Received(1).CreateOrUpdateAsync(round, Arg.Any<CancellationToken>());
+		await recorder.Rounds.Received(1).CreateOrUpdateAsync(round);
 	}
 
 	private static Round StoredRound(RoomFixture setup)
@@ -238,17 +238,14 @@ public sealed class MatchRecorderTests
 	private static async Task SelectBeatmapAsync(RoomFixture setup)
 	{
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken)).IsOk);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))).IsOk);
 	}
 
 	private static async Task CompleteRoundAsync(RoomFixture setup)
 	{
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync()).IsOk);
 	}
 
 	/// <summary>The storage ports the recorders write to.</summary>

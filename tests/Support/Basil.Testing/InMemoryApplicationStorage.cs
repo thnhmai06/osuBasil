@@ -407,17 +407,15 @@ internal sealed class InMemoryMatchRepository(InMemoryMatchEventRepository event
 	private readonly Dictionary<int, MatchRecord> _matches = [];
 	private int _nextId = 1;
 
-	public Task<MatchRecord> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
+	public Task<MatchRecord> CreateAsync(MatchData data)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		var match = new MatchRecord { Id = _nextId++, Value = data };
 		_matches[match.Id] = match;
 		return Task.FromResult(match);
 	}
 
-	public Task UpdateAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(MatchRecord match)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_matches[match.Id] = match;
 		return Task.CompletedTask;
 	}
@@ -466,9 +464,8 @@ internal sealed class InMemoryRoundRepository : IRoundRepository
 {
 	private readonly List<Round> _rounds = [];
 
-	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Round round)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_rounds.RemoveAll(existing => existing.Match.Equals(round.Match) && existing.Index == round.Index);
 		_rounds.Add(round);
 		return Task.CompletedTask;
@@ -485,9 +482,8 @@ internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
 {
 	private readonly List<MatchEvent> _events = [];
 
-	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
+	public Task RecordAsync(MatchEvent matchEvent)
 	{
-		cancellationToken.ThrowIfCancellationRequested();
 		_events.Add(matchEvent);
 		return Task.CompletedTask;
 	}

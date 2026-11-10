@@ -12,6 +12,6 @@ internal sealed class ChangeSlotHandler : IRequestHandler<ChangeSlot, Result<Roo
 	public ValueTask<Result<RoomOutcome>> Handle(ChangeSlot request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Slots.ChangeAsync(request.Index, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Slots.ChangeAsync(request.Index));
 	}
 }

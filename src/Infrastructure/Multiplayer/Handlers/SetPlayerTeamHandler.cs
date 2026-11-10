@@ -12,6 +12,6 @@ internal sealed class SetPlayerTeamHandler : IRequestHandler<SetPlayerTeam, Resu
 	public ValueTask<Result<RoomOutcome>> Handle(SetPlayerTeam request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Slots.SetTeamAsync(request.Player, request.Team, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Slots.SetTeamAsync(request.Player, request.Team));
 	}
 }

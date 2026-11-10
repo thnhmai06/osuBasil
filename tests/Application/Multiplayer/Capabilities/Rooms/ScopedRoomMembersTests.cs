@@ -23,10 +23,10 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Password: "secret"), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Password: "secret"));
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
-		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("wrong", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("wrong");
 
 		Assert.Equal(RoomOutcome.WrongPassword, result.Outcome);
 		Assert.Null(setup.Room.Slots.Find(player));
@@ -38,11 +38,11 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Password: "secret"), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Password: "secret"));
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
 		var result = await setup.Room.ScopeTo(player).Members
-			.JoinAsync("secret", TestContext.Current.CancellationToken);
+			.JoinAsync("secret");
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.NotNull(setup.Room.Slots.Find(player));
@@ -55,7 +55,7 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
-		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(4, setup.Room.Slots.Find(player)!.Index);
@@ -66,10 +66,10 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true, TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true);
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
-		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.NotNull(setup.Room.Slots.Find(player));
@@ -81,10 +81,9 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var player = await RoomFixture.PlayerAsync(app, "Banned");
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(player.Record,
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(player.Record)).IsOk);
 
-		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.Banned, result.Outcome);
 		Assert.Null(setup.Room.Slots.Find(player));
@@ -96,10 +95,10 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Size: 1), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Size: 1));
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
-		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.Full, result.Outcome);
 		Assert.Null(setup.Room.Slots.Find(player));
@@ -111,8 +110,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Members.JoinAsync("",
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.AlreadySeated, result.Outcome);
 	}
@@ -124,13 +122,11 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var other = await RoomFixture.PlayerAsync(app, "Other");
 		var (otherRoom, opened) = await app.Lobby.ScopeTo(setup.Creator)
-			.OpenRoomAsync("other room", "", RoomSource.Api, false,
-				cancellationToken: TestContext.Current.CancellationToken);
+			.OpenRoomAsync("other room", "", RoomSource.Api, false);
 		Assert.True(opened.IsOk);
-		Assert.True((await otherRoom!.ScopeTo(other).Members.JoinAsync("",
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await otherRoom!.ScopeTo(other).Members.JoinAsync("")).IsOk);
 
-		var result = await setup.Room.ScopeTo(other).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(other).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.InAnotherRoom, result.Outcome);
 		Assert.Null(setup.Room.Slots.Find(other));
@@ -141,14 +137,13 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
 		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("")).IsOk);
 		Assert.Same(creator, room.Authority.Host);
 
-		Assert.True((await room.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(creator).Members.LeaveAsync()).IsOk);
 
 		Assert.Same(player, room.Authority.Host);
 	}
@@ -160,11 +155,10 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", source, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", source, false);
 		Assert.True(opened.IsOk);
 
-		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync()).IsOk);
 
 		Assert.False(room.IsClosed);
 		Assert.False(app.RoomChannels.Of(room).IsClosed);
@@ -178,8 +172,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(setup.Player.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(setup.Player.Record);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Null(setup.Room.Slots.Find(setup.Player));
@@ -192,14 +185,12 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(setup.Player.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(setup.Player.Record);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Contains(setup.Player.Record, setup.Room.Members.Banned);
 		Assert.Null(setup.Room.Slots.Find(setup.Player));
-		var again = await setup.Room.ScopeTo(setup.Player).Members.JoinAsync("",
-			TestContext.Current.CancellationToken);
+		var again = await setup.Room.ScopeTo(setup.Player).Members.JoinAsync("");
 		Assert.Equal(RoomOutcome.Banned, again.Outcome);
 	}
 
@@ -208,16 +199,13 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(setup.Player.Record,
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Members.BanAsync(setup.Player.Record)).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(setup.Player.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(setup.Player.Record);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.DoesNotContain(setup.Player.Record, setup.Room.Members.Banned);
-		var join = await setup.Room.ScopeTo(setup.Player).Members.JoinAsync("",
-			TestContext.Current.CancellationToken);
+		var join = await setup.Room.ScopeTo(setup.Player).Members.JoinAsync("");
 		Assert.Equal(RoomOutcome.Ok, join.Outcome);
 	}
 
@@ -227,8 +215,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Referee).Members.KickAsync(setup.Creator.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Referee).Members.KickAsync(setup.Creator.Record);
 
 		Assert.Equal(RoomOutcome.IsManager, result.Outcome);
 		Assert.NotNull(setup.Room.Slots.Find(setup.Creator));
@@ -240,8 +227,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Referee).Members.BanAsync(setup.Creator.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Referee).Members.BanAsync(setup.Creator.Record);
 
 		Assert.Equal(RoomOutcome.IsManager, result.Outcome);
 		Assert.DoesNotContain(setup.Creator.Record, setup.Room.Members.Banned);
@@ -254,8 +240,7 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var observer = await ObserverAsync(app, "Observer");
 
-		var result = await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Contains(observer, setup.Room.Members.Observers);
@@ -267,16 +252,15 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
 		var user = await app.CreateUserAsync("Watcher", "password",
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var player = await RoomFixture.PlayerAsync(app, user);
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("")).IsOk);
 		var observer = (TourneyConnection)await app.LoginAsync(user, SessionType.StableTourney);
 
-		var result = await room.ScopeTo(observer).Members.ObserverJoinAsync(TestContext.Current.CancellationToken);
+		var result = await room.ScopeTo(observer).Members.ObserverJoinAsync();
 
 		Assert.Equal(RoomOutcome.IsPlayer, result.Outcome);
 		Assert.DoesNotContain(observer, room.Members.Observers);
@@ -288,11 +272,9 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var observer = await ObserverAsync(app, "Observer");
-		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync()).IsOk);
 
-		var result = await setup.Room.ScopeTo(observer).Members.ObserverLeaveAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(observer).Members.ObserverLeaveAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.DoesNotContain(observer, setup.Room.Members.Observers);
@@ -306,8 +288,7 @@ public sealed class ScopedRoomMembersTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var observer = await ObserverAsync(app, "Observer");
 
-		var result = await setup.Room.ScopeTo(observer).Members.ObserverLeaveAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(observer).Members.ObserverLeaveAsync();
 
 		Assert.Equal(RoomOutcome.NotObserver, result.Outcome);
 	}
@@ -321,10 +302,9 @@ public sealed class ScopedRoomMembersTests
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var player = await RoomFixture.PlayerAsync(app, user);
 		var observer = (TourneyConnection)await app.LoginAsync(user, SessionType.StableTourney);
-		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync()).IsOk);
 
-		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.IsObserver, result.Outcome);
 		Assert.Null(setup.Room.Slots.Find(player));
@@ -350,8 +330,7 @@ public sealed class ScopedRoomMembersTests
 		var offline = await app.CreateUserAsync("Offline", "password");
 		var target = app.Users.Of(offline);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Members.InviteAsync(target,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Members.InviteAsync(target);
 
 		Assert.Equal(RoomOutcome.TargetOffline, result.Outcome);
 	}
@@ -365,8 +344,7 @@ public sealed class ScopedRoomMembersTests
 		Assert.True((await app.Users.Of(setup.Player.Record).ScopeTo(setup.Outsider).Relationships
 			.BlockAsync()).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Members.InviteAsync(target,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Members.InviteAsync(target);
 
 		Assert.Equal(RoomOutcome.Blocked, result.Outcome);
 	}
@@ -380,8 +358,7 @@ public sealed class ScopedRoomMembersTests
 		Assert.True((await app.Users.Of(setup.Manager.Record).ScopeTo(setup.Outsider).Relationships
 			.BlockAsync()).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Manager).Members.InviteAsync(target,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Manager).Members.InviteAsync(target);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.IsType<RoomPlayerInvited>(app.RoomEvents.Events[^1]);
@@ -393,8 +370,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(setup.Outsider.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(setup.Outsider.Record);
 
 		Assert.Equal(RoomOutcome.NotInRoom, result.Outcome);
 	}
@@ -405,8 +381,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(setup.Outsider.Record,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Members.UnbanAsync(setup.Outsider.Record);
 
 		Assert.Equal(RoomOutcome.NotBanned, result.Outcome);
 	}
@@ -417,8 +392,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.NoRoomJoin).Members.JoinAsync("",
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.NoRoomJoin).Members.JoinAsync("");
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPrivileges.Player, result.Missing);
@@ -430,10 +404,9 @@ public sealed class ScopedRoomMembersTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).CloseAsync();
 
-		var result = await setup.Room.ScopeTo(setup.NoRoomJoin).Members.JoinAsync("",
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.NoRoomJoin).Members.JoinAsync("");
 
 		Assert.Equal(UserPrivileges.Player, result.Missing);
 	}
@@ -447,7 +420,7 @@ public sealed class ScopedRoomMembersTests
 		app.Users.Close(setup.Player, SessionEndReason.LoggedOut);
 		var again = await RoomFixture.PlayerAsync(app, setup.Player.Record);
 
-		var result = await setup.Room.ScopeTo(again).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(again).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Same(again, setup.Room.Slots.Find(setup.Player.Record)!.Player);

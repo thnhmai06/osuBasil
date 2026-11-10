@@ -23,8 +23,7 @@ public sealed class EmptyRoomCloserTests
 	{
 		using var app = new TestApplication();
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"));
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("empty room", "", RoomSource.Api, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("empty room", "", RoomSource.Api, false);
 		Assert.True(opened.IsOk);
 		var closed = NextClose(app, room!);
 		using var running = await StartAsync(app);

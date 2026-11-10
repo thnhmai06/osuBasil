@@ -14,6 +14,6 @@ internal sealed class RoomHostChangedRecorder(IMatchEventRepository matchEvents)
 		if (@event.Host is { } host)
 			await matchEvents.RecordAsync(
 				new MatchEvent(@event.Room.Match, MatchEventType.HostGranted, @event.Timestamp, @event.Actor,
-					host.Record), cancellationToken);
+					host.Record));
 	}
 }

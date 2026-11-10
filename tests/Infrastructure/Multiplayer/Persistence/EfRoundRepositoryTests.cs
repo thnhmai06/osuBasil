@@ -39,7 +39,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	public async Task A_stored_round_is_listed_under_its_match()
 	{
 		var match = await CreateMatchAsync("rounds_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -52,7 +52,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 		var match = await CreateMatchAsync("pending_round_match");
 		var round = StoredMatches.Round(match, 1, First);
 
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
 		Assert.Equal(1, Assert.Single(listed).Index);
@@ -62,9 +62,9 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	public async Task The_rounds_of_a_match_are_listed_in_the_order_they_were_played()
 	{
 		var match = await CreateMatchAsync("ordered_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 2, Second), TestContext.Current.CancellationToken);
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 3, Third), TestContext.Current.CancellationToken);
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 2, Second));
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 3, Third));
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -75,7 +75,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	public async Task A_round_is_stored_after_it_was_given_to_the_repository()
 	{
 		var match = await CreateMatchAsync("stored_round_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select number from rounds where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id }, rows => rows.Count == 1, "the round",
@@ -89,9 +89,9 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	{
 		var match = await CreateMatchAsync("ended_round_match");
 		var round = StoredMatches.Round(match, 1, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		round.EndedAt = Second;
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select ended_at from rounds where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
@@ -107,10 +107,10 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	{
 		var match = await CreateMatchAsync("aborted_round_match");
 		var round = StoredMatches.Round(match, 1, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		round.EndedAt = Second;
 		round.Aborted = true;
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select aborted from rounds where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
@@ -126,7 +126,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 		var match = await CreateMatchAsync("decision_round_match");
 		var round = StoredMatches.Round(match, 1, First);
 		round.Decision = new RoundVerdict([7, 3], 42, null, 1500.5, false, null, null);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		await StoredRows.WaitForAsync(ConnectionString, "select result from rounds where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
 			rows => rows.Count == 1 && rows[0]["result"] is not null,
@@ -146,10 +146,10 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	{
 		var match = await CreateMatchAsync("restart_round_match");
 		var round = StoredMatches.Round(match, 1, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		round.EndedAt = Second;
 		round.Aborted = true;
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		await StoredRows.WaitForAsync(ConnectionString, "select aborted from rounds where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
 			rows => rows.Count == 1 && rows[0].Bool("aborted"), "the abortion of the round",
@@ -169,7 +169,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 		var round = StoredMatches.Round(new MatchRecord { Id = match.Id + 1000, Value = match.Value }, 1, First);
 
 		await Assert.ThrowsAnyAsync<Exception>(() =>
-			Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken));
+			Rounds.CreateOrUpdateAsync(round));
 	}
 
 	[Fact]
@@ -177,8 +177,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	{
 		var match = await CreateMatchAsync("hash_match");
 		var hash = StoredScores.Hash("round_beatmap");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, hash),
-			TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, hash));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -192,7 +191,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, settings: new MatchSettings
 		{
 			Mode = GameMode.Taiko
-		}), TestContext.Current.CancellationToken);
+		}));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -206,7 +205,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, settings: new MatchSettings
 		{
 			Mods = GameMods.Hidden
-		}), TestContext.Current.CancellationToken);
+		}));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -217,8 +216,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	public async Task A_round_keeps_the_team_arrangement_it_is_played_with()
 	{
 		var match = await CreateMatchAsync("team_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.TeamRound(match, 1, First),
-			TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.TeamRound(match, 1, First));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -229,7 +227,7 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	public async Task A_round_keeps_the_match_it_belongs_to()
 	{
 		var match = await CreateMatchAsync("owning_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -240,8 +238,8 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	public async Task A_round_with_the_number_of_a_stored_round_replaces_it()
 	{
 		var match = await CreateMatchAsync("replaced_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, Second), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, Second));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -253,8 +251,8 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	{
 		var match = await CreateMatchAsync("own_match");
 		var other = await CreateMatchAsync("other_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(other, 1, First), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(other, 1, First));
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 

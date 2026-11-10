@@ -14,9 +14,9 @@ internal sealed class RoomPlayerBannedRecorder(
 	public async ValueTask Handle(RoomPlayerBanned @event, CancellationToken cancellationToken)
 	{
 		if (@event.RoundProgress is { Completed: true } progress)
-			await rounds.CreateOrUpdateAsync(progress.Round, cancellationToken);
+			await rounds.CreateOrUpdateAsync(progress.Round);
 		await matchEvents.RecordAsync(
 			new MatchEvent(@event.Room.Match, MatchEventType.Kicked, @event.Timestamp, @event.Actor, @event.Player,
-				"Banned"), cancellationToken);
+				"Banned"));
 	}
 }

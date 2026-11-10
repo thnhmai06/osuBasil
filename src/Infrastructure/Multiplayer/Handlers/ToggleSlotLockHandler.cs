@@ -12,6 +12,6 @@ internal sealed class ToggleSlotLockHandler : IRequestHandler<ToggleSlotLock, Re
 	public ValueTask<Result<RoomOutcome>> Handle(ToggleSlotLock request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Slots.ToggleLockAsync(request.Index, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Slots.ToggleLockAsync(request.Index));
 	}
 }

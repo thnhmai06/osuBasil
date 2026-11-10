@@ -12,6 +12,6 @@ internal sealed class AbortRoundHandler : IRequestHandler<AbortRound, Result<Roo
 	public ValueTask<Result<RoomOutcome>> Handle(AbortRound request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Rounds.AbortAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Rounds.AbortAsync());
 	}
 }

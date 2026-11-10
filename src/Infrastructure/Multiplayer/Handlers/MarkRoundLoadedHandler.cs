@@ -12,6 +12,6 @@ internal sealed class MarkRoundLoadedHandler : IRequestHandler<MarkRoundLoaded, 
 	public ValueTask<Result<RoomOutcome>> Handle(MarkRoundLoaded request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Rounds.MarkLoadedAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Rounds.MarkLoadedAsync());
 	}
 }

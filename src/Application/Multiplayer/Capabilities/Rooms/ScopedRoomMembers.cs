@@ -21,12 +21,11 @@ public readonly struct ScopedRoomMembers
 
 	/// <summary>Seats the caller in the room.</summary>
 	/// <param name="password">The password supplied by the player.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword, Full or
 	///     RoomClosed.
 	/// </returns>
-	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> JoinAsync(string password)
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection actor
 			? _scoped.RequireJoin() ?? _scoped.Room.JoinClaiming(actor, password, _scoped.ManagesAnyRoom)
@@ -34,9 +33,8 @@ public readonly struct ScopedRoomMembers
 	}
 
 	/// <summary>Removes the caller from the room.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotInRoom or RoomClosed; leaving again returns NotInRoom.</returns>
-	public Task<Result<RoomOutcome>> LeaveAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> LeaveAsync()
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection actor
 			? _scoped.Room.Leave(actor)
@@ -45,9 +43,8 @@ public readonly struct ScopedRoomMembers
 
 	/// <summary>Removes a player from the room.</summary>
 	/// <param name="player">The user to remove.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom or RoomClosed.</returns>
-	public Task<Result<RoomOutcome>> KickAsync(UserRecord player, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> KickAsync(UserRecord player)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.MembersKick) ??
 		                       _scoped.Room.Kick(_scoped.Actor.Record, player));
@@ -55,9 +52,8 @@ public readonly struct ScopedRoomMembers
 
 	/// <summary>Bans a user from the room and removes them if seated.</summary>
 	/// <param name="player">The user to ban.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
-	public Task<Result<RoomOutcome>> BanAsync(UserRecord player, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> BanAsync(UserRecord player)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.MembersBan) ??
 		                       _scoped.Room.Ban(_scoped.Actor.Record, player));
@@ -65,9 +61,8 @@ public readonly struct ScopedRoomMembers
 
 	/// <summary>Lifts a user's ban from the room.</summary>
 	/// <param name="player">The user to unban.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, NotBanned or RoomClosed.</returns>
-	public Task<Result<RoomOutcome>> UnbanAsync(UserRecord player, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> UnbanAsync(UserRecord player)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.MembersBan) ??
 		                       _scoped.Room.Unban(player));
@@ -75,23 +70,21 @@ public readonly struct ScopedRoomMembers
 
 	/// <summary>Invites an online user to the room.</summary>
 	/// <param name="target">The invited user.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, Blocked, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> InviteAsync(User target, CancellationToken cancellationToken = default)
+	public async Task<Result<RoomOutcome>> InviteAsync(User target)
 	{
 		if (_scoped.Require(RoomPermissions.MembersInvite) is { } denied) return denied;
 		if (!target.IsOnline) return RoomOutcome.TargetOffline;
 		if (!_scoped.ManagesAnyRoom &&
-		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.Actor.Record, cancellationToken))
+		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.Actor.Record))
 			return RoomOutcome.Blocked;
 
 		return _scoped.Room.Invite(_scoped.Actor.Record, target);
 	}
 
 	/// <summary>Adds the caller's tournament connection as an observer.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, IsPlayer or RoomClosed when called by a tournament connection; otherwise NotObserver.</returns>
-	public Task<Result<RoomOutcome>> ObserverJoinAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> ObserverJoinAsync()
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is TourneyConnection actor
 			? _scoped.Room.ObserverJoin(actor)
@@ -99,9 +92,8 @@ public readonly struct ScopedRoomMembers
 	}
 
 	/// <summary>Removes the caller's tournament connection from the room's observers.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotObserver or RoomClosed.</returns>
-	public Task<Result<RoomOutcome>> ObserverLeaveAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> ObserverLeaveAsync()
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is TourneyConnection actor
 			? _scoped.Room.ObserverLeave(actor)

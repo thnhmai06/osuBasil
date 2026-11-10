@@ -14,6 +14,6 @@ internal sealed class RoomRefereeRemovedRecorder(IMatchEventRepository matchEven
 	{
 		await matchEvents.RecordAsync(
 			new MatchEvent(@event.Room.Match, MatchEventType.RefRemoved, @event.Timestamp, @event.Actor,
-				@event.Referee), cancellationToken);
+				@event.Referee));
 	}
 }

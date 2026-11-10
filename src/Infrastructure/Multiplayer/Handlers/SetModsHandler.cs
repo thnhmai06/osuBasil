@@ -12,6 +12,6 @@ internal sealed class SetModsHandler : IRequestHandler<SetMods, Result<RoomOutco
 	public ValueTask<Result<RoomOutcome>> Handle(SetMods request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Slots.SetModsAsync(request.Mods, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Slots.SetModsAsync(request.Mods));
 	}
 }

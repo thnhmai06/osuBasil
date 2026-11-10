@@ -11,6 +11,6 @@ internal sealed class RoomSettingsChangedRecorder(IMatchRepository matches) : IN
 	public async ValueTask Handle(RoomSettingsChanged @event, CancellationToken cancellationToken)
 	{
 		if (@event.Change.Name is not null || @event.Change.IsPrivate is not null)
-			await matches.UpdateAsync(@event.Room.Match, cancellationToken);
+			await matches.UpdateAsync(@event.Room.Match);
 	}
 }

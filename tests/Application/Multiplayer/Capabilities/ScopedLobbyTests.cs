@@ -251,7 +251,7 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (first, _) = await OpenAsync(app, creator, "first");
-		Assert.True((await first!.ScopeTo(creator).CloseAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await first!.ScopeTo(creator).CloseAsync()).IsOk);
 
 		var (second, result) = await OpenAsync(app, creator, "second");
 
@@ -262,8 +262,7 @@ public sealed class ScopedLobbyTests
 	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection actor,
 		string name = "test room", RoomSource source = RoomSource.Game, string password = "")
 	{
-		return app.Lobby.ScopeTo(actor).OpenRoomAsync(name, password, source, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		return app.Lobby.ScopeTo(actor).OpenRoomAsync(name, password, source, false);
 	}
 
 	#region CanViewAsync
@@ -317,15 +316,13 @@ public sealed class ScopedLobbyTests
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), SessionType.Stable);
 		var (room, result) = await OpenAsync(app, creator);
 		Assert.True(result.IsOk);
-		Assert.True((await room!.ScopeTo(creator).Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: true),
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(creator).Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: true))).IsOk);
 		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await room.ScopeTo(player).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.JoinAsync("")).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.LeaveAsync()).IsOk);
 		// The stored history shows the join (the store's copy of the room can say it is visible).
 		await app.Provider.GetRequiredService<IMatchEventRepository>().RecordAsync(
-			new MatchEvent(room.Match, MatchEventType.PlayerJoined, app.Clock.GetUtcNow(), null, player.Record),
-			TestContext.Current.CancellationToken);
+			new MatchEvent(room.Match, MatchEventType.PlayerJoined, app.Clock.GetUtcNow(), null, player.Record));
 		Assert.True(await app.Provider.GetRequiredService<IMatchRepository>().IsVisibleToAsync(room.Match,
 			player.Record,
 			TestContext.Current.CancellationToken), "precondition: the stored history shows the player");
@@ -386,11 +383,10 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true);
 		Assert.True(opened.IsOk);
 		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("")).IsOk);
 
 		Assert.True(await app.Lobby.ScopeTo(player).CanViewAsync(room.Match, TestContext.Current.CancellationToken));
 	}
@@ -400,8 +396,7 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true);
 		Assert.True(opened.IsOk);
 		var stranger = await RoomFixture.PlayerAsync(app, "Stranger");
 
@@ -418,14 +413,13 @@ public sealed class ScopedLobbyTests
 			StartedAt = app.Clock.GetUtcNow(),
 			EndedAt = null,
 			IsPrivate = isPrivate
-		}, TestContext.Current.CancellationToken);
+		});
 	}
 
 	private static Task RecordAsync(TestApplication app, MatchRecord match, MatchEventType type, UserRecord target)
 	{
 		return app.Provider.GetRequiredService<IMatchEventRepository>().RecordAsync(
-			new MatchEvent(match, type, app.Clock.GetUtcNow(), Target: target),
-			TestContext.Current.CancellationToken);
+			new MatchEvent(match, type, app.Clock.GetUtcNow(), Target: target));
 	}
 
 	#endregion

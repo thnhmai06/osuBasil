@@ -19,10 +19,10 @@ public sealed class ScopedRoomTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var channel = app.RoomChannels.Of(setup.Room);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
-		var result = await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).CloseAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.True(setup.Room.IsClosed);
@@ -40,11 +40,10 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()).IsOk);
 		var events = app.LobbyEvents.Events.Count;
 
-		var result = await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).CloseAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(events, app.LobbyEvents.Events.Count);
@@ -55,11 +54,10 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()).IsOk);
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
-		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
 		Assert.Equal(RoomOutcome.RoomClosed, result.Outcome);
 	}
@@ -69,11 +67,9 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync();
 
 		Assert.Equal(RoomOutcome.RoomClosed, result.Outcome);
 	}

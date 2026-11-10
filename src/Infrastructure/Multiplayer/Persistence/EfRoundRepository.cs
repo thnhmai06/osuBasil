@@ -14,12 +14,11 @@ namespace Basil.Infrastructure.Multiplayer.Persistence;
 internal sealed class EfRoundRepository(DatabaseSession database) : IRoundRepository
 {
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Round round)
 	{
 		var row = ToRow(round);
-		return database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
-				context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number),
-			cancellationToken);
+		return database.WriteAsync((MultiplayerDbContext context) =>
+				context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number));
 	}
 
 	/// <inheritdoc />

@@ -11,6 +11,6 @@ internal sealed class RoomSlotLockChangedRecorder(IRoundRepository rounds) : INo
 	public async ValueTask Handle(RoomSlotLockChanged @event, CancellationToken cancellationToken)
 	{
 		if (@event.RoundProgress is { Completed: true } progress)
-			await rounds.CreateOrUpdateAsync(progress.Round, cancellationToken);
+			await rounds.CreateOrUpdateAsync(progress.Round);
 	}
 }

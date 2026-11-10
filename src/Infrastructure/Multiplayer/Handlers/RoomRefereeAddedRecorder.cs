@@ -13,7 +13,6 @@ internal sealed class RoomRefereeAddedRecorder(IMatchEventRepository matchEvents
 	public async ValueTask Handle(RoomRefereeAdded @event, CancellationToken cancellationToken)
 	{
 		await matchEvents.RecordAsync(
-			new MatchEvent(@event.Room.Match, MatchEventType.RefAdded, @event.Timestamp, @event.Actor, @event.Referee),
-			cancellationToken);
+			new MatchEvent(@event.Room.Match, MatchEventType.RefAdded, @event.Timestamp, @event.Actor, @event.Referee));
 	}
 }

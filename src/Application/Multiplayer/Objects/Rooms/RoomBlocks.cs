@@ -21,7 +21,7 @@ internal sealed class RoomBlocks
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when <paramref name="blocker" /> blocks <paramref name="who" />.</returns>
 	/// <remarks>BasilBot blocks nobody.</remarks>
-	internal async ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken)
+	internal async ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken = default)
 	{
 		if (blocker.IsFriendOfEveryone()) return false;
 

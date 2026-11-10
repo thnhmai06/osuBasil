@@ -10,6 +10,6 @@ internal sealed class RoomRoundAbortedRecorder(IRoundRepository rounds) : INotif
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundAborted @event, CancellationToken cancellationToken)
 	{
-		await rounds.CreateOrUpdateAsync(@event.Round, cancellationToken);
+		await rounds.CreateOrUpdateAsync(@event.Round);
 	}
 }

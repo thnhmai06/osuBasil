@@ -9,8 +9,7 @@ public interface IRoundRepository
 	/// <summary>Stores a round, adding it when its match has no round with its number and replacing that round otherwise.</summary>
 	/// <remarks>The round is stored in the background; a listing right after includes it.</remarks>
 	/// <param name="round">The round to store.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default);
+	Task CreateOrUpdateAsync(Round round);
 
 	/// <summary>Lists the rounds of a match in the order they were played.</summary>
 	/// <remarks>

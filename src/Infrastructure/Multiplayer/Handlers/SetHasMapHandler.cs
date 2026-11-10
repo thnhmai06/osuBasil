@@ -12,6 +12,6 @@ internal sealed class SetHasMapHandler : IRequestHandler<SetHasMap, Result<RoomO
 	public ValueTask<Result<RoomOutcome>> Handle(SetHasMap request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Slots.SetHasMapAsync(request.Has, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Slots.SetHasMapAsync(request.Has));
 	}
 }

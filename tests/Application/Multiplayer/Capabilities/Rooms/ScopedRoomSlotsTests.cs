@@ -20,8 +20,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var from = setup.Room.Slots.Find(setup.Player)!.Index;
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(7, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -36,10 +35,9 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true,
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true)).IsOk);
 
-		await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7, TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
 		Assert.Equal(RoomSlotStatus.Ready, setup.Room.Slots.Find(setup.Player)!.Status);
 	}
@@ -51,8 +49,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(3,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(3);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -67,8 +64,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(index,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(index);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 	}
@@ -78,11 +74,9 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(7,
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(7)).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -94,8 +88,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(2,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(2);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -106,11 +99,9 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true,
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true)).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
 		Assert.Equal(RoomOutcome.RoomLocked, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -122,8 +113,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Outsider).Slots.ChangeAsync(7,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Outsider).Slots.ChangeAsync(7);
 
 		Assert.Equal(RoomOutcome.NotInRoom, result.Outcome);
 	}
@@ -134,8 +124,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, 2,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, 2);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -149,8 +138,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, index,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, index);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 	}
@@ -160,11 +148,9 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true,
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true)).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, 7,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(setup.Player.Record, 7);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(7, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -177,8 +163,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var own = setup.Room.Slots.Find(setup.Host)!.Index;
 
-		var result = await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(own,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(own);
 
 		Assert.Equal(RoomOutcome.OwnSlot, result.Outcome);
 		Assert.False(setup.Room.Slots.At(own)!.Locked);
@@ -191,8 +176,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var occupied = setup.Room.Slots.Find(setup.Player)!.Index;
 
-		var result = await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(occupied,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(occupied);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.True(setup.Room.Slots.At(occupied)!.Locked);
@@ -209,8 +193,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(index,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(index);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result.Outcome);
 	}
@@ -222,7 +205,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Size: 5), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Size: 5));
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(1, setup.Room.Slots.Find(setup.Creator)!.Index);
@@ -239,8 +222,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(RoomSlotStatus.Ready, setup.Room.Slots.Find(setup.Player)!.Status);
@@ -254,11 +236,10 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(false,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(false);
 
 		Assert.Equal(RoomOutcome.InProgress, result.Outcome);
 	}
@@ -269,8 +250,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetHasMapAsync(false,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetHasMapAsync(false);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(RoomSlotStatus.NoMap, setup.Room.Slots.Find(setup.Player)!.Status);
@@ -283,8 +263,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ToggleTeamAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ToggleTeamAsync();
 
 		Assert.Equal(RoomOutcome.NoTeams, result.Outcome);
 	}
@@ -295,12 +274,10 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(TeamType: GameTeamType.TeamVs), TestContext.Current.CancellationToken);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true,
-			TestContext.Current.CancellationToken)).IsOk);
+			new RoomSettingsChange(TeamType: GameTeamType.TeamVs));
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true)).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ToggleTeamAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ToggleTeamAsync();
 
 		Assert.Equal(RoomOutcome.RoomLocked, result.Outcome);
 	}
@@ -311,8 +288,7 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.Hidden,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.Hidden);
 
 		Assert.Equal(RoomOutcome.NotFreemod, result.Outcome);
 	}
@@ -323,10 +299,9 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Freemods: true), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Freemods: true));
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.DoubleTime,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.DoubleTime);
 
 		Assert.Equal(RoomOutcome.SpeedModNotAllowed, result.Outcome);
 	}
@@ -337,10 +312,9 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Freemods: true), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Freemods: true));
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.Key1,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.Key1);
 
 		Assert.Equal(RoomOutcome.InvalidMods, result.Outcome);
 	}
@@ -352,8 +326,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var arrangement = new[] { new SlotArrangement(1, setup.Creator.Record, null, false) };
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.ArrangeAsync(arrangement,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots.ArrangeAsync(arrangement);
 
 		Assert.Equal(RoomOutcome.InvalidSettings, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -365,11 +338,10 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
 		Assert.Equal(RoomOutcome.InProgress, result.Outcome);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -381,10 +353,9 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Freemods: true), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(Freemods: true));
 
-		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.Hidden,
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Slots.SetModsAsync(GameMods.Hidden);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(GameMods.Hidden, setup.Room.Slots.Find(setup.Player)!.Mods);

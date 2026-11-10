@@ -64,8 +64,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var player = await CreatePlayerAsync("rs_player");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore(score, round, null),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, round, null));
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
@@ -80,7 +79,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var player = await CreatePlayerAsync("pending_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore(score, round, null), TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, round, null));
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
 		Assert.Equal(score.Id, Assert.Single(listed).Score.Id);
@@ -96,7 +95,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var neverStored = new ScoreRecord { Id = stored.Id + 1000, Value = stored.Value };
 
 		await Assert.ThrowsAnyAsync<Exception>(() =>
-			RoundScores.RecordAsync(new RoundScore(neverStored, round, null), TestContext.Current.CancellationToken));
+			RoundScores.RecordAsync(new RoundScore(neverStored, round, null)));
 		Assert.Empty(await RoundScores.ListAsync(round, TestContext.Current.CancellationToken));
 	}
 
@@ -108,8 +107,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var player = await CreatePlayerAsync("stored_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore(score, round, null),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, round, null));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select score_id, match_id, round_number from round_scores where score_id = @id",
@@ -130,10 +128,8 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var first = await CreateScoreAsync(player, 1000, First);
 		var second = await CreateScoreAsync(player, 2000, Second);
 
-		await RoundScores.RecordAsync(new RoundScore(first, round, null),
-			TestContext.Current.CancellationToken);
-		await RoundScores.RecordAsync(new RoundScore(second, round, null),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(first, round, null));
+		await RoundScores.RecordAsync(new RoundScore(second, round, null));
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
@@ -147,8 +143,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var round = await CreateTeamRoundAsync(match, 1);
 		var player = await CreatePlayerAsync("restart_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
-		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red));
 		await StoredRows.WaitForAsync(ConnectionString, "select score_id from round_scores where score_id = @id",
 			new Dictionary<string, object?> { ["@id"] = score.Id }, rows => rows.Count == 1, "the round score",
 			TestContext.Current.CancellationToken);
@@ -171,8 +166,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var player = await CreatePlayerAsync("team_rs_player");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Blue),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Blue));
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
@@ -187,8 +181,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var player = await CreatePlayerAsync("stored_team_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red));
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select team from round_scores where score_id = @id",
 			new Dictionary<string, object?> { ["@id"] = score.Id }, rows => rows.Count == 1, "the round score",
@@ -205,8 +198,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var player = await CreatePlayerAsync("owning_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore(score, round, null),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, round, null));
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
@@ -222,8 +214,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		var player = await CreatePlayerAsync("other_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore(score, other, null),
-			TestContext.Current.CancellationToken);
+		await RoundScores.RecordAsync(new RoundScore(score, other, null));
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
@@ -245,7 +236,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	private async Task<Round> CreateRoundAsync(MatchRecord match, int index)
 	{
 		var round = StoredMatches.Round(match, index, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		return round;
 	}
 
@@ -256,7 +247,7 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 	private async Task<Round> CreateTeamRoundAsync(MatchRecord match, int index)
 	{
 		var round = StoredMatches.TeamRound(match, index, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		return round;
 	}
 

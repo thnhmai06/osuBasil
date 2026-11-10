@@ -20,10 +20,8 @@ public readonly struct ScopedRoomAuthority
 
 	/// <summary>Makes a user a referee.</summary>
 	/// <param name="user">The user to make referee.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> AddRefereeAsync(UserRecord user,
-		CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> AddRefereeAsync(UserRecord user)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.RefereesManage) ??
 		                       _scoped.Room.AddReferee(_scoped.Actor.Record, user));
@@ -31,10 +29,8 @@ public readonly struct ScopedRoomAuthority
 
 	/// <summary>Removes a user from the referees.</summary>
 	/// <param name="user">The referee to remove.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotReferee or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> RemoveRefereeAsync(UserRecord user,
-		CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> RemoveRefereeAsync(UserRecord user)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.RefereesManage) ??
 		                       _scoped.Room.RemoveReferee(_scoped.Actor.Record, user));
@@ -42,11 +38,9 @@ public readonly struct ScopedRoomAuthority
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>
 	/// <param name="host">The seated player to make host, or <see langword="null" /> to clear the host.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>Giving host to the current host does nothing.</remarks>
-	public Task<Result<RoomOutcome>> SetHostAsync(StableConnection? host,
-		CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> SetHostAsync(StableConnection? host)
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.HostTransfer) ??
 		                       _scoped.Room.SetHost(_scoped.Actor.Record, host));

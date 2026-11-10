@@ -12,7 +12,7 @@ internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepo
 	: IMatchEventRepository
 {
 	/// <inheritdoc />
-	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
+	public Task RecordAsync(MatchEvent matchEvent)
 	{
 		var row = new MatchEventRow
 		{
@@ -23,11 +23,11 @@ internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepo
 			TargetId = matchEvent.Target?.Id,
 			Detail = matchEvent.Detail
 		};
-		return database.WriteAsync(async (MultiplayerDbContext context, CancellationToken token) =>
+		return database.WriteAsync(async (MultiplayerDbContext context) =>
 		{
 			row.Id = await IdCounters.NextAsync(context, "match_event");
 			context.MatchEvents.Add(row);
-		}, cancellationToken);
+		});
 	}
 
 	/// <inheritdoc />

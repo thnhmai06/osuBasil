@@ -184,16 +184,14 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 
 	private async Task<MatchRecord> MatchAsync(string name, UserRecord creator, bool isPrivate)
 	{
-		return await Matches.CreateAsync(StoredMatches.Data(name, At, creator, isPrivate: isPrivate),
-			TestContext.Current.CancellationToken);
+		return await Matches.CreateAsync(StoredMatches.Data(name, At, creator, isPrivate: isPrivate));
 	}
 
 	/// <summary>Records an event that targets a user and waits until it is stored.</summary>
 	private async Task RecordAsync(MatchRecord match, MatchEventType type, UserRecord target)
 	{
 		var before = (await Events.ListAsync(match, TestContext.Current.CancellationToken)).Count;
-		await Events.RecordAsync(StoredMatches.Event(match, type, At, target: target),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, type, At, target: target));
 		await StoredRows.WaitForAsync(ConnectionString, "select id from match_events where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
 			rows => rows.Count == before + 1, "the recorded event", TestContext.Current.CancellationToken);

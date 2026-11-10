@@ -43,7 +43,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		var match = await CreateMatchAsync("ended_report_match");
 		var stale = (await Matches.GetAsync(match.Id, TestContext.Current.CancellationToken))!;
 		match.Value.EndedAt = Second;
-		await Matches.UpdateAsync(match, TestContext.Current.CancellationToken);
+		await Matches.UpdateAsync(match);
 
 		var report = await Reports.GetAsync(stale, TestContext.Current.CancellationToken);
 
@@ -54,7 +54,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	public async Task A_report_holds_the_rounds_of_the_match()
 	{
 		var match = await CreateMatchAsync("round_report_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First));
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
@@ -65,8 +65,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	public async Task A_report_holds_the_events_of_the_match()
 	{
 		var match = await CreateMatchAsync("event_report_match");
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First),
-			TestContext.Current.CancellationToken);
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First));
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
@@ -77,11 +76,9 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	public async Task A_report_holds_the_rounds_and_the_events_in_the_order_they_happened()
 	{
 		var match = await CreateMatchAsync("ordered_report_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, Second), TestContext.Current.CancellationToken);
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First),
-			TestContext.Current.CancellationToken);
-		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Closed, Third),
-			TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, Second));
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First));
+		await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Closed, Third));
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
@@ -99,7 +96,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		var won = await RecordScoreAsync(round, winner, 5000, First);
 		var lost = await RecordScoreAsync(round, loser, 1000, First);
 		round.Decision = RoundResult.Decide(round, [lost, won])!.Verdict;
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
@@ -121,7 +118,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 
 		// The stored decision names the player with the lower score as the winner; a fresh decision would not.
 		round.Decision = new RoundVerdict([low.Score.Id, high.Score.Id], first.Id, null, 4000, false, null, null);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
@@ -135,7 +132,7 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	{
 		var match = await CreateMatchAsync("undecided_report_match");
 		var round = StoredMatches.Round(match, 1, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(round);
 		await RecordScoreAsync(round, await CreatePlayerAsync("undecided"), 5000, First);
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
@@ -182,7 +179,6 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 	{
 		var score = await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"),
 			totalScore, timestamp));
-		return await RoundScores.RecordAsync(new RoundScore(score, round, null),
-			TestContext.Current.CancellationToken);
+		return await RoundScores.RecordAsync(new RoundScore(score, round, null));
 	}
 }

@@ -12,9 +12,9 @@ namespace Basil.Infrastructure.Multiplayer.Persistence;
 internal sealed class EfMatchRepository(DatabaseSession database, IUserRepository users) : IMatchRepository
 {
 	/// <inheritdoc />
-	public async Task<MatchRecord> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
+	public async Task<MatchRecord> CreateAsync(MatchData data)
 	{
-		var value = await WithCreatorAsync(data, cancellationToken);
+		var value = await WithCreatorAsync(data);
 		var name = value.Name;
 		var creatorId = value.Creator.Id;
 		var startedAt = value.StartedAt.ToUniversalTime();
@@ -28,17 +28,17 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 			EndedAt = endedAt,
 			IsPrivate = isPrivate
 		};
-		await database.WriteAsync(async (MultiplayerDbContext context, CancellationToken token) =>
+		await database.WriteAsync(async (MultiplayerDbContext context) =>
 		{
 			row.Id = (int)await IdCounters.NextAsync(context, "match");
 			context.Matches.Add(row);
-		}, cancellationToken);
+		});
 
 		return new MatchRecord { Id = row.Id, Value = value };
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(MatchRecord match)
 	{
 		var row = new MatchRow
 		{
@@ -49,8 +49,8 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 			EndedAt = match.Value.EndedAt?.ToUniversalTime(),
 			IsPrivate = match.Value.IsPrivate
 		};
-		return database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
-			context.ReplaceAsync(row, stored => stored.Id == row.Id), cancellationToken);
+		return database.WriteAsync((MultiplayerDbContext context) =>
+			context.ReplaceAsync(row, stored => stored.Id == row.Id));
 	}
 
 	/// <inheritdoc />
@@ -143,7 +143,7 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		};
 	}
 
-	private async Task<MatchData> WithCreatorAsync(MatchData data, CancellationToken cancellationToken)
+	private async Task<MatchData> WithCreatorAsync(MatchData data, CancellationToken cancellationToken = default)
 	{
 		var creator = await users.GetAsync(data.Creator.Id, cancellationToken) ?? data.Creator;
 		return new MatchData

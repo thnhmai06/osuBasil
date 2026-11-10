@@ -138,12 +138,11 @@ public readonly struct ScopedRoom
 	}
 
 	/// <summary>Closes the room, evicting its players, ending its round and forgetting it.</summary>
-	/// <param name="cancellationToken">A token that cancels the wait for the room.</param>
 	/// <returns>
 	///     Ok, or a denial; a room that has closed already returns Ok and does nothing.
 	/// </returns>
 	/// <remarks>The caller needs <see cref="RoomPermissions.RoomClose" />, checked before the room is entered.</remarks>
-	public Task<Result<RoomOutcome>> CloseAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> CloseAsync()
 	{
 		return Task.FromResult(Require(RoomPermissions.RoomClose) ?? Room.Close(Actor.Record));
 	}

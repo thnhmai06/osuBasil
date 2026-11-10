@@ -121,23 +121,22 @@ public sealed class RoomFixture
 	public static async Task<RoomFixture> CreateAsync(TestApplication app)
 	{
 		var creator = await PlayerAsync(app, "Creator");
-		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false,
-			cancellationToken: TestContext.Current.CancellationToken);
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
 		Assert.True(opened.IsOk);
 		Assert.NotNull(room);
 
 		var host = await PlayerAsync(app, "Host");
-		Assert.True((await room.ScopeTo(host).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(host).Members.JoinAsync("")).IsOk);
 
 		var player = await PlayerAsync(app, "Player");
-		Assert.True((await room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.JoinAsync("")).IsOk);
 
 		var referee = await PlayerAsync(app, "Referee");
 		Assert.True((await room.ScopeTo(creator).Authority
-			.AddRefereeAsync(referee.Record, TestContext.Current.CancellationToken)).IsOk);
+			.AddRefereeAsync(referee.Record)).IsOk);
 
 		Assert.True((await room.ScopeTo(creator).Authority
-			.SetHostAsync(host, TestContext.Current.CancellationToken)).IsOk);
+			.SetHostAsync(host)).IsOk);
 
 		var outsider = await PlayerAsync(app, "Outsider");
 		var manager = await PlayerAsync(app, "Manager", UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
@@ -147,8 +146,7 @@ public sealed class RoomFixture
 		var suspendedUser = await app.CreateUserAsync("Suspended", "password");
 		var suspendedCreator = await PlayerAsync(app, suspendedUser);
 		var (suspendedRoom, suspendedOpened) = await app.Lobby.ScopeTo(suspendedCreator)
-			.OpenRoomAsync("api room", "", RoomSource.Api, false,
-				cancellationToken: TestContext.Current.CancellationToken);
+			.OpenRoomAsync("api room", "", RoomSource.Api, false);
 		Assert.True(suspendedOpened.IsOk);
 		Assert.NotNull(suspendedRoom);
 		suspendedUser.Value.Privileges = UserPrivileges.None;

@@ -53,7 +53,6 @@ public readonly struct ScopedLobby
 	///     affected.
 	/// </param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     The opened room and Ok; otherwise Silenced when a needed privilege is suspended, NotAuthorized when it is not
 	///     granted, TooManyRooms, AlreadyInRoom or NoRoomId.
@@ -75,20 +74,19 @@ public readonly struct ScopedLobby
 		string password,
 		RoomSource source,
 		bool isPrivate,
-		MatchSettings? settings = null,
-		CancellationToken cancellationToken = default)
+		MatchSettings? settings = null)
 	{
 		if (source is RoomSource.Game && Actor is not StableConnection)
 			throw new ArgumentException("A room opened in game needs the creator's osu! client.");
 
-		if (await OpenRefusalAsync(source, cancellationToken) is { } refusal) return (null, refusal);
+		if (await OpenRefusalAsync(source) is { } refusal) return (null, refusal);
 
 		var seat = SeatFor(source);
 		return await Lobby.OpenRoomAsync(Actor.Record, seat, source is RoomSource.Game, name, password, isPrivate,
-			settings, cancellationToken);
+			settings);
 	}
 
-	private async Task<Result<RoomOutcome>?> OpenRefusalAsync(RoomSource source, CancellationToken cancellationToken)
+	private async Task<Result<RoomOutcome>?> OpenRefusalAsync(RoomSource source, CancellationToken cancellationToken = default)
 	{
 		var required = source is RoomSource.Api
 			? UserPrivileges.Player

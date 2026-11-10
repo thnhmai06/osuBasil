@@ -13,7 +13,7 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 	: IRoundScoreRepository
 {
 	/// <inheritdoc />
-	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
+	public async Task<RoundScore> RecordAsync(RoundScore roundScore)
 	{
 		var round = roundScore.Round;
 		var row = new RoundScoreRow
@@ -23,8 +23,8 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 			RoundNumber = round.Index,
 			Team = roundScore.Team is { } team ? (int)team : null
 		};
-		await database.WriteAsync((MultiplayerDbContext context, CancellationToken token) =>
-			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId), cancellationToken);
+		await database.WriteAsync((MultiplayerDbContext context) =>
+			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId));
 		return roundScore;
 	}
 

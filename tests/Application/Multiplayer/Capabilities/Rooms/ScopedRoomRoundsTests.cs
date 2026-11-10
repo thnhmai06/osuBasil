@@ -19,8 +19,7 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
 		Assert.Equal(RoomOutcome.NoBeatmap, result.Outcome);
 		Assert.Null(setup.Room.Rounds.LastRound);
@@ -32,11 +31,9 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync()).IsOk);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
 		Assert.Equal(RoomOutcome.InProgress, result.Outcome);
 		Assert.Equal(1, setup.Room.Rounds.LastRound!.Index);
@@ -49,8 +46,7 @@ public sealed class ScopedRoomRoundsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.NotNull(setup.Room.Rounds.LastRound);
@@ -66,11 +62,10 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 		await CompleteRoundAsync(setup);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal(2, setup.Room.Rounds.LastRound!.Index);
@@ -82,15 +77,12 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.MarkLoadedAsync(
-			TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.MarkLoadedAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.MarkLoadedAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.MarkLoadedAsync()).IsOk);
 		Assert.IsType<RoomRoundPlayerLoaded>(app.RoomEvents.Events[^1]);
 
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.MarkLoadedAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.MarkLoadedAsync()).IsOk);
 
 		Assert.IsType<RoomRoundAllLoaded>(app.RoomEvents.Events[^1]);
 	}
@@ -101,8 +93,7 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Rounds.MarkLoadedAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Rounds.MarkLoadedAsync();
 
 		Assert.Equal(RoomOutcome.NotPlaying, result.Outcome);
 	}
@@ -113,15 +104,12 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.SkipAsync(
-			TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.SkipAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.SkipAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.SkipAsync()).IsOk);
 		Assert.IsType<RoomRoundPlayerSkipped>(app.RoomEvents.Events[^1]);
 
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.SkipAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.SkipAsync()).IsOk);
 
 		Assert.IsType<RoomRoundAllSkipped>(app.RoomEvents.Events[^1]);
 	}
@@ -132,10 +120,9 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
-		var result = await setup.Room.ScopeTo(setup.Player).Rounds.FailAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Rounds.FailAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.IsType<RoomRoundPlayerFailed>(app.RoomEvents.Events[^1]);
@@ -147,10 +134,9 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
-		var result = await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.IsType<RoomRoundPlayerCompleted>(app.RoomEvents.Events[^1]);
@@ -163,8 +149,7 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync();
 
 		Assert.Equal(RoomOutcome.NotPlaying, result.Outcome);
 	}
@@ -175,7 +160,7 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 		await CompleteRoundAsync(setup);
 
 		Assert.False(setup.Room.Rounds.InProgress);
@@ -191,8 +176,7 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.AbortAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.AbortAsync();
 
 		Assert.Equal(RoomOutcome.NotInProgress, result.Outcome);
 	}
@@ -203,10 +187,9 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
+		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.AbortAsync(
-			TestContext.Current.CancellationToken);
+		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.AbortAsync();
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.False(setup.Room.Rounds.InProgress);
@@ -218,16 +201,13 @@ public sealed class ScopedRoomRoundsTests
 	private static async Task SelectBeatmapAsync(RoomFixture setup)
 	{
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken)).IsOk);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))).IsOk);
 	}
 
 	private static async Task CompleteRoundAsync(RoomFixture setup)
 	{
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken)).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync(
-			TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync()).IsOk);
 	}
 }

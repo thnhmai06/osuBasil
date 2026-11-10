@@ -12,6 +12,6 @@ internal sealed class SetRoomLockedHandler : IRequestHandler<SetRoomLocked, Resu
 	public ValueTask<Result<RoomOutcome>> Handle(SetRoomLocked request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Settings.SetLockedAsync(request.Locked, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Settings.SetLockedAsync(request.Locked));
 	}
 }

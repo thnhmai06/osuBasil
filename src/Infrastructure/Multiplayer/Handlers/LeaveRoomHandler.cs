@@ -12,6 +12,6 @@ internal sealed class LeaveRoomHandler : IRequestHandler<LeaveRoom, Result<RoomO
 	public ValueTask<Result<RoomOutcome>> Handle(LeaveRoom request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Members.LeaveAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Members.LeaveAsync());
 	}
 }

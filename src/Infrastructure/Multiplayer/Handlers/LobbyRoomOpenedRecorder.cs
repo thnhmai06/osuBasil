@@ -12,7 +12,6 @@ internal sealed class LobbyRoomOpenedRecorder(IMatchEventRepository matchEvents)
 	public async ValueTask Handle(LobbyRoomOpened @event, CancellationToken cancellationToken)
 	{
 		await matchEvents.RecordAsync(
-			new MatchEvent(@event.Room.Match, MatchEventType.Created, @event.Timestamp, @event.Room.Authority.Creator),
-			cancellationToken);
+			new MatchEvent(@event.Room.Match, MatchEventType.Created, @event.Timestamp, @event.Room.Authority.Creator));
 	}
 }

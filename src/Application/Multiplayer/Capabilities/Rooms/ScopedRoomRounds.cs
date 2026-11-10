@@ -18,9 +18,8 @@ public readonly struct ScopedRoomRounds
 	}
 
 	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, InProgress, NoBeatmap or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> StartAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> StartAsync()
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.RoundsStart) ??
 		                       _scoped.Room.StartRound());
@@ -34,54 +33,49 @@ public readonly struct ScopedRoomRounds
 	}
 
 	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotInProgress or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> AbortAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> AbortAsync()
 	{
 		return Task.FromResult(_scoped.Require(RoomPermissions.RoundsAbort) ??
 		                       _scoped.Room.AbortRound());
 	}
 
 	/// <summary>Reports that the caller finished loading the beatmap.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed; reporting again returns Ok and does nothing.</returns>
 	/// <remarks>
 	///     The last player to load emits <see cref="RoomRoundAllLoaded" /> instead of
 	///     <see cref="RoomRoundPlayerLoaded" />.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> MarkLoadedAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> MarkLoadedAsync()
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.MarkLoaded(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller wants to skip the intro.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed; asking again returns Ok and does nothing.</returns>
 	/// <remarks>
 	///     The last player to ask emits <see cref="RoomRoundAllSkipped" /> instead of
 	///     <see cref="RoomRoundPlayerSkipped" />.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> SkipAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> SkipAsync()
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.SkipIntro(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller failed; the player keeps playing until completion.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> FailAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> FailAsync()
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.ReportFailed(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller completed the beatmap.</summary>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed.</returns>
 	/// <remarks>
 	///     When the last player completes, the round ends and <see cref="RoomRoundCompleted" /> is emitted instead of
 	///     <see cref="RoomRoundPlayerCompleted" />.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> CompleteAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> CompleteAsync()
 	{
 		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.ReportCompleted(_scoped.Actor));
 	}

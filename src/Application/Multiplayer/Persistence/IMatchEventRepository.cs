@@ -8,8 +8,7 @@ public interface IMatchEventRepository
 {
 	/// <summary>Records an event of a match.</summary>
 	/// <param name="matchEvent">The event to record.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default);
+	Task RecordAsync(MatchEvent matchEvent);
 
 	/// <summary>Lists the events of a match in the order they happened.</summary>
 	/// <remarks>At most <see cref="ListLimits.Ceiling" /> events are returned, the earliest ones.</remarks>

@@ -12,6 +12,6 @@ internal sealed class AddRefereeHandler : IRequestHandler<AddReferee, Result<Roo
 	public ValueTask<Result<RoomOutcome>> Handle(AddReferee request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Authority.AddRefereeAsync(request.User, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Authority.AddRefereeAsync(request.User));
 	}
 }

@@ -12,6 +12,6 @@ internal sealed class RemoveRefereeHandler : IRequestHandler<RemoveReferee, Resu
 	public ValueTask<Result<RoomOutcome>> Handle(RemoveReferee request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Authority.RemoveRefereeAsync(request.User, cancellationToken));
+			request.Room.ScopeTo(request.Actor).Authority.RemoveRefereeAsync(request.User));
 	}
 }

@@ -12,6 +12,6 @@ internal sealed class StopObservingRoomHandler : IRequestHandler<StopObservingRo
 	public ValueTask<Result<RoomOutcome>> Handle(StopObservingRoom request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Members.ObserverLeaveAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Members.ObserverLeaveAsync());
 	}
 }

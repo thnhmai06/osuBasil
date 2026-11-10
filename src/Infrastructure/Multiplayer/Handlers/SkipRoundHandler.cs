@@ -12,6 +12,6 @@ internal sealed class SkipRoundHandler : IRequestHandler<SkipRound, Result<RoomO
 	public ValueTask<Result<RoomOutcome>> Handle(SkipRound request, CancellationToken cancellationToken)
 	{
 		return new ValueTask<Result<RoomOutcome>>(
-			request.Room.ScopeTo(request.Actor).Rounds.SkipAsync(cancellationToken));
+			request.Room.ScopeTo(request.Actor).Rounds.SkipAsync());
 	}
 }

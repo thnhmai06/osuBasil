@@ -84,7 +84,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			});
 
 		provider.GetRequiredService<IRoundScoreRepository>()
-			.RecordAsync(Arg.Any<RoundScore>(), Arg.Any<CancellationToken>())
+			.RecordAsync(Arg.Any<RoundScore>())
 			.Returns(call => Task.FromResult(call.Arg<RoundScore>()));
 
 		provider.GetRequiredService<IReplayStorage>()
