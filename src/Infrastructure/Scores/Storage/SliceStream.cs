@@ -21,11 +21,16 @@ internal sealed class SliceStream : Stream
 		Length = length;
 	}
 
+	/// <inheritdoc />
 	public override bool CanRead => true;
+	/// <inheritdoc />
 	public override bool CanSeek => true;
+	/// <inheritdoc />
 	public override bool CanWrite => false;
+	/// <inheritdoc />
 	public override long Length { get; }
 
+	/// <inheritdoc />
 	public override long Position
 	{
 		get => _position;
@@ -36,11 +41,13 @@ internal sealed class SliceStream : Stream
 		}
 	}
 
+	/// <inheritdoc />
 	public override int Read(byte[] buffer, int offset, int count)
 	{
 		return Read(buffer.AsSpan(offset, count));
 	}
 
+	/// <inheritdoc />
 	public override int Read(Span<byte> buffer)
 	{
 		var window = Window(buffer.Length);
@@ -52,6 +59,7 @@ internal sealed class SliceStream : Stream
 		return read;
 	}
 
+	/// <inheritdoc />
 	public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken ct = default)
 	{
 		var window = Window(buffer.Length);
@@ -63,11 +71,13 @@ internal sealed class SliceStream : Stream
 		return read;
 	}
 
+	/// <inheritdoc />
 	public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken ct)
 	{
 		return ReadAsync(buffer.AsMemory(offset, count), ct).AsTask();
 	}
 
+	/// <inheritdoc />
 	public override long Seek(long offset, SeekOrigin origin)
 	{
 		Position = origin switch
@@ -80,20 +90,24 @@ internal sealed class SliceStream : Stream
 		return _position;
 	}
 
+	/// <inheritdoc />
 	public override void Flush()
 	{
 	}
 
+	/// <inheritdoc />
 	public override void SetLength(long value)
 	{
 		throw new NotSupportedException();
 	}
 
+	/// <inheritdoc />
 	public override void Write(byte[] buffer, int offset, int count)
 	{
 		throw new NotSupportedException();
 	}
 
+	/// <inheritdoc />
 	public override ValueTask DisposeAsync()
 	{
 		return _inner.DisposeAsync();
