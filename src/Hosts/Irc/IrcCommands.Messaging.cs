@@ -50,7 +50,7 @@ internal sealed partial class IrcCommands
 				return;
 			}
 
-			destination = new ChatTarget.Private(user.Record);
+			destination = new ChatTarget.Private(user.Record.Id);
 		}
 
 		if (!await MayChatAsync(session, actor, message.Command, target, ct)) return;

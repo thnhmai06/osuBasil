@@ -4,6 +4,7 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Users;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Chat;
 
@@ -60,10 +61,11 @@ internal sealed partial class PacketHandlers
 	private async Task PrivateMessageAsync(StableConnection osu, StableMessage message,
 		CancellationToken ct)
 	{
-		if (await sender.Send(new GetUser(UserReference.ByName(message.Recipient)), ct) is not { } record) return;
-		if (!registry.Of(record).IsOnline) return;
+		var name = UserData.NormalizeName(message.Recipient);
+		if (registry.Online.Keys.FirstOrDefault(user => UserData.NormalizeName(user.Value.Name) == name) is not { } record)
+			return;
 		if (!await MayChatAsync(osu, ct)) return;
-		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record), Limit(message.Text)),
+		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record.Id), Limit(message.Text)),
 			ct);
 		switch (result.Outcome)
 		{

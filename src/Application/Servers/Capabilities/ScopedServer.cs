@@ -64,12 +64,12 @@ public readonly struct ScopedServer
 
 	/// <summary>Sends a notification to the specified users' open osu! clients.</summary>
 	/// <param name="text">The text to show.</param>
-	/// <param name="to">The users to notify.</param>
+	/// <param name="to">The ids of the users to notify.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Moderator" />; only open osu! clients receive the notification.
 	/// </remarks>
-	public (Result<ServerOutcome> Result, int Sent) Notify(string text, IReadOnlyCollection<UserRecord> to)
+	public (Result<ServerOutcome> Result, int Sent) Notify(string text, IReadOnlyCollection<int> to)
 	{
 		return Denied() is { } denied ? (denied, 0) : (ServerOutcome.Ok, Server.Notify(text, to));
 	}

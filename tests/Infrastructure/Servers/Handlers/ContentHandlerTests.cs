@@ -265,7 +265,7 @@ public sealed class ContentHandlerTests
 		await RoomFixture.PlayerAsync(app, "Two");
 
 		var (result, sent) = await new NotifyUsersHandler(app.Server)
-			.Handle(new NotifyUsers(admin, "hello", [one.Record]), Token);
+			.Handle(new NotifyUsers(admin, "hello", [one.Record.Id]), Token);
 
 		Assert.True(result.IsOk);
 		Assert.Equal(1, sent);
@@ -278,7 +278,7 @@ public sealed class ContentHandlerTests
 		var one = await RoomFixture.PlayerAsync(app, "One");
 
 		var (result, sent) = await new NotifyUsersHandler(app.Server)
-			.Handle(new NotifyUsers(await PlainAsync(app), "hello", [one.Record]), Token);
+			.Handle(new NotifyUsers(await PlainAsync(app), "hello", [one.Record.Id]), Token);
 
 		Assert.NotNull(result.Missing);
 		Assert.Equal(0, sent);

@@ -4,6 +4,8 @@ using System.Text.Json.Nodes;
 using Basil.Application.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Messages;
+using Basil.Application.Users.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Objects.Connections;
@@ -433,15 +435,15 @@ internal static class ContentCommands
 			return all.IsOk ? Announced(call, sent) : call.Refuse(all);
 		}
 
-		var recipients = new List<UserRecord>();
+		var recipients = new List<int>();
 		foreach (var id in ids.Select(item =>
 			         int.TryParse(item, out var parsed)
 				         ? parsed
 				         : throw CommandException.Invalid("--to must be user ids.")).Distinct())
 		{
-			if (await call.Get<IUserRepository>().GetAsync(id, call.CancellationToken) is not { } user)
+			if (await call.Get<ISender>().Send(new GetUser(UserReference.ById(id)), call.CancellationToken) is not { } user)
 				throw CommandException.NotFound($"No such user: {id}.");
-			recipients.Add(user);
+			recipients.Add(user.Id);
 		}
 
 		var (some, count) = await SendAsync(call, actor => new NotifyUsers(actor, text, recipients));

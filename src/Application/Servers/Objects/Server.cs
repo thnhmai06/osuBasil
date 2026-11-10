@@ -153,6 +153,19 @@ public sealed partial class Server
 	}
 
 	/// <summary>
+	///     The server itself calls this system operation, which needs no rights, to notify the open osu! clients of the
+	///     users with the given ids.
+	/// </summary>
+	/// <param name="text">The text to show.</param>
+	/// <param name="userIds">The ids of the users to notify; an id of no online user is skipped.</param>
+	/// <returns>The number of open osu! clients sent the notification.</returns>
+	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
+	public int Notify(string text, IReadOnlyCollection<int> userIds)
+	{
+		return NotifyCore(text, [.. Context.Connections.Registry.Online.Keys.Where(user => userIds.Contains(user.Id))]);
+	}
+
+	/// <summary>
 	///     The server itself calls this system operation, which needs no rights, to notify every open osu! client.
 	/// </summary>
 	/// <param name="text">The text to show.</param>

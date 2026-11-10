@@ -160,7 +160,7 @@ public sealed class PostChatMessageHandlerTests
 		var receiver = await app.CreateUserAsync("Receiver", "password");
 		await app.LoginAsync(receiver);
 
-		var outcome = await PostAsync(app, sender, new ChatTarget.Private(receiver));
+		var outcome = await PostAsync(app, sender, new ChatTarget.Private(receiver.Id));
 
 		Assert.Equal(ChannelOutcome.Ok, outcome);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
@@ -174,7 +174,7 @@ public sealed class PostChatMessageHandlerTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("Sender", "password"));
 		var offline = await app.CreateUserAsync("Offline", "password");
 
-		var outcome = await PostAsync(app, sender, new ChatTarget.Private(offline));
+		var outcome = await PostAsync(app, sender, new ChatTarget.Private(offline.Id));
 
 		Assert.Equal(ChannelOutcome.NotFound, outcome);
 	}

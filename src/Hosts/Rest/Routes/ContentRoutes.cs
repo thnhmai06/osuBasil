@@ -86,12 +86,12 @@ internal static class ContentRoutes
 			return all.IsOk ? Api.Ok(new AnnounceResponse(sent)) : all.Refusal();
 		}
 
-		var recipients = new List<UserRecord>();
+		var recipients = new List<int>();
 		foreach (var id in ids.Distinct())
 		{
 			if (await sender.Send(new GetUser(UserReference.ById(id)), context.RequestAborted) is not { } user)
 				return Api.NotFound($"No such user: {id}.");
-			recipients.Add(user);
+			recipients.Add(user.Id);
 		}
 
 		var (some, count) = await sender.Send(new NotifyUsers(actor, request.Text, recipients), context.RequestAborted);

@@ -49,8 +49,10 @@ public sealed class ChannelDirectory
 					? self
 					: _registry.FindSpectating(viewer);
 				return host is null ? null : _spectatorChannels.Of(host);
-			case ChatTarget.Private(var recipient):
-				return _registry.Online.TryGetValue(recipient, out var user) ? _pmChannels.Of(user) : null;
+			case ChatTarget.Private(var recipientId):
+				return _registry.Online.FirstOrDefault(pair => pair.Key.Id == recipientId).Value is { } user
+					? _pmChannels.Of(user)
+					: null;
 			default:
 				return null;
 		}

@@ -1,5 +1,3 @@
-using Basil.Domain.Users;
-
 namespace Basil.Application.Chat.Messages;
 
 /// <summary>Where a chat message goes, addressed by identity and not by the spelling of one transport.</summary>
@@ -24,6 +22,6 @@ public abstract record ChatTarget
 	public sealed record OwnSpectators : ChatTarget;
 
 	/// <summary>A private message to a user.</summary>
-	/// <param name="Recipient">The user who receives the message.</param>
-	public sealed record Private(UserRecord Recipient) : ChatTarget;
+	/// <param name="RecipientId">The id of the user who receives the message.</param>
+	public sealed record Private(int RecipientId) : ChatTarget;
 }

@@ -280,7 +280,7 @@ public sealed class ServerNotifyTests
 		var (first, _) = await OnlineClientAsync(app, "First");
 		var (second, _) = await OnlineClientAsync(app, "Second");
 
-		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first, second]);
+		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first.Id, second.Id]);
 
 		Assert.Equal(ServerOutcome.Ok, result.Outcome);
 		Assert.Equal(2, sent);
@@ -337,7 +337,7 @@ public sealed class ServerNotifyTests
 		var (first, _) = await OnlineClientAsync(app, "First");
 		var (second, _) = await OnlineClientAsync(app, "Second");
 
-		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first, second]);
+		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first.Id, second.Id]);
 
 		Assert.Equal(UserPrivileges.Moderator, result.Missing);
 		Assert.Equal(0, sent);
