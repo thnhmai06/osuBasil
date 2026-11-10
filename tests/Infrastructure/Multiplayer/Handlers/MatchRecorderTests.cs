@@ -134,6 +134,46 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
+	public async Task Handle_LobbyRoomClosed_NeverLetsTheMatchReadAsEndedBeforeItsClosingEntryIsStored()
+	{
+		using var app = new TestApplication();
+		var recorder = new RecordingRecorder();
+		var setup = await RoomFixture.CreateAsync(app);
+		await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken);
+		var closed = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomClosed>());
+		var closingStoredWhenEnded = false;
+		recorder.Matches.UpdateAsync(Arg.Any<MatchRecord>(), Arg.Any<CancellationToken>()).Returns(_ =>
+		{
+			closingStoredWhenEnded = recorder.MatchEvents.ReceivedCalls().Any();
+			return Task.CompletedTask;
+		});
+
+		await new LobbyRoomClosedRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(closed,
+			TestContext.Current.CancellationToken);
+
+		Assert.True(closingStoredWhenEnded);
+	}
+
+	[Fact]
+	public async Task Handle_LobbyMatchRecovered_NeverLetsTheMatchReadAsEndedBeforeItsClosingEntryIsStored()
+	{
+		using var app = new TestApplication();
+		var recorder = new RecordingRecorder();
+		var setup = await RoomFixture.CreateAsync(app);
+		var closingStoredWhenEnded = false;
+		recorder.Matches.UpdateAsync(Arg.Any<MatchRecord>(), Arg.Any<CancellationToken>()).Returns(_ =>
+		{
+			closingStoredWhenEnded = recorder.MatchEvents.ReceivedCalls().Any();
+			return Task.CompletedTask;
+		});
+
+		await new LobbyMatchRecoveredRecorder(recorder.Rounds, recorder.Matches, recorder.MatchEvents).Handle(
+			new LobbyMatchRecovered(setup.Room.Match, []), TestContext.Current.CancellationToken);
+
+		Assert.True(closingStoredWhenEnded);
+	}
+
+	[Fact]
 	public async Task Handle_LobbyMatchRecovered_StoresTheAbortedRoundsAndTheEndAndRecordsTheRecovery()
 	{
 		using var app = new TestApplication();

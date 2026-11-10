@@ -16,9 +16,10 @@ internal sealed class LobbyMatchRecoveredRecorder(
 	{
 		foreach (var round in @event.AbortedRounds)
 			await rounds.CreateOrUpdateAsync(round, cancellationToken);
-		await matches.UpdateAsync(@event.Match, cancellationToken);
 		await matchEvents.RecordAsync(
 			new MatchEvent(@event.Match, MatchEventType.Closed, @event.Timestamp, null, null,
 				"Server shutdown recovery"), cancellationToken);
+		// The match reads as ended only once its report is complete.
+		await matches.UpdateAsync(@event.Match, cancellationToken);
 	}
 }
