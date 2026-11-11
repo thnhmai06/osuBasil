@@ -16,7 +16,7 @@ An action that depends on a caller starts from the room and the caller's real `C
 var scopedRoom = room.ScopeTo(by);
 ```
 
-`ScopedRoom` holds the room, caller, room roles and derived `RoomPermissions` for one request or command. Use its parts—`Slots`, `Rounds`, `Settings`, `Authority` and `Members`—rather than asking a service to perform a player's action. Do not retain a scope after the request: its authority is a snapshot.
+`ScopedRoom` holds the room, the caller and the `RoomPrivileges` the caller holds for one request or command. Use its parts—`Slots`, `Rounds`, `Settings`, `Authority` and `Members`—rather than asking a service to perform a player's action. Do not retain a scope after the request: its authority is a snapshot.
 
 Each operation returns a `RoomResult` for ordinary outcomes such as success, missing authority or a suspended privilege. The caller does not pass privileges through each operation, and connection type alone never grants authority.
 
@@ -36,21 +36,21 @@ Every room has a creator. The creator is not in the referee list and ranks above
 
 ### Room roles and privileges
 
-`RoomRoles` are calculated for the scoped caller. A caller may hold more than one role:
+`RoomPrivileges` is what a user may do in a room. It is a concept separate from the account privileges (`UserPrivileges`): room privileges are derived per room from the roles the caller holds, never stored, and no account privilege is derived from them. A role is only a named group of room privileges; a caller holding several roles holds the union of their groups:
 
-| `RoomRoles` value | How it is held | `RoomPermissions` granted by the role |
+| Group | How it is held | Room privileges in the group |
 |---|---|---|
-| `Player` | An osu! connection occupies a slot | Post in room chat; invite users |
-| `Host` | The connection is the room's current host | Change settings, lock slots, kick players, transfer host, start or abort rounds |
-| `Referee` | The caller's user is a referee and is not the creator | All room permissions except managing referees |
-| `Creator` | The caller's user is the creator | All room permissions, including managing referees |
+| `RoomPrivileges.Player` | An osu! connection occupies a slot | Post in room chat; invite users |
+| `RoomPrivileges.Host` | The connection is the room's current host | Change settings, lock slots, kick players, transfer host, start or abort rounds |
+| `RoomPrivileges.Referee` | The caller's user is a referee and is not the creator | Every room privilege except managing referees |
+| `RoomPrivileges.Creator` | The caller's user is the creator | Every room privilege, including managing referees |
 
-`RoomPermissionsGroups.GetPermissions` combines permissions from the caller's `RoomRoles`. The account's privileges then constrain that set:
+The account's privileges then constrain what the scope holds:
 
-* With effective `Tournament`, the scope grants all `RoomPermissions` in any room, joined or not: managing every room acts with the creator's authority.
-* Otherwise the privileges must include `Player`; without it the scoped room has no role-derived room permissions.
+* With effective `Tournament`, the scope holds `RoomPrivileges.Creator` in any room, joined or not: managing every room acts with the creator's authority.
+* Otherwise the account privileges must include `Player`; without it the scoped room holds no room privileges.
 
-This is why a creator or referee who has lost `Player` cannot manage a room, while a `Tournament` holder keeps multiplayer authority.
+This is why a creator or referee who has lost `Player` cannot manage a room, while a `Tournament` holder keeps multiplayer authority. A refusal for lack of a room privilege is the outcome `RoleDenied`; it carries no privilege mask.
 
 ### System-owned operations
 
@@ -94,7 +94,7 @@ The room countdown belongs to BasilBot, not to the room. A host (the `!mp start 
 
 BasilBot keeps the timer and announces the marks in the room channel: a timer announces 60, 30, 10 and 5 seconds, a countdown that starts a round announces every whole minute left and then 30, 10, 5, 4 and 3 seconds, and a mark is announced only while it is shorter than the countdown. When a countdown that starts a round elapses, BasilBot sends the same `StartRound` message a person would, with the connection that started the countdown; if that connection is gone or no longer has the right, the countdown is cancelled with a message instead.
 
-BasilBot listens to the room's events to cancel a pending countdown: the room closing, a round starting or being aborted, and, for a countdown that starts a round, a change of the beatmap, mode, mods, teams or win condition. The room knows nothing of countdowns: it only starts, aborts and decides rounds. `RoomPermissions` has no countdown permission, so the bit it once used stays unused and is never reassigned.
+BasilBot listens to the room's events to cancel a pending countdown: the room closing, a round starting or being aborted, and, for a countdown that starts a round, a change of the beatmap, mode, mods, teams or win condition. The room knows nothing of countdowns: it only starts, aborts and decides rounds. `RoomPrivileges` has no countdown privilege, so the bit it once used stays unused and is never reassigned.
 
 ```text
 !mp start 30 / API start --StartRoomCountdown--> BasilBot (rights check, timer)
@@ -132,7 +132,7 @@ A player is in at most one room. A room's own check cannot see another room's se
 * [`ScopedRoom.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoom.cs): caller, role and room-privilege scope
 * [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
-* [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs): room rights
+* [`RoomPrivileges.cs`](../../src/Domain/Multiplayer/RoomPrivileges.cs): room privileges and the role groups
 * [`CheckRoundStart.cs`](../../src/Application/Multiplayer/Messages/CheckRoundStart.cs): asks whether a connection may start rounds, without starting one
 * [`StartRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/StartRoomCountdown.cs), [`CancelRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/CancelRoomCountdown.cs): the countdown requests, answered by BasilBot
 * [`RoomCountdowns.cs`](../../src/Infrastructure/Bot/Workers/RoomCountdowns.cs), [`RoomCountdown.cs`](../../src/Application/Bot/Objects/RoomCountdown.cs): the countdown timers and their marks

@@ -46,7 +46,7 @@ public readonly struct ScopedRoomMembers
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom or RoomClosed; a user who does not exist is not in the room.</returns>
 	public async Task<Result<RoomOutcome>> KickAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPermissions.MembersKick) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.MembersKick) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Kick(_scoped.Actor.Record, record)
 			: RoomOutcome.NotInRoom;
@@ -57,7 +57,7 @@ public readonly struct ScopedRoomMembers
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
 	public async Task<Result<RoomOutcome>> BanAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPermissions.MembersBan) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Ban(_scoped.Actor.Record, record)
 			: RoomOutcome.NotInRoom;
@@ -68,7 +68,7 @@ public readonly struct ScopedRoomMembers
 	/// <returns>Ok, NotAuthorized, Silenced, NotBanned, NotInRoom for a user who does not exist, or RoomClosed.</returns>
 	public async Task<Result<RoomOutcome>> UnbanAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPermissions.MembersBan) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Unban(record)
 			: RoomOutcome.NotInRoom;
@@ -79,7 +79,7 @@ public readonly struct ScopedRoomMembers
 	/// <returns>Ok, NotAuthorized, Silenced, Blocked, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
 	public async Task<Result<RoomOutcome>> InviteAsync(User target)
 	{
-		if (_scoped.Require(RoomPermissions.MembersInvite) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.MembersInvite) is { } denied) return denied;
 		if (!target.IsOnline) return RoomOutcome.TargetOffline;
 		if (!_scoped.ManagesAnyRoom &&
 		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.Actor.Record))

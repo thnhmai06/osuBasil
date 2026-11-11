@@ -38,7 +38,7 @@ public readonly struct ScopedRoomSlots
 	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
 	public async Task<Result<RoomOutcome>> MoveAsync(UserReference player, int index)
 	{
-		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.MovePlayer(record, index)
 			: RoomOutcome.NotInRoom;
@@ -53,7 +53,7 @@ public readonly struct ScopedRoomSlots
 	/// </remarks>
 	public Task<Result<RoomOutcome>> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.SlotsMovePlayers) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsMovePlayers) ??
 		                       _scoped.Room.ArrangeSlots(arrangement));
 	}
 
@@ -96,7 +96,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom or RoomClosed when the room has closed.</returns>
 	public async Task<Result<RoomOutcome>> SetTeamAsync(UserReference player, GameTeam team)
 	{
-		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.SetTeam(record, team)
 			: RoomOutcome.NotInRoom;
@@ -117,7 +117,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotAuthorized, SlotNotOpen, OwnSlot or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> ToggleLockAsync(int index)
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.SlotsLock) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsLock) ??
 		                       _scoped.Room.ToggleSlotLock(_scoped.Actor, index));
 	}
 }

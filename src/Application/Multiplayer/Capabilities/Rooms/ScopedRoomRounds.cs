@@ -21,7 +21,7 @@ public readonly struct ScopedRoomRounds
 	/// <returns>Ok, NotAuthorized, InProgress, NoBeatmap or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> StartAsync()
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.RoundsStart) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsStart) ??
 		                       _scoped.Room.StartRound());
 	}
 
@@ -29,14 +29,14 @@ public readonly struct ScopedRoomRounds
 	/// <returns><see langword="null" /> when allowed; otherwise the refusal that <see cref="StartAsync" /> answers.</returns>
 	public Result<RoomOutcome>? RequireStart()
 	{
-		return _scoped.Require(RoomPermissions.RoundsStart);
+		return _scoped.Require(RoomPrivileges.RoundsStart);
 	}
 
 	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
 	/// <returns>Ok, NotAuthorized, NotInProgress or RoomClosed when the room has closed.</returns>
 	public Task<Result<RoomOutcome>> AbortAsync()
 	{
-		return Task.FromResult(_scoped.Require(RoomPermissions.RoundsAbort) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsAbort) ??
 		                       _scoped.Room.AbortRound());
 	}
 

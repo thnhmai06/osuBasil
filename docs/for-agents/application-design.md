@@ -16,7 +16,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   what is missing. A `[Flags]` enum is met when every required bit is held (the result is the missing bits); any other enum
   is ordered levels and is met when the held value is at least the required one (the result is the required level). Most
   capabilities hold the caller's **effective** `UserPrivileges` and pass the missing mask to `Result<TOutcome>.Denied`;
-  `ScopedRoom` holds `RoomPermissions`, the rights its roles give, computed once from creator, referee, host and player
+  `ScopedRoom` holds `RoomPrivileges`, the room privileges its roles give, computed once from creator, referee, host and player
   roles and the global privileges; a role refusal is the outcome `RoleDenied`, or a denial naming `Player` when the caller
   may not join rooms at all. An implementation never compares rights itself.
 * **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,

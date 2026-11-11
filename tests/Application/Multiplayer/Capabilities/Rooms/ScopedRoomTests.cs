@@ -75,84 +75,82 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task Creator_GetsCreatorRole()
+	public async Task Creator_GetsCreatorPrivileges()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var roles = setup.Room.ScopeTo(setup.Creator).Roles;
+		var privileges = setup.Room.ScopeTo(setup.Creator).Privileges;
 
-		Assert.True(roles.HasFlag(RoomRoles.Creator));
+		Assert.True(privileges.HasFlag(RoomPrivileges.Creator));
 	}
 
 	[Fact]
-	public async Task Referee_GetsRefereeRole()
+	public async Task Referee_GetsRefereePrivileges()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var roles = setup.Room.ScopeTo(setup.Referee).Roles;
+		var privileges = setup.Room.ScopeTo(setup.Referee).Privileges;
 
-		Assert.True(roles.HasFlag(RoomRoles.Referee));
-		Assert.False(roles.HasFlag(RoomRoles.Creator));
+		Assert.True(privileges.HasFlag(RoomPrivileges.Referee));
+		Assert.False(privileges.HasFlag(RoomPrivileges.Creator));
 	}
 
 	[Fact]
-	public async Task Host_GetsHostRole()
+	public async Task Host_GetsHostPrivileges()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var roles = setup.Room.ScopeTo(setup.Host).Roles;
+		var privileges = setup.Room.ScopeTo(setup.Host).Privileges;
 
-		Assert.True(roles.HasFlag(RoomRoles.Host));
-		Assert.True(roles.HasFlag(RoomRoles.Player));
-		Assert.False(roles.HasFlag(RoomRoles.Referee));
+		Assert.True(privileges.HasFlag(RoomPrivileges.Host));
+		Assert.True(privileges.HasFlag(RoomPrivileges.Player));
+		Assert.False(privileges.HasFlag(RoomPrivileges.Referee));
 	}
 
 	[Fact]
-	public async Task SeatedPlayer_GetsPlayerRole()
+	public async Task SeatedPlayer_GetsPlayerPrivileges()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var roles = setup.Room.ScopeTo(setup.Player).Roles;
+		var privileges = setup.Room.ScopeTo(setup.Player).Privileges;
 
-		Assert.Equal(RoomRoles.Player, roles);
+		Assert.Equal(RoomPrivileges.Player, privileges);
 	}
 
 	[Fact]
-	public async Task Outsider_GetsNoRights()
+	public async Task Outsider_GetsNoPrivileges()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var scope = setup.Room.ScopeTo(setup.Outsider);
 
-		Assert.Equal(RoomRoles.None, scope.Roles);
-		Assert.Equal(RoomPermissions.None, scope.Rights);
+		Assert.Equal(RoomPrivileges.None, scope.Privileges);
 	}
 
 	[Fact]
-	public async Task SuspendedCreator_GetsNoRight()
+	public async Task SuspendedCreator_GetsNoPrivilege()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var scope = setup.SuspendedRoom.ScopeTo(setup.SuspendedCreator);
 
-		Assert.True(scope.Roles.HasFlag(RoomRoles.Creator));
-		Assert.Equal(RoomPermissions.None, scope.Rights);
+		Assert.Equal(RoomPrivileges.None, scope.Privileges);
 	}
 
 	[Fact]
-	public async Task EveryRoomManager_GetsEveryRight()
+	public async Task EveryRoomManager_GetsEveryPrivilege()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var scope = setup.Room.ScopeTo(setup.Manager);
 
-		Assert.Equal(RoomPermissionsGroups.All, scope.Rights);
+		Assert.Equal(RoomPrivileges.Creator, scope.Privileges);
 	}
 }
