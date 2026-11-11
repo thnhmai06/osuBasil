@@ -72,6 +72,6 @@ public class ScopedLifetimeTests
 
 	private sealed class Holder
 	{
-		public ScopedFake Kept;
+		public ScopedFake Kept = default;
 	}
 }

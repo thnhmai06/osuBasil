@@ -751,7 +751,7 @@ public sealed class UserRegistry
 	}
 
 	/// <summary>Holds the gate of one account until disposed.</summary>
-	internal ref struct AccountScope : IDisposable
+	internal readonly ref struct AccountScope : IDisposable
 	{
 		private readonly ConcurrentDictionary<int, AccountGate> _gates;
 		private readonly int _id;
