@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
 /// <summary>
 ///     The message that posts to chat: it finds the channel its target names and posts as the sender. Expected values
-///     come from AGENTS.md (a refusal names the missing privileges, a private message goes to an online user).
+///     come from AGENTS.md (a private message goes to an online user).
 /// </summary>
 public sealed class PostChatMessageHandlerTests
 {
