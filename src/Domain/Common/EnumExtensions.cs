@@ -21,7 +21,11 @@ public static class EnumExtensions
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
 	}
 
-	private static bool IsValid<TEnum>(TEnum value) where TEnum : struct, Enum
+	/// <summary>Tells whether a value is a member of its enum; for a <see cref="FlagsAttribute" /> enum, whether it sets only bits that a member defines.</summary>
+	/// <param name="value">The value to check.</param>
+	/// <typeparam name="TEnum">The enum type.</typeparam>
+	/// <returns><see langword="true" /> when the value is valid for <typeparamref name="TEnum" />.</returns>
+	public static bool IsValid<TEnum>(this TEnum value) where TEnum : struct, Enum
 	{
 		if (!typeof(TEnum).IsDefined(typeof(FlagsAttribute), false)) return Enum.IsDefined(value);
 

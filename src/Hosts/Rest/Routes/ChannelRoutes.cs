@@ -40,26 +40,24 @@ internal static class ChannelRoutes
 	{
 		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
 
-		GeneralChannelRecord record;
-		try
-		{
-			record = new GeneralChannelRecord
-			{
-				Name = request.Name,
-				Value = new GeneralChannelData
-				{
-					Topic = request.Topic ?? string.Empty,
-					ReadPrivileges = (UserPrivileges)(request.ReadPrivileges ?? 0),
-					WritePrivileges = (UserPrivileges)(request.WritePrivileges ?? 0),
-					AutoJoin = request.AutoJoin ?? false,
-					Visible = request.Visible ?? true
-				}
-			};
-		}
-		catch (ArgumentException)
-		{
+		var read = (UserPrivileges)(request.ReadPrivileges ?? 0);
+		var write = (UserPrivileges)(request.WritePrivileges ?? 0);
+		if (!GeneralChannelRecord.IsValidName(request.Name) || !GeneralChannelData.IsValidTopic(request.Topic ?? string.Empty) ||
+		    !GeneralChannelData.IsValidPrivileges(read) || !GeneralChannelData.IsValidPrivileges(write))
 			return Api.Invalid("The channel is not valid.");
-		}
+
+		var record = new GeneralChannelRecord
+		{
+			Name = request.Name,
+			Value = new GeneralChannelData
+			{
+				Topic = request.Topic ?? string.Empty,
+				ReadPrivileges = read,
+				WritePrivileges = write,
+				AutoJoin = request.AutoJoin ?? false,
+				Visible = request.Visible ?? true
+			}
+		};
 
 		var result = await sender.Send(new CreateGeneralChannel(context.Connection(), record), context.RequestAborted);
 		return result.IsOk ? Api.Created(ChannelView.Of(record)) : result.Refusal();
@@ -68,18 +66,14 @@ internal static class ChannelRoutes
 	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
 		ISender sender)
 	{
-		try
-		{
-			var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Connection(), name,
-				new GeneralChannelChange(request.Topic,
-					(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
-					request.Visible)), context.RequestAborted);
-			return result.IsOk ? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully") : result.Refusal();
-		}
-		catch (ArgumentException)
-		{
-			return Api.Invalid("The change is not valid.");
-		}
+		var change = new GeneralChannelChange(request.Topic,
+			(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
+			request.Visible);
+		if (!change.IsValid) return Api.Invalid("The change is not valid.");
+
+		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Connection(), name, change),
+			context.RequestAborted);
+		return result.IsOk ? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully") : result.Refusal();
 	}
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, string name, ISender sender)

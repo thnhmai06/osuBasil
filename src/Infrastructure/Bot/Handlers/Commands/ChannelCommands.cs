@@ -62,27 +62,26 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 	private async Task<bool> CreateAsync(CommandContext context, string name, IEnumerable<string> options,
 		CancellationToken ct)
 	{
-		GeneralChannelRecord record;
-		try
-		{
-			if (!TryParse(options, out var change)) return await InvalidAsync(context, ct);
-			record = new GeneralChannelRecord
-			{
-				Name = name,
-				Value = new GeneralChannelData
-				{
-					Topic = change.Topic ?? string.Empty,
-					ReadPrivileges = change.ReadPrivileges ?? UserPrivileges.None,
-					WritePrivileges = change.WritePrivileges ?? UserPrivileges.None,
-					AutoJoin = change.AutoJoin ?? false,
-					Visible = change.Visible ?? true
-				}
-			};
-		}
-		catch (ArgumentException)
-		{
+		if (!TryParse(options, out var change)) return await InvalidAsync(context, ct);
+		var topic = change.Topic ?? string.Empty;
+		var read = change.ReadPrivileges ?? UserPrivileges.None;
+		var write = change.WritePrivileges ?? UserPrivileges.None;
+		if (!GeneralChannelRecord.IsValidName(name) || !GeneralChannelData.IsValidTopic(topic) ||
+		    !GeneralChannelData.IsValidPrivileges(read) || !GeneralChannelData.IsValidPrivileges(write))
 			return await InvalidAsync(context, ct);
-		}
+
+		var record = new GeneralChannelRecord
+		{
+			Name = name,
+			Value = new GeneralChannelData
+			{
+				Topic = topic,
+				ReadPrivileges = read,
+				WritePrivileges = write,
+				AutoJoin = change.AutoJoin ?? false,
+				Visible = change.Visible ?? true
+			}
+		};
 
 		var result = await sender.Send(new CreateGeneralChannel(context.Actor, record), ct);
 		var (reply, arguments) = ChannelReplies.Of(result, name);
@@ -95,17 +94,9 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 	{
 		if (!TryParse(options, out var change)) return await InvalidAsync(context, ct);
 
-		GeneralChannelAnswer answer;
-		try
-		{
-			answer = await sender.Send(new ConfigureGeneralChannel(context.Actor, name, change), ct);
-		}
-		catch (ArgumentException)
-		{
-			return await InvalidAsync(context, ct);
-		}
+		if (!change.IsValid) return await InvalidAsync(context, ct);
 
-		var (result, channel) = answer;
+		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Actor, name, change), ct);
 		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Updated);
 		await context.Reply(reply, arguments, ct);
 		return result.IsOk;

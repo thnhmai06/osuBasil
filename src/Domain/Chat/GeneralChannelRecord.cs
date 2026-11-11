@@ -55,6 +55,22 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 /// <summary>The settings of a configured chat channel.</summary>
 public sealed class GeneralChannelData
 {
+	/// <summary>Tells whether a text can be the topic of a channel.</summary>
+	/// <param name="topic">The text to check.</param>
+	/// <returns><see langword="true" /> when the text is not <see langword="null" /> and holds no NUL character.</returns>
+	public static bool IsValidTopic(string? topic)
+	{
+		return topic is not null && !topic.HasNul();
+	}
+
+	/// <summary>Tells whether a set of roles can be the read or write requirement of a channel.</summary>
+	/// <param name="privileges">The roles to check.</param>
+	/// <returns><see langword="true" /> when the roles set no undefined privilege bit.</returns>
+	public static bool IsValidPrivileges(UserPrivileges privileges)
+	{
+		return privileges.IsValid();
+	}
+
 	/// <summary>Gets or sets the topic shown to users who join the channel.</summary>
 	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
 	public string Topic
