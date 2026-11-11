@@ -17,4 +17,4 @@ public sealed record PatchBeatmapset(
 	int SetId,
 	BeatmapsetStatus? Status,
 	bool? Visible,
-	bool? Locked) : IRequest<Result<BeatmapsetOutcome>>;
+	bool? Locked) : IRequest<BeatmapsetOutcome>;

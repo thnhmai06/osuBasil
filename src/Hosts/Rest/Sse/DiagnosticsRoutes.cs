@@ -4,6 +4,7 @@ using Basil.Application.Diagnostics.Services;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Mediator;
+using Basil.Application.Diagnostics.Objects;
 
 namespace Basil.Host.Rest.Sse;
 
@@ -51,7 +52,7 @@ internal static class DiagnosticsRoutes
 		string? category)
 	{
 		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
-		if (!access.IsOk) return access.Refusal();
+		if (access != DiagnosticsOutcome.Ok) return access.Refusal();
 		if (category is not null && !Categories.Contains(category, StringComparer.OrdinalIgnoreCase))
 			return Api.NotFound("No such diagnostics category.");
 
@@ -65,7 +66,7 @@ internal static class DiagnosticsRoutes
 		RateLimiter limiter)
 	{
 		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
-		if (!access.IsOk) return access.Refusal();
+		if (access != DiagnosticsOutcome.Ok) return access.Refusal();
 
 		var actor = context.Connection();
 		switch ($"{category}/{action}".ToLowerInvariant())
@@ -79,13 +80,13 @@ internal static class DiagnosticsRoutes
 				}
 
 				var collected = await sender.Send(new CollectGarbage(actor), context.RequestAborted);
-				return collected.IsOk ? Api.Done("Garbage collected") : collected.Refusal();
+				return collected == DiagnosticsOutcome.Ok ? Api.Done("Garbage collected") : collected.Refusal();
 			case "caches/clear":
 				var (cleared, deleted) = await sender.Send(new ClearCaches(actor), context.RequestAborted);
-				return cleared.IsOk ? Api.Ok(new { deleted }, "Cache cleared") : cleared.Refusal();
+				return cleared == DiagnosticsOutcome.Ok ? Api.Ok(new { deleted }, "Cache cleared") : cleared.Refusal();
 			case "exceptions/reset":
 				var reset = await sender.Send(new ResetExceptions(actor), context.RequestAborted);
-				return reset.IsOk ? Api.Done("Exceptions reset") : reset.Refusal();
+				return reset == DiagnosticsOutcome.Ok ? Api.Done("Exceptions reset") : reset.Refusal();
 			default:
 				return Api.NotFound("No such action.");
 		}

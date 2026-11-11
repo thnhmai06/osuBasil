@@ -8,10 +8,10 @@ namespace Basil.Infrastructure.Servers.Handlers;
 
 /// <summary>Handles <see cref="ListScreenshots" /> with the privileges of the sending connection.</summary>
 internal sealed class ListScreenshotsHandler(Server server)
-	: IRequestHandler<ListScreenshots, (Result<ServerOutcome> Result, IReadOnlyList<ContentReference> Screenshots)>
+	: IRequestHandler<ListScreenshots, (ServerOutcome Result, IReadOnlyList<ContentReference> Screenshots)>
 {
 	/// <inheritdoc />
-	public async ValueTask<(Result<ServerOutcome> Result, IReadOnlyList<ContentReference> Screenshots)> Handle(
+	public async ValueTask<(ServerOutcome Result, IReadOnlyList<ContentReference> Screenshots)> Handle(
 		ListScreenshots request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Screenshots.ListAsync(ct);

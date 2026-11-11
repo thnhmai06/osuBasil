@@ -23,8 +23,8 @@ public sealed class ScopedUserTests
 		var result = await app.Users.Of(target).ScopeTo(actor).Privileges.SetAsync(
 			target.Value.Privileges | UserPrivileges.Developer);
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.False(result == UserOutcome.Ok);
+		Assert.Equal(UserOutcome.Denied, result);
 		Assert.False(target.Value.Privileges.Allows(UserPrivileges.Developer));
 	}
 
@@ -57,14 +57,14 @@ public sealed class ScopedUserTests
 		var connection = await app.LoginAsync(target);
 		var scoped = app.Users.Of(target).ScopeTo(actor);
 
-		Assert.True((await scoped.DeleteAsync()).IsOk);
+		Assert.True((await scoped.DeleteAsync()) == UserOutcome.Ok);
 		var deletedAt = target.Value.DeletedAt;
 		Assert.NotNull(deletedAt);
 		Assert.False(connection.IsOpen);
 		Assert.Equal(SessionEndReason.Deleted,
 			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]).Reason);
 
-		Assert.True((await scoped.DeleteAsync()).IsOk);
+		Assert.True((await scoped.DeleteAsync()) == UserOutcome.Ok);
 
 		Assert.Equal(deletedAt, target.Value.DeletedAt);
 	}

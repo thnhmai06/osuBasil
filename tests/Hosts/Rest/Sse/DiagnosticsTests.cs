@@ -28,7 +28,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 			}
 
 			Assert.Equal(403, action);
-			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)envelope!["errors"]!["code"]!);
 		}
 	}
 

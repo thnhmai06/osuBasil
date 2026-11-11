@@ -13,4 +13,4 @@ namespace Basil.Application.Servers.Messages;
 /// <param name="Actor">The connection acting.</param>
 /// <param name="Archive">The beatmapset archive to upload.</param>
 public sealed record UploadBeatmapset(Connection Actor, Stream Archive)
-	: IRequest<(Result<ServerOutcome> Result, BeatmapsetImportResult? Import)>;
+	: IRequest<(ServerOutcome Result, BeatmapsetImportResult? Import)>;

@@ -44,8 +44,7 @@ public sealed class ChannelCommandsTests
 		Assert.False(succeeded);
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPrivileges,
-					new { privileges = nameof(UserPrivileges.Moderator) })
+				bot.Text(ChannelReplies.MissingPrivileges)
 			],
 			said.Here);
 		Assert.Null(bot.App.Channels.Find("#nope"));
@@ -112,8 +111,7 @@ public sealed class ChannelCommandsTests
 		Assert.False(succeeded);
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPrivileges,
-					new { privileges = nameof(UserPrivileges.Moderator) })
+				bot.Text(ChannelReplies.MissingPrivileges)
 			],
 			said.Here);
 		Assert.Equal("keep", bot.App.Channels.Find("#locked")!.Topic);
@@ -132,8 +130,7 @@ public sealed class ChannelCommandsTests
 
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPrivileges,
-					new { privileges = nameof(UserPrivileges.Moderator) })
+				bot.Text(ChannelReplies.MissingPrivileges)
 			],
 			exists.Here);
 		Assert.Equal(exists.Here, missing.Here);
@@ -191,8 +188,7 @@ public sealed class ChannelCommandsTests
 		Assert.False(succeeded);
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPrivileges,
-					new { privileges = nameof(UserPrivileges.Moderator) })
+				bot.Text(ChannelReplies.MissingPrivileges)
 			],
 			said.Here);
 		Assert.NotNull(bot.App.Channels.Find("#kept"));
@@ -211,8 +207,7 @@ public sealed class ChannelCommandsTests
 
 		Assert.Equal(
 			[
-				bot.Text(ChannelReplies.MissingPrivileges,
-					new { privileges = nameof(UserPrivileges.Moderator) })
+				bot.Text(ChannelReplies.MissingPrivileges)
 			],
 			exists.Here);
 		Assert.Equal(exists.Here, missing.Here);

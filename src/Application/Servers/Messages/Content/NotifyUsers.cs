@@ -10,4 +10,4 @@ namespace Basil.Application.Servers.Messages;
 /// <param name="Text">The text of the notice.</param>
 /// <param name="To">The ids of the users to notify; an id of no online user is skipped.</param>
 public sealed record NotifyUsers(Connection Actor, string Text, IReadOnlyCollection<int> To)
-	: IRequest<(Result<ServerOutcome> Result, int Sent)>;
+	: IRequest<(ServerOutcome Result, int Sent)>;

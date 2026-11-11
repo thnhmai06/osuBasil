@@ -3,6 +3,7 @@ using Basil.Domain.Authentication;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
+using Basil.Application.Users.Objects.Connections;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
@@ -15,7 +16,7 @@ public sealed class ConnectionHandlerTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var spectator = await RoomFixture.PlayerAsync(app, "Watcher");
-		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()) == ConnectionOutcome.Ok);
 		Assert.Contains(spectator, host.Spectators);
 		app.Users.Close(spectator, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),

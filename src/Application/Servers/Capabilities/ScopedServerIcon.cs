@@ -17,10 +17,10 @@ public readonly struct ScopedServerIcon
 		_scoped = scoped;
 	}
 
-	private Result<ServerOutcome>? Denied()
+	private ServerOutcome? Denied()
 	{
-		return _scoped.Needs(UserPrivileges.Owner) is { } missing
-			? Result<ServerOutcome>.Denied(missing)
+		return _scoped.Lacks(UserPrivileges.Owner)
+			? ServerOutcome.Denied
 			: null;
 	}
 
@@ -30,7 +30,7 @@ public readonly struct ScopedServerIcon
 	/// <param name="url">The address the icon links to, or <see langword="null" /> for none.</param>
 	/// <returns>The outcome.</returns>
 	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
-	public async Task<Result<ServerOutcome>> ReplaceAsync(string? name, Stream? image, Uri? url)
+	public async Task<ServerOutcome> ReplaceAsync(string? name, Stream? image, Uri? url)
 	{
 		if (Denied() is { } denied) return denied;
 
@@ -39,7 +39,7 @@ public readonly struct ScopedServerIcon
 
 	/// <summary>Removes the main-menu icon.</summary>
 	/// <returns>The outcome.</returns>
-	public async Task<Result<ServerOutcome>> DeleteAsync()
+	public async Task<ServerOutcome> DeleteAsync()
 	{
 		if (Denied() is { } denied) return denied;
 

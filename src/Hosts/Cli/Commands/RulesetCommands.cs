@@ -2,6 +2,7 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Services;
 using Basil.Host.Shared;
 using Mediator;
+using Basil.Application.Beatmaps.Objects;
 
 namespace Basil.Host.Cli.Commands;
 
@@ -62,7 +63,7 @@ internal static class RulesetCommands
 	{
 		var (result, versions) = await call.Get<ISender>().Send(new GetRulesetVersion(await call.ByAsync()),
 			call.CancellationToken);
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != RulesetOutcome.Ok) return call.Refuse(result);
 
 		call.Output.Fields([("active", versions!.Active), ("staged", versions.Staged ?? "none")]);
 		return ExitCodes.Success;
@@ -74,7 +75,7 @@ internal static class RulesetCommands
 		{
 			var (result, stage) = await call.Get<ISender>().Send(new UpdateRulesets(await call.ByAsync()),
 				call.CancellationToken);
-			if (!result.IsOk) return call.Refuse(result);
+			if (result != RulesetOutcome.Ok) return call.Refuse(result);
 
 			call.Output.Ok(string.Format(stage!.Staged ? RulesetReplies.Staged : RulesetReplies.UpToDate,
 				stage.Version));

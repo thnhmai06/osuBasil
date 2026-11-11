@@ -17,9 +17,9 @@ public readonly struct ScopedStableConnection
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Privileges, required);
+		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
@@ -48,14 +48,14 @@ public readonly struct ScopedStableConnection
 	///     <see cref="Actor" /> is an IRC connection, which cannot
 	///     spectate.
 	/// </exception>
-	public async Task<Result<ConnectionOutcome>> SpectateAsync()
+	public async Task<ConnectionOutcome> SpectateAsync()
 	{
 		if (Actor is IrcConnection)
 			throw new ArgumentException("IRC clients cannot spectate.");
 
-		if (Require(UserPrivileges.Player) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
+		if (Lacks(UserPrivileges.Player)) return ConnectionOutcome.Denied;
 
-		if (await Host.HasBlockedAsync(Actor) && Require(UserPrivileges.Tournament) is not null)
+		if (await Host.HasBlockedAsync(Actor) && Lacks(UserPrivileges.Tournament))
 			return ConnectionOutcome.Blocked;
 
 		return Host.Spectate(Actor);

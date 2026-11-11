@@ -21,8 +21,8 @@ the wire value. Nothing is derived, translated or configured in between.
 | `Developer` | Changing the server settings and reading diagnostics |
 | `Owner` | Managing accounts (create, delete, view deleted), setting privileges, managing server content |
 
-A check asks for the privilege that owns the action: `Require(UserPrivileges.Moderator)`. A check requires every bit it
-asks for, and an empty requirement is always met. A refusal reports the missing privileges, nothing more.
+A check asks for the privilege that owns the action: `Lacks(UserPrivileges.Moderator)`. A check requires every bit it
+asks for, and an empty requirement is always met. A refusal is the outcome `Denied`, nothing more.
 
 ## Granting
 

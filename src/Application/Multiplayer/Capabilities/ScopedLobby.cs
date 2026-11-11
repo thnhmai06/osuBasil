@@ -24,9 +24,9 @@ public readonly struct ScopedLobby
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Privileges, required);
+		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
 	/// <summary>Creates a lobby scope for a connection.</summary>
@@ -69,7 +69,7 @@ public readonly struct ScopedLobby
 	///     is reported by <see cref="LobbyRoomOpened" /> through its host.
 	/// </remarks>
 	/// <exception cref="ArgumentException">The scoped connection is not an osu! client for a room opened in game.</exception>
-	public async Task<(Room? Room, Result<RoomOutcome> Result)> OpenRoomAsync(
+	public async Task<(Room? Room, RoomOutcome Result)> OpenRoomAsync(
 		string name,
 		string password,
 		RoomSource source,
@@ -86,18 +86,18 @@ public readonly struct ScopedLobby
 			settings);
 	}
 
-	private async Task<Result<RoomOutcome>?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
+	private async Task<RoomOutcome?> OpenRefusalAsync(RoomSource source, CancellationToken ct = default)
 	{
 		var required = source is RoomSource.Api
 			? UserPrivileges.Player
 			: UserPrivileges.Player | UserPrivileges.Player;
-		if (Require(required) is { } missingPrivileges) return Result<RoomOutcome>.Denied(missingPrivileges);
+		if (Lacks(required)) return RoomOutcome.Denied;
 
 		if (await Lobby.IsRoomCreationLockedAsync(ct) &&
-		    Require(UserPrivileges.Tournament) is not null)
+		    Lacks(UserPrivileges.Tournament))
 			return RoomOutcome.Locked;
 
-		var limited = Require(UserPrivileges.Tournament) is not null;
+		var limited = Lacks(UserPrivileges.Tournament);
 		if (limited && Lobby.TooManyRooms(Actor.Record)) return RoomOutcome.TooManyRooms;
 
 		return null;
@@ -120,11 +120,11 @@ public readonly struct ScopedLobby
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, one part of the matches, newest first.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Tournament" />.</remarks>
-	public async Task<(Result<RoomOutcome> Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
+	public async Task<(RoomOutcome Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
 		MatchQuery query, PageRequest page, CancellationToken ct = default)
 	{
-		if (Require(UserPrivileges.Tournament) is { } missing)
-			return (Result<RoomOutcome>.Denied(missing), null);
+		if (Lacks(UserPrivileges.Tournament))
+			return (RoomOutcome.Denied, null);
 
 		return (RoomOutcome.Ok,
 			await Lobby.Context.Matches.ListAsync(query.LimitTo(Privileges, Actor.Record), page, ct));
@@ -153,11 +153,11 @@ public readonly struct ScopedLobby
 		// behind a change. Participants who left an open room see it again once it closes.
 		if (Lobby.OpenRoomOf(match) is { } room)
 			return !room.Settings.IsPrivate
-			       || Require(UserPrivileges.Tournament) is null
+			       || !Lacks(UserPrivileges.Tournament)
 			       || room.Involves(Actor.Record);
 
 		return !match.Value.IsPrivate
-		       || Require(UserPrivileges.Tournament) is null
+		       || !Lacks(UserPrivileges.Tournament)
 		       || await Lobby.Context.Matches.IsVisibleToAsync(match, Actor.Record, ct);
 	}
 

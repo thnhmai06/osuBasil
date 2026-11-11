@@ -19,7 +19,7 @@ public readonly struct ScopedUserRelationships
 
 	/// <summary>Adds the target as a friend.</summary>
 	/// <returns>The outcome of adding the friend.</returns>
-	public async Task<Result<UserOutcome>> AddFriendAsync()
+	public async Task<UserOutcome> AddFriendAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
 		return await _scoped.Actor.User.Relationships.AddFriendAsync(target.Record);
@@ -27,7 +27,7 @@ public readonly struct ScopedUserRelationships
 
 	/// <summary>Removes the target as a friend.</summary>
 	/// <returns>The outcome of removing the friend.</returns>
-	public async Task<Result<UserOutcome>> RemoveFriendAsync()
+	public async Task<UserOutcome> RemoveFriendAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
 		return await _scoped.Actor.User.Relationships.RemoveFriendAsync(target.Record);
@@ -35,7 +35,7 @@ public readonly struct ScopedUserRelationships
 
 	/// <summary>Blocks the target.</summary>
 	/// <returns>The outcome of blocking the target.</returns>
-	public async Task<Result<UserOutcome>> BlockAsync()
+	public async Task<UserOutcome> BlockAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
 		return await _scoped.Actor.User.Relationships.BlockAsync(target.Record);
@@ -43,7 +43,7 @@ public readonly struct ScopedUserRelationships
 
 	/// <summary>Removes a block on the target.</summary>
 	/// <returns>The outcome of removing the block.</returns>
-	public async Task<Result<UserOutcome>> UnblockAsync()
+	public async Task<UserOutcome> UnblockAsync()
 	{
 		if (await _scoped.ResolveAsync() is not { } target) return UserOutcome.NotFound;
 		return await _scoped.Actor.User.Relationships.UnblockAsync(target.Record);
@@ -52,7 +52,7 @@ public readonly struct ScopedUserRelationships
 	/// <summary>Lists the users this account has friended.</summary>
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the friends; only the account's own user may read them.</returns>
-	public Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> FriendsAsync(
+	public Task<(UserOutcome Result, IReadOnlyList<UserRecord> Users)> FriendsAsync(
 		CancellationToken ct = default)
 	{
 		return ListAsync(RelationshipType.Friend, ct);
@@ -61,13 +61,13 @@ public readonly struct ScopedUserRelationships
 	/// <summary>Lists the users this account has blocked.</summary>
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the blocked users; only the account's own user may read them.</returns>
-	public Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> BlocksAsync(
+	public Task<(UserOutcome Result, IReadOnlyList<UserRecord> Users)> BlocksAsync(
 		CancellationToken ct = default)
 	{
 		return ListAsync(RelationshipType.Block, ct);
 	}
 
-	private async Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> ListAsync(
+	private async Task<(UserOutcome Result, IReadOnlyList<UserRecord> Users)> ListAsync(
 		RelationshipType type, CancellationToken ct)
 	{
 		// The operator reads any account's lists; everyone else reads their own.

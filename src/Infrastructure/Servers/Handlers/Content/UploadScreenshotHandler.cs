@@ -8,10 +8,10 @@ namespace Basil.Infrastructure.Servers.Handlers;
 
 /// <summary>Handles <see cref="UploadScreenshot" /> with the privileges of the sending connection.</summary>
 internal sealed class UploadScreenshotHandler(Server server)
-	: IRequestHandler<UploadScreenshot, (ContentReference? Screenshot, Result<ServerOutcome> Result)>
+	: IRequestHandler<UploadScreenshot, (ContentReference? Screenshot, ServerOutcome Result)>
 {
 	/// <inheritdoc />
-	public async ValueTask<(ContentReference? Screenshot, Result<ServerOutcome> Result)> Handle(
+	public async ValueTask<(ContentReference? Screenshot, ServerOutcome Result)> Handle(
 		UploadScreenshot request, CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Screenshots.UploadAsync(request.Image, ct);

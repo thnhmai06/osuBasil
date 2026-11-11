@@ -47,7 +47,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	///     <see cref="UserPrivileges.Owner" /> and hierarchy. While profile changes are locked, only a user holding
 	///     <see cref="UserPrivileges.Owner" /> may change a profile.
 	/// </remarks>
-	public async Task<Result<UserOutcome>> RenameAsync(string name)
+	public async Task<UserOutcome> RenameAsync(string name)
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.RenameAsync(name);
@@ -57,7 +57,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// <param name="country">The country.</param>
 	/// <returns>The outcome of setting the country.</returns>
 	/// <remarks>The same authority applies as to <see cref="RenameAsync" />.</remarks>
-	public async Task<Result<UserOutcome>> SetCountryAsync(Country country)
+	public async Task<UserOutcome> SetCountryAsync(Country country)
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.SetCountryAsync(country);
@@ -72,7 +72,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	///     configured byte and pixel limits, told from its content, never from a name; a refused image leaves the previous
 	///     avatar untouched.
 	/// </remarks>
-	public async Task<Result<UserOutcome>> SetAvatarAsync(Stream image, CancellationToken ct = default)
+	public async Task<UserOutcome> SetAvatarAsync(Stream image, CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.SetAvatarAsync(image, ct);
@@ -81,14 +81,14 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// <summary>Removes this account's avatar image, so the default avatar shows.</summary>
 	/// <returns>The outcome of removing the avatar.</returns>
 	/// <remarks>The same authority applies as to <see cref="RenameAsync" />.</remarks>
-	public async Task<Result<UserOutcome>> RemoveAvatarAsync()
+	public async Task<UserOutcome> RemoveAvatarAsync()
 	{
 		var (user, refusal) = await GuardAsync();
 		return user is null ? refusal : await user.Profile.RemoveAvatarAsync();
 	}
 
 	// BasilBot's metadata changes like any user's; only its privileges, password and sessions are fixed.
-	private async Task<(User? User, Result<UserOutcome> Refusal)> GuardAsync()
+	private async Task<(User? User, UserOutcome Refusal)> GuardAsync()
 	{
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))
 			return (null, UserOutcome.Locked);

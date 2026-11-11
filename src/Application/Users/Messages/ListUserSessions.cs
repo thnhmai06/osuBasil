@@ -18,4 +18,4 @@ public sealed record ListUserSessions(
 	UserReference Target,
 	PageRequest Page,
 	SessionState State,
-	IReadOnlyList<SessionType>? Types) : IRequest<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)>;
+	IReadOnlyList<SessionType>? Types) : IRequest<(UserOutcome Result, Page<SessionRecord>? Sessions)>;

@@ -18,7 +18,7 @@ internal sealed partial class MpCommands
 			return await StartCountdownAsync(context, room, seconds, true, ct);
 
 		var outcome = await sender.Send(new StartRound(context.Actor, room), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -47,13 +47,13 @@ internal sealed partial class MpCommands
 	{
 		var actor = context.Actor;
 		var outcome = await sender.Send(new CancelRoomCountdown(actor, room), ct);
-		if (outcome is { IsOk: false, Outcome: RoomOutcome.NotInProgress })
+		if (outcome == RoomOutcome.NotInProgress)
 		{
 			await context.Reply(MpReplies.NoCountdownRunning, ct);
 			return false;
 		}
 
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -83,7 +83,7 @@ internal sealed partial class MpCommands
 
 		var outcome = await sender.Send(new StartRoomCountdown(actor, room, TimeSpan.FromSeconds(seconds), startsRound),
 			ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -95,7 +95,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> AbortAsync(CommandContext context, Room room, CancellationToken ct)
 	{
 		var outcome = await sender.Send(new AbortRound(context.Actor, room), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;

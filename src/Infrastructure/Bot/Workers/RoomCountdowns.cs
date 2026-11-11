@@ -63,7 +63,7 @@ internal sealed class RoomCountdowns(
 	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
 	/// <param name="ct">A token that cancels the announcements.</param>
 	/// <returns>Ok, InvalidSettings (out of range), InProgress or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> StartAsync(Connection actor, Room room, TimeSpan length, bool startsRound,
+	public async Task<RoomOutcome> StartAsync(Connection actor, Room room, TimeSpan length, bool startsRound,
 		CancellationToken ct)
 	{
 		if (room.IsClosed) return RoomOutcome.RoomClosed;
@@ -179,9 +179,9 @@ internal sealed class RoomCountdowns(
 			}
 
 			var started = await sender.Send(new StartRound(countdown.Actor, room), CancellationToken.None);
-			var reply = started.IsOk
+			var reply = started == RoomOutcome.Ok
 				? AnnouncementReplies.RoundStartedByCountdown
-				: started.Outcome switch
+				: started switch
 				{
 					RoomOutcome.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,
 					RoomOutcome.InProgress or RoomOutcome.RoomClosed => null,

@@ -11,4 +11,4 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Room">The room it acts on.</param>
 /// <param name="Has">Whether the actor has the beatmap.</param>
 /// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
-public sealed record SetHasMap(Connection Actor, Room Room, bool Has) : IRequest<Result<RoomOutcome>>;
+public sealed record SetHasMap(Connection Actor, Room Room, bool Has) : IRequest<RoomOutcome>;

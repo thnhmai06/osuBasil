@@ -17,4 +17,4 @@ namespace Basil.Application.Multiplayer.Messages;
 ///     replaces the one already running in the room.
 /// </remarks>
 public sealed record StartRoomCountdown(Connection Actor, Room Room, TimeSpan Duration, bool StartsRound)
-	: IRequest<Result<RoomOutcome>>;
+	: IRequest<RoomOutcome>;

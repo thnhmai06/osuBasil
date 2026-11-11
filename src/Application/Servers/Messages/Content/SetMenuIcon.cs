@@ -14,4 +14,4 @@ namespace Basil.Application.Servers.Messages;
 /// <param name="Image">The new icon image, or null to keep the current one.</param>
 /// <param name="Url">The address the icon links to, or null for no link.</param>
 public sealed record SetMenuIcon(Connection Actor, string? Name, Stream? Image, Uri? Url)
-	: IRequest<Result<ServerOutcome>>;
+	: IRequest<ServerOutcome>;

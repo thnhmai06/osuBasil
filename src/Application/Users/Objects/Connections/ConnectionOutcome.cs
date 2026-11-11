@@ -3,6 +3,9 @@ namespace Basil.Application.Users.Objects.Connections;
 /// <summary>What happened to an operation on a connection that was not refused for lack of privileges.</summary>
 public enum ConnectionOutcome : byte
 {
+	/// <summary>The caller lacks the privileges the operation needs.</summary>
+	Denied = 0,
+
 	/// <summary>The operation succeeded.</summary>
 	Ok = 1,
 

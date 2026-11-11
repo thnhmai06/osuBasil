@@ -9,4 +9,4 @@ namespace Basil.Application.Servers.Messages;
 /// <summary>Asks Servers for the stored screenshots.</summary>
 /// <param name="Actor">The connection acting.</param>
 public sealed record ListScreenshots(Connection Actor)
-	: IRequest<(Result<ServerOutcome> Result, IReadOnlyList<ContentReference> Screenshots)>;
+	: IRequest<(ServerOutcome Result, IReadOnlyList<ContentReference> Screenshots)>;

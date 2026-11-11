@@ -16,4 +16,4 @@ public sealed record ListMatches(Connection Actor, MatchQuery Query, PageRequest
 /// <summary>The answer to <see cref="ListMatches" />.</summary>
 /// <param name="Result">The outcome of the request.</param>
 /// <param name="Matches">One part of the matches, newest first, or <see langword="null" /> when it was refused.</param>
-public sealed record MatchListing(Result<RoomOutcome> Result, Page<MatchRecord>? Matches);
+public sealed record MatchListing(RoomOutcome Result, Page<MatchRecord>? Matches);

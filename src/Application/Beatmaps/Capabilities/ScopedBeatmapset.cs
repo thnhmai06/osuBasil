@@ -17,9 +17,9 @@ public readonly struct ScopedBeatmapset
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Privileges, required);
+		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
 	/// <summary>Creates a scoped beatmapset for an actor.</summary>
@@ -64,9 +64,9 @@ public readonly struct ScopedBeatmapset
 
 	/// <summary>Deletes this beatmapset and its files.</summary>
 	/// <returns>The outcome of deleting the beatmapset; a locked set is not deleted.</returns>
-	public async Task<Result<BeatmapsetOutcome>> DeleteAsync()
+	public async Task<BeatmapsetOutcome> DeleteAsync()
 	{
-		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
 
 		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
 
@@ -76,9 +76,9 @@ public readonly struct ScopedBeatmapset
 	/// <summary>Changes whether this beatmapset is shown in public listings.</summary>
 	/// <param name="visible">Whether the beatmapset is visible.</param>
 	/// <returns>The outcome of changing the beatmapset's visibility.</returns>
-	public async Task<Result<BeatmapsetOutcome>> SetVisibleAsync(bool visible)
+	public async Task<BeatmapsetOutcome> SetVisibleAsync(bool visible)
 	{
-		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
 
 		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
 
@@ -88,9 +88,9 @@ public readonly struct ScopedBeatmapset
 	/// <summary>Changes whether this beatmapset is write-locked.</summary>
 	/// <param name="locked">Whether the beatmapset is write-locked.</param>
 	/// <returns>The outcome of changing the beatmapset's lock.</returns>
-	public async Task<Result<BeatmapsetOutcome>> SetLockedAsync(bool locked)
+	public async Task<BeatmapsetOutcome> SetLockedAsync(bool locked)
 	{
-		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
 
 		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
 
@@ -100,9 +100,9 @@ public readonly struct ScopedBeatmapset
 	/// <summary>Changes the ranked status the beatmapset is reported with.</summary>
 	/// <param name="status">The new status.</param>
 	/// <returns>The outcome of changing the beatmapset's status.</returns>
-	public async Task<Result<BeatmapsetOutcome>> SetStatusAsync(BeatmapsetStatus status)
+	public async Task<BeatmapsetOutcome> SetStatusAsync(BeatmapsetStatus status)
 	{
-		if (Require(UserPrivileges.Tournament) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Lacks(UserPrivileges.Tournament)) return BeatmapsetOutcome.Denied;
 
 		if (await ResolveAsync() is not { } set) return BeatmapsetOutcome.NotFound;
 

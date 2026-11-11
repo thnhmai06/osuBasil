@@ -8,6 +8,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
@@ -30,7 +31,7 @@ public sealed class PostChatMessageHandlerTests
 		var actor = await app.LoginAsync(admin);
 		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(
 			new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() });
-		Assert.True(created.IsOk);
+		Assert.True(created == ServerOutcome.Ok);
 		return actor;
 	}
 
@@ -39,8 +40,8 @@ public sealed class PostChatMessageHandlerTests
 	{
 		var result = await HandlerFor(app).Handle(new PostChatMessage(actor, target, text),
 			TestContext.Current.CancellationToken);
-		Assert.Null(result.Missing);
-		return result.Outcome;
+		Assert.NotEqual(ChannelOutcome.Denied, result);
+		return result;
 	}
 
 	[Fact]
@@ -48,7 +49,7 @@ public sealed class PostChatMessageHandlerTests
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
-		Assert.True(app.Channels.Find(ChannelName)!.ScopeTo(actor).Join().IsOk);
+		Assert.True(app.Channels.Find(ChannelName).ScopeTo(actor).Join() != ChannelOutcome.Ok);
 
 		var outcome = await PostAsync(app, actor, new ChatTarget.General(ChannelName), "hi there");
 
@@ -80,8 +81,8 @@ public sealed class PostChatMessageHandlerTests
 			new PostChatMessage(actor, new ChatTarget.General(ChannelName), "hello"),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Player, result.Missing);
-		Assert.False(result.IsOk);
+		Assert.Equal(ChannelOutcome.Denied, result);
+		Assert.False(result == ChannelOutcome.Ok);
 	}
 
 	[Fact]
@@ -122,7 +123,7 @@ public sealed class PostChatMessageHandlerTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True(app.RoomChannels.Of(setup.Room).ScopeTo(setup.Creator).Join().IsOk);
+		Assert.True(app.RoomChannels.Of(setup.Room).ScopeTo(setup.Creator).Join() == ChannelOutcome.Ok);
 
 		var outcome = await PostAsync(app, setup.Creator, new ChatTarget.OwnRoom());
 
@@ -134,7 +135,7 @@ public sealed class PostChatMessageHandlerTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True(app.RoomChannels.Of(setup.Room).ScopeTo(setup.Creator).Join().IsOk);
+		Assert.True(app.RoomChannels.Of(setup.Room).ScopeTo(setup.Creator).Join() == ChannelOutcome.Ok);
 
 		var outcome = await PostAsync(app, setup.Creator, new ChatTarget.Room(setup.Room.Id));
 
@@ -184,13 +185,13 @@ public sealed class PostChatMessageHandlerTests
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
-		Assert.True(app.Channels.Find(ChannelName)!.ScopeTo(actor).Join().IsOk);
+		Assert.True(app.Channels.Find(ChannelName).ScopeTo(actor).Join() != ChannelOutcome.Ok);
 
 		var result = await HandlerFor(app).Handle(
 			new PostChatMessage(actor, new ChatTarget.General(ChannelName), "notice me", true),
 			TestContext.Current.CancellationToken);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ChannelOutcome.Ok);
 		Assert.True(Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]).Message.IsNotice);
 	}
 
@@ -201,7 +202,7 @@ public sealed class PostChatMessageHandlerTests
 		await OpenChannelAsync(app);
 		var player = await RoomFixture.PlayerAsync(app, "Stable");
 		Assert.IsType<StableConnection>(player);
-		Assert.True(app.Channels.Find(ChannelName)!.ScopeTo(player).Join().IsOk);
+		Assert.True(app.Channels.Find(ChannelName).ScopeTo(player).Join() != ChannelOutcome.Ok);
 
 		var outcome = await PostAsync(app, player, new ChatTarget.General(ChannelName));
 

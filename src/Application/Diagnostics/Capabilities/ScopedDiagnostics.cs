@@ -19,7 +19,7 @@ public readonly struct ScopedDiagnostics
 	/// <summary>Checks that the caller may use the diagnostics.</summary>
 	/// <returns>Ok, or the privileges the caller lacks.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Developer" />.</remarks>
-	public Result<DiagnosticsOutcome> Access()
+	public DiagnosticsOutcome Access()
 	{
 		return Denied() ?? DiagnosticsOutcome.Ok;
 	}
@@ -27,7 +27,7 @@ public readonly struct ScopedDiagnostics
 	/// <summary>Empties the cache folder of derived files.</summary>
 	/// <returns>The outcome and how many files were deleted.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Developer" />.</remarks>
-	public (Result<DiagnosticsOutcome> Result, int Deleted) ClearCaches()
+	public (DiagnosticsOutcome Result, int Deleted) ClearCaches()
 	{
 		return Denied() is { } denied ? (denied, 0) : (DiagnosticsOutcome.Ok, _diagnostics.ClearCaches());
 	}
@@ -35,7 +35,7 @@ public readonly struct ScopedDiagnostics
 	/// <summary>Forgets the counted exceptions.</summary>
 	/// <returns>The outcome.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Developer" />.</remarks>
-	public Result<DiagnosticsOutcome> ResetExceptions()
+	public DiagnosticsOutcome ResetExceptions()
 	{
 		if (Denied() is { } denied) return denied;
 
@@ -46,7 +46,7 @@ public readonly struct ScopedDiagnostics
 	/// <summary>Collects the garbage now.</summary>
 	/// <returns>The outcome.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Developer" />.</remarks>
-	public Result<DiagnosticsOutcome> CollectGarbage()
+	public DiagnosticsOutcome CollectGarbage()
 	{
 		if (Denied() is { } denied) return denied;
 
@@ -54,10 +54,10 @@ public readonly struct ScopedDiagnostics
 		return DiagnosticsOutcome.Ok;
 	}
 
-	private Result<DiagnosticsOutcome>? Denied()
+	private DiagnosticsOutcome? Denied()
 	{
-		return ScopedPrivileges.Require(_privileges, UserPrivileges.Developer) is { } missing
-			? Result<DiagnosticsOutcome>.Denied(missing)
+		return ScopedPrivileges.Lacks(_privileges, UserPrivileges.Developer) is { } missing
+			? DiagnosticsOutcome.Denied
 			: null;
 	}
 }

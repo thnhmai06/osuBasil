@@ -24,7 +24,7 @@ public readonly struct ScopedUserCredentials(ScopedUser scoped)
 	///     needs <see cref="UserPrivileges.Owner" /> and hierarchy, signs out all of its sessions, and is recorded
 	///     in the moderation log.
 	/// </remarks>
-	public async Task<Result<UserOutcome>> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
+	public async Task<UserOutcome> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
 		bool includeCurrent = false)
 	{
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))

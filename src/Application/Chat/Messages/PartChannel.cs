@@ -9,4 +9,4 @@ namespace Basil.Application.Chat.Messages;
 /// <param name="Actor">The connection that leaves.</param>
 /// <param name="Target">The channel to leave.</param>
 /// <remarks>The answer is <see cref="ChannelOutcome.NotFound" /> when the target is not open.</remarks>
-public sealed record PartChannel(Connection Actor, ChatTarget Target) : IRequest<Result<ChannelOutcome>>;
+public sealed record PartChannel(Connection Actor, ChatTarget Target) : IRequest<ChannelOutcome>;

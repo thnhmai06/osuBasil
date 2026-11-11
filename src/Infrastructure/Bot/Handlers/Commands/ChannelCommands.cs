@@ -5,6 +5,7 @@ using Basil.Application.Servers.Messages.Channels;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Mediator;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands;
 
@@ -86,7 +87,7 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 		var result = await sender.Send(new CreateGeneralChannel(context.Actor, record), ct);
 		var (reply, arguments) = ChannelReplies.Of(result, name);
 		await context.Reply(reply, arguments, ct);
-		return result.IsOk;
+		return result == ServerOutcome.Ok;
 	}
 
 	private async Task<bool> SetAsync(CommandContext context, string name, IEnumerable<string> options,
@@ -99,7 +100,7 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Actor, name, change), ct);
 		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Updated);
 		await context.Reply(reply, arguments, ct);
-		return result.IsOk;
+		return result == ChannelOutcome.Ok;
 	}
 
 	private async Task<bool> DeleteAsync(CommandContext context, string name, CancellationToken ct)
@@ -107,7 +108,7 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 		var (result, channel) = await sender.Send(new DeleteGeneralChannel(context.Actor, name), ct);
 		var (reply, arguments) = ChannelReplies.Of(result, channel?.Name ?? name, ChannelReplies.Deleted);
 		await context.Reply(reply, arguments, ct);
-		return result.IsOk;
+		return result == ChannelOutcome.Ok;
 	}
 
 	private static async Task<bool> InvalidAsync(CommandContext context, CancellationToken ct)

@@ -6,6 +6,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
@@ -39,7 +40,7 @@ public sealed class ConnectionChannelHandlerTests
 		var channel = await OpenChannelAsync(app, "#lobby");
 		var handler = Handler(app);
 		var player = await RoomFixture.PlayerAsync(app, "Chatter");
-		Assert.True(channel.ScopeTo(player).Join().IsOk);
+		Assert.True(channel.ScopeTo(player).Join() == ChannelOutcome.Ok);
 		app.Users.Close(player, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),
 			@event => @event.Connection == player);
@@ -68,7 +69,7 @@ public sealed class ConnectionChannelHandlerTests
 			Name = name,
 			Value = new GeneralChannelData { AutoJoin = autoJoin }
 		};
-		Assert.True((await app.Server.ScopeTo(actor).Channels.CreateAsync(record)).IsOk);
+		Assert.True((await app.Server.ScopeTo(actor).Channels.CreateAsync(record)) == ServerOutcome.Ok);
 		return app.Channels.Find(name)!;
 	}
 }

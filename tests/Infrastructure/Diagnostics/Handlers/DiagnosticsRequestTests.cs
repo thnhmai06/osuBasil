@@ -1,6 +1,7 @@
 using Basil.Application.Diagnostics.Messages;
 using Basil.Domain.Users;
 using Basil.Testing;
+using Basil.Application.Diagnostics.Objects;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Handlers;
 
@@ -15,7 +16,7 @@ public sealed class DiagnosticsRequestTests
 
 		var (result, deleted) = await app.Sender.Send(new ClearCaches(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 		Assert.Equal(0, deleted);
 	}
 
@@ -27,7 +28,7 @@ public sealed class DiagnosticsRequestTests
 
 		var result = await app.Sender.Send(new ResetExceptions(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -38,7 +39,7 @@ public sealed class DiagnosticsRequestTests
 
 		var result = await app.Sender.Send(new CollectGarbage(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -49,7 +50,7 @@ public sealed class DiagnosticsRequestTests
 
 		var result = await app.Sender.Send(new CheckDiagnosticsAccess(plain), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -61,6 +62,6 @@ public sealed class DiagnosticsRequestTests
 
 		var result = await app.Sender.Send(new ResetExceptions(staff), TestContext.Current.CancellationToken);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == DiagnosticsOutcome.Ok);
 	}
 }

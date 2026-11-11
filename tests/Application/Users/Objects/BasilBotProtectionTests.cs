@@ -21,7 +21,7 @@ public sealed class BasilBotProtectionTests
 
 		var result = await app.Users.Of(bot).ScopeTo(admin).DeleteAsync();
 
-		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
+		Assert.Equal(UserOutcome.SystemAccount, result);
 		Assert.Null(bot.Value.DeletedAt);
 	}
 
@@ -35,7 +35,7 @@ public sealed class BasilBotProtectionTests
 		var silenced = await app.Users.Of(bot).ScopeTo(admin).Silence.ImposeAsync(
 			app.Clock.GetUtcNow().AddHours(1));
 
-		Assert.Equal(UserOutcome.SystemAccount, silenced.Outcome);
+		Assert.Equal(UserOutcome.SystemAccount, silenced);
 		Assert.Null(bot.Value.SilencedUntil);
 	}
 
@@ -48,7 +48,7 @@ public sealed class BasilBotProtectionTests
 
 		var result = await app.Users.Of(bot).ScopeTo(admin).Privileges.SetAsync(UserPrivileges.Player);
 
-		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
+		Assert.Equal(UserOutcome.SystemAccount, result);
 		Assert.Equal(UserPrivileges.None, bot.Value.Privileges);
 	}
 }

@@ -34,7 +34,7 @@ public sealed class BeatmapsetHandlerTests
 		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(new DeleteBeatmapset(actor, set.Id),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.Empty(world.Sets.Records);
 	}
 
@@ -47,7 +47,7 @@ public sealed class BeatmapsetHandlerTests
 		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(new DeleteBeatmapset(actor, set.Id),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Tournament, result.Missing);
+		Assert.Equal(BeatmapsetOutcome.Denied, result);
 		Assert.Single(world.Sets.Records);
 	}
 
@@ -61,7 +61,7 @@ public sealed class BeatmapsetHandlerTests
 			new PatchBeatmapset(actor, set.Id, BeatmapsetStatus.Loved, false, true),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.Equal(BeatmapsetStatus.Loved, set.Status);
 		Assert.False(set.Visible);
 		Assert.True(set.Locked);
@@ -76,7 +76,7 @@ public sealed class BeatmapsetHandlerTests
 		var result = await new PatchBeatmapsetHandler(app.Beatmapsets).Handle(
 			new PatchBeatmapset(actor, set.Id, null, null, null), TestContext.Current.CancellationToken);
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Status);
 	}
 
@@ -90,7 +90,7 @@ public sealed class BeatmapsetHandlerTests
 			new PatchBeatmapset(actor, set.Id, BeatmapsetStatus.Loved, false, null),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Tournament, result.Missing);
+		Assert.Equal(BeatmapsetOutcome.Denied, result);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Status);
 		Assert.True(set.Visible);
 	}
@@ -104,7 +104,7 @@ public sealed class BeatmapsetHandlerTests
 		var result = await new DeleteBeatmapsetHandler(app.Beatmapsets).Handle(
 			new DeleteBeatmapset(actor, int.MaxValue), TestContext.Current.CancellationToken);
 
-		Assert.Equal(BeatmapsetOutcome.NotFound, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.NotFound, result);
 	}
 
 	[Fact]
@@ -118,7 +118,7 @@ public sealed class BeatmapsetHandlerTests
 		var unknown = await handler.Handle(new DeleteBeatmapset(actor, int.MaxValue),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Tournament, unknown.Missing);
-		Assert.Equal(known.Missing, unknown.Missing);
+		Assert.Equal(BeatmapsetOutcome.Denied, unknown);
+		Assert.Equal(known, unknown);
 	}
 }

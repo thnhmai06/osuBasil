@@ -31,7 +31,7 @@ public sealed class ScoreSubmissionTests
 
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
-	private static Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
+	private static Task<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection)> SubmitAsync(
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{
@@ -84,7 +84,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, submission);
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Null(rejection);
 	}
 
@@ -101,7 +101,7 @@ public sealed class ScoreSubmissionTests
 		var without = await SubmitAsync(f, f.Genuine(score),
 			beatmap: new BeatmapChecksums(ScoreSubmissionFixture.Beatmap, storyboard));
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, withStoryboard.Result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, withStoryboard.Result);
 		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, without.Rejection);
 	}
 
@@ -118,8 +118,8 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == ScoreSubmissionOutcome.Ok);
+		Assert.Equal(ScoreSubmissionOutcome.Denied, result);
 		Assert.Null(rejection);
 		AssertNothingRecorded(f);
 	}
@@ -136,7 +136,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.VersionMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
@@ -153,7 +153,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.ClientHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
@@ -166,7 +166,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.UninstallerHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
@@ -179,7 +179,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.DiskSignatureHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
@@ -194,7 +194,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, submission);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
@@ -222,7 +222,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.BeatmapHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
@@ -235,7 +235,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 		AssertNothingRecorded(f);
 	}
@@ -283,11 +283,11 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
-		Assert.Equal(ScoreSubmissionOutcome.Ok, (await SubmitAsync(f, submission)).Result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, (await SubmitAsync(f, submission)).Result);
 
 		var (result, rejection) = await SubmitAsync(f, submission, replay: Replay(100));
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.Duplicate, rejection);
 		Assert.Single(f.Scores);
 		Assert.Single(f.App.ScoreEvents.Events);
@@ -330,7 +330,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Null(rejection);
 		var stored = Assert.Single(f.Scores);
 		Assert.Equal(f.User.Id, stored.Value.UserId);
@@ -372,7 +372,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, _) = await SubmitAsync(f, f.Genuine(failed));
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		var stats = f.StatsOf(GameMode.Standard)!;
 		Assert.Equal(1, stats.PlayCount);
 		Assert.Equal(1000, stats.TotalScore);
@@ -438,7 +438,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), replay: replay);
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Single(f.Scores);
 		Assert.Empty(f.Replays);
 	}
@@ -462,7 +462,7 @@ public sealed class ScoreSubmissionTests
 
 		var (result, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Empty(f.Replays);
 	}
 
@@ -485,11 +485,11 @@ public sealed class ScoreSubmissionTests
 		GameTeamType teamType = GameTeamType.HeadToHead)
 	{
 		var (room, opened) = await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", RoomSource.Game, false);
-		Assert.True(opened.IsOk);
+		Assert.True(opened == RoomOutcome.Ok);
 		var scope = room!.ScopeTo(f.Client);
 		Assert.True((await scope.Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType))).IsOk);
-		Assert.True((await scope.Rounds.StartAsync()).IsOk);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType))) == RoomOutcome.Ok);
+		Assert.True((await scope.Rounds.StartAsync()) == RoomOutcome.Ok);
 		return room;
 	}
 
@@ -502,7 +502,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Null(rejection);
 		Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
 	}
@@ -516,7 +516,7 @@ public sealed class ScoreSubmissionTests
 		var submitted = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
 
 		await new ScoreHandler(f.App.Lobby).Handle(submitted, TestContext.Current.CancellationToken);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()) == RoomOutcome.Ok);
 
 		var taken = Assert.Single(f.App.RoomEvents.Events.OfType<RoomRoundScoreSubmitted>());
 		Assert.Equal(submitted.Score, taken.Score.Score);
@@ -532,14 +532,14 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
 		var stays = await RoomFixture.PlayerAsync(f.App, "Stays");
-		Assert.True((await room.ScopeTo(stays).Members.JoinAsync("")).IsOk);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()).IsOk);
-		Assert.True((await room.ScopeTo(f.Client).Members.LeaveAsync()).IsOk);
+		Assert.True((await room.ScopeTo(stays).Members.JoinAsync("")) == RoomOutcome.Ok);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()) == RoomOutcome.Ok);
+		Assert.True((await room.ScopeTo(f.Client).Members.LeaveAsync()) == RoomOutcome.Ok);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
-		Assert.Equal(ScoreSubmissionOutcome.Ok, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Null(rejection);
 	}
 
@@ -548,13 +548,13 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()) == RoomOutcome.Ok);
 		f.App.Clock.Advance(ScoreWait);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 	}
 
@@ -568,7 +568,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			ScoreSubmissionFixture.GenuineClient(other), unknownBeatmap: true);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 	}
 

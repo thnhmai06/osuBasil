@@ -9,4 +9,4 @@ namespace Basil.Application.Servers.Messages;
 /// <summary>Asks Servers to delete a seasonal background.</summary>
 /// <param name="Actor">The connection acting.</param>
 /// <param name="Image">The seasonal background to delete.</param>
-public sealed record DeleteMenuSeasonal(Connection Actor, ContentReference Image) : IRequest<Result<ServerOutcome>>;
+public sealed record DeleteMenuSeasonal(Connection Actor, ContentReference Image) : IRequest<ServerOutcome>;

@@ -14,25 +14,18 @@ namespace Basil.Application.Common;
 /// </remarks>
 public static class ScopedPrivileges
 {
-	/// <summary>Checks whether the held privileges meet the ones an action needs.</summary>
+	/// <summary>Checks whether the held privileges fall short of the ones an action needs.</summary>
 	/// <typeparam name="TPrivileges">The enum of the privileges that are checked.</typeparam>
 	/// <param name="held">The privileges the actor holds.</param>
 	/// <param name="required">The privileges the action needs.</param>
-	/// <returns>
-	///     <see langword="null" /> when they are held; otherwise what is missing: the bits not held for a flags enum, the
-	///     required level for any other enum.
-	/// </returns>
-	public static TPrivileges? Require<TPrivileges>(TPrivileges held, TPrivileges required)
+	/// <returns><see langword="true" /> when something required is not held; <see langword="false" /> when all are met.</returns>
+	public static bool Lacks<TPrivileges>(TPrivileges held, TPrivileges required)
 		where TPrivileges : struct, Enum
 	{
 		var have = Convert.ToInt64(held);
 		var needed = Convert.ToInt64(required);
 
-		if (!Flags<TPrivileges>.IsFlags)
-			return have >= needed ? null : required;
-
-		var missing = needed & ~have;
-		return missing == 0 ? null : (TPrivileges)Enum.ToObject(typeof(TPrivileges), missing);
+		return Flags<TPrivileges>.IsFlags ? (needed & ~have) != 0 : have < needed;
 	}
 
 	private static class Flags<TPrivileges> where TPrivileges : struct, Enum

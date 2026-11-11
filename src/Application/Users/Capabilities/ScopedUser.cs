@@ -28,9 +28,9 @@ public readonly struct ScopedUser
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Effective, required);
+		return ScopedPrivileges.Lacks(Effective, required);
 	}
 
 	/// <summary>Creates a scoped account for a connection.</summary>
@@ -107,16 +107,16 @@ public readonly struct ScopedUser
 	/// <summary>Refuses an action when the caller lacks the privilege it needs.</summary>
 	/// <param name="needed">The privilege required.</param>
 	/// <returns><see langword="null" /> when the privilege is held; otherwise the refusal naming what is missing.</returns>
-	internal Result<UserOutcome>? Deny(UserPrivileges needed)
+	internal UserOutcome? Deny(UserPrivileges needed)
 	{
-		return Require(needed) is { } missing ? Result<UserOutcome>.Denied(missing) : null;
+		return Lacks(needed) ? UserOutcome.Denied : null;
 	}
 
 	/// <summary>Checks the account hierarchy for an action aimed at a resolved account.</summary>
 	/// <param name="target">The account acted on.</param>
 	/// <param name="selfAllowed">Whether the caller may act on their own account.</param>
 	/// <returns><see langword="null" /> when allowed; otherwise, why the operation is unavailable.</returns>
-	internal Result<UserOutcome>? Guard(User target, bool selfAllowed)
+	internal UserOutcome? Guard(User target, bool selfAllowed)
 	{
 		if (target.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		return (IsSelf && selfAllowed) || Outranks(target) ? null : UserOutcome.NotOutranking;
@@ -131,12 +131,12 @@ public readonly struct ScopedUser
 		CancellationToken ct = default)
 	{
 		return (await Actor.User.Context.Settings.GetAsync(ct)).Locks.HasFlag(area) &&
-		       Require(manager) is not null;
+		       Lacks(manager);
 	}
 
 	/// <summary>Deletes this account, keeping it out of sign-in and every listing while its record remains.</summary>
 	/// <returns>The outcome of deleting the account.</returns>
-	public async Task<Result<UserOutcome>> DeleteAsync()
+	public async Task<UserOutcome> DeleteAsync()
 	{
 		if (Deny(UserPrivileges.Owner) is { } denied) return denied;
 		if (await ResolveAsync() is not { } user) return UserOutcome.NotFound;

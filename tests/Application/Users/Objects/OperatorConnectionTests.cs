@@ -67,7 +67,7 @@ public sealed class OperatorConnectionTests
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "FirstAdmin" }, new Md5(new byte[16]), UserPrivilegesExtensions.All);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal(UserPrivilegesExtensions.All, user!.Value.Privileges);
 	}
 
@@ -80,7 +80,7 @@ public sealed class OperatorConnectionTests
 
 		var result = await app.Users.Of(admin).ScopeTo(actor).Privileges.SetAsync(UserPrivileges.None);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal(UserPrivileges.None, admin.Value.Privileges);
 	}
 
@@ -93,7 +93,7 @@ public sealed class OperatorConnectionTests
 
 		var result = await app.Users.Of(bot).ScopeTo(actor).Privileges.SetAsync(UserPrivilegesExtensions.All);
 
-		Assert.Equal(UserOutcome.SystemAccount, result.Outcome);
+		Assert.Equal(UserOutcome.SystemAccount, result);
 	}
 
 	[Fact]
@@ -109,7 +109,7 @@ public sealed class OperatorConnectionTests
 			var result = await app.Users.Of(target).ScopeTo(connection).Privileges
 				.SetAsync(UserPrivilegesExtensions.All);
 
-			Assert.False(result.IsOk);
+			Assert.False(result == UserOutcome.Ok);
 		}
 	}
 }

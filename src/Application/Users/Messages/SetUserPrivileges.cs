@@ -11,4 +11,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Target">The account acted on.</param>
 /// <param name="Privileges">The new privileges.</param>
 public sealed record SetUserPrivileges(Connection Actor, UserReference Target, UserPrivileges Privileges)
-	: IRequest<Result<UserOutcome>>;
+	: IRequest<UserOutcome>;

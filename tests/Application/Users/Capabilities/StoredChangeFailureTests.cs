@@ -1,6 +1,7 @@
 using Basil.Application.Common;
 using Basil.Domain.Users;
 using Basil.Testing;
+using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Users.Tests.Capabilities;
 
@@ -53,7 +54,7 @@ public sealed class StoredChangeFailureTests
 		Assert.Null(target.Value.DeletedAt);
 
 		app.UserUpdateFailure = null;
-		Assert.True((await scoped.DeleteAsync()).IsOk);
+		Assert.True((await scoped.DeleteAsync()) == UserOutcome.Ok);
 		Assert.NotNull(target.Value.DeletedAt);
 	}
 

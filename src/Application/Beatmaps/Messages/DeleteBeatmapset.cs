@@ -8,4 +8,4 @@ namespace Basil.Application.Beatmaps.Messages;
 /// <param name="Actor">The actor acting.</param>
 /// <param name="SetId">The id of the beatmapset to delete.</param>
 public sealed record DeleteBeatmapset(IActor Actor, int SetId)
-	: IRequest<Result<BeatmapsetOutcome>>;
+	: IRequest<BeatmapsetOutcome>;

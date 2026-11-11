@@ -15,6 +15,7 @@ using Basil.Domain.Users;
 using Basil.Host.Shared;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Host.Cli.Commands;
 
@@ -219,7 +220,7 @@ internal static class ContentCommands
 		await using var stream = File.OpenRead(path);
 		var (result, banner) = await SendAsync(call,
 			actor => new AddMenuBanner(actor, Path.GetFileName(path), stream, url, begins, expires));
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != ServerOutcome.Ok) return call.Refuse(result);
 
 		call.Output.Ok($"Added banner {Path.GetFileName(banner!.Image.Value)}.");
 		return ExitCodes.Success;
@@ -249,7 +250,7 @@ internal static class ContentCommands
 		await using var stream = File.OpenRead(path);
 		var (result, image) =
 			await SendAsync(call, actor => new AddMenuSeasonal(actor, Path.GetFileName(path), stream));
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != ServerOutcome.Ok) return call.Refuse(result);
 
 		call.Output.Ok($"Added background {Path.GetFileName(image!.Value.Value)}.");
 		return ExitCodes.Success;
@@ -350,7 +351,7 @@ internal static class ContentCommands
 	private static async Task<int> ShowSettingsAsync(CommandCall call)
 	{
 		var (result, settings) = await SendAsync(call, actor => new GetSettings(actor));
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != ServerOutcome.Ok) return call.Refuse(result);
 
 		var lines = new List<(string, string)>();
 		foreach (var (name, value) in SettingsCategories.GetAll(settings!))
@@ -365,7 +366,7 @@ internal static class ContentCommands
 		if (!SettingsCategories.Exists(category)) return call.NotFound("settings category");
 
 		var (result, settings) = await SendAsync(call, actor => new GetSettings(actor));
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != ServerOutcome.Ok) return call.Refuse(result);
 
 		var lines = new List<(string, string)>();
 		Flatten(lines, string.Empty,
@@ -392,7 +393,7 @@ internal static class ContentCommands
 		}
 
 		var (read, current) = await SendAsync(call, actor => new GetSettings(actor));
-		if (!read.IsOk) return call.Refuse(read);
+		if (read != ServerOutcome.Ok) return call.Refuse(read);
 
 		try
 		{
@@ -425,7 +426,7 @@ internal static class ContentCommands
 		if (call.List("to") is not { Length: > 0 } ids)
 		{
 			var (all, sent) = await SendAsync(call, actor => new NotifyEveryone(actor, text));
-			return all.IsOk ? Announced(call, sent) : call.Refuse(all);
+			return all == ServerOutcome.Ok ? Announced(call, sent) : call.Refuse(all);
 		}
 
 		var recipients = new List<int>();
@@ -440,7 +441,7 @@ internal static class ContentCommands
 		}
 
 		var (some, count) = await SendAsync(call, actor => new NotifyUsers(actor, text, recipients));
-		return some.IsOk ? Announced(call, count) : call.Refuse(some);
+		return some == ServerOutcome.Ok ? Announced(call, count) : call.Refuse(some);
 	}
 
 	private static int Announced(CommandCall call, int sent)
@@ -453,7 +454,7 @@ internal static class ContentCommands
 	{
 		var page = call.Page();
 		var (result, list) = await SendAsync(call, actor => new ListScreenshots(actor));
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != ServerOutcome.Ok) return call.Refuse(result);
 
 		var views = list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList();
 		call.PrintPage(new Page<ScreenshotView>([.. views.Skip(page.Offset).Take(page.Limit)], page.Offset + page.Limit < views.Count), page);
@@ -463,7 +464,7 @@ internal static class ContentCommands
 	private static async Task<int> DeleteScreenshotAsync(CommandCall call)
 	{
 		var (listed, list) = await SendAsync(call, actor => new ListScreenshots(actor));
-		if (!listed.IsOk) return call.Refuse(listed);
+		if (listed != ServerOutcome.Ok) return call.Refuse(listed);
 
 		var id = call.Word("id");
 		var match = list.Where(reference => Path.GetFileName(reference.Value) == id).Cast<ContentReference?>()

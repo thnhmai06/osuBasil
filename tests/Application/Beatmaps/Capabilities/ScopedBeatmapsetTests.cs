@@ -40,7 +40,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).DeleteAsync();
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.Empty(world.Sets.Records);
 		Assert.Empty(world.Beatmaps.Records);
 		Assert.Empty(world.Storage.Stored);
@@ -55,7 +55,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var allowed = await set.ScopeTo(new FixedActor(actor.Record, Manager)).DeleteAsync();
 
-		Assert.Equal(BeatmapsetOutcome.Ok, allowed.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, allowed);
 		Assert.Empty(world.Sets.Records);
 	}
 
@@ -67,7 +67,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPrivilegesExtensions.Default)).DeleteAsync();
 
-		Assert.Equal(UserPrivileges.Tournament, denied.Missing);
+		Assert.Equal(BeatmapsetOutcome.Denied, denied);
 		Assert.NotEmpty(world.Sets.Records);
 	}
 
@@ -89,7 +89,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).SetStatusAsync(BeatmapsetStatus.Loved);
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.Equal(BeatmapsetStatus.Loved, set.Record.Status);
 		Assert.Equal(BeatmapsetStatus.Loved, world.Sets.Records[set.Record.Id].Status);
 	}
@@ -103,7 +103,7 @@ public sealed class ScopedBeatmapsetTests
 		var denied = await set.ScopeTo(new FixedActor(actor.Record, UserPrivilegesExtensions.Default)).SetStatusAsync(
 			BeatmapsetStatus.Loved);
 
-		Assert.Equal(UserPrivileges.Tournament, denied.Missing);
+		Assert.Equal(BeatmapsetOutcome.Denied, denied);
 		Assert.Equal(BeatmapsetStatus.Ranked, set.Record.Status);
 	}
 
@@ -117,7 +117,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).DeleteAsync();
 
-		Assert.Equal(BeatmapsetOutcome.Locked, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Locked, result);
 		Assert.Single(world.Sets.Records);
 		Assert.Single(world.Storage.Stored);
 		Assert.Equal(events, app.BeatmapsetEvents.Events.Count);
@@ -131,8 +131,8 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).DeleteAsync();
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Tournament, result.Missing);
+		Assert.False(result == BeatmapsetOutcome.Ok);
+		Assert.Equal(BeatmapsetOutcome.Denied, result);
 		Assert.Single(world.Sets.Records);
 		Assert.Single(world.Storage.Stored);
 	}
@@ -145,7 +145,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).SetVisibleAsync(false);
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.False(set.Record.Visible);
 	}
 
@@ -191,7 +191,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).SetVisibleAsync(true);
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.True(set.Record.Visible);
 	}
 
@@ -203,7 +203,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).SetVisibleAsync(false);
 
-		Assert.Equal(UserPrivileges.Tournament, result.Missing);
+		Assert.Equal(BeatmapsetOutcome.Denied, result);
 		Assert.True(set.Record.Visible);
 	}
 
@@ -215,7 +215,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).SetLockedAsync(true);
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.True(set.Record.Locked);
 	}
 
@@ -229,7 +229,7 @@ public sealed class ScopedBeatmapsetTests
 		await set.ScopeTo(actor).SetLockedAsync(false);
 		var result = await set.ScopeTo(actor).DeleteAsync();
 
-		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(BeatmapsetOutcome.Ok, result);
 		Assert.Empty(world.Sets.Records);
 	}
 
@@ -241,7 +241,7 @@ public sealed class ScopedBeatmapsetTests
 
 		var result = await set.ScopeTo(actor).SetLockedAsync(true);
 
-		Assert.Equal(UserPrivileges.Tournament, result.Missing);
+		Assert.Equal(BeatmapsetOutcome.Denied, result);
 		Assert.False(set.Record.Locked);
 	}
 

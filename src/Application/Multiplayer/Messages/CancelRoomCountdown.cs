@@ -13,4 +13,4 @@ namespace Basil.Application.Multiplayer.Messages;
 ///     Cancelling needs the privilege to start rounds. The answer is Ok, a denial, NotInProgress (no countdown is running) or
 ///     RoomClosed.
 /// </remarks>
-public sealed record CancelRoomCountdown(Connection Actor, Room Room) : IRequest<Result<RoomOutcome>>;
+public sealed record CancelRoomCountdown(Connection Actor, Room Room) : IRequest<RoomOutcome>;

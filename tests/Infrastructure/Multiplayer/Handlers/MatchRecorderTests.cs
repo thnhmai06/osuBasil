@@ -238,14 +238,14 @@ public sealed class MatchRecorderTests
 	private static async Task SelectBeatmapAsync(RoomFixture setup)
 	{
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))).IsOk);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))) == RoomOutcome.Ok);
 	}
 
 	private static async Task CompleteRoundAsync(RoomFixture setup)
 	{
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync()).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync()).IsOk);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync()) == RoomOutcome.Ok);
+		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync()) == RoomOutcome.Ok);
+		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync()) == RoomOutcome.Ok);
 	}
 
 	/// <summary>The storage ports the recorders write to.</summary>

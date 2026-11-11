@@ -11,4 +11,4 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Room">The room it acts on.</param>
 /// <param name="Index">The slot to move to.</param>
 /// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
-public sealed record ChangeSlot(Connection Actor, Room Room, int Index) : IRequest<Result<RoomOutcome>>;
+public sealed record ChangeSlot(Connection Actor, Room Room, int Index) : IRequest<RoomOutcome>;

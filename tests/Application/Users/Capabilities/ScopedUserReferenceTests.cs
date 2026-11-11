@@ -14,7 +14,7 @@ public sealed class ScopedUserReferenceTests
 {
 	private const int MissingId = 9_999_999;
 
-	private static readonly Dictionary<string, (UserPrivileges Needed, Func<ScopedUser, Task<Result<UserOutcome>>> Act)>
+	private static readonly Dictionary<string, (UserPrivileges Needed, Func<ScopedUser, Task<UserOutcome>> Act)>
 		Views = new()
 		{
 			["Rename"] = (UserPrivileges.Owner, scope => scope.Profile.RenameAsync("Renamed")),
@@ -46,13 +46,13 @@ public sealed class ScopedUserReferenceTests
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
 		var existing = await app.CreateUserAsync("Existing", "password");
-		var (needed, act) = Views[view];
+		var (_, act) = Views[view];
 
 		var ofExisting = await act(app.Users.ScopeTo(actor, UserReference.ById(existing.Id)));
 		var ofMissing = await act(app.Users.ScopeTo(actor, UserReference.ById(MissingId)));
 
-		Assert.False(ofMissing.IsOk);
-		Assert.Equal(needed, ofMissing.Missing);
+		Assert.False(ofMissing == UserOutcome.Ok);
+		Assert.Equal(UserOutcome.Denied, ofMissing);
 		Assert.Equal(ofExisting, ofMissing);
 	}
 
@@ -65,8 +65,8 @@ public sealed class ScopedUserReferenceTests
 
 		var result = await Views[view].Act(app.Users.ScopeTo(actor, UserReference.ById(MissingId)));
 
-		Assert.Equal(UserOutcome.NotFound, result.Outcome);
-		Assert.Null(result.Missing);
+		Assert.Equal(UserOutcome.NotFound, result);
+		Assert.NotEqual(UserOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -76,8 +76,8 @@ public sealed class ScopedUserReferenceTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Friendly", "password"));
 		var scope = app.Users.ScopeTo(actor, UserReference.ById(MissingId));
 
-		Assert.Equal(UserOutcome.NotFound, (await scope.Relationships.AddFriendAsync()).Outcome);
-		Assert.Equal(UserOutcome.NotFound, (await scope.Relationships.BlockAsync()).Outcome);
+		Assert.Equal(UserOutcome.NotFound, (await scope.Relationships.AddFriendAsync()));
+		Assert.Equal(UserOutcome.NotFound, (await scope.Relationships.BlockAsync()));
 	}
 
 	[Fact]
@@ -90,7 +90,7 @@ public sealed class ScopedUserReferenceTests
 		var ofExisting = await app.Users.ScopeTo(actor, UserReference.ById(existing.Id)).Sessions.OpenIrcAsync("x");
 		var ofMissing = await app.Users.ScopeTo(actor, UserReference.ById(MissingId)).Sessions.OpenIrcAsync("x");
 
-		Assert.Equal(UserOutcome.NotSelf, ofMissing.Result.Outcome);
+		Assert.Equal(UserOutcome.NotSelf, ofMissing.Result);
 		Assert.Equal(ofExisting.Result, ofMissing.Result);
 	}
 

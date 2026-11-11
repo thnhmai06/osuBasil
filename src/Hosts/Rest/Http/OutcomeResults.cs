@@ -23,26 +23,22 @@ public static class OutcomeResults
 	}
 
 	/// <summary>Answers a refused result; the result must not be ok.</summary>
-	public static IResult Refusal<TOutcome>(this Result<TOutcome> result) where TOutcome : struct, Enum
+	public static IResult Refusal<TOutcome>(this TOutcome result) where TOutcome : struct, Enum
 	{
-		if (result.Missing is { } missing)
-			return Api.Error(StatusCodes.Status403Forbidden, OutcomeErrors.PrivilegeDeniedCode,
-				"Missing privileges.", missing);
-
-		var info = OutcomeErrors.Describe(result.Outcome);
+		var info = OutcomeErrors.Describe(result);
 		return Api.Error(StatusOf(info.Kind), info.Code, info.Code);
 	}
 
 	/// <summary>Answers an operation without a payload: 200 when ok, otherwise the refusal.</summary>
-	public static IResult Answer<TOutcome>(this Result<TOutcome> result) where TOutcome : struct, Enum
+	public static IResult Answer<TOutcome>(this TOutcome result) where TOutcome : struct, Enum
 	{
-		return result.IsOk ? Api.Done() : result.Refusal();
+		return OutcomeErrors.IsOk(result) ? Api.Done() : result.Refusal();
 	}
 
 	/// <summary>Answers an operation with a payload: 200 when ok, otherwise the refusal.</summary>
-	public static IResult Answer<TOutcome, T>(this Result<TOutcome> result, Func<T> data)
+	public static IResult Answer<TOutcome, T>(this TOutcome result, Func<T> data)
 		where TOutcome : struct, Enum
 	{
-		return result.IsOk ? Api.Ok(data()) : result.Refusal();
+		return OutcomeErrors.IsOk(result) ? Api.Ok(data()) : result.Refusal();
 	}
 }

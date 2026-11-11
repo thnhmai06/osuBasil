@@ -6,10 +6,10 @@ using Mediator;
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
 /// <summary>Handles <see cref="ReloadBeatmaps" /> with the privileges of the sending actor.</summary>
-internal sealed class ReloadBeatmapsHandler(Rulesets rulesets) : IRequestHandler<ReloadBeatmaps, Result<RulesetOutcome>>
+internal sealed class ReloadBeatmapsHandler(Rulesets rulesets) : IRequestHandler<ReloadBeatmaps, RulesetOutcome>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RulesetOutcome>> Handle(ReloadBeatmaps request, CancellationToken ct)
+	public ValueTask<RulesetOutcome> Handle(ReloadBeatmaps request, CancellationToken ct)
 	{
 		return ValueTask.FromResult(rulesets.ScopeTo(request.Actor).Reload());
 	}

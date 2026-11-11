@@ -6,12 +6,12 @@ using Mediator;
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Runs a <see cref="FailRound" /> on the room for the connection that asked.</summary>
-internal sealed class FailRoundHandler : IRequestHandler<FailRound, Result<RoomOutcome>>
+internal sealed class FailRoundHandler : IRequestHandler<FailRound, RoomOutcome>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(FailRound request, CancellationToken ct)
+	public ValueTask<RoomOutcome> Handle(FailRound request, CancellationToken ct)
 	{
-		return new ValueTask<Result<RoomOutcome>>(
+		return new ValueTask<RoomOutcome>(
 			request.Room.ScopeTo(request.Actor).Rounds.FailAsync());
 	}
 }

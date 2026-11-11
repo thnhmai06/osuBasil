@@ -6,12 +6,12 @@ using Mediator;
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Runs a <see cref="InvitePlayer" /> on the room for the connection that asked.</summary>
-internal sealed class InvitePlayerHandler : IRequestHandler<InvitePlayer, Result<RoomOutcome>>
+internal sealed class InvitePlayerHandler : IRequestHandler<InvitePlayer, RoomOutcome>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(InvitePlayer request, CancellationToken ct)
+	public ValueTask<RoomOutcome> Handle(InvitePlayer request, CancellationToken ct)
 	{
-		return new ValueTask<Result<RoomOutcome>>(
+		return new ValueTask<RoomOutcome>(
 			request.Room.ScopeTo(request.Actor).Members.InviteAsync(request.Target));
 	}
 }

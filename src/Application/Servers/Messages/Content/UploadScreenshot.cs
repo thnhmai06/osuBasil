@@ -10,4 +10,4 @@ namespace Basil.Application.Servers.Messages;
 /// <param name="Actor">The connection acting.</param>
 /// <param name="Image">The image of the screenshot.</param>
 public sealed record UploadScreenshot(Connection Actor, Stream Image)
-	: IRequest<(ContentReference? Screenshot, Result<ServerOutcome> Result)>;
+	: IRequest<(ContentReference? Screenshot, ServerOutcome Result)>;

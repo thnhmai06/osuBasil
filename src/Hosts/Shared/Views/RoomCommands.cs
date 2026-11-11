@@ -56,7 +56,7 @@ public sealed record PrivateRequest(bool Private);
 public readonly record struct RoomCall(ISender Sender, Connection Actor, Room Room)
 {
 	/// <summary>Sends a room request and returns its answer.</summary>
-	public Task<Result<RoomOutcome>> Ask(IRequest<Result<RoomOutcome>> request, CancellationToken ct)
+	public Task<RoomOutcome> Ask(IRequest<RoomOutcome> request, CancellationToken ct)
 	{
 		return Sender.Send(request, ct).AsTask();
 	}
@@ -71,7 +71,7 @@ public sealed record RoomCommand(
 	string Name,
 	string Summary,
 	Type? Body,
-	Func<RoomCall, object?, IServiceProvider, CancellationToken, Task<Result<RoomOutcome>>> Run);
+	Func<RoomCall, object?, IServiceProvider, CancellationToken, Task<RoomOutcome>> Run);
 
 /// <summary>The room commands that both the HTTP API and the console offer, one for each room command of <c>!mp</c>.</summary>
 public static class RoomCommands
@@ -170,24 +170,24 @@ public static class RoomCommands
 	}
 
 	private static RoomCommand Command<TBody>(string name, string summary,
-		Func<RoomCall, TBody, IServiceProvider, CancellationToken, Task<Result<RoomOutcome>>> run)
+		Func<RoomCall, TBody, IServiceProvider, CancellationToken, Task<RoomOutcome>> run)
 	{
 		return new RoomCommand(name, summary, typeof(TBody) == typeof(object) ? null : typeof(TBody),
 			(room, body, services, ct) => run(room, (TBody)body!, services, ct));
 	}
 
-	private static Task<Result<RoomOutcome>> Refuse(RoomOutcome outcome)
+	private static Task<RoomOutcome> Refuse(RoomOutcome outcome)
 	{
-		return Task.FromResult<Result<RoomOutcome>>(outcome);
+		return Task.FromResult<RoomOutcome>(outcome);
 	}
 
-	private static Task<Result<RoomOutcome>> Countdown(RoomCall room, int seconds, bool startsRound,
+	private static Task<RoomOutcome> Countdown(RoomCall room, int seconds, bool startsRound,
 		CancellationToken ct)
 	{
 		return room.Ask(new StartRoomCountdown(room.Actor, room.Room, TimeSpan.FromSeconds(seconds), startsRound), ct);
 	}
 
-	private static async Task<Result<RoomOutcome>> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
+	private static async Task<RoomOutcome> MapAsync(RoomCall room, MapRequest body, IServiceProvider services,
 		CancellationToken ct)
 	{
 		var beatmap = await services.GetRequiredService<ISender>().Send(new FindBeatmap(body.Beatmap), ct);

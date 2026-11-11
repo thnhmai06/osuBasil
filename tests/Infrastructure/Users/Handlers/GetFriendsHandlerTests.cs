@@ -19,7 +19,7 @@ public sealed class GetFriendsHandlerTests
 		var (result, users) = await new GetFriendsHandler().Handle(new GetFriends(actor),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserOutcome.Ok, result.Outcome);
+		Assert.Equal(UserOutcome.Ok, result);
 		Assert.Equal(["Friend"], users.Select(user => user.Value.Name));
 	}
 
@@ -32,7 +32,7 @@ public sealed class GetFriendsHandlerTests
 		var (result, users) = await new GetFriendsHandler().Handle(new GetFriends(actor),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserOutcome.Ok, result.Outcome);
+		Assert.Equal(UserOutcome.Ok, result);
 		Assert.Empty(users);
 	}
 }

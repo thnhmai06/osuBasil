@@ -22,7 +22,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange("renamed"));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal("renamed", setup.Room.Settings.Name);
 		var changed = Assert.Single(app.RoomEvents.Events.OfType<RoomSettingsChanged>());
 		Assert.Equal("renamed", changed.Change.Name);
@@ -37,7 +37,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Password: "secret"));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal("secret", setup.Room.Settings.Password);
 		var changed = Assert.Single(app.RoomEvents.Events.OfType<RoomSettingsChanged>());
 		Assert.True(changed.PasswordChanged);
@@ -55,7 +55,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Password: ""));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal("", setup.Room.Settings.Password);
 	}
 
@@ -68,7 +68,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Mode: GameMode.Mania));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(GameMode.Mania, setup.Room.Settings.MatchSettings.Mode);
 	}
 
@@ -84,7 +84,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Mode: GameMode.Mania));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(GameMods.NoMod, setup.Room.Settings.MatchSettings.Mods);
 	}
 
@@ -97,7 +97,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(WinCondition: GameWinCondition.Accuracy));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(GameWinCondition.Accuracy, setup.Room.Settings.MatchSettings.WinCondition);
 	}
 
@@ -110,7 +110,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(TeamType: GameTeamType.TeamVs));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(GameTeamType.TeamVs, setup.Room.Settings.MatchSettings.TeamType);
 		Assert.Equal(GameTeam.Red, setup.Room.Slots.Find(setup.Creator)!.Team);
 		Assert.Equal(GameTeam.Blue, setup.Room.Slots.Find(setup.Host)!.Team);
@@ -121,12 +121,12 @@ public sealed class ScopedRoomSettingsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true)).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true)) == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(RoomFixture.Beatmap, setup.Room.Settings.Beatmap);
 		Assert.Equal(RoomSlotStatus.NotReady, setup.Room.Slots.Find(setup.Player)!.Status);
 	}
@@ -142,7 +142,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Freemods: true));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(GameMods.NoMod, setup.Room.Settings.MatchSettings.Mods);
 		Assert.Equal(GameMods.Hidden, setup.Room.Slots.Find(setup.Player)!.Mods);
 	}
@@ -160,7 +160,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Freemods: false));
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(GameMods.Hidden, setup.Room.Settings.MatchSettings.Mods);
 		Assert.Equal(GameMods.NoMod, setup.Room.Slots.Find(setup.Player)!.Mods);
 	}
@@ -177,7 +177,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(name));
 
-		Assert.Equal(RoomOutcome.InvalidSettings, result.Outcome);
+		Assert.Equal(RoomOutcome.InvalidSettings, result);
 		Assert.NotEqual(name, setup.Room.Settings.Name);
 	}
 
@@ -192,7 +192,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Size: size));
 
-		Assert.Equal(RoomOutcome.InvalidSettings, result.Outcome);
+		Assert.Equal(RoomOutcome.InvalidSettings, result);
 	}
 
 	[Fact]
@@ -204,7 +204,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Mods: GameMods.Key1));
 
-		Assert.Equal(RoomOutcome.InvalidMods, result.Outcome);
+		Assert.Equal(RoomOutcome.InvalidMods, result);
 		Assert.Equal(GameMods.NoMod, setup.Room.Settings.MatchSettings.Mods);
 	}
 
@@ -220,7 +220,7 @@ public sealed class ScopedRoomSettingsTests
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange("renamed"));
 
-		Assert.Equal(RoomOutcome.InProgress, result.Outcome);
+		Assert.Equal(RoomOutcome.InProgress, result);
 		Assert.NotEqual("renamed", setup.Room.Settings.Name);
 	}
 
@@ -233,7 +233,7 @@ public sealed class ScopedRoomSettingsTests
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(new RoomSettingsChange());
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(events, app.RoomEvents.Events.Count);
 	}
 }

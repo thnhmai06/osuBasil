@@ -3,6 +3,9 @@ namespace Basil.Application.Multiplayer.Objects;
 /// <summary>The outcome of an operation on the lobby or a room.</summary>
 public enum RoomOutcome : byte
 {
+	/// <summary>The caller lacks the privileges the operation needs.</summary>
+	Denied = 0,
+
 	/// <summary>The operation succeeded.</summary>
 	Ok = 1,
 

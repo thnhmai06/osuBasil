@@ -31,6 +31,7 @@ using Basil.Protocol.Stable.Models.Client;
 using Basil.Protocol.Stable.Models.Scores;
 using Basil.Protocol.Stable.Wire.Security;
 using Mediator;
+using Basil.Application.Scores.Objects;
 
 namespace Basil.Host.Stable.Web;
 
@@ -217,7 +218,7 @@ internal static class OsuWebRoutes
 			await using var replay = OpenReplay(context);
 			var (result, _) = await sender.Send(new SubmitScore(client, submission,
 				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay), ct);
-			return Text(result.IsOk
+			return Text(result == ScoreSubmissionOutcome.Ok
 				? "beatmapId:0|beatmapSetId:0|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:\n"
 				: "error: no");
 		}
@@ -281,9 +282,9 @@ internal static class OsuWebRoutes
 		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
 		await using var stream = file.OpenReadStream();
 		var (reference, result) = await sender.Send(new UploadScreenshot(player, stream), ct);
-		return result.IsOk
+		return result == ServerOutcome.Ok
 			? Text(reference?.ToString() ?? string.Empty)
-			: Text(string.Empty, result.Outcome == ServerOutcome.DimensionsTooLarge ? 413 : 400);
+			: Text(string.Empty, result == ServerOutcome.DimensionsTooLarge ? 413 : 400);
 	}
 
 	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth,

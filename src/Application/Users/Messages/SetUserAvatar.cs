@@ -9,4 +9,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="Image">The uploaded image.</param>
-public sealed record SetUserAvatar(Connection Actor, UserReference Target, Stream Image) : IRequest<Result<UserOutcome>>;
+public sealed record SetUserAvatar(Connection Actor, UserReference Target, Stream Image) : IRequest<UserOutcome>;

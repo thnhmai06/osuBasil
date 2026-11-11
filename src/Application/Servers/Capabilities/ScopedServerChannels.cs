@@ -22,10 +22,10 @@ public readonly struct ScopedServerChannels
 	/// <param name="record">The channel to create.</param>
 	/// <returns>The outcome; NameTaken when a channel with that name is already open.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />.</remarks>
-	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record)
+	public async Task<ServerOutcome> CreateAsync(GeneralChannelRecord record)
 	{
-		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
-			return Result<ServerOutcome>.Denied(missing);
+		if (_scoped.Lacks(UserPrivileges.Moderator))
+			return ServerOutcome.Denied;
 
 		return await _scoped.Server.Channels.CreateAsync(record);
 	}
@@ -33,16 +33,16 @@ public readonly struct ScopedServerChannels
 	/// <summary>Finds the general channel to manage under a name.</summary>
 	/// <param name="name">The channel name.</param>
 	/// <returns>
-	///     The open channel, NotFound when no open channel has that name, or a denial that names the missing privileges.
+	///     The open channel, NotFound when no open channel has that name, or Denied.
 	/// </returns>
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Moderator" />. The name is looked up only after the privilege is met,
 	///     so a connection without it is refused the same way whether or not the channel exists.
 	/// </remarks>
-	public (Result<ChannelOutcome> Result, GeneralChannel? Channel) FindGeneral(string name)
+	public (ChannelOutcome Result, GeneralChannel? Channel) FindGeneral(string name)
 	{
-		if (_scoped.Needs(UserPrivileges.Moderator) is { } missing)
-			return (Result<ChannelOutcome>.Denied(missing), null);
+		if (_scoped.Lacks(UserPrivileges.Moderator))
+			return (ChannelOutcome.Denied, null);
 
 		return _scoped.Server.Channels.FindGeneral(name);
 	}

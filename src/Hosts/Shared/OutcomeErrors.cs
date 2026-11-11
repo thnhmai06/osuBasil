@@ -1,3 +1,4 @@
+using System.Globalization;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects;
@@ -49,12 +50,25 @@ public static class OutcomeErrors
 	/// <summary>The code of a refusal for lack of privileges.</summary>
 	public const string PrivilegeDeniedCode = "privilegeDenied";
 
-	/// <summary>Describes an outcome that is not <c>Ok</c>.</summary>
+	private const int OkValue = 1;
+
+	/// <summary>Checks whether an outcome of any Application object is its <c>Ok</c> member.</summary>
+	/// <param name="outcome">The outcome.</param>
+	/// <returns><see langword="true" /> when the operation succeeded.</returns>
+	public static bool IsOk<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
+	{
+		return Convert.ToInt32(outcome, CultureInfo.InvariantCulture) == OkValue;
+	}
+
+	/// <summary>Describes an outcome that is not <c>Ok</c>; the default value is a refusal for lack of privileges.</summary>
 	/// <param name="outcome">The outcome of any Application object.</param>
 	/// <returns>The code and kind of the refusal.</returns>
 	/// <exception cref="ArgumentException">The outcome's enum is not covered by the table.</exception>
 	public static ErrorInfo Describe<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
 	{
+		if (EqualityComparer<TOutcome>.Default.Equals(outcome, default))
+			return new ErrorInfo(PrivilegeDeniedCode, ErrorKind.PrivilegeDenied);
+
 		var name = outcome.ToString();
 		var code = char.ToLowerInvariant(name[0]) + name[1..];
 		var kind = outcome switch

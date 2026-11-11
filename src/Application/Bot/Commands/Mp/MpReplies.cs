@@ -344,9 +344,9 @@ internal static class MpReplies
 	public static readonly Reply NotAuthorizedInMatch = new("mp.notAuthorizedInMatch",
 		"You don't have privilege to do that in this match.");
 
-	/// <summary>Reply when the actor lacks privileges the operation needs; <c>{privileges}</c> lists them.</summary>
+	/// <summary>Reply when the actor lacks privileges the operation needs.</summary>
 	public static readonly Reply MissingPrivileges = new("mp.missingPrivileges",
-		"You are missing the privileges needed for that: {privileges}.", "privileges");
+		"You do not have the privileges needed for that.");
 
 	/// <summary>Reply when the actor is already seated in this match.</summary>
 	public static readonly Reply AlreadyInThisMatch = new("mp.alreadyInThisMatch", "You're already in this match.");
@@ -442,12 +442,12 @@ internal static class MpReplies
 	/// <summary>Maps a result to the user-visible text the bot sends.</summary>
 	/// <param name="replies">Gives the text of the replies.</param>
 	/// <param name="result">The result returned by the server for the requested room operation.</param>
-	/// <returns>The text naming the missing privileges when there are any, otherwise the text for the outcome.</returns>
-	public static string Describe(IReplies replies, Result<RoomOutcome> result)
+	/// <returns>The text for the outcome; the refusal text when the actor lacks privileges.</returns>
+	public static string Describe(IReplies replies, RoomOutcome result)
 	{
-		return result.Missing is { } missing
-			? replies.Text(MissingPrivileges, new { privileges = missing.ToString() })
-			: replies.Text(Of(result.Outcome), new { outcome = result.Outcome.ToString() });
+		return result == RoomOutcome.Denied
+			? replies.Text(MissingPrivileges)
+			: replies.Text(Of(result), new { outcome = result.ToString() });
 	}
 
 	/// <summary>Maps a <see cref="RoomOutcome" /> to the reply the bot sends.</summary>

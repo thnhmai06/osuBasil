@@ -7,6 +7,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
@@ -21,7 +22,7 @@ public sealed class JoinPartChannelHandlerTests
 		var actor = await app.LoginAsync(admin);
 		var created = await app.Server.ScopeTo(actor).Channels.CreateAsync(
 			new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() });
-		Assert.True(created.IsOk);
+		Assert.True(created == ServerOutcome.Ok);
 		return actor;
 	}
 
@@ -44,7 +45,7 @@ public sealed class JoinPartChannelHandlerTests
 		var result = await Joiner(app).Handle(new JoinChannel(actor, new ChatTarget.General(ChannelName)),
 			TestContext.Current.CancellationToken);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ChannelOutcome.Ok);
 		Assert.Contains(actor, app.Channels.Find(ChannelName)!.Members);
 	}
 
@@ -57,7 +58,7 @@ public sealed class JoinPartChannelHandlerTests
 		var result = await Joiner(app).Handle(new JoinChannel(actor, new ChatTarget.General("#nowhere")),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.NotFound, result.Outcome);
+		Assert.Equal(ChannelOutcome.NotFound, result);
 	}
 
 	[Fact]
@@ -71,7 +72,7 @@ public sealed class JoinPartChannelHandlerTests
 		var result = await Joiner(app).Handle(new JoinChannel(actor, new ChatTarget.General(ChannelName)),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.AlreadyMember, result.Outcome);
+		Assert.Equal(ChannelOutcome.AlreadyMember, result);
 	}
 
 	[Fact]
@@ -85,7 +86,7 @@ public sealed class JoinPartChannelHandlerTests
 		var result = await Parter(app).Handle(new PartChannel(actor, new ChatTarget.General(ChannelName)),
 			TestContext.Current.CancellationToken);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ChannelOutcome.Ok);
 		Assert.DoesNotContain(actor, app.Channels.Find(ChannelName)!.Members);
 	}
 
@@ -98,7 +99,7 @@ public sealed class JoinPartChannelHandlerTests
 		var result = await Parter(app).Handle(new PartChannel(actor, new ChatTarget.General(ChannelName)),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.NotMember, result.Outcome);
+		Assert.Equal(ChannelOutcome.NotMember, result);
 	}
 
 	[Fact]
@@ -110,6 +111,6 @@ public sealed class JoinPartChannelHandlerTests
 		var result = await Parter(app).Handle(new PartChannel(actor, new ChatTarget.General("#nowhere")),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.NotFound, result.Outcome);
+		Assert.Equal(ChannelOutcome.NotFound, result);
 	}
 }

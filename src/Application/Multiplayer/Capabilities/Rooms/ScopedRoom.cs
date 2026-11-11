@@ -105,13 +105,13 @@ public readonly struct ScopedRoom
 	/// <summary>Checks that the scoped connection holds the room privileges an action needs.</summary>
 	/// <param name="needed">The room privileges required.</param>
 	/// <returns>
-	///     <see langword="null" /> when allowed; a denial naming <see cref="UserPrivileges.Player" /> when the caller may
+	///     <see langword="null" /> when allowed; a denial when the caller may
 	///     not
 	///     join rooms at all; otherwise <see cref="RoomOutcome.RoleDenied" />.
 	/// </returns>
-	internal Result<RoomOutcome>? Require(RoomPrivileges needed)
+	internal RoomOutcome? Require(RoomPrivileges needed)
 	{
-		if (ScopedPrivileges.Require(Privileges, needed) is null)
+		if (!ScopedPrivileges.Lacks(Privileges, needed))
 			return null;
 
 		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomOutcome.RoleDenied;
@@ -124,12 +124,12 @@ public readonly struct ScopedRoom
 	public bool Involves => Room.Involves(Actor, _global);
 
 	/// <summary>Checks whether the connection may join rooms.</summary>
-	/// <returns><see langword="null" /> when allowed, otherwise a denial naming the missing privilege.</returns>
-	internal Result<RoomOutcome>? RequireJoin()
+	/// <returns><see langword="null" /> when allowed, otherwise a denial.</returns>
+	internal RoomOutcome? RequireJoin()
 	{
 		return _global.Allows(UserPrivileges.Player)
 			? null
-			: Result<RoomOutcome>.Denied(UserPrivileges.Player);
+			: RoomOutcome.Denied;
 	}
 
 	/// <summary>Closes the room, evicting its players, ending its round and forgetting it.</summary>
@@ -137,7 +137,7 @@ public readonly struct ScopedRoom
 	///     Ok, or a denial; a room that has closed already returns Ok and does nothing.
 	/// </returns>
 	/// <remarks>The caller needs <see cref="RoomPrivileges.RoomClose" />, checked before the room is entered.</remarks>
-	public Task<Result<RoomOutcome>> CloseAsync()
+	public Task<RoomOutcome> CloseAsync()
 	{
 		return Task.FromResult(Require(RoomPrivileges.RoomClose) ?? Room.Close(Actor.Record));
 	}

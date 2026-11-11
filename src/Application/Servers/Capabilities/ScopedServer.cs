@@ -17,9 +17,9 @@ public readonly struct ScopedServer
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Privileges, required);
+		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
 	/// <summary>Creates a server scope for a connection.</summary>
@@ -66,7 +66,7 @@ public readonly struct ScopedServer
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Moderator" />; only open osu! clients receive the notification.
 	/// </remarks>
-	public (Result<ServerOutcome> Result, int Sent) Notify(string text, UserRecord to)
+	public (ServerOutcome Result, int Sent) Notify(string text, UserRecord to)
 	{
 		return Denied() is { } denied ? (denied, 0) : (ServerOutcome.Ok, Server.Notify(text, to));
 	}
@@ -78,7 +78,7 @@ public readonly struct ScopedServer
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Moderator" />; only open osu! clients receive the notification.
 	/// </remarks>
-	public (Result<ServerOutcome> Result, int Sent) Notify(string text, IReadOnlyCollection<int> to)
+	public (ServerOutcome Result, int Sent) Notify(string text, IReadOnlyCollection<int> to)
 	{
 		return Denied() is { } denied ? (denied, 0) : (ServerOutcome.Ok, Server.Notify(text, to));
 	}
@@ -89,23 +89,16 @@ public readonly struct ScopedServer
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Moderator" />; only open osu! clients receive the notification.
 	/// </remarks>
-	public (Result<ServerOutcome> Result, int Sent) NotifyAll(string text)
+	public (ServerOutcome Result, int Sent) NotifyAll(string text)
 	{
 		return Denied() is { } denied ? (denied, 0) : (ServerOutcome.Ok, Server.NotifyAll(text));
 	}
 
-	private Result<ServerOutcome>? Denied()
+	private ServerOutcome? Denied()
 	{
-		return Require(UserPrivileges.Moderator) is { } missing
-			? Result<ServerOutcome>.Denied(missing)
+		return Lacks(UserPrivileges.Moderator)
+			? ServerOutcome.Denied
 			: null;
 	}
 
-	/// <summary>Checks whether the caller holds the privileges an action on this server needs.</summary>
-	/// <param name="required">The privileges the action needs.</param>
-	/// <returns><see langword="null" /> when all are in effect; otherwise the privileges that are missing.</returns>
-	internal UserPrivileges? Needs(UserPrivileges required)
-	{
-		return Require(required);
-	}
 }

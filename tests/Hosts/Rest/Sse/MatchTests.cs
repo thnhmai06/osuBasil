@@ -33,7 +33,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 
 			Assert.Equal(401, noToken);
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPrivileges.Tournament, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)envelope!["errors"]!["code"]!);
 			Assert.Equal(200, ok);
 			Assert.Equal(422, tooMany);
 		}

@@ -55,7 +55,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.Equal(5, room.Slots.Find(target.Record)!.Index);
 			Assert.Equal(5, Assert.IsType<RoomPlayerMoved>(app.RoomEvents.Events[^1]).To);
 			return;
@@ -96,7 +96,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.Equal(5, room.Slots.Find(target.Record)!.Index);
 			Assert.IsType<RoomSlotsArranged>(app.RoomEvents.Events[^1]);
 			return;
@@ -133,7 +133,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.Equal(GameTeam.Blue, room.Slots.Find(target.Record)!.Team);
 			Assert.IsType<RoomSlotTeamChanged>(app.RoomEvents.Events[^1]);
 			return;
@@ -167,7 +167,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.True(room.Slots.At(6)!.Locked);
 			Assert.IsType<RoomSlotLockChanged>(app.RoomEvents.Events[^1]);
 			return;
@@ -201,7 +201,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.True(room.Slots.Locked);
 			Assert.IsType<RoomLockChanged>(app.RoomEvents.Events[^1]);
 			return;
@@ -235,7 +235,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.Equal("renamed", room.Settings.Name);
 			Assert.IsType<RoomSettingsChanged>(app.RoomEvents.Events[^1]);
 			return;
@@ -270,7 +270,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.NotNull(room.Rounds.LastRound);
 			Assert.Equal(1, room.Rounds.LastRound!.Index);
 			Assert.IsType<RoomRoundStarted>(app.RoomEvents.Events[^1]);
@@ -335,7 +335,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.Null(room.Rounds.CurrentRound);
 			Assert.IsType<RoomRoundAborted>(app.RoomEvents.Events[^1]);
 			return;
@@ -369,7 +369,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.Null(room.Slots.Find(target.Record));
 			Assert.IsType<RoomPlayerKicked>(app.RoomEvents.Events[^1]);
 			return;
@@ -403,7 +403,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.True(room.Members.Banned.Contains(target.Record));
 			Assert.Null(room.Slots.Find(target.Record));
 			Assert.IsType<RoomPlayerBanned>(app.RoomEvents.Events[^1]);
@@ -440,7 +440,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.False(room.Members.Banned.Contains(target.Record));
 			Assert.IsType<RoomPlayerUnbanned>(app.RoomEvents.Events[^1]);
 			return;
@@ -473,7 +473,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			var invited = Assert.IsType<RoomPlayerInvited>(app.RoomEvents.Events[^1]);
 			Assert.Equal(setup.Outsider.Record, invited.Player);
 			return;
@@ -507,7 +507,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.True(room.Authority.Referees.Contains(target));
 			Assert.IsType<RoomRefereeAdded>(app.RoomEvents.Events[^1]);
 			return;
@@ -542,7 +542,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.False(room.Authority.Referees.Contains(target));
 			Assert.IsType<RoomRefereeRemoved>(app.RoomEvents.Events[^1]);
 			return;
@@ -575,7 +575,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.Same(setup.Player, room.Authority.Host);
 			Assert.IsType<RoomHostChanged>(app.RoomEvents.Events[^1]);
 			return;
@@ -608,7 +608,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.Allowed)
 		{
-			Assert.Equal(RoomOutcome.Ok, result.Outcome);
+			Assert.Equal(RoomOutcome.Ok, result);
 			Assert.True(room.IsClosed);
 			Assert.IsType<LobbyRoomClosed>(app.LobbyEvents.Events[^1]);
 			return;
@@ -620,18 +620,18 @@ public sealed class ScopedRoomAuthorityTests
 		Assert.Equal(lobbyEvents, app.LobbyEvents.Events.Count);
 	}
 
-	private static void AssertRefused(Result<RoomOutcome> result, RoomExpectation expected)
+	private static void AssertRefused(RoomOutcome result, RoomExpectation expected)
 	{
-		Assert.False(result.IsOk);
+		Assert.False(result == RoomOutcome.Ok);
 
 		if (expected == RoomExpectation.RoomJoinDenied)
 		{
-			Assert.Equal(UserPrivileges.Player, result.Missing);
+			Assert.Equal(RoomOutcome.Denied, result);
 			return;
 		}
 
-		Assert.Equal(RoomOutcome.RoleDenied, result.Outcome);
-		Assert.Null(result.Missing);
+		Assert.Equal(RoomOutcome.RoleDenied, result);
+		Assert.NotEqual(RoomOutcome.Denied, result);
 	}
 
 	#region Outcomes about the target
@@ -644,7 +644,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(setup.Creator.Record.Id));
 
-		Assert.Equal(RoomOutcome.IsCreator, result.Outcome);
+		Assert.Equal(RoomOutcome.IsCreator, result);
 		Assert.DoesNotContain(setup.Creator.Record, setup.Room.Authority.Referees);
 	}
 
@@ -656,7 +656,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(setup.Referee.Record.Id));
 
-		Assert.Equal(RoomOutcome.AlreadyReferee, result.Outcome);
+		Assert.Equal(RoomOutcome.AlreadyReferee, result);
 	}
 
 	[Fact]
@@ -667,13 +667,13 @@ public sealed class ScopedRoomAuthorityTests
 		for (var index = 1; index < RoomAuthority.MaxReferees; index++)
 		{
 			var user = await RoomFixture.PlayerAsync(app, $"Referee{index}");
-			Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(user.Record.Id))).IsOk);
+			Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(user.Record.Id))) == RoomOutcome.Ok);
 		}
 
 		var ninth = await RoomFixture.PlayerAsync(app, "Ninth");
 		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(ninth.Record.Id));
 
-		Assert.Equal(RoomOutcome.TooManyReferees, result.Outcome);
+		Assert.Equal(RoomOutcome.TooManyReferees, result);
 		Assert.Equal(RoomAuthority.MaxReferees, setup.Room.Authority.Referees.Count);
 	}
 
@@ -685,7 +685,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(UserReference.ById(setup.Outsider.Record.Id));
 
-		Assert.Equal(RoomOutcome.NotReferee, result.Outcome);
+		Assert.Equal(RoomOutcome.NotReferee, result);
 	}
 
 	[Fact]
@@ -696,7 +696,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Outsider);
 
-		Assert.Equal(RoomOutcome.NotInRoom, result.Outcome);
+		Assert.Equal(RoomOutcome.NotInRoom, result);
 		Assert.Same(setup.Host, setup.Room.Authority.Host);
 	}
 

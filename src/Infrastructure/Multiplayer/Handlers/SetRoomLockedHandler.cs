@@ -6,12 +6,12 @@ using Mediator;
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Runs a <see cref="SetRoomLocked" /> on the room for the connection that asked.</summary>
-internal sealed class SetRoomLockedHandler : IRequestHandler<SetRoomLocked, Result<RoomOutcome>>
+internal sealed class SetRoomLockedHandler : IRequestHandler<SetRoomLocked, RoomOutcome>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetRoomLocked request, CancellationToken ct)
+	public ValueTask<RoomOutcome> Handle(SetRoomLocked request, CancellationToken ct)
 	{
-		return new ValueTask<Result<RoomOutcome>>(
+		return new ValueTask<RoomOutcome>(
 			request.Room.ScopeTo(request.Actor).Settings.SetLockedAsync(request.Locked));
 	}
 }

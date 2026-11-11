@@ -12,10 +12,10 @@ public static class CommandReporting
 	/// <param name="result">What the behaviour returned.</param>
 	/// <param name="confirmation">The line to print on success.</param>
 	/// <returns>The exit code.</returns>
-	public static int Report<TOutcome>(this CommandCall call, Result<TOutcome> result, string confirmation)
+	public static int Report<TOutcome>(this CommandCall call, TOutcome result, string confirmation)
 		where TOutcome : struct, Enum
 	{
-		if (result.IsOk)
+		if (OutcomeErrors.IsOk(result))
 		{
 			call.Output.Ok(confirmation);
 			return ExitCodes.Success;
@@ -25,12 +25,9 @@ public static class CommandReporting
 	}
 
 	/// <summary>Prints the refusal in a result that is not ok.</summary>
-	public static int Refuse<TOutcome>(this CommandCall call, Result<TOutcome> result) where TOutcome : struct, Enum
+	public static int Refuse<TOutcome>(this CommandCall call, TOutcome result) where TOutcome : struct, Enum
 	{
-		// The console skips the privilege checks, so a missing privilege only happens through a bug; it is still shown.
-		var info = result.Missing is null
-			? OutcomeErrors.Describe(result.Outcome)
-			: new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, ErrorKind.PrivilegeDenied);
+		var info = OutcomeErrors.Describe(result);
 		call.Output.Error(info.Code, Humanize(info.Code));
 		return info.Kind == ErrorKind.Invalid ? ExitCodes.Invalid : ExitCodes.Refused;
 	}

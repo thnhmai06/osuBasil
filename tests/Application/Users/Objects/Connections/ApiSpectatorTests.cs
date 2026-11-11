@@ -8,6 +8,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
+using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Users.Tests.Objects.Connections;
 
@@ -44,7 +45,7 @@ public sealed class ApiSpectatorTests
 
 		var result = await host.ScopeTo(watcher).SpectateAsync();
 
-		Assert.Equal(ConnectionOutcome.Ok, result.Outcome);
+		Assert.Equal(ConnectionOutcome.Ok, result);
 		Assert.Contains(watcher, host.Spectators);
 		Assert.True(host.HasApiSpectators);
 	}
@@ -57,8 +58,8 @@ public sealed class ApiSpectatorTests
 
 		var result = await host.ScopeTo(watcher).SpectateAsync();
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == ConnectionOutcome.Ok);
+		Assert.Equal(ConnectionOutcome.Denied, result);
 		Assert.False(host.HasApiSpectators);
 	}
 
@@ -67,11 +68,11 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await app.Users.Of(watcher.Record).ScopeTo(host).Relationships.BlockAsync()).IsOk);
+		Assert.True((await app.Users.Of(watcher.Record).ScopeTo(host).Relationships.BlockAsync()) == UserOutcome.Ok);
 
 		var result = await host.ScopeTo(watcher).SpectateAsync();
 
-		Assert.Equal(ConnectionOutcome.Blocked, result.Outcome);
+		Assert.Equal(ConnectionOutcome.Blocked, result);
 		Assert.False(host.HasApiSpectators);
 	}
 
@@ -81,7 +82,7 @@ public sealed class ApiSpectatorTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var other = await RoomFixture.PlayerAsync(app, "OtherWatcher");
-		Assert.True((await host.ScopeTo(other).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(other).SpectateAsync()) == ConnectionOutcome.Ok);
 
 		Assert.False(host.ScopeTo(host).PublishFrames(Bundle()));
 		Assert.Empty(app.UserEvents.Events.OfType<UserSpectatorFramesReceived>());
@@ -92,7 +93,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
 		var bundle = Bundle();
 
 		Assert.True(host.ScopeTo(host).PublishFrames(bundle));
@@ -107,7 +108,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
 
 		Assert.False(host.ScopeTo(watcher).PublishFrames(Bundle()));
 	}
@@ -117,7 +118,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
 
 		app.Users.Close(watcher, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),

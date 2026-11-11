@@ -25,8 +25,8 @@ public sealed class RoomConcurrencyTests
 			Task.Run(() => setup.Room.ScopeTo(first).Members.JoinAsync("")),
 			Task.Run(() => setup.Room.ScopeTo(second).Members.JoinAsync("")));
 
-		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Ok));
-		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Full));
+		Assert.Equal(1, results.Count(result => result == RoomOutcome.Ok));
+		Assert.Equal(1, results.Count(result => result == RoomOutcome.Full));
 		Assert.Equal(1, setup.Room.Slots.Count(slot => slot.Player is not null && slot.Index == 4));
 	}
 
@@ -40,7 +40,7 @@ public sealed class RoomConcurrencyTests
 			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Host)),
 			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Authority.SetHostAsync(setup.Player)));
 
-		Assert.All(results, result => Assert.Equal(RoomOutcome.Ok, result.Outcome));
+		Assert.All(results, result => Assert.Equal(RoomOutcome.Ok, result));
 		var host = setup.Room.Authority.Host;
 		Assert.True(ReferenceEquals(host, setup.Host) || ReferenceEquals(host, setup.Player));
 		Assert.Same(host, setup.Room.Slots.Find(host)!.Player);
@@ -61,7 +61,7 @@ public sealed class RoomConcurrencyTests
 				Task.Run(() => setup.SuspendedRoom.ScopeTo(racer).Members
 					.JoinAsync("")));
 
-			Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Ok));
+			Assert.Equal(1, results.Count(result => result == RoomOutcome.Ok));
 			Assert.Equal(1,
 				new[] { setup.Room, setup.SuspendedRoom }.Count(room => room.Slots.Find(racer) is not null));
 
@@ -81,8 +81,8 @@ public sealed class RoomConcurrencyTests
 			Task.Run(() => setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync()),
 			Task.Run(() => setup.Room.ScopeTo(setup.Referee).Rounds.StartAsync()));
 
-		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.Ok));
-		Assert.Equal(1, results.Count(result => result.Outcome == RoomOutcome.InProgress));
+		Assert.Equal(1, results.Count(result => result == RoomOutcome.Ok));
+		Assert.Equal(1, results.Count(result => result == RoomOutcome.InProgress));
 		Assert.Single(app.RoomEvents.Events.OfType<RoomRoundStarted>());
 	}
 
@@ -97,19 +97,19 @@ public sealed class RoomConcurrencyTests
 			var owner = await RoomFixture.PlayerAsync(app, $"Owner{attempt}");
 			var (room, opened) = await app.Lobby.ScopeTo(owner).OpenRoomAsync($"race {attempt}", "", RoomSource.Game,
 				false);
-			Assert.True(opened.IsOk);
+			Assert.True(opened == RoomOutcome.Ok);
 			var joiner = await RoomFixture.PlayerAsync(app, $"Joiner{attempt}");
 
 			var results = await Task.WhenAll(
 				Task.Run(() => room!.ScopeTo(joiner).Members.JoinAsync("")),
 				Task.Run(() => room!.ScopeTo(owner).CloseAsync()));
 
-			Assert.Contains(results[0].Outcome, new[] { RoomOutcome.Ok, RoomOutcome.RoomClosed });
+			Assert.Contains(results[0], new[] { RoomOutcome.Ok, RoomOutcome.RoomClosed });
 			Assert.True(room!.IsClosed);
 			Assert.Null(room.Slots.Find(joiner));
 			Assert.Null(app.Lobby.RoomOf(joiner));
 			Assert.True((await setup.SuspendedRoom.ScopeTo(joiner).Members
-				.JoinAsync("")).IsOk);
+				.JoinAsync("")) == RoomOutcome.Ok);
 			await app.Lobby.ReleaseAsync(joiner);
 		}
 	}

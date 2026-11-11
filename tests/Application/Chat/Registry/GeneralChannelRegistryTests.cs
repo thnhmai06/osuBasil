@@ -1,6 +1,7 @@
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Chat.Tests.Registry;
 
@@ -20,7 +21,7 @@ public sealed class GeneralChannelRegistryTests
 			Name = name, Value = new GeneralChannelData { ReadPrivileges = read, Visible = visible }
 		};
 		Assert.True(
-			(await app.Server.ScopeTo(admin).Channels.CreateAsync(record)).IsOk);
+			(await app.Server.ScopeTo(admin).Channels.CreateAsync(record)) == ServerOutcome.Ok);
 	}
 
 	[Fact]

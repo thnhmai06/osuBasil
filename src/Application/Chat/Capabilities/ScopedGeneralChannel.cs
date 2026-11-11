@@ -18,9 +18,9 @@ public readonly struct ScopedGeneralChannel
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Privileges, required);
+		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
 	/// <summary>Creates a general-channel scope for a connection.</summary>
@@ -38,26 +38,26 @@ public readonly struct ScopedGeneralChannel
 
 	/// <summary>Changes the settings of this general channel.</summary>
 	/// <param name="change">The settings to change.</param>
-	/// <returns>Ok, a denial that names the missing privileges, or Closed when the channel has closed.</returns>
+	/// <returns>Ok, Denied, or Closed when the channel has closed.</returns>
 	/// <remarks>
 	///     Requires <see cref="UserPrivileges.Moderator" />. Members who may no longer read the channel are removed;
 	///     one <see cref="ChannelConfigured" /> reports the change and removed members.
 	/// </remarks>
 	/// <exception cref="ArgumentException">A privilege or the topic in <paramref name="change" /> is invalid.</exception>
-	public async Task<Result<ChannelOutcome>> ConfigureAsync(GeneralChannelChange change)
+	public async Task<ChannelOutcome> ConfigureAsync(GeneralChannelChange change)
 	{
-		if (Require(UserPrivileges.Moderator) is { } missing) return Result<ChannelOutcome>.Denied(missing);
+		if (Lacks(UserPrivileges.Moderator)) return ChannelOutcome.Denied;
 
 		var now = Channel.Context.Clock.GetUtcNow();
 		return await Channel.ConfigureAsync(change, member => member.EffectivePrivileges(now));
 	}
 
 	/// <summary>Closes and deletes this general channel.</summary>
-	/// <returns>Ok, or a denial that names the missing privileges.</returns>
+	/// <returns>Ok, or Denied.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Moderator" />; announces <see cref="ChannelClosed" />.</remarks>
-	public async Task<Result<ChannelOutcome>> DeleteAsync()
+	public async Task<ChannelOutcome> DeleteAsync()
 	{
-		if (Require(UserPrivileges.Moderator) is { } missing) return Result<ChannelOutcome>.Denied(missing);
+		if (Lacks(UserPrivileges.Moderator)) return ChannelOutcome.Denied;
 
 		return await Channel.DeleteAsync();
 	}

@@ -19,9 +19,9 @@ public readonly struct ScopedScoreSubmitter
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Privileges, required);
+		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
 	private readonly ScoreSubmitter _submitter;
@@ -55,15 +55,15 @@ public readonly struct ScopedScoreSubmitter
 	///     recorded login. A submission whose checksum was already stored is refused. Only a passed play keeps its
 	///     replay, and only when the replay is at least 24 bytes long.
 	/// </remarks>
-	public async Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
+	public async Task<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection)> SubmitAsync(
 		Submission submission,
 		BeatmapChecksums? beatmap,
 		SubmittedClient client,
 		Stream? replay,
 		CancellationToken ct = default)
 	{
-		if (Require(UserPrivileges.Player) is { } missing)
-			return (Result<ScoreSubmissionOutcome>.Denied(missing), null);
+		if (Lacks(UserPrivileges.Player))
+			return (ScoreSubmissionOutcome.Denied, null);
 
 		return await _submitter.SubmitAsync(Actor, submission, beatmap, client, replay, ct);
 	}

@@ -19,4 +19,4 @@ public sealed record ConfigureGeneralChannel(Connection Actor, string Name, Gene
 /// <summary>The answer to a request that acts on a named general channel.</summary>
 /// <param name="Result">The outcome; NotFound when no open channel has the name.</param>
 /// <param name="Channel">The channel, or <see langword="null" /> when it was not found or the actor was refused.</param>
-public sealed record GeneralChannelAnswer(Result<ChannelOutcome> Result, GeneralChannel? Channel);
+public sealed record GeneralChannelAnswer(ChannelOutcome Result, GeneralChannel? Channel);

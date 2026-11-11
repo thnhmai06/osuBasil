@@ -2,6 +2,7 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Services;
 using Basil.Host.Rest.Http;
 using Mediator;
+using Basil.Application.Beatmaps.Objects;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -42,7 +43,7 @@ internal static class RulesetRoutes
 	private static async Task<IResult> RulesetVersionAsync(HttpContext context, ISender sender)
 	{
 		var (result, versions) = await sender.Send(new GetRulesetVersion(context.Connection()), context.RequestAborted);
-		return result.IsOk ? Api.Ok(versions!) : result.Refusal();
+		return result == RulesetOutcome.Ok ? Api.Ok(versions!) : result.Refusal();
 	}
 
 	private static async Task<IResult> UpdateAsync(HttpContext context, ISender sender)
@@ -50,7 +51,7 @@ internal static class RulesetRoutes
 		try
 		{
 			var (result, stage) = await sender.Send(new UpdateRulesets(context.Connection()), context.RequestAborted);
-			return result.IsOk
+			return result == RulesetOutcome.Ok
 				? Api.Ok(new UpdateBody(stage!.Version, stage.Staged, stage.Staged, stage.Staged))
 				: result.Refusal();
 		}
@@ -63,7 +64,7 @@ internal static class RulesetRoutes
 	private static async Task<IResult> ReloadAsync(HttpContext context, ISender sender)
 	{
 		var result = await sender.Send(new ReloadBeatmaps(context.Connection()), context.RequestAborted);
-		return result.IsOk ? Api.Accepted("Reload started") : result.Refusal();
+		return result == RulesetOutcome.Ok ? Api.Accepted("Reload started") : result.Refusal();
 	}
 
 	/// <summary>The versions in use.</summary>

@@ -19,11 +19,11 @@ public readonly struct ScopedServerSettings
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the settings.</returns>
 	/// <remarks>Requires <see cref="UserPrivileges.Developer" />.</remarks>
-	public async Task<(Result<ServerOutcome> Result, ServerSettings? Settings)> GetAsync(
+	public async Task<(ServerOutcome Result, ServerSettings? Settings)> GetAsync(
 		CancellationToken ct = default)
 	{
-		return _scoped.Needs(UserPrivileges.Developer) is { } missing
-			? (Result<ServerOutcome>.Denied(missing), null)
+		return _scoped.Lacks(UserPrivileges.Developer)
+			? (ServerOutcome.Denied, null)
 			: (ServerOutcome.Ok, await _scoped.Server.Settings.GetAsync(ct));
 	}
 
@@ -34,15 +34,15 @@ public readonly struct ScopedServerSettings
 	///     Requires <see cref="UserPrivileges.Developer" />. Changing the privileges that new accounts
 	///     receive also requires every privilege of the new set to be in effect for the caller, as granting does.
 	/// </remarks>
-	public async Task<Result<ServerOutcome>> UpdateAsync(ServerSettings settings)
+	public async Task<ServerOutcome> UpdateAsync(ServerSettings settings)
 	{
-		if (_scoped.Needs(UserPrivileges.Developer) is { } missing)
-			return Result<ServerOutcome>.Denied(missing);
+		if (_scoped.Lacks(UserPrivileges.Developer))
+			return ServerOutcome.Denied;
 
 		var current = await _scoped.Server.Settings.GetAsync();
 		if (settings.Accounts.DefaultPrivileges != current.Accounts.DefaultPrivileges &&
-		    _scoped.Needs(settings.Accounts.DefaultPrivileges) is { } ungrantable)
-			return Result<ServerOutcome>.Denied(ungrantable);
+		    _scoped.Lacks(settings.Accounts.DefaultPrivileges))
+			return ServerOutcome.Denied;
 
 		return await _scoped.Server.Settings.UpdateAsync(settings);
 	}

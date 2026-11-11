@@ -42,7 +42,7 @@ public sealed class RoomAnnouncerTests
 	private static async Task<RoomRoundStarted> StartRoundAsync(BotHarness bot, StaffRoom staff)
 	{
 		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))).IsOk);
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))) == RoomOutcome.Ok);
 		Assert.True((await bot.TypeAsync(staff.Creator, "#osu", "!mp start")).Succeeded);
 		return Assert.Single(bot.App.RoomEvents.Events.OfType<RoomRoundStarted>());
 	}

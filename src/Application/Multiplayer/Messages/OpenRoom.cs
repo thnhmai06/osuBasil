@@ -26,4 +26,4 @@ public sealed record OpenRoom(
 /// <summary>The answer to <see cref="OpenRoom" />.</summary>
 /// <param name="Room">The opened room, or <see langword="null" /> when it was refused.</param>
 /// <param name="Result">The outcome of opening it.</param>
-public sealed record OpenedRoom(Room? Room, Result<RoomOutcome> Result);
+public sealed record OpenedRoom(Room? Room, RoomOutcome Result);

@@ -19,7 +19,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     A user may read their own sessions. Reading another account's sessions needs
 	///     <see cref="UserPrivileges.Moderator" /> and is recorded in the moderation log.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, Page<SessionRecord>? Sessions)> ListAsync(PageRequest page,
+	public async Task<(UserOutcome Result, Page<SessionRecord>? Sessions)> ListAsync(PageRequest page,
 		SessionState state = SessionState.Any, IReadOnlyList<SessionType>? types = null,
 		CancellationToken ct = default)
 	{
@@ -39,7 +39,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     <see cref="UserPrivileges.Moderator" /> and is recorded in the moderation log. A session that
 	///     does not belong to this account is not found.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, SessionRecord? Session)> GetAsync(long id,
+	public async Task<(UserOutcome Result, SessionRecord? Session)> GetAsync(long id,
 		CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
@@ -59,7 +59,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     <see cref="UserPrivileges.Moderator" /> and is recorded in the moderation log. A session that
 	///     does not belong to this account is not found.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
+	public async Task<(UserOutcome Result, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
 		long id, PageRequest page, CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
@@ -77,7 +77,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     osu! client is disconnected but can sign in again with its password. Closing another account's session needs
 	///     <see cref="UserPrivileges.Owner" /> and hierarchy.
 	/// </remarks>
-	public async Task<Result<UserOutcome>> CloseAsync(long id)
+	public async Task<UserOutcome> CloseAsync(long id)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Owner);
 		return user is null ? refusal : await user.Sessions.CloseAsync(id);
@@ -92,7 +92,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     Closing another account's sessions needs <see cref="UserPrivileges.Owner" /> and hierarchy, and is
 	///     recorded in the moderation log.
 	/// </remarks>
-	public async Task<Result<UserOutcome>> CloseAllAsync(bool keepCurrent = true)
+	public async Task<UserOutcome> CloseAllAsync(bool keepCurrent = true)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Owner);
 		return user is null ? refusal : await user.Sessions.CloseAllAsync(scoped.Actor, keepCurrent);
@@ -105,7 +105,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	///     Only the account's own user may open a key. The key is shown only here; closing the key's session stops it
 	///     working and leaves the account's other IRC clients alone.
 	/// </remarks>
-	public async Task<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)> OpenIrcAsync(string label)
+	public async Task<(UserOutcome Result, string? Key, SessionRecord? Session)> OpenIrcAsync(string label)
 	{
 		var user = await scoped.ResolveAsync();
 		if (user is not null && user.Record.IsBasilBot()) return (UserOutcome.SystemAccount, null, null);
@@ -117,7 +117,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	}
 
 	// Another account's sessions need the privilege; nothing is read before it is held.
-	private async Task<(User? User, Result<UserOutcome> Refusal)> GuardAsync(UserPrivileges needed,
+	private async Task<(User? User, UserOutcome Refusal)> GuardAsync(UserPrivileges needed,
 		CancellationToken ct = default)
 	{
 		if (!scoped.IsSelf && scoped.Deny(needed) is { } denied) return (null, denied);

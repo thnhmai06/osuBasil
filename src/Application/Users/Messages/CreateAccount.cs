@@ -14,4 +14,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="PasswordHash">The hash of the password of the new account.</param>
 /// <param name="Privileges">The privileges to grant, or null for the server's default.</param>
 public sealed record CreateAccount(Connection Actor, UserData Data, Md5 PasswordHash, UserPrivileges? Privileges)
-	: IRequest<(UserRecord? User, Result<UserOutcome> Result)>;
+	: IRequest<(UserRecord? User, UserOutcome Result)>;

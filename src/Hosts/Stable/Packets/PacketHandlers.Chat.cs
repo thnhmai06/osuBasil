@@ -15,7 +15,7 @@ internal sealed partial class PacketHandlers
 	private async Task JoinChannelAsync(StableConnection osu, string name, CancellationToken ct)
 	{
 		var result = await sender.Send(new JoinChannel(osu, TargetOf(name)), ct);
-		if (!result.IsOk && result.Outcome != ChannelOutcome.AlreadyMember)
+		if (result != ChannelOutcome.Ok && result != ChannelOutcome.AlreadyMember)
 			outbox.Send(osu, writer => writer.ChannelKick(name));
 	}
 
@@ -67,12 +67,12 @@ internal sealed partial class PacketHandlers
 		if (!await MayChatAsync(osu, ct)) return;
 		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record.Id), Limit(message.Text)),
 			ct);
-		switch (result.Outcome)
+		switch (result)
 		{
-			case ChannelOutcome.Blocked when result.Missing is null:
+			case ChannelOutcome.Blocked:
 				outbox.Send(osu, writer => writer.UserDmBlocked(message.Recipient));
 				break;
-			case ChannelOutcome.TargetSilenced when result.Missing is null:
+			case ChannelOutcome.TargetSilenced:
 				outbox.Send(osu, writer => writer.TargetSilenced(message.Recipient));
 				break;
 		}

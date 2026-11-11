@@ -17,10 +17,10 @@ public readonly struct ScopedServerSeasonals
 		_scoped = scoped;
 	}
 
-	private Result<ServerOutcome>? Denied()
+	private ServerOutcome? Denied()
 	{
-		return _scoped.Needs(UserPrivileges.Owner) is { } missing
-			? Result<ServerOutcome>.Denied(missing)
+		return _scoped.Lacks(UserPrivileges.Owner)
+			? ServerOutcome.Denied
 			: null;
 	}
 
@@ -29,7 +29,7 @@ public readonly struct ScopedServerSeasonals
 	/// <param name="image">The image.</param>
 	/// <returns>The outcome and, when successful, the reference of the image.</returns>
 	/// <exception cref="ArgumentException">The name is not valid.</exception>
-	public async Task<(Result<ServerOutcome> Result, ContentReference? Image)> CreateAsync(string name,
+	public async Task<(ServerOutcome Result, ContentReference? Image)> CreateAsync(string name,
 		Stream image)
 	{
 		if (Denied() is { } denied) return (denied, null);
@@ -40,7 +40,7 @@ public readonly struct ScopedServerSeasonals
 	/// <summary>Deletes a seasonal background.</summary>
 	/// <param name="image">The reference of the image.</param>
 	/// <returns>The outcome.</returns>
-	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference image)
+	public async Task<ServerOutcome> DeleteAsync(ContentReference image)
 	{
 		if (Denied() is { } denied) return denied;
 

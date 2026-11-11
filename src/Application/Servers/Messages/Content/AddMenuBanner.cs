@@ -22,4 +22,4 @@ public sealed record AddMenuBanner(
 	Stream Image,
 	Uri Url,
 	DateTimeOffset? StartsAt,
-	DateTimeOffset? EndsAt) : IRequest<(Result<ServerOutcome> Result, MenuBanner? Banner)>;
+	DateTimeOffset? EndsAt) : IRequest<(ServerOutcome Result, MenuBanner? Banner)>;

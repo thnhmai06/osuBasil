@@ -8,10 +8,10 @@ namespace Basil.Infrastructure.Servers.Handlers;
 
 /// <summary>Handles <see cref="AddMenuBanner" /> with the privileges of the sending connection.</summary>
 internal sealed class AddMenuBannerHandler(Server server)
-	: IRequestHandler<AddMenuBanner, (Result<ServerOutcome> Result, MenuBanner? Banner)>
+	: IRequestHandler<AddMenuBanner, (ServerOutcome Result, MenuBanner? Banner)>
 {
 	/// <inheritdoc />
-	public async ValueTask<(Result<ServerOutcome> Result, MenuBanner? Banner)> Handle(AddMenuBanner request,
+	public async ValueTask<(ServerOutcome Result, MenuBanner? Banner)> Handle(AddMenuBanner request,
 		CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Banners.CreateAsync(request.Name, request.Image, request.Url,

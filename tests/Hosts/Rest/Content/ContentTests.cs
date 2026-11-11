@@ -24,7 +24,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 			var (noToken, _) = await anon.CallAsync(HttpMethod.Get, "/v1/settings");
 
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)envelope!["errors"]!["code"]!);
 			Assert.Equal(403, deniedPatch);
 			Assert.Equal(401, noToken);
 		}

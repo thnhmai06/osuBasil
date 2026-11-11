@@ -26,7 +26,7 @@ that owns it. A row that carries data to the database is not a Domain model; it 
 
 ```text
 Basil.Domain                     the system at rest                              -> (nothing)
-Basil.Application.Common         shared contracts, Result<T>, events, Mediator    -> Domain, Mediator.Abstractions
+Basil.Application.Common         shared contracts, events, Mediator         -> Domain, Mediator.Abstractions
 Basil.Infrastructure.Common      shared database, files, event dispatcher         -> Application.Common, Domain
 Basil.Application.<Module>       contracts and runtime objects of one module      -> Domain, Application.Common,
                                                                                      the Application projects it uses
@@ -100,7 +100,7 @@ A message is a Mediator **request**: a `record` in the owning module's Applicati
 `IRequest<TResponse>` and carries the `Connection` of the caller as `Actor` (a login carries none, because it creates the
 `Connection`). Mediator maps each request type to exactly one handler, so the host never names a handler.
 
-* A command changes state and answers `Result<TOutcome>` (the outcome enum of the object it acts on); a query reads and
+* A command changes state and answers the outcome enum of the object it acts on; a query reads and
   answers a view or `null`. Both are requests; the name says which (`PostChatMessage`, `GetChannelMembers`).
 * A message addresses things by identity, not by a transport's spelling: chat uses a `ChatTarget` (a general channel's
   name, a room's id, a user's id), never an IRC `#name` or an osu! alias. The host translates its own spelling.
@@ -131,7 +131,7 @@ sequenceDiagram
     H->>M: Send(message) carrying the Connection
     M->>X: the one handler for that message type
     X->>O: ScopeTo(actor), call behaviour
-    O-->>X: Result<TOutcome>
+    O-->>X: Outcome
     O->>Q: enqueue event (under the object's lock, not awaited)
     X-->>H: result
     Q-->>H: dispatcher publishes the Notification outside the lock
@@ -178,7 +178,7 @@ privileges. `tests/Architecture/HostGraphTests.cs` enforces the rule by reflecti
   Command with no actor and returns the `Connection`. On Rest the token is resolved by a Query to a `Connection` that is
   attached to the request; on Stable the polling request carries the `osu-token`; on IRC the socket keeps the
   `Connection` after PASS and NICK. Every later message carries the `Connection` as its actor, and the handler
-  calls `object.ScopeTo(message.Actor)`; the capability computes effective privileges and checks them with `Require`.
+  calls `object.ScopeTo(message.Actor)`; the capability computes effective privileges and checks them with `Lacks`.
 * **Unforgeable.** Only the Users module creates a `Connection` (its constructor is `internal`), so a host cannot build one.
   A bad token resolves to nothing and the host answers 401 before any business message is built.
 
@@ -226,7 +226,7 @@ room.ScopeTo(actor).Members.JoinAsync(password);
 
 A capability is a `readonly struct` valid for one request. It snapshots the actor's effective privileges once, offers
 forwarding getters for the owner's parts, and calls the owner's `internal` raw mutators. Behaviours that can be refused return
-`Result<TOutcome>`. A capability is never stored in a field or property (an architecture test enforces this). System work
+the outcome enum of the object. A capability is never stored in a field or property (an architecture test enforces this). System work
 with no caller (startup, event handlers reacting for the server, announcements) calls the object directly.
 
 ## Sessions and connections

@@ -8,6 +8,7 @@ using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Basil.Application.Multiplayer.Objects;
 
 namespace Basil.Host.Rest.Sse;
 
@@ -38,7 +39,7 @@ internal static class MatchRoutes
 		var (result, found) = await sender.Send(
 			new ListMatches(context.Connection(), MatchQuery.Parse(query ?? string.Empty), page!),
 			context.RequestAborted);
-		return result.IsOk
+		return result == RoomOutcome.Ok
 			? Api.Paged(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.HasNext), page!)
 			: result.Refusal();
 	}

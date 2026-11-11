@@ -25,18 +25,18 @@ public readonly struct ScopedRoomMembers
 	///     Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword, Full or
 	///     RoomClosed.
 	/// </returns>
-	public Task<Result<RoomOutcome>> JoinAsync(string password)
+	public Task<RoomOutcome> JoinAsync(string password)
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection actor
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection actor
 			? _scoped.RequireJoin() ?? _scoped.Room.JoinClaiming(actor, password, _scoped.ManagesAnyRoom)
 			: RoomOutcome.NotInRoom);
 	}
 
 	/// <summary>Removes the caller from the room.</summary>
 	/// <returns>Ok, NotInRoom or RoomClosed; leaving again returns NotInRoom.</returns>
-	public Task<Result<RoomOutcome>> LeaveAsync()
+	public Task<RoomOutcome> LeaveAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection actor
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection actor
 			? _scoped.Room.Leave(actor)
 			: RoomOutcome.NotInRoom);
 	}
@@ -44,7 +44,7 @@ public readonly struct ScopedRoomMembers
 	/// <summary>Removes a player from the room.</summary>
 	/// <param name="player">The user to remove, named by id or name.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom or RoomClosed; a user who does not exist is not in the room.</returns>
-	public async Task<Result<RoomOutcome>> KickAsync(UserReference player)
+	public async Task<RoomOutcome> KickAsync(UserReference player)
 	{
 		if (_scoped.Require(RoomPrivileges.MembersKick) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
@@ -55,7 +55,7 @@ public readonly struct ScopedRoomMembers
 	/// <summary>Bans a user from the room and removes them if seated.</summary>
 	/// <param name="player">The user to ban, named by id or name.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
-	public async Task<Result<RoomOutcome>> BanAsync(UserReference player)
+	public async Task<RoomOutcome> BanAsync(UserReference player)
 	{
 		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
@@ -66,7 +66,7 @@ public readonly struct ScopedRoomMembers
 	/// <summary>Lifts a user's ban from the room.</summary>
 	/// <param name="player">The user to unban, named by id or name.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, NotBanned, NotInRoom for a user who does not exist, or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> UnbanAsync(UserReference player)
+	public async Task<RoomOutcome> UnbanAsync(UserReference player)
 	{
 		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
@@ -77,7 +77,7 @@ public readonly struct ScopedRoomMembers
 	/// <summary>Invites an online user to the room.</summary>
 	/// <param name="target">The invited user.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, Blocked, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> InviteAsync(User target)
+	public async Task<RoomOutcome> InviteAsync(User target)
 	{
 		if (_scoped.Require(RoomPrivileges.MembersInvite) is { } denied) return denied;
 		if (!target.IsOnline) return RoomOutcome.TargetOffline;
@@ -90,18 +90,18 @@ public readonly struct ScopedRoomMembers
 
 	/// <summary>Adds the caller's tournament connection as an observer.</summary>
 	/// <returns>Ok, IsPlayer or RoomClosed when called by a tournament connection; otherwise NotObserver.</returns>
-	public Task<Result<RoomOutcome>> ObserverJoinAsync()
+	public Task<RoomOutcome> ObserverJoinAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is TourneyConnection actor
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is TourneyConnection actor
 			? _scoped.Room.ObserverJoin(actor)
 			: RoomOutcome.NotObserver);
 	}
 
 	/// <summary>Removes the caller's tournament connection from the room's observers.</summary>
 	/// <returns>Ok, NotObserver or RoomClosed.</returns>
-	public Task<Result<RoomOutcome>> ObserverLeaveAsync()
+	public Task<RoomOutcome> ObserverLeaveAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is TourneyConnection actor
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is TourneyConnection actor
 			? _scoped.Room.ObserverLeave(actor)
 			: RoomOutcome.NotObserver);
 	}

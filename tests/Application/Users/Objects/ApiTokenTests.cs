@@ -200,7 +200,7 @@ public sealed class ApiTokenTests
 		var connection = await app.LoginAsync(user);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
 		app.Users.CloseIdle();
-		Assert.True((await app.Users.Of(user).ScopeTo(admin).DeleteAsync()).IsOk);
+		Assert.True((await app.Users.Of(user).ScopeTo(admin).DeleteAsync()) == UserOutcome.Ok);
 
 		var result = await OpenAsync(app, connection.Token);
 

@@ -5,6 +5,7 @@ using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Chat.Tests.Capabilities;
 
@@ -29,7 +30,7 @@ public sealed class ScopedChannelTests
 		};
 		var created = await app.Server.ScopeTo(actor).Channels
 			.CreateAsync(record);
-		Assert.True(created.IsOk);
+		Assert.True(created == ServerOutcome.Ok);
 		return app.Channels.Find(ChannelName)!;
 	}
 
@@ -38,7 +39,7 @@ public sealed class ScopedChannelTests
 	{
 		var user = await app.CreateUserAsync(name, "password", privileges);
 		var connection = await app.LoginAsync(user);
-		Assert.True(channel.ScopeTo(connection).Join().IsOk);
+		Assert.True(channel.ScopeTo(connection).Join() == ChannelOutcome.Ok);
 		return connection;
 	}
 
@@ -54,7 +55,7 @@ public sealed class ScopedChannelTests
 
 		var result = channel.ScopeTo(connection).Join();
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 		Assert.Contains(connection, channel.Members);
 		var joined = Assert.IsType<ChannelMemberJoined>(app.ChannelEvents.Events[^1]);
 		Assert.Equal(connection, joined.Member);
@@ -69,7 +70,7 @@ public sealed class ScopedChannelTests
 
 		var result = channel.ScopeTo(connection).Join();
 
-		Assert.Equal(ChannelOutcome.AlreadyMember, result.Outcome);
+		Assert.Equal(ChannelOutcome.AlreadyMember, result);
 		Assert.Single(channel.Members, member => member == connection);
 	}
 
@@ -83,7 +84,7 @@ public sealed class ScopedChannelTests
 
 		var result = channel.ScopeTo(connection).Join();
 
-		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
 		Assert.DoesNotContain(connection, channel.Members);
 	}
 
@@ -98,7 +99,7 @@ public sealed class ScopedChannelTests
 
 		var result = channel.ScopeTo(connection).Join();
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 	}
 
 	[Fact]
@@ -112,7 +113,7 @@ public sealed class ScopedChannelTests
 
 		var result = channel.ScopeTo(connection).Join();
 
-		Assert.Equal(ChannelOutcome.Closed, result.Outcome);
+		Assert.Equal(ChannelOutcome.Closed, result);
 	}
 
 	[Fact]
@@ -124,7 +125,7 @@ public sealed class ScopedChannelTests
 
 		var result = channel.ScopeTo(connection).Part();
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 		Assert.DoesNotContain(connection, channel.Members);
 		var parted = Assert.IsType<ChannelMemberParted>(app.ChannelEvents.Events[^1]);
 		Assert.Equal(connection, parted.Member);
@@ -140,7 +141,7 @@ public sealed class ScopedChannelTests
 
 		var result = channel.ScopeTo(connection).Part();
 
-		Assert.Equal(ChannelOutcome.NotMember, result.Outcome);
+		Assert.Equal(ChannelOutcome.NotMember, result);
 	}
 
 	#endregion
@@ -157,7 +158,7 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(connection)
 			.PostAsync("hello", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
 		Assert.Equal("hello", posted.Message.Content);
 		Assert.Equal(connection.Record, posted.Message.Author);
@@ -191,7 +192,7 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(connection)
 			.PostAsync("", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Empty, result.Outcome);
+		Assert.Equal(ChannelOutcome.Empty, result);
 		Assert.Equal(before, app.ChannelEvents.Events.Count);
 	}
 
@@ -205,7 +206,7 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(connection)
 			.PostAsync("   ", ct: TestContext.Current.CancellationToken);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ChannelOutcome.Ok);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
 		Assert.Equal("   ", posted.Message.Content);
 	}
@@ -220,7 +221,7 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(connection)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.NotMember, result.Outcome);
+		Assert.Equal(ChannelOutcome.NotMember, result);
 	}
 
 	[Fact]
@@ -234,8 +235,8 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(connection)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == ChannelOutcome.Ok);
+		Assert.Equal(ChannelOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -246,12 +247,12 @@ public sealed class ScopedChannelTests
 		var user = await app.CreateUserAsync("PostSilenced", "password");
 		app.Silence(user, app.Clock.GetUtcNow().AddHours(1));
 		var connection = await app.LoginAsync(user);
-		Assert.True(channel.ScopeTo(connection).Join().IsOk);
+		Assert.True(channel.ScopeTo(connection).Join() == ChannelOutcome.Ok);
 
 		var result = await channel.ScopeTo(connection)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Silenced, result.Outcome);
+		Assert.Equal(ChannelOutcome.Silenced, result);
 	}
 
 	[Fact]
@@ -264,7 +265,7 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(connection)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
 	}
 
 	#endregion
@@ -283,7 +284,7 @@ public sealed class ScopedChannelTests
 		var result = await pm.ScopeTo(sender)
 			.PostAsync("psst", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
 		Assert.Same(pm, posted.Channel);
 		Assert.Equal("psst", posted.Message.Content);
@@ -300,7 +301,7 @@ public sealed class ScopedChannelTests
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
 			.PostAsync("anyone?", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
 	}
 
 	[Theory]
@@ -316,7 +317,7 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(connection)
 			.PostAsync(text, ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.InvalidText, result.Outcome);
+		Assert.Equal(ChannelOutcome.InvalidText, result);
 		Assert.Equal(before, app.ChannelEvents.Events.Count);
 	}
 
@@ -364,8 +365,8 @@ public sealed class ScopedChannelTests
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == ChannelOutcome.Ok);
+		Assert.Equal(ChannelOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -382,7 +383,7 @@ public sealed class ScopedChannelTests
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Blocked, result.Outcome);
+		Assert.Equal(ChannelOutcome.Blocked, result);
 	}
 
 	[Fact]
@@ -400,7 +401,7 @@ public sealed class ScopedChannelTests
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(staff)
 			.PostAsync("notice", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 	}
 
 	[Fact]
@@ -422,8 +423,8 @@ public sealed class ScopedChannelTests
 		var fromStranger = await pm.ScopeTo(stranger)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Ok, fromFriend.Outcome);
-		Assert.Equal(ChannelOutcome.Blocked, fromStranger.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, fromFriend);
+		Assert.Equal(ChannelOutcome.Blocked, fromStranger);
 	}
 
 	[Fact]
@@ -438,7 +439,7 @@ public sealed class ScopedChannelTests
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
 			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.TargetSilenced, result.Outcome);
+		Assert.Equal(ChannelOutcome.TargetSilenced, result);
 	}
 
 	[Fact]
@@ -453,7 +454,7 @@ public sealed class ScopedChannelTests
 		var result = await app.PmChannels.Of(app.Users.Of(app.Users.Online.Keys.Single(user => user.IsBasilBot())))
 			.ScopeTo(sender).PostAsync("!help", ct: TestContext.Current.CancellationToken);
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 	}
 
 	[Fact]
@@ -466,7 +467,7 @@ public sealed class ScopedChannelTests
 
 		var result = app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(intruder).Join();
 
-		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
 	}
 
 	#endregion
@@ -482,8 +483,8 @@ public sealed class ScopedChannelTests
 
 		var result = await channel.ScopeTo(connection).General!.Value.ConfigureAsync(new GeneralChannelChange("new"));
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.False(result == ChannelOutcome.Ok);
+		Assert.Equal(ChannelOutcome.Denied, result);
 		Assert.NotEqual("new", channel.Topic);
 	}
 
@@ -501,7 +502,7 @@ public sealed class ScopedChannelTests
 		var result = await channel.ScopeTo(admin).General!.Value.ConfigureAsync(
 			new GeneralChannelChange(ReadPrivileges: UserPrivileges.Moderator));
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 		Assert.DoesNotContain(player, channel.Members);
 		Assert.Contains(moderator, channel.Members);
 		var configured = Assert.IsType<ChannelConfigured>(app.ChannelEvents.Events[^1]);
@@ -518,7 +519,7 @@ public sealed class ScopedChannelTests
 		var result =
 			await channel.ScopeTo(connection).General!.Value.DeleteAsync();
 
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.Equal(ChannelOutcome.Denied, result);
 		Assert.False(channel.IsClosed);
 		Assert.Same(channel, app.Channels.Find(ChannelName));
 	}
@@ -533,7 +534,7 @@ public sealed class ScopedChannelTests
 
 		var result = await channel.ScopeTo(admin).General!.Value.DeleteAsync();
 
-		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+		Assert.Equal(ChannelOutcome.Ok, result);
 		Assert.True(channel.IsClosed);
 		Assert.Empty(channel.Members);
 		Assert.Null(app.Channels.Find(ChannelName));

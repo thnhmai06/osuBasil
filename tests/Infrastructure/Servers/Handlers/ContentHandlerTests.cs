@@ -7,6 +7,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Servers.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Infrastructure.Servers.Tests.Handlers;
 
@@ -24,7 +25,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new SaveFaqHandler(app.Server).Handle(new SaveFaq(admin, "rules", "Be kind."), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.Equal("Be kind.", faqs.Entries["rules"]);
 	}
 
@@ -37,7 +38,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new SaveFaqHandler(app.Server).Handle(new SaveFaq(plain, "rules", "Be kind."), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Empty(faqs.Entries);
 	}
 
@@ -51,7 +52,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new DeleteFaqHandler(app.Server).Handle(new DeleteFaq(admin, "rules"), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.Empty(faqs.Entries);
 	}
 
@@ -63,7 +64,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new DeleteFaqHandler(app.Server).Handle(new DeleteFaq(plain, "rules"), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -73,7 +74,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new ClearMenuIconHandler(app.Server).Handle(new ClearMenuIcon(await PlainAsync(app)), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -84,7 +85,7 @@ public sealed class ContentHandlerTests
 		var result = await new SetMenuIconHandler(app.Server)
 			.Handle(new SetMenuIcon(await PlainAsync(app), "icon", new MemoryStream(), null), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -96,7 +97,7 @@ public sealed class ContentHandlerTests
 			.Handle(new AddMenuBanner(await PlainAsync(app), "banner", new MemoryStream(),
 				new Uri("https://example.test/banner.png"), null, null), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(banner);
 	}
 
@@ -108,7 +109,7 @@ public sealed class ContentHandlerTests
 		var (result, image) = await new AddMenuSeasonalHandler(app.Server)
 			.Handle(new AddMenuSeasonal(await PlainAsync(app), "season", new MemoryStream()), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(image);
 	}
 
@@ -120,7 +121,7 @@ public sealed class ContentHandlerTests
 		var result = await new DeleteMenuSeasonalHandler(app.Server)
 			.Handle(new DeleteMenuSeasonal(await PlainAsync(app), new ContentReference("season.png")), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -130,7 +131,7 @@ public sealed class ContentHandlerTests
 
 		var (result, settings) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(await AdminAsync(app)), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.NotNull(settings);
 	}
 
@@ -141,7 +142,7 @@ public sealed class ContentHandlerTests
 
 		var (result, settings) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(await PlainAsync(app)), Token);
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(settings);
 	}
 
@@ -155,7 +156,7 @@ public sealed class ContentHandlerTests
 
 		var result = await new UpdateSettingsHandler(app.Server).Handle(new UpdateSettings(admin, changed), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 	}
 
 	[Fact]
@@ -167,7 +168,7 @@ public sealed class ContentHandlerTests
 		var result = await new UpdateSettingsHandler(app.Server)
 			.Handle(new UpdateSettings(await PlainAsync(app), current!), Token);
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -178,7 +179,7 @@ public sealed class ContentHandlerTests
 		var (result, screenshots) = await new ListScreenshotsHandler(app.Server)
 			.Handle(new ListScreenshots(await AdminAsync(app)), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.Empty(screenshots);
 	}
 
@@ -190,7 +191,7 @@ public sealed class ContentHandlerTests
 		var (result, _) = await new ListScreenshotsHandler(app.Server)
 			.Handle(new ListScreenshots(await PlainAsync(app)), Token);
 
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -201,7 +202,7 @@ public sealed class ContentHandlerTests
 		var result = await new DeleteScreenshotHandler(app.Server)
 			.Handle(new DeleteScreenshot(await PlainAsync(app), new ContentReference("shot.png")), Token);
 
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -212,7 +213,7 @@ public sealed class ContentHandlerTests
 		var (screenshot, result) = await new UploadScreenshotHandler(app.Server)
 			.Handle(new UploadScreenshot(await PlainAsync(app), new MemoryStream()), Token);
 
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(screenshot);
 	}
 
@@ -225,7 +226,7 @@ public sealed class ContentHandlerTests
 		var (result, import) = await new UploadBeatmapsetHandler(app.Server)
 			.Handle(new UploadBeatmapset(await PlainAsync(app), new MemoryStream()), Token);
 
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(import);
 	}
 
@@ -239,7 +240,7 @@ public sealed class ContentHandlerTests
 
 		var (result, sent) = await new NotifyEveryoneHandler(app.Server).Handle(new NotifyEveryone(admin, "hello"), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.Equal(2, sent);
 	}
 
@@ -252,7 +253,7 @@ public sealed class ContentHandlerTests
 		var (result, sent) = await new NotifyEveryoneHandler(app.Server)
 			.Handle(new NotifyEveryone(await PlainAsync(app), "hello"), Token);
 
-		Assert.NotNull(result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Equal(0, sent);
 	}
 
@@ -267,7 +268,7 @@ public sealed class ContentHandlerTests
 		var (result, sent) = await new NotifyUsersHandler(app.Server)
 			.Handle(new NotifyUsers(admin, "hello", [one.Record.Id]), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.Equal(1, sent);
 	}
 
@@ -280,7 +281,7 @@ public sealed class ContentHandlerTests
 		var (result, sent) = await new NotifyUsersHandler(app.Server)
 			.Handle(new NotifyUsers(await PlainAsync(app), "hello", [one.Record.Id]), Token);
 
-		Assert.NotNull(result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Equal(0, sent);
 	}
 

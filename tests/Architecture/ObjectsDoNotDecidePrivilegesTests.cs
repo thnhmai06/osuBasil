@@ -32,10 +32,10 @@ public sealed partial class ObjectsDoNotDecidePrivilegesTests
 	public void Offences_FindsAnObjectThatReadsPrivilegesOrReturnsAResult()
 	{
 		const string source = """
-		                      internal Result<RoomOutcome> Join(StableConnection actor)
+		                      internal RoomOutcome Join(StableConnection actor)
 		                      {
 		                          var privileges = actor.EffectivePrivileges(now);
-		                          return Result<RoomOutcome>.Denied(UserPrivileges.Player);
+		                          return RoomOutcome.Denied(UserPrivileges.Player);
 		                      }
 		                      """;
 

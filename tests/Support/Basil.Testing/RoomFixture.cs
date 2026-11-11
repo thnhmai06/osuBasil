@@ -123,21 +123,21 @@ public sealed class RoomFixture
 	{
 		var creator = await PlayerAsync(app, "Creator");
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
-		Assert.True(opened.IsOk);
+		Assert.True(opened == RoomOutcome.Ok);
 		Assert.NotNull(room);
 
 		var host = await PlayerAsync(app, "Host");
-		Assert.True((await room.ScopeTo(host).Members.JoinAsync("")).IsOk);
+		Assert.True((await room.ScopeTo(host).Members.JoinAsync("")) == RoomOutcome.Ok);
 
 		var player = await PlayerAsync(app, "Player");
-		Assert.True((await room.ScopeTo(player).Members.JoinAsync("")).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.JoinAsync("")) == RoomOutcome.Ok);
 
 		var referee = await PlayerAsync(app, "Referee");
 		Assert.True((await room.ScopeTo(creator).Authority
-			.AddRefereeAsync(UserReference.ById(referee.Record.Id))).IsOk);
+			.AddRefereeAsync(UserReference.ById(referee.Record.Id))) == RoomOutcome.Ok);
 
 		Assert.True((await room.ScopeTo(creator).Authority
-			.SetHostAsync(host)).IsOk);
+			.SetHostAsync(host)) == RoomOutcome.Ok);
 
 		var outsider = await PlayerAsync(app, "Outsider");
 		var manager = await PlayerAsync(app, "Manager", UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
@@ -148,7 +148,7 @@ public sealed class RoomFixture
 		var suspendedCreator = await PlayerAsync(app, suspendedUser);
 		var (suspendedRoom, suspendedOpened) = await app.Lobby.ScopeTo(suspendedCreator)
 			.OpenRoomAsync("api room", "", RoomSource.Api, false);
-		Assert.True(suspendedOpened.IsOk);
+		Assert.True(suspendedOpened == RoomOutcome.Ok);
 		Assert.NotNull(suspendedRoom);
 		suspendedUser.Value.Privileges = UserPrivileges.None;
 

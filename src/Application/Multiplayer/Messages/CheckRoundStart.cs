@@ -13,4 +13,4 @@ namespace Basil.Application.Multiplayer.Messages;
 ///     The answer is Ok when the connection may start rounds, otherwise the refusal that <see cref="StartRound" />
 ///     gives.
 /// </remarks>
-public sealed record CheckRoundStart(Connection Actor, Room Room) : IRequest<Result<RoomOutcome>>;
+public sealed record CheckRoundStart(Connection Actor, Room Room) : IRequest<RoomOutcome>;

@@ -19,7 +19,7 @@ public readonly struct ScopedRoomRounds
 
 	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
 	/// <returns>Ok, NotAuthorized, InProgress, NoBeatmap or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> StartAsync()
+	public Task<RoomOutcome> StartAsync()
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsStart) ??
 		                       _scoped.Room.StartRound());
@@ -27,14 +27,14 @@ public readonly struct ScopedRoomRounds
 
 	/// <summary>Checks that the connection may start rounds, without starting one.</summary>
 	/// <returns><see langword="null" /> when allowed; otherwise the refusal that <see cref="StartAsync" /> answers.</returns>
-	public Result<RoomOutcome>? RequireStart()
+	public RoomOutcome? RequireStart()
 	{
 		return _scoped.Require(RoomPrivileges.RoundsStart);
 	}
 
 	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
 	/// <returns>Ok, NotAuthorized, NotInProgress or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> AbortAsync()
+	public Task<RoomOutcome> AbortAsync()
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsAbort) ??
 		                       _scoped.Room.AbortRound());
@@ -46,9 +46,9 @@ public readonly struct ScopedRoomRounds
 	///     The last player to load emits <see cref="RoomRoundAllLoaded" /> instead of
 	///     <see cref="RoomRoundPlayerLoaded" />.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> MarkLoadedAsync()
+	public Task<RoomOutcome> MarkLoadedAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.MarkLoaded(_scoped.Actor));
+		return Task.FromResult<RoomOutcome>(_scoped.Room.MarkLoaded(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller wants to skip the intro.</summary>
@@ -57,16 +57,16 @@ public readonly struct ScopedRoomRounds
 	///     The last player to ask emits <see cref="RoomRoundAllSkipped" /> instead of
 	///     <see cref="RoomRoundPlayerSkipped" />.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> SkipAsync()
+	public Task<RoomOutcome> SkipAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.SkipIntro(_scoped.Actor));
+		return Task.FromResult<RoomOutcome>(_scoped.Room.SkipIntro(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller failed; the player keeps playing until completion.</summary>
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> FailAsync()
+	public Task<RoomOutcome> FailAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.ReportFailed(_scoped.Actor));
+		return Task.FromResult<RoomOutcome>(_scoped.Room.ReportFailed(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller completed the beatmap.</summary>
@@ -75,8 +75,8 @@ public readonly struct ScopedRoomRounds
 	///     When the last player completes, the round ends and <see cref="RoomRoundCompleted" /> is emitted instead of
 	///     <see cref="RoomRoundPlayerCompleted" />.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> CompleteAsync()
+	public Task<RoomOutcome> CompleteAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Room.ReportCompleted(_scoped.Actor));
+		return Task.FromResult<RoomOutcome>(_scoped.Room.ReportCompleted(_scoped.Actor));
 	}
 }

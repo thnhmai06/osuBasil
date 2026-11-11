@@ -267,7 +267,7 @@ public sealed class ServerNotifyTests
 
 		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, target);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Equal(1, sent);
 		Assert.Equal([client], Assert.Single(Notifications(app)).Recipients);
 	}
@@ -282,7 +282,7 @@ public sealed class ServerNotifyTests
 
 		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first.Id, second.Id]);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Equal(2, sent);
 	}
 
@@ -296,7 +296,7 @@ public sealed class ServerNotifyTests
 
 		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll(Text);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Equal(2, sent);
 	}
 
@@ -309,7 +309,7 @@ public sealed class ServerNotifyTests
 
 		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll("");
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
 	}
@@ -323,8 +323,8 @@ public sealed class ServerNotifyTests
 
 		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, target);
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.False(result == ServerOutcome.Ok);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
 	}
@@ -339,7 +339,7 @@ public sealed class ServerNotifyTests
 
 		var (result, sent) = app.Server.ScopeTo(actor).Notify(Text, [first.Id, second.Id]);
 
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
 	}
@@ -353,7 +353,7 @@ public sealed class ServerNotifyTests
 
 		var (result, sent) = app.Server.ScopeTo(actor).NotifyAll(Text);
 
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
 	}

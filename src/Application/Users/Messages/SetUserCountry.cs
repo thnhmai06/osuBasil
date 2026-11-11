@@ -11,4 +11,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Target">The account acted on.</param>
 /// <param name="Country">The new country.</param>
 public sealed record SetUserCountry(Connection Actor, UserReference Target, Country Country)
-	: IRequest<Result<UserOutcome>>;
+	: IRequest<UserOutcome>;

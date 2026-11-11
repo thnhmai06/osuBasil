@@ -24,9 +24,9 @@ public readonly struct ScopedRoomSlots
 	/// <param name="index">The slot number, from 1 to 16.</param>
 	/// <returns>Ok, NotInRoom, RoomLocked, InProgress, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>Moving to the caller's own slot returns Ok and does nothing.</remarks>
-	public Task<Result<RoomOutcome>> ChangeAsync(int index)
+	public Task<RoomOutcome> ChangeAsync(int index)
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.ChangeSlot(stable, index)
 			: RoomOutcome.NotInRoom);
 	}
@@ -36,7 +36,7 @@ public readonly struct ScopedRoomSlots
 	/// <param name="index">The slot number, from 1 to 16.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
-	public async Task<Result<RoomOutcome>> MoveAsync(UserReference player, int index)
+	public async Task<RoomOutcome> MoveAsync(UserReference player, int index)
 	{
 		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
@@ -51,7 +51,7 @@ public readonly struct ScopedRoomSlots
 	///     Every seated player must appear exactly once, slot numbers must be distinct and from 1 to 16, and a slot
 	///     with a player cannot be locked. A team is applied only while the room plays in teams.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement)
+	public Task<RoomOutcome> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsMovePlayers) ??
 		                       _scoped.Room.ArrangeSlots(arrangement));
@@ -60,9 +60,9 @@ public readonly struct ScopedRoomSlots
 	/// <summary>Marks the caller ready or not ready.</summary>
 	/// <param name="ready">Whether the caller is ready to play.</param>
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> SetReadyAsync(bool ready)
+	public Task<RoomOutcome> SetReadyAsync(bool ready)
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetReady(stable, ready)
 			: RoomOutcome.NotInRoom);
 	}
@@ -74,18 +74,18 @@ public readonly struct ScopedRoomSlots
 	///     The report is ignored while the caller is playing; having the map changes nothing unless the caller had reported
 	///     not having it.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> SetHasMapAsync(bool has)
+	public Task<RoomOutcome> SetHasMapAsync(bool has)
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetHasMap(stable, has)
 			: RoomOutcome.NotInRoom);
 	}
 
 	/// <summary>Switches the caller to the other team.</summary>
 	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked, InProgress or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> ToggleTeamAsync()
+	public Task<RoomOutcome> ToggleTeamAsync()
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.ToggleTeam(stable)
 			: RoomOutcome.NotInRoom);
 	}
@@ -94,7 +94,7 @@ public readonly struct ScopedRoomSlots
 	/// <param name="player">The user to act on, named by id or name.</param>
 	/// <param name="team">The team to assign.</param>
 	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom or RoomClosed when the room has closed.</returns>
-	public async Task<Result<RoomOutcome>> SetTeamAsync(UserReference player, GameTeam team)
+	public async Task<RoomOutcome> SetTeamAsync(UserReference player, GameTeam team)
 	{
 		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
@@ -105,9 +105,9 @@ public readonly struct ScopedRoomSlots
 	/// <summary>Chooses the caller's own mods while freemod is on.</summary>
 	/// <param name="mods">The mods to select.</param>
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> SetModsAsync(GameMods mods)
+	public Task<RoomOutcome> SetModsAsync(GameMods mods)
 	{
-		return Task.FromResult<Result<RoomOutcome>>(_scoped.Actor is StableConnection stable
+		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetMods(stable, mods)
 			: RoomOutcome.NotInRoom);
 	}
@@ -115,7 +115,7 @@ public readonly struct ScopedRoomSlots
 	/// <summary>Toggles whether a slot is locked.</summary>
 	/// <param name="index">The slot number, from 1 to 16.</param>
 	/// <returns>Ok, NotAuthorized, SlotNotOpen, OwnSlot or RoomClosed when the room has closed.</returns>
-	public Task<Result<RoomOutcome>> ToggleLockAsync(int index)
+	public Task<RoomOutcome> ToggleLockAsync(int index)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsLock) ??
 		                       _scoped.Room.ToggleSlotLock(_scoped.Actor, index));

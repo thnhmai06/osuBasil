@@ -15,4 +15,4 @@ namespace Basil.Application.Chat.Messages;
 ///     channel answers.
 /// </remarks>
 public sealed record PostChatMessage(Connection Actor, ChatTarget Target, string Text, bool Notice = false)
-	: IRequest<Result<ChannelOutcome>>;
+	: IRequest<ChannelOutcome>;

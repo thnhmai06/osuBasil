@@ -8,6 +8,7 @@ using Basil.Domain.Common;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Testing;
+using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Users.Tests.Registry;
 
@@ -38,7 +39,7 @@ public sealed class UserRegistryTests
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "StaffMade" }, new Md5("0123456789abcdef0123456789abcdef"), null);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.NotNull(user);
 	}
 

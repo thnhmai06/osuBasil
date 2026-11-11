@@ -71,8 +71,8 @@ operation, so a class each would only add files.
 
 ### Privileges
 
-The handlers do not decide what an account may do. The Application objects check its privileges: a scoped operation returns a `Result<TOutcome>` whose missing mask says what the caller
-lacks. The handler turns a refusal into the packet the client expects (or ignores it). Privileges are never decided by
+The handlers do not decide what an account may do. The Application objects check its privileges: a scoped operation returns an outcome, `Denied` when the caller
+lacks privileges. The handler turns a refusal into the packet the client expects (or ignores it). Privileges are never decided by
 the kind of connection. See [`identity-privileges.md`](../for-agents/identity-privileges.md) and
 [`privileges.md`](privileges.md).
 

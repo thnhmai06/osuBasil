@@ -12,19 +12,19 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   It exposes the owner as a property named after it (`Channel`, `Room`, `User`, …) and reaches the owner's parts through
   **forwarding getters** (`room.ScopeTo(actor).Slots`, `.Rounds`, `.Settings`). The owner's raw mutators are `internal` to
   its Application project, so only a capability, which has checked the privileges, can change the owner. A behaviour states
-  the requirement through `ScopedPrivileges.Require(held, required)`: `null` means the requirement is met, otherwise it returns
-  what is missing. A `[Flags]` enum is met when every required bit is held (the result is the missing bits); any other enum
-  is ordered levels and is met when the held value is at least the required one (the result is the required level). Most
-  capabilities hold the caller's **effective** `UserPrivileges` and pass the missing mask to `Result<TOutcome>.Denied`;
+  the requirement through `ScopedPrivileges.Lacks(held, required)`: `true` means something required is not held. A `[Flags]`
+  enum is met when every required bit is held; any other enum is ordered levels and is met when the held value is at least
+  the required one. Most capabilities hold the caller's **effective** `UserPrivileges` and answer `XOutcome.Denied`;
   `ScopedRoom` holds `RoomPrivileges`, the room privileges its roles give, computed once from creator, referee, host and player
-  roles and the global privileges; a role refusal is the outcome `RoleDenied`, or a denial naming `Player` when the caller
+  roles and the global privileges; a role refusal is the outcome `RoleDenied`, or `Denied` when the caller
   may not join rooms at all. An implementation never compares privileges itself.
-* **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,
-  Privileges? Missing)` shared by all objects. Each object owns one outcome enum (`RoomOutcome`, `ChannelOutcome`,
-  `UserOutcome`, `BeatmapsetOutcome`, …) with `Ok = 1` and `0` meaning "not set" (so a denied result, whose outcome is
-  `default`, can never read as success); the other members are `NotFound` and the object's own reasons. There is no
+* **Every behaviour that can be refused returns the outcome enum of its object** (`RoomOutcome`, `ChannelOutcome`,
+  `UserOutcome`, `BeatmapsetOutcome`, …), with a tuple such as `(UserOutcome Outcome, T? Data)` when it also returns data.
+  Each enum has `Denied = 0` (the refusal for lack of privileges, which does not say which privileges are lacking, and
+  which a default value can never confuse with success) and `Ok = 1`; the other members are `NotFound` and the object's
+  own reasons. There is no shared result wrapper. There is no
   `NotAuthorized`, `Restricted`, `NoPermission` or `NotPermitted` member and no `bool` or `*Failure`
-  stand-in. A denial is `Missing is not null`. The caller only learns which privileges are missing. Callers test `result.IsOk`.
+  stand-in. Callers compare with `XOutcome.Ok` or `XOutcome.Denied`.
 * **Granting uses the actor's privileges, ranking uses the granted ones.** An actor can grant only privileges they hold;
   the strict-superset hierarchy test compares the privileges the two accounts were granted.
 * **`ConfigureAwait` is not used** anywhere in the project's source (a server has no synchronization context). An
@@ -48,7 +48,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
   **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command (see "Scopes and
   results" below). It snapshots the caller's effective privileges once, and each behaviour checks that snapshot through
-  the base class and returns a `Result<XOutcome>` carrying the missing privileges before it takes the object's lock,
+  the base class and returns `XOutcome.Denied` before it takes the object's lock,
   keeps the invariants, acts and emits the event. The caller never passes `connection`, privileges or an actor into a
   call. **Anything whose actions
   depend on privileges or privileges is scoped; only a system that needs no check is not** (the server's own work:
@@ -110,10 +110,9 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   (a lookup, a repository call, the room gate) re-checks, inside the object's own scope or lock, the state and roles
   the wait could have changed (`IsOpen`, a block, the caller's role in the room, a closed room) before it changes
   anything; a referee removed while waiting for the gate must not act.
-* **A refusal by role is not a missing privilege.** Privileges that come from a role in one object (creator, referee,
-  host, player in a room) are decided by that object's own role rules and reported as an outcome named after the role
-  (`NotManager`, `NotHost`) with `Missing` left `null`; `Missing` names only account-level privileges (`Player`,
-  `Player`, `Player`, `Player`) checked through `Require`.
+* **A refusal by role is not a lack of account privileges.** Privileges that come from a role in one object (creator,
+  referee, host, player in a room) are decided by that object's own role rules and reported as an outcome named after the
+  role (`NotManager`, `NotHost`); `Denied` is only for account-level privileges checked through `Lacks`.
 * **System operations are labelled.** A public method on an object that skips the privilege check (`Lobby.Unwatch`,
   `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.ReceiveScore`, `Server.Notify`) says in its
   XML summary that the server itself calls it and needs no privileges. A chat command, an API route or any other entry
@@ -305,4 +304,4 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   in the assembly and written to the configuration folder when the file does not exist. The file is watched and reloaded
   while the server runs; an invalid file keeps the last good set and logs a warning; a missing key falls back to its
   default. Reply keys are typed constants owned by the bot; tests reference the keys, never copy the default text.
-* A reply to a refused command names the missing privileges from `Result<TOutcome>.Missing`.
+* A reply to a command refused with `Denied` does not name the privileges that were lacking.

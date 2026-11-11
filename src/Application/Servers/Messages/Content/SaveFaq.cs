@@ -9,4 +9,4 @@ namespace Basil.Application.Servers.Messages;
 /// <param name="Actor">The connection acting.</param>
 /// <param name="Entry">The name of the FAQ entry to create or replace.</param>
 /// <param name="Text">The text of the FAQ entry.</param>
-public sealed record SaveFaq(Connection Actor, string Entry, string Text) : IRequest<Result<ServerOutcome>>;
+public sealed record SaveFaq(Connection Actor, string Entry, string Text) : IRequest<ServerOutcome>;

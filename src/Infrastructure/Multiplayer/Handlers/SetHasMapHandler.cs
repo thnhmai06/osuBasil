@@ -6,12 +6,12 @@ using Mediator;
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Runs a <see cref="SetHasMap" /> on the room for the connection that asked.</summary>
-internal sealed class SetHasMapHandler : IRequestHandler<SetHasMap, Result<RoomOutcome>>
+internal sealed class SetHasMapHandler : IRequestHandler<SetHasMap, RoomOutcome>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(SetHasMap request, CancellationToken ct)
+	public ValueTask<RoomOutcome> Handle(SetHasMap request, CancellationToken ct)
 	{
-		return new ValueTask<Result<RoomOutcome>>(
+		return new ValueTask<RoomOutcome>(
 			request.Room.ScopeTo(request.Actor).Slots.SetHasMapAsync(request.Has));
 	}
 }

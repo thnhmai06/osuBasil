@@ -3,6 +3,9 @@ namespace Basil.Application.Chat.Objects;
 /// <summary>What happened when a connection acted on a chat channel.</summary>
 public enum ChannelOutcome : byte
 {
+	/// <summary>The caller lacks the privileges the operation needs.</summary>
+	Denied = 0,
+
 	/// <summary>The action was done.</summary>
 	Ok = 1,
 

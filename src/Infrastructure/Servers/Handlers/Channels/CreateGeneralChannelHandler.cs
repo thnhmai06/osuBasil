@@ -7,12 +7,12 @@ namespace Basil.Infrastructure.Servers.Handlers.Channels;
 
 /// <summary>Creates a general channel for the connection that asked.</summary>
 internal sealed class CreateGeneralChannelHandler(Server server)
-	: IRequestHandler<CreateGeneralChannel, Result<ServerOutcome>>
+	: IRequestHandler<CreateGeneralChannel, ServerOutcome>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<ServerOutcome>> Handle(CreateGeneralChannel request, CancellationToken ct)
+	public ValueTask<ServerOutcome> Handle(CreateGeneralChannel request, CancellationToken ct)
 	{
-		return new ValueTask<Result<ServerOutcome>>(
+		return new ValueTask<ServerOutcome>(
 			server.ScopeTo(request.Actor).Channels.CreateAsync(request.Record));
 	}
 }

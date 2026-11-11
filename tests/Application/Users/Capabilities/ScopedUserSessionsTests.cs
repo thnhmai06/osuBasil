@@ -31,7 +31,7 @@ public sealed class ScopedUserSessionsTests
 	{
 		var (result, key, session) =
 			await app.Users.Of(actor.Record).ScopeTo(actor).Sessions.OpenIrcAsync(label);
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		return (key!, session!);
 	}
 
@@ -45,7 +45,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAsync(other.Session.Id);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.False(other.IsOpen);
 		Assert.True(current.IsOpen);
 		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, other.Token)).Failure);
@@ -65,7 +65,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAsync(offline.Session.Id);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal(LoginFailure.InvalidToken,
 			(await OpenWithTokenAsync(app, SessionType.Api, offline.Token)).Failure);
 	}
@@ -80,7 +80,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.False(osu.IsOpen);
 		Assert.True((await app.AttemptLoginAsync("DeviceUser", "password", SessionType.Stable)).Succeeded);
 	}
@@ -96,7 +96,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.False(osu.IsOpen);
 	}
 
@@ -109,7 +109,7 @@ public sealed class ScopedUserSessionsTests
 		var (firstKey, first) = await OpenIrcAsync(app, api, "laptop");
 		var (secondKey, _) = await OpenIrcAsync(app, api, "vps");
 
-		Assert.True((await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(first.Id)).IsOk);
+		Assert.True((await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(first.Id)) == UserOutcome.Ok);
 
 		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, firstKey)).Failure);
 		Assert.True((await OpenWithTokenAsync(app, SessionType.Irc, secondKey)).Succeeded);
@@ -123,7 +123,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(api.Record).ScopeTo(api).Sessions.CloseAsync(long.MaxValue);
 
-		Assert.Equal(UserOutcome.NotFound, result.Outcome);
+		Assert.Equal(UserOutcome.NotFound, result);
 	}
 
 	[Fact]
@@ -135,7 +135,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(mine.Record).ScopeTo(mine).Sessions.CloseAsync(theirs.Session.Id);
 
-		Assert.Equal(UserOutcome.NotFound, result.Outcome);
+		Assert.Equal(UserOutcome.NotFound, result);
 		Assert.True(theirs.IsOpen);
 	}
 
@@ -153,8 +153,8 @@ public sealed class ScopedUserSessionsTests
 		var withoutPermission = await app.Users.Of(user).ScopeTo(weak).Sessions.CloseAsync(session.Session.Id);
 		var equalRank = await app.Users.Of(peerTarget).ScopeTo(peer).Sessions.CloseAsync(peerSession.Session.Id);
 
-		Assert.Equal(UserPrivileges.Owner, withoutPermission.Missing);
-		Assert.Equal(UserOutcome.NotOutranking, equalRank.Outcome);
+		Assert.Equal(UserOutcome.Denied, withoutPermission);
+		Assert.Equal(UserOutcome.NotOutranking, equalRank);
 		Assert.True(session.IsOpen);
 		Assert.True(peerSession.IsOpen);
 	}
@@ -189,7 +189,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(true);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.True(current.IsOpen);
 		Assert.False(otherApi.IsOpen);
 		Assert.False(osu.IsOpen);
@@ -206,7 +206,7 @@ public sealed class ScopedUserSessionsTests
 		var user = await app.CreateUserAsync("NoKeep", "password");
 		var current = await app.LoginAsync(user);
 
-		Assert.True((await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(false)).IsOk);
+		Assert.True((await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(false)) == UserOutcome.Ok);
 
 		Assert.False(current.IsOpen);
 		Assert.Equal(LoginFailure.InvalidToken,
@@ -224,7 +224,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(admin).Sessions.CloseAllAsync(true);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.False(api.IsOpen);
 		Assert.False(osu.IsOpen);
 		var entry = Assert.Single(app.ModerationEntries, e => e.Action == ModerationAction.CloseSessions);
@@ -242,7 +242,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(user).ScopeTo(other).Sessions.CloseAllAsync(false);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 		Assert.True(api.IsOpen);
 	}
 
@@ -256,7 +256,7 @@ public sealed class ScopedUserSessionsTests
 
 		var result = await app.Users.Of(peer).ScopeTo(admin).Sessions.CloseAllAsync(false);
 
-		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
+		Assert.Equal(UserOutcome.NotOutranking, result);
 		Assert.True(api.IsOpen);
 	}
 
@@ -294,9 +294,9 @@ public sealed class ScopedUserSessionsTests
 		var (allowed, page) = await app.Users.Of(target).ScopeTo(staff).Sessions.ListAsync(new PageRequest(0, 10),
 			ct: Token);
 
-		Assert.Equal(UserPrivileges.Moderator, denied.Missing);
+		Assert.Equal(UserOutcome.Denied, denied);
 		Assert.Null(none);
-		Assert.True(allowed.IsOk);
+		Assert.True(allowed == UserOutcome.Ok);
 		Assert.Single(page!.Items);
 		Assert.Single(app.ModerationEntries, e => e.Action == ModerationAction.ViewLogins);
 	}
@@ -342,7 +342,7 @@ public sealed class ScopedUserSessionsTests
 
 		var (result, key, _) = await app.Users.Of(user).ScopeTo(admin).Sessions.OpenIrcAsync("sneaky");
 
-		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
+		Assert.Equal(UserOutcome.NotSelf, result);
 		Assert.Null(key);
 	}
 
@@ -356,7 +356,7 @@ public sealed class ScopedUserSessionsTests
 
 		var (result, _, _) = await app.Users.Of(api.Record).ScopeTo(api).Sessions.OpenIrcAsync(label);
 
-		Assert.Equal(UserOutcome.InvalidLabel, result.Outcome);
+		Assert.Equal(UserOutcome.InvalidLabel, result);
 	}
 
 	[Fact]
@@ -368,7 +368,7 @@ public sealed class ScopedUserSessionsTests
 		var (result, _, _) = await app.Users.Of(api.Record).ScopeTo(api).Sessions
 			.OpenIrcAsync(new string('x', 65));
 
-		Assert.Equal(UserOutcome.InvalidLabel, result.Outcome);
+		Assert.Equal(UserOutcome.InvalidLabel, result);
 	}
 
 	[Fact]
@@ -380,9 +380,9 @@ public sealed class ScopedUserSessionsTests
 		await app.Users.ConnectBotAsync(Token);
 		var scoped = app.Users.Of(bot).ScopeTo(admin).Sessions;
 
-		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAsync(long.MaxValue)).Outcome);
-		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAllAsync(false)).Outcome);
-		Assert.Equal(UserOutcome.SystemAccount, (await scoped.OpenIrcAsync("x")).Result.Outcome);
+		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAsync(long.MaxValue)));
+		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAllAsync(false)));
+		Assert.Equal(UserOutcome.SystemAccount, (await scoped.OpenIrcAsync("x")).Result);
 		Assert.All(app.Users.Online[bot].Connections, connection => Assert.True(connection.IsOpen));
 	}
 }

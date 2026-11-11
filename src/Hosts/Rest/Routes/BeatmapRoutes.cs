@@ -9,6 +9,8 @@ using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Basil.Application.Beatmaps.Objects;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -138,7 +140,7 @@ internal static class BeatmapRoutes
 		await using var stream = file.OpenReadStream();
 		var (result, import) = await sender.Send(new UploadBeatmapset(context.Connection(), stream),
 			context.RequestAborted);
-		if (!result.IsOk) return result.Refusal();
+		if (result != ServerOutcome.Ok) return result.Refusal();
 
 		return import!.Failure switch
 		{
@@ -165,7 +167,7 @@ internal static class BeatmapRoutes
 		var result = await sender.Send(
 			new PatchBeatmapset(context.Connection(), id, request.Status, request.Visible, request.Locked),
 			context.RequestAborted);
-		if (!result.IsOk) return result.Refusal();
+		if (result != BeatmapsetOutcome.Ok) return result.Refusal();
 
 		var detail = await sender.Send(new GetBeatmapset(context.Connection(), id), context.RequestAborted);
 		return detail is null

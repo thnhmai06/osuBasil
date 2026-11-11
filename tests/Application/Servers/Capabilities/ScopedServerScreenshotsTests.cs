@@ -82,8 +82,8 @@ public sealed class ScopedServerScreenshotsTests
 		var (screenshot, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
 		Assert.Null(screenshot);
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == ServerOutcome.Ok);
+		Assert.Equal(ServerOutcome.Denied, result);
 		f.AssertNothingStored();
 	}
 
@@ -97,7 +97,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	#endregion
@@ -115,7 +115,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var (screenshot, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Equal(Stored, screenshot);
 		await f.Storage.Received(1).SaveAsync(Arg.Any<Stream>(), extension);
 	}
@@ -151,7 +151,7 @@ public sealed class ScopedServerScreenshotsTests
 		var (_, result) = await screenshots.UploadAsync(Bytes(MaxBytes),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 	}
 
 	[Fact]
@@ -178,7 +178,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 	}
 
 	#endregion
@@ -196,7 +196,7 @@ public sealed class ScopedServerScreenshotsTests
 			Bytes(MaxBytes + 1), TestContext.Current.CancellationToken);
 
 		Assert.Null(screenshot);
-		Assert.Equal(ServerOutcome.TooLarge, result.Outcome);
+		Assert.Equal(ServerOutcome.TooLarge, result);
 		f.AssertNothingStored();
 	}
 
@@ -212,8 +212,8 @@ public sealed class ScopedServerScreenshotsTests
 		var (_, atLimit) = await screenshots.UploadAsync(Bytes(100), TestContext.Current.CancellationToken);
 		var (_, overLimit) = await screenshots.UploadAsync(Bytes(101), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, atLimit.Outcome);
-		Assert.Equal(ServerOutcome.TooLarge, overLimit.Outcome);
+		Assert.Equal(ServerOutcome.Ok, atLimit);
+		Assert.Equal(ServerOutcome.TooLarge, overLimit);
 	}
 
 	[Fact]
@@ -227,7 +227,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.DimensionsTooLarge, result.Outcome);
+		Assert.Equal(ServerOutcome.DimensionsTooLarge, result);
 	}
 
 	[Fact]
@@ -240,7 +240,7 @@ public sealed class ScopedServerScreenshotsTests
 		var (_, result) = await screenshots.UploadAsync(
 			Bytes(MaxBytes * 2), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.TooLarge, result.Outcome);
+		Assert.Equal(ServerOutcome.TooLarge, result);
 	}
 
 	[Fact]
@@ -253,7 +253,7 @@ public sealed class ScopedServerScreenshotsTests
 		var (screenshot, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
 		Assert.Null(screenshot);
-		Assert.Equal(ServerOutcome.InvalidImage, result.Outcome);
+		Assert.Equal(ServerOutcome.InvalidImage, result);
 		f.AssertNothingStored();
 	}
 
@@ -293,7 +293,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var (_, result) = await screenshots.UploadAsync(Bytes(0), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.InvalidImage, result.Outcome);
+		Assert.Equal(ServerOutcome.InvalidImage, result);
 		f.AssertNothingStored();
 	}
 
@@ -310,7 +310,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.InvalidImage, result.Outcome);
+		Assert.Equal(ServerOutcome.InvalidImage, result);
 		f.AssertNothingStored();
 	}
 
@@ -328,7 +328,7 @@ public sealed class ScopedServerScreenshotsTests
 		var (screenshot, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
 		Assert.Null(screenshot);
-		Assert.Equal(ServerOutcome.DimensionsTooLarge, result.Outcome);
+		Assert.Equal(ServerOutcome.DimensionsTooLarge, result);
 		f.AssertNothingStored();
 	}
 
@@ -357,7 +357,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var result = await screenshots.DeleteAsync(Stored);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		await f.Storage.Received(1).DeleteAsync(Stored);
 	}
 
@@ -369,8 +369,8 @@ public sealed class ScopedServerScreenshotsTests
 
 		var result = await screenshots.DeleteAsync(Stored);
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.False(result == ServerOutcome.Ok);
+		Assert.Equal(ServerOutcome.Denied, result);
 		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default);
 	}
 
@@ -383,7 +383,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		var result = await screenshots.DeleteAsync(Stored);
 
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	#endregion

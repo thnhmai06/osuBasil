@@ -36,7 +36,7 @@ public sealed class ScopedServerBeatmapsetsTests
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Null(import!.Failure);
 		Assert.Single(world.Sets.Records);
 	}
@@ -53,7 +53,7 @@ public sealed class ScopedServerBeatmapsetsTests
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(bytes),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.TooLarge, result.Outcome);
+		Assert.Equal(ServerOutcome.TooLarge, result);
 		Assert.Null(import);
 		Assert.Empty(world.Sets.Records);
 	}
@@ -69,7 +69,7 @@ public sealed class ScopedServerBeatmapsetsTests
 
 		var (result, _) = await uploads.UploadAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Single(world.Sets.Records);
 	}
 
@@ -83,8 +83,8 @@ public sealed class ScopedServerBeatmapsetsTests
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
 			TestContext.Current.CancellationToken);
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == ServerOutcome.Ok);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(import);
 		Assert.Empty(world.Sets.Records);
 	}
@@ -98,7 +98,7 @@ public sealed class ScopedServerBeatmapsetsTests
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Locked, result.Outcome);
+		Assert.Equal(ServerOutcome.Locked, result);
 		Assert.Null(import);
 		Assert.Empty(world.Sets.Records);
 	}
@@ -113,7 +113,7 @@ public sealed class ScopedServerBeatmapsetsTests
 		var (result, _) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Single(world.Sets.Records);
 	}
 
@@ -127,7 +127,7 @@ public sealed class ScopedServerBeatmapsetsTests
 		var (result, import) = await uploads.UploadAsync(new MemoryStream(Osz.Build(100, Easy)),
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 		Assert.Equal(BeatmapsetImportFailure.AlreadyExists, import!.Failure);
 		Assert.Single(world.Sets.Records);
 	}

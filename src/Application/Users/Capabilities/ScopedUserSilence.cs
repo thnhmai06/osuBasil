@@ -11,7 +11,7 @@ public readonly struct ScopedUserSilence(ScopedUser scoped)
 	/// <param name="endsAt">When the silence ends.</param>
 	/// <param name="reason">Why the account is silenced, if known.</param>
 	/// <returns>The outcome of silencing the account.</returns>
-	public async Task<Result<UserOutcome>> ImposeAsync(DateTimeOffset endsAt, string? reason = null)
+	public async Task<UserOutcome> ImposeAsync(DateTimeOffset endsAt, string? reason = null)
 	{
 		if (scoped.Deny(UserPrivileges.Moderator) is { } denied) return denied;
 		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
@@ -22,7 +22,7 @@ public readonly struct ScopedUserSilence(ScopedUser scoped)
 	/// <summary>Ends the silence of the account now.</summary>
 	/// <param name="reason">Why the silence is lifted, if known.</param>
 	/// <returns>The outcome of lifting the silence.</returns>
-	public async Task<Result<UserOutcome>> LiftAsync(string? reason = null)
+	public async Task<UserOutcome> LiftAsync(string? reason = null)
 	{
 		if (scoped.Deny(UserPrivileges.Moderator) is { } denied) return denied;
 		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;

@@ -42,7 +42,7 @@ internal static class SpectateRoutes
 
 		var connection = context.Connection();
 		var spectated = await sender.Send(new SpectateUser(connection, host), context.RequestAborted);
-		if (!spectated.IsOk) return spectated.Refusal();
+		if (spectated != ConnectionOutcome.Ok) return spectated.Refusal();
 
 		var result = await context.StreamAsync(KeyOf(id), _ => Task.FromResult<(object, string?)>((new
 		{

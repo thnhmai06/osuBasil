@@ -23,7 +23,7 @@ public sealed class AccountHandlerTests
 		var (user, result) = await new CreateAccountHandler(app.Users).Handle(
 			new CreateAccount(admin, new UserData { Name = "Newcomer" }, Hash("secret"), null), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal("Newcomer", user!.Value.Name);
 		Assert.True(await app.VerifiesPasswordAsync(user, "secret"));
 	}
@@ -38,7 +38,7 @@ public sealed class AccountHandlerTests
 			new CreateAccount(actor, new UserData { Name = "Newcomer" }, Hash("secret"), null), Token);
 
 		Assert.Null(user);
-		Assert.Equal(UserPrivileges.Owner, result.Missing & UserPrivileges.Owner);
+		Assert.Equal(UserOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -49,7 +49,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new RenameUserHandler(app.Users).Handle(new RenameUser(actor, UserReference.ById(actor.Record.Id), "After"), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal("After", actor.User.Record.Value.Name);
 	}
 
@@ -62,7 +62,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new RenameUserHandler(app.Users).Handle(new RenameUser(actor, UserReference.ById(other.Record.Id), "Taken"), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 		Assert.Equal("Other", other.User.Record.Value.Name);
 	}
 
@@ -75,7 +75,7 @@ public sealed class AccountHandlerTests
 		var result = await new SetUserCountryHandler(app.Users)
 			.Handle(new SetUserCountry(actor, UserReference.ById(actor.Record.Id), Country.Vn), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal(Country.Vn, actor.User.Record.Value.Country);
 	}
 
@@ -89,7 +89,7 @@ public sealed class AccountHandlerTests
 		var result = await new SetUserCountryHandler(app.Users)
 			.Handle(new SetUserCountry(actor, UserReference.ById(other.Record.Id), Country.Vn), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -153,7 +153,7 @@ public sealed class AccountHandlerTests
 		var result = await new ChangeUserPasswordHandler(app.Users).Handle(
 			new ChangeUserPassword(actor, UserReference.ById(actor.Record.Id), Hash("new"), Hash("old"), true), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.True(await app.VerifiesPasswordAsync(actor.Record, "new"));
 	}
 
@@ -166,7 +166,7 @@ public sealed class AccountHandlerTests
 		var result = await new ChangeUserPasswordHandler(app.Users).Handle(
 			new ChangeUserPassword(actor, UserReference.ById(actor.Record.Id), Hash("new"), Hash("wrong"), true), Token);
 
-		Assert.Equal(UserOutcome.WrongPassword, result.Outcome);
+		Assert.Equal(UserOutcome.WrongPassword, result);
 		Assert.True(await app.VerifiesPasswordAsync(actor.Record, "old"));
 	}
 
@@ -180,7 +180,7 @@ public sealed class AccountHandlerTests
 		var result = await new SetUserPrivilegesHandler(app.Users)
 			.Handle(new SetUserPrivileges(admin, UserReference.ById(target.Record.Id), UserPrivileges.Player), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal(UserPrivileges.Player, target.User.Record.Value.Privileges);
 	}
 
@@ -195,7 +195,7 @@ public sealed class AccountHandlerTests
 		var result = await new SetUserPrivilegesHandler(app.Users)
 			.Handle(new SetUserPrivileges(actor, UserReference.ById(target.Record.Id), UserPrivileges.Player), Token);
 
-		Assert.NotNull(result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 		Assert.Equal(before, target.User.Record.Value.Privileges);
 	}
 
@@ -208,7 +208,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new DeleteUserHandler(app.Users).Handle(new DeleteUser(admin, UserReference.ById(target.Id)), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.NotNull(app.Users.Of(target).Record.Value.DeletedAt);
 	}
 
@@ -221,7 +221,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new DeleteUserHandler(app.Users).Handle(new DeleteUser(actor, UserReference.ById(target.Id)), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -233,7 +233,7 @@ public sealed class AccountHandlerTests
 
 		var result = await new RemoveUserAvatarHandler(app.Users).Handle(new RemoveUserAvatar(actor, UserReference.ById(other.Id)), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -246,7 +246,7 @@ public sealed class AccountHandlerTests
 		var result = await new SetUserAvatarHandler(app.Users)
 			.Handle(new SetUserAvatar(actor, UserReference.ById(other.Id), new MemoryStream()), Token);
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 	}
 
 	private static async Task<Connection> AdminAsync(TestApplication app)

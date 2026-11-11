@@ -10,6 +10,8 @@ using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Basil.Application.Beatmaps.Objects;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Host.Cli.Commands;
 
@@ -107,7 +109,7 @@ internal static class BeatmapScoreCommands
 		await using var stream = File.OpenRead(call.Required("file"));
 		var (result, import) = await call.Get<ISender>().Send(
 			new UploadBeatmapset(await call.ByAsync(), stream), call.CancellationToken);
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != ServerOutcome.Ok) return call.Refuse(result);
 
 		switch (import!.Failure)
 		{
@@ -133,7 +135,7 @@ internal static class BeatmapScoreCommands
 		var result = await call.Get<ISender>().Send(
 			new PatchBeatmapset(await call.ByAsync(), call.Id("id"), status, call.Bool("visible"), call.Bool("locked")),
 			call.CancellationToken);
-		if (!result.IsOk) return call.Refuse(result);
+		if (result != BeatmapsetOutcome.Ok) return call.Refuse(result);
 
 		call.Output.Ok("Updated.");
 		return ExitCodes.Success;

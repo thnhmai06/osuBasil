@@ -122,6 +122,6 @@ internal static class RoomRoutes
 				RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, RoomSource.Api,
 				request.IsPrivate ?? false),
 			context.RequestAborted);
-		return result.IsOk ? Api.Created(RoomView.Of(room!)) : result.Refusal();
+		return result == RoomOutcome.Ok ? Api.Created(RoomView.Of(room!)) : result.Refusal();
 	}
 }

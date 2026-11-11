@@ -36,7 +36,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 
 			Assert.Equal(401, unauthorized);
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)refusal!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)refusal!["errors"]!["code"]!);
 			Assert.Equal(200, ok);
 			Assert.False(string.IsNullOrEmpty((string?)envelope!["data"]!["active"]));
 			Assert.Null(envelope["data"]!["staged"]);
@@ -44,7 +44,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PlainUserUpdate_Answers403Mask()
+	public async Task PlainUserUpdate_Answers403()
 	{
 		var (plain, _) = await fixture.SignInAsync("RulesetUpdPlain");
 		using (plain)
@@ -52,7 +52,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 			var (denied, refusal) = await plain.CallAsync(HttpMethod.Post, "/v1/settings/ruleset/update");
 
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPrivileges.Developer, (ulong)refusal!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)refusal!["errors"]!["code"]!);
 		}
 	}
 

@@ -7,4 +7,4 @@ namespace Basil.Application.Diagnostics.Messages;
 
 /// <summary>Asks Diagnostics whether the sender may use the diagnostics.</summary>
 /// <param name="Actor">The connection acting.</param>
-public sealed record CheckDiagnosticsAccess(Connection Actor) : IRequest<Result<DiagnosticsOutcome>>;
+public sealed record CheckDiagnosticsAccess(Connection Actor) : IRequest<DiagnosticsOutcome>;

@@ -7,10 +7,10 @@ using Mediator;
 namespace Basil.Infrastructure.Users.Handlers;
 
 /// <summary>Carries out <see cref="SetUserAvatar" /> on the account it names.</summary>
-internal sealed class SetUserAvatarHandler(UserRegistry registry) : IRequestHandler<SetUserAvatar, Result<UserOutcome>>
+internal sealed class SetUserAvatarHandler(UserRegistry registry) : IRequestHandler<SetUserAvatar, UserOutcome>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(SetUserAvatar request, CancellationToken ct)
+	public async ValueTask<UserOutcome> Handle(SetUserAvatar request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Profile
 			.SetAvatarAsync(request.Image, ct);

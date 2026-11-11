@@ -29,15 +29,15 @@ public readonly struct ScopedServerBeatmapsets
 	///     <see cref="BeatmapsetImportFailure.AlreadyExists" />. An archive larger than the upload limit of the
 	///     server settings is refused with <see cref="ServerOutcome.TooLarge" />.
 	/// </remarks>
-	public async Task<(Result<ServerOutcome> Result, BeatmapsetImportResult? Import)> UploadAsync(Stream archive,
+	public async Task<(ServerOutcome Result, BeatmapsetImportResult? Import)> UploadAsync(Stream archive,
 		CancellationToken ct = default)
 	{
 		var server = _scoped.Server;
 		if (await server.Beatmapsets.IsLockedAsync(Locks.Beatmapsets, ct) &&
-		    _scoped.Needs(UserPrivileges.Tournament) is not null)
+		    _scoped.Lacks(UserPrivileges.Tournament))
 			return (ServerOutcome.Locked, null);
-		if (_scoped.Needs(UserPrivileges.Player) is { } missing)
-			return (Result<ServerOutcome>.Denied(missing), null);
+		if (_scoped.Lacks(UserPrivileges.Player))
+			return (ServerOutcome.Denied, null);
 
 		return await server.Beatmapsets.UploadAsync(archive, ct);
 	}

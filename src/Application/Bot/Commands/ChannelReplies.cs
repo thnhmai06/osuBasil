@@ -39,9 +39,9 @@ internal static class ChannelReplies
 	public static readonly Reply InvalidArguments = new("channel.invalidArguments",
 		"That is not a valid channel name or option. Type !channel for the usage.");
 
-	/// <summary>Reply when the typist lacks privileges the operation needs; <c>{privileges}</c> lists them.</summary>
+	/// <summary>Reply when the typist lacks privileges the operation needs.</summary>
 	public static readonly Reply MissingPrivileges = new("channel.missingPrivileges",
-		"You are missing the privileges needed for that: {privileges}.", "privileges");
+		"You do not have the privileges needed for that.");
 
 	/// <summary>Reply when the server refuses for a reason without a reply of its own; <c>{outcome}</c> names it.</summary>
 	public static readonly Reply Refused = new("channel.refused", "The server refused that: {outcome}.", "outcome");
@@ -50,15 +50,14 @@ internal static class ChannelReplies
 	/// <param name="result">The result returned by the server.</param>
 	/// <param name="name">The channel name.</param>
 	/// <returns>The reply and the arguments to fill it with.</returns>
-	public static (Reply Reply, object Arguments) Of(Result<ServerOutcome> result, string name)
+	public static (Reply Reply, object Arguments) Of(ServerOutcome result, string name)
 	{
-		if (result.Missing is { } missing) return (MissingPrivileges, new { privileges = missing.ToString() });
-
-		return result.Outcome switch
+		return result switch
 		{
+			ServerOutcome.Denied => (MissingPrivileges, new { }),
 			ServerOutcome.Ok => (Created, new { name }),
 			ServerOutcome.NameTaken => (NameTaken, new { name }),
-			_ => (Refused, new { outcome = result.Outcome.ToString() })
+			_ => (Refused, new { outcome = result.ToString() })
 		};
 	}
 
@@ -67,15 +66,14 @@ internal static class ChannelReplies
 	/// <param name="name">The channel name.</param>
 	/// <param name="success">The reply when the operation succeeded.</param>
 	/// <returns>The reply and the arguments to fill it with.</returns>
-	public static (Reply Reply, object Arguments) Of(Result<ChannelOutcome> result, string name, Reply success)
+	public static (Reply Reply, object Arguments) Of(ChannelOutcome result, string name, Reply success)
 	{
-		if (result.Missing is { } missing) return (MissingPrivileges, new { privileges = missing.ToString() });
-
-		return result.Outcome switch
+		return result switch
 		{
+			ChannelOutcome.Denied => (MissingPrivileges, new { }),
 			ChannelOutcome.Ok => (success, new { name }),
 			ChannelOutcome.NotFound or ChannelOutcome.Closed => (NotFound, new { name }),
-			_ => (Refused, new { outcome = result.Outcome.ToString() })
+			_ => (Refused, new { outcome = result.ToString() })
 		};
 	}
 }

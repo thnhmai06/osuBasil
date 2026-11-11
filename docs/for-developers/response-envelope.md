@@ -41,7 +41,7 @@ API route
 * JSON is camelCase and enums are camelCase strings (`ApiJson.Options`).
 
 Outcomes of the Application objects reach the client through `OutcomeErrors` (in `Basil.Host.Shared`), which maps each
-outcome to an error kind and therefore to a status; `result.Refusal()` and `result.Answer()` turn a `Result<TOutcome>`
+outcome to an error kind and therefore to a status; `result.Refusal()` and `result.Answer()` turn an outcome
 into an envelope result. A new member of an outcome enum needs a row in that mapping and in the exhaustive table of
 `OutcomeErrorsTests`.
 

@@ -266,8 +266,9 @@ Tests are what verify the software for the owner, who reads the code only for pa
 * **Layout mirrors the sources.** One test project per source project (`tests/` tree = `src/` tree, `Basil.X.Tests`),
   folders inside mirror the feature folders; shared fixtures live in `tests/Support/Basil.Testing`; sample content in
   `tests/Assets`.
-* **A refusal test checks the missing mask** of `Result<TOutcome>`, and every `Require` has a test that goes red when it
-  is removed.
+* **A refusal test checks the outcome `Denied`** of the object's outcome enum (a refusal does not say which privileges
+  are lacking), and every privilege requirement has a test that goes red when it is removed: a caller without the
+  privilege is `Denied`, a caller with it is not.
 
 ### 9. User-visible reply strings
 
@@ -352,7 +353,7 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 Basil.Domain                     the system at rest: durable models and the      -> (nothing)
                                  rules that stay true offline
 
-Basil.Application.Common         shared contracts, Result<T>, events, Mediator   -> Domain, Mediator.Abstractions
+Basil.Application.Common         shared contracts, events, Mediator        -> Domain, Mediator.Abstractions
                                  messages
 Basil.Infrastructure.Common      shared database, files and event dispatch       -> Application.Common, Domain
 
@@ -439,7 +440,7 @@ The project that defines an options type binds it (`Add<Module>...(IConfiguratio
 only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
 project, `Basil` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
 
-`Application.Common` owns `IActor`, `Result<T>`, `ScopedPrivileges`, shared query values and event contracts/queue; it depends
+`Application.Common` owns `IActor`, `ScopedPrivileges`, shared query values and event contracts/queue; it depends
 on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
 event dispatcher; it depends on Domain, Application.Common and its external packages.
 
@@ -798,10 +799,11 @@ the owner merges them into the skill later, nobody edits the skill silently.
   tools of the main checkout, so the orchestrator runs the container check after merging; two agents at a time at most,
   and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
   hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
-* **Capabilities and `Result<TOutcome>`** (2026-10-21, revised; see `docs/for-agents/application-design.md`): a `Scoped*`
+* **Capabilities and outcomes** (revised; see `docs/for-agents/application-design.md`): a `Scoped*`
   capability is a `readonly struct` valid for one request that snapshots the effective privileges and states each
-  requirement through `ScopedPrivileges.Require` (`null` = met); behaviours return a shared `Result<TOutcome>` with
-  per-object outcome enums starting at `Ok = 1`.
+  requirement through `ScopedPrivileges.Lacks`; behaviours return the object's own outcome enum, whose `Denied = 0` is
+  the refusal for lack of privileges (it does not name them) and whose `Ok = 1` is success. There is no shared
+  `Result<T>`.
 * **No `ConfigureAwait(false)`** in a server application (owner decision, 2026-10-26: the project rule stands and the
   skill's "every library await uses it" does not apply here).
 * **Tests for computed values** pin properties (valid, finite, monotone under a modifier), not the exact number, unless

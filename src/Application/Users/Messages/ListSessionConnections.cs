@@ -12,4 +12,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="SessionId">The session whose connections to read.</param>
 /// <param name="Page">Which part of the trail to return.</param>
 public sealed record ListSessionConnections(Connection Actor, UserReference Target, long SessionId, PageRequest Page)
-	: IRequest<(Result<UserOutcome> Result, Page<ConnectionRecord>? Connections)>;
+	: IRequest<(UserOutcome Result, Page<ConnectionRecord>? Connections)>;

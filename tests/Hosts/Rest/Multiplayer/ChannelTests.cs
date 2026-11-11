@@ -33,7 +33,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 
 			Assert.Equal(201, created);
 			Assert.Equal(403, denied);
-			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)envelope!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)envelope!["errors"]!["code"]!);
 		}
 	}
 
@@ -118,8 +118,8 @@ public sealed class ChannelTests(RestHostFixture fixture)
 
 			Assert.Equal(403, exists);
 			Assert.Equal(exists, missing);
-			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)hidden!["errors"]!["missing"]!);
-			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)ghost!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)hidden!["errors"]!["code"]!);
+			Assert.Equal("privilegeDenied", (string)ghost!["errors"]!["code"]!);
 		}
 	}
 
@@ -138,8 +138,8 @@ public sealed class ChannelTests(RestHostFixture fixture)
 
 			Assert.Equal(403, exists);
 			Assert.Equal(exists, missing);
-			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)hidden!["errors"]!["missing"]!);
-			Assert.Equal((ulong)UserPrivileges.Moderator, (ulong)ghost!["errors"]!["missing"]!);
+			Assert.Equal("privilegeDenied", (string)hidden!["errors"]!["code"]!);
+			Assert.Equal("privilegeDenied", (string)ghost!["errors"]!["code"]!);
 		}
 	}
 }

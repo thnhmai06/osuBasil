@@ -16,7 +16,7 @@ If not, the test is coupled to an implementation detail.
 | Layer | Project | Checks |
 |---|---|---|
 | Domain | `tests/Domain` | rules and values, no I/O |
-| Application | `tests/Application/<Module>` | outcomes, `Require`, locks, sessions, restrictions, room state |
+| Application | `tests/Application/<Module>` | outcomes, `Lacks`, locks, sessions, restrictions, room state |
 | Infrastructure | `tests/Infrastructure/<Module>` | repositories and storage against PostgreSQL and temporary files |
 | Protocol | `tests/Protocol/{Stable,Irc}` | wire bytes and text, round-tripped from hand-written pairs |
 | Host | `tests/Hosts/<Transport>` | the real transport in process over real sockets: osu! (stable) packets, IRC lines, REST status/envelope/SSE |
@@ -77,7 +77,7 @@ structure (every branch and guard). Coverage is used only to find branches no ca
 * Pin **properties** of computed values (valid, finite, monotone under a modifier), not the number.
 * Pin the exact value only when the value is a contract: wire bytes, accuracy and grade of the ruleset, the score
   submission checksum. Use hand-written input/output pairs, never a copy of the formula.
-* A refusal checks the missing mask of `Result<TOutcome>`; every `Require` has a test that goes red when it is removed.
+* A refusal checks the outcome `Denied`; every privilege requirement has a test that goes red when it is removed.
 * One behaviour per test, one reason for failure.
 * Test through public APIs; do not assert log text, debug output or internal call counts.
 * Add a regression test for every reproducible bug.

@@ -22,7 +22,7 @@ public sealed class ChannelHandlerTests
 		var result = await new CreateGeneralChannelHandler(app.Server)
 			.Handle(new CreateGeneralChannel(admin, Record("#new")), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ServerOutcome.Ok);
 		Assert.NotNull(app.Server.ScopeTo(admin).Channels.FindGeneral("#new").Channel);
 	}
 
@@ -36,7 +36,7 @@ public sealed class ChannelHandlerTests
 		var result = await new CreateGeneralChannelHandler(app.Server)
 			.Handle(new CreateGeneralChannel(plain, Record("#new")), Token);
 
-		Assert.NotNull(result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(app.Server.ScopeTo(admin).Channels.FindGeneral("#new").Channel);
 	}
 
@@ -50,7 +50,7 @@ public sealed class ChannelHandlerTests
 		var answer = await new ConfigureGeneralChannelHandler(app.Server)
 			.Handle(new ConfigureGeneralChannel(admin, "#topic", new GeneralChannelChange(Topic: "hello")), Token);
 
-		Assert.True(answer.Result.IsOk);
+		Assert.True(answer.Result == ChannelOutcome.Ok);
 		Assert.Equal("hello", answer.Channel!.Topic);
 	}
 
@@ -63,7 +63,7 @@ public sealed class ChannelHandlerTests
 		var answer = await new ConfigureGeneralChannelHandler(app.Server)
 			.Handle(new ConfigureGeneralChannel(admin, "#missing", new GeneralChannelChange(Topic: "x")), Token);
 
-		Assert.False(answer.Result.IsOk);
+		Assert.False(answer.Result == ChannelOutcome.Ok);
 		Assert.Null(answer.Channel);
 	}
 
@@ -76,7 +76,7 @@ public sealed class ChannelHandlerTests
 
 		var answer = await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#gone"), Token);
 
-		Assert.True(answer.Result.IsOk);
+		Assert.True(answer.Result == ChannelOutcome.Ok);
 		Assert.Null(app.Server.ScopeTo(admin).Channels.FindGeneral("#gone").Channel);
 	}
 
@@ -88,7 +88,7 @@ public sealed class ChannelHandlerTests
 
 		var answer = await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#missing"), Token);
 
-		Assert.False(answer.Result.IsOk);
+		Assert.False(answer.Result == ChannelOutcome.Ok);
 		Assert.Null(answer.Channel);
 	}
 

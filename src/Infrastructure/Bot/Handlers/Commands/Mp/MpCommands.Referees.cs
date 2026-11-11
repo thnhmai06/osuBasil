@@ -3,6 +3,7 @@ using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
+using Basil.Application.Multiplayer.Objects;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
@@ -29,7 +30,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new AddReferee(actor, room, UserReference.ById(target.Id)), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -58,7 +59,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await sender.Send(new RemoveReferee(actor, room, UserReference.ById(target.Id)), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;

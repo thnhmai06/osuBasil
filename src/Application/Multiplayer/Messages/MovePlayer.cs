@@ -15,4 +15,4 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Index">The slot to move to.</param>
 /// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
 public sealed record MovePlayer(Connection Actor, Room Room, UserReference Player, int Index)
-	: IRequest<Result<RoomOutcome>>;
+	: IRequest<RoomOutcome>;

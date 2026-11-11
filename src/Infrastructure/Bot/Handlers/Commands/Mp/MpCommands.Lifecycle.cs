@@ -21,7 +21,7 @@ internal sealed partial class MpCommands
 
 		var (room, outcome) =
 			await sender.Send(new OpenRoom(actor, name, "", RoomSource.Api, isPrivate), ct);
-		if (!outcome.IsOk || room is null)
+		if (outcome != RoomOutcome.Ok || room is null)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -55,7 +55,7 @@ internal sealed partial class MpCommands
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : string.Empty;
 		var outcome = await sender.Send(new JoinRoom(actor, room, password), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -108,7 +108,7 @@ internal sealed partial class MpCommands
 	private async Task<bool> CloseAsync(CommandContext context, Room room, CancellationToken ct)
 	{
 		var outcome = await sender.Send(new CloseRoom(context.Actor, room), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;

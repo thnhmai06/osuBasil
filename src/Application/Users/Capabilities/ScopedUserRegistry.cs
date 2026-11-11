@@ -20,9 +20,9 @@ public readonly struct ScopedUserRegistry
 	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
 	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
-	internal UserPrivileges? Require(UserPrivileges required)
+	internal bool Lacks(UserPrivileges required)
 	{
-		return ScopedPrivileges.Require(Privileges, required);
+		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
 	private readonly UserRegistry _registry;
@@ -47,13 +47,13 @@ public readonly struct ScopedUserRegistry
 	///     The new account when the result is ok; otherwise why none was created. Granting needs
 	///     <see cref="UserPrivileges.Owner" /> and only privileges that are in effect for the caller.
 	/// </returns>
-	public async Task<(UserRecord? User, Result<UserOutcome> Result)> CreateAccountAsync(UserData data,
+	public async Task<(UserRecord? User, UserOutcome Result)> CreateAccountAsync(UserData data,
 		Md5 passwordHash, UserPrivileges? privileges)
 	{
 		var granted = privileges ??
 		              (await Actor.User.Context.Settings.GetAsync()).Accounts.DefaultPrivileges;
-		if (Require(UserPrivileges.Owner | granted) is { } missing)
-			return (null, Result<UserOutcome>.Denied(missing));
+		if (Lacks(UserPrivileges.Owner | granted))
+			return (null, UserOutcome.Denied);
 
 		var (user, outcome) = await _registry.RegisterAsync(data, passwordHash, granted);
 		return (user, outcome);

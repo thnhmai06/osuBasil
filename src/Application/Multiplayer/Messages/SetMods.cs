@@ -12,4 +12,4 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Room">The room it acts on.</param>
 /// <param name="Mods">The mods to play with.</param>
 /// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
-public sealed record SetMods(Connection Actor, Room Room, GameMods Mods) : IRequest<Result<RoomOutcome>>;
+public sealed record SetMods(Connection Actor, Room Room, GameMods Mods) : IRequest<RoomOutcome>;

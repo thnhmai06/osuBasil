@@ -25,7 +25,7 @@ public sealed class SpectatingHandlerTests
 
 		var result = await new SpectateUserHandler().Handle(new SpectateUser(spectator, host), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == ConnectionOutcome.Ok);
 		Assert.Contains(spectator, host.Spectators);
 	}
 
@@ -111,7 +111,7 @@ public sealed class SpectatingHandlerTests
 		var (result, key, session) = await new OpenIrcSessionHandler(app.Users)
 			.Handle(new OpenIrcSession(actor, UserReference.ById(actor.Record.Id), "laptop"), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.False(string.IsNullOrEmpty(key));
 		Assert.NotNull(session);
 	}
@@ -126,7 +126,7 @@ public sealed class SpectatingHandlerTests
 		var (result, key, session) = await new OpenIrcSessionHandler(app.Users)
 			.Handle(new OpenIrcSession(actor, UserReference.ById(other.Id), "laptop"), Token);
 
-		Assert.Equal(UserOutcome.NotSelf, result.Outcome);
+		Assert.Equal(UserOutcome.NotSelf, result);
 		Assert.Null(key);
 		Assert.Null(session);
 	}
@@ -137,7 +137,7 @@ public sealed class SpectatingHandlerTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var watcher = await app.LoginAsync(await app.CreateUserAsync("ApiWatcher", "password"));
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
 
 		var published = await new PublishSpectatorFramesHandler().Handle(new PublishSpectatorFrames(host, Bundle()), Token);
 

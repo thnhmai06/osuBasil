@@ -30,8 +30,8 @@ public sealed class ScopedLobbyTests
 		var (room, result) = await OpenAsync(app, creator, source: RoomSource.Api);
 
 		Assert.Null(room);
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == RoomOutcome.Ok);
+		Assert.Equal(RoomOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -44,8 +44,8 @@ public sealed class ScopedLobbyTests
 		var (room, result) = await OpenAsync(app, creator);
 
 		Assert.Null(room);
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Player, result.Missing);
+		Assert.False(result == RoomOutcome.Ok);
+		Assert.Equal(RoomOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -56,7 +56,7 @@ public sealed class ScopedLobbyTests
 
 		var (room, result) = await OpenAsync(app, creator);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.NotNull(room);
 		Assert.Same(creator, room.Authority.Host);
 		Assert.Equal(1, room.Slots.Find(creator)!.Index);
@@ -74,7 +74,7 @@ public sealed class ScopedLobbyTests
 
 		var (room, result) = await OpenAsync(app, connection, source: RoomSource.Api);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.NotNull(room);
 		Assert.Null(room.Authority.Host);
 		Assert.DoesNotContain(room.Slots, slot => slot.Player is not null);
@@ -91,7 +91,7 @@ public sealed class ScopedLobbyTests
 
 		var (room, result) = await OpenAsync(app, creator, source: RoomSource.Api);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.NotNull(room);
 		Assert.Same(creator, room.Authority.Host);
 		var opened = Assert.IsType<LobbyRoomOpened>(app.LobbyEvents.Events[^1]);
@@ -107,7 +107,7 @@ public sealed class ScopedLobbyTests
 
 		var (second, result) = await OpenAsync(app, creator, "second", RoomSource.Api);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.NotNull(second);
 		Assert.Null(second.Authority.Host);
 		Assert.Same(first, app.Lobby.RoomOf(creator));
@@ -125,7 +125,7 @@ public sealed class ScopedLobbyTests
 		var (room, result) = await OpenAsync(app, creator, "second");
 
 		Assert.Null(room);
-		Assert.Equal(RoomOutcome.AlreadyInRoom, result.Outcome);
+		Assert.Equal(RoomOutcome.AlreadyInRoom, result);
 	}
 
 	[Fact]
@@ -134,12 +134,12 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		for (var index = 0; index < 4; index++)
-			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
+			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result == RoomOutcome.Ok);
 
 		var (room, result) = await OpenAsync(app, creator, "room 4", RoomSource.Api);
 
 		Assert.Null(room);
-		Assert.Equal(RoomOutcome.TooManyRooms, result.Outcome);
+		Assert.Equal(RoomOutcome.TooManyRooms, result);
 	}
 
 	[Fact]
@@ -148,12 +148,12 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		for (var index = 0; index < 4; index++)
-			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
+			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result == RoomOutcome.Ok);
 
 		var (room, result) = await OpenAsync(app, creator, "room 4");
 
 		Assert.Null(room);
-		Assert.Equal(RoomOutcome.TooManyRooms, result.Outcome);
+		Assert.Equal(RoomOutcome.TooManyRooms, result);
 	}
 
 	[Fact]
@@ -163,11 +163,11 @@ public sealed class ScopedLobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		for (var index = 0; index < 4; index++)
-			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result.IsOk);
+			Assert.True((await OpenAsync(app, creator, $"room {index}", RoomSource.Api)).Result == RoomOutcome.Ok);
 
 		var (room, result) = await OpenAsync(app, creator, "room 4", RoomSource.Api);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.NotNull(room);
 	}
 
@@ -184,9 +184,9 @@ public sealed class ScopedLobbyTests
 		var (room, result) = await OpenAsync(app, creator);
 
 		Assert.Null(room);
-		Assert.False(result.IsOk);
-		Assert.Equal(RoomOutcome.Locked, result.Outcome);
-		Assert.Null(result.Missing);
+		Assert.False(result == RoomOutcome.Ok);
+		Assert.Equal(RoomOutcome.Locked, result);
+		Assert.NotEqual(RoomOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -202,7 +202,7 @@ public sealed class ScopedLobbyTests
 
 		var (room, result) = await OpenAsync(app, creator);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.NotNull(room);
 	}
 
@@ -217,7 +217,7 @@ public sealed class ScopedLobbyTests
 		var (room, result) = await OpenAsync(app, creator, name);
 
 		Assert.Null(room);
-		Assert.Equal(RoomOutcome.InvalidSettings, result.Outcome);
+		Assert.Equal(RoomOutcome.InvalidSettings, result);
 	}
 
 	[Fact]
@@ -229,7 +229,7 @@ public sealed class ScopedLobbyTests
 
 		var (room, result) = await OpenAsync(app, creator, source: RoomSource.Api);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.Equal(user, room!.Authority.Creator);
 	}
 
@@ -251,15 +251,15 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (first, _) = await OpenAsync(app, creator, "first");
-		Assert.True((await first!.ScopeTo(creator).CloseAsync()).IsOk);
+		Assert.True((await first!.ScopeTo(creator).CloseAsync()) == RoomOutcome.Ok);
 
 		var (second, result) = await OpenAsync(app, creator, "second");
 
-		Assert.True(result.IsOk);
+		Assert.True(result == RoomOutcome.Ok);
 		Assert.Equal(first.Id, second!.Id);
 	}
 
-	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection actor,
+	private static Task<(Room? Room, RoomOutcome Result)> OpenAsync(TestApplication app, Connection actor,
 		string name = "test room", RoomSource source = RoomSource.Game, string password = "")
 	{
 		return app.Lobby.ScopeTo(actor).OpenRoomAsync(name, password, source, false);
@@ -315,11 +315,11 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), SessionType.Stable);
 		var (room, result) = await OpenAsync(app, creator);
-		Assert.True(result.IsOk);
-		Assert.True((await room!.ScopeTo(creator).Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: true))).IsOk);
+		Assert.True(result == RoomOutcome.Ok);
+		Assert.True((await room!.ScopeTo(creator).Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: true))) == RoomOutcome.Ok);
 		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room.ScopeTo(player).Members.JoinAsync("")).IsOk);
-		Assert.True((await room.ScopeTo(player).Members.LeaveAsync()).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.JoinAsync("")) == RoomOutcome.Ok);
+		Assert.True((await room.ScopeTo(player).Members.LeaveAsync()) == RoomOutcome.Ok);
 		// The stored history shows the join (the store's copy of the room can say it is visible).
 		await app.Provider.GetRequiredService<IMatchEventRepository>().RecordAsync(
 			new MatchEvent(room.Match, MatchEventType.PlayerJoined, app.Clock.GetUtcNow(), null, player.Record));
@@ -384,9 +384,9 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true);
-		Assert.True(opened.IsOk);
+		Assert.True(opened == RoomOutcome.Ok);
 		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("")).IsOk);
+		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("")) == RoomOutcome.Ok);
 
 		Assert.True(await app.Lobby.ScopeTo(player).CanViewAsync(room.Match, TestContext.Current.CancellationToken));
 	}
@@ -397,7 +397,7 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", RoomSource.Game, true);
-		Assert.True(opened.IsOk);
+		Assert.True(opened == RoomOutcome.Ok);
 		var stranger = await RoomFixture.PlayerAsync(app, "Stranger");
 
 		Assert.False(await app.Lobby.ScopeTo(stranger)

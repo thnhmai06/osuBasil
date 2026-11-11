@@ -10,4 +10,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 public sealed record ListFriends(Connection Actor, UserReference Target)
-	: IRequest<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)>;
+	: IRequest<(UserOutcome Result, IReadOnlyList<UserRecord> Users)>;

@@ -17,10 +17,10 @@ public readonly struct ScopedServerFaq
 		_scoped = scoped;
 	}
 
-	private Result<ServerOutcome>? Denied()
+	private ServerOutcome? Denied()
 	{
-		return _scoped.Needs(UserPrivileges.Owner) is { } missing
-			? Result<ServerOutcome>.Denied(missing)
+		return _scoped.Lacks(UserPrivileges.Owner)
+			? ServerOutcome.Denied
 			: null;
 	}
 
@@ -29,7 +29,7 @@ public readonly struct ScopedServerFaq
 	/// <param name="text">The text of the entry.</param>
 	/// <returns>The outcome.</returns>
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
-	public async Task<Result<ServerOutcome>> SaveAsync(string entry, string text)
+	public async Task<ServerOutcome> SaveAsync(string entry, string text)
 	{
 		if (Denied() is { } denied) return denied;
 
@@ -40,7 +40,7 @@ public readonly struct ScopedServerFaq
 	/// <param name="entry">The entry name.</param>
 	/// <returns>The outcome; deleting an entry that does not exist is ok.</returns>
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
-	public async Task<Result<ServerOutcome>> DeleteAsync(string entry)
+	public async Task<ServerOutcome> DeleteAsync(string entry)
 	{
 		if (Denied() is { } denied) return denied;
 

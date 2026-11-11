@@ -24,6 +24,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Basil.Application.Users.Objects;
 
 namespace Basil.Testing.Clients;
 
@@ -152,7 +153,7 @@ public sealed class BasilHost : IAsyncDisposable
 		var api = login.Connection ?? throw new InvalidOperationException($"Login failed: {login.Failure}.");
 		var (result, key, session) = await api.User.ScopeTo(api).Sessions.OpenIrcAsync(label);
 		registry.Close(api, SessionEndReason.LoggedOut);
-		if (!result.IsOk) throw new InvalidOperationException($"No key: {result.Outcome}.");
+		if (result != UserOutcome.Ok) throw new InvalidOperationException($"No key: {result}.");
 		_keySessions[key!] = session!.Id;
 		return key!;
 	}

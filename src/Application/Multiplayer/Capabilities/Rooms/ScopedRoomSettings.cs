@@ -30,7 +30,7 @@ public readonly struct ScopedRoomSettings
 	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
 	///     round.
 	/// </remarks>
-	public Task<Result<RoomOutcome>> ConfigureAsync(RoomSettingsChange change)
+	public Task<RoomOutcome> ConfigureAsync(RoomSettingsChange change)
 	{
 		// Build required permissions from the change
 		var required = RoomPrivileges.SettingsChange;
@@ -48,7 +48,7 @@ public readonly struct ScopedRoomSettings
 	///     Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does
 	///     nothing.
 	/// </returns>
-	public Task<Result<RoomOutcome>> SetLockedAsync(bool locked)
+	public Task<RoomOutcome> SetLockedAsync(bool locked)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsMovePlayers) ??
 		                       _scoped.Room.SetLocked(locked));

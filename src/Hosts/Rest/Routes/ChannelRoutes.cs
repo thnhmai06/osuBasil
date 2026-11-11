@@ -7,6 +7,7 @@ using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -60,7 +61,7 @@ internal static class ChannelRoutes
 		};
 
 		var result = await sender.Send(new CreateGeneralChannel(context.Connection(), record), context.RequestAborted);
-		return result.IsOk ? Api.Created(ChannelView.Of(record)) : result.Refusal();
+		return result == ServerOutcome.Ok ? Api.Created(ChannelView.Of(record)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
@@ -73,7 +74,7 @@ internal static class ChannelRoutes
 
 		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Connection(), name, change),
 			context.RequestAborted);
-		return result.IsOk ? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully") : result.Refusal();
+		return result == ChannelOutcome.Ok ? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully") : result.Refusal();
 	}
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, string name, ISender sender)

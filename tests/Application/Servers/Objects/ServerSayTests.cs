@@ -3,6 +3,7 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Servers.Tests.Objects;
 
@@ -18,7 +19,7 @@ public sealed class ServerSayTests
 		var record = new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() };
 		var created = await app.Server.ScopeTo(actor).Channels
 			.CreateAsync(record);
-		Assert.True(created.IsOk);
+		Assert.True(created == ServerOutcome.Ok);
 		return app.Channels.Find(ChannelName)!;
 	}
 

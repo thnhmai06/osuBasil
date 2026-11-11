@@ -10,4 +10,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Target">The account acted on.</param>
 /// <param name="Reason">Why the silence is lifted, if known.</param>
 public sealed record UnsilenceUser(Connection Actor, UserReference Target, string? Reason)
-	: IRequest<Result<UserOutcome>>;
+	: IRequest<UserOutcome>;

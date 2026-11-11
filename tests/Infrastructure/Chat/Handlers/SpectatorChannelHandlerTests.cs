@@ -21,7 +21,7 @@ public sealed class SpectatorChannelHandlerTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var spectator = await RoomFixture.PlayerAsync(app, "Watcher");
-		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		var joined = Assert.Single(app.UserEvents.Events.OfType<UserSpectatorJoined>());
 
@@ -39,8 +39,8 @@ public sealed class SpectatorChannelHandlerTests
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var first = await RoomFixture.PlayerAsync(app, "FirstWatcher");
 		var second = await RoomFixture.PlayerAsync(app, "SecondWatcher");
-		Assert.True((await host.ScopeTo(first).SpectateAsync()).IsOk);
-		Assert.True((await host.ScopeTo(second).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(first).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True((await host.ScopeTo(second).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		var handler = new SpectatorJoinedHandler(channels);
 		var joined = app.UserEvents.Events.OfType<UserSpectatorJoined>().ToList();
@@ -62,7 +62,7 @@ public sealed class SpectatorChannelHandlerTests
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var user = await app.CreateUserAsync("ApiWatcher", "password");
 		var watcher = await app.LoginAsync(user);
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		var joined = Assert.Single(app.UserEvents.Events.OfType<UserSpectatorJoined>());
 
@@ -80,8 +80,8 @@ public sealed class SpectatorChannelHandlerTests
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var spectator = await RoomFixture.PlayerAsync(app, "Watcher");
 		var apiWatcher = await app.LoginAsync(await app.CreateUserAsync("ApiWatcher", "password"));
-		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
-		Assert.True((await host.ScopeTo(apiWatcher).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True((await host.ScopeTo(apiWatcher).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		await JoinBothAsync(app, channels, host);
 		Assert.True(host.ScopeTo(spectator).StopSpectating());
@@ -98,8 +98,8 @@ public sealed class SpectatorChannelHandlerTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var spectator = await RoomFixture.PlayerAsync(app, "Watcher");
-		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
-		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		var handler = new SpectatorJoinedHandler(channels);
 		var joined = app.UserEvents.Events.OfType<UserSpectatorJoined>().ToList();
@@ -121,8 +121,8 @@ public sealed class SpectatorChannelHandlerTests
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var first = await RoomFixture.PlayerAsync(app, "FirstWatcher");
 		var second = await RoomFixture.PlayerAsync(app, "SecondWatcher");
-		Assert.True((await host.ScopeTo(first).SpectateAsync()).IsOk);
-		Assert.True((await host.ScopeTo(second).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(first).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True((await host.ScopeTo(second).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		await JoinBothAsync(app, channels, host);
 		Assert.True(host.ScopeTo(second).StopSpectating());
@@ -142,7 +142,7 @@ public sealed class SpectatorChannelHandlerTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var spectator = await RoomFixture.PlayerAsync(app, "Watcher");
-		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		await JoinBothAsync(app, channels, host);
 		Assert.True(host.ScopeTo(spectator).StopSpectating());
@@ -161,7 +161,7 @@ public sealed class SpectatorChannelHandlerTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var spectator = await RoomFixture.PlayerAsync(app, "Watcher");
-		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()) == ConnectionOutcome.Ok);
 		var channels = Channels(app);
 		await JoinBothAsync(app, channels, host);
 		var channel = channels.Of(host);

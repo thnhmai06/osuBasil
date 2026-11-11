@@ -103,13 +103,22 @@ public sealed class OutcomeErrorsTests
 	}
 
 	[Fact]
+	public void DeniedOutcome_PrivilegeDenied()
+	{
+		Assert.Equal(new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, ErrorKind.PrivilegeDenied),
+			OutcomeErrors.Describe(RoomOutcome.Denied));
+		Assert.Equal(new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, ErrorKind.PrivilegeDenied),
+			OutcomeErrors.Describe(UserOutcome.Denied));
+	}
+
+	[Fact]
 	public void Tables_CoverEveryRefusal()
 	{
-		Assert.Equal(Enum.GetValues<UserOutcome>().Length - 1, Users.Count);
-		Assert.Equal(Enum.GetValues<RoomOutcome>().Length - 1, Rooms.Count);
-		Assert.Equal(Enum.GetValues<ChannelOutcome>().Length - 1, Channels.Count);
-		Assert.Equal(Enum.GetValues<ServerOutcome>().Length - 1, Servers.Count);
-		Assert.Equal(Enum.GetValues<ConnectionOutcome>().Length - 1, Connections.Count);
+		Assert.Equal(Enum.GetValues<UserOutcome>().Length - 2, Users.Count);
+		Assert.Equal(Enum.GetValues<RoomOutcome>().Length - 2, Rooms.Count);
+		Assert.Equal(Enum.GetValues<ChannelOutcome>().Length - 2, Channels.Count);
+		Assert.Equal(Enum.GetValues<ServerOutcome>().Length - 2, Servers.Count);
+		Assert.Equal(Enum.GetValues<ConnectionOutcome>().Length - 2, Connections.Count);
 	}
 
 	[Theory]

@@ -7,10 +7,10 @@ namespace Basil.Infrastructure.Beatmaps.Handlers;
 
 /// <summary>Deletes a beatmapset with the privileges of the sending connection.</summary>
 internal sealed class DeleteBeatmapsetHandler(Beatmapsets beatmapsets)
-	: IRequestHandler<DeleteBeatmapset, Result<BeatmapsetOutcome>>
+	: IRequestHandler<DeleteBeatmapset, BeatmapsetOutcome>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<BeatmapsetOutcome>> Handle(DeleteBeatmapset request,
+	public async ValueTask<BeatmapsetOutcome> Handle(DeleteBeatmapset request,
 		CancellationToken ct)
 	{
 		return await beatmapsets.ScopeTo(request.Actor, request.SetId).DeleteAsync();

@@ -18,17 +18,17 @@ public readonly struct ScopedRulesets
 		_privileges = actor.EffectivePrivileges(rulesets.Clock.GetUtcNow());
 	}
 
-	private UserPrivileges? Require()
+	private bool Lacks()
 	{
-		return ScopedPrivileges.Require(_privileges, UserPrivileges.Developer);
+		return ScopedPrivileges.Lacks(_privileges, UserPrivileges.Developer);
 	}
 
 	/// <summary>Reads the active and the staged version.</summary>
 	/// <returns>The outcome and, when allowed, the versions.</returns>
-	public (Result<RulesetOutcome> Result, RulesetVersions? Versions) Version()
+	public (RulesetOutcome Result, RulesetVersions? Versions) Version()
 	{
-		return Require() is { } missing
-			? (Result<RulesetOutcome>.Denied(missing), null)
+		return Lacks()
+			? (RulesetOutcome.Denied, null)
 			: (RulesetOutcome.Ok, _rulesets.Updater.Version());
 	}
 
@@ -36,20 +36,20 @@ public readonly struct ScopedRulesets
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when allowed, what was staged.</returns>
 	/// <exception cref="RulesetUpdateException">The feed could not be read or a package failed verification.</exception>
-	public async Task<(Result<RulesetOutcome> Result, RulesetStageResult? Stage)> UpdateAsync(
+	public async Task<(RulesetOutcome Result, RulesetStageResult? Stage)> UpdateAsync(
 		CancellationToken ct = default)
 	{
-		return Require() is { } missing
-			? (Result<RulesetOutcome>.Denied(missing), null)
+		return Lacks()
+			? (RulesetOutcome.Denied, null)
 			: (RulesetOutcome.Ok, await _rulesets.Updater.StageAsync(ct));
 	}
 
 	/// <summary>Starts recomputing every stored beatmap with the rulesets in use, in the background.</summary>
 	/// <returns>Ok when it started; <see cref="RulesetOutcome.Busy" /> when a reload is already running.</returns>
-	public Result<RulesetOutcome> Reload()
+	public RulesetOutcome Reload()
 	{
-		return Require() is { } missing
-			? Result<RulesetOutcome>.Denied(missing)
+		return Lacks()
+			? RulesetOutcome.Denied
 			: _rulesets.Reload();
 	}
 }

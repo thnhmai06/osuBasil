@@ -22,7 +22,7 @@ public sealed class ScopedUserRegistryTests
 			new UserData { Name = "NewAccount" }, Hash, null);
 
 		Assert.Null(user);
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -37,7 +37,7 @@ public sealed class ScopedUserRegistryTests
 			new UserData { Name = "TooMuchPower" }, Hash, UserPrivileges.Developer);
 
 		Assert.Null(user);
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(UserOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -50,7 +50,7 @@ public sealed class ScopedUserRegistryTests
 
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(data, Hash, data.Privileges);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.NotNull(user);
 		Assert.Equal(UserPrivileges.Moderator, user.Value.Privileges);
 	}
@@ -69,7 +69,7 @@ public sealed class ScopedUserRegistryTests
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "ConfigDefault" }, Hash, null);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal(UserPrivileges.Player, user!.Value.Privileges);
 	}
 
@@ -87,7 +87,7 @@ public sealed class ScopedUserRegistryTests
 		var (user, result) = await app.Users.ScopeTo(actor).CreateAccountAsync(
 			new UserData { Name = "ExplicitMask" }, Hash, UserPrivileges.Moderator);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal(UserPrivileges.Moderator, user!.Value.Privileges);
 	}
 
@@ -103,6 +103,6 @@ public sealed class ScopedUserRegistryTests
 			new UserData { Name = "AlreadyCreated" }, Hash, null);
 
 		Assert.Null(user);
-		Assert.Equal(UserOutcome.NameTaken, result.Outcome);
+		Assert.Equal(UserOutcome.NameTaken, result);
 	}
 }

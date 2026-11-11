@@ -22,7 +22,7 @@ public sealed class SessionHandlerTests
 		var (result, session) = await new GetUserSessionHandler(app.Users)
 			.Handle(new GetUserSession(actor, UserReference.ById(actor.Record.Id), actor.Session.Id), Token);
 
-		Assert.Equal(UserOutcome.Ok, result.Outcome);
+		Assert.Equal(UserOutcome.Ok, result);
 		Assert.Equal(actor.Session.Id, session!.Id);
 	}
 
@@ -36,7 +36,7 @@ public sealed class SessionHandlerTests
 		var (result, session) = await new GetUserSessionHandler(app.Users)
 			.Handle(new GetUserSession(actor, UserReference.ById(other.Record.Id), other.Session.Id), Token);
 
-		Assert.NotEqual(UserOutcome.Ok, result.Outcome);
+		Assert.NotEqual(UserOutcome.Ok, result);
 		Assert.Null(session);
 	}
 
@@ -49,7 +49,7 @@ public sealed class SessionHandlerTests
 		var (result, sessions) = await new ListUserSessionsHandler(app.Users).Handle(
 			new ListUserSessions(actor, UserReference.ById(actor.Record.Id), new PageRequest(0, 10), SessionState.Any, null), Token);
 
-		Assert.Equal(UserOutcome.Ok, result.Outcome);
+		Assert.Equal(UserOutcome.Ok, result);
 		Assert.Contains(actor.Session.Id, sessions!.Items.Select(session => session.Id));
 	}
 
@@ -63,7 +63,7 @@ public sealed class SessionHandlerTests
 		var (result, sessions) = await new ListUserSessionsHandler(app.Users).Handle(
 			new ListUserSessions(actor, UserReference.ById(other.Record.Id), new PageRequest(0, 10), SessionState.Any, null), Token);
 
-		Assert.NotEqual(UserOutcome.Ok, result.Outcome);
+		Assert.NotEqual(UserOutcome.Ok, result);
 		Assert.Null(sessions);
 	}
 
@@ -78,7 +78,7 @@ public sealed class SessionHandlerTests
 		var result = await new CloseUserSessionHandler(app.Users)
 			.Handle(new CloseUserSession(actor, UserReference.ById(user.Id), closing.Session.Id), Token);
 
-		Assert.Equal(UserOutcome.Ok, result.Outcome);
+		Assert.Equal(UserOutcome.Ok, result);
 		Assert.False(closing.IsOpen);
 		Assert.True(actor.IsOpen);
 	}
@@ -93,7 +93,7 @@ public sealed class SessionHandlerTests
 		var result = await new CloseUserSessionHandler(app.Users)
 			.Handle(new CloseUserSession(actor, UserReference.ById(other.Record.Id), other.Session.Id), Token);
 
-		Assert.NotEqual(UserOutcome.Ok, result.Outcome);
+		Assert.NotEqual(UserOutcome.Ok, result);
 		Assert.True(other.IsOpen);
 	}
 
@@ -108,7 +108,7 @@ public sealed class SessionHandlerTests
 		var result = await new CloseUserSessionsHandler(app.Users)
 			.Handle(new CloseUserSessions(actor, UserReference.ById(user.Id), true), Token);
 
-		Assert.Equal(UserOutcome.Ok, result.Outcome);
+		Assert.Equal(UserOutcome.Ok, result);
 		Assert.False(other.IsOpen);
 		Assert.True(actor.IsOpen);
 	}
@@ -123,7 +123,7 @@ public sealed class SessionHandlerTests
 		var result = await new CloseUserSessionsHandler(app.Users)
 			.Handle(new CloseUserSessions(actor, UserReference.ById(user.Id), false), Token);
 
-		Assert.Equal(UserOutcome.Ok, result.Outcome);
+		Assert.Equal(UserOutcome.Ok, result);
 		Assert.False(actor.IsOpen);
 	}
 }

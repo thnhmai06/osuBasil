@@ -8,10 +8,10 @@ namespace Basil.Infrastructure.Users.Handlers;
 
 /// <summary>Carries out <see cref="CloseUserSessions" /> on the account it names.</summary>
 internal sealed class CloseUserSessionsHandler(UserRegistry registry)
-	: IRequestHandler<CloseUserSessions, Result<UserOutcome>>
+	: IRequestHandler<CloseUserSessions, UserOutcome>
 {
 	/// <inheritdoc />
-	public async ValueTask<Result<UserOutcome>> Handle(CloseUserSessions request, CancellationToken ct)
+	public async ValueTask<UserOutcome> Handle(CloseUserSessions request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Sessions
 			.CloseAllAsync(request.KeepCurrent);

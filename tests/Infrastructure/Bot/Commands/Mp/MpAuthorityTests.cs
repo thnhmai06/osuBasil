@@ -90,7 +90,7 @@ public sealed class MpAuthorityTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp lock");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.MissingPrivileges, new { privileges = nameof(UserPrivileges.Player) })], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.MissingPrivileges)], said.Here);
 		Assert.False(room.Slots.Locked);
 	}
 

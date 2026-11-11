@@ -24,7 +24,7 @@ public sealed class ScopedRoomTests
 
 		var result = await setup.Room.ScopeTo(setup.Creator).CloseAsync();
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.True(setup.Room.IsClosed);
 		Assert.Null(setup.Room.Slots.Find(setup.Player));
 		Assert.True(setup.Room.Rounds.LastRound!.Aborted);
@@ -40,12 +40,12 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
 		var events = app.LobbyEvents.Events.Count;
 
 		var result = await setup.Room.ScopeTo(setup.Creator).CloseAsync();
 
-		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(events, app.LobbyEvents.Events.Count);
 	}
 
@@ -54,12 +54,12 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
 		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
 
-		Assert.Equal(RoomOutcome.RoomClosed, result.Outcome);
+		Assert.Equal(RoomOutcome.RoomClosed, result);
 	}
 
 	[Fact]
@@ -67,11 +67,11 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()).IsOk);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync();
 
-		Assert.Equal(RoomOutcome.RoomClosed, result.Outcome);
+		Assert.Equal(RoomOutcome.RoomClosed, result);
 	}
 
 	[Fact]

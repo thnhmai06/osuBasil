@@ -17,10 +17,10 @@ public readonly struct ScopedServerBanners
 		_scoped = scoped;
 	}
 
-	private Result<ServerOutcome>? Denied()
+	private ServerOutcome? Denied()
 	{
-		return _scoped.Needs(UserPrivileges.Owner) is { } missing
-			? Result<ServerOutcome>.Denied(missing)
+		return _scoped.Lacks(UserPrivileges.Owner)
+			? ServerOutcome.Denied
 			: null;
 	}
 
@@ -32,7 +32,7 @@ public readonly struct ScopedServerBanners
 	/// <param name="endsAt">When it stops showing, or <see langword="null" /> for never.</param>
 	/// <returns>The outcome and, when successful, the banner.</returns>
 	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
-	public async Task<(Result<ServerOutcome> Result, MenuBanner? Banner)> CreateAsync(string name, Stream image,
+	public async Task<(ServerOutcome Result, MenuBanner? Banner)> CreateAsync(string name, Stream image,
 		Uri url, DateTimeOffset? startsAt, DateTimeOffset? endsAt)
 	{
 		if (Denied() is { } denied) return (denied, null);
@@ -43,7 +43,7 @@ public readonly struct ScopedServerBanners
 	/// <summary>Deletes a main-menu banner and its image.</summary>
 	/// <param name="banner">The banner.</param>
 	/// <returns>The outcome.</returns>
-	public async Task<Result<ServerOutcome>> DeleteAsync(MenuBanner banner)
+	public async Task<ServerOutcome> DeleteAsync(MenuBanner banner)
 	{
 		if (Denied() is { } denied) return denied;
 

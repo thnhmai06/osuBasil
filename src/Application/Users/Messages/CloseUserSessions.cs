@@ -10,4 +10,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Target">The account acted on.</param>
 /// <param name="KeepCurrent">True to keep the session of the asking connection.</param>
 public sealed record CloseUserSessions(Connection Actor, UserReference Target, bool KeepCurrent)
-	: IRequest<Result<UserOutcome>>;
+	: IRequest<UserOutcome>;

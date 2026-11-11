@@ -9,4 +9,4 @@ namespace Basil.Application.Users.Messages;
 /// <param name="Actor">The connection that asks.</param>
 /// <param name="Target">The account acted on.</param>
 /// <param name="Name">The new name.</param>
-public sealed record RenameUser(Connection Actor, UserReference Target, string Name) : IRequest<Result<UserOutcome>>;
+public sealed record RenameUser(Connection Actor, UserReference Target, string Name) : IRequest<UserOutcome>;

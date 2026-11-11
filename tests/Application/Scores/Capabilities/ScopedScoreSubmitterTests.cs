@@ -45,7 +45,7 @@ public sealed class ScopedScoreSubmitterTests
 		var (result, rejection) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
 			.SubmitAsync(Submission(), null, Client(), null, TestContext.Current.CancellationToken);
 
-		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 	}
 }

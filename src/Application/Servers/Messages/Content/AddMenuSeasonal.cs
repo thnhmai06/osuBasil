@@ -11,4 +11,4 @@ namespace Basil.Application.Servers.Messages;
 /// <param name="Name">The name of the seasonal background.</param>
 /// <param name="Image">The image of the seasonal background.</param>
 public sealed record AddMenuSeasonal(Connection Actor, string Name, Stream Image)
-	: IRequest<(Result<ServerOutcome> Result, ContentReference? Image)>;
+	: IRequest<(ServerOutcome Result, ContentReference? Image)>;

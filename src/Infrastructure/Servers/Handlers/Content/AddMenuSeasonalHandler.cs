@@ -8,10 +8,10 @@ namespace Basil.Infrastructure.Servers.Handlers;
 
 /// <summary>Handles <see cref="AddMenuSeasonal" /> with the privileges of the sending connection.</summary>
 internal sealed class AddMenuSeasonalHandler(Server server)
-	: IRequestHandler<AddMenuSeasonal, (Result<ServerOutcome> Result, ContentReference? Image)>
+	: IRequestHandler<AddMenuSeasonal, (ServerOutcome Result, ContentReference? Image)>
 {
 	/// <inheritdoc />
-	public async ValueTask<(Result<ServerOutcome> Result, ContentReference? Image)> Handle(AddMenuSeasonal request,
+	public async ValueTask<(ServerOutcome Result, ContentReference? Image)> Handle(AddMenuSeasonal request,
 		CancellationToken ct)
 	{
 		return await server.ScopeTo(request.Actor).Seasonals.CreateAsync(request.Name, request.Image);

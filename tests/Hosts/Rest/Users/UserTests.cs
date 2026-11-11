@@ -91,7 +91,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OtherUserDenied_Answers403Mask()
+	public async Task OtherUserDenied_Answers403()
 	{
 		var (client, _) = await fixture.SignInAsync("PatchOther");
 		var victim = await fixture.Host.CreateUserAsync("PatchVictim");
@@ -102,7 +102,6 @@ public sealed class UserTests(RestHostFixture fixture)
 
 			Assert.Equal(403, status);
 			Assert.Equal("privilegeDenied", (string)envelope!["errors"]!["code"]!);
-			Assert.NotEqual(0UL, (ulong)envelope["errors"]!["missing"]!);
 		}
 	}
 

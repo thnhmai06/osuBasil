@@ -8,6 +8,7 @@ using Basil.Gateway;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;
+using Basil.Application.Servers.Objects;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -122,7 +123,7 @@ internal static class MenuRoutes
 		var (result, banner) = await sender.Send(
 			new AddMenuBanner(context.Connection(), file.FileName, stream, url, begins, expires),
 			context.RequestAborted);
-		return result.IsOk
+		return result == ServerOutcome.Ok
 			? Api.Created(new BannerView(Path.GetFileName(banner!.Image.Value), banner.Url.AbsoluteUri,
 				banner.StartsAt, banner.EndsAt, true))
 			: result.Refusal();
@@ -161,7 +162,7 @@ internal static class MenuRoutes
 		await using var stream = file.OpenReadStream();
 		var (result, image) = await sender.Send(new AddMenuSeasonal(context.Connection(), file.FileName, stream),
 			context.RequestAborted);
-		return result.IsOk ? Api.Created(Path.GetFileName(image!.Value.Value)) : result.Refusal();
+		return result == ServerOutcome.Ok ? Api.Created(Path.GetFileName(image!.Value.Value)) : result.Refusal();
 	}
 
 	private static async Task<IResult> DeleteSeasonalAsync(HttpContext context, string image, ISender sender)

@@ -74,15 +74,15 @@ internal sealed partial class IrcCommands
 		return false;
 	}
 
-	private static void ReplyToPost(IrcSession session, string target, Result<ChannelOutcome> result)
+	private static void ReplyToPost(IrcSession session, string target, ChannelOutcome result)
 	{
-		if (result.Missing is not null)
+		if (result == ChannelOutcome.Denied)
 		{
 			session.Numeric(IrcNumericReply.ErrCannotSendToChannel, target, IrcReplies.Silenced);
 			return;
 		}
 
-		switch (result.Outcome)
+		switch (result)
 		{
 			case ChannelOutcome.Closed or ChannelOutcome.NotFound:
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, target, IrcReplies.NoSuchChannel);
@@ -133,7 +133,7 @@ internal sealed partial class IrcCommands
 			}
 
 			var result = await sender.Send(new JoinChannel(actor, IrcTarget(name)), ct);
-			switch (result.Outcome)
+			switch (result)
 			{
 				case ChannelOutcome.Closed or ChannelOutcome.NotFound:
 					session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
@@ -157,9 +157,9 @@ internal sealed partial class IrcCommands
 		foreach (var name in message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries))
 		{
 			var result = await sender.Send(new PartChannel(actor, IrcTarget(name)), ct);
-			if (result.Outcome == ChannelOutcome.NotFound)
+			if (result == ChannelOutcome.NotFound)
 				session.Numeric(IrcNumericReply.ErrNoSuchChannel, name, IrcReplies.NoSuchChannel);
-			else if (result.Outcome == ChannelOutcome.NotMember)
+			else if (result == ChannelOutcome.NotMember)
 				session.Numeric(IrcNumericReply.ErrNotOnChannel, name, IrcReplies.NotOnChannel);
 		}
 	}

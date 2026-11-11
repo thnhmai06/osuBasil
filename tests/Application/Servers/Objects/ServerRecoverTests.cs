@@ -88,7 +88,7 @@ public sealed class ServerRecoverTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("left running", "", RoomSource.Game, false);
-		Assert.True(opened.IsOk);
+		Assert.True(opened == RoomOutcome.Ok);
 		Assert.Null(room!.Match.Value.EndedAt);
 
 		var recovery = await app.Server.RecoverAsync(TestContext.Current.CancellationToken);

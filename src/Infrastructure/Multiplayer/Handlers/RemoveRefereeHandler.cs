@@ -6,12 +6,12 @@ using Mediator;
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
 /// <summary>Runs a <see cref="RemoveReferee" /> on the room for the connection that asked.</summary>
-internal sealed class RemoveRefereeHandler : IRequestHandler<RemoveReferee, Result<RoomOutcome>>
+internal sealed class RemoveRefereeHandler : IRequestHandler<RemoveReferee, RoomOutcome>
 {
 	/// <inheritdoc />
-	public ValueTask<Result<RoomOutcome>> Handle(RemoveReferee request, CancellationToken ct)
+	public ValueTask<RoomOutcome> Handle(RemoveReferee request, CancellationToken ct)
 	{
-		return new ValueTask<Result<RoomOutcome>>(
+		return new ValueTask<RoomOutcome>(
 			request.Room.ScopeTo(request.Actor).Authority.RemoveRefereeAsync(request.User));
 	}
 }

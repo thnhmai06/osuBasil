@@ -100,7 +100,7 @@ internal sealed partial class MpCommands
 		CancellationToken ct)
 	{
 		var outcome = await sender.Send(new SetRoomLocked(context.Actor, room, locked), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -132,7 +132,7 @@ internal sealed partial class MpCommands
 		var outcome =
 			await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(IsPrivate: args[0] == "1")),
 				ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -156,7 +156,7 @@ internal sealed partial class MpCommands
 
 		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(Size: size)),
 			ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -182,7 +182,7 @@ internal sealed partial class MpCommands
 
 		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, new RoomSettingsChange(name)),
 			ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -199,7 +199,7 @@ internal sealed partial class MpCommands
 		var password = args.Count == 0 ? string.Empty : string.Join(' ', args);
 		var outcome = await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Password: password)),
 			ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -224,7 +224,7 @@ internal sealed partial class MpCommands
 		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
 			Size: size);
 		var outcome = await sender.Send(new ConfigureRoom(context.Actor, room, change), ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -308,7 +308,7 @@ internal sealed partial class MpCommands
 				new ConfigureRoom(context.Actor, room,
 					new RoomSettingsChange(Beatmap: reference, Mode: ModeFor(beatmap.Metadata.Difficulty.Mode, mode))),
 				ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
@@ -366,7 +366,7 @@ internal sealed partial class MpCommands
 		var outcome =
 			await sender.Send(new ConfigureRoom(actor, room, new RoomSettingsChange(Mods: mods, Freemods: freemod)),
 				ct);
-		if (!outcome.IsOk)
+		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;

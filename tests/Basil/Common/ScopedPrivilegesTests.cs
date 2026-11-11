@@ -21,42 +21,38 @@ public class ScopedPrivilegesTests
 	}
 
 	[Fact]
-	public void AllFlagsHeld_Met()
+	public void AllFlagsHeld_NotLacking()
 	{
 		var held = SampleBits.Read | SampleBits.Write;
 
-		Assert.Null(ScopedPrivileges.Require(held, SampleBits.Read));
-		Assert.Null(ScopedPrivileges.Require(held, SampleBits.Read | SampleBits.Write));
+		Assert.False(ScopedPrivileges.Lacks(held, SampleBits.Read));
+		Assert.False(ScopedPrivileges.Lacks(held, SampleBits.Read | SampleBits.Write));
 	}
 
 	[Fact]
-	public void MissingBit_OnlyMissingNamed()
+	public void MissingBit_Lacking()
 	{
 		var held = SampleBits.Read;
 
-		Assert.Equal(SampleBits.Write | SampleBits.Delete,
-			ScopedPrivileges.Require(held, SampleBits.Read | SampleBits.Write | SampleBits.Delete));
+		Assert.True(ScopedPrivileges.Lacks(held, SampleBits.Read | SampleBits.Write | SampleBits.Delete));
 	}
 
 	[Fact]
-	public void NoFlagsRequired_Met()
+	public void NoFlagsRequired_NotLacking()
 	{
 		var held = SampleBits.None;
 
-		Assert.Null(ScopedPrivileges.Require(held, SampleBits.None));
+		Assert.False(ScopedPrivileges.Lacks(held, SampleBits.None));
 	}
 
 	[Theory]
-	[InlineData(SampleLevel.Admin, SampleLevel.Member, true)]
-	[InlineData(SampleLevel.Member, SampleLevel.Member, true)]
-	[InlineData(SampleLevel.Guest, SampleLevel.Guest, true)]
-	[InlineData(SampleLevel.Member, SampleLevel.Admin, false)]
-	[InlineData(SampleLevel.Guest, SampleLevel.Member, false)]
-	public void RequiredLevelHeld_Met(SampleLevel held, SampleLevel required,
-		bool met)
+	[InlineData(SampleLevel.Admin, SampleLevel.Member, false)]
+	[InlineData(SampleLevel.Member, SampleLevel.Member, false)]
+	[InlineData(SampleLevel.Guest, SampleLevel.Guest, false)]
+	[InlineData(SampleLevel.Member, SampleLevel.Admin, true)]
+	[InlineData(SampleLevel.Guest, SampleLevel.Member, true)]
+	public void RequiredLevel_LacksWhenBelow(SampleLevel held, SampleLevel required, bool lacks)
 	{
-		var missing = ScopedPrivileges.Require(held, required);
-
-		Assert.Equal(met ? null : required, missing);
+		Assert.Equal(lacks, ScopedPrivileges.Lacks(held, required));
 	}
 }

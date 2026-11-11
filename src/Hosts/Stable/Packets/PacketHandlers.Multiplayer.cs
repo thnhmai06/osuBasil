@@ -65,7 +65,7 @@ internal sealed partial class PacketHandlers
 		var matchSettings = SettingsOf(match);
 		var (room, result) = await sender.Send(
 			new OpenRoom(osu, match.Name, match.Password, RoomSource.Game, false, matchSettings), ct);
-		if (room is null || !result.IsOk)
+		if (room is null || result != RoomOutcome.Ok)
 		{
 			outbox.Send(osu, writer => writer.MatchJoinFail());
 			return;
@@ -81,7 +81,7 @@ internal sealed partial class PacketHandlers
 		var result = lobby.Find(request.MatchId) is { IsClosed: false } room
 			? await sender.Send(new JoinRoom(osu, room, request.Password), ct)
 			: default;
-		if (!result.IsOk) outbox.Send(osu, writer => writer.MatchJoinFail());
+		if (result != RoomOutcome.Ok) outbox.Send(osu, writer => writer.MatchJoinFail());
 	}
 
 	private static MatchSettings SettingsOf(RoomStatePacket match)
@@ -135,7 +135,7 @@ internal sealed partial class PacketHandlers
 	}
 
 	private Task Ask<TMessage>(TMessage message, CancellationToken ct)
-		where TMessage : IRequest<Result<RoomOutcome>>
+		where TMessage : IRequest<RoomOutcome>
 	{
 		return sender.Send(message, ct).AsTask();
 	}

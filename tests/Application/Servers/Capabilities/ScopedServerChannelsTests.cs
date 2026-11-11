@@ -24,7 +24,7 @@ public sealed class ScopedServerChannelsTests
 
 		var result = await app.Server.ScopeTo(player).Channels.CreateAsync(Record("#denied"));
 
-		Assert.Equal(UserPrivileges.Moderator, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(app.Channels.Find("#denied"));
 	}
 
@@ -40,8 +40,8 @@ public sealed class ScopedServerChannelsTests
 		var second = await app.Server.ScopeTo(manager).Channels
 			.CreateAsync(Record("#FRESH"));
 
-		Assert.Equal(ServerOutcome.Ok, first.Outcome);
-		Assert.Equal(ServerOutcome.NameTaken, second.Outcome);
+		Assert.Equal(ServerOutcome.Ok, first);
+		Assert.Equal(ServerOutcome.NameTaken, second);
 		Assert.NotNull(app.Channels.Find("#fresh"));
 	}
 

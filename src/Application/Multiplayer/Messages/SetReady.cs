@@ -11,4 +11,4 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Room">The room it acts on.</param>
 /// <param name="Ready">Whether the actor is ready.</param>
 /// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
-public sealed record SetReady(Connection Actor, Room Room, bool Ready) : IRequest<Result<RoomOutcome>>;
+public sealed record SetReady(Connection Actor, Room Room, bool Ready) : IRequest<RoomOutcome>;

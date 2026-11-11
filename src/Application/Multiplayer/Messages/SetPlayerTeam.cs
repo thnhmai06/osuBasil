@@ -16,4 +16,4 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Team">The team to put them in.</param>
 /// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
 public sealed record SetPlayerTeam(Connection Actor, Room Room, UserReference Player, GameTeam Team)
-	: IRequest<Result<RoomOutcome>>;
+	: IRequest<RoomOutcome>;

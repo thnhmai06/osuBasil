@@ -22,7 +22,7 @@ public readonly struct ScopedRoomAuthority
 	/// <summary>Makes a user a referee.</summary>
 	/// <param name="user">The user to make referee, named by id or name.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom for a user who does not exist, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
-	public async Task<Result<RoomOutcome>> AddRefereeAsync(UserReference user)
+	public async Task<RoomOutcome> AddRefereeAsync(UserReference user)
 	{
 		if (_scoped.Require(RoomPrivileges.RefereesManage) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
@@ -33,7 +33,7 @@ public readonly struct ScopedRoomAuthority
 	/// <summary>Removes a user from the referees.</summary>
 	/// <param name="user">The referee to remove, named by id or name.</param>
 	/// <returns>Ok, NotAuthorized, NotReferee, NotInRoom for a user who does not exist, or RoomClosed when the room has closed.</returns>
-	public async Task<Result<RoomOutcome>> RemoveRefereeAsync(UserReference user)
+	public async Task<RoomOutcome> RemoveRefereeAsync(UserReference user)
 	{
 		if (_scoped.Require(RoomPrivileges.RefereesManage) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
@@ -45,7 +45,7 @@ public readonly struct ScopedRoomAuthority
 	/// <param name="host">The seated player to make host, or <see langword="null" /> to clear the host.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>Giving host to the current host does nothing.</remarks>
-	public Task<Result<RoomOutcome>> SetHostAsync(StableConnection? host)
+	public Task<RoomOutcome> SetHostAsync(StableConnection? host)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.HostTransfer) ??
 		                       _scoped.Room.SetHost(_scoped.Actor.Record, host));

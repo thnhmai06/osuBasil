@@ -11,4 +11,4 @@ namespace Basil.Application.Servers.Messages.Channels;
 /// <param name="Record">The channel to create.</param>
 /// <remarks>The answer is <see cref="ServerOutcome.NameTaken" /> when a channel with that name is already open.</remarks>
 public sealed record CreateGeneralChannel(Connection Actor, GeneralChannelRecord Record)
-	: IRequest<Result<ServerOutcome>>;
+	: IRequest<ServerOutcome>;

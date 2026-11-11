@@ -11,7 +11,7 @@ public readonly struct ScopedUserPrivileges(ScopedUser scoped)
 	/// <param name="privileges">The privileges to grant; the supporter privilege is added to a tournament staff member.</param>
 	/// <returns>The outcome of replacing the privileges.</returns>
 	/// <remarks>Only privileges the caller holds themselves can be granted or taken away.</remarks>
-	public async Task<Result<UserOutcome>> SetAsync(UserPrivileges privileges)
+	public async Task<UserOutcome> SetAsync(UserPrivileges privileges)
 	{
 		privileges = privileges.Completed();
 		if (scoped.Deny(UserPrivileges.Owner) is { } denied) return denied;

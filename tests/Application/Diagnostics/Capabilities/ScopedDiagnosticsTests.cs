@@ -28,8 +28,8 @@ public sealed class ScopedDiagnosticsTests
 
 		var result = Diagnostics(app).ScopeTo(plain).Access();
 
-		Assert.False(result.IsOk);
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.False(result == DiagnosticsOutcome.Ok);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -38,7 +38,7 @@ public sealed class ScopedDiagnosticsTests
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff", Staff);
 
-		Assert.True(Diagnostics(app).ScopeTo(staff).Access().IsOk);
+		Assert.True(Diagnostics(app).ScopeTo(staff).Access() == DiagnosticsOutcome.Ok);
 	}
 
 	[Fact]
@@ -49,7 +49,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var (result, deleted) = Diagnostics(app).ScopeTo(plain).ClearCaches();
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 		Assert.Equal(0, deleted);
 		_caches.DidNotReceive().Clear();
 	}
@@ -63,7 +63,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var (result, deleted) = Diagnostics(app).ScopeTo(staff).ClearCaches();
 
-		Assert.True(result.IsOk);
+		Assert.True(result == DiagnosticsOutcome.Ok);
 		Assert.Equal(3, deleted);
 	}
 
@@ -75,7 +75,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var result = Diagnostics(app).ScopeTo(plain).ResetExceptions();
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 		_exceptions.DidNotReceive().Reset();
 	}
 
@@ -87,7 +87,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var result = Diagnostics(app).ScopeTo(staff).ResetExceptions();
 
-		Assert.True(result.IsOk);
+		Assert.True(result == DiagnosticsOutcome.Ok);
 		_exceptions.Received(1).Reset();
 	}
 
@@ -99,7 +99,7 @@ public sealed class ScopedDiagnosticsTests
 
 		var result = Diagnostics(app).ScopeTo(plain).CollectGarbage();
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(DiagnosticsOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -108,6 +108,6 @@ public sealed class ScopedDiagnosticsTests
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff", Staff);
 
-		Assert.True(Diagnostics(app).ScopeTo(staff).CollectGarbage().IsOk);
+		Assert.True(Diagnostics(app).ScopeTo(staff).CollectGarbage() == DiagnosticsOutcome.Ok);
 	}
 }

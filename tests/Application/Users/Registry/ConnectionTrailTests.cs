@@ -66,7 +66,7 @@ public sealed class ConnectionTrailTests
 		var user = await app.CreateUserAsync("Key", "password");
 		var api = await app.LoginAsync(user);
 		var (result, key, session) = await app.Users.Of(user).ScopeTo(api).Sessions.OpenIrcAsync("laptop");
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 
 		var irc = await app.Users.LoginWithTokenAsync(SessionType.Irc, key!, IPAddress.Loopback,
 			ct: Token);
@@ -253,7 +253,7 @@ public sealed class ConnectionTrailTests
 		var (result, page) = await app.Users.Of(user).ScopeTo(reader).Sessions
 			.ListConnectionsAsync(first.Session.Id, new PageRequest(0, 10), Token);
 
-		Assert.True(result.IsOk);
+		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal([Elsewhere, IPAddress.Loopback], page!.Items.Select(entry => entry.Value.Ip));
 		Assert.False(page.HasNext);
 	}
@@ -273,9 +273,9 @@ public sealed class ConnectionTrailTests
 		var (allowed, page) = await app.Users.Of(target).ScopeTo(staff).Sessions
 			.ListConnectionsAsync(session.Session.Id, new PageRequest(0, 10), Token);
 
-		Assert.Equal(UserPrivileges.Moderator, denied.Missing);
+		Assert.Equal(UserOutcome.Denied, denied);
 		Assert.Null(none);
-		Assert.True(allowed.IsOk);
+		Assert.True(allowed == UserOutcome.Ok);
 		Assert.Single(page!.Items);
 		Assert.Single(app.ModerationEntries, entry => entry.Action == ModerationAction.ViewLogins);
 	}
@@ -290,7 +290,7 @@ public sealed class ConnectionTrailTests
 		var (result, page) = await app.Users.Of(mine.Record).ScopeTo(mine).Sessions
 			.ListConnectionsAsync(theirs.Session.Id, new PageRequest(0, 10), Token);
 
-		Assert.Equal(UserOutcome.NotFound, result.Outcome);
+		Assert.Equal(UserOutcome.NotFound, result);
 		Assert.Null(page);
 	}
 

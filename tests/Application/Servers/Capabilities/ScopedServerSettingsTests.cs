@@ -25,7 +25,7 @@ public sealed class ScopedServerSettingsTests
 
 		var result = await app.Server.ScopeTo(player).Settings.UpdateAsync(new ServerSettings());
 
-		Assert.Equal(UserPrivileges.Developer, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -38,7 +38,7 @@ public sealed class ScopedServerSettingsTests
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
 			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner));
 
-		Assert.Equal(UserPrivileges.Owner, result.Missing);
+		Assert.Equal(ServerOutcome.Denied, result);
 	}
 
 	[Fact]
@@ -51,7 +51,7 @@ public sealed class ScopedServerSettingsTests
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
 			WithDefault(UserPrivilegesExtensions.Default | UserPrivileges.Owner));
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 	}
 
 	[Fact]
@@ -64,6 +64,6 @@ public sealed class ScopedServerSettingsTests
 		var result = await app.Server.ScopeTo(manager).Settings.UpdateAsync(
 			new ServerSettings { General = new ServerSettings.GeneralSettings { Motd = "hello" } });
 
-		Assert.Equal(ServerOutcome.Ok, result.Outcome);
+		Assert.Equal(ServerOutcome.Ok, result);
 	}
 }

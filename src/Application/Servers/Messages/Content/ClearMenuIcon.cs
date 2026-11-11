@@ -7,4 +7,4 @@ namespace Basil.Application.Servers.Messages;
 
 /// <summary>Asks Servers to remove the main-menu icon.</summary>
 /// <param name="Actor">The connection acting.</param>
-public sealed record ClearMenuIcon(Connection Actor) : IRequest<Result<ServerOutcome>>;
+public sealed record ClearMenuIcon(Connection Actor) : IRequest<ServerOutcome>;

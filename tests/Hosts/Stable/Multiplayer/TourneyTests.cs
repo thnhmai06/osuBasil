@@ -66,7 +66,7 @@ public sealed class TourneyTests(StableHostFixture fixture)
 		var room = Host.Services.GetRequiredService<Lobby>().Find(matchId)!;
 		var outcome = await room.ScopeTo(registry.Find(creator.Token!)!).Settings
 			.ConfigureAsync(new RoomSettingsChange(IsPrivate: true));
-		Assert.True(outcome.IsOk);
+		Assert.True(outcome == RoomOutcome.Ok);
 		await tourney.SendAsync(writer => writer.Int(OsuClient.Out.TournamentJoinMatchChannel, matchId));
 		return (matchId, registry.Find(tourney.Token!)!);
 	}

@@ -125,7 +125,7 @@ public sealed class MpLifecycleTests
 		var (succeeded, said) = await bot.TypeAsync(typist, "#osu", "!mp make Finals");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.Text(MpReplies.MissingPrivileges, new { privileges = nameof(UserPrivileges.Player) })], said.Here);
+		Assert.Equal([bot.Text(MpReplies.MissingPrivileges)], said.Here);
 		Assert.Empty(bot.App.Lobby.Rooms);
 	}
 
