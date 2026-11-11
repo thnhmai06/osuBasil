@@ -12,6 +12,7 @@ using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common.Events;
 using Basil.Application.Common.Storage;
+using Basil.Application.Content.Storage;
 using Basil.Application.Common.Settings;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
@@ -420,7 +421,7 @@ public sealed class TestApplication : IDisposable
 		{
 			typeof(IUserRepository).Assembly, typeof(IBeatmapsetReader).Assembly,
 			typeof(ICredentialRepository).Assembly,
-			typeof(ISettingsRepository).Assembly, typeof(IScoreRepository).Assembly,
+			typeof(ISettingsRepository).Assembly, typeof(IFaqStorage).Assembly, typeof(IScoreRepository).Assembly,
 			typeof(IMatchRepository).Assembly, typeof(IChannelRepository).Assembly
 		}.Distinct();
 		foreach (var port in portAssemblies.SelectMany(assembly => assembly.GetTypes()).Where(type =>
