@@ -68,7 +68,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 * **The service ladder.** Service > Ports > the three stores (Registry | Repository | Storage) > Objects; a level uses only the
   levels below it. A call across levels is direct (dependency injection); a call between peers is a Mediator message. A
   Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers`. Hosts do not call `ScopeTo`: they send a message that carries the `Connection`
-  and the handler scopes the object (target; see [`architecture.md`](../for-developers/architecture.md)).
+  and the handler scopes the object.
 * **Each folder of a module owns one kind of type.** The full map is in `AGENTS.md`. **Persistence/** holds the
   persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Common
   holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their

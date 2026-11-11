@@ -8,13 +8,9 @@ module: each module owns one slice of the business end to end and may use only t
 Around that core sit four kinds of project that do not hold business rules: Protocol (the translation language of the
 wire), Hosts (translate and dispatch), Gateway (admission control) and the Server (the way to run it all).
 
-> **Migration status.** This page describes the target architecture. The code is migrated phase by phase, and parts
-> of the page are marked **(target)** where the code does not match yet. Handlers, object-free logic and service
-> implementations are in the Infrastructure projects; hosts other than `Basil.Host.Irc` still call `ScopeTo` themselves (they will send Mediator messages), the rate limiter and upload
-> limits still sit in `Basil.Host.Shared` and the hosts (they move to `Basil.Gateway`), persistence
-> is awaited (see [`database.md`](database.md)), and `Basil.Gateway` does not exist yet
-> (`Application.Bot`, `Infrastructure.Bot`, `Application.Diagnostics` and `Infrastructure.Diagnostics` do). Where this page and the code disagree, the code is the
-> state and this page is the direction.
+> **Migration status.** This page describes the target architecture. Where the code does not match yet, the
+> difference is listed in [`migration-status.md`](migration-status.md); where this page and the code disagree, the code is
+> the state and this page is the direction.
 
 ## Layers
 
@@ -159,9 +155,8 @@ numbering; `Protocol.Irc` references nothing.
 `Basil.Host.Stable`, `.Irc`, `.Rest` and `.Cli` translate. Inbound, a host receives a packet, line or request, translates it
 with Protocol into a strongly typed message of the system language (not flattened), and sends it through Mediator to a
 service. Outbound, a host listens to Notifications and translates them to its wire. A host holds no business rule, no
-privilege rule and no state. **(target)** A host never calls `ScopeTo`, never references Infrastructure, and never
-references another host; today hosts still call `ScopeTo` directly and the migration moves that into handlers module by
-module. `Basil.Host.Shared` holds the views and the table that turns an outcome into an API error code; it holds no
+privilege rule and no state. A host never calls `ScopeTo`, never references Infrastructure, and never
+references another host. `Basil.Host.Shared` holds the views and the table that turns an outcome into an API error code; it holds no
 ASP.NET types.
 
 A host holds no repository and no storage: it does not take one by constructor, field or route parameter, and it does not

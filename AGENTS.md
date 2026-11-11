@@ -346,7 +346,7 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 
 > **Migration status.** This section describes the target architecture. The code is migrated phase by phase; a part that is
 > not migrated yet is marked **(target)**. [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) owns
-> the full description and the status.
+> the full description; [`docs/for-developers/migration-status.md`](docs/for-developers/migration-status.md) owns the status.
 
 ```text
 Basil.Domain                     the system at rest: durable models and the      -> (nothing)
@@ -479,9 +479,8 @@ system; no host or gateway knows it exists.
 
 * A host translates: inbound it turns the wire into a strongly typed message of the system (using Protocol), checks what
   the client sent, and sends it through Mediator; outbound it listens to Notifications and writes its wire. It holds no
-  business, permission or state rule. **(target)** A host never calls `ScopeTo`, never references Infrastructure and
-  never references another host; today hosts still call `x.ScopeTo(connection)` and the migration replaces that with
-  messages, module by module. Every message carries the `Connection` of the session as its actor, and only the Users
+  business, permission or state rule. A host never calls `ScopeTo`, never references Infrastructure and
+  never references another host. Every message carries the `Connection` of the session as its actor, and only the Users
   module creates a `Connection`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
   `Protocol.Stable`. `tests/Architecture/HostGraphTests.cs` enforces this.
