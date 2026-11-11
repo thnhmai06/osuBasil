@@ -3,7 +3,7 @@ using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;

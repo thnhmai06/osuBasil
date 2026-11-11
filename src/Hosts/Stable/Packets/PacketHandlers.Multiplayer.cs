@@ -1,10 +1,10 @@
 using Basil.Application.Beatmaps.Messages;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;

@@ -1,4 +1,4 @@
-using Basil.Application.Common.Events;
+using Basil.Application.Shared.Events;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;

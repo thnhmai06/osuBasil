@@ -1,6 +1,6 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Infrastructure.Authentication.Persistence;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Authentication;

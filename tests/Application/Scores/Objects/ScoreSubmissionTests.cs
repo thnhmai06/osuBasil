@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
@@ -6,7 +6,7 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Client;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;

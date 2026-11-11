@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Scores.Messages;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;

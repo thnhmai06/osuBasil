@@ -18,5 +18,5 @@ internal static class ModuleAssemblies
 	/// <summary>Gets the Infrastructure assembly of every module that has one, and the shared one.</summary>
 	internal static IReadOnlyList<Assembly> Infrastructures { get; } =
 		Modules.Select(module => Assembly.Load($"Basil.Infrastructure.{module}"))
-			.Append(Assembly.Load("Basil.Infrastructure.Common")).ToArray();
+			.Append(Assembly.Load("Basil.Infrastructure.Shared")).ToArray();
 }

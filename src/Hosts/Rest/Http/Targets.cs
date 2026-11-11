@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Users;
 using Mediator;
 

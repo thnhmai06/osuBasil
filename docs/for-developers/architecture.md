@@ -26,13 +26,13 @@ that owns it. A row that carries data to the database is not a Domain model; it 
 
 ```text
 Basil.Domain                     the system at rest                              -> (nothing)
-Basil.Application.Common         shared contracts, events, Mediator         -> Domain, Mediator.Abstractions
-Basil.Infrastructure.Common      shared database, files, event dispatcher         -> Application.Common, Domain
-Basil.Application.<Module>       contracts and runtime objects of one module      -> Domain, Application.Common,
+Basil.Application.Shared         shared contracts, events, Mediator         -> Domain, Mediator.Abstractions
+Basil.Infrastructure.Shared      shared database, files, event dispatcher         -> Application.Shared, Domain
+Basil.Application.<Module>       contracts and runtime objects of one module      -> Domain, Application.Shared,
                                                                                      the Application projects it uses
 Basil.Infrastructure.<Module>    implementations of that module's contracts       -> its own Application,
-                                                                                     Infrastructure.Common
-Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time   -> Infrastructure.Common, the
+                                                                                     Infrastructure.Shared
+Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time   -> Infrastructure.Shared, the
                                  factories and all PostgreSQL migrations;            module Infrastructure projects
                                  only Basil references it
 Basil.Protocol.Stable / .Irc     the translation language of each wire            -> Domain / nothing
@@ -50,7 +50,7 @@ that references another host.
 A module owns one slice of the business. The compiler enforces which module may use which:
 
 ```text
-Authentication, Beatmaps, Content -> Common
+Authentication, Beatmaps, Content -> Shared
 Users        -> Authentication, Content
 Anticheat    -> Users
 Scores       -> Users, Beatmaps
@@ -114,7 +114,7 @@ A message is a Mediator **request**: a `record` in the owning module's Applicati
 
 An object publishes an event while it holds its own lock (a `Room` changes state and announces it in one transition).
 Notifications are therefore **never awaited under a lock**: the object enqueues the event on the shared event queue
-(`EventQueue`, Application.Common) and returns at once, and a dispatcher in Infrastructure.Common (`EventDispatcher`)
+(`EventQueue`, Application.Shared) and returns at once, and a dispatcher in Infrastructure.Shared (`EventDispatcher`)
 calls the Mediator handlers outside the lock, in order. No code calls `await mediator.Publish(...)` at the place where it
 emits. The queue is unbounded; rate limiting and the `Outstanding` count in diagnostics watch its size.
 
@@ -200,9 +200,9 @@ exists. It contains no business object, no recovery logic and no admission polic
 ## Dependency rules
 
 * Domain and Protocol.Irc reference nothing; Protocol.Stable references Domain only.
-* Application.Common references Domain; Infrastructure.Common references Application.Common and Domain.
-* A module Application project references Domain, Application.Common and the Application projects of the modules it uses.
-  A module Infrastructure project references its own Application project, Infrastructure.Common and Application.Common,
+* Application.Shared references Domain; Infrastructure.Shared references Application.Shared and Domain.
+* A module Application project references Domain, Application.Shared and the Application projects of the modules it uses.
+  A module Infrastructure project references its own Application project, Infrastructure.Shared and Application.Shared,
   never another module.
 * Application never creates a database connection, a file stream or an Infrastructure type; it declares a contract and the
   outer project implements it.
@@ -277,7 +277,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 ## Related code
 
 * `src/Domain/` — the system at rest.
-* `src/Application/Common/`, `src/Infrastructure/Common/` — shared values, events, `Scoped.cs`, dispatcher (`Workers/EventDispatcher.cs`).
+* `src/Application/Shared/`, `src/Infrastructure/Shared/` — shared values, events, `Scoped.cs`, dispatcher (`Workers/EventDispatcher.cs`).
 * `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module contracts, objects and implementations.
 * `src/Protocol/Stable/`, `src/Protocol/Irc/` — the translation language of each wire.
 * `src/Hosts/Shared/`, `src/Hosts/{Stable,Irc,Rest,Cli}/` — views and the transports.

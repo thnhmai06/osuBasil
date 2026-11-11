@@ -1,5 +1,5 @@
-using Basil.Application.Common;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
 using Mediator;

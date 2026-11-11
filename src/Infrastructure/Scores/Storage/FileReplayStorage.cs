@@ -8,7 +8,7 @@ using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Scores.Storage;
 

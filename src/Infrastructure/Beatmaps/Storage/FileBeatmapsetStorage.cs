@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Logging;
 using static Basil.Infrastructure.Beatmaps.Storage.FileBeatmapsetEntryReader;
 using static Basil.Infrastructure.Beatmaps.Storage.FileBeatmapsetNames;

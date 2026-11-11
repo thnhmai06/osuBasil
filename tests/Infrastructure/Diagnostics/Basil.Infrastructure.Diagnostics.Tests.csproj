@@ -26,8 +26,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\..\src\Infrastructure\Common\Basil.Infrastructure.Common.csproj"/>
-		<ProjectReference Include="..\..\..\src\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\..\..\src\Infrastructure\Shared\Basil.Infrastructure.Shared.csproj"/>
+		<ProjectReference Include="..\..\..\src\Application\Shared\Basil.Application.Shared.csproj"/>
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\..\src\Infrastructure\Diagnostics\Basil.Infrastructure.Diagnostics.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Diagnostics\Basil.Application.Diagnostics.csproj"/>

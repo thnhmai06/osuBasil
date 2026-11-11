@@ -1,4 +1,4 @@
-using Basil.Application.Common.Events;
+using Basil.Application.Shared.Events;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc;

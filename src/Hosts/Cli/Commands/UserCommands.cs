@@ -1,6 +1,6 @@
 using System.Globalization;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;

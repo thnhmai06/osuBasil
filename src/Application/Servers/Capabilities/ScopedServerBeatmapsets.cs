@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Users;
 

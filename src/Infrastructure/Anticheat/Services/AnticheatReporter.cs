@@ -1,6 +1,6 @@
 using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Anticheat.Services;
-using Basil.Application.Common.Events;
+using Basil.Application.Shared.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Client;
 

@@ -11,8 +11,8 @@ using Basil.Host.Stable;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared;
+using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Lifetime;
 using Basil.Logging;
@@ -71,7 +71,7 @@ public static class HostApplication
 		// Read once, after the caller's changes, so a later edit of the files waits for the next start.
 		ConfigurationSetup.AddAtStart<ServerOptions>(builder.Services,
 			builder.Configuration.GetSection("Basil:Server"));
-		builder.Services.AddCommonInfrastructureOptions(builder.Configuration);
+		builder.Services.AddSharedInfrastructureOptions(builder.Configuration);
 		builder.Services.AddBeatmapsInfrastructureOptions(builder.Configuration);
 		KestrelSetup.Configure(builder);
 

@@ -5,9 +5,9 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Bot;
 using Basil.Application.Chat;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Common;
-using Basil.Application.Common.Events;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared;
+using Basil.Application.Shared.Events;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Diagnostics;
 using Basil.Application.Multiplayer;
 using Basil.Application.Multiplayer.Objects.Events;
@@ -27,7 +27,7 @@ using Basil.Infrastructure.Authentication;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Common;
+using Basil.Infrastructure.Shared;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Diagnostics.Pipeline;
@@ -69,7 +69,7 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBasilStorage(this IServiceCollection services)
 	{
-		services.AddCommonInfrastructure();
+		services.AddSharedInfrastructure();
 		services.AddPersistenceInfrastructure();
 
 		// The foreign keys decide the order of the migrations, not the project references.
@@ -77,7 +77,7 @@ public static class DependencyInjection
 		services.AddAuthInfrastructure();
 		services.AddBeatmapsInfrastructure();
 		services.AddContentInfrastructure();
-		services.AddCommonMigration();
+		services.AddSharedMigration();
 		services.AddScoresInfrastructure();
 		services.AddMultiplayerInfrastructure();
 		services.AddChatInfrastructure();
@@ -129,7 +129,7 @@ public static class DependencyInjection
 	/// </summary>
 	internal static IServiceCollection AddEvents(this IServiceCollection services)
 	{
-		services.AddCommonApplication();
+		services.AddSharedApplication();
 		services.AddStableHost();
 		services.AddIrcHost();
 		services.AddRestHost();

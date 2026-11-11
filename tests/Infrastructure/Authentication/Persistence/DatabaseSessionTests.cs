@@ -1,8 +1,8 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Authentication.Persistence;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;

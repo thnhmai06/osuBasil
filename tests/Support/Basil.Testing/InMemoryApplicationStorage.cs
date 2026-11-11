@@ -1,11 +1,11 @@
 using System.Net;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Common;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
 using Basil.Domain.Multiplayer;

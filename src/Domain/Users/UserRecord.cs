@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 
 namespace Basil.Domain.Users;
 

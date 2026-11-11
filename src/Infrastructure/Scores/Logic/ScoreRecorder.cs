@@ -1,12 +1,12 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Storage;
 using Basil.Domain.Client;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

@@ -70,7 +70,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers`. Hosts do not call `ScopeTo`: they send a message that carries the `Connection`
   and the handler scopes the object.
 * **Each folder of a module owns one kind of type.** The full map is in `AGENTS.md`. **Persistence/** holds the
-  persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Common
+  persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Shared
   holds shared paging and search syntax. Live objects (`Room`, `RoomSlot`, `User`, connections and channels), their
   contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
   RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
@@ -211,13 +211,13 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
   (the handlers are in `Infrastructure.<Module>/Handlers`; contracts and event records stay in Application). The base event,
-  `IEventPublisher<T>` and `EventQueue` live in Application.Common; the feature event records live in the Objects
+  `IEventPublisher<T>` and `EventQueue` live in Application.Shared; the feature event records live in the Objects
   folder of their module (`Objects/Events/`) and its handlers in the Handlers folder of its Infrastructure project. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. **A notification is never awaited under a lock**: the object enqueues and the dispatcher publishes outside it. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
   event type (`ConnectionHandler`, `SessionEndHandler`, `ScoreHandler`, the `Room*Recorder` handlers in the Handlers folders of their
   modules; `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Infrastructure.Bot`). The shared queue (`EventQueue`) is run by
-  `EventDispatcher` in Infrastructure.Common's Workers folder and delivers the events one at a time in the order they
+  `EventDispatcher` in Infrastructure.Shared's Workers folder and delivers the events one at a time in the order they
   were published,
   across all event types; a failing handler is logged and the others still run. The mediator resolves handlers at
   first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and internal

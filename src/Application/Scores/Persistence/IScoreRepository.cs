@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 

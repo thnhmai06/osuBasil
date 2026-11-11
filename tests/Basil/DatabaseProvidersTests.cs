@@ -1,5 +1,5 @@
 using System.Reflection;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

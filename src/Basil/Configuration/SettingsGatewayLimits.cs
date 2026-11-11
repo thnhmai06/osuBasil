@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Gateway;
 
 namespace Basil.Configuration;

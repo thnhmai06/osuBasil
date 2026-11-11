@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Testing;

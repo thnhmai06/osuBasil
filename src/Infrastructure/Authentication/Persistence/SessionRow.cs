@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Domain.Authentication;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

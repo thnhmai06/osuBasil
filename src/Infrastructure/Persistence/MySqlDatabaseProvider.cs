@@ -1,5 +1,5 @@
 using System.Net.Sockets;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using MySql.Data.MySqlClient;

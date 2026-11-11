@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Gateway;

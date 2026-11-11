@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Diagnostics.Objects;
 using Mediator;

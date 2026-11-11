@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;

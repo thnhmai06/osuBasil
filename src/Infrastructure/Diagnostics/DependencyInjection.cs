@@ -1,4 +1,4 @@
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Shared.Diagnostics;
 using Basil.Application.Diagnostics.Services;
 using Basil.Infrastructure.Diagnostics.Services;
 using Basil.Infrastructure.Diagnostics.Workers;

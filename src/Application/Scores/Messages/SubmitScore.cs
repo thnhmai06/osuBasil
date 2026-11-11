@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Connections;

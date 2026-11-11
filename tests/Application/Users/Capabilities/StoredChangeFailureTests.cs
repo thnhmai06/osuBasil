@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Basil.Application.Users.Objects;

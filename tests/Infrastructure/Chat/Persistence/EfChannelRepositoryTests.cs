@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Chat;
 using Basil.Testing.Persistence;
 

@@ -4,7 +4,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -13,7 +13,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 

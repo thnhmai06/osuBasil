@@ -1,6 +1,6 @@
 using Basil.Application.Users.Storage;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Users.Storage;
 

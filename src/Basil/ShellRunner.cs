@@ -1,6 +1,6 @@
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Basil;

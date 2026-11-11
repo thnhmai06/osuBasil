@@ -1,5 +1,5 @@
 using Basil.Domain.Client;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 
 namespace Basil.Application.Scores.Persistence;

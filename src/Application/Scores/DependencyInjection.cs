@@ -1,4 +1,4 @@
-using Basil.Application.Common.Events;
+using Basil.Application.Shared.Events;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Ports;

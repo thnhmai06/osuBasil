@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Servers.Messages;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;

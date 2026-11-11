@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common.Events;
+using Basil.Application.Shared.Events;
 using Basil.Application.Users.Objects.Events;
 using Mediator;
 using Microsoft.Extensions.Logging;

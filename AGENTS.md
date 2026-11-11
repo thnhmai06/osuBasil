@@ -353,21 +353,21 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 Basil.Domain                     the system at rest: durable models and the      -> (nothing)
                                  rules that stay true offline
 
-Basil.Application.Common         shared contracts, events, Mediator        -> Domain, Mediator.Abstractions
+Basil.Application.Shared         shared contracts, events, Mediator        -> Domain, Mediator.Abstractions
                                  messages
-Basil.Infrastructure.Common      shared database, files and event dispatch       -> Application.Common, Domain
+Basil.Infrastructure.Shared      shared database, files and event dispatch       -> Application.Shared, Domain
 
-Basil.Application.<Module>       the module's contracts (services, ports,        -> Domain, Application.Common,
+Basil.Application.<Module>       the module's contracts (services, ports,        -> Domain, Application.Shared,
                                  repositories, storages) and its runtime objects:   the Application projects of the
                                  Objects/, Registry/, Capabilities/ (Scoped*        modules it uses (below)
                                  only), Ports/, Persistence/, Storage/,
                                  Services/ (contracts); Add<Module>Application()
 Basil.Infrastructure.<Module>    the implementations of those contracts: Handlers/ -> its own Application,
-                                 (Mediator listeners), Logic/, Services/,            Infrastructure.Common,
-                                 Persistence/, Storage/, Adapters/, Workers/         Application.Common
+                                 (Mediator listeners), Logic/, Services/,            Infrastructure.Shared,
+                                 Persistence/, Storage/, Adapters/, Workers/         Application.Shared
                                  Add<Module>Infrastructure() is its only public
                                  surface
-Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time  -> Infrastructure.Common, the
+Basil.Infrastructure.Persistence    Npgsql provider (IDatabaseProvider), design-time  -> Infrastructure.Shared, the
                                  factories and all PostgreSQL migrations;           module Infrastructure projects
                                  only Basil references it
 Basil.Protocol.Stable            the translation language of the osu! wire,      -> Domain, external libraries
@@ -382,7 +382,7 @@ Basil                            entry point, composition    -> everything
                                  root, "the way to run"
 
 Basil.Application.Bot            BasilBot, a module at the top of the graph:     -> the Application projects of the
-Basil.Infrastructure.Bot         contracts and objects / handlers, commands,        modules it uses, Application.Common
+Basil.Infrastructure.Bot         contracts and objects / handlers, commands,        modules it uses, Application.Shared
                                  workers
 ```
 
@@ -392,10 +392,10 @@ the code is split by module, one project per module and layer (`Basil.Applicatio
 References only point down:
 
 ```text
-Auth        -> Common
-Beatmaps    -> Common
-Content     -> Common
-Users       -> Common, Authentication, Content   (folders Users/ and Connections/: they reference each other)
+Auth        -> Shared
+Beatmaps    -> Shared
+Content     -> Shared
+Users       -> Shared, Authentication, Content   (folders Users/ and Connections/: they reference each other)
 Anticheat   -> Users
 Scores      -> Users, Beatmaps
 Multiplayer -> Users, Beatmaps, Content, Scores
@@ -406,7 +406,7 @@ Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users
 ```
 
 A module Infrastructure project never references another module; the foreign keys between the module databases
-decide the order in which `AddBasil()` registers the migrations (Users, Authentication, Beatmaps, Content, Common, Scores,
+decide the order in which `AddBasil()` registers the migrations (Users, Authentication, Beatmaps, Content, Shared, Scores,
 Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
 an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
 
@@ -429,7 +429,7 @@ translate the wire into the system's own messages and back; it does not validate
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`,
-`src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Hosts/{Host,Shared,Stable,Irc,Rest,Cli}/`,
+`src/{Application,Infrastructure}/{Shared,<Module>}/`, `src/Hosts/{Host,Shared,Stable,Irc,Rest,Cli}/`,
 `src/Protocol/{Stable,Irc}/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
 `tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `src/Application/Users`;
@@ -440,9 +440,9 @@ The project that defines an options type binds it (`Add<Module>...(IConfiguratio
 only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
 project, `Basil` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
 
-`Application.Common` owns `IActor`, `ScopedPrivileges`, shared query values and event contracts/queue; it depends
-on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
-event dispatcher; it depends on Domain, Application.Common and its external packages.
+`Application.Shared` owns `IActor`, `ScopedPrivileges`, shared query values and event contracts/queue; it depends
+on Domain and external packages. `Infrastructure.Shared` owns shared database, memory and file implementations and the
+event dispatcher; it depends on Domain, Application.Shared and its external packages.
 
 Inside a module Application project each folder owns one kind of type. **Objects/** holds the live objects and what
 they do: runtime objects, their parts, the contexts they take their collaborators from, the outcome enum of each
@@ -498,8 +498,8 @@ system; no host or gateway knows it exists.
 ### Application feature folders
 
 Application is sliced by module first, then by folder of responsibility; namespace = project + folder
-(`Basil.Application.Chat.Objects`). Application.Common owns shared values, paging/search syntax and event
-contracts/queue; Infrastructure.Common owns shared persistence and event delivery. The table lists where each folder's
+(`Basil.Application.Chat.Objects`). Application.Shared owns shared values, paging/search syntax and event
+contracts/queue; Infrastructure.Shared owns shared persistence and event delivery. The table lists where each folder's
 contents are; `Handlers/`, `Logic/` and `Workers/` and the implementations of `Services/` are in the module's
 Infrastructure project.
 
@@ -576,18 +576,18 @@ Diagnostics/   ServerDiagnostics, DiagnosticsOutcome                    (Objects
 
 `Diagnostics` (intake, feed and the maintenance actions behind `ScopedDiagnostics`) is a module of its own; the
 contribution contracts every module answers (`CollectDiagnostics`, `IDiagnosticsCollector`, `DiagnosticsValue`) live in
-Application.Common; `DiagnosticsSample`, `IClearTally`, `ICacheCleaner`, `HostLabels` and `DiagnosticsMetrics` are Diagnostics'
+Application.Shared; `DiagnosticsSample`, `IClearTally`, `ICacheCleaner`, `HostLabels` and `DiagnosticsMetrics` are Diagnostics'
 own. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
-event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
-Infrastructure.Common's `Workers/`. Concrete handlers live in the `Handlers/` folder of the module's Infrastructure project or in the consumer that
+event contract, publisher and queue belong to Application.Shared, and the dispatcher belongs to
+Infrastructure.Shared's `Workers/`. Concrete handlers live in the `Handlers/` folder of the module's Infrastructure project or in the consumer that
 owns them, including `Basil.Infrastructure.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
 and announcements are server features: a command is an entry point that uses the typist's scoped objects, and the bot
 only replies. Query **records** (the filter a repository applies, with `Parse` for the search syntax) belong to
 Persistence; routes and handlers that answer queries do not. Server settings changed at runtime (`ServerSettings`,
-owned by Application.Common, with its repository and the `ReadSettings` message) exist only while the server runs and are stored through `ISettingsRepository`; they are
+owned by Application.Shared, with its repository and the `ReadSettings` message) exist only while the server runs and are stored through `ISettingsRepository`; they are
 not Domain and not host configuration.
 
-* Common projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
+* Shared projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` objects. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported through `IAnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.
@@ -604,7 +604,7 @@ The detailed rules moved out of this file so each can be read when needed. **Rea
 
 * [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, capabilities (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
 * [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md): privileges, silence, hierarchy, sessions, BasilBot. Before touching users, connections, privileges or the bot.
-* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Common`.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, the Registry / Repository (cache-aside) / Storage model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Shared`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants

@@ -1,4 +1,4 @@
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Shared.Diagnostics;
 using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;

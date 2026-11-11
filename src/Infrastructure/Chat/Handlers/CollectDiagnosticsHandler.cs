@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Shared.Diagnostics;
 using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;

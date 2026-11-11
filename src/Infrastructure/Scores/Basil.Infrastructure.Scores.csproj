@@ -13,8 +13,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Application\Common\Basil.Application.Common.csproj"/>
-		<ProjectReference Include="..\Common\Basil.Infrastructure.Common.csproj"/>
+		<ProjectReference Include="..\..\Application\Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\Shared\Basil.Infrastructure.Shared.csproj"/>
 		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\Application\Scores\Basil.Application.Scores.csproj"/>
 	</ItemGroup>

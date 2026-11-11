@@ -1,12 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;

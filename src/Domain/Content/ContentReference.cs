@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 
 namespace Basil.Domain.Content;
 

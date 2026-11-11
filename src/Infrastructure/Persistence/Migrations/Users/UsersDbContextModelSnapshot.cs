@@ -19,7 +19,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                 .HasAnnotation("ProductVersion", "10.0.14");
 
 
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.IdCounterRow).FullName!, b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
                 {
                     b.Property<string>("Name")
                         .HasMaxLength(64)

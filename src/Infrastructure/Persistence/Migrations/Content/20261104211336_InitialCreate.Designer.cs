@@ -47,7 +47,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Content
                     b.ToTable("menu_banners", (string)null);
                 });
 
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Common.Persistence.SettingRow).FullName!, b =>
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.SettingRow).FullName!, b =>
                 {
                     b.Property<string>("Name")
                         .HasMaxLength(255)

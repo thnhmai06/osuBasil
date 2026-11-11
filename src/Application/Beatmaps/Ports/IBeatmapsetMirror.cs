@@ -1,4 +1,4 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Beatmaps.Ports;

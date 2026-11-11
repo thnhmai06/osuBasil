@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Tests.Support;
 using Basil.Testing.Clients;

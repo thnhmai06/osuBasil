@@ -13,7 +13,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\..\Application\Shared\Basil.Application.Shared.csproj"/>
 		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\Application\Bot\Basil.Application.Bot.csproj"/>
 	</ItemGroup>

@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Host.Irc.Support;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;

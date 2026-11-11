@@ -1,7 +1,7 @@
 using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Content.Adapters;
 using Basil.Infrastructure.Content.Persistence;
 using Basil.Infrastructure.Content.Storage;

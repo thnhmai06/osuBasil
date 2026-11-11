@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Application.Servers.Capabilities;

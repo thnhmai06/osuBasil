@@ -1,5 +1,5 @@
-using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Persistence;
+using Basil.Infrastructure.Shared.Storage;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -19,7 +19,7 @@ public sealed class CompositionTests
 	{
 		var services = new ServiceCollection();
 		services.AddLogging();
-		AddCommonOptions(services);
+		AddSharedOptions(services);
 		services.AddBasil();
 
 		await using var provider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -40,7 +40,7 @@ public sealed class CompositionTests
 	{
 		var services = new ServiceCollection();
 		services.AddLogging();
-		AddCommonOptions(services);
+		AddSharedOptions(services);
 		services.AddBasil();
 		await using var provider = services.BuildServiceProvider();
 
@@ -76,7 +76,7 @@ public sealed class CompositionTests
 		return failures;
 	}
 
-	private static void AddCommonOptions(IServiceCollection services)
+	private static void AddSharedOptions(IServiceCollection services)
 	{
 		services.AddSingleton(Options.Create(new StorageOptions { Location = Path.GetTempPath() }));
 		services.AddSingleton(

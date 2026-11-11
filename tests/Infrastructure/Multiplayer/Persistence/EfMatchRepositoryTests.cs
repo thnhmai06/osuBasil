@@ -1,5 +1,5 @@
 using System.Data.Common;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;

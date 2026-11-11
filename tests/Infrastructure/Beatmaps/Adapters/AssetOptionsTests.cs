@@ -1,5 +1,5 @@
 using Basil.Infrastructure.Beatmaps.Adapters;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

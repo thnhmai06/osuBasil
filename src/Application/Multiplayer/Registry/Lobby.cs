@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using Basil.Application.Common;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
@@ -9,7 +9,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;

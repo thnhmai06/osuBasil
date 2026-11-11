@@ -49,7 +49,7 @@ machine and what the API serves cannot disagree.
 
 ## Design
 
-Diagnostics is a module, `Application.Diagnostics` and `Infrastructure.Diagnostics`, that depends on Users and Common. It
+Diagnostics is a module, `Application.Diagnostics` and `Infrastructure.Diagnostics`, that depends on Users and Shared. It
 offers two services.
 
 * **Intake** (`IDiagnosticsIntake`) receives measurements and turns them into a `DiagnosticsSample`. There are three
@@ -67,7 +67,7 @@ The HTTP stream shares one sample per second differently: the SSE hub polls the 
 the result once and hands the same bytes to every stream of the root, so the cost does not grow with the watchers.
 
 The contribution contracts (`CollectDiagnostics`, `IDiagnosticsCollector`, `DiagnosticsValue`) live in
-Application.Common so every module can contribute without referencing Diagnostics. What only Diagnostics and the Rest host
+Application.Shared so every module can contribute without referencing Diagnostics. What only Diagnostics and the Rest host
 use (`DiagnosticsSample`, `IClearTally`, `ICacheCleaner`, `HostLabels`, `DiagnosticsMetrics`) lives in
 Application.Diagnostics. `CollectDiagnostics` is a question, not an event: the intake hands it directly to the handlers (each module
 has one) and waits for the answers, so it never goes through the event queue.

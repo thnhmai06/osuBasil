@@ -1,4 +1,4 @@
-using Basil.Application.Common.Events;
+using Basil.Application.Shared.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 
 namespace Basil.Application.Multiplayer.Objects.Events;

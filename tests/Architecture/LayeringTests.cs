@@ -41,7 +41,7 @@ public class LayeringTests
 		.. ModuleAssemblies.Modules
 			.SelectMany(module => new[] { $"Basil.Application.{module}", $"Basil.Infrastructure.{module}" }),
 
-		"Basil.Application.Common", "Basil.Infrastructure.Common"
+		"Basil.Application.Shared", "Basil.Infrastructure.Shared"
 	];
 
 	/// <summary>The sources whose entry points only send messages: they never scope an object themselves.</summary>
@@ -177,7 +177,7 @@ public class LayeringTests
 	{
 		foreach (var assembly in ModuleAssemblies.Applications)
 			AssertNoDependency(assembly,
-				["Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. Host, Protocol]);
+				["Basil.Infrastructure.Shared", .. InfrastructureNamespaces(), .. Host, Protocol]);
 	}
 
 	[Fact]
@@ -234,7 +234,7 @@ public class LayeringTests
 	public void Infrastructure_OnlyOwnCapabilities()
 	{
 		foreach (var assembly in ModuleAssemblies.Infrastructures.Where(assembly =>
-			         assembly.GetName().Name != "Basil.Infrastructure.Common"))
+			         assembly.GetName().Name != "Basil.Infrastructure.Shared"))
 		{
 			var module = assembly.GetName().Name!.Split('.')[1];
 			var others = ModuleAssemblies.Modules.Where(other => other != module)
@@ -268,7 +268,7 @@ public class LayeringTests
 	{
 		AssertNoDependency(BotApplication,
 		[
-			"Basil.Infrastructure.Common", .. InfrastructureNamespaces(), .. NonScopedCapabilityTypeNames(), .. Host,
+			"Basil.Infrastructure.Shared", .. InfrastructureNamespaces(), .. NonScopedCapabilityTypeNames(), .. Host,
 			Protocol
 		]);
 	}
@@ -278,7 +278,7 @@ public class LayeringTests
 	{
 		AssertNoDependency(BotInfrastructure,
 		[
-			"Basil.Infrastructure.Common",
+			"Basil.Infrastructure.Shared",
 			.. ModuleAssemblies.Modules.Where(module => module != "Bot")
 				.Select(module => $"Basil.Infrastructure.{module}"),
 			.. NonScopedCapabilityTypeNames(), .. Host, Protocol

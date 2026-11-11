@@ -6,7 +6,7 @@ using System.Text.Json;
 using Basil.Application.Beatmaps.Services;
 using Basil.Infrastructure.Beatmaps.Services;
 using Basil.Infrastructure.Beatmaps.Storage;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 

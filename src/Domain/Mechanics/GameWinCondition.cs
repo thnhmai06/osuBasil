@@ -1,4 +1,4 @@
-﻿using Basil.Domain.Common;
+﻿using Basil.Domain.Shared;
 using Basil.Domain.Scores;
 
 namespace Basil.Domain.Mechanics;

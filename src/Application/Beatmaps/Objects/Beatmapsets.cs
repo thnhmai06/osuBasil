@@ -2,7 +2,7 @@ using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Objects.Events;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Beatmaps.Objects;

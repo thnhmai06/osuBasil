@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 using System.Reflection;
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Shared.Diagnostics;
 using Basil.ArchitectureTests.Handlers;
 using Mediator;
 
@@ -18,7 +18,7 @@ public class DiagnosticsContributionTests
 	private static IEnumerable<Assembly> ModuleInfrastructures()
 	{
 		return ModuleAssemblies.Infrastructures.Where(assembly =>
-			assembly.GetName().Name != "Basil.Infrastructure.Common");
+			assembly.GetName().Name != "Basil.Infrastructure.Shared");
 	}
 
 	[Fact]

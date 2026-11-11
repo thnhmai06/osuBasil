@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Domain.Beatmaps;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;

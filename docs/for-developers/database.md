@@ -95,24 +95,24 @@ Each module owns its schema through a dedicated Entity Framework context and mig
 tables and schema changes together while preserving foreign keys between modules; a referencing context maps the
 principal table without taking ownership of its migration. Because project references forbid one module's Infrastructure to
 reference another's, the principal is not the other module's row type: `ContextModel.MapUsersReference` and
-`MapScoresReference` (Infrastructure.Common) map the `users` and `scores` tables as shared-type entities named
+`MapScoresReference` (Infrastructure.Shared) map the `users` and `scores` tables as shared-type entities named
 `UsersPrincipal` and `ScoresPrincipal`, excluded from migrations, and a row declares the key with
 `HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
 At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Users, Authentication, Beatmaps, Content,
-the shared tables (Common), Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
+the shared tables (Shared), Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
 
-The `settings` table belongs to the shared context (`CommonDbContext`, history `__ef_migrations_common`) but was created by
-the first migration of Content. That history stays as it is, a Content migration (`SettingsMovedToCommon`) only drops the
-table from Content's model without touching it, and the Common migration creates `settings` only when it does not exist (the
+The `settings` table belongs to the shared context (`SharedDbContext`, history `__ef_migrations_shared`) but was created by
+the first migration of Content. That history stays as it is, a Content migration (`SettingsMovedToShared`) only drops the
+table from Content's model without touching it, and the Shared migration creates `settings` only when it does not exist (the
 one place with SQL text, because EF has no portable "if not exists"). So an existing database keeps its rows and the table
-name and columns never change; a new database gets the table from Content's first migration, and that is why the Common
+name and columns never change; a new database gets the table from Content's first migration, and that is why the Shared
 migration runs after Content.
 
 ### PostgreSQL provider and where the migrations live
 
-The shared `Database` and `DatabaseSession` talk to an `IDatabaseProvider` (Infrastructure.Common): it opens the pooled
+The shared `Database` and `DatabaseSession` talk to an `IDatabaseProvider` (Infrastructure.Shared): it opens the pooled
 connections, points a context at a pool and its history table, and tells a unique violation and a connection failure
 apart (the open-retry of `DatabaseSession` retries only the latter). `Basil.Infrastructure.Persistence` implements it with
 Npgsql and snake_case names, owns the design-time factories and holds the migrations, one folder per module context
@@ -146,11 +146,11 @@ own differ instead.
 
 ## Related code
 
-* `src/Infrastructure/Common/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
-* `src/Infrastructure/Common/Registry/` — `CacheAside`
+* `src/Infrastructure/Shared/Persistence/` — `DatabaseSession`, `Database`, `DatabaseMigrator`, `ContextModel`
+* `src/Infrastructure/Shared/Registry/` — `CacheAside`
 * `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
 * `src/Infrastructure/Persistence/` — `PostgresDatabaseProvider`, the design-time factories and `Migrations/<Module>/`
-* `src/Infrastructure/Common/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
+* `src/Infrastructure/Shared/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
   module migrations in the order above
 
 ## See also

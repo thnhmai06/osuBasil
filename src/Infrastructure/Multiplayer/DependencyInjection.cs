@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Multiplayer.Persistence;
 using Basil.Infrastructure.Multiplayer.Workers;
 using Microsoft.Extensions.DependencyInjection;

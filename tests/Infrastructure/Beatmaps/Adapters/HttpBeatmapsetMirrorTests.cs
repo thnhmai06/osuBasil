@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Beatmaps.Ports;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Tests.Support;

@@ -2,7 +2,7 @@ using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Content;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;

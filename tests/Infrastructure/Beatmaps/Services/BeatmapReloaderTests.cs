@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Beatmaps.Services;

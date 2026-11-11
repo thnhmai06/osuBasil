@@ -17,7 +17,7 @@ public class ImplementationPlacementTests
 	];
 
 	private static readonly IReadOnlyList<Assembly> ModuleInfrastructures =
-		ModuleAssemblies.Infrastructures.Where(assembly => assembly.GetName().Name != "Basil.Infrastructure.Common")
+		ModuleAssemblies.Infrastructures.Where(assembly => assembly.GetName().Name != "Basil.Infrastructure.Shared")
 			.ToArray();
 
 	[Fact]

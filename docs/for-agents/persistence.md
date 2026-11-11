@@ -1,6 +1,6 @@
 # Persistence rules
 
-Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Application/Persistence`, `Application/Storage` or `Application/Registry`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Common`.
+Repository contracts, byte storages and the Registry / Repository / Storage model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, a registry or anything under a module's `Application/Persistence`, `Application/Storage` or `Application/Registry`, an `Infrastructure/Persistence` or `Infrastructure/Storage` folder, or `Infrastructure.Shared`.
 
 > **Migration status.** The old write-behind model (identity map, owned lists, `DatabaseWriter` with its per-root queues and write tickets, `MemoryRepository`, resident-data writes) is **removed**: every module repository runs on `DatabaseSession`. PostgreSQL specifics live in `Basil.Infrastructure.Persistence`, and the `write_tickets` table no longer exists.
 
@@ -95,7 +95,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   key and index strings, a nullable unique column instead of a filtered index, and `EF.Functions.Like` over lowered text with the
   `!` escape character. Tests run on PostgreSQL or MySQL (`BASIL_TEST_PROVIDER`).
 * **Module schemas.** Each module has its own `DbContext`, row configuration set and migration history
-  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Authentication, Beatmaps, Content, Common (the settings), Scores,
+  (`__ef_migrations_<module>`). `DatabaseMigrator` applies Users, Authentication, Beatmaps, Content, Shared (the settings), Scores,
   Multiplayer and Chat in that order; referencing contexts preserve foreign keys by mapping principal rows as excluded from
   their migrations. The system is not in production, so a module's migrations may be regenerated while the schema settles; see
   [`database.md`](../for-developers/database.md#migrations).
@@ -103,7 +103,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
   loaded, the connection released, then sent. Every upload is spooled to a temporary file, validated, then moved
   atomically (see the streaming rule in `AGENTS.md`).
 * **Uploads and the quarantine.** Application takes an upload that it must check through `IUploadSpool`
-  (`Application.Common/Storage`; `FileUploadSpool` in `Infrastructure.Common/Storage`): it is copied once into
+  (`Application.Shared/Storage`; `FileUploadSpool` in `Infrastructure.Shared/Storage`): it is copied once into
   `<Data>/Spool/<guid>.tmp`, cut one byte past its limit, read back for validation and deleted on disposal. An upload
   that fails validation is moved to `<Data>/Quarantine/<guid>` (`Quarantine.Keep`, which also deletes quarantined
   files older than seven days); an archive the importer cannot read is quarantined the same way
@@ -116,7 +116,7 @@ Repository contracts, byte storages and the Registry / Repository / Storage mode
 
 The Authentication module is the pilot; copy its shape (`EfCredentialRepository`, `EfSessionRepository`).
 
-* **One helper, `DatabaseSession`** (`Infrastructure.Common/Persistence`), injected into the repository. It has no queue
+* **One helper, `DatabaseSession`** (`Infrastructure.Shared/Persistence`), injected into the repository. It has no queue
   and no retry of a change. `ReadAsync<TContext, T>(query, ct)` runs a bounded query on a context of its own. `WriteAsync<TContext>(change)` and `WriteAsync<TContext, T>(change)` create a context whose
   commit is confirmed, run the change, call `SaveChanges` and dispose; the second form returns what the change returned
   (a row count). `TransactAsync<TContext>(work)` is the same inside one transaction, for a business operation that
@@ -128,7 +128,7 @@ The Authentication module is the pilot; copy its shape (`EfCredentialRepository`
   so a caller that must survive a failed write handles it, and a caller that cannot await (code
   under a lock) must move the write to an event handler outside the lock.
 * **Cache-aside rule.** A small record read on every request may be cached with `CacheAside<TKey, TValue>`
-  (`Infrastructure.Common/Registry`): `GetAsync(key, load)` fills it on a miss (an absent record is never cached), and
+  (`Infrastructure.Shared/Registry`): `GetAsync(key, load)` fills it on a miss (an absent record is never cached), and
   the repository calls `Remove(key)` only after the awaited write succeeded, so a refused write leaves the cache
   unchanged. A value loaded while its entry is being removed is not cached. Credentials cache the bcrypt hash by user id.
 * **Concurrency rule.** A row with a single owner (a credential, a session) is written last-write-wins, awaited.

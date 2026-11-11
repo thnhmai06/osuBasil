@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Common;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Messages;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;

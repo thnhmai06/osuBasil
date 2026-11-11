@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Services;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 
 namespace Basil.Application.Beatmaps.Objects;
 

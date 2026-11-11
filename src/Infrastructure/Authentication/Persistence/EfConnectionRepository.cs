@@ -1,8 +1,8 @@
 using System.Net;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Authentication;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Authentication.Persistence;

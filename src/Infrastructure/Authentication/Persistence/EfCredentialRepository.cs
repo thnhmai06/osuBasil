@@ -1,7 +1,7 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
+using Basil.Infrastructure.Shared.Persistence;
+using Basil.Infrastructure.Shared.Registry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 

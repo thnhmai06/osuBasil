@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Configuration;
 using Basil.Gateway;
 using Microsoft.Extensions.Time.Testing;

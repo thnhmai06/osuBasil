@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Moderation;

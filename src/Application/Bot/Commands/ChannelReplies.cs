@@ -1,6 +1,6 @@
 using Basil.Application.Bot.Replies;
 using Basil.Application.Chat.Objects;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Bot.Commands;

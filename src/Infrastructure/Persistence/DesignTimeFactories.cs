@@ -1,7 +1,7 @@
 using Basil.Infrastructure.Authentication.Persistence;
 using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Chat.Persistence;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Content.Persistence;
 using Basil.Infrastructure.Multiplayer.Persistence;
 using Basil.Infrastructure.Scores.Persistence;
@@ -12,12 +12,12 @@ namespace Basil.Infrastructure.Persistence;
 
 // Tools such as `dotnet ef migrations add` build a module context through these, with the conventions of the server.
 
-internal sealed class CommonDbContextFactory : IDesignTimeDbContextFactory<CommonDbContext>
+internal sealed class SharedDbContextFactory : IDesignTimeDbContextFactory<SharedDbContext>
 {
 	/// <inheritdoc />
-	public CommonDbContext CreateDbContext(string[] args)
+	public SharedDbContext CreateDbContext(string[] args)
 	{
-		return PostgresDatabaseProvider.CreateDesignTime<CommonDbContext>();
+		return PostgresDatabaseProvider.CreateDesignTime<SharedDbContext>();
 	}
 }
 

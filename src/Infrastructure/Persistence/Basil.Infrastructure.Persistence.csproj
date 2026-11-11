@@ -7,7 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Common\Basil.Infrastructure.Common.csproj"/>
+		<ProjectReference Include="..\Shared\Basil.Infrastructure.Shared.csproj"/>
 		<ProjectReference Include="..\Authentication\Basil.Infrastructure.Authentication.csproj"/>
 		<ProjectReference Include="..\Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
 		<ProjectReference Include="..\Chat\Basil.Infrastructure.Chat.csproj"/>

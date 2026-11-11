@@ -2,7 +2,7 @@ using System.Net.Sockets;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
 using Basil.Host.Cli.Tests.Commands;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 using Basil.Testing.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;

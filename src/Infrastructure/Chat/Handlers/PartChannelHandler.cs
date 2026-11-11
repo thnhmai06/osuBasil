@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;

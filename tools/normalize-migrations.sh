@@ -32,8 +32,8 @@ find "$root" -name '*.cs' -print0 | while IFS= read -r -d '' file; do
 		s/"(Basil\.[A-Za-z0-9_.]+Row)"/typeof($1).FullName!/g;
 		s/"UsersPrincipal"/ContextModel.UsersTable/g;
 		s/"ScoresPrincipal"/ContextModel.ScoresTable/g;
-		if (/ContextModel\./ && !/using Basil\.Infrastructure\.Common\.Persistence;/) {
-			s/(using System;\r?\n)/$1using Basil.Infrastructure.Common.Persistence;\n/;
+		if (/ContextModel\./ && !/using Basil\.Infrastructure\.Shared\.Persistence;/) {
+			s/(using System;\r?\n)/$1using Basil.Infrastructure.Shared.Persistence;\n/;
 		}
 	' "$file"
 done

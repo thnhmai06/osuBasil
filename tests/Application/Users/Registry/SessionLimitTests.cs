@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 using System.Net;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;

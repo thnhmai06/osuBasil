@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.DependencyInjection;

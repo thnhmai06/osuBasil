@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 

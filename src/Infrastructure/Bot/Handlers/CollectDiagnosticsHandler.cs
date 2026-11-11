@@ -1,5 +1,5 @@
 using Basil.Infrastructure.Bot.Workers;
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Shared.Diagnostics;
 using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers;

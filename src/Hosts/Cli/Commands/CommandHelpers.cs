@@ -1,8 +1,8 @@
 using System.Text;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 

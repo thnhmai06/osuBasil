@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 

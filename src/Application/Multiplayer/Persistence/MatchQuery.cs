@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Persistence;

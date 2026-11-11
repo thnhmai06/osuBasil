@@ -1,5 +1,5 @@
 using System.Net;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 
 namespace Basil.Domain.Authentication;
 

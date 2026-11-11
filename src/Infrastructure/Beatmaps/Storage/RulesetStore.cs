@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Loader;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 

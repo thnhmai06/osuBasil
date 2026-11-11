@@ -12,7 +12,7 @@ namespace Basil.ArchitectureTests;
 ///     <c>Diagnostics -&gt; Users</c> and
 ///     <c>Servers</c> on top of all of them, and <c>Bot</c> on top of <c>Servers</c>; a module Infrastructure project
 ///     references only its own Application project
-///     and the Common projects; <c>Basil</c> sits above every module and nothing references it.
+///     and the Shared projects; <c>Basil</c> sits above every module and nothing references it.
 /// </summary>
 public class ModuleGraphTests
 {
@@ -78,12 +78,12 @@ public class ModuleGraphTests
 		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Application.Users", "Basil"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Users", "Basil.Infrastructure.Persistence"));
-		Assert.False(IsAllowed("Basil.Infrastructure.Common", "Basil.Infrastructure.Persistence"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Shared", "Basil.Infrastructure.Persistence"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Persistence", "Basil.Application.Users"));
 		Assert.True(IsAllowed("Basil", "Basil.Infrastructure.Persistence"));
 		Assert.True(IsAllowed("Basil.Infrastructure.Persistence", "Basil.Infrastructure.Users"));
-		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Common"));
-		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Common"));
+		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Shared"));
+		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Shared"));
 		Assert.False(IsAllowed("Basil.Protocol.Irc", "Basil.Domain"));
 		Assert.False(IsAllowed("Basil.Gateway", "Basil.Domain"));
 		Assert.True(IsAllowed("Basil.Protocol.Stable", "Basil.Domain"));
@@ -107,7 +107,7 @@ public class ModuleGraphTests
 
 	private static bool IsKnown(string name)
 	{
-		return name is "Basil.Domain" or "Basil.Application.Common" or "Basil.Infrastructure.Common"
+		return name is "Basil.Domain" or "Basil.Application.Shared" or "Basil.Infrastructure.Shared"
 			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Protocol.Stable"
 			       or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
@@ -121,21 +121,21 @@ public class ModuleGraphTests
 		if (from == "Basil.Gateway") return false;
 		if (from == "Basil.Protocol.Stable") return to == "Basil.Domain";
 		if (to == "Basil.Domain") return true;
-		if (from == "Basil.Application.Common") return false;
-		if (from == "Basil.Infrastructure.Common") return to == "Basil.Application.Common";
+		if (from == "Basil.Application.Shared") return false;
+		if (from == "Basil.Infrastructure.Shared") return to == "Basil.Application.Shared";
 		if (from == "Basil.Infrastructure.Persistence")
-			return to == "Basil.Infrastructure.Common" ||
+			return to == "Basil.Infrastructure.Shared" ||
 			       (IsModuleProject(to) && to.StartsWith("Basil.Infrastructure.", StringComparison.Ordinal));
-		if (to == "Basil.Application.Common") return true;
+		if (to == "Basil.Application.Shared") return true;
 		if (from == "Basil")
-			return IsModuleProject(to) || to is "Basil.Infrastructure.Common" or "Basil.Infrastructure.Persistence";
+			return IsModuleProject(to) || to is "Basil.Infrastructure.Shared" or "Basil.Infrastructure.Persistence";
 
 		var parts = from.Split('.');
 		if (parts.Length != 3) return false;
 		var module = parts[2];
 		if (!ModuleDependencies.TryGetValue(module, out var dependencies)) return false;
 		if (parts[1] == "Infrastructure")
-			return to == $"Basil.Application.{module}" || to == "Basil.Infrastructure.Common";
+			return to == $"Basil.Application.{module}" || to == "Basil.Infrastructure.Shared";
 
 		return dependencies.Any(dependency => to == $"Basil.Application.{dependency}");
 	}

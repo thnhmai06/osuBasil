@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Testing.Persistence;

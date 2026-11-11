@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 

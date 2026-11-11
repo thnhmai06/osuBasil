@@ -1,7 +1,7 @@
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

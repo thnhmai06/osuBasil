@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 
 namespace Basil.Application.Servers.Objects;
 

@@ -1,8 +1,8 @@
 using Basil.Application.Chat.Persistence;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Chat.Persistence;

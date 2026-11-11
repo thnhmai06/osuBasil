@@ -1,5 +1,5 @@
 using System.Text;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Ports;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Storage;

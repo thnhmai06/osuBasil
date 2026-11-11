@@ -1,5 +1,5 @@
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 

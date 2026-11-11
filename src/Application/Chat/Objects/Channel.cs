@@ -2,7 +2,7 @@ using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Chat;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Chat.Objects;

@@ -1,5 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 
 namespace Basil.Application.Servers.Objects;
 

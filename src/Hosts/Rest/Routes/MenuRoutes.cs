@@ -1,8 +1,8 @@
 using System.Globalization;
 using Basil.Application.Content.Messages;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Servers.Messages;
-using Basil.Domain.Common;
+using Basil.Domain.Shared;
 using Basil.Domain.Content;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;

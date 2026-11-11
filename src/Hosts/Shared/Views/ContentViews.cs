@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Content;
 
 namespace Basil.Host.Shared.Views;

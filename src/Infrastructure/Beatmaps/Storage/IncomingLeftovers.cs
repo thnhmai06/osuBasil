@@ -1,5 +1,5 @@
-using Basil.Infrastructure.Common.Registry;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Registry;
+using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 

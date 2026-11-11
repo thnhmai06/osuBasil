@@ -3,7 +3,7 @@ using Basil.Application.Bot.Announcements;
 using Basil.Application.Bot.Objects;
 using Basil.Application.Bot.Replies;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;

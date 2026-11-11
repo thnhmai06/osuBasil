@@ -1,5 +1,5 @@
-using Basil.Application.Common.Events;
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Events;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Persistence;

@@ -1,4 +1,4 @@
-using Basil.Application.Common.Settings;
+using Basil.Application.Shared.Settings;
 using System.Text;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;

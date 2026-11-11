@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Common;
+using Basil.Application.Shared;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;
 

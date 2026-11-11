@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Persistence;
 using Basil.Infrastructure.Chat.Persistence;
-using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Chat;

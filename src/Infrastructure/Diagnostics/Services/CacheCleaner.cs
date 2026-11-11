@@ -1,5 +1,5 @@
 using Basil.Application.Diagnostics.Services;
-using Basil.Infrastructure.Common.Storage;
+using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
