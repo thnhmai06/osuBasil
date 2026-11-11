@@ -107,9 +107,10 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, string? Key, SessionRecord? Session)> OpenIrcAsync(string label)
 	{
+		var user = await scoped.ResolveAsync();
+		if (user is not null && user.Record.IsBasilBot()) return (UserOutcome.SystemAccount, null, null);
 		if (!scoped.IsSelf) return (UserOutcome.NotSelf, null, null);
-		if (await scoped.ResolveAsync() is not { } user) return (UserOutcome.NotFound, null, null);
-		if (user.Record.IsBasilBot()) return (UserOutcome.SystemAccount, null, null);
+		if (user is null) return (UserOutcome.NotFound, null, null);
 
 		var (outcome, key, session) = await user.Sessions.OpenIrcAsync(scoped.Actor, label);
 		return (outcome, key, session);

@@ -9,7 +9,6 @@ public sealed class UserNameTests
 	[InlineData("abc")]
 	[InlineData("Player One")]
 	[InlineData("a_b-c[d]")]
-	[InlineData("123456789012345")]
 	[InlineData("12a")]
 	public void IsValidName_AcceptableName_ReturnsTrue(string name)
 	{
@@ -24,6 +23,7 @@ public sealed class UserNameTests
 	[InlineData("abc ")]
 	[InlineData("a  b")]
 	[InlineData("12345")]
+	[InlineData("123456789012345")]
 	[InlineData("a@b")]
 	public void IsValidName_BreaksARule_ReturnsFalse(string name)
 	{

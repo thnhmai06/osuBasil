@@ -10,6 +10,7 @@ using NSubstitute;
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
 /// <summary>What a closed connection leaves behind in the trail of its session.</summary>
+[Collection("SessionFailureMeter")]
 public sealed class ConnectionClosedHandlerTests
 {
 	[Fact]
