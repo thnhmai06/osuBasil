@@ -1,4 +1,4 @@
-using Basil.Application.Content.Messages;
+using Basil.Application.Common.Settings;
 using Mediator;
 using Microsoft.AspNetCore.Http.Features;
 

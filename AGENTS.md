@@ -405,7 +405,7 @@ Bot         -> Anticheat, Beatmaps, Chat, Multiplayer, Scores, Servers, Users
 ```
 
 A module Infrastructure project never references another module; the foreign keys between the module databases
-decide the order in which `AddBasil()` registers the migrations (Common, Users, Authentication, Beatmaps, Content, Scores,
+decide the order in which `AddBasil()` registers the migrations (Users, Authentication, Beatmaps, Content, Common, Scores,
 Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
 an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
 
@@ -563,8 +563,7 @@ Scores/        score, stats repositories, submission inputs             (Persist
 Anticheat/     IAnticheatReporter                                       (Services)
                AnticheatReporter                                        (Infrastructure Services)
                AnticheatEvents                                          (Objects/Events)
-Content/       ISettingsRepository, IMenuBannerRepository,
-               ServerSettings                                           (Persistence)
+Content/       IMenuBannerRepository                                    (Persistence)
                the FAQ, menu, screenshot and seasonals storages          (Storage)
                IScreenshotInspector                                     (Ports)
 Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects)
@@ -584,7 +583,7 @@ owns them, including `Basil.Infrastructure.Bot`. Host configuration (ports, TLS,
 and announcements are server features: a command is an entry point that uses the typist's scoped objects, and the bot
 only replies. Query **records** (the filter a repository applies, with `Parse` for the search syntax) belong to
 Persistence; routes and handlers that answer queries do not. Server settings changed at runtime (`ServerSettings`,
-owned by Content.Application) exist only while the server runs and are stored through `ISettingsRepository`; they are
+owned by Application.Common, with its repository and the `ReadSettings` message) exist only while the server runs and are stored through `ISettingsRepository`; they are
 not Domain and not host configuration.
 
 * Common projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Basil.Infrastructure.Content.Persistence;
+namespace Basil.Infrastructure.Common.Persistence;
 
 /// <summary>A stored row of the <c>settings</c> table: one server setting; a setting without a row keeps its default.</summary>
 internal sealed class SettingRow

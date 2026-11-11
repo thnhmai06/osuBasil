@@ -1,4 +1,4 @@
-using Basil.Application.Content.Messages;
+using Basil.Application.Common.Settings;
 using System.Text;
 using System.Text.Json;
 using Basil.Application.Authentication.Persistence;

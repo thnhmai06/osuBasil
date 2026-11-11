@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 
 namespace Basil.Host.Shared.Views;
 

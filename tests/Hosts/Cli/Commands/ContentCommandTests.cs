@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Domain.Beatmaps;
 using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.DependencyInjection;

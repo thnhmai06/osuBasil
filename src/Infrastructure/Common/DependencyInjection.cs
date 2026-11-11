@@ -1,6 +1,8 @@
 using Basil.Application.Common;
+using Basil.Application.Common.Settings;
 using Basil.Application.Common.Storage;
 using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Common.Storage;
 using Basil.Infrastructure.Common.Workers;
 using Microsoft.Extensions.Configuration;
@@ -27,11 +29,27 @@ public static class DependencyInjection
 		services.AddMemoryCache();
 		services.AddSingleton<DataPaths>();
 		services.AddSingleton<IUploadSpool, FileUploadSpool>();
+		services.AddSingleton<EfSettingsRepository>();
+		services.AddSingleton<ISettingsRepository>(provider => provider.GetRequiredService<EfSettingsRepository>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<EfSettingsRepository>());
 		services.AddSingleton<Database>();
 		services.AddSingleton<DatabaseSession>();
 		services.AddSingleton<DatabaseMigrator>();
 		services.AddHostedService<EventDispatcher>();
 		services.AddHostedService<StorageStartup>();
+		return services;
+	}
+
+	/// <summary>Adds the migration of the shared tables (the server settings).</summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	/// <remarks>
+	///     It must be called after the migrations of the module whose first migration created the <c>settings</c> table
+	///     (Content), because the shared migration only creates that table when it is missing.
+	/// </remarks>
+	public static IServiceCollection AddCommonMigration(this IServiceCollection services)
+	{
+		services.AddSingleton<IModuleMigration, ModuleMigration<CommonDbContext>>();
 		return services;
 	}
 

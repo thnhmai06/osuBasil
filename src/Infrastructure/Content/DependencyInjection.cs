@@ -2,7 +2,6 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Infrastructure.Common.Persistence;
-using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Content.Adapters;
 using Basil.Infrastructure.Content.Persistence;
 using Basil.Infrastructure.Content.Storage;
@@ -19,10 +18,6 @@ public static class DependencyInjection
 	public static IServiceCollection AddContentInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<ContentDbContext>>();
-		services.AddSingleton<EfSettingsRepository>();
-		services.AddSingleton<ISettingsRepository>(provider =>
-			provider.GetRequiredService<EfSettingsRepository>());
-		services.AddSingleton<IResident>(provider => provider.GetRequiredService<EfSettingsRepository>());
 		services.AddSingleton<EfMenuBannerRepository>();
 		services.AddSingleton<IMenuBannerRepository>(provider =>
 			provider.GetRequiredService<EfMenuBannerRepository>());

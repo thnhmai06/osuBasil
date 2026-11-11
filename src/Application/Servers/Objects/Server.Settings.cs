@@ -1,4 +1,4 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 
 namespace Basil.Application.Servers.Objects;
 

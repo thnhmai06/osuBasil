@@ -1,7 +1,7 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common.Events;
 using Basil.Application.Common.Storage;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Content.Ports;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;

@@ -1,4 +1,4 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Configuration;
 using Basil.Gateway;
 using Microsoft.Extensions.Time.Testing;

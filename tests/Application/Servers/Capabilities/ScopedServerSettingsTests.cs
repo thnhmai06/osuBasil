@@ -1,4 +1,4 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Users;
 using Basil.Testing;

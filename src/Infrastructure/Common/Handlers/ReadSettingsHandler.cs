@@ -1,10 +1,7 @@
-using Basil.Application.Content.Messages;
-using Basil.Application.Content.Persistence;
-using Basil.Application.Content.Storage;
-using Basil.Domain.Content;
+using Basil.Application.Common.Settings;
 using Mediator;
 
-namespace Basil.Infrastructure.Content.Handlers;
+namespace Basil.Infrastructure.Common.Handlers;
 
 /// <summary>Answers <see cref="ReadSettings" /> with the settings in force.</summary>
 internal sealed class ReadSettingsHandler(ISettingsRepository settings) : IRequestHandler<ReadSettings, ServerSettings>

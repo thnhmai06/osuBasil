@@ -43,21 +43,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Content
 
                     b.ToTable("menu_banners", (string)null);
                 });
-
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Content.Persistence.SettingRow).FullName!, b =>
-                {
-                    b.Property<string>("Name")
-                        .HasMaxLength(255)
-                        .HasColumnName("name");
-
-                    b.Property<string>("Value")
-                        .HasColumnName("value");
-
-                    b.HasKey("Name")
-                        .HasName("pk_settings");
-
-                    b.ToTable("settings", (string)null);
-                });
 #pragma warning restore 612, 618
         }
     }

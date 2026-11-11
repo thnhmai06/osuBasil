@@ -1,5 +1,5 @@
 using Basil.Application.Beatmaps.Ports;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 

@@ -23,6 +23,7 @@ public static class SchemaQueries
 		  	UNION ALL SELECT 'auth', xmin::text::bigint FROM "__ef_migrations_auth"
 		  	UNION ALL SELECT 'beatmaps', xmin::text::bigint FROM "__ef_migrations_beatmaps"
 		  	UNION ALL SELECT 'content', xmin::text::bigint FROM "__ef_migrations_content"
+		  	UNION ALL SELECT 'common', xmin::text::bigint FROM "__ef_migrations_common"
 		  	UNION ALL SELECT 'scores', xmin::text::bigint FROM "__ef_migrations_scores"
 		  	UNION ALL SELECT 'multiplayer', xmin::text::bigint FROM "__ef_migrations_multiplayer"
 		  	UNION ALL SELECT 'chat', xmin::text::bigint FROM "__ef_migrations_chat"

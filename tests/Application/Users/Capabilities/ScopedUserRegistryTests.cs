@@ -1,4 +1,4 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Common;
 using Basil.Domain.Cryptography;

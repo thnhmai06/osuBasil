@@ -4,7 +4,7 @@ using Basil.Domain.Common;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Content.Persistence;
+namespace Basil.Application.Common.Settings;
 
 /// <summary>The server-wide policy an administrator changes while the server runs, grouped in nested categories.</summary>
 public sealed record ServerSettings

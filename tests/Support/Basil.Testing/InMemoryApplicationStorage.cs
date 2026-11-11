@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Common;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;

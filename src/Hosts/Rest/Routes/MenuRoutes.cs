@@ -1,5 +1,6 @@
 using System.Globalization;
 using Basil.Application.Content.Messages;
+using Basil.Application.Common.Settings;
 using Basil.Application.Servers.Messages;
 using Basil.Domain.Common;
 using Basil.Domain.Content;

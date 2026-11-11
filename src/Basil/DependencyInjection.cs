@@ -7,7 +7,7 @@ using Basil.Application.Chat;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Common;
 using Basil.Application.Common.Events;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Diagnostics;
 using Basil.Application.Multiplayer;
 using Basil.Application.Multiplayer.Objects.Events;
@@ -77,6 +77,7 @@ public static class DependencyInjection
 		services.AddAuthInfrastructure();
 		services.AddBeatmapsInfrastructure();
 		services.AddContentInfrastructure();
+		services.AddCommonMigration();
 		services.AddScoresInfrastructure();
 		services.AddMultiplayerInfrastructure();
 		services.AddChatInfrastructure();

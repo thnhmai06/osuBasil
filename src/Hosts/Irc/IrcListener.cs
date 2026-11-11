@@ -1,4 +1,4 @@
-using Basil.Application.Content.Messages;
+using Basil.Application.Common.Settings;
 using Mediator;
 using System.Collections.Concurrent;
 using System.Net;

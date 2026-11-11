@@ -21,6 +21,8 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		("Authentication", ["credentials", "sessions", "connections", "connection_id_counters"]),
 		("Beatmaps", ["beatmapsets", "beatmaps", "beatmap_id_counters"]),
 		("Content", ["settings", "menu_banners"]),
+		// The settings table is adopted from Content, which still creates it in its first migration.
+		("Common", []),
 		("Scores", ["scores", "user_stats", "score_id_counters"]),
 		("Multiplayer", ["matches", "rounds", "match_events", "round_scores", "multiplayer_id_counters"]),
 		("Chat", ["channels"])
@@ -102,7 +104,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		var rows = await StoredRows.ReadAsync(ConnectionString, SchemaQueries.MigrationOrder, null,
 			TestContext.Current.CancellationToken);
 
-		Assert.Equal(["users", "auth", "beatmaps", "content", "scores", "multiplayer", "chat"],
+		Assert.Equal(["users", "auth", "beatmaps", "content", "common", "scores", "multiplayer", "chat"],
 			rows.Select(row => row.Text("module")).Distinct());
 	}
 

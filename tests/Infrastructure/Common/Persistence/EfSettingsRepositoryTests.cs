@@ -1,9 +1,9 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
-namespace Basil.Infrastructure.Content.Tests.Persistence;
+namespace Basil.Infrastructure.Common.Tests.Persistence;
 
 /// <summary>Contract tests of the storing of the settings of the server.</summary>
 [Collection("Persistence")]

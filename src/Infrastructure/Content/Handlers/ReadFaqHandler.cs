@@ -1,5 +1,4 @@
 using Basil.Application.Content.Messages;
-using Basil.Application.Content.Persistence;
 using Basil.Application.Content.Storage;
 using Basil.Domain.Content;
 using Mediator;

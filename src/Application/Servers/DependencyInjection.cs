@@ -4,6 +4,7 @@ using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Common.Storage;
 using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Application.Multiplayer.Registry;

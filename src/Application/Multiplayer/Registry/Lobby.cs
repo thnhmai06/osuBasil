@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Application.Common;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;

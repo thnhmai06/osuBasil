@@ -1,5 +1,5 @@
 using Basil.Application.Common.Events;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;

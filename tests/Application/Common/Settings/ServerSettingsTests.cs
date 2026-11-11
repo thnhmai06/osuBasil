@@ -1,7 +1,8 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
+using Basil.Application.Common.Settings;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Content.Tests.Persistence;
+namespace Basil.Application.Common.Tests.Settings;
 
 /// <summary>Verifies the validation of the settings an administrator changes while the server runs.</summary>
 public class ServerSettingsTests

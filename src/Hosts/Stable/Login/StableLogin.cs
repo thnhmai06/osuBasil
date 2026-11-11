@@ -1,4 +1,4 @@
-using Basil.Application.Content.Messages;
+using Basil.Application.Common.Settings;
 using System.Net;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;

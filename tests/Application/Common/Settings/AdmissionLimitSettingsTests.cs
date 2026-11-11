@@ -1,6 +1,7 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
+using Basil.Application.Common.Settings;
 
-namespace Basil.Application.Content.Tests.Persistence;
+namespace Basil.Application.Common.Tests.Settings;
 
 /// <summary>
 ///     The admission limits are server settings with the gateway's defaults and an accepted boundary of 1 for the

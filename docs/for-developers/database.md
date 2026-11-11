@@ -28,7 +28,7 @@ earlier SQLite file to write in parallel, so a deployment needs a database serve
 | Group        | Tables                                                                      | Notes                                                                 |
 |--------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Accounts     | `users`, `credentials`, `relationships`, `logins`           | `logins` is append-only history                                       |
-| Server       | `settings` (one row per setting), `channels`, `menu_banners`               | resident: loaded at startup, never released                           |
+| Server       | `settings` (one row per setting, shared context), `channels`, `menu_banners` | resident: loaded at startup, never released                           |
 | Beatmaps     | `beatmapsets`, `beatmaps`, counters `local_beatmapset`, `local_beatmap` | mirror the stored beatmapset files; local ids start at 1 000 000 000 |
 | Multiplayer  | `matches`, `rounds`, `match_events`, `round_scores`                         | `match_events` is append-only history                                 |
 | Scores       | `scores`, `user_stats`                                                      | a score belongs to its player                                         |
@@ -100,8 +100,15 @@ reference another's, the principal is not the other module's row type: `ContextM
 `HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
 At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Users, Authentication, Beatmaps, Content,
-Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
+the shared tables (Common), Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
+
+The `settings` table belongs to the shared context (`CommonDbContext`, history `__ef_migrations_common`) but was created by
+the first migration of Content. That history stays as it is, a Content migration (`SettingsMovedToCommon`) only drops the
+table from Content's model without touching it, and the Common migration creates `settings` only when it does not exist (the
+one place with SQL text, because EF has no portable "if not exists"). So an existing database keeps its rows and the table
+name and columns never change; a new database gets the table from Content's first migration, and that is why the Common
+migration runs after Content.
 
 ### PostgreSQL provider and where the migrations live
 

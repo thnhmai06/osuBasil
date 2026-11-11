@@ -1,4 +1,4 @@
-namespace Basil.Application.Content.Persistence;
+namespace Basil.Application.Common.Settings;
 
 /// <summary>The server-wide creation and modification areas that can be restricted to their managers.</summary>
 [Flags]

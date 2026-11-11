@@ -1,13 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Content.Persistence;
+namespace Basil.Infrastructure.Common.Persistence;
 
 /// <summary>Stores the server-wide settings.</summary>
 internal sealed class EfSettingsRepository(
@@ -43,7 +42,7 @@ internal sealed class EfSettingsRepository(
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken ct)
 	{
-		var rows = await database.ReadAsync((ContentDbContext context) => context.Settings
+		var rows = await database.ReadAsync((CommonDbContext context) => context.Settings
 			.ToListAsync(ct), ct);
 		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
@@ -85,7 +84,7 @@ internal sealed class EfSettingsRepository(
 		await _gate.WaitAsync();
 		try
 		{
-			await database.TransactAsync(async (ContentDbContext context) =>
+			await database.TransactAsync(async (CommonDbContext context) =>
 			{
 				foreach (var (name, value) in values)
 					await UpsertSettingAsync(context, name, value);
@@ -98,7 +97,7 @@ internal sealed class EfSettingsRepository(
 		}
 	}
 
-	private static Task UpsertSettingAsync(ContentDbContext context, string name, string? value)
+	private static Task UpsertSettingAsync(CommonDbContext context, string name, string? value)
 	{
 		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name);
 	}

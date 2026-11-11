@@ -41,6 +41,7 @@ public sealed class DatabaseMigratorTests(PersistenceFixture container) : Databa
 		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_auth
 		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_beatmaps
 		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_content
+		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_common
 		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_scores
 		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_multiplayer
 		                                                        UNION ALL SELECT migration_id, product_version FROM __ef_migrations_chat

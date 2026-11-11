@@ -1,4 +1,4 @@
-using Basil.Application.Content.Persistence;
+using Basil.Application.Common.Settings;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared;

@@ -1,4 +1,4 @@
-namespace Basil.Application.Content.Persistence;
+namespace Basil.Application.Common.Settings;
 
 /// <summary>Stores the server-wide settings.</summary>
 public interface ISettingsRepository
