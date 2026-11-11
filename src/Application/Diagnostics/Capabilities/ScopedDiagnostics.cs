@@ -56,7 +56,7 @@ public readonly struct ScopedDiagnostics
 
 	private DiagnosticsOutcome? Denied()
 	{
-		return ScopedPrivileges.Lacks(_privileges, UserPrivileges.Developer) is { } missing
+		return ScopedPrivileges.Lacks(_privileges, UserPrivileges.Developer)
 			? DiagnosticsOutcome.Denied
 			: null;
 	}

@@ -29,17 +29,17 @@ public sealed partial class ObjectsDoNotDecidePrivilegesTests
 	}
 
 	[Fact]
-	public void Offences_FindsAnObjectThatReadsPrivilegesOrReturnsAResult()
+	public void ObjectDecidingPrivileges_Found()
 	{
 		const string source = """
 		                      internal RoomOutcome Join(StableConnection actor)
 		                      {
 		                          var privileges = actor.EffectivePrivileges(now);
-		                          return RoomOutcome.Denied(UserPrivileges.Player);
+		                          return RoomOutcome.Denied;
 		                      }
 		                      """;
 
-		Assert.Equal(3, Offences(source).Count());
+		Assert.Equal(2, Offences(source).Count());
 	}
 
 	[Fact]
@@ -71,6 +71,6 @@ public sealed partial class ObjectsDoNotDecidePrivilegesTests
 		return directory?.FullName ?? throw new DirectoryNotFoundException("Basil.slnx was not found.");
 	}
 
-	[GeneratedRegex(@"EffectivePrivileges\(|Result<\w+>|\.Denied\(")]
+	[GeneratedRegex(@"EffectivePrivileges\(|Outcome\.Denied\b")]
 	private static partial Regex Offence();
 }

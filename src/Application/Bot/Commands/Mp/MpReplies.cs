@@ -457,7 +457,8 @@ internal static class MpReplies
 	{
 		return outcome switch
 		{
-			RoomOutcome.RoleDenied => NotAuthorizedInMatch,
+			RoomOutcome.Denied => MissingPrivileges,
+				RoomOutcome.RoleDenied => NotAuthorizedInMatch,
 			RoomOutcome.AlreadySeated => AlreadyInThisMatch,
 			RoomOutcome.Banned => BannedFromMatch,
 			RoomOutcome.InAnotherRoom => TargetInAnotherMatch,

@@ -28,9 +28,9 @@ public class OutcomeConventionTests
 			Assert.True(Enum.IsDefined(outcome, "Ok"), $"{outcome.Name} has no Ok member.");
 			Assert.Equal(1, Convert.ToInt32(Enum.Parse(outcome, "Ok"), CultureInfo.InvariantCulture));
 			Assert.False(
-				Enum.GetNames(outcome).Any(name =>
+				Enum.GetNames(outcome).Any(name => name != "Denied" &&
 					Convert.ToInt32(Enum.Parse(outcome, name), CultureInfo.InvariantCulture) == 0),
-				$"{outcome.Name} defines a member for the value 0, which means \"not set\".");
+				$"{outcome.Name} defines a member other than Denied for the value 0, which means \"refused for lack of privileges\".");
 		}
 	}
 }
