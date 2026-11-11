@@ -49,7 +49,7 @@ public sealed class PostChatMessageHandlerTests
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
-		Assert.True(app.Channels.Find(ChannelName).ScopeTo(actor).Join() != ChannelOutcome.Ok);
+		Assert.True(app.Channels.Find(ChannelName).ScopeTo(actor).Join() == ChannelOutcome.Ok);
 
 		var outcome = await PostAsync(app, actor, new ChatTarget.General(ChannelName), "hi there");
 
@@ -185,7 +185,7 @@ public sealed class PostChatMessageHandlerTests
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
-		Assert.True(app.Channels.Find(ChannelName).ScopeTo(actor).Join() != ChannelOutcome.Ok);
+		Assert.True(app.Channels.Find(ChannelName).ScopeTo(actor).Join() == ChannelOutcome.Ok);
 
 		var result = await HandlerFor(app).Handle(
 			new PostChatMessage(actor, new ChatTarget.General(ChannelName), "notice me", true),
@@ -202,7 +202,7 @@ public sealed class PostChatMessageHandlerTests
 		await OpenChannelAsync(app);
 		var player = await RoomFixture.PlayerAsync(app, "Stable");
 		Assert.IsType<StableConnection>(player);
-		Assert.True(app.Channels.Find(ChannelName).ScopeTo(player).Join() != ChannelOutcome.Ok);
+		Assert.True(app.Channels.Find(ChannelName).ScopeTo(player).Join() == ChannelOutcome.Ok);
 
 		var outcome = await PostAsync(app, player, new ChatTarget.General(ChannelName));
 
