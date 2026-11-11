@@ -2,7 +2,7 @@ using Basil.Application.Common;
 
 namespace Basil.Tests.Common;
 
-public class ScopedRightsTests
+public class ScopedPrivilegesTests
 {
 	[Flags]
 	public enum SampleBits
@@ -25,8 +25,8 @@ public class ScopedRightsTests
 	{
 		var held = SampleBits.Read | SampleBits.Write;
 
-		Assert.Null(ScopedRights.Require(held, SampleBits.Read));
-		Assert.Null(ScopedRights.Require(held, SampleBits.Read | SampleBits.Write));
+		Assert.Null(ScopedPrivileges.Require(held, SampleBits.Read));
+		Assert.Null(ScopedPrivileges.Require(held, SampleBits.Read | SampleBits.Write));
 	}
 
 	[Fact]
@@ -35,7 +35,7 @@ public class ScopedRightsTests
 		var held = SampleBits.Read;
 
 		Assert.Equal(SampleBits.Write | SampleBits.Delete,
-			ScopedRights.Require(held, SampleBits.Read | SampleBits.Write | SampleBits.Delete));
+			ScopedPrivileges.Require(held, SampleBits.Read | SampleBits.Write | SampleBits.Delete));
 	}
 
 	[Fact]
@@ -43,7 +43,7 @@ public class ScopedRightsTests
 	{
 		var held = SampleBits.None;
 
-		Assert.Null(ScopedRights.Require(held, SampleBits.None));
+		Assert.Null(ScopedPrivileges.Require(held, SampleBits.None));
 	}
 
 	[Theory]
@@ -55,7 +55,7 @@ public class ScopedRightsTests
 	public void RequiredLevelHeld_Met(SampleLevel held, SampleLevel required,
 		bool met)
 	{
-		var missing = ScopedRights.Require(held, required);
+		var missing = ScopedPrivileges.Require(held, required);
 
 		Assert.Equal(met ? null : required, missing);
 	}

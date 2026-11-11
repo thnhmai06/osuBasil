@@ -316,7 +316,7 @@ public sealed class ApiConnection : Connection
 
 /// <summary>
 ///     The operator's connection: BasilBot acting for whoever sits at the server's console. It is the one authority
-///     that skips the rights checks, because the operator owns the machine; it is never registered, so no client can
+///     that skips the privilege checks, because the operator owns the machine; it is never registered, so no client can
 ///     present it.
 /// </summary>
 public sealed class OperatorConnection : Connection

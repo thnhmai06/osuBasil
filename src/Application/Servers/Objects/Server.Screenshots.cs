@@ -4,11 +4,11 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
-	/// <summary>Gets the screenshots players uploaded, used without a rights check.</summary>
+	/// <summary>Gets the screenshots players uploaded, used without a privilege check.</summary>
 	public ServerScreenshots Screenshots => new(this);
 }
 
-/// <summary>The screenshots players uploaded, used without a rights check.</summary>
+/// <summary>The screenshots players uploaded, used without a privilege check.</summary>
 public readonly struct ServerScreenshots
 {
 	private readonly Server _server;

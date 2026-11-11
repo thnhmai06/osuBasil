@@ -6,7 +6,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="ListScreenshots" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="ListScreenshots" /> with the privileges of the sending connection.</summary>
 internal sealed class ListScreenshotsHandler(Server server)
 	: IRequestHandler<ListScreenshots, (Result<ServerOutcome> Result, IReadOnlyList<ContentReference> Screenshots)>
 {

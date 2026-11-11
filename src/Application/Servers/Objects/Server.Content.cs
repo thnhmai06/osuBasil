@@ -5,20 +5,20 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
-	/// <summary>Gets the FAQ entries of the server, changed without a rights check.</summary>
+	/// <summary>Gets the FAQ entries of the server, changed without a privilege check.</summary>
 	public ServerFaq Faq => new(this);
 
-	/// <summary>Gets the main-menu banners of the server, changed without a rights check.</summary>
+	/// <summary>Gets the main-menu banners of the server, changed without a privilege check.</summary>
 	public ServerBanners Banners => new(this);
 
-	/// <summary>Gets the seasonal backgrounds of the server, changed without a rights check.</summary>
+	/// <summary>Gets the seasonal backgrounds of the server, changed without a privilege check.</summary>
 	public ServerSeasonals Seasonals => new(this);
 
-	/// <summary>Gets the main-menu icon of the server, changed without a rights check.</summary>
+	/// <summary>Gets the main-menu icon of the server, changed without a privilege check.</summary>
 	public ServerIcon Icon => new(this);
 }
 
-/// <summary>The FAQ entries of the server, changed without a rights check.</summary>
+/// <summary>The FAQ entries of the server, changed without a privilege check.</summary>
 public readonly struct ServerFaq
 {
 	private readonly Server _server;
@@ -54,7 +54,7 @@ public readonly struct ServerFaq
 	}
 }
 
-/// <summary>The main-menu banners of the server, changed without a rights check.</summary>
+/// <summary>The main-menu banners of the server, changed without a privilege check.</summary>
 public readonly struct ServerBanners
 {
 	private readonly Server _server;
@@ -110,7 +110,7 @@ public readonly struct ServerBanners
 	}
 }
 
-/// <summary>The seasonal backgrounds of the server, changed without a rights check.</summary>
+/// <summary>The seasonal backgrounds of the server, changed without a privilege check.</summary>
 public readonly struct ServerSeasonals
 {
 	private readonly Server _server;
@@ -142,7 +142,7 @@ public readonly struct ServerSeasonals
 	}
 }
 
-/// <summary>The main-menu icon of the server, changed without a rights check.</summary>
+/// <summary>The main-menu icon of the server, changed without a privilege check.</summary>
 public readonly struct ServerIcon
 {
 	private readonly Server _server;

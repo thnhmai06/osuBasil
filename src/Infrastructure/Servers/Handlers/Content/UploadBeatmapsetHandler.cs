@@ -6,7 +6,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="UploadBeatmapset" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="UploadBeatmapset" /> with the privileges of the sending connection.</summary>
 internal sealed class UploadBeatmapsetHandler(Server server)
 	: IRequestHandler<UploadBeatmapset, (Result<ServerOutcome> Result, BeatmapsetImportResult? Import)>
 {

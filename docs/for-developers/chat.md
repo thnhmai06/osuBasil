@@ -43,7 +43,7 @@ var result = scopedChannel.Join();
 
 `ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `Moderator`. A missing privilege comes back as a denial naming the missing privileges; otherwise `ConfigureAsync` returns `Ok` or `Closed`. Configuring a channel removes members who can no longer read it.
 
-The channel to manage is found through `server.ScopeTo(by).Channels.Find(name)`. It requires effective `Moderator` and answers `NotFound` only once that right is met, so a connection without it is refused the same way whether or not the channel exists.
+The channel to manage is found through `server.ScopeTo(by).Channels.Find(name)`. It requires effective `Moderator` and answers `NotFound` only once that privilege is met, so a connection without it is refused the same way whether or not the channel exists.
 
 ### Results
 

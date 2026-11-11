@@ -3,7 +3,7 @@ using System.Reflection;
 namespace Basil.Application.Common;
 
 /// <summary>
-///     The comparison every capability view makes when an action needs a right: a capability is a short-lived value over
+///     The comparison every capability view makes when an action needs a privilege: a capability is a short-lived value over
 ///     one object for one actor, and this is how it states what an action needs.
 /// </summary>
 /// <remarks>
@@ -12,32 +12,32 @@ namespace Basil.Application.Common;
 ///     required bit is held; any other enum is ordered levels and is met when the held value is greater than or equal to
 ///     the required one.
 /// </remarks>
-public static class ScopedRights
+public static class ScopedPrivileges
 {
 	/// <summary>Checks whether the held privileges meet the ones an action needs.</summary>
-	/// <typeparam name="TRights">The enum of the rights that are checked.</typeparam>
+	/// <typeparam name="TPrivileges">The enum of the privileges that are checked.</typeparam>
 	/// <param name="held">The privileges the actor holds.</param>
 	/// <param name="required">The privileges the action needs.</param>
 	/// <returns>
 	///     <see langword="null" /> when they are held; otherwise what is missing: the bits not held for a flags enum, the
 	///     required level for any other enum.
 	/// </returns>
-	public static TRights? Require<TRights>(TRights held, TRights required)
-		where TRights : struct, Enum
+	public static TPrivileges? Require<TPrivileges>(TPrivileges held, TPrivileges required)
+		where TPrivileges : struct, Enum
 	{
 		var have = Convert.ToInt64(held);
 		var needed = Convert.ToInt64(required);
 
-		if (!Flags<TRights>.IsFlags)
+		if (!Flags<TPrivileges>.IsFlags)
 			return have >= needed ? null : required;
 
 		var missing = needed & ~have;
-		return missing == 0 ? null : (TRights)Enum.ToObject(typeof(TRights), missing);
+		return missing == 0 ? null : (TPrivileges)Enum.ToObject(typeof(TPrivileges), missing);
 	}
 
-	private static class Flags<TRights> where TRights : struct, Enum
+	private static class Flags<TPrivileges> where TPrivileges : struct, Enum
 	{
-		/// <summary>Whether the rights type is a flags enum.</summary>
-		public static readonly bool IsFlags = typeof(TRights).GetCustomAttribute<FlagsAttribute>() is not null;
+		/// <summary>Whether the privileges type is a flags enum.</summary>
+		public static readonly bool IsFlags = typeof(TPrivileges).GetCustomAttribute<FlagsAttribute>() is not null;
 	}
 }

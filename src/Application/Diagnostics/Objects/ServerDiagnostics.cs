@@ -5,7 +5,7 @@ using Basil.Application.Users.Objects.Connections;
 
 namespace Basil.Application.Diagnostics.Objects;
 
-/// <summary>The maintenance actions of the running server, which only a connection with the right may run.</summary>
+/// <summary>The maintenance actions of the running server, which only a connection with the privilege may run.</summary>
 /// <param name="clock">The clock of the server.</param>
 /// <param name="caches">Empties the cache of derived files.</param>
 /// <param name="exceptions">The count of exceptions, which an operator can reset.</param>

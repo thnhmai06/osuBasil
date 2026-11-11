@@ -54,7 +54,7 @@ This is why a creator or referee who has lost `Player` cannot manage a room, whi
 
 ### System-owned operations
 
-Some room work has no user caller. The `Lobby` and the `Room` keep system operations such as releasing a connection from the rooms, removing a suspended member or referee, recovering unfinished matches (`Lobby`) and taking a submitted score for a round (`Room.ReceiveScore`). Their summaries say that the server itself calls them and that they need no rights; they do not create a caller scope. Caller-authorized room behavior belongs to `ScopedRoom` and its parts.
+Some room work has no user caller. The `Lobby` and the `Room` keep system operations such as releasing a connection from the rooms, removing a suspended member or referee, recovering unfinished matches (`Lobby`) and taking a submitted score for a round (`Room.ReceiveScore`). Their summaries say that the server itself calls them and that they need no privileges; they do not create a caller scope. Caller-authorized room behavior belongs to `ScopedRoom` and its parts.
 
 ## Membership, slots and settings
 
@@ -90,14 +90,14 @@ A round is decided once, automatically, as soon as it has ended and every awaite
 
 ## Countdown
 
-The room countdown belongs to BasilBot, not to the room. A host (the `!mp start <seconds>` and `!mp timer` commands, or the API and console commands of the same name) asks for a countdown with `StartRoomCountdown` and cancels it with `CancelRoomCountdown`; both are answered by BasilBot. It needs the right to start rounds, which BasilBot asks the room about with `CheckRoundStart` for the connection that asked, so a countdown can be started by whoever may start a round and by nobody else. A room has at most one countdown; starting another replaces it and says how much of the old one was left.
+The room countdown belongs to BasilBot, not to the room. A host (the `!mp start <seconds>` and `!mp timer` commands, or the API and console commands of the same name) asks for a countdown with `StartRoomCountdown` and cancels it with `CancelRoomCountdown`; both are answered by BasilBot. It needs the privilege to start rounds, which BasilBot asks the room about with `CheckRoundStart` for the connection that asked, so a countdown can be started by whoever may start a round and by nobody else. A room has at most one countdown; starting another replaces it and says how much of the old one was left.
 
 BasilBot keeps the timer and announces the marks in the room channel: a timer announces 60, 30, 10 and 5 seconds, a countdown that starts a round announces every whole minute left and then 30, 10, 5, 4 and 3 seconds, and a mark is announced only while it is shorter than the countdown. When a countdown that starts a round elapses, BasilBot sends the same `StartRound` message a person would, with the connection that started the countdown; if that connection is gone or no longer has the right, the countdown is cancelled with a message instead.
 
 BasilBot listens to the room's events to cancel a pending countdown: the room closing, a round starting or being aborted, and, for a countdown that starts a round, a change of the beatmap, mode, mods, teams or win condition. The room knows nothing of countdowns: it only starts, aborts and decides rounds. `RoomPrivileges` has no countdown privilege, so the bit it once used stays unused and is never reassigned.
 
 ```text
-!mp start 30 / API start --StartRoomCountdown--> BasilBot (rights check, timer)
+!mp start 30 / API start --StartRoomCountdown--> BasilBot (privilege check, timer)
                                                    | marks            -> room channel
                                                    | elapsed          --StartRound--> Room
 Room events (closed, round started/aborted, settings changed) -------> BasilBot cancels
@@ -107,7 +107,7 @@ Room events (closed, round started/aborted, settings changed) -------> BasilBot 
 
 The lobby opens and closes rooms. "Tournament Room" is no longer a concept of the lifecycle: every room follows the same two limits. An empty room remains open for 15 minutes; the lobby announces the scheduled close when it starts and five minutes before it, and a player joining cancels it. If the room becomes empty again, the delay starts over. Each creator may have a limited number of rooms open at once. What still differs is the **source** that opens the room: opening in game needs the creator's own osu! client (or refuses with `AlreadyInRoom`), while opening through the API or BasilBot does not. The osu!tourney client and observers remain a connection type, not a kind of room.
 
-The empty-room close is a background worker, not a timer of the lobby: the lobby records when a room became empty and the worker asks it every 30 seconds to close the rooms that stayed empty for 15 minutes, and to announce the closing of those five minutes from it. The lobby's `CloseEmptyRooms` needs no rights; the room closes as if it closed itself, with no user as actor. The per-creator limit (`Tournament` lifts it) counts every room the creator has open, whichever source opened it.
+The empty-room close is a background worker, not a timer of the lobby: the lobby records when a room became empty and the worker asks it every 30 seconds to close the rooms that stayed empty for 15 minutes, and to announce the closing of those five minutes from it. The lobby's `CloseEmptyRooms` needs no privileges; the room closes as if it closed itself, with no user as actor. The per-creator limit (`Tournament` lifts it) counts every room the creator has open, whichever source opened it.
 
 Room state is mutable and shared. Every transition that reads and then mutates is a synchronous method of `Room` (`Join`, `Kick`, `StartRound`, `Configure` and the rest) that takes the room's own lock, checks the state, changes it and publishes its events before releasing the lock; publishing only queues the event, so nothing is awaited under the lock. A closed room answers `RoomClosed`. `ScopedRoom` only checks the caller's privileges, does any asynchronous lookup that must come first, and calls the room's method. Never hold two room locks at once. Do not add another synchronization mechanism for room state.
 
@@ -141,6 +141,6 @@ A player is in at most one room. A room's own check cannot see another room's se
 ## See also
 
 * [`chat.md`](chat.md): channel ownership and room chat
-* [`privileges.md`](privileges.md): account privileges and room-manager rights
+* [`privileges.md`](privileges.md): account privileges and room-manager privileges
 * [`sse.md`](sse.md): live-stream design
 * [`database.md`](database.md): match history persistence

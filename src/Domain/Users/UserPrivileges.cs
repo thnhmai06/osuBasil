@@ -1,6 +1,6 @@
 namespace Basil.Domain.Users;
 
-/// <summary>The privileges an account holds: the roles osu! knows, which are also the rights the server checks.</summary>
+/// <summary>The privileges an account holds: the roles osu! knows, which are also the privileges the server checks.</summary>
 /// <remarks>
 ///     A bitwise combination. The values are the privilege bits an osu! client reports and receives, so they never
 ///     change. Privileges are stored on the account and granted by an owner; holding one is what allows its actions.

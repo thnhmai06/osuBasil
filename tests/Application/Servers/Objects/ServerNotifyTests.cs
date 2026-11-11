@@ -10,7 +10,7 @@ namespace Basil.Application.Servers.Tests.Objects;
 
 /// <summary>
 ///     Behaviour of notifications to osu! clients, from the XML contracts of <see cref="Server" /> and
-///     <see cref="ScopedServer" />: the server's own operation needs no rights and reaches only open osu! clients; the
+///     <see cref="ScopedServer" />: the server's own operation needs no privileges and reaches only open osu! clients; the
 ///     scoped one needs <see cref="UserPrivileges.Moderator" />.
 /// </summary>
 public sealed class ServerNotifyTests

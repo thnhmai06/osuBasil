@@ -9,7 +9,7 @@ using static Basil.Testing.BeatmapsetWorld;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Handlers;
 
-/// <summary>The messages that delete or change a beatmapset with the rights of the sending connection.</summary>
+/// <summary>The messages that delete or change a beatmapset with the privileges of the sending connection.</summary>
 public sealed class BeatmapsetHandlerTests
 {
 	private static readonly UserPrivileges Manager = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
@@ -39,7 +39,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task NoManage_DeniedWithPermission()
+	public async Task NoManage_DeniedWithPrivilege()
 	{
 		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
@@ -108,7 +108,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task NoRightUnknown_DeniedLikeKnown()
+	public async Task NoPrivilegeUnknown_DeniedLikeKnown()
 	{
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;

@@ -261,7 +261,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task OwnSessions_NoPermissionFilters()
+	public async Task OwnSessions_NoPrivilegeFilters()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Lister", "password", UserPrivileges.None);

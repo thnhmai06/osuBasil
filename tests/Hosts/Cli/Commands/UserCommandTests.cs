@@ -180,7 +180,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task BotPermissions_SystemRefused()
+	public async Task BotPrivileges_SystemRefused()
 	{
 		var (code, text) =
 			await fixture.RunAsync($"users {BasilBot.Id} set --privileges {(ulong)UserPrivilegesExtensions.All}");

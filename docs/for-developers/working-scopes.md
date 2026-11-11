@@ -88,7 +88,7 @@ a link the client opens.
 
 ### Account creation and operator console
 
-New accounts receive only the default privileges; being the first account grants no special rights. The first
+New accounts receive only the default privileges; being the first account grants no special privileges. The first
 administrator is created by the operator through a console command. The console is planned for the Host phase in
 `Basil.Cli`; it is not implemented yet. The design has no administrator key or bootstrap credentials. Account
 registration remains part of the supported game-client workflow, subject to `ServerSettings.LockedCreation`.
@@ -101,7 +101,7 @@ redesigned account-creation rules as already integrated into every transport.
 The osu! client's friend list (`osu-getfriends.php`, adding and removing friends) is supported, together with the
 setting that accepts private messages from friends only and with blocking: a block refuses private messages,
 spectating and invitations (staff who manage the matching area are not bound by a block; see "a block yields to a
-higher right" in `AGENTS.md`). A blocked user's messages in general channels are filtered silently per recipient: the
+higher privilege" in `AGENTS.md`). A blocked user's messages in general channels are filtered silently per recipient: the
 server offers the recipients of a message (Channel.RecipientsAsync) and the transports deliver to them. Players use friends and blocks during tournaments to reach each other and referees, so they stay
 even though Basil has no other social features.
 
@@ -109,7 +109,7 @@ even though Basil has no other social features.
 
 Silencing a user (a silence stops chatting), lifting it, adding a note, and a moderation
 log that keeps the trace of these actions and of every view of a user's login history. The log is for people; it never
-changes a right.
+changes a privilege.
 
 ## Out of scope
 
@@ -125,7 +125,7 @@ The following features are deliberately not part of Basil's supported surface.
 | Blocking old osu! clients (`DISALLOW_OLD_CLIENTS`)                               | ❌ Out of scope | The server does not decide which client versions may sign in; score submission still checks the version it received at login.                                 |
 | Updating a country from the IP at login, or any third-party geolocation service | ❌ Out of scope | The stored country is the source. Only registration through the game client takes a country from the host (proxy header or an offline GeoLite2 file).        |
 | PM to an offline user (`mail`, `osu-markasread.php`)                             | ❌ Out of scope | A message to someone offline is not kept.                                                                                                                     |
-| Seating or hosting through the API                                                | ❌ Out of scope | Taking a slot or becoming host requires an osu! client; the API manages rooms using the caller's own rights but does not play.                                 |
+| Seating or hosting through the API                                                | ❌ Out of scope | Taking a slot or becoming host requires an osu! client; the API manages rooms using the caller's own privileges but does not play.                                 |
 | `ApiKey` on `User` / `UpdateApiKeyAsync`                                         | ❌ Out of scope | Clients sign in with the account's password and receive a session token; a separate API-key model has no use.                                             |
 | osu-web API v1/v2 compatibility and OAuth                                        | ❌ Out of scope | Basil's own user-centric API serves the clients built on it; reproducing osu-web's API or OAuth has no concrete requirement.                                   |
 | `!clan` and moderation/clan commands                                             | ❌ Out of scope | These belonged to the removed command surface and are outside the project's current purpose.                                                                  |
@@ -170,7 +170,7 @@ Basil intentionally has a smaller surface than bancho.py. Porting unrelated func
 persistence requirements, testing requirements, and compatibility obligations without improving the core tournament use
 case.
 
-No account acts for another. Every tool signs in as itself and receives only its own rights; a BasilBot command uses
+No account acts for another. Every tool signs in as itself and receives only its own privileges; a BasilBot command uses
 the connection of the person who typed it.
 
 ## Lessons from reversed decisions
@@ -201,7 +201,7 @@ moved the commands out to BasilBot as a separate client. The 2026-10-16 redesign
 fixed user (id 1) that nobody can sign in as, commands run using the typist's connection, and the bot only replies
 and announces. The command and announcement handlers are implemented in `Basil.Infrastructure.Bot`; transport
 integration remains planned for the Host phase; the bot's own connections are kept by the server. The earlier "special session" failed
-because commands acted with the bot's own rights; that does not return: commands use the typist's rights, and the bot
+because commands acted with the bot's own privileges; that does not return: commands use the typist's privileges, and the bot
 only speaks for the server.
 
 ### Deferring the API indefinitely

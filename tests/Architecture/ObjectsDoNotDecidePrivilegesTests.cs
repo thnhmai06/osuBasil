@@ -7,13 +7,13 @@ namespace Basil.ArchitectureTests;
 ///     capability in front of it decides what the caller's privileges allow: an object of the listed modules neither
 ///     reads effective privileges nor answers with a denial.
 /// </summary>
-public sealed partial class ObjectsDoNotDecidePermissionsTests
+public sealed partial class ObjectsDoNotDecidePrivilegesTests
 {
 	/// <summary>The modules whose objects follow the rule so far; a module joins when its objects are done.</summary>
 	private static readonly string[] Modules = ["Multiplayer", "Chat"];
 
 	[Fact]
-	public void ObjectsOfTheListedModules_DoNotReadPermissionsOrAnswerWithADenial()
+	public void ObjectsOfTheListedModules_DoNotReadPrivilegesOrAnswerWithADenial()
 	{
 		var offenders = ObjectFiles().SelectMany(path => Offences(File.ReadAllText(path)).Select(line =>
 			$"{Path.GetFileName(path)}: {line.Trim()}")).ToList();
@@ -29,12 +29,12 @@ public sealed partial class ObjectsDoNotDecidePermissionsTests
 	}
 
 	[Fact]
-	public void Offences_FindsAnObjectThatReadsPermissionsOrReturnsAResult()
+	public void Offences_FindsAnObjectThatReadsPrivilegesOrReturnsAResult()
 	{
 		const string source = """
 		                      internal Result<RoomOutcome> Join(StableConnection actor)
 		                      {
-		                          var rights = actor.EffectivePrivileges(now);
+		                          var privileges = actor.EffectivePrivileges(now);
 		                          return Result<RoomOutcome>.Denied(UserPrivileges.Player);
 		                      }
 		                      """;
@@ -43,7 +43,7 @@ public sealed partial class ObjectsDoNotDecidePermissionsTests
 	}
 
 	[Fact]
-	public void Offences_AcceptsAnObjectThatReceivesPermissionsAsAValue()
+	public void Offences_AcceptsAnObjectThatReceivesPrivilegesAsAValue()
 	{
 		const string source = "public bool Involves(Connection connection, UserPrivileges privileges) => privileges.Allows(UserPrivileges.Player);";
 

@@ -56,7 +56,7 @@ public sealed class ScopedUserRegistryTests
 	}
 
 	[Fact]
-	public async Task CreateNoPermissions_Default()
+	public async Task CreateNoPrivileges_Default()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("DefaultMgr", "password",

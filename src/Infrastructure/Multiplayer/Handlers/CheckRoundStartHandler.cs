@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Answers a <see cref="CheckRoundStart" /> from the rights of the connection that asked.</summary>
+/// <summary>Answers a <see cref="CheckRoundStart" /> from the privileges of the connection that asked.</summary>
 internal sealed class CheckRoundStartHandler : IRequestHandler<CheckRoundStart, Result<RoomOutcome>>
 {
 	/// <inheritdoc />

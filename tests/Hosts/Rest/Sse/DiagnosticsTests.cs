@@ -11,7 +11,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 	                                                UserPrivileges.Developer;
 
 	[Fact]
-	public async Task NoPermission_403Or401()
+	public async Task NoPrivilege_403Or401()
 	{
 		var (plain, _) = await fixture.SignInAsync("DiagPlain");
 		using (plain)

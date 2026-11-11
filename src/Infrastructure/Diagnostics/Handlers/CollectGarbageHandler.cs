@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Diagnostics.Handlers;
 
-/// <summary>Handles <see cref="CollectGarbage" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="CollectGarbage" /> with the privileges of the sending connection.</summary>
 internal sealed class CollectGarbageHandler(ServerDiagnostics diagnostics)
 	: IRequestHandler<CollectGarbage, Result<DiagnosticsOutcome>>
 {

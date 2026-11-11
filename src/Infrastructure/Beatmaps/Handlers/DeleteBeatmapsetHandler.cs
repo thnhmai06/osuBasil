@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Deletes a beatmapset with the rights of the sending connection.</summary>
+/// <summary>Deletes a beatmapset with the privileges of the sending connection.</summary>
 internal sealed class DeleteBeatmapsetHandler(Beatmapsets beatmapsets)
 	: IRequestHandler<DeleteBeatmapset, Result<BeatmapsetOutcome>>
 {

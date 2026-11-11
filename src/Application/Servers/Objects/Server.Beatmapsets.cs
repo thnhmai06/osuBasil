@@ -5,11 +5,11 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
-	/// <summary>Gets the beatmapsets uploaded to the server, used without a rights check.</summary>
+	/// <summary>Gets the beatmapsets uploaded to the server, used without a privilege check.</summary>
 	public ServerBeatmapsets Beatmapsets => new(this);
 }
 
-/// <summary>The beatmapsets uploaded to the server, used without a rights check.</summary>
+/// <summary>The beatmapsets uploaded to the server, used without a privilege check.</summary>
 public readonly struct ServerBeatmapsets
 {
 	private readonly Server _server;

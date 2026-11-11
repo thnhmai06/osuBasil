@@ -22,7 +22,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task StagedVersion_NeedsTokenPermission()
+	public async Task StagedVersion_NeedsTokenPrivilege()
 	{
 		var (manager, _) = await fixture.SignInAsync("RulesetManager", Manager);
 		var (plain, _) = await fixture.SignInAsync("RulesetPlain");

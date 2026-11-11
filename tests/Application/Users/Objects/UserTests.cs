@@ -36,7 +36,7 @@ public sealed class UserTests
 	}
 
 	[Fact]
-	public async Task UngrantedPermission_NotEffective()
+	public async Task UngrantedPrivilege_NotEffective()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("NoPermission", "password");

@@ -74,7 +74,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task NoUploadPermission_NamesIt()
+	public async Task NoUploadPrivilege_NamesIt()
 	{
 		var (app, world, uploads) = await SetupAsync(
 			UserPrivilegesExtensions.Default & ~UserPrivileges.Player, Locks.None);

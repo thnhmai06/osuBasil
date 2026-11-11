@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="ClearMenuIcon" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="ClearMenuIcon" /> with the privileges of the sending connection.</summary>
 internal sealed class ClearMenuIconHandler(Server server) : IRequestHandler<ClearMenuIcon, Result<ServerOutcome>>
 {
 	/// <inheritdoc />

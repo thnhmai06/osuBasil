@@ -25,7 +25,7 @@ faces the sun.</i></sub>
 ([Akatsuki](https://github.com/osuAkatsuki)). The project name **"Basil"** was inspired by the character Basil
 from [OMORI](https://www.omori-game.com/), and the mascot artwork depicts the same character. This project is not
 affiliated with, endorsed by, or connected to OMORI or its developer, [OMOCAT](https://omocat.com/). All character
-rights belong to their respective owners.
+privileges belong to their respective owners.
 
 ## ✨ Key features
 

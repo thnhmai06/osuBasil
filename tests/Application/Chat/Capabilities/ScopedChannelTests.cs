@@ -10,7 +10,7 @@ namespace Basil.Application.Chat.Tests.Capabilities;
 
 /// <summary>
 ///     Behaviour of a chat channel as a connection may use it. Expected values come from AGENTS.md and
-///     docs/for-agents/identity-privileges.md (privileges, privileges, blocks yielding to a higher right).
+///     docs/for-agents/identity-privileges.md (privileges, privileges, blocks yielding to a higher privilege).
 /// </summary>
 public sealed class ScopedChannelTests
 {
@@ -224,7 +224,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostNoPermission_Denied()
+	public async Task PostNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);

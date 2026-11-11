@@ -4,11 +4,11 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
-	/// <summary>Gets the runtime settings of the server, read and changed without a rights check.</summary>
+	/// <summary>Gets the runtime settings of the server, read and changed without a privilege check.</summary>
 	public ServerSettingsView Settings => new(this);
 }
 
-/// <summary>The runtime settings of the server, read and changed without a rights check.</summary>
+/// <summary>The runtime settings of the server, read and changed without a privilege check.</summary>
 public readonly struct ServerSettingsView
 {
 	private readonly Server _server;

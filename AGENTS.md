@@ -439,7 +439,7 @@ The project that defines an options type binds it (`Add<Module>...(IConfiguratio
 only chooses what to run (Kestrel, ports, TLS, the database provider, logging, lifecycle). Until the migration reaches a
 project, `Basil` still binds its configuration and hands it over as `IOptions<T>`. Application reads no configuration.
 
-`Application.Common` owns `IActor`, `Result<T>`, `ScopedRights`, shared query values and event contracts/queue; it depends
+`Application.Common` owns `IActor`, `Result<T>`, `ScopedPrivileges`, shared query values and event contracts/queue; it depends
 on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
 event dispatcher; it depends on Domain, Application.Common and its external packages.
 
@@ -491,8 +491,8 @@ system; no host or gateway knows it exists.
 * The project that defines an options type binds it **(target)**; BasilBot's reply file is bound with the bot
   (`Configurations/Templates/replies.json`, written with the defaults when missing).
 * Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
-* The console is the one entry point that skips rights checks (`OperatorConnection`); a chat command still uses the
-  typist's rights. See [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md).
+* The console is the one entry point that skips privilege checks (`OperatorConnection`); a chat command still uses the
+  typist's privileges. See [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md).
 
 ### Application feature folders
 
@@ -631,7 +631,7 @@ who created the room in game is also its first host. When a room is opened throu
 game client is online and not in any room is seated in the new room as host; a creator already in another
 room stays there and does not become host. Managing a room is for the creator and the referees (and
 `Tournament`, which acts with the creator's authority in every room); being the host does not
-grant management rights. A creator or referee who has lost the `Player` privilege cannot manage. Every room
+grant management privileges. A creator or referee who has lost the `Player` privilege cannot manage. Every room
 operation with a privilege rule runs on `room.ScopeTo(actor)`, which checks authority, not the transport. BasilBot's `!mp` commands call these operations using the typist's connection.
 
 Do not treat them as interchangeable.
@@ -800,7 +800,7 @@ the owner merges them into the skill later, nobody edits the skill silently.
   hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
 * **Capabilities and `Result<TOutcome>`** (2026-10-21, revised; see `docs/for-agents/application-design.md`): a `Scoped*`
   capability is a `readonly struct` valid for one request that snapshots the effective privileges and states each
-  requirement through `ScopedRights.Require` (`null` = met); behaviours return a shared `Result<TOutcome>` with
+  requirement through `ScopedPrivileges.Require` (`null` = met); behaviours return a shared `Result<TOutcome>` with
   per-object outcome enums starting at `Ok = 1`.
 * **No `ConfigureAwait(false)`** in a server application (owner decision, 2026-10-26: the project rule stands and the
   skill's "every library await uses it" does not apply here).
@@ -827,8 +827,8 @@ the owner merges them into the skill later, nobody edits the skill silently.
 * **Validate at the boundary what the consumer will need, and let the consumer survive what slipped through.** A
   header-only inspection accepts a picture that cannot be decoded; the serving side answers 404, not 500. Probe only the
   formats the server accepts, so the parsers of the others never see uploaded bytes.
-* **Authorize before you look up.** A command or route that answers "no such X" before it checks the right to manage X
-  tells an unauthorized caller which names exist. Check the right first; the refusal must be identical whether or not
+* **Authorize before you look up.** A command or route that answers "no such X" before it checks the privilege to manage X
+  tells an unauthorized caller which names exist. Check the privilege first; the refusal must be identical whether or not
   the target exists (same status, same missing-privilege mask).
 * **Tests that share one running host own their identities.** A limit counted per address or per account is shared
   with every earlier test that is still closing sockets; give each limit test addresses or accounts nobody else uses.
@@ -909,15 +909,15 @@ Before considering a code change complete:
    a repository read, an internal helper that takes, returns or creates a live object or publishes an event (except
    the explicit `IAnticheatReporter` system service), a contract name that reveals its mechanism, or a reference from a module's Infrastructure project to another module,
    or any project reference outside the graph of the modules. Since the identity redesign, also
-   reject: an action without a real `actor`, authority decided by connection kind, a right finer than a `UserPrivileges` flag, a privilege
+   reject: an action without a real `actor`, authority decided by connection kind, a privilege finer than a `UserPrivileges` flag, a privilege
    derived instead of stored, a privilege that implies another, and a delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
    to the object that owns it" (God Actor, service-centric procedural design, privilege plumbing, exposed mutable
-   state, fake scoping), and a bot message that goes through a rights check or a bot command that runs with the
-   bot's rights instead of the typist's.
+   state, fake scoping), and a bot message that goes through a privilege check or a bot command that runs with the
+   bot's privileges instead of the typist's.
 8. Review delegated work for what agents tend to leave behind, besides the rules above: `.ConfigureAwait(false)` in
    new code, a changed final newline or reflowed lines nobody asked for, a renamed parameter outside the task,
    stray tabs in XML documentation, a constructor made `internal` on a class the container creates, a member that
-   nothing calls any more, a wait between a rights check and the change it guards, a handler that waits, a
+   nothing calls any more, a wait between a privilege check and the change it guards, a handler that waits, a
    `switch` statement rewritten as a nullable-result switch expression plus an `if` to silence a hint, a whole-tree
    `git add` that sweeps in files nobody asked for, and a
    consequence that skips offline users or one of several paths. Run parallel agents in separate git worktrees

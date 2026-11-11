@@ -21,7 +21,7 @@ public sealed partial class Room : IEquatable<Room>
 	/// <param name="id">The room id, carried by the client protocol.</param>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="settings">The room's initial settings.</param>
-	/// <param name="context">The runtime context for emitting events and checking permissions.</param>
+	/// <param name="context">The runtime context for emitting events and checking privileges.</param>
 	internal Room(int id, MatchRecord match, MatchSettings settings, RoomContext context)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegative(id);
@@ -35,7 +35,7 @@ public sealed partial class Room : IEquatable<Room>
 		Context = context;
 	}
 
-	/// <summary>The runtime context for emitting events and checking permissions.</summary>
+	/// <summary>The runtime context for emitting events and checking privileges.</summary>
 	internal RoomContext Context { get; }
 
 	/// <summary>The match this room is a live projection of.</summary>
@@ -86,9 +86,9 @@ public sealed partial class Room : IEquatable<Room>
 		return other is not null && Match.Equals(other.Match);
 	}
 
-	/// <summary>Creates a scoped room for a connection, capturing roles and permissions.</summary>
+	/// <summary>Creates a scoped room for a connection, capturing the room privileges.</summary>
 	/// <param name="actor">The connection acting on the room.</param>
-	/// <returns>A scoped room with permissions snapshot.</returns>
+	/// <returns>A scoped room with its privileges snapshot.</returns>
 	public ScopedRoom ScopeTo(Connection actor)
 	{
 		return new ScopedRoom(this, actor);

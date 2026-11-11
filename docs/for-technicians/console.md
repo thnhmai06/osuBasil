@@ -9,7 +9,7 @@ codes. The HTTP routes they mirror are described by the generated API reference,
 Whoever sits at the console owns the machine, so the console is the one entry point that skips the privilege checks.
 It is how the first administrator is created (the server never creates an account by itself), how an operator repairs a
 server whose accounts cannot sign in, and how a deployment script prepares the server before it starts. It is not a chat
-surface: BasilBot's chat commands are separate and keep checking the typist's rights.
+surface: BasilBot's chat commands are separate and keep checking the typist's privileges.
 
 ## Modes
 
@@ -295,7 +295,7 @@ the dashboard without `--now` they ask `y/N` in the command box. Given on the co
 
 ## Design and invariants
 
-* Commands run as BasilBot with the operator's connection, which skips the rights checks; this exists only on the
+* Commands run as BasilBot with the operator's connection, which skips the privilege checks; this exists only on the
   console path. BasilBot's own connections and the chat commands keep their normal limits.
 * Every command is built from the same Application behaviours as the HTTP route it mirrors, and prints the same record
   view. A test requires a command for every route, except the ones listed under the mapping rule.

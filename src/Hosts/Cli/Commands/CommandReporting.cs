@@ -27,7 +27,7 @@ public static class CommandReporting
 	/// <summary>Prints the refusal in a result that is not ok.</summary>
 	public static int Refuse<TOutcome>(this CommandCall call, Result<TOutcome> result) where TOutcome : struct, Enum
 	{
-		// The console skips the rights checks, so a missing privilege only happens through a bug; it is still shown.
+		// The console skips the privilege checks, so a missing privilege only happens through a bug; it is still shown.
 		var info = result.Missing is null
 			? OutcomeErrors.Describe(result.Outcome)
 			: new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, ErrorKind.PrivilegeDenied);

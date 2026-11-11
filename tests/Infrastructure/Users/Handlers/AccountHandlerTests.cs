@@ -15,7 +15,7 @@ public sealed class AccountHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task CreateWithRight_Stored()
+	public async Task CreateWithPrivilege_Stored()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -29,7 +29,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task CreateNoRight_Denied()
+	public async Task CreateNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -171,7 +171,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task PermissionsWithRight_Replaced()
+	public async Task PrivilegesWithPrivilege_Replaced()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -185,7 +185,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task PermissionsNoRight_Denied()
+	public async Task PrivilegesNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -200,7 +200,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteWithRight_Deleted()
+	public async Task DeleteWithPrivilege_Deleted()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -213,7 +213,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteNoRight_Denied()
+	public async Task DeleteNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));

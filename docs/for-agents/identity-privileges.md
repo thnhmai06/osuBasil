@@ -10,19 +10,20 @@ touching users, connections, privileges, silences or the bot.
   account holds `Player | Supporter`; granting `Tournament` also grants `Supporter`. Nothing implies another privilege,
   so an owner who must act on everyone is granted every privilege. Which privilege owns which action is the table in
   [`privileges.md`](../for-developers/privileges.md).
+* **Room privileges are a separate concept.** `RoomPrivileges` (Domain) is what a user may do in one room. It is derived per room from the roles the caller holds (creator, referee, host, seated player), never stored, and no account privilege is derived from it. A room scope only starts from the account's effective `UserPrivileges` (`Tournament` holds every room privilege, a missing `Player` holds none). See [`multiplayer.md`](../for-developers/multiplayer.md).
 * **Privilege checks require every bit** (`UserPrivileges.Allows`); an empty requirement is satisfied. A refusal reports
   the missing privileges and nothing else.
 * **A silence is a stored end time, not a restriction.** `UserData.SilencedUntil` holds the moment a silence ends; no
   timer is needed. A silenced account cannot post chat messages and receives no private messages (`Silenced`,
   `TargetSilenced`); its privileges, rooms, scores and uploads are unaffected. A moderator imposes and lifts it
   (`Moderator`); each is logged in the `ModerationLog`. There are no restrictions.
-* **A block yields to a higher right.** A limit a user sets on others (a block, friends-only messages) does not bind
-  someone who holds the matching privilege (`Moderator` for messages, `Tournament` for invitations and spectating). Every "prevent unless a higher right" rule follows this pattern.
+* **A block yields to a higher privilege.** A limit a user sets on others (a block, friends-only messages) does not bind
+  someone who holds the matching privilege (`Moderator` for messages, `Tournament` for invitations and spectating). Every "prevent unless a higher privilege" rule follows this pattern.
 * **Chat administration is a privilege, not an IRC mode.** Creating, configuring and deleting a general channel
   (through the API or `!channel`) needs `Moderator`; sending an announcement needs `Moderator`.
   Nobody manages a channel with `TOPIC`/`MODE`, and an IRC operator prefix grants nothing.
 * **Moderation history is a log.** Silencing, lifting a silence, adding a note and viewing a user's sessions append a `ModerationLog` entry (action, `actor`, target, reason, timestamp). The log is for
-  people; it never affects a right.
+  people; it never affects a privilege.
 * **Hierarchy.** A staff action aimed at another user (silence, unsilence, set privileges, set password, revoke
   sessions) requires the actor's **granted** privileges to be a strict superset of the target's. Equals cannot act on
   each other; acting on oneself is exempt, except that nobody silences or unsilences themselves. Granting
@@ -33,20 +34,20 @@ touching users, connections, privileges, silences or the bot.
   account the server creates and the one id it chooses. The bot is a friend of everybody. Nobody can sign in as it or
   act for it (no login, no presentable token, no delegation); its record is fixed (not deleted, silenced, given
   privileges or a password, or disconnected), while its metadata (name, country, avatar) is editable. It never passes a
-  rights check because it never asks for anything; its privileges only decide how a client shows it. It is a module (`Application.Bot` and
+  privilege check because it never asks for anything; its privileges only decide how a client shows it. It is a module (`Application.Bot` and
   `Infrastructure.Bot`) bound to user id 1. It is online with exactly one Stable and one Irc
   connection, opened by the server with no transport behind them, and has no connection type of its own: they are an
   ordinary `StableConnection` and `IrcConnection` that `Connection.IsServerOwned` marks (the connection of bot id 1).
   A server-owned connection is not a game client (`User.Stable` stays `null`), is never indexed by token, never idle-closed
   and is not counted as a client in diagnostics, the console status or the dashboard; transports skip it when delivering. It answers chat commands. A command runs on the objects scoped to the
-  **typist's** connection and needs that user's rights; the bot only replies. Its own messages and server announcements
-  go straight to chat, past the rights check. The wording lives in the replies file (see `basil-bot.md`).
+  **typist's** connection and needs that user's privileges; the bot only replies. Its own messages and server announcements
+  go straight to chat, past the privilege check. The wording lives in the replies file (see `basil-bot.md`).
 * **A name is unique among live accounts.** Deleting an account is a soft, permanent delete: it is never restored and its
   id is never reused. Names are unique case-insensitively and with a space equal to an underscore
   (`UserData.NormalizedName`, plus a partial unique index); a new account may take a deleted account's name.
 * **Identity on every action.** Every action has a real `actor` (a `Connection`); `actor` is never `null`. A room
   created through the API has the caller as creator. A server announcement is `actor` BasilBot.
-* **There is no delegation.** No account acts for another. An outside tool signs in with its own account and rights.
+* **There is no delegation.** No account acts for another. An outside tool signs in with its own account and privileges.
 * **Accounts come from registration, staff creation or the console.** Nobody is granted privileges for being first;
   a new account gets the defaults and more only by being granted. Anyone without an account may register one unless the
   `Accounts` lock is set. REST has no self-registration: `POST /v1/users` is for `Owner`. The server creates no
@@ -54,7 +55,7 @@ touching users, connections, privileges, silences or the bot.
 * **The console is the operator's entry point.** It runs in `Basil.Host.Cli`, as the dashboard command box or as
   `Basil.Host <command>` from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorConnection`:
   BasilBot's identity with every privilege, outranking every account, never registered, so no client can present it. It
-  is the **one entry point that skips rights checks**, because whoever sits at the console owns the machine; BasilBot
+  is the **one entry point that skips privilege checks**, because whoever sits at the console owns the machine; BasilBot
   itself still has no privileges. `--noconsole` turns the command box off.
 * **Locks freeze an area for everyone but its manager.** `ServerSettings.Locks` is one flags enum: `Accounts`
   (registration; `Owner`), `Rooms` (creation; `Tournament`), `Beatmapsets` (upload and delete on every entry
@@ -71,7 +72,7 @@ touching users, connections, privileges, silences or the bot.
   comes back from the same address within five minutes of leaving continues its last entry instead of adding one. A
   start after the server stopped closes the entries left open at their last activity with `ServerStopped` and ends the
   osu! sessions the same way, as the room recovery ends the matches left running; API tokens and IRC keys stay valid.
-  Reading the trail needs the same right as reading the sessions and is logged the same way. Ended sessions, with
+  Reading the trail needs the same privilege as reading the sessions and is logged the same way. Ended sessions, with
   their trail, are deleted after `Sessions.RetentionPeriod` (90 days by
   default).
 * **Concurrent sessions per user are limited per connection type.** The Users module enforces the limit in

@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Diagnostics.Handlers;
 
-/// <summary>Handles <see cref="ResetExceptions" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="ResetExceptions" /> with the privileges of the sending connection.</summary>
 internal sealed class ResetExceptionsHandler(ServerDiagnostics diagnostics)
 	: IRequestHandler<ResetExceptions, Result<DiagnosticsOutcome>>
 {

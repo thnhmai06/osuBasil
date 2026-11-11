@@ -106,7 +106,7 @@ public sealed class UserRegistry
 	/// <summary>Scopes an account that is only referenced to a connection and its authority.</summary>
 	/// <param name="actor">The connection acting.</param>
 	/// <param name="target">The account the caller refers to.</param>
-	/// <returns>A short-lived scope that reads the account only once the actor's right to act has been checked.</returns>
+	/// <returns>A short-lived scope that reads the account only once the actor's privilege to act has been checked.</returns>
 	public ScopedUser ScopeTo(Connection actor, UserReference target)
 	{
 		return new ScopedUser(this, target, actor);
@@ -351,7 +351,7 @@ public sealed class UserRegistry
 	/// <param name="connection">The connection to close.</param>
 	/// <param name="reason">Why the connection is closed.</param>
 	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it. An osu! client's logout within one
+	///     This system operation needs no privileges because the server itself calls it. An osu! client's logout within one
 	///     second of login is ignored. Closing an already closed connection does nothing.
 	/// </remarks>
 	public void Close(Connection connection, SessionEndReason reason)
@@ -366,7 +366,7 @@ public sealed class UserRegistry
 
 	/// <summary>Records that a client just sent something.</summary>
 	/// <param name="connection">The connection that sent a message.</param>
-	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
+	/// <remarks>This system operation needs no privileges because the server itself calls it.</remarks>
 	public void MarkActive(Connection connection)
 	{
 		if (connection.IsOpen)
@@ -381,7 +381,7 @@ public sealed class UserRegistry
 	/// <summary>Closes every connection that has sent nothing for too long.</summary>
 	/// <returns>How many connections were closed.</returns>
 	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it. BasilBot's connections are not closed
+	///     This system operation needs no privileges because the server itself calls it. BasilBot's connections are not closed
 	///     by this operation.
 	/// </remarks>
 	public int CloseIdle()
@@ -410,7 +410,7 @@ public sealed class UserRegistry
 	///         <see cref="BasilBot.DefaultName" />. When the id holds nothing, the bot is created.
 	///     </para>
 	///     <para>
-	///         This system operation needs no rights because the server itself calls it at startup. Calling it again
+	///         This system operation needs no privileges because the server itself calls it at startup. Calling it again
 	///         changes nothing.
 	///     </para>
 	/// </remarks>
@@ -435,7 +435,7 @@ public sealed class UserRegistry
 		return bot;
 	}
 
-	/// <summary>Opens the operator's connection, which acts as BasilBot and skips the rights checks.</summary>
+	/// <summary>Opens the operator's connection, which acts as BasilBot and skips the privilege checks.</summary>
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>A connection for the console; it is not registered, so it never appears online.</returns>
 	/// <remarks>
@@ -457,7 +457,7 @@ public sealed class UserRegistry
 	///     The online bot, or <see langword="null" /> when its record is not stored or a connection could not be opened.
 	/// </returns>
 	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it at startup. Only a connection that is
+	///     This system operation needs no privileges because the server itself calls it at startup. Only a connection that is
 	///     missing is opened, the game client one first, so calling it again changes nothing. No transport sits behind
 	///     either connection.
 	/// </remarks>
@@ -610,7 +610,7 @@ public sealed class UserRegistry
 	/// </summary>
 	/// <returns>How many connections were closed.</returns>
 	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it at startup. API tokens and IRC keys
+	///     This system operation needs no privileges because the server itself calls it at startup. API tokens and IRC keys
 	///     stay valid.
 	/// </remarks>
 	public async Task<int> CloseStoppedAsync()
@@ -626,7 +626,7 @@ public sealed class UserRegistry
 	///     touched.
 	/// </summary>
 	/// <returns>How many sessions were deleted.</returns>
-	/// <remarks>Run regularly; the server calls it on its own, so it needs no rights.</remarks>
+	/// <remarks>Run regularly; the server calls it on its own, so it needs no privileges.</remarks>
 	public async Task<int> PurgeEndedSessionsAsync()
 	{
 		var retention = (await _context.Settings.GetAsync()).Sessions.RetentionPeriod;

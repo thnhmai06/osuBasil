@@ -14,7 +14,7 @@ public sealed class ChannelHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task WithTheRight_CreatesTheChannel()
+	public async Task WithThePrivilege_CreatesTheChannel()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -27,7 +27,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task NoRight_DeniedCreatesNothing()
+	public async Task NoPrivilege_DeniedCreatesNothing()
 	{
 		using var app = new TestApplication();
 		var plain = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -41,7 +41,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task ConfigureGeneral_RightChangesTopic()
+	public async Task ConfigureGeneral_PrivilegeChangesTopic()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -68,7 +68,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task WithTheRight_RemovesTheChannel()
+	public async Task WithThePrivilege_RemovesTheChannel()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));

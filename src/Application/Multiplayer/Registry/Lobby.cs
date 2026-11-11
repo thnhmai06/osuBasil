@@ -191,7 +191,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return new ScopedLobby(this, actor);
 	}
 
-	/// <summary>Stops a closed connection watching the lobby; no rights are needed because the server itself calls it.</summary>
+	/// <summary>Stops a closed connection watching the lobby; no privileges are needed because the server itself calls it.</summary>
 	/// <param name="connection">The closed connection that stopped watching.</param>
 	/// <remarks>User-initiated unwatching goes through <see cref="ScopedLobby.Unwatch" />.</remarks>
 	public void Unwatch(StableConnection connection)
@@ -262,7 +262,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	/// <summary>
 	///     Closes the rooms that have stayed empty for <see cref="EmptyRoomTimeout" /> and announces the closing of those that
-	///     are <see cref="EmptyRoomWarningBefore" /> from it, when the server itself calls it; it needs no rights.
+	///     are <see cref="EmptyRoomWarningBefore" /> from it, when the server itself calls it; it needs no privileges.
 	/// </summary>
 	/// <returns>How many rooms were closed.</returns>
 	public int CloseEmptyRooms()
@@ -405,7 +405,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		room.Authority.Host = creator;
 	}
 
-	/// <summary>Releases a connection from room memberships when the server itself calls it; it needs no rights.</summary>
+	/// <summary>Releases a connection from room memberships when the server itself calls it; it needs no privileges.</summary>
 	/// <param name="connection">The connection to release.</param>
 	public Task ReleaseAsync(Connection connection)
 	{
@@ -429,7 +429,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Closes every open room when the server itself calls it at shutdown; it needs no rights.</summary>
+	/// <summary>Closes every open room when the server itself calls it at shutdown; it needs no privileges.</summary>
 	/// <returns>How many rooms were closed.</returns>
 	/// <remarks>Each room ends its match and its round in progress, and publishes one <see cref="LobbyRoomClosed" />.</remarks>
 	public int CloseAll()
@@ -446,7 +446,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return closed;
 	}
 
-	/// <summary>Closes unfinished matches when the server itself calls it at startup; it needs no rights.</summary>
+	/// <summary>Closes unfinished matches when the server itself calls it at startup; it needs no privileges.</summary>
 	/// <returns>How many matches were ended.</returns>
 	public async Task<int> CloseUnfinishedAsync()
 	{

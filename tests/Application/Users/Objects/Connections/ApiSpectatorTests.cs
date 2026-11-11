@@ -50,7 +50,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task SpectateWithoutWatch_NamesPermission()
+	public async Task SpectateWithoutWatch_NamesPrivilege()
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Player);

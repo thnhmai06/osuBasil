@@ -42,7 +42,7 @@ public sealed class UserGrants
 	}
 
 	/// <summary>
-	///     Replaces the privileges granted to the account, signs out sessions that no longer have the right, and
+	///     Replaces the privileges granted to the account, signs out sessions that no longer have the privilege, and
 	///     announces it.
 	/// </summary>
 	/// <param name="privileges">The privileges to grant.</param>

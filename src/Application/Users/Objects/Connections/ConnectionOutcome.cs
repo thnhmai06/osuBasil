@@ -12,7 +12,7 @@ public enum ConnectionOutcome : byte
 	/// <summary>A user cannot do this to their own client.</summary>
 	Self,
 
-	/// <summary>The client's user blocked the caller, who has no right that overrides a block.</summary>
+	/// <summary>The client's user blocked the caller, who has no privilege that overrides a block.</summary>
 	Blocked,
 
 	/// <summary>The caller's own connection closed while the operation was waiting.</summary>

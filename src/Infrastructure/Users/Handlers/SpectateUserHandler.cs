@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Carries out <see cref="SpectateUser" /> with the rights of the spectating connection.</summary>
+/// <summary>Carries out <see cref="SpectateUser" /> with the privileges of the spectating connection.</summary>
 internal sealed class SpectateUserHandler : IRequestHandler<SpectateUser, Result<ConnectionOutcome>>
 {
 	/// <inheritdoc />

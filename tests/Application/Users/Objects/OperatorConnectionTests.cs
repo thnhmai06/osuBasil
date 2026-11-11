@@ -8,7 +8,7 @@ using Basil.Testing;
 namespace Basil.Application.Users.Tests.Objects;
 
 /// <summary>
-///     The console acts as BasilBot and is the one authority that skips the rights checks; BasilBot's own connections
+///     The console acts as BasilBot and is the one authority that skips the privilege checks; BasilBot's own connections
 ///     gain nothing from it.
 /// </summary>
 public sealed class OperatorConnectionTests
@@ -26,7 +26,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task KindApi_KeepsPermissions()
+	public async Task KindApi_KeepsPrivileges()
 	{
 		using var app = new TestApplication();
 
@@ -59,7 +59,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task Operator_CreatesEveryPermission()
+	public async Task Operator_CreatesEveryPrivilege()
 	{
 		using var app = new TestApplication();
 		var actor = await app.Users.OperateAsync(Token);

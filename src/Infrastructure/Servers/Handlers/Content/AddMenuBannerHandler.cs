@@ -6,7 +6,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="AddMenuBanner" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="AddMenuBanner" /> with the privileges of the sending connection.</summary>
 internal sealed class AddMenuBannerHandler(Server server)
 	: IRequestHandler<AddMenuBanner, (Result<ServerOutcome> Result, MenuBanner? Banner)>
 {

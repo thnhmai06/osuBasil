@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="DeleteScreenshot" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="DeleteScreenshot" /> with the privileges of the sending connection.</summary>
 internal sealed class DeleteScreenshotHandler(Server server) : IRequestHandler<DeleteScreenshot, Result<ServerOutcome>>
 {
 	/// <inheritdoc />

@@ -106,7 +106,7 @@ public sealed class CommandCall
 		       throw new InvalidOperationException($"{typeof(T).Name} is not registered.");
 	}
 
-	/// <summary>Gets the connection the command acts with: BasilBot, without rights checks.</summary>
+	/// <summary>Gets the connection the command acts with: BasilBot, without privilege checks.</summary>
 	public async Task<OperatorConnection> ByAsync()
 	{
 		return _by ??= await Get<UserRegistry>().OperateAsync(CancellationToken);

@@ -5,11 +5,11 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
-	/// <summary>Gets the general channels of the server, used without a rights check.</summary>
+	/// <summary>Gets the general channels of the server, used without a privilege check.</summary>
 	public ServerChannels Channels => new(this);
 }
 
-/// <summary>The general channels of the server, used without a rights check.</summary>
+/// <summary>The general channels of the server, used without a privilege check.</summary>
 public readonly struct ServerChannels
 {
 	private readonly Server _server;

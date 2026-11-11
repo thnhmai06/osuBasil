@@ -4,7 +4,7 @@
 
 An account's authority is its **privileges**: the flags enum `UserPrivileges` (`Player`, `Moderator`, `Supporter`,
 `Owner`, `Developer`, `Tournament`). A privilege is stored on the account, granted by an owner, and is the only thing a
-server action checks. There is no finer-grained right underneath it: an action is allowed because the actor holds the
+server action checks. There is no finer-grained privilege underneath it: an action is allowed because the actor holds the
 privilege that owns it.
 
 The values of the enum are the privilege bits the osu! (stable) client reports and receives, so the Domain type is also
@@ -53,7 +53,7 @@ The osu! client is told how many seconds the silence lasts when it signs in and 
 lifting a silence are recorded in the moderation log. BasilBot cannot be silenced. A silence needs `Moderator`, and the
 hierarchy rule applies.
 
-## Limits that yield to higher rights
+## Limits that yield to higher privileges
 
 A limit one user sets on another (a block, friends-only messages) does not bind someone who holds the matching
 privilege: `Moderator` bypasses blocks and friends-only private messages, and `Tournament` bypasses private-room

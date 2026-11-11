@@ -14,7 +14,7 @@ public static class BotReference
 		text.AppendLine("# BasilBot commands").AppendLine();
 		text.AppendLine(
 			"Type a command in any channel, or send it in a private message to BasilBot (the `!` is then optional). " +
-			"A command runs with your own rights, as in the osu! (stable) client. `!help` and `!mp help` answer in " +
+			"A command runs with your own privileges, as in the osu! (stable) client. `!help` and `!mp help` answer in " +
 			"private messages. Unknown commands are not answered.").AppendLine();
 		Table(text, "Commands", command => !command.Path.Contains(' '));
 		Table(text, "Multiplayer commands (`!mp`)",

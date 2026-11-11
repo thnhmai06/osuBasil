@@ -48,7 +48,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task ActorNotConnection_UsesEffectiveRights()
+	public async Task ActorNotConnection_UsesEffectivePrivileges()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -124,7 +124,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task DeleteWithoutManage_DeniedPermission()
+	public async Task DeleteWithoutManage_DeniedPrivilege()
 	{
 		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;

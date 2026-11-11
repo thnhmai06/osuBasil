@@ -131,7 +131,7 @@ nickname `502`, and a change `501`. There are no user modes and no `+o`/`+v`: no
 
 | Channel | IRC name | Rules |
 | --- | --- | --- |
-| General | the configured name, for example `#osu` | Read and write rights come from the channel's configured privileges. |
+| General | the configured name, for example `#osu` | Read and write privileges come from the channel's configured privileges. |
 | Room | `#mp_{room id}` | Opens and closes with the room. |
 | Spectator | `#spec_{user id}` | Never joinable from IRC: `473`. |
 | Private message | the nickname, no `#` | A message to a nickname goes to that user's private-message channel, which every connection of the user shares. |
@@ -145,7 +145,7 @@ nickname `502`, and a change `501`. There are no user modes and no `+o`/`+v`: no
 * A creator or referee joins the room channel with an ordinary `JOIN` and stays in it after leaving a slot.
 * `LIST` shows the visible general channels the connection may read, and the joinable room channels.
 
-**Status prefixes** mirror Basil's rights and are computed per channel, never granted by IRC. `@` marks authority:
+**Status prefixes** mirror Basil's privileges and are computed per channel, never granted by IRC. `@` marks authority:
 the creator and the referees of a room (`#mp_*`), and any user with `Moderator` in a general channel. `+` marks
 a member who may write. A read-only member has no prefix. `PREFIX=(ov)@+` is advertised only to say which symbols
 exist.

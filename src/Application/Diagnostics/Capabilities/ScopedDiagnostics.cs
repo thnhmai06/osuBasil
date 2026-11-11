@@ -8,12 +8,12 @@ namespace Basil.Application.Diagnostics.Capabilities;
 public readonly struct ScopedDiagnostics
 {
 	private readonly ServerDiagnostics _diagnostics;
-	private readonly UserPrivileges _rights;
+	private readonly UserPrivileges _privileges;
 
-	internal ScopedDiagnostics(ServerDiagnostics diagnostics, UserPrivileges rights)
+	internal ScopedDiagnostics(ServerDiagnostics diagnostics, UserPrivileges privileges)
 	{
 		_diagnostics = diagnostics;
-		_rights = rights;
+		_privileges = privileges;
 	}
 
 	/// <summary>Checks that the caller may use the diagnostics.</summary>
@@ -56,7 +56,7 @@ public readonly struct ScopedDiagnostics
 
 	private Result<DiagnosticsOutcome>? Denied()
 	{
-		return ScopedRights.Require(_rights, UserPrivileges.Developer) is { } missing
+		return ScopedPrivileges.Require(_privileges, UserPrivileges.Developer) is { } missing
 			? Result<DiagnosticsOutcome>.Denied(missing)
 			: null;
 	}

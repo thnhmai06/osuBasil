@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Diagnostics.Handlers;
 
-/// <summary>Handles <see cref="CheckDiagnosticsAccess" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="CheckDiagnosticsAccess" /> with the privileges of the sending connection.</summary>
 internal sealed class CheckDiagnosticsAccessHandler(ServerDiagnostics diagnostics)
 	: IRequestHandler<CheckDiagnosticsAccess, Result<DiagnosticsOutcome>>
 {

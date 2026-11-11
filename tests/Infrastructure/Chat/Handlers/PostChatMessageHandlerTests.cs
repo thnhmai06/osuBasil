@@ -68,7 +68,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task NoPostPermission_DeniedMissing()
+	public async Task NoPostPrivilege_DeniedMissing()
 	{
 		using var app = new TestApplication();
 		await OpenChannelAsync(app);

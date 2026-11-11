@@ -21,7 +21,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task AccessNoPermission_Denied()
+	public async Task AccessNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -42,7 +42,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task ClearNoPermission_Denied()
+	public async Task ClearNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -68,7 +68,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task ResetNoPermission_Denied()
+	public async Task ResetNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -92,7 +92,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task CollectNoPermission_Denied()
+	public async Task CollectNoPrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");

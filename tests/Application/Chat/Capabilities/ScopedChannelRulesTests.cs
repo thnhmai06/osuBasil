@@ -116,7 +116,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task NoReadRights_ClosedBeforeDenied()
+	public async Task NoReadPrivileges_ClosedBeforeDenied()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);

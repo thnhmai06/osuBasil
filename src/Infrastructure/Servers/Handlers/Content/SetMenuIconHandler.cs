@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="SetMenuIcon" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="SetMenuIcon" /> with the privileges of the sending connection.</summary>
 internal sealed class SetMenuIconHandler(Server server) : IRequestHandler<SetMenuIcon, Result<ServerOutcome>>
 {
 	/// <inheritdoc />

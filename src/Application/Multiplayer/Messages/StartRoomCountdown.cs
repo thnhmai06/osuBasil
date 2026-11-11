@@ -12,7 +12,7 @@ namespace Basil.Application.Multiplayer.Messages;
 /// <param name="Duration">How long the countdown runs, from one second to one hour.</param>
 /// <param name="StartsRound">Whether the round starts when the countdown ends.</param>
 /// <remarks>
-///     Starting a countdown needs the right to start rounds. The answer is Ok, a denial, InvalidSettings (the duration is
+///     Starting a countdown needs the privilege to start rounds. The answer is Ok, a denial, InvalidSettings (the duration is
 ///     out of range), InProgress (a round is playing and the countdown would start one) or RoomClosed. A countdown
 ///     replaces the one already running in the room.
 /// </remarks>

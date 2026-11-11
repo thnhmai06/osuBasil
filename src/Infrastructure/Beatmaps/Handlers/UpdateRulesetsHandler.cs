@@ -6,7 +6,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Handles <see cref="UpdateRulesets" /> with the rights of the sending actor.</summary>
+/// <summary>Handles <see cref="UpdateRulesets" /> with the privileges of the sending actor.</summary>
 internal sealed class UpdateRulesetsHandler(Rulesets rulesets)
 	: IRequestHandler<UpdateRulesets, (Result<RulesetOutcome> Result, RulesetStageResult? Stage)>
 {

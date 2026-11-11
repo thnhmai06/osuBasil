@@ -10,17 +10,17 @@ namespace Basil.Application.Beatmaps.Capabilities;
 public readonly struct ScopedRulesets
 {
 	private readonly Rulesets _rulesets;
-	private readonly UserPrivileges _rights;
+	private readonly UserPrivileges _privileges;
 
 	internal ScopedRulesets(Rulesets rulesets, IActor actor)
 	{
 		_rulesets = rulesets;
-		_rights = actor.EffectivePrivileges(rulesets.Clock.GetUtcNow());
+		_privileges = actor.EffectivePrivileges(rulesets.Clock.GetUtcNow());
 	}
 
 	private UserPrivileges? Require()
 	{
-		return ScopedRights.Require(_rights, UserPrivileges.Developer);
+		return ScopedPrivileges.Require(_privileges, UserPrivileges.Developer);
 	}
 
 	/// <summary>Reads the active and the staged version.</summary>

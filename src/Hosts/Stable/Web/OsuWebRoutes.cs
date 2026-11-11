@@ -91,16 +91,16 @@ internal static class OsuWebRoutes
 		web.MapGet("/web/osu-search.php", SearchAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Search beatmapsets for osu!direct.")
-			.WithDescription("Query: `u`, `h`, `q` (the search). Needs the right to use osu!direct, otherwise 403.");
+			.WithDescription("Query: `u`, `h`, `q` (the search). Needs the privilege to use osu!direct, otherwise 403.");
 		web.MapGet("/web/osu-search-set.php", SearchSetAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Look up one beatmapset for osu!direct.")
-			.WithDescription("Query: `u`, `h`, `s` (set id). Needs the right to use osu!direct, otherwise 403.");
+			.WithDescription("Query: `u`, `h`, `s` (set id). Needs the privilege to use osu!direct, otherwise 403.");
 		web.MapGet("/d/{setId}", DownloadAsync)
 			.WithSummary("Download a beatmapset archive.")
 			.WithDescription("""
 			                 Query: `u`, `h`. The id may end with `n` (without video). Answers the archive, or redirects to where it can
-			                 be downloaded; needs the right to use osu!direct, otherwise 403.
+			                 be downloaded; needs the privilege to use osu!direct, otherwise 403.
 			                 """);
 		web.MapPost("/users", RegisterAsync)
 			.WithSummary("Register an account, or only check that the details are acceptable.")

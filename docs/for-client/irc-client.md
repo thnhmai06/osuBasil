@@ -42,9 +42,9 @@ If the key is wrong, revoked, or the nickname is not yours, the server answers `
 
 * Join the channels you are allowed to read; you automatically join the ones the server marks as auto-join.
 * Room chat is the channel `#mp_<room id>`. You can join it if you take part in the room as its creator or a referee,
-  or hold the rights to observe every room.
+  or hold the privileges to observe every room.
 * Message **BasilBot** (`/msg BasilBot !help`) or type commands in a channel (`!mp ...`). Commands run with your own
-  rights, as in the osu! client.
+  privileges, as in the osu! client.
 * Channels, topics and modes are managed through the API or `!channel` in a private message to BasilBot, never through
   IRC commands (`TOPIC`, `MODE`, `KICK` and `INVITE` answer `482`).
 * The server keeps no chat history.

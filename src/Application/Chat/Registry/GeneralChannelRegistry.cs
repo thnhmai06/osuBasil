@@ -56,7 +56,7 @@ public sealed class GeneralChannelRegistry
 		}
 	}
 
-	/// <summary>Joins a connection to auto-join channels when the server itself calls it; it needs no rights.</summary>
+	/// <summary>Joins a connection to auto-join channels when the server itself calls it; it needs no privileges.</summary>
 	/// <param name="actor">The connection that opened.</param>
 	public void JoinAutoChannels(Connection actor)
 	{
@@ -64,7 +64,7 @@ public sealed class GeneralChannelRegistry
 			channel.ScopeTo(actor).Join();
 	}
 
-	/// <summary>Parts a connection from every open general channel when the server itself calls it; it needs no rights.</summary>
+	/// <summary>Parts a connection from every open general channel when the server itself calls it; it needs no privileges.</summary>
 	/// <param name="actor">The connection that closed.</param>
 	public void PartAll(Connection actor)
 	{

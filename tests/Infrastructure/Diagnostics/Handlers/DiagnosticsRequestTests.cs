@@ -42,7 +42,7 @@ public sealed class DiagnosticsRequestTests
 	}
 
 	[Fact]
-	public async Task DiagnosticsNoPermission_Refused()
+	public async Task DiagnosticsNoPrivilege_Refused()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");

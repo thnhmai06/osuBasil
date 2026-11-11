@@ -117,7 +117,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task AnnounceNeeds_PermissionAndBody()
+	public async Task AnnounceNeeds_PrivilegeAndBody()
 	{
 		var (plain, _) = await fixture.SignInAsync("AnnPlain");
 		var (staff, _) = await fixture.SignInAsync("AnnStaff",
@@ -143,7 +143,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Screenshots_NeedManagePermission()
+	public async Task Screenshots_NeedManagePrivilege()
 	{
 		var reference = await fixture.Host.Services.GetRequiredService<IScreenshotStorage>()
 			.SaveAsync(new MemoryStream([1, 2, 3]), "png");

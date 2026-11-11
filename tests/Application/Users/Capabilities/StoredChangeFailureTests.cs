@@ -10,7 +10,7 @@ public sealed class StoredChangeFailureTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task PermissionStoreFailure_ThrowsKeepsPrivileges()
+	public async Task PrivilegeStoreFailure_ThrowsKeepsPrivileges()
 	{
 		using var app = new TestApplication();
 		var staff = await app.LoginAsync(await app.CreateUserAsync("PermStaff", "password", UserPrivilegesExtensions.All));

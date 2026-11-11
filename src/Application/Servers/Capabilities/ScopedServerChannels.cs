@@ -36,7 +36,7 @@ public readonly struct ScopedServerChannels
 	///     The open channel, NotFound when no open channel has that name, or a denial that names the missing privileges.
 	/// </returns>
 	/// <remarks>
-	///     Requires <see cref="UserPrivileges.Moderator" />. The name is looked up only after the right is met,
+	///     Requires <see cref="UserPrivileges.Moderator" />. The name is looked up only after the privilege is met,
 	///     so a connection without it is refused the same way whether or not the channel exists.
 	/// </remarks>
 	public (Result<ChannelOutcome> Result, GeneralChannel? Channel) FindGeneral(string name)

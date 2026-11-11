@@ -95,7 +95,7 @@ public sealed class GeneralChannelData
 	} = UserPrivileges.None;
 
 	/// <summary>
-	///     Gets or sets the roles a user must all have, besides the right to chat, to post in the channel;
+	///     Gets or sets the roles a user must all have, besides the privilege to chat, to post in the channel;
 	///     <see cref="UserPrivileges.None" /> lets anyone post.
 	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value sets an undefined privilege bit.</exception>

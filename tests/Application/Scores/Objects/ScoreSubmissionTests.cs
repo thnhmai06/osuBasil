@@ -110,7 +110,7 @@ public sealed class ScoreSubmissionTests
 	#region Privilege and ownership
 
 	[Fact]
-	public async Task NoSubmitRight_DeniedNamingIt()
+	public async Task NoSubmitPrivilege_DeniedNamingIt()
 	{
 		using var f =
 			await ScoreSubmissionFixture.CreateAsync(privileges: UserPrivilegesExtensions.Default &

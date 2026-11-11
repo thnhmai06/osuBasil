@@ -331,7 +331,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void NoPermissions_ExistingOnly()
+	public void NoPrivileges_ExistingOnly()
 	{
 		Assert.False(new UserQuery().LimitTo(UserPrivileges.None).Deleted);
 	}

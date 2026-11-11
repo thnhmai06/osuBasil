@@ -8,9 +8,9 @@ using Basil.Testing;
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
 /// <summary>
-///     The bot acts with the rights of the user who typed the command: managing a room is for its creator, its
+///     The bot acts with the privileges of the user who typed the command: managing a room is for its creator, its
 ///     referees and whoever may manage every room; being the host, a plain player or an outsider grants no
-///     management rights. Expected replies are named by the reply that owns the wording.
+///     management privileges. Expected replies are named by the reply that owns the wording.
 /// </summary>
 public sealed class MpAuthorityTests
 {

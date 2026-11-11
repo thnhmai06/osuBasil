@@ -5,6 +5,6 @@ using Mediator;
 
 namespace Basil.Application.Diagnostics.Messages;
 
-/// <summary>Asks Diagnostics to empty the cache of derived files with the rights of the sender.</summary>
+/// <summary>Asks Diagnostics to empty the cache of derived files with the privileges of the sender.</summary>
 /// <param name="Actor">The connection acting.</param>
 public sealed record ClearCaches(Connection Actor) : IRequest<(Result<DiagnosticsOutcome> Result, int Deleted)>;

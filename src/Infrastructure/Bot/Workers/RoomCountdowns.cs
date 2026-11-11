@@ -34,7 +34,7 @@ internal enum CountdownCancelReason
 }
 
 /// <summary>Runs the countdowns of rooms: announces their marks and, when one elapses, starts the round it was for.</summary>
-/// <remarks>A room has at most one countdown; starting another replaces it. The caller checks the rights.</remarks>
+/// <remarks>A room has at most one countdown; starting another replaces it. The caller checks the privileges.</remarks>
 internal sealed class RoomCountdowns(
 	TimeProvider clock,
 	ISender sender,

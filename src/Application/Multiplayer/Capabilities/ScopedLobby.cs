@@ -19,14 +19,14 @@ public readonly struct ScopedLobby
 	public Connection Actor { get; }
 
 	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
-	public UserPrivileges Rights { get; }
+	public UserPrivileges Privileges { get; }
 
-	/// <summary>Checks whether the actor holds the right an action needs.</summary>
-	/// <param name="required">The right the action needs.</param>
+	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
+	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
 	internal UserPrivileges? Require(UserPrivileges required)
 	{
-		return ScopedRights.Require(Rights, required);
+		return ScopedPrivileges.Require(Privileges, required);
 	}
 
 	/// <summary>Creates a lobby scope for a connection.</summary>
@@ -35,7 +35,7 @@ public readonly struct ScopedLobby
 	internal ScopedLobby(Lobby lobby, Connection actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePrivileges(lobby.Context.Clock.GetUtcNow());
+		Privileges = actor.EffectivePrivileges(lobby.Context.Clock.GetUtcNow());
 		Lobby = lobby;
 	}
 
@@ -127,7 +127,7 @@ public readonly struct ScopedLobby
 			return (Result<RoomOutcome>.Denied(missing), null);
 
 		return (RoomOutcome.Ok,
-			await Lobby.Context.Matches.ListAsync(query.LimitTo(Rights, Actor.Record), page, ct));
+			await Lobby.Context.Matches.ListAsync(query.LimitTo(Privileges, Actor.Record), page, ct));
 	}
 
 	/// <summary>Tells whether the scoped connection's user may view the data that belongs to a match.</summary>

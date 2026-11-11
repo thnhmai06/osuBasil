@@ -33,10 +33,10 @@ public enum RoomRole
 	/// <summary>A user who may manage every room.</summary>
 	Manager,
 
-	/// <summary>A user who was never granted the right to join rooms.</summary>
+	/// <summary>A user who was never granted the privilege to join rooms.</summary>
 	NoRoomJoin,
 
-	/// <summary>The creator of a room whose right to join rooms is suspended.</summary>
+	/// <summary>The creator of a room whose privilege to join rooms is suspended.</summary>
 	SuspendedCreator
 }
 
@@ -56,7 +56,7 @@ public sealed class RoomFixture
 	/// <summary>Gets the room the roles act in.</summary>
 	public Room Room { get; private init; } = null!;
 
-	/// <summary>Gets the room, opened through the API, that the creator whose right to join rooms is suspended opened.</summary>
+	/// <summary>Gets the room, opened through the API, that the creator whose privilege to join rooms is suspended opened.</summary>
 	public Room SuspendedRoom { get; private init; } = null!;
 
 	/// <summary>Gets the connection that created the room.</summary>
@@ -77,10 +77,10 @@ public sealed class RoomFixture
 	/// <summary>Gets the connection of a user who may manage every room.</summary>
 	public StableConnection Manager { get; private init; } = null!;
 
-	/// <summary>Gets the connection of a user who was never granted the right to join rooms.</summary>
+	/// <summary>Gets the connection of a user who was never granted the privilege to join rooms.</summary>
 	public StableConnection NoRoomJoin { get; private init; } = null!;
 
-	/// <summary>Gets the connection of the creator whose right to join rooms is suspended.</summary>
+	/// <summary>Gets the connection of the creator whose privilege to join rooms is suspended.</summary>
 	public StableConnection SuspendedCreator { get; private init; } = null!;
 
 	/// <summary>Creates a score played in a round.</summary>

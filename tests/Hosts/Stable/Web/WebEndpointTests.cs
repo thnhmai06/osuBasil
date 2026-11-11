@@ -218,7 +218,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task DirectWithoutPermission_Forbidden()
+	public async Task DirectWithoutPrivilege_Forbidden()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var plain = await Host.NewClientAsync("DirectPlain",

@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="DeleteFaq" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="DeleteFaq" /> with the privileges of the sending connection.</summary>
 internal sealed class DeleteFaqHandler(Server server) : IRequestHandler<DeleteFaq, Result<ServerOutcome>>
 {
 	/// <inheritdoc />

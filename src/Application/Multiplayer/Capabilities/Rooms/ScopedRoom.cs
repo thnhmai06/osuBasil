@@ -10,7 +10,7 @@ namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 /// <summary>A room scoped to a connection, with its room privileges snapshot.</summary>
 /// <remarks>
 ///     The snapshot is taken once, so a scope is for one request or command: create it with
-///     <see cref="Objects.Rooms.Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its rights outlive a
+///     <see cref="Objects.Rooms.Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its privileges outlive a
 ///     change of
 ///     role or privilege.
 /// </remarks>
@@ -111,7 +111,7 @@ public readonly struct ScopedRoom
 	/// </returns>
 	internal Result<RoomOutcome>? Require(RoomPrivileges needed)
 	{
-		if (ScopedRights.Require(Privileges, needed) is null)
+		if (ScopedPrivileges.Require(Privileges, needed) is null)
 			return null;
 
 		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomOutcome.RoleDenied;

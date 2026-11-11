@@ -6,7 +6,7 @@ using Basil.Testing;
 namespace Basil.Application.Servers.Tests.Capabilities;
 
 /// <summary>
-///     Changing the settings needs the right to manage them; widening the default privileges of new accounts also
+///     Changing the settings needs the privilege to manage them; widening the default privileges of new accounts also
 ///     needs those privileges.
 /// </summary>
 public sealed class ScopedServerSettingsTests
@@ -18,7 +18,7 @@ public sealed class ScopedServerSettingsTests
 	}
 
 	[Fact]
-	public async Task NoManageRight_Denied()
+	public async Task NoManagePrivilege_Denied()
 	{
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Plain");

@@ -7,18 +7,18 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 
 * **A capability (`ScopedX`, "Cap") is a `readonly struct` valid for one request or command.** `x.ScopeTo(connection)`
-  returns it. It holds the connection (`Actor`) and `Rights`, the rights the connection held when it was created (a
+  returns it. It holds the connection (`Actor`) and `Privileges`, the privileges the connection held when it was created (a
   snapshot taken once, never re-taken), and it never lives in a field or property (an architecture test enforces this).
   It exposes the owner as a property named after it (`Channel`, `Room`, `User`, …) and reaches the owner's parts through
   **forwarding getters** (`room.ScopeTo(actor).Slots`, `.Rounds`, `.Settings`). The owner's raw mutators are `internal` to
-  its Application project, so only a capability, which has checked the rights, can change the owner. A behaviour states
-  the requirement through `ScopedRights.Require(held, required)`: `null` means the requirement is met, otherwise it returns
+  its Application project, so only a capability, which has checked the privileges, can change the owner. A behaviour states
+  the requirement through `ScopedPrivileges.Require(held, required)`: `null` means the requirement is met, otherwise it returns
   what is missing. A `[Flags]` enum is met when every required bit is held (the result is the missing bits); any other enum
   is ordered levels and is met when the held value is at least the required one (the result is the required level). Most
   capabilities hold the caller's **effective** `UserPrivileges` and pass the missing mask to `Result<TOutcome>.Denied`;
   `ScopedRoom` holds `RoomPrivileges`, the room privileges its roles give, computed once from creator, referee, host and player
   roles and the global privileges; a role refusal is the outcome `RoleDenied`, or a denial naming `Player` when the caller
-  may not join rooms at all. An implementation never compares rights itself.
+  may not join rooms at all. An implementation never compares privileges itself.
 * **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,
   Privileges? Missing)` shared by all objects. Each object owns one outcome enum (`RoomOutcome`, `ChannelOutcome`,
   `UserOutcome`, `BeatmapsetOutcome`, …) with `Ok = 1` and `0` meaning "not set" (so a denied result, whose outcome is
@@ -39,7 +39,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   I/O, no events. A type that only means something while the server runs (session state, presence, spectator frames, a room in play) is
   Application, not Domain; a row that carries data to the database is Infrastructure.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
-  rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
+  privileges is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
   channels, `Beatmapset`, and the root `Server`) in the Objects folder of its module (`Basil.Application.<Module>`). It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
@@ -59,10 +59,10 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   game client's score, `AnticheatReporter` for its anticheat flags, `Beatmapsets` for imports). Five
   anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
   as `Server.X`); **service-centric procedural
-  design** (a service takes an object and does its behaviour for it); **privilege plumbing** (rights passed
+  design** (a service takes an object and does its behaviour for it); **privilege plumbing** (privileges passed
   through many layers and methods); **exposing mutable state** (callers change internals past the invariants);
   **fake scoping** (`ScopeTo` only wraps while behaviour and checks stay in a central service). The shared
-  authority primitives (`Access`, effective privileges, hierarchy, "a block yields to a higher right") are a
+  authority primitives (`Access`, effective privileges, hierarchy, "a block yields to a higher privilege") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
 * **The service ladder.** Service > Ports > the three stores (Registry | Repository | Storage) > Objects; a level uses only the
@@ -89,7 +89,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   Plain data that both layers use in public signatures (login, registration and score submission inputs, import and
   scan results) lives in the Persistence folder. Callers reach privilege-dependent behaviour through
   `ScopeTo(connection)` and the server's own work through labelled system operations.
-* **Object or service?** One question decides it: does the operation have a caller whose rights it must
+* **Object or service?** One question decides it: does the operation have a caller whose privileges it must
   check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
   has no caller (the server's own work, a handler's reaction, startup) or that coordinates several objects
   (login, import, score submission) is the behaviour of the object that owns the identity, the collection or the
@@ -110,13 +110,13 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   (a lookup, a repository call, the room gate) re-checks, inside the object's own scope or lock, the state and roles
   the wait could have changed (`IsOpen`, a block, the caller's role in the room, a closed room) before it changes
   anything; a referee removed while waiting for the gate must not act.
-* **A refusal by role is not a missing privilege.** Rights that come from a role in one object (creator, referee,
+* **A refusal by role is not a missing privilege.** Privileges that come from a role in one object (creator, referee,
   host, player in a room) are decided by that object's own role rules and reported as an outcome named after the role
   (`NotManager`, `NotHost`) with `Missing` left `null`; `Missing` names only account-level privileges (`Player`,
   `Player`, `Player`, `Player`) checked through `Require`.
-* **System operations are labelled.** A public method on an object that skips the rights check (`Lobby.Unwatch`,
+* **System operations are labelled.** A public method on an object that skips the privilege check (`Lobby.Unwatch`,
   `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.ReceiveScore`, `Server.Notify`) says in its
-  XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
+  XML summary that the server itself calls it and needs no privileges. A chat command, an API route or any other entry
   point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
   or resources is a public interface in a module's Ports folder (with the data it exchanges) that the module's Infrastructure project implements

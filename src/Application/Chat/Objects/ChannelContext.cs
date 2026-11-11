@@ -20,7 +20,7 @@ public sealed record ChannelContext(
 	IRelationshipRepository Relationships,
 	IChannelRepository Channels)
 {
-	/// <summary>Opens a general channel at the server's own request; no rights are needed.</summary>
+	/// <summary>Opens a general channel at the server's own request; no privileges are needed.</summary>
 	/// <param name="record">The channel record to open.</param>
 	/// <returns>The opened channel, or <see langword="null" /> when a channel with that name is already open.</returns>
 	public GeneralChannel? OpenGeneral(GeneralChannelRecord record)

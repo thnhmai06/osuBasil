@@ -9,8 +9,8 @@ namespace Basil.Application.Users.Capabilities;
 
 /// <summary>An account scoped to one connection and its authority snapshot.</summary>
 /// <remarks>
-///     The snapshot is for one request or command; keeping it longer lets its rights outlive changes to privileges
-///     or a silence. A scope made from a <see cref="UserReference" /> reads nothing until the caller's right to act
+///     The snapshot is for one request or command; keeping it longer lets its privileges outlive changes to privileges
+///     or a silence. A scope made from a <see cref="UserReference" /> reads nothing until the caller's privilege to act
 ///     has been checked, so a refusal is the same whether or not the account exists.
 /// </remarks>
 public readonly struct ScopedUser
@@ -23,14 +23,14 @@ public readonly struct ScopedUser
 	public Connection Actor { get; }
 
 	/// <summary>Gets the privileges the actor held when the scope was created.</summary>
-	public UserPrivileges Rights { get; }
+	public UserPrivileges Effective { get; }
 
-	/// <summary>Checks whether the actor holds the right an action needs.</summary>
-	/// <param name="required">The right the action needs.</param>
+	/// <summary>Checks whether the actor holds the privilege an action needs.</summary>
+	/// <param name="required">The privilege the action needs.</param>
 	/// <returns><see langword="null" /> when it is held; otherwise what is missing.</returns>
 	internal UserPrivileges? Require(UserPrivileges required)
 	{
-		return ScopedRights.Require(Rights, required);
+		return ScopedPrivileges.Require(Effective, required);
 	}
 
 	/// <summary>Creates a scoped account for a connection.</summary>
@@ -39,7 +39,7 @@ public readonly struct ScopedUser
 	internal ScopedUser(User user, Connection actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePrivileges(user.Context.Clock.GetUtcNow());
+		Effective = actor.EffectivePrivileges(user.Context.Clock.GetUtcNow());
 		Granted = actor.User.Record.Value.Privileges;
 		_user = user;
 	}
@@ -51,7 +51,7 @@ public readonly struct ScopedUser
 	internal ScopedUser(UserRegistry registry, UserReference target, Connection actor)
 	{
 		Actor = actor;
-		Rights = actor.EffectivePrivileges(actor.User.Context.Clock.GetUtcNow());
+		Effective = actor.EffectivePrivileges(actor.User.Context.Clock.GetUtcNow());
 		Granted = actor.User.Record.Value.Privileges;
 		_registry = registry;
 		_target = target;

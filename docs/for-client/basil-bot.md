@@ -4,7 +4,7 @@
 
 BasilBot is the server's built-in chat command and announcement surface. It is not an actor but the voice the server speaks with: its
 account is fixed, the server protects it, and nobody can sign in as it or act for it. Privileges mean nothing to it,
-and its privileges only decide how a client shows it. Commands run with the rights of the user who typed them.
+and its privileges only decide how a client shows it. Commands run with the privileges of the user who typed them.
 
 Commands include:
 
@@ -20,7 +20,7 @@ channels. Options are written `name=value`: `topic`, `read` and `write` (the pri
 The `!mp` commands support tournament operations such as creating and configuring rooms, managing referees and
 players, and controlling room countdowns.
 
-Commands run using the connection of the person who typed them, so they require that person's own rights. BasilBot
+Commands run using the connection of the person who typed them, so they require that person's own privileges. BasilBot
 only replies; its messages and server announcements bypass user privilege checks. The command handler and
 announcement handlers are implemented in `Basil.Infrastructure.Bot` and run in the server for the osu! client and IRC.
 
@@ -30,7 +30,7 @@ countdown marks.
 
 BasilBot is shown as an online user to both the osu! client and IRC. Operators also have a console in the server
 process (`Basil`): it runs a command as the operator, which is the one entry point that skips privilege checks,
-while a chat command always runs with the typist's rights. See [`../for-technicians/console.md`](../for-technicians/console.md).
+while a chat command always runs with the typist's privileges. See [`../for-technicians/console.md`](../for-technicians/console.md).
 
 ---
 

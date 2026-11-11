@@ -171,7 +171,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task OnlinePermissionGrant_Resets()
+	public async Task OnlinePrivilegeGrant_Resets()
 	{
 		using var app = new TestApplication();
 		var bot = await app.Users.EnsureBotAsync(Token);

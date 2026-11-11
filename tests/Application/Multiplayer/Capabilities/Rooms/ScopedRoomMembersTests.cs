@@ -414,7 +414,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task NoJoinRight_DeniedNamingJoin()
+	public async Task NoJoinPrivilege_DeniedNamingJoin()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

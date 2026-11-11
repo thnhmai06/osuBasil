@@ -15,7 +15,7 @@ public enum RoomExpectation
 	/// <summary>The operation succeeds and changes the room.</summary>
 	Allowed,
 
-	/// <summary>The caller lacks the room right; the outcome names the role refusal.</summary>
+	/// <summary>The caller lacks the room privilege; the outcome names the role refusal.</summary>
 	RoleDenied,
 
 	/// <summary>The caller may not join rooms at all; the denial names the missing permission.</summary>
@@ -23,9 +23,9 @@ public enum RoomExpectation
 }
 
 /// <summary>
-///     Who may do what in a room. The expected rights come from AGENTS.md ("Authority") and
-///     docs/for-developers/multiplayer.md ("Room roles and privileges"): the creator holds every room right, a
-///     referee holds every right except managing referees, the host holds the in-client host operations, a player
+///     Who may do what in a room. The expected privileges come from AGENTS.md ("Authority") and
+///     docs/for-developers/multiplayer.md ("Room roles and privileges"): the creator holds every room privilege, a
+///     referee holds every privilege except managing referees, the host holds the in-client host operations, a player
 ///     may chat and invite, and a user who may manage every room acts with the creator's authority wherever they
 ///     are.
 /// </summary>

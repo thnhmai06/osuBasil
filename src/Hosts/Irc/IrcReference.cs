@@ -76,7 +76,7 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 		text.AppendLine("## In Basil").AppendLine();
 		text.AppendLine("* Room chat is the channel `#mp_<room id>`.");
 		text.AppendLine(
-			"* Message `BasilBot` (`/msg BasilBot !help`) or type `!` commands in a channel; they run with your own rights.");
+			"* Message `BasilBot` (`/msg BasilBot !help`) or type `!` commands in a channel; they run with your own privileges.");
 		text.AppendLine("* The server keeps no chat history.");
 		return text.ToString();
 	}

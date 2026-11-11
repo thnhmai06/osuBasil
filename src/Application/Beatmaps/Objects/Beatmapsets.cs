@@ -29,7 +29,7 @@ public sealed class Beatmapsets
 	/// <summary>Scopes a beatmapset that is only referenced by its id to an actor and its authority.</summary>
 	/// <param name="actor">The actor acting.</param>
 	/// <param name="setId">The id of the beatmapset the caller refers to.</param>
-	/// <returns>A short-lived scope that reads the beatmapset only once the actor's right to act has been checked.</returns>
+	/// <returns>A short-lived scope that reads the beatmapset only once the actor's privilege to act has been checked.</returns>
 	public ScopedBeatmapset ScopeTo(IActor actor, int setId)
 	{
 		return new ScopedBeatmapset(_context, setId, actor);
@@ -38,7 +38,7 @@ public sealed class Beatmapsets
 	/// <summary>Gets the beatmapset object through which a stored set's behaviour is reached.</summary>
 	/// <param name="set">The stored beatmapset.</param>
 	/// <returns>The beatmapset.</returns>
-	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
+	/// <remarks>This system operation needs no privileges because the server itself calls it.</remarks>
 	public Beatmapset Of(BeatmapsetRecord set)
 	{
 		return new Beatmapset(set, _context);
@@ -49,7 +49,7 @@ public sealed class Beatmapsets
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The result of the import.</returns>
 	/// <remarks>
-	///     <para>This system operation needs no rights because the server itself calls it.</para>
+	///     <para>This system operation needs no privileges because the server itself calls it.</para>
 	///     <para>
 	///         An archive that cannot be read, or that belongs to a locked beatmapset, is rejected and nothing of it is
 	///         kept. The beatmapset and its beatmaps are stored at once, or not at all.
@@ -74,7 +74,7 @@ public sealed class Beatmapsets
 	/// </param>
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>The result of the import.</returns>
-	/// <remarks>This system operation needs no rights; the caller that serves a user checks them.</remarks>
+	/// <remarks>This system operation needs no privileges; the caller that serves a user checks them.</remarks>
 	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, bool replaceExisting,
 		CancellationToken ct = default)
 	{
@@ -88,7 +88,7 @@ public sealed class Beatmapsets
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
 	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it.
+	///     This system operation needs no privileges because the server itself calls it.
 	///     First every entry is checked: an archive whose size and modification time match the stored ones is not hashed;
 	///     any other is hashed, and one whose hash differs from the stored one, or that no stored set has, is indexed
 	///     again, as are loose archives and folders of loose files. Then each of those is indexed and its files are made
@@ -108,7 +108,7 @@ public sealed class Beatmapsets
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
 	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it.
+	///     This system operation needs no privileges because the server itself calls it.
 	///     The entry's archive is hashed and indexed again when its hash differs from the stored one, even when the folder
 	///     held no valid set before. A loose archive is moved into its set's folder; a folder of loose files is packed into
 	///     an archive first. The beatmapset is the stored one that already has a beatmap of the archive; otherwise the

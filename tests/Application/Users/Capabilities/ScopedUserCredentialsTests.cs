@@ -147,7 +147,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task UserWithoutManage_NamesPermission()
+	public async Task UserWithoutManage_NamesPrivilege()
 	{
 		using var app = new TestApplication();
 		var other = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));

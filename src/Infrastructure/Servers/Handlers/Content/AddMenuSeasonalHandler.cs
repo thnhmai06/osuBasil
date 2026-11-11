@@ -6,7 +6,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="AddMenuSeasonal" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="AddMenuSeasonal" /> with the privileges of the sending connection.</summary>
 internal sealed class AddMenuSeasonalHandler(Server server)
 	: IRequestHandler<AddMenuSeasonal, (Result<ServerOutcome> Result, ContentReference? Image)>
 {

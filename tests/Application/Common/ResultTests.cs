@@ -44,7 +44,7 @@ public class ResultTests
 	}
 
 	[Fact]
-	public void NoPermissions_Throws()
+	public void NoPrivileges_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Result<SampleOutcome>.Denied(UserPrivileges.None));
 	}

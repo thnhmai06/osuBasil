@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="UpdateSettings" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="UpdateSettings" /> with the privileges of the sending connection.</summary>
 internal sealed class UpdateSettingsHandler(Server server) : IRequestHandler<UpdateSettings, Result<ServerOutcome>>
 {
 	/// <inheritdoc />

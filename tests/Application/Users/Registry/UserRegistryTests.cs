@@ -213,7 +213,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task TourneyNoObserve_NoTourneyPermission()
+	public async Task TourneyNoObserve_NoTourneyPrivilege()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoTourney", "password", UserPrivilegesExtensions.Default);

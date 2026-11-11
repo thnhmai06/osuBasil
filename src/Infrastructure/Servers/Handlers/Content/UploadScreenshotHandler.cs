@@ -6,7 +6,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="UploadScreenshot" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="UploadScreenshot" /> with the privileges of the sending connection.</summary>
 internal sealed class UploadScreenshotHandler(Server server)
 	: IRequestHandler<UploadScreenshot, (ContentReference? Screenshot, Result<ServerOutcome> Result)>
 {

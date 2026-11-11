@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="DeleteMenuSeasonal" /> with the rights of the sending connection.</summary>
+/// <summary>Handles <see cref="DeleteMenuSeasonal" /> with the privileges of the sending connection.</summary>
 internal sealed class DeleteMenuSeasonalHandler(Server server)
 	: IRequestHandler<DeleteMenuSeasonal, Result<ServerOutcome>>
 {

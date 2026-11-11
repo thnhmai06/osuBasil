@@ -85,7 +85,7 @@ public abstract class Channel
 	/// <returns>The members who do not block the author; every member when nobody blocks them.</returns>
 	/// <remarks>
 	///     A member who blocks the author is not shown the message, silently, and the author is not told. A block
-	///     yields to a higher right: an author holding <see cref="UserPrivileges.Moderator" />, and the server
+	///     yields to a higher privilege: an author holding <see cref="UserPrivileges.Moderator" />, and the server
 	///     itself, reach every member. The author's own connections are kept; the transport decides whether to echo.
 	/// </remarks>
 	public async Task<IReadOnlyList<Connection>> RecipientsAsync(ChannelMessagePosted posted,

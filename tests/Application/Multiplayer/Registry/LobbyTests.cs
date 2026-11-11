@@ -10,7 +10,7 @@ namespace Basil.Application.Multiplayer.Tests.Registry;
 
 /// <summary>
 ///     The lobby's own work, which the server calls without a caller: releasing a connection, removing a user
-///     whose right to join rooms is suspended, and closing the matches that were left running.
+///     whose privilege to join rooms is suspended, and closing the matches that were left running.
 /// </summary>
 public sealed class LobbyTests
 {

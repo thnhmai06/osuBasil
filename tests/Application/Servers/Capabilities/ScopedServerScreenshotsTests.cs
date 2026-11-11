@@ -73,7 +73,7 @@ public sealed class ScopedServerScreenshotsTests
 	#region Upload: privileges
 
 	[Fact]
-	public async Task UploadNoPermission_Denied()
+	public async Task UploadNoPrivilege_Denied()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -350,7 +350,7 @@ public sealed class ScopedServerScreenshotsTests
 	#region Delete
 
 	[Fact]
-	public async Task DeleteWithPermission_Removed()
+	public async Task DeleteWithPrivilege_Removed()
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
@@ -362,7 +362,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task DeleteNoPermission_Denied()
+	public async Task DeleteNoPrivilege_Denied()
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);

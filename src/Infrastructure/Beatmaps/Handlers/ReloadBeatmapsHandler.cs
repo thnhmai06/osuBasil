@@ -5,7 +5,7 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Handles <see cref="ReloadBeatmaps" /> with the rights of the sending actor.</summary>
+/// <summary>Handles <see cref="ReloadBeatmaps" /> with the privileges of the sending actor.</summary>
 internal sealed class ReloadBeatmapsHandler(Rulesets rulesets) : IRequestHandler<ReloadBeatmaps, Result<RulesetOutcome>>
 {
 	/// <inheritdoc />
