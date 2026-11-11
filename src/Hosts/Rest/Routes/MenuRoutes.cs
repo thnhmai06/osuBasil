@@ -1,6 +1,7 @@
 using System.Globalization;
 using Basil.Application.Content.Messages;
 using Basil.Application.Servers.Messages;
+using Basil.Domain.Common;
 using Basil.Domain.Content;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
@@ -59,44 +60,26 @@ internal static class MenuRoutes
 
 	private static async Task<IResult> GetFaqAsync(string entry, ISender sender, CancellationToken ct)
 	{
-		try
-		{
-			return await sender.Send(new ReadFaq(entry), ct) is { } text
-				? Api.Ok(new FaqView(entry, text))
-				: Api.NotFound("No such entry.");
-		}
-		catch (ArgumentException)
-		{
-			return Api.NotFound("No such entry.");
-		}
+		return FaqEntryName.IsValid(entry) && await sender.Send(new ReadFaq(entry), ct) is { } text
+			? Api.Ok(new FaqView(entry, text))
+			: Api.NotFound("No such entry.");
 	}
 
 	private static async Task<IResult> SaveFaqAsync(HttpContext context, string entry, FaqRequest request,
 		ISender sender)
 	{
 		if (request.Text is null) return Api.Invalid("text is required.");
+		if (!FaqEntryName.IsValid(entry)) return Api.Invalid("The entry name is not valid.");
 
-		try
-		{
-			return (await sender.Send(new SaveFaq(context.Connection(), entry, request.Text), context.RequestAborted))
-				.Answer();
-		}
-		catch (ArgumentException)
-		{
-			return Api.Invalid("The entry name is not valid.");
-		}
+		return (await sender.Send(new SaveFaq(context.Connection(), entry, request.Text), context.RequestAborted))
+			.Answer();
 	}
 
 	private static async Task<IResult> DeleteFaqAsync(HttpContext context, string entry, ISender sender)
 	{
-		try
-		{
-			return (await sender.Send(new DeleteFaq(context.Connection(), entry), context.RequestAborted)).Answer();
-		}
-		catch (ArgumentException)
-		{
-			return Api.NotFound("No such entry.");
-		}
+		return FaqEntryName.IsValid(entry)
+			? (await sender.Send(new DeleteFaq(context.Connection(), entry), context.RequestAborted)).Answer()
+			: Api.NotFound("No such entry.");
 	}
 
 	private static async Task<IResult> ListBannersAsync(ISender sender, TimeProvider clock,
@@ -131,21 +114,17 @@ internal static class MenuRoutes
 		    !TryTime(form["expires"].ToString(), out var expires))
 			return Api.Invalid("begins and expires must be ISO 8601 times.");
 
-		try
-		{
-			await using var stream = file!.OpenReadStream();
-			var (result, banner) = await sender.Send(
-				new AddMenuBanner(context.Connection(), file.FileName, stream, url, begins, expires),
-				context.RequestAborted);
-			return result.IsOk
-				? Api.Created(new BannerView(Path.GetFileName(banner!.Image.Value), banner.Url.AbsoluteUri,
-					banner.StartsAt, banner.EndsAt, true))
-				: result.Refusal();
-		}
-		catch (Exception ex) when (ex is ArgumentException)
-		{
+		if (!ContentReference.IsValidPath(file!.FileName) || !url.IsHttp() || !MenuBanner.IsValidWindow(begins, expires))
 			return Api.Invalid("The banner is not valid.");
-		}
+
+		await using var stream = file.OpenReadStream();
+		var (result, banner) = await sender.Send(
+			new AddMenuBanner(context.Connection(), file.FileName, stream, url, begins, expires),
+			context.RequestAborted);
+		return result.IsOk
+			? Api.Created(new BannerView(Path.GetFileName(banner!.Image.Value), banner.Url.AbsoluteUri,
+				banner.StartsAt, banner.EndsAt, true))
+			: result.Refusal();
 	}
 
 	private static bool TryTime(string text, out DateTimeOffset? value)
@@ -176,17 +155,12 @@ internal static class MenuRoutes
 		var (file, error) = await ImageAsync(context);
 		if (error is not null) return error;
 
-		try
-		{
-			await using var stream = file!.OpenReadStream();
-			var (result, image) = await sender.Send(new AddMenuSeasonal(context.Connection(), file.FileName, stream),
-				context.RequestAborted);
-			return result.IsOk ? Api.Created(Path.GetFileName(image!.Value.Value)) : result.Refusal();
-		}
-		catch (ArgumentException)
-		{
-			return Api.Invalid("The file name is not valid.");
-		}
+		if (!ContentReference.IsValidPath(file!.FileName)) return Api.Invalid("The file name is not valid.");
+
+		await using var stream = file.OpenReadStream();
+		var (result, image) = await sender.Send(new AddMenuSeasonal(context.Connection(), file.FileName, stream),
+			context.RequestAborted);
+		return result.IsOk ? Api.Created(Path.GetFileName(image!.Value.Value)) : result.Refusal();
 	}
 
 	private static async Task<IResult> DeleteSeasonalAsync(HttpContext context, string image, ISender sender)
@@ -212,16 +186,12 @@ internal static class MenuRoutes
 		var file = form.Files.GetFile("image");
 		if (file?.Length > MaxImageBytes) return Api.Invalid("The image is too large.", "tooLarge");
 
-		try
-		{
-			await using var stream = file?.OpenReadStream();
-			return (await sender.Send(new SetMenuIcon(context.Connection(), file?.FileName, stream, url),
-				context.RequestAborted)).Answer();
-		}
-		catch (ArgumentException)
-		{
+		if ((file is not null && !ContentReference.IsValidPath(file.FileName)) || (url is not null && !url.IsHttp()))
 			return Api.Invalid("The icon is not valid.");
-		}
+
+		await using var stream = file?.OpenReadStream();
+		return (await sender.Send(new SetMenuIcon(context.Connection(), file?.FileName, stream, url),
+			context.RequestAborted)).Answer();
 	}
 
 	/// <summary>The text of a FAQ entry.</summary>

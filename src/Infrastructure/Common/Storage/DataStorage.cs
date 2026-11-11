@@ -87,15 +87,11 @@ public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns>The absolute path of the file.</returns>
 	/// <exception cref="ArgumentException">
-	///     <paramref name="name" /> is not a safe file name, or no asset reference can refer to a file of that name.
+	///     <paramref name="name" /> is not a valid stored file name.
 	/// </exception>
 	public string Resolve(string name)
 	{
-		var path = SafePath.Combine(Path, name);
-		if (!ContentReference.TryParse(RelativePath + "/" + name, null, out _))
-			throw new ArgumentException("No asset reference can refer to a file of this name.", nameof(name));
-
-		return path;
+		return SafePath.Combine(Path, name);
 	}
 
 	/// <summary>Lists the names of the files directly in the directory matching a search pattern.</summary>
@@ -252,15 +248,13 @@ public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 
 	private bool TryResolve(string name, [NotNullWhen(true)] out string? path)
 	{
-		try
-		{
-			path = Resolve(name);
-			return true;
-		}
-		catch (ArgumentException)
+		if (!ContentReference.IsValidPath(name))
 		{
 			path = null;
 			return false;
 		}
+
+		path = Resolve(name);
+		return true;
 	}
 }

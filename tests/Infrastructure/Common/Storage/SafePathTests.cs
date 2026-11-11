@@ -52,6 +52,17 @@ public sealed class SafePathTests
 		Assert.Throws<ArgumentException>(() => SafePath.Combine(Root, name));
 	}
 
+	[Theory]
+	[InlineData("a:b")]
+	[InlineData("a//b.txt")]
+	[InlineData("dir/file.")]
+	[InlineData("CON.txt")]
+	[InlineData(" file.txt")]
+	public void NameNoAssetReferenceCanRefer_RefusedOnEveryPlatform(string name)
+	{
+		Assert.Throws<ArgumentException>(() => SafePath.Combine(Root, name));
+	}
+
 	[Fact]
 	public void NullCharacterName_Refused()
 	{

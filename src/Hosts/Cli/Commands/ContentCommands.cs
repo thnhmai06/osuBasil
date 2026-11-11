@@ -298,40 +298,32 @@ internal static class ContentCommands
 
 	private static async Task<int> ShowFaqAsync(CommandCall call)
 	{
-		try
-		{
-			if (await call.Get<ISender>().Send(new ReadFaq(call.Word("entry")), call.CancellationToken) is not { } text)
-				return call.NotFound("entry");
-
-			call.Output.Line(text);
-			return ExitCodes.Success;
-		}
-		catch (ArgumentException)
-		{
+		var entry = call.Word("entry");
+		if (!FaqEntryName.IsValid(entry) ||
+		    await call.Get<ISender>().Send(new ReadFaq(entry), call.CancellationToken) is not { } text)
 			return call.NotFound("entry");
-		}
+
+		call.Output.Line(text);
+		return ExitCodes.Success;
 	}
 
 	private static async Task<int> SetFaqAsync(CommandCall call)
 	{
+		var entry = call.Word("entry");
+		if (!FaqEntryName.IsValid(entry)) throw CommandException.Invalid("The entry name is not valid.");
+
 		var text = await File.ReadAllTextAsync(call.Required("file"), call.CancellationToken);
 		return call.Report(
-			await SendAsync(call, actor => new SaveFaq(actor, call.Word("entry"), text)),
+			await SendAsync(call, actor => new SaveFaq(actor, entry, text)),
 			"Entry saved.");
 	}
 
 	private static async Task<int> DeleteFaqAsync(CommandCall call)
 	{
-		try
-		{
-			return call.Report(
-				await SendAsync(call, actor => new DeleteFaq(actor, call.Word("entry"))),
-				"Entry deleted.");
-		}
-		catch (ArgumentException)
-		{
-			return call.NotFound("entry");
-		}
+		var entry = call.Word("entry");
+		return FaqEntryName.IsValid(entry)
+			? call.Report(await SendAsync(call, actor => new DeleteFaq(actor, entry)), "Entry deleted.")
+			: call.NotFound("entry");
 	}
 
 	/// <summary>Prints a JSON node as dotted <c>label: value</c> lines.</summary>

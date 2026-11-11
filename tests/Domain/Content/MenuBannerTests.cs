@@ -112,4 +112,30 @@ public class MenuBannerTests
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => MakeEndsFirst(Now.AddDays(1), Now));
 	}
+
+	[Fact]
+	public void IsValidWindow_NoBounds_IsTrue()
+	{
+		Assert.True(MenuBanner.IsValidWindow(null, null));
+	}
+
+	[Fact]
+	public void IsValidWindow_OneBound_IsTrue()
+	{
+		Assert.True(MenuBanner.IsValidWindow(Now, null));
+		Assert.True(MenuBanner.IsValidWindow(null, Now));
+	}
+
+	[Fact]
+	public void IsValidWindow_StartBeforeOrEqualToEnd_IsTrue()
+	{
+		Assert.True(MenuBanner.IsValidWindow(Now, Now.AddDays(1)));
+		Assert.True(MenuBanner.IsValidWindow(Now, Now));
+	}
+
+	[Fact]
+	public void IsValidWindow_StartAfterEnd_IsFalse()
+	{
+		Assert.False(MenuBanner.IsValidWindow(Now.AddDays(1), Now));
+	}
 }

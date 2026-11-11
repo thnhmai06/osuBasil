@@ -1,4 +1,5 @@
 using Basil.Application.Content.Storage;
+using Basil.Domain.Content;
 using Basil.Infrastructure.Common.Storage;
 
 namespace Basil.Infrastructure.Content.Storage;
@@ -40,15 +41,13 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Gets the name of an entry's file: its <c>:</c> segments name the folders.</summary>
+	/// <summary>Gets the name of an entry's file, refusing an entry name that is not valid.</summary>
 	private static string FileNameOf(string entry)
 	{
 		ArgumentNullException.ThrowIfNull(entry);
-		var parts = entry.Split(':');
-		if (parts.Any(string.IsNullOrWhiteSpace))
-			throw new ArgumentException("An entry name and each part of it must name something.", nameof(entry));
-
-		return string.Join('/', parts) + ".txt";
+		return FaqEntryName.IsValid(entry)
+			? FaqEntryName.FileNameOf(entry)
+			: throw new ArgumentException("An entry name and each part of it must name something.", nameof(entry));
 	}
 
 	/// <summary>Writes an entry's new text to a temporary file and puts it in place once committed.</summary>

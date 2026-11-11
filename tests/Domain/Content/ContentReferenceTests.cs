@@ -62,4 +62,56 @@ public class ContentReferenceTests
 		Assert.Equal("banner.png", reference.ToString(null, null));
 		Assert.Equal("banner.png", reference.ToString("", null));
 	}
+
+	[Theory]
+	[InlineData("banner.png")]
+	[InlineData("Menu/Banners/a b.png")]
+	[InlineData("folder/file.txt")]
+	[InlineData("..hidden")]
+	[InlineData("a..b")]
+	[InlineData("COM0")]
+	[InlineData("COM10")]
+	[InlineData("CONSOLE.txt")]
+	public void IsValidPath_CanonicalRelativePath_IsTrue(string path)
+	{
+		Assert.True(ContentReference.IsValidPath(path));
+	}
+
+	[Theory]
+	[InlineData(null)]
+	[InlineData("")]
+	[InlineData(" ")]
+	[InlineData("/rooted.png")]
+	[InlineData("a\\b.png")]
+	[InlineData("a//b.png")]
+	[InlineData("a/")]
+	[InlineData("./a.png")]
+	[InlineData("a/./b.png")]
+	[InlineData("../a.png")]
+	[InlineData("a/../b.png")]
+	[InlineData("a:b.png")]
+	[InlineData("C:file.png")]
+	[InlineData("a\0b.png")]
+	[InlineData("a\tb.png")]
+	[InlineData(" a.png")]
+	[InlineData("a.png ")]
+	[InlineData("dir/file.")]
+	[InlineData("dir/file ")]
+	[InlineData("a<b.png")]
+	[InlineData("a>b.png")]
+	[InlineData("a\"b.png")]
+	[InlineData("a|b.png")]
+	[InlineData("a?b.png")]
+	[InlineData("a*b.png")]
+	[InlineData("CON")]
+	[InlineData("con.txt")]
+	[InlineData("dir/NUL.png")]
+	[InlineData("AUX")]
+	[InlineData("PRN")]
+	[InlineData("COM1")]
+	[InlineData("LPT9.txt")]
+	public void IsValidPath_EachBrokenRule_IsFalse(string? path)
+	{
+		Assert.False(ContentReference.IsValidPath(path));
+	}
 }

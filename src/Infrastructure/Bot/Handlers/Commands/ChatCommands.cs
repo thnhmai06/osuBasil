@@ -2,6 +2,7 @@ using Basil.Application.Bot.Commands;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Content.Storage;
 using Basil.Application.Users.Persistence;
+using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
@@ -188,7 +189,7 @@ internal sealed class ChatCommands(
 			return true;
 		}
 
-		var reader = await faqs.ReadAsync(query, ct);
+		var reader = FaqEntryName.IsValid(query) ? await faqs.ReadAsync(query, ct) : null;
 		if (reader is null)
 		{
 			await context.Reply(BotReplies.NoFaqEntryFound, new { entry = query }, ct);
