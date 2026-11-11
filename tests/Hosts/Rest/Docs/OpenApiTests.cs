@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Rest.Tests.Docs;
 
@@ -41,7 +40,8 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	private static readonly string[] SummaryVerbs =
-		["Get", "List", "Search", "Create", "Upload", "Update", "Replace", "Delete", "Download", "Stream"];
+		["Get", "List", "Search", "Create", "Upload", "Update", "Replace", "Delete", "Download", "Stream",
+		"Close", "Lock", "Unlock", "Move", "Ban", "Invite", "Add", "Remove", "Start", "Abort"];
 
 	private static bool StartsWithSummaryVerb(string? summary)
 	{
@@ -53,15 +53,10 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	{
 		var paths = (await DocumentAsync())["paths"]!.AsObject();
 
-		// Open owner item: the room commands' summaries are shared with the CLI and have no approved verb yet.
-		var roomCommandSummaries = RoomCommands.All.Select(command => command.Summary).ToHashSet();
-
 		foreach (var (path, item) in paths)
 		foreach (var (method, operation) in item!.AsObject())
 		{
-			if (roomCommandSummaries.Contains((string?)operation!["summary"] ?? string.Empty)) continue;
-
-			Assert.True(StartsWithSummaryVerb((string?)operation["summary"]),
+			Assert.True(StartsWithSummaryVerb((string?)operation!["summary"]),
 				$"{method} {path}: \"{(string?)operation["summary"]}\" does not start with a verb of the closed set");
 		}
 	}
@@ -71,6 +66,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	{
 		Assert.False(StartsWithSummaryVerb("Retrieve x."));
 		Assert.True(StartsWithSummaryVerb("Get x."));
+		Assert.True(StartsWithSummaryVerb("Abort x."));
 	}
 
 	[Fact]
