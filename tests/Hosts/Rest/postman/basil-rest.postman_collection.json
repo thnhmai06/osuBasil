@@ -1343,6 +1343,49 @@
 					]
 				},
 				{
+					"name": "POST /v1/beatmapsets/reload needs a token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Host",
+								"value": "api.{{domain}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/beatmapsets/reload",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"beatmapsets",
+								"reload"
+							],
+							"query": []
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					]
+				},
+				{
 					"name": "DELETE /v1/beatmapsets/{id} needs a token",
 					"request": {
 						"method": "DELETE",
@@ -3918,6 +3961,86 @@
 					]
 				},
 				{
+					"name": "POST /v1/settings/ruleset/update needs a token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Host",
+								"value": "api.{{domain}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/settings/ruleset/update",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"settings",
+								"ruleset",
+								"update"
+							],
+							"query": []
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /v1/settings/ruleset/version needs a token",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Host",
+								"value": "api.{{domain}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/settings/ruleset/version",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"settings",
+								"ruleset",
+								"version"
+							],
+							"query": []
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					]
+				},
+				{
 					"name": "GET /v1/settings/{category} needs a token",
 					"request": {
 						"method": "GET",
@@ -4546,170 +4669,6 @@
 					]
 				},
 				{
-					"name": "GET /v1/users/{id}/restrictions is public",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Host",
-								"value": "api.{{domain}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/v1/users/999999/restrictions",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"v1",
-								"users",
-								"999999",
-								"restrictions"
-							],
-							"query": []
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('public route does not answer 401', () => pm.response.to.not.have.status(401));",
-									"pm.test('answers inside the documented statuses', () => pm.expect([200,204,307,404,410,422]).to.include(pm.response.code));"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "POST /v1/users/{id}/restrictions needs a token",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Host",
-								"value": "api.{{domain}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/v1/users/999999/restrictions",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"v1",
-								"users",
-								"999999",
-								"restrictions"
-							],
-							"query": []
-						},
-						"body": {
-							"mode": "raw",
-							"raw": "{}"
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "DELETE /v1/users/{id}/restrictions/{rid} needs a token",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Host",
-								"value": "api.{{domain}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/v1/users/999999/restrictions/999999",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"v1",
-								"users",
-								"999999",
-								"restrictions",
-								"999999"
-							],
-							"query": []
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "POST /v1/users/{id}/restrictions/{rid}/lift needs a token",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Host",
-								"value": "api.{{domain}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/v1/users/999999/restrictions/999999/lift",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"v1",
-								"users",
-								"999999",
-								"restrictions",
-								"999999",
-								"lift"
-							],
-							"query": []
-						},
-						"body": {
-							"mode": "raw",
-							"raw": "{}"
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
-								]
-							}
-						}
-					]
-				},
-				{
 					"name": "DELETE /v1/users/{id}/sessions needs a token",
 					"request": {
 						"method": "DELETE",
@@ -4901,6 +4860,124 @@
 					]
 				},
 				{
+					"name": "GET /v1/users/{id}/sessions/{sid}/connections needs a token",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Host",
+								"value": "api.{{domain}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/users/999999/sessions/00000000-0000-0000-0000-000000000000/connections",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"users",
+								"999999",
+								"sessions",
+								"00000000-0000-0000-0000-000000000000",
+								"connections"
+							],
+							"query": []
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "DELETE /v1/users/{id}/silence needs a token",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Host",
+								"value": "api.{{domain}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/users/999999/silence",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"users",
+								"999999",
+								"silence"
+							],
+							"query": []
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "PUT /v1/users/{id}/silence needs a token",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Host",
+								"value": "api.{{domain}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/users/999999/silence",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"users",
+								"999999",
+								"silence"
+							],
+							"query": []
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					]
+				},
+				{
 					"name": "GET /v1/users/{id}/spectate needs a token",
 					"request": {
 						"method": "GET",
@@ -4931,6 +5008,41 @@
 								"type": "text/javascript",
 								"exec": [
 									"pm.test('without a token the route is 401', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /v1/version is public",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Host",
+								"value": "api.{{domain}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/v1/version",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"version"
+							],
+							"query": []
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('public route does not answer 401', () => pm.response.to.not.have.status(401));",
+									"pm.test('answers inside the documented statuses', () => pm.expect([200,204,307,404,410,422]).to.include(pm.response.code));"
 								]
 							}
 						}
