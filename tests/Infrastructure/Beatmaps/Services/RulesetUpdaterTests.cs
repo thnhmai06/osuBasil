@@ -61,7 +61,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Check_ANewerStableVersion_IsAvailable_AndPrereleasesAreIgnored()
+	public async Task NewerStable_PrereleaseIgnored()
 	{
 		var updater = new RulesetUpdater(NewStore(), Feed(NewVersion), NullLogger<RulesetUpdater>.Instance);
 
@@ -72,7 +72,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Stage_AVerifiedVersion_PlacesTheFourLibraries_AndReportsItAsStaged()
+	public async Task VerifiedStage_LibrariesStaged()
 	{
 		var store = NewStore();
 		var updater = new RulesetUpdater(store, Feed(NewVersion), NullLogger<RulesetUpdater>.Instance);
@@ -88,7 +88,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Stage_AHashMismatch_IsRefused_AndNothingIsExtractedOrStaged()
+	public async Task HashMismatch_Refused()
 	{
 		var store = NewStore();
 		var updater = new RulesetUpdater(store, Feed(NewVersion, "Mania"), NullLogger<RulesetUpdater>.Instance);
@@ -101,7 +101,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Stage_WhenTheFeedOffersTheActiveVersion_StagesNothing()
+	public async Task ActiveVersion_NothingStaged()
 	{
 		var store = NewStore();
 		var updater = new RulesetUpdater(store, Feed(store.Active), NullLogger<RulesetUpdater>.Instance);
@@ -113,7 +113,7 @@ public sealed class RulesetUpdaterTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Check_AfterStaging_DoesNotOfferTheStagedVersionAgain()
+	public async Task AfterStaging_NotOffered()
 	{
 		var updater = new RulesetUpdater(NewStore(), Feed(NewVersion), NullLogger<RulesetUpdater>.Instance);
 		await updater.StageAsync(TestContext.Current.CancellationToken);

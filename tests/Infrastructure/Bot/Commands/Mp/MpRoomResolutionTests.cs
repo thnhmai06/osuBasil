@@ -18,7 +18,7 @@ public sealed class MpRoomResolutionTests
 		UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 
 	[Fact]
-	public async Task RoomScopedCommand_WithNoRoomAnywhere_SaysNotInARoom()
+	public async Task NoRoomAnywhere_NotInRoom()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -31,7 +31,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task RoomScopedCommand_TypedInARoomChannel_AppliesToThatRoomEvenWhenSeatedInAnotherAndTargetingAThird()
+	public async Task TypedInRoom_AppliesThatRoom()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -52,7 +52,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task RoomScopedCommand_TypedInARoomChannel_AppliesToThatRoomWithoutASeatOrATarget()
+	public async Task TypedInRoom_AppliesWithoutSeat()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -68,7 +68,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task RoomScopedCommand_WithARememberedRoom_AppliesToItInsteadOfTheSeatedRoom()
+	public async Task RememberedRoom_AppliesNotSeated()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -87,7 +87,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task RoomScopedCommand_WithOnlyASeat_AppliesToTheSeatedRoom()
+	public async Task OnlySeat_AppliesSeatedRoom()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -105,7 +105,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task RoomScopedCommand_AfterTheRememberedRoomClosed_SaysNotInARoom()
+	public async Task RememberedClosed_NotInRoom()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -121,7 +121,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task RoomScopedCommand_AfterTheRememberedRoomClosed_ForgetsTheRoom()
+	public async Task RememberedClosed_ForgetsRoom()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -136,7 +136,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task RoomScopedCommand_AfterTheRememberedRoomsIdIsReused_DoesNotApplyToTheNewRoom()
+	public async Task RememberedIdReused_NotNewRoom()
 	{
 		using var bot = new BotHarness();
 		var firstOwner = await RoomFixture.PlayerAsync(bot.App, "FirstOwner");
@@ -156,7 +156,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task In_ForAPrivateRoomOfAStranger_TargetsItBecausePrivateOnlyKeepsARoomOutOfListings()
+	public async Task StrangerPrivate_Targeted()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -171,7 +171,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task UnknownSubcommand_WhenTheTypistHasARoom_SaysItIsUnknownAndFails()
+	public async Task UnknownSubcommand_SaysUnknownFails()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -187,7 +187,7 @@ public sealed class MpRoomResolutionTests
 	[Theory]
 	[InlineData("!mp")]
 	[InlineData("!mp help")]
-	public async Task Help_WhisperedToTheTypist_SaysNothingWhereItWasTyped(string message)
+	public async Task Help_WhisperedNotChannel(string message)
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");

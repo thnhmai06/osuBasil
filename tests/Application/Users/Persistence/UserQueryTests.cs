@@ -15,7 +15,7 @@ public sealed class UserQueryTests
 	#region Parse: text
 
 	[Fact]
-	public void Parse_Null_Throws()
+	public void ParseNull_Throws()
 	{
 		Assert.Throws<ArgumentNullException>(() => UserQuery.Parse(null!));
 	}
@@ -23,7 +23,7 @@ public sealed class UserQueryTests
 	[Theory]
 	[InlineData("")]
 	[InlineData("   ")]
-	public void Parse_EmptyOrBlank_IsAnUnfilteredQuery(string text)
+	public void ParseBlank_Unfiltered(string text)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -34,7 +34,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_PlainText_IsKeptAsTheText()
+	public void ParsePlain_KeptAsText()
 	{
 		var query = UserQuery.Parse("bob");
 
@@ -43,19 +43,19 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_TextWithRepeatedSpaces_CollapsesAndTrimsThem()
+	public void RepeatedSpaces_Collapsed()
 	{
 		Assert.Equal("bob smith", UserQuery.Parse("  bob    smith  ").Text);
 	}
 
 	[Fact]
-	public void Parse_QuotedPhraseWithoutKey_StaysInTheText()
+	public void QuotedNoKey_StaysText()
 	{
 		Assert.Equal("\"bob smith\"", UserQuery.Parse("\"bob smith\"").Text);
 	}
 
 	[Fact]
-	public void Parse_FilterBetweenWords_IsRemovedAndTheWordsJoined()
+	public void FilterBetweenWords_Removed()
 	{
 		var query = UserQuery.Parse("alice country=us bob");
 
@@ -64,7 +64,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_TheDocumentedExample_ReadsEveryPart()
+	public void DocumentedExample_ReadsAll()
 	{
 		var query = UserQuery.Parse("country=usvn privilege=4 deleted=* bob");
 
@@ -75,13 +75,13 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_OnlyFilters_LeavesNoText()
+	public void OnlyFilters_NoText()
 	{
 		Assert.Null(UserQuery.Parse("country=us privilege=1 deleted=0").Text);
 	}
 
 	[Fact]
-	public void Parse_IgnoresTheFormatProvider()
+	public void ParseProvider_Ignored()
 	{
 		var turkish = CultureInfo.GetCultureInfo("tr-TR");
 
@@ -97,7 +97,7 @@ public sealed class UserQueryTests
 	[InlineData("country:us")]
 	[InlineData("COUNTRY=US")]
 	[InlineData("Country=Us")]
-	public void Parse_CountryKeyOperatorAndCaseVariants_AreAllRead(string text)
+	public void CountryVariants_AllRead(string text)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -106,7 +106,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_SeveralCodesJoinedTogether_ReadsEachInOrder()
+	public void SeveralCodes_ReadInOrder()
 	{
 		Assert.Equal([Country.Vn, Country.Us, Country.Gb], UserQuery.Parse("country=vnusgb").Countries);
 	}
@@ -117,7 +117,7 @@ public sealed class UserQueryTests
 	[InlineData("country=zz")]
 	[InlineData("country=usqq")]
 	[InlineData("country=u-")]
-	public void Parse_CountryValueThatIsNotWholeKnownCodes_StaysInTheText(string text)
+	public void CountryNotCodes_StaysText(string text)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -129,7 +129,7 @@ public sealed class UserQueryTests
 	[InlineData("country=00")]
 	[InlineData("country=12")]
 	[InlineData("country=99")]
-	public void Parse_CountryValueOfDigits_IsNotACodeAndStaysInTheText(string text)
+	public void CountryDigits_StaysText(string text)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -138,7 +138,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_CountryWithoutValue_StaysInTheText()
+	public void CountryNoValue_StaysText()
 	{
 		var query = UserQuery.Parse("country=");
 
@@ -147,7 +147,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_QuotedCountryValue_IsUnquotedBeforeReading()
+	public void CountryQuoted_Unquoted()
 	{
 		Assert.Equal([Country.Us], UserQuery.Parse("country=\"us\"").Countries);
 	}
@@ -155,7 +155,7 @@ public sealed class UserQueryTests
 	[Theory]
 	[InlineData("country<us")]
 	[InlineData("country>=us")]
-	public void Parse_CountryWithAComparisonOperator_StaysInTheText(string text)
+	public void CountryComparison_StaysText(string text)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -171,7 +171,7 @@ public sealed class UserQueryTests
 	[InlineData("0", 0UL)]
 	[InlineData("4", 4UL)]
 	[InlineData("18446744073709551615", ulong.MaxValue)]
-	public void Parse_PermissionDecimalMask_IsReadWholeIncludingTheBounds(string mask, ulong expected)
+	public void PermissionDecimal_ReadWhole(string mask, ulong expected)
 	{
 		var query = UserQuery.Parse($"privilege={mask}");
 
@@ -180,7 +180,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_PermissionWithColonOperator_IsRead()
+	public void PermissionColon_Read()
 	{
 		Assert.Equal((UserPrivileges)8, UserQuery.Parse("privilege:8").Privileges);
 	}
@@ -192,7 +192,7 @@ public sealed class UserQueryTests
 	[InlineData("privilege=1.5")]
 	[InlineData("privilege=0x10")]
 	[InlineData("privilege=18446744073709551616")]
-	public void Parse_PermissionThatIsNotAnUnsignedDecimal_StaysInTheText(string text)
+	public void PermissionNotDecimal_StaysText(string text)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -201,7 +201,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_PermissionWithAComparisonOperator_StaysInTheText()
+	public void PermissionComparison_StaysText()
 	{
 		var query = UserQuery.Parse("privilege>=4");
 
@@ -217,7 +217,7 @@ public sealed class UserQueryTests
 	[InlineData("deleted=1", true)]
 	[InlineData("deleted=0", false)]
 	[InlineData("deleted:1", true)]
-	public void Parse_DeletedYesOrNo_IsRead(string text, bool expected)
+	public void DeletedYesNo_Read(string text, bool expected)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -226,7 +226,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_DeletedStar_MeansBothAndIsConsumed()
+	public void DeletedStar_BothConsumed()
 	{
 		var query = UserQuery.Parse("deleted=*");
 
@@ -239,7 +239,7 @@ public sealed class UserQueryTests
 	[InlineData("deleted=yes")]
 	[InlineData("deleted=true")]
 	[InlineData("deleted=")]
-	public void Parse_DeletedOtherValue_StaysInTheText(string text)
+	public void DeletedOther_StaysText(string text)
 	{
 		var query = UserQuery.Parse(text);
 
@@ -252,7 +252,7 @@ public sealed class UserQueryTests
 	#region Parse: unknown filters
 
 	[Fact]
-	public void Parse_UnknownKey_StaysInTheTextBesideKnownFilters()
+	public void UnknownKey_StaysText()
 	{
 		var query = UserQuery.Parse("foo=bar deleted=1 baz");
 
@@ -261,7 +261,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void Parse_TextContainingAColonButNoKey_StaysInTheText()
+	public void ColonNoKey_StaysText()
 	{
 		Assert.Equal("12:30", UserQuery.Parse("12:30").Text);
 	}
@@ -271,7 +271,7 @@ public sealed class UserQueryTests
 	#region TryParse
 
 	[Fact]
-	public void TryParse_Null_ReturnsFalseWithNoQuery()
+	public void TryParseNull_FalseNoQuery()
 	{
 		var parsed = UserQuery.TryParse(null, null, out var query);
 
@@ -283,7 +283,7 @@ public sealed class UserQueryTests
 	[InlineData("")]
 	[InlineData("bob country=us")]
 	[InlineData("country=zz !!")]
-	public void TryParse_AnyText_ReturnsTheSameQueryAsParse(string text)
+	public void TryParseText_SameAsParse(string text)
 	{
 		var parsed = UserQuery.TryParse(text, null, out var query);
 
@@ -304,7 +304,7 @@ public sealed class UserQueryTests
 	[InlineData(null)]
 	[InlineData(true)]
 	[InlineData(false)]
-	public void LimitTo_AskerMayViewDeleted_KeepsTheQueryAsAsked(bool? deleted)
+	public void AskerMayView_KeepsQuery(bool? deleted)
 	{
 		var query = new UserQuery("bob", Deleted: deleted);
 
@@ -312,7 +312,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void LimitTo_AskerHoldingUserManage_MayViewDeleted()
+	public void UserManage_ViewsDeleted()
 	{
 		var query = new UserQuery(Deleted: true);
 
@@ -323,7 +323,7 @@ public sealed class UserQueryTests
 	[InlineData(null)]
 	[InlineData(true)]
 	[InlineData(false)]
-	public void LimitTo_AskerMayNotViewDeleted_ShowsExistingUsersOnly(bool? deleted)
+	public void NoView_ExistingOnly(bool? deleted)
 	{
 		var query = new UserQuery(Deleted: deleted);
 
@@ -331,13 +331,13 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void LimitTo_AskerWithNoPermissions_ShowsExistingUsersOnly()
+	public void NoPermissions_ExistingOnly()
 	{
 		Assert.False(new UserQuery().LimitTo(UserPrivileges.None).Deleted);
 	}
 
 	[Fact]
-	public void LimitTo_AskerMayNotViewDeleted_KeepsEveryOtherFilter()
+	public void NoView_KeepsFilters()
 	{
 		var query = new UserQuery("bob", [Country.Us], (UserPrivileges)4, true);
 
@@ -349,7 +349,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void LimitTo_AskerMayNotViewDeleted_LeavesTheOriginalQueryUnchanged()
+	public void NoView_OriginalUnchanged()
 	{
 		var query = new UserQuery(Deleted: true);
 
@@ -359,7 +359,7 @@ public sealed class UserQueryTests
 	}
 
 	[Fact]
-	public void LimitTo_AfterParsingDeletedStar_StillHidesDeletedFromAnAskerWhoMayNot()
+	public void DeletedStar_StillHidden()
 	{
 		var limited = UserQuery.Parse("deleted=*").LimitTo(UserPrivilegesExtensions.Default);
 

@@ -12,7 +12,7 @@ namespace Basil.Application.Servers.Tests.Capabilities;
 public sealed class ScopedServerContentTests
 {
 	[Fact]
-	public async Task AddBannerAsync_WhenStoringTheBannerFails_DeletesTheStoredImageAndRethrows()
+	public async Task BannerStoreFails_DeletesImageRethrows()
 	{
 		var image = new ContentReference("banners/a.png");
 		var images = Substitute.For<IMenuBannerStorage>();

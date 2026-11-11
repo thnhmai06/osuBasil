@@ -16,7 +16,7 @@ public sealed class TrustedProxiesMiddlewareTests
 	];
 
 	[Fact]
-	public async Task InvokeAsync_UntrustedSocket_RemovesForwardingHeaders()
+	public async Task UntrustedSocket_RemovesForwardingHeaders()
 	{
 		var context = new DefaultHttpContext();
 		context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
@@ -29,7 +29,7 @@ public sealed class TrustedProxiesMiddlewareTests
 	}
 
 	[Fact]
-	public async Task InvokeAsync_TrustedSocket_RetainsForwardingHeaders()
+	public async Task TrustedSocket_RetainsForwardingHeaders()
 	{
 		var context = new DefaultHttpContext();
 		context.Connection.RemoteIpAddress = IPAddress.Parse("10.23.4.5");
@@ -44,7 +44,7 @@ public sealed class TrustedProxiesMiddlewareTests
 	[Theory]
 	[InlineData("127.0.0.1")]
 	[InlineData("::1")]
-	public async Task InvokeAsync_DefaultTrustedProxies_KeepHeadersFromTheLoopback(string peer)
+	public async Task DefaultProxies_KeepLoopbackHeaders(string peer)
 	{
 		var context = new DefaultHttpContext();
 		context.Connection.RemoteIpAddress = IPAddress.Parse(peer);
@@ -57,7 +57,7 @@ public sealed class TrustedProxiesMiddlewareTests
 	}
 
 	[Fact]
-	public async Task InvokeAsync_UnknownSocketAddress_RemovesForwardingHeaders()
+	public async Task UnknownSocketAddress_RemovesForwardingHeaders()
 	{
 		var context = new DefaultHttpContext();
 		SetForwardingHeaders(context);
@@ -69,7 +69,7 @@ public sealed class TrustedProxiesMiddlewareTests
 	}
 
 	[Fact]
-	public async Task InvokeAsync_UntrustedSocket_KeepsOtherHeadersAndCallsTheNextMiddleware()
+	public async Task UntrustedSocket_KeepsOthersNext()
 	{
 		var context = new DefaultHttpContext();
 		context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
@@ -87,7 +87,7 @@ public sealed class TrustedProxiesMiddlewareTests
 	}
 
 	[Fact]
-	public async Task InvokeAsync_TrustedIpv4PeerSeenAsAnIpv4MappedAddress_KeepsHeaders()
+	public async Task TrustedIpv4Peer_KeepsHeaders()
 	{
 		var context = new DefaultHttpContext();
 		context.Connection.RemoteIpAddress = IPAddress.Parse("::ffff:127.0.0.1");
@@ -100,7 +100,7 @@ public sealed class TrustedProxiesMiddlewareTests
 	}
 
 	[Fact]
-	public void Constructor_WithAnInvalidTrustedProxy_FailsAtStartup()
+	public void InvalidProxy_FailsAtStartup()
 	{
 		var options = Options.Create(new ServerOptions { TrustedProxies = ["not an address"] });
 

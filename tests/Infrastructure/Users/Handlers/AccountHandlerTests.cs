@@ -15,7 +15,7 @@ public sealed class AccountHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task CreateAccount_WithTheRightToManageUsers_StoresTheAccount()
+	public async Task CreateWithRight_Stored()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -29,7 +29,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task CreateAccount_WithoutTheRightToManageUsers_IsDeniedAndStoresNothing()
+	public async Task CreateNoRight_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -42,7 +42,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task RenameUser_OfTheSendersOwnAccount_ChangesTheName()
+	public async Task RenameOwn_NameChanged()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Before", "password"));
@@ -54,7 +54,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task RenameUser_OfAnotherAccountWithoutTheRight_IsDeniedAndKeepsTheName()
+	public async Task RenameOther_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -67,7 +67,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserCountry_OfTheSendersOwnAccount_ChangesTheCountry()
+	public async Task CountryOwn_Changed()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Traveller", "password"));
@@ -80,7 +80,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserCountry_OfAnotherAccountWithoutTheRight_IsDenied()
+	public async Task CountryOther_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -93,7 +93,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserAway_ForTheSendersOwnAccount_StoresTheMessage()
+	public async Task AwayOwn_Stored()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Away", "password"));
@@ -105,7 +105,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserAway_ForAnotherAccount_IsRefusedAndStoresNothing()
+	public async Task AwayOther_Refused()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -118,7 +118,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserPmPrivate_ForTheSendersOwnAccount_StoresTheSetting()
+	public async Task PmPrivateOwn_Stored()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Private", "password"));
@@ -131,7 +131,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserPmPrivate_ForAnotherAccount_IsRefusedAndStoresNothing()
+	public async Task PmPrivateOther_Refused()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -145,7 +145,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task ChangeUserPassword_OfTheSendersOwnAccountWithTheCurrentPassword_ReplacesThePassword()
+	public async Task PasswordOwnCurrent_Replaced()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Careful", "old"), password: "old");
@@ -158,7 +158,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task ChangeUserPassword_OfTheSendersOwnAccountWithAWrongCurrentPassword_IsRefused()
+	public async Task PasswordOwnWrong_Refused()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Careless", "old"), password: "old");
@@ -171,7 +171,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserPermissions_WithTheRightToManagePermissions_ReplacesThePrivileges()
+	public async Task PermissionsWithRight_Replaced()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -185,7 +185,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserPermissions_WithoutTheRight_IsDeniedAndKeepsThePrivileges()
+	public async Task PermissionsNoRight_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -200,7 +200,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteUser_WithTheRightToManageUsers_DeletesTheAccount()
+	public async Task DeleteWithRight_Deleted()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -213,7 +213,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteUser_WithoutTheRight_IsDeniedAndKeepsTheAccount()
+	public async Task DeleteNoRight_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -225,7 +225,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task RemoveUserAvatar_OfAnotherAccountWithoutTheRight_IsDenied()
+	public async Task RemoveAvatarOther_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -237,7 +237,7 @@ public sealed class AccountHandlerTests
 	}
 
 	[Fact]
-	public async Task SetUserAvatar_OfAnotherAccountWithoutTheRight_IsDenied()
+	public async Task SetAvatarOther_Denied()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));

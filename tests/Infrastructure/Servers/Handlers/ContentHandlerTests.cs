@@ -16,7 +16,7 @@ public sealed class ContentHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task SaveFaq_WithTheRight_StoresTheText()
+	public async Task FaqSaveAllowed_StoresText()
 	{
 		var faqs = new InMemoryFaqs();
 		using var app = new TestApplication(services => services.AddSingleton<IFaqStorage>(faqs));
@@ -29,7 +29,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task SaveFaq_WithoutTheRight_IsDeniedAndStoresNothing()
+	public async Task FaqSaveDenied_NothingStored()
 	{
 		var faqs = new InMemoryFaqs();
 		using var app = new TestApplication(services => services.AddSingleton<IFaqStorage>(faqs));
@@ -42,7 +42,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteFaq_WithTheRight_RemovesTheEntry()
+	public async Task FaqDeleteAllowed_EntryRemoved()
 	{
 		var faqs = new InMemoryFaqs();
 		using var app = new TestApplication(services => services.AddSingleton<IFaqStorage>(faqs));
@@ -56,7 +56,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteFaq_WithoutTheRight_IsDenied()
+	public async Task FaqDeleteDenied_Refused()
 	{
 		using var app = new TestApplication();
 		var plain = await PlainAsync(app);
@@ -67,7 +67,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task ClearMenuIcon_WithoutTheRight_IsDenied()
+	public async Task IconClearDenied_Refused()
 	{
 		using var app = new TestApplication();
 
@@ -77,7 +77,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task SetMenuIcon_WithoutTheRight_IsDenied()
+	public async Task IconSetDenied_Refused()
 	{
 		using var app = new TestApplication();
 
@@ -88,7 +88,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task AddMenuBanner_WithoutTheRight_IsDeniedAndAddsNothing()
+	public async Task BannerAddDenied_NothingAdded()
 	{
 		using var app = new TestApplication();
 
@@ -101,7 +101,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task AddMenuSeasonal_WithoutTheRight_IsDeniedAndAddsNothing()
+	public async Task SeasonalAddDenied_NothingAdded()
 	{
 		using var app = new TestApplication();
 
@@ -113,7 +113,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteMenuSeasonal_WithoutTheRight_IsDenied()
+	public async Task SeasonalDeleteDenied_Refused()
 	{
 		using var app = new TestApplication();
 
@@ -124,7 +124,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task GetSettings_WithTheRight_ReturnsTheSettings()
+	public async Task SettingsGetAllowed_ReturnsSettings()
 	{
 		using var app = new TestApplication();
 
@@ -135,7 +135,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task GetSettings_WithoutTheRight_IsDeniedAndReturnsNothing()
+	public async Task SettingsGetDenied_Nothing()
 	{
 		using var app = new TestApplication();
 
@@ -146,7 +146,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task UpdateSettings_WithTheRight_ReplacesTheSettings()
+	public async Task SettingsUpdateAllowed_Replaced()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -159,7 +159,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task UpdateSettings_WithoutTheRight_IsDenied()
+	public async Task SettingsUpdateDenied_Refused()
 	{
 		using var app = new TestApplication();
 		var (_, current) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(await AdminAsync(app)), Token);
@@ -171,7 +171,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task ListScreenshots_WithTheRight_ListsThemOk()
+	public async Task ScreenshotListAllowed_Lists()
 	{
 		using var app = new TestApplication();
 
@@ -183,7 +183,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task ListScreenshots_WithoutTheRight_IsDenied()
+	public async Task ScreenshotListDenied_Refused()
 	{
 		using var app = new TestApplication();
 
@@ -194,7 +194,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteScreenshot_WithoutTheRight_IsDenied()
+	public async Task ScreenshotDeleteDenied_Refused()
 	{
 		using var app = new TestApplication();
 
@@ -205,7 +205,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task UploadScreenshot_WithoutTheRight_IsDeniedAndStoresNothing()
+	public async Task ScreenshotUploadDenied_NothingStored()
 	{
 		using var app = new TestApplication();
 
@@ -217,7 +217,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task UploadBeatmapset_WithoutTheRight_IsDeniedAndImportsNothing()
+	public async Task BeatmapsetUploadDenied_NothingImported()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.None });
@@ -230,7 +230,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task NotifyEveryone_CountsTheOpenClientsItReached()
+	public async Task NotifyEveryone_CountsReachedClients()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -244,7 +244,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task NotifyEveryone_WithoutTheRight_IsDeniedAndReachesNobody()
+	public async Task NotifyEveryoneDenied_ReachesNobody()
 	{
 		using var app = new TestApplication();
 		await RoomFixture.PlayerAsync(app, "One");
@@ -257,7 +257,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task NotifyUsers_ReachesOnlyTheNamedUsers()
+	public async Task NotifyUsers_OnlyNamedUsers()
 	{
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
@@ -272,7 +272,7 @@ public sealed class ContentHandlerTests
 	}
 
 	[Fact]
-	public async Task NotifyUsers_WithoutTheRight_IsDeniedAndReachesNobody()
+	public async Task NotifyUsersDenied_ReachesNobody()
 	{
 		using var app = new TestApplication();
 		var one = await RoomFixture.PlayerAsync(app, "One");

@@ -18,7 +18,7 @@ public sealed class SpectatingHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task SpectateUser_AddsTheSenderToTheHostsSpectators()
+	public async Task SpectateUser_AddsSender()
 	{
 		using var app = new TestApplication();
 		var (host, spectator) = await TwoAsync(app);
@@ -30,7 +30,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task StopSpectating_RemovesTheSenderFromTheHostsSpectators()
+	public async Task StopSpectating_RemovesSender()
 	{
 		using var app = new TestApplication();
 		var (host, spectator) = await TwoAsync(app);
@@ -43,7 +43,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task StopSpectating_WhenTheSenderIsNotSpectating_DoesNothing()
+	public async Task NotSpectatingStop_DoesNothing()
 	{
 		using var app = new TestApplication();
 		var (host, stranger) = await TwoAsync(app);
@@ -54,7 +54,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task ReportSpectatingFailed_WhileSpectating_IsAccepted()
+	public async Task SpectatingFailure_Accepted()
 	{
 		using var app = new TestApplication();
 		var (host, spectator) = await TwoAsync(app);
@@ -67,7 +67,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task ReportSpectatingFailed_WhenNotSpectating_IsIgnored()
+	public async Task NotSpectatingFailure_Ignored()
 	{
 		using var app = new TestApplication();
 		var (host, stranger) = await TwoAsync(app);
@@ -79,7 +79,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task SetPlayerStatus_StoresTheReportedStatusOnTheSendersClient()
+	public async Task SetPlayerStatus_StoresOnClient()
 	{
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Player");
@@ -92,7 +92,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task SetPlayerStatus_RepeatingTheCurrentStatus_ChangesNothing()
+	public async Task RepeatedPlayerStatus_ChangesNothing()
 	{
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Player");
@@ -103,7 +103,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task OpenIrcSession_OnTheSendersOwnAccount_ReturnsAKeyAndItsSession()
+	public async Task OwnIrcSession_ReturnsKey()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Irc", "password"));
@@ -117,7 +117,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task OpenIrcSession_OnAnotherAccount_IsRefusedAsNotSelf()
+	public async Task OtherIrcSession_NotSelf()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -132,7 +132,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task PublishSpectatorFrames_WhileAnApiConnectionSpectates_PublishesTheFrames()
+	public async Task ApiSpectatorFrames_Published()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -145,7 +145,7 @@ public sealed class SpectatingHandlerTests
 	}
 
 	[Fact]
-	public async Task PublishSpectatorFrames_WithNoApiConnectionSpectating_PublishesNothing()
+	public async Task NoApiSpectator_NothingPublished()
 	{
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Player");

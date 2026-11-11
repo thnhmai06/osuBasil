@@ -6,7 +6,7 @@ namespace Basil.Domain.Tests.Chat;
 public class GeneralChannelRecordTests
 {
 	[Fact]
-	public void Name_HashPrefixedName_IsAccepted()
+	public void HashPrefixedName_Accepted()
 	{
 		Assert.Equal("#osu", new GeneralChannelRecord { Name = "#osu", Value = new GeneralChannelData() }.Name);
 	}
@@ -18,14 +18,14 @@ public class GeneralChannelRecordTests
 	[InlineData("#staff room")]
 	[InlineData("#staff,room")]
 	[InlineData("#staff\0room")]
-	public void Name_InvalidChannelName_Throws(string name)
+	public void InvalidName_Throws(string name)
 	{
 		Assert.Throws<ArgumentException>(() => new GeneralChannelRecord
 			{ Name = name, Value = new GeneralChannelData() });
 	}
 
 	[Fact]
-	public void Topic_Null_Throws()
+	public void NullTopic_Throws()
 	{
 		Assert.Throws<ArgumentNullException>(() => new GeneralChannelData { Topic = null! });
 	}

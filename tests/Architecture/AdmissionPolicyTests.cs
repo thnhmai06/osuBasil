@@ -60,7 +60,7 @@ public sealed class AdmissionPolicyTests
 	}
 
 	[Fact]
-	public void AnEntryPointWithoutAPolicy_IsDetected()
+	public void EntryNoPolicy_Detected()
 	{
 		var entryPoints = new[]
 		{
@@ -72,7 +72,7 @@ public sealed class AdmissionPolicyTests
 	}
 
 	[Fact]
-	public void ARouteMappedWithoutAPolicy_IsDetected()
+	public void RouteNoPolicy_Detected()
 	{
 		var routes = Routes("Rest", app => app.MapGet("/fake", () => "x"));
 
@@ -89,7 +89,7 @@ public sealed class AdmissionPolicyTests
 	}
 
 	[Fact]
-	public void EveryStableRoute_AndPacketType_DeclaresAPolicy()
+	public void AndPacketType_DeclaresAPolicy()
 	{
 		var entryPoints = Stable();
 

@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 public sealed class MpLifecycleTests
 {
 	[Fact]
-	public async Task Make_ByAUserWithAClient_SaysTheMatchWasCreatedAsPublic()
+	public async Task UserWithClient_SaysCreatedPublic()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -26,7 +26,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_ByAUserWithAClient_OpensAPublicRoomCreatedByTheTypist()
+	public async Task UserWithClient_OpensPublicRoom()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -40,7 +40,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_ByAnOnlineCreatorInNoRoom_SeatsTheirClientAsHost()
+	public async Task OnlineNoRoom_SeatsAsHost()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -53,7 +53,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_MakesTheTypistTargetTheNewRoom()
+	public async Task Make_TypistTargetsRoom()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -65,7 +65,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task MakePrivate_SaysTheMatchWasCreatedAsPrivate()
+	public async Task MakePrivate_SaysCreatedPrivate()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -79,7 +79,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task MakePrivate_OpensAPrivateRoom()
+	public async Task MakePrivate_OpensPrivateRoom()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -90,7 +90,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_WithoutAName_NamesTheRoomAfterTheTypist()
+	public async Task WithoutName_NamedAfterTypist()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -102,7 +102,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_WithANameLongerThan50Characters_KeepsTheFirst50()
+	public async Task LongName_KeepsFirst50()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -115,7 +115,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Make_WithoutThePlayerPrivilege_SaysWhichPrivilegeIsMissingAndOpensNothing()
+	public async Task NoPlayerPrivilege_MissingNoOpen()
 	{
 		using var bot = new BotHarness();
 		var typist =
@@ -132,7 +132,7 @@ public sealed class MpLifecycleTests
 	[Theory]
 	[InlineData("!mp join")]
 	[InlineData("!mp join abc")]
-	public async Task Join_WithoutANumericId_SaysHowToUseItAndFails(string message)
+	public async Task NoNumericId_UsageAndFails(string message)
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -144,7 +144,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Join_ForAnIdNoRoomHas_SaysThereIsNoActiveMatch()
+	public async Task IdNoRoom_NoActiveMatch()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -156,7 +156,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Join_ForAPublicRoom_SaysTheTypistJoined()
+	public async Task PublicRoom_SaysTypistJoined()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -170,7 +170,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Join_ForAPublicRoom_SeatsTheTypist()
+	public async Task PublicRoom_SeatsTypist()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -183,7 +183,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Join_ForAPublicRoom_MakesTheTypistTargetIt()
+	public async Task PublicRoom_TypistTargetsIt()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -196,7 +196,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Join_WithTheRoomsPassword_SeatsTheTypist()
+	public async Task RoomPassword_SeatsTypist()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -214,7 +214,7 @@ public sealed class MpLifecycleTests
 	[Theory]
 	[InlineData("")]
 	[InlineData(" wrong")]
-	public async Task Join_WithAWrongOrMissingPassword_SaysItIsIncorrectAndDoesNotSeatTheTypist(string suffix)
+	public async Task WrongPassword_IncorrectNoSeat(string suffix)
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -230,7 +230,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Join_ForAPrivateRoomOfAStranger_JoinsItBecausePrivateOnlyKeepsARoomOutOfListings()
+	public async Task StrangerPrivateRoom_JoinsAnyway()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -245,7 +245,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task In_TypedInAChannel_SaysItOnlyWorksInPrivateAndFails()
+	public async Task TypedInChannel_OnlyPrivateFails()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -260,7 +260,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task In_WithoutAnId_SaysNothingIsTargetedAndForgetsTheTargetedRoom()
+	public async Task NoId_UntargetsAndForgets()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -275,7 +275,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task In_WithANonNumericId_SaysHowToUseItAndFails()
+	public async Task NonNumericId_UsageAndFails()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -287,7 +287,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task In_ForAnIdNoRoomHas_SaysThereIsNoActiveMatch()
+	public async Task UnknownId_NoActiveMatch()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -299,7 +299,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task In_ForAVisibleRoom_SaysTheRoomIsTargetedWithoutTheRoomPrefix()
+	public async Task VisibleRoom_TargetedWithoutPrefix()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -313,7 +313,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task In_ForAVisibleRoom_MakesTheTypistTargetIt()
+	public async Task VisibleRoom_TypistTargetsIt()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -326,7 +326,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Close_ByTheCreator_SaysTheMatchWasClosedAndClosesIt()
+	public async Task ByCreator_SaidClosed()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -340,7 +340,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Close_ByASeatedPlayerWhoIsNoReferee_IsRefusedAndTheRoomStaysOpen()
+	public async Task SeatedNonReferee_RefusedStaysOpen()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");

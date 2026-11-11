@@ -20,7 +20,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Get_AScore_IsPublic_AndShowsWhatThePlayerScored()
+	public async Task PublicScore_ShowsValue()
 	{
 		var user = await fixture.Host.CreateUserAsync("ScoreOwner");
 		var score = await StoreAsync(user.Id, 123456);
@@ -34,7 +34,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_ByUser_ReturnsOnlyThatUsersScores_AndPagingIsBounded()
+	public async Task UserScores_BoundedToUser()
 	{
 		var first = await fixture.Host.CreateUserAsync("ScoreListA");
 		var second = await fixture.Host.CreateUserAsync("ScoreListB");
@@ -51,7 +51,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_ForAnUnknownBeatmapOrUser_Answers404()
+	public async Task UnknownBeatmapUser_Answers404()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -63,7 +63,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Get_UnknownScore_Answers404()
+	public async Task UnknownScore_Answers404()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -73,7 +73,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Replay_NeedsAToken_AndAScoreWithoutOneAnswers404()
+	public async Task ReplayWithoutToken_Answers404()
 	{
 		var user = await fixture.Host.CreateUserAsync("ScoreReplay");
 		var score = await StoreAsync(user.Id, 5);
@@ -90,7 +90,7 @@ public sealed class ScoreTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Replay_OfAStoredReplay_IsReturned()
+	public async Task StoredReplay_IsReturned()
 	{
 		var user = await fixture.Host.CreateUserAsync("ScoreHasRep");
 		var score = await StoreAsync(user.Id, 6);

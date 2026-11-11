@@ -18,7 +18,7 @@ namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 public sealed class MpRoundsTests
 {
 	[Fact]
-	public async Task Start_WithoutABeatmap_SaysNoBeatmapIsSelectedAndStartsNoRound()
+	public async Task NoBeatmap_NoRoundStart()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -32,7 +32,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Abort_WithNoRoundInProgress_SaysTheMatchIsNotInProgress()
+	public async Task NoRoomRunning_NotInProgress()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -44,7 +44,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task AbortTimer_WithNoCountdown_SaysNoCountdownIsRunning()
+	public async Task NoCountdown_SaysNotRunning()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -56,7 +56,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Timer_WithoutSeconds_StartsACountdownOf30SecondsThatDoesNotStartTheRound()
+	public async Task NoSeconds_Countdown30NoRound()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -70,7 +70,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Timer_WithoutSeconds_SucceedsAndSaysNothingBecauseTheCountdownAnnounces()
+	public async Task NoSeconds_SucceedsSilently()
 	{
 		using var bot = new BotHarness();
 		var (_, creator, _) = await SetUpAsync(bot);
@@ -82,7 +82,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Timer_With90_StartsACountdownOf90Seconds()
+	public async Task With90_Starts90Countdown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -96,7 +96,7 @@ public sealed class MpRoundsTests
 	[InlineData("0")]
 	[InlineData("-1")]
 	[InlineData("x")]
-	public async Task Timer_WithZeroANegativeNumberOrNoNumber_SaysHowToUseItAndStartsNoCountdown(string seconds)
+	public async Task InvalidSeconds_UsageNoCountdown(string seconds)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -110,7 +110,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Timer_WithOneHour_StartsTheCountdown()
+	public async Task WithOneHour_StartsTheCountdown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -123,7 +123,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Timer_WithMoreThanOneHour_SaysTheCountdownIsOutOfRangeAndStartsNone()
+	public async Task OverAnHour_RangeErrorNone()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -136,7 +136,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task AbortTimer_AfterATimer_AnnouncesTheAbortOnceAndLeavesNoCountdown()
+	public async Task AfterTimer_AbortAnnouncedOnce()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -151,7 +151,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Start_WithSecondsAndABeatmap_StartsACountdownThatStartsTheRoundAndSaysNothing()
+	public async Task SecondsAndBeatmap_CountdownThenRound()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot, true);
@@ -166,7 +166,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Start_WithSeconds_DoesNotStartTheRoundBeforeTheCountdownElapses()
+	public async Task WithSeconds_RoundNotYet()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot, true);
@@ -178,7 +178,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Start_WithSeconds_StartsTheRoundWhenTheCountdownElapses()
+	public async Task WithSeconds_RoundOnElapse()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot, true);
@@ -191,7 +191,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Start_WithoutSecondsWithABeatmapAndSeatedPlayers_SaysTheMatchStartedAndStartsTheRoundAtOnce()
+	public async Task NoSeconds_RoundAtOnce()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot, true);
@@ -204,7 +204,7 @@ public sealed class MpRoundsTests
 	}
 
 	[Fact]
-	public async Task Abort_DuringARound_SaysTheMatchWasAbortedAndEndsTheRound()
+	public async Task DuringRound_AbortedAndEnds()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot, true);
@@ -224,7 +224,7 @@ public sealed class MpRoundsTests
 	[InlineData("!mp timer 90")]
 	[InlineData("!mp aborttimer")]
 	[InlineData("!mp abort")]
-	public async Task RoundCommand_ByAPlainSeatedPlayer_IsRefusedAndLeavesTheCountdownAndTheRoundAlone(string message)
+	public async Task PlainSeatedPlayer_RefusedLeavesAlone(string message)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot, true);

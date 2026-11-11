@@ -17,7 +17,7 @@ public sealed class LobbyTests
 	private static readonly TimeSpan OneSecond = TimeSpan.FromSeconds(1);
 
 	[Fact]
-	public async Task ReleaseAsync_ForAPlayerSeatedInARoom_RemovesThemFromTheRoom()
+	public async Task SeatedPlayerRelease_RemovesFromRoom()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -29,7 +29,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task ReleaseAsync_ForATourneyClientObservingARoom_RemovesThemFromTheRoom()
+	public async Task TourneyObserverRelease_RemovesFromRoom()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -45,7 +45,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseUnfinishedAsync_ForARunningMatch_EndsIt()
+	public async Task RunningMatchClose_EndsIt()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -60,7 +60,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseAll_EndsTheMatchOfEveryOpenRoom_AndRemovesThemFromTheLobby()
+	public async Task CloseAll_ClearsLobby()
 	{
 		using var app = new TestApplication();
 		var first = await RoomFixture.CreateAsync(app);
@@ -81,7 +81,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public void CloseAll_WithoutAnyRoom_ClosesNothing()
+	public void EmptyLobbyClose_ClosesNothing()
 	{
 		using var app = new TestApplication();
 
@@ -89,7 +89,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseAll_CalledTwice_ClosesEachRoomOnce()
+	public async Task CloseAllTwice_ClosesEachOnce()
 	{
 		using var app = new TestApplication();
 		await RoomFixture.CreateAsync(app);
@@ -102,7 +102,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseUnfinishedAsync_WithoutAnyMatch_EndsNothing()
+	public async Task NoMatchClose_EndsNothing()
 	{
 		using var app = new TestApplication();
 
@@ -112,7 +112,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public void Find_AnIdNoRoomHas_ReturnsNothing()
+	public void UnknownRoomId_ReturnsNothing()
 	{
 		using var app = new TestApplication();
 
@@ -120,7 +120,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task Find_AnOpenRoom_ReturnsIt()
+	public async Task OpenRoomFind_ReturnsIt()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -129,7 +129,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task Find_APrivateRoom_ReturnsItLikeAnyOtherBecausePrivateOnlyKeepsARoomOutOfListings()
+	public async Task PrivateRoomFind_ReturnsIt()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -140,7 +140,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task Find_ARoomThatClosed_ReturnsNothing()
+	public async Task ClosedRoomFind_ReturnsNothing()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -152,7 +152,7 @@ public sealed class LobbyTests
 	[Theory]
 	[InlineData(RoomSource.Game)]
 	[InlineData(RoomSource.Api)]
-	public async Task CloseEmptyRooms_ForARoomEmptyForFifteenMinutes_ClosesItOnlyThen(RoomSource source)
+	public async Task FifteenMinuteEmpty_ClosesThen(RoomSource source)
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -172,7 +172,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseEmptyRooms_ForARoomOpenedWithNobodySeated_ClosesItAfterFifteenMinutes()
+	public async Task NobodySeatedRoom_ClosesAfterTimeout()
 	{
 		using var app = new TestApplication();
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"));
@@ -186,7 +186,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseEmptyRooms_ForARoomWithAPlayer_LeavesItOpen()
+	public async Task RoomWithPlayer_LeavesOpen()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -200,7 +200,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseEmptyRooms_ForARoomThatWasOccupiedThenEmptiedAgain_StartsTheClockOver()
+	public async Task EmptiedAgainRoom_RestartsClock()
 	{
 		using var app = new TestApplication();
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"));
@@ -221,7 +221,7 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
-	public async Task CloseEmptyRooms_BeforeTheClose_AnnouncesTheClosingOnceAtTheWarningTime()
+	public async Task WarningTime_AnnouncesClosingOnce()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");

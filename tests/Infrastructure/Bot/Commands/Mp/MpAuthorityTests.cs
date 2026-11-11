@@ -18,7 +18,7 @@ public sealed class MpAuthorityTests
 	[InlineData(RoomRole.Creator)]
 	[InlineData(RoomRole.Referee)]
 	[InlineData(RoomRole.Manager)]
-	public async Task Lock_ByARoleThatManagesTheRoom_LocksIt(RoomRole role)
+	public async Task ManagingRole_LocksRoom(RoomRole role)
 	{
 		using var bot = new BotHarness();
 		var (room, actor) = await SetUpAsync(bot, role);
@@ -34,7 +34,7 @@ public sealed class MpAuthorityTests
 	[InlineData(RoomRole.Host)]
 	[InlineData(RoomRole.Player)]
 	[InlineData(RoomRole.Outsider)]
-	public async Task Lock_ByARoleThatDoesNotManageTheRoom_IsRefusedAndTheRoomStaysUnlocked(RoomRole role)
+	public async Task NonManagerLock_RefusedUnlocked(RoomRole role)
 	{
 		using var bot = new BotHarness();
 		var (room, actor) = await SetUpAsync(bot, role);
@@ -50,7 +50,7 @@ public sealed class MpAuthorityTests
 	[InlineData(RoomRole.Creator)]
 	[InlineData(RoomRole.Referee)]
 	[InlineData(RoomRole.Manager)]
-	public async Task Close_ByARoleThatManagesTheRoom_ClosesIt(RoomRole role)
+	public async Task ManagingRole_ClosesRoom(RoomRole role)
 	{
 		using var bot = new BotHarness();
 		var (room, actor) = await SetUpAsync(bot, role);
@@ -66,7 +66,7 @@ public sealed class MpAuthorityTests
 	[InlineData(RoomRole.Host)]
 	[InlineData(RoomRole.Player)]
 	[InlineData(RoomRole.Outsider)]
-	public async Task Close_ByARoleThatDoesNotManageTheRoom_IsRefusedAndTheRoomStaysOpen(RoomRole role)
+	public async Task NonManagerClose_RefusedOpen(RoomRole role)
 	{
 		using var bot = new BotHarness();
 		var (room, actor) = await SetUpAsync(bot, role);
@@ -79,7 +79,7 @@ public sealed class MpAuthorityTests
 	}
 
 	[Fact]
-	public async Task Lock_ByTheCreatorWhoLostThePlayerPrivilege_IsNotElevatedByTheBotAndNamesTheMissingPrivilege()
+	public async Task DemotedCreator_NotElevated()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");

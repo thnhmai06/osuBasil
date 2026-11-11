@@ -50,7 +50,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ReceiveScore_FromAParticipantOnTheRoundsBeatmap_IsTakenAsAScoreOfTheRound()
+	public async Task ParticipantRoundBeatmap_TakenAsScore()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -65,7 +65,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ReceiveScore_InATeamRound_CarriesTheTeamTheSlotHadWhenTheRoundStarted()
+	public async Task TeamRound_CarriesSlotTeam()
 	{
 		var (app, setup) = await StartedAsync(GameTeamType.TeamVs);
 		using var _ = app;
@@ -78,7 +78,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ReceiveScore_OnAnotherBeatmap_IsRefused()
+	public async Task OnAnotherBeatmap_IsRefused()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -90,7 +90,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ReceiveScore_FromSomeoneWhoDidNotTakePart_IsRefused()
+	public async Task NonParticipant_Refused()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -101,7 +101,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ReceiveScore_ASecondTimeFromTheSamePlayer_IsRefused()
+	public async Task SecondScore_Refused()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -113,7 +113,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_IsDecidedAsSoonAsItEndedAndEveryParticipantHasAScore()
+	public async Task EndedAllScored_DecidedAtOnce()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -132,7 +132,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_IsDecidedAfterTheEventThatEndedIt()
+	public async Task EndEvent_DecidedAfter()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -148,7 +148,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_IsDecidedBeforeTheNextRoundStartsEvenWhileAScoreIsMissing()
+	public async Task MissingScore_DecidedBeforeNext()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -169,7 +169,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_WaitsForAScoreThatComesAfterItEnded_ThenIsDecidedAtOnce()
+	public async Task LateScore_WaitsThenDecides()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -184,7 +184,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_IsDecidedTenSecondsAfterItEndedWithTheScoresThatCameIn()
+	public async Task TenSecondsAfter_DecidedWithScores()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -201,7 +201,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_AnnouncesItEndedWithTheScoreWaitBeforeItIsDecided()
+	public async Task EndAnnounced_ScoreWaitFirst()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -215,7 +215,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_UsesTheScoreWaitOfTheServerSettings()
+	public async Task ScoreWait_UsesServerSettings()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -236,7 +236,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task TheRound_WithNoScoreAtAll_IsDecidedWithoutAResultAndNamesEveryone()
+	public async Task NoScores_DecidedNamesEveryone()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -265,7 +265,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ADecidedRound_TakesNoMoreScores()
+	public async Task DecidedRound_NoMoreScores()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -278,7 +278,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task APlayerWhoLeftBeforeCompleting_IsNotAwaited()
+	public async Task LeftBeforeCompleting_NotAwaited()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -295,7 +295,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task WhenEveryPlayerLeavesBeforeCompleting_TheRoundIsNotAnnouncedAsEnded()
+	public async Task EveryoneLeft_NotAnnounced()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -307,7 +307,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task APlayerWhoCompletedAndThenLeft_IsStillAwaitedAndCounts()
+	public async Task CompletedThenLeft_StillAwaited()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -325,7 +325,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ClosingTheRoomWhileTheRoundWaits_DecidesItWithTheScoresThatCameIn()
+	public async Task RoomClosing_DecidesWithScores()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
@@ -340,7 +340,7 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
-	public async Task ASubmittedScore_ReachesTheRoomThroughTheScoreHandler()
+	public async Task SubmittedScore_ReachesRoom()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;

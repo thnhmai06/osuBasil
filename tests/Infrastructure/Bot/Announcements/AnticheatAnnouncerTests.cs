@@ -20,7 +20,7 @@ public sealed class AnticheatAnnouncerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task PlayerFlagged_InARoom_SaysThePlayerAndTheReasonInTheRoomChannel()
+	public async Task InRoom_ReasonInChannel()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -34,7 +34,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_InARoom_WhispersTheRoomAndTheReasonToTheCreator()
+	public async Task InRoom_WhispersCreator()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -45,7 +45,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_InARoom_WhispersTheRoomAndTheReasonToAnOnlineReferee()
+	public async Task InRoom_WhispersOnlineReferee()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -56,7 +56,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_InARoom_WhispersNothingToAnOfflineReferee()
+	public async Task InRoom_OfflineRefereeSilent()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -68,7 +68,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_InARoom_WhispersNothingToTheFlaggedPlayer()
+	public async Task InRoom_NoWhisperFlagged()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -79,7 +79,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_WithCleanAmongTheFlags_NamesOnlyTheRealFlags()
+	public async Task CleanAmongFlags_NamesRealFlags()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -95,7 +95,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_WithEveryCheatSign_NamesEachFlagAndNotTheGroup()
+	public async Task EveryCheatSign_NamesEachFlag()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -112,7 +112,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_WithFlagsOutsideTheCheatSigns_NamesThemToo()
+	public async Task FlagsOutsideSigns_NamesThemToo()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -128,7 +128,7 @@ public sealed class AnticheatAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerFlagged_WithoutARoom_SaysNothing()
+	public async Task WithoutARoom_SaysNothing()
 	{
 		using var bot = new BotHarness();
 		await SetUpAsync(bot);

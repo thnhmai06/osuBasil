@@ -10,7 +10,7 @@ namespace Basil.Application.Users.Tests.Objects.Connections;
 public sealed class ConnectionTests
 {
 	[Fact]
-	public async Task Close_MultipleConnections_GoesOfflineOnlyAfterLast()
+	public async Task MultipleConnections_OfflineAfterLast()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("TwoConnections", "password");
@@ -28,7 +28,7 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task Close_LoggedOutWithinOneSecondOfStableLogin_LeavesConnectionOpen()
+	public async Task LogoutWithinSecond_ConnectionOpen()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("EarlyLogout", "password");
@@ -43,7 +43,7 @@ public sealed class ConnectionTests
 	[Theory]
 	[InlineData(SessionType.Stable, 300)]
 	[InlineData(SessionType.Api, 300)]
-	public async Task CloseIdle_AtTimeoutBoundary_LeavesConnectionOpen(SessionType type, int timeoutSeconds)
+	public async Task TimeoutBoundary_ConnectionOpen(SessionType type, int timeoutSeconds)
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync($"Boundary{(int)type}", "password");
@@ -59,7 +59,7 @@ public sealed class ConnectionTests
 	[Theory]
 	[InlineData(SessionType.Stable, 300)]
 	[InlineData(SessionType.Api, 300)]
-	public async Task CloseIdle_OneSecondPastTimeout_ClosesConnection(SessionType type, int timeoutSeconds)
+	public async Task PastTimeout_ClosesConnection(SessionType type, int timeoutSeconds)
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync($"Expired{(int)type}", "password");
@@ -75,7 +75,7 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task CloseIdle_AfterMarkActive_UsesActivityTime()
+	public async Task AfterMarkActive_UsesActivityTime()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("ActiveAgain", "password");
@@ -94,7 +94,7 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task CloseIdle_BotConnections_RemainOpen()
+	public async Task BotConnections_RemainOpen()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -107,7 +107,7 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task Find_OpenConnectionAndBotTokens_ReturnsOnlyClientConnection()
+	public async Task OpenBotTokens_ReturnsClientOnly()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("TokenUser", "password");
@@ -121,7 +121,7 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task Login_ApiSessionStoresOnlyTokenHashAndSlidesExpiry()
+	public async Task ApiSession_TokenHashOnly()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("ApiSession", "password");
@@ -138,7 +138,7 @@ public sealed class ConnectionTests
 	}
 
 	[Fact]
-	public async Task EndSession_RecordsEndAndStopsFurtherActivity()
+	public async Task EndSession_RecordsAndStops()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("EndedSession", "password");

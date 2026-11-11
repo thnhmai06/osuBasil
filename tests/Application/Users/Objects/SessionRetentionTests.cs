@@ -18,7 +18,7 @@ public sealed class SessionRetentionTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task AnEndedSessionOlderThanTheRetentionIsDeleted()
+	public async Task EndedOlder_Deleted()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("OldEnded", "password");
@@ -33,7 +33,7 @@ public sealed class SessionRetentionTests
 	}
 
 	[Fact]
-	public async Task AnEndedSessionYoungerThanTheRetentionStays()
+	public async Task EndedYounger_Stays()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("YoungEnded", "password");
@@ -48,7 +48,7 @@ public sealed class SessionRetentionTests
 	}
 
 	[Fact]
-	public async Task AnActiveSessionStaysHoweverOldItIs()
+	public async Task ActiveSession_StaysHoweverOld()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
@@ -69,7 +69,7 @@ public sealed class SessionRetentionTests
 	}
 
 	[Fact]
-	public async Task TheRetentionIsReadFromTheServerSettings()
+	public async Task Retention_ReadFromSettings()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
@@ -85,7 +85,7 @@ public sealed class SessionRetentionTests
 	}
 
 	[Fact]
-	public async Task TheModerationLogIsNeverPurged()
+	public async Task ModerationLog_NeverPurged()
 	{
 		using var app = new TestApplication();
 		var staff = await app.CreateUserAsync("Staff", "password");

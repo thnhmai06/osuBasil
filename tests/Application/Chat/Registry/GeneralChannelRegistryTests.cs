@@ -24,7 +24,7 @@ public sealed class GeneralChannelRegistryTests
 	}
 
 	[Fact]
-	public async Task VisibleTo_OrdinaryUser_SeesReadableVisibleChannelsOnly()
+	public async Task OrdinaryUser_ReadableVisibleOnly()
 	{
 		using var app = new TestApplication();
 		await OpenAsync(app, "#open");
@@ -38,7 +38,7 @@ public sealed class GeneralChannelRegistryTests
 	}
 
 	[Fact]
-	public async Task VisibleTo_ChannelManager_AlsoSeesHiddenChannels()
+	public async Task ChannelManager_SeesHiddenToo()
 	{
 		using var app = new TestApplication();
 		await OpenAsync(app, "#open2");
@@ -52,7 +52,7 @@ public sealed class GeneralChannelRegistryTests
 	}
 
 	[Fact]
-	public async Task VisibleTo_ModeratorCannotSeeAChannelThatNeedsTheOwnerPrivilege()
+	public async Task ModeratorWithoutOwner_CannotSee()
 	{
 		using var app = new TestApplication();
 		await OpenAsync(app, "#staff2", UserPrivileges.Owner, false);

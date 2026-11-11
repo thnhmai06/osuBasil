@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Bot.Tests.Commands;
 public sealed class CommandLineTests
 {
 	[Fact]
-	public void Split_AMessageWithoutOperators_IsOneSegment()
+	public void NoOperators_OneSegment()
 	{
 		var segments = CommandLine.Split("!mp settings");
 
@@ -19,7 +19,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_ASemicolon_StartsASegmentThatAlwaysRuns()
+	public void Semicolon_AlwaysRunsSegment()
 	{
 		var segments = CommandLine.Split("!mp lock;!mp unlock");
 
@@ -28,7 +28,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_ADoubleAmpersand_StartsASegmentThatRunsOnlyAfterSuccess()
+	public void DoubleAmpersand_RunsAfterSuccess()
 	{
 		var segments = CommandLine.Split("!mp lock && !mp unlock");
 
@@ -37,7 +37,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_ASingleAmpersand_IsNotAnOperator()
+	public void SingleAmpersand_NotOperator()
 	{
 		var segment = Assert.Single(CommandLine.Split("!mp name A & B"));
 
@@ -45,7 +45,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_EmptySegments_AreLeftOut()
+	public void EmptySegments_AreLeftOut()
 	{
 		var segments = CommandLine.Split("!mp lock;; ;!mp unlock");
 
@@ -53,7 +53,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_AnOperatorInsideQuotes_DoesNotSplit()
+	public void OperatorInQuotes_NoSplit()
 	{
 		var segment = Assert.Single(CommandLine.Split("!mp name \"a; b && c\""));
 
@@ -61,7 +61,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_AnEscapedQuoteInsideQuotes_DoesNotEndThem()
+	public void EscapedInQuotes_QuotesNotEnded()
 	{
 		var segment = Assert.Single(CommandLine.Split("!mp name \"a\\\";b\""));
 
@@ -69,7 +69,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_AnEscapedQuoteOutsideQuotes_DoesNotStartThem()
+	public void EscapedQuoteOutside_NoQuoteStart()
 	{
 		var segments = CommandLine.Split("!mp name \\\"a;!mp close");
 
@@ -77,7 +77,7 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Split_AQuoteThatNeverEnds_KeepsTheRestInTheSegment()
+	public void UnclosedQuote_RestInSegment()
 	{
 		var segment = Assert.Single(CommandLine.Split("!mp name \"a;b"));
 
@@ -85,38 +85,38 @@ public sealed class CommandLineTests
 	}
 
 	[Fact]
-	public void Tokenize_Words_AreSplitOnSpaces()
+	public void Words_SplitOnSpaces()
 	{
 		Assert.Equal(["mp", "move", "Alice", "3"], CommandLine.Tokenize("mp  move Alice 3"));
 	}
 
 	[Fact]
-	public void Tokenize_AQuotedString_IsOneWordWithoutItsQuotes()
+	public void QuotedString_OneWordUnquoted()
 	{
 		Assert.Equal(["mp", "name", "My room"], CommandLine.Tokenize("mp name \"My room\""));
 	}
 
 	[Fact]
-	public void Tokenize_AnEscapedQuote_IsAnOrdinaryCharacter()
+	public void EscapedQuote_OrdinaryCharacter()
 	{
 		Assert.Equal(["say", "\"hi"], CommandLine.Tokenize("say \\\"hi"));
 		Assert.Equal(["say", "a\"b"], CommandLine.Tokenize("say \"a\\\"b\""));
 	}
 
 	[Fact]
-	public void Tokenize_AnEscapedBackslash_IsOneBackslash()
+	public void AnEscapedBackslash_IsOneBackslash()
 	{
 		Assert.Equal(["path", "a\\b"], CommandLine.Tokenize(@"path a\\b"));
 	}
 
 	[Fact]
-	public void Tokenize_ABackslashBeforeAnotherCharacter_IsKept()
+	public void BackslashBeforeChar_Kept()
 	{
 		Assert.Equal(["path", "a\\b"], CommandLine.Tokenize("path a\\b"));
 	}
 
 	[Fact]
-	public void Tokenize_AQuoteThatNeverEnds_TakesTheRestAsOneWord()
+	public void UnclosedQuote_RestOneWord()
 	{
 		Assert.Equal(["mp", "name", "a b"], CommandLine.Tokenize("mp name \"a b"));
 	}

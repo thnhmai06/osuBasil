@@ -7,7 +7,7 @@ namespace Basil.Host.Rest.Tests.Users;
 public sealed class AuthTests(RestHostFixture fixture)
 {
 	[Fact]
-	public async Task Login_WithTheRightPassword_Answers201WithATokenThatNamesTheSession()
+	public async Task RightPassword_Answers201Token()
 	{
 		var user = await fixture.Host.CreateUserAsync("AuthOk");
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
@@ -37,7 +37,7 @@ public sealed class AuthTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_WithAWrongPassword_Answers401()
+	public async Task WrongPassword_Answers401()
 	{
 		await fixture.Host.CreateUserAsync("AuthBad");
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
@@ -51,7 +51,7 @@ public sealed class AuthTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TokenRoute_WithoutAToken_Answers401InTheEnvelope()
+	public async Task NoToken_Answers401Envelope()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -62,7 +62,7 @@ public sealed class AuthTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TokenRoute_WithAGarbageToken_Answers401()
+	public async Task GarbageToken_Answers401()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain, "garbage");
 
@@ -86,7 +86,7 @@ public sealed class AuthTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PublicRoute_WithoutAToken_Answers200()
+	public async Task WithoutAToken_Answers200()
 	{
 		var user = await fixture.Host.CreateUserAsync("AuthPublic");
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
@@ -98,7 +98,7 @@ public sealed class AuthTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task UnknownRoute_Answers404InTheEnvelope()
+	public async Task UnknownRoute_Answers404Envelope()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 

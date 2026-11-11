@@ -47,13 +47,13 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void Decide_NoScores_ReturnsNull()
+	public void NoScores_ReturnsNull()
 	{
 		Assert.Null(RoundResult.Decide(MakeRound(GameTeamType.HeadToHead), []));
 	}
 
 	[Fact]
-	public void Restore_HeadToHead_GivesBackWhatWasDecided()
+	public void HeadToHead_RestoreGivesBack()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 		var low = Play(round, 1, 1, 100);
@@ -69,7 +69,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void Restore_Team_GivesBackWhatWasDecided()
+	public void TeamRestore_GivesBackDecision()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 		var red = Play(round, 1, 1, 100, team: GameTeam.Red);
@@ -86,7 +86,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void Restore_TakesTheStoredWinnerNotAFreshDecision()
+	public void Restore_UsesStoredWinner()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 		var low = Play(round, 1, 1, 100);
@@ -100,7 +100,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void Decide_TeamModeRound_ReturnsTeamResult()
+	public void TeamModeRound_ReturnsTeamResult()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 
@@ -108,7 +108,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void HeadToHead_HigherScoreWins_NotDrawAndMarginIsDifference()
+	public void HigherScore_WinsByMargin()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 
@@ -120,7 +120,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void HeadToHead_EqualScores_IsDrawWithoutWinner()
+	public void EqualScores_DrawWithoutWinner()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 
@@ -132,7 +132,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void HeadToHead_SoleScoreOfZero_WinsAndIsNotDraw()
+	public void SoleZeroScore_WinsNotDraw()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 
@@ -143,7 +143,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void HeadToHead_PassedZeroAgainstFailed_PassedPlayerWins()
+	public void PassedZeroOnly_PasserWins()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 
@@ -154,7 +154,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void HeadToHead_EveryoneFailed_HigherFailedScoreWins()
+	public void AllFailed_HigherScoreWins()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 
@@ -165,7 +165,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void HeadToHead_TeamModeRound_Throws()
+	public void TeamModeRound_Throws()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 
@@ -173,7 +173,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void TeamVersus_HigherTeamTotalWins()
+	public void HigherTeamTotal_Wins()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 
@@ -189,7 +189,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void TeamVersus_EqualTotals_IsDrawWithoutWinner()
+	public void EqualTotals_DrawWithoutWinner()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 
@@ -201,7 +201,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void TeamVersus_SoleTeamWithZeroTotal_WinsAndIsNotDraw()
+	public void SoleZeroTotal_WinsNotDraw()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 
@@ -212,7 +212,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void TeamVersus_TeamWithoutScores_IsPresentWithZero()
+	public void ScorelessTeam_PresentWithZero()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 
@@ -223,7 +223,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void TeamVersus_TeamOfOnlyFailedPlayers_OpposingTeamWins()
+	public void AllFailedTeam_OpponentWins()
 	{
 		var round = MakeRound(GameTeamType.TeamVs);
 
@@ -234,7 +234,7 @@ public class RoundResultTests
 	}
 
 	[Fact]
-	public void TeamVersus_HeadToHeadRound_Throws()
+	public void HeadToHead_Throws()
 	{
 		var round = MakeRound(GameTeamType.HeadToHead);
 

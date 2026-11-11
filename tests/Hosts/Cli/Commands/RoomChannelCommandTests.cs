@@ -20,7 +20,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Channels_CreateSetListDelete_ChangeTheGeneralChannels()
+	public async Task CreateSetDelete_ChannelsChanged()
 	{
 		var name = "#" + CliFixture.Name("c");
 		var registry = fixture.Host.Services.GetRequiredService<GeneralChannelRegistry>();
@@ -42,7 +42,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Channels_PrivilegeMasksAreNumbers()
+	public async Task Channels_MasksNumbers()
 	{
 		var name = "#" + CliFixture.Name("p");
 
@@ -54,7 +54,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Channels_AnUnknownChannel_IsNotFound_AndAnInvalidNameIsInvalid()
+	public async Task UnknownChannel_NotFound()
 	{
 		Assert.Equal(1, (await fixture.RunAsync("channels #nothing-here set --topic x")).Code);
 		Assert.Equal(1, (await fixture.RunAsync("channels #nothing-here delete")).Code);
@@ -62,7 +62,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_Create_OpensARoomOfTheOperatorAndShowsIt()
+	public async Task RoomsCreate_OpenedShown()
 	{
 		var name = CliFixture.Name("room");
 
@@ -78,7 +78,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_LockAndUnlock_ChangeTheRoom()
+	public async Task RoomLockUnlock_Changed()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("lock"));
 
@@ -91,7 +91,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_NamePasswordPrivateSizeSet_ChangeTheSettings()
+	public async Task RoomSettings_Changed()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("set"));
 		var rename = CliFixture.Name("renamed");
@@ -115,7 +115,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_ASizeOutOfRange_IsInvalid_AndAMissingRequiredOptionIsAUsageError()
+	public async Task SizeBounds_Invalid()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("range"));
 
@@ -126,7 +126,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_Mods_AreReadAsAcronyms()
+	public async Task RoomMods_Acronyms()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("mods"));
 
@@ -137,7 +137,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_Refereeing_AddsAndRemovesAReferee()
+	public async Task Referee_AddedRemoved()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("ref"));
 		var name = CliFixture.Name("referee");
@@ -155,7 +155,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_CommandOnAnUnknownUser_IsRefusedAsAConflict()
+	public async Task UnknownUser_Conflict()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("ghost"));
 
@@ -166,7 +166,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_Close_RemovesTheRoom_AndAnUnknownRoomIsNotFound()
+	public async Task RoomClose_Removed()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("close"));
 
@@ -180,7 +180,7 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Matches_ListAndShow_PrintTheMatchOfARoom()
+	public async Task MatchesListShow_Printed()
 	{
 		var name = CliFixture.Name("match");
 		var id = await OpenRoomAsync(name);

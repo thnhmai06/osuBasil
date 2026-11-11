@@ -18,7 +18,7 @@ public sealed class ScopedServerSettingsTests
 	}
 
 	[Fact]
-	public async Task UpdateAsync_WithoutServerManageSettings_IsDenied()
+	public async Task NoManageRight_Denied()
 	{
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Plain");
@@ -29,7 +29,7 @@ public sealed class ScopedServerSettingsTests
 	}
 
 	[Fact]
-	public async Task UpdateAsync_GrantingDefaultPrivilegesTheCallerLacks_IsDeniedWithThoseAsMissing()
+	public async Task GrantsUnheldDefaults_DeniedAsMissing()
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "SettingsOnly",
@@ -42,7 +42,7 @@ public sealed class ScopedServerSettingsTests
 	}
 
 	[Fact]
-	public async Task UpdateAsync_GrantingDefaultPrivilegesTheCallerHolds_IsAccepted()
+	public async Task GrantsHeldDefaults_Accepted()
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "Both",
@@ -55,7 +55,7 @@ public sealed class ScopedServerSettingsTests
 	}
 
 	[Fact]
-	public async Task UpdateAsync_ChangingOtherSettings_NeedsNoDefaultPrivilegesHeld()
+	public async Task OtherSettings_NoDefaultsNeeded()
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "SettingsOnly",

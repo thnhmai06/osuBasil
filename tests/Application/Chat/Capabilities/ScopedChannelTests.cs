@@ -45,7 +45,7 @@ public sealed class ScopedChannelTests
 	#region Join and part
 
 	[Fact]
-	public async Task Join_OpenChannel_AddsMemberAndPublishesEvent()
+	public async Task OpenChannel_MemberAdded()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -61,7 +61,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task Join_AlreadyMember_ReturnsAlreadyMember()
+	public async Task AlreadyMember_ReturnsAlready()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -74,7 +74,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task Join_ChannelNeedsModeratorRole_PlayerIsRefused()
+	public async Task ModeratorChannel_PlayerRefused()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
@@ -88,7 +88,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task Join_ChannelNeedsModeratorRole_UserHoldingAModeratorPermissionIsAccepted()
+	public async Task ModeratorChannel_ModeratorAccepted()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
@@ -102,7 +102,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task Join_ClosedChannel_ReturnsClosed()
+	public async Task ClosedChannel_Closed()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -116,7 +116,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task Part_Member_RemovesItAndPublishesEvent()
+	public async Task PartMember_Removed()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -132,7 +132,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task Part_NotMember_ReturnsNotMember()
+	public async Task PartNonMember_NotMember()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -148,7 +148,7 @@ public sealed class ScopedChannelTests
 	#region Posting to a general channel
 
 	[Fact]
-	public async Task PostAsync_Member_PublishesTheMessageUnderTheirAccount()
+	public async Task PostMember_Published()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -166,7 +166,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_LongerThanTheLimit_IsCutAndFlagged()
+	public async Task PostTooLong_CutFlagged()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -181,7 +181,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_EmptyText_ReturnsEmptyAndPublishesNothing()
+	public async Task PostEmpty_NothingPublished()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -196,7 +196,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_WhitespaceOnlyText_IsPostedAsIs()
+	public async Task PostWhitespace_PostedAsIs()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -211,7 +211,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_NotAMember_ReturnsNotMember()
+	public async Task PostNonMember_NotMember()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -224,7 +224,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_WithoutChatPost_IsDeniedNamingChatPost()
+	public async Task PostNoPermission_Denied()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -239,7 +239,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_SilencedAuthor_ReturnsSilenced()
+	public async Task PostSilenced_Silenced()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -255,7 +255,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ChannelNeedsModeratorRoleToWrite_PlayerIsRefused()
+	public async Task PostModeratorChannel_PlayerRefused()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, write: UserPrivileges.Moderator);
@@ -272,7 +272,7 @@ public sealed class ScopedChannelTests
 	#region Private messages
 
 	[Fact]
-	public async Task PostAsync_ToOnlineUser_DeliversThePrivateMessage()
+	public async Task PostOnlineUser_Delivered()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("PmOwner", "password");
@@ -291,7 +291,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ToOfflineUser_IsRefused()
+	public async Task PostOfflineUser_Refused()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("OfflineOwner", "password");
@@ -306,7 +306,7 @@ public sealed class ScopedChannelTests
 	[Theory]
 	[InlineData("a\0b")]
 	[InlineData("\e[0m")]
-	public async Task PostAsync_ControlCharacters_ReturnsInvalidTextAndPublishesNothing(string text)
+	public async Task PostControl_InvalidText(string text)
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -321,7 +321,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ToUserWithAwayMessage_CarriesTheAwayReplyInTheSameEvent()
+	public async Task PostAway_ReplyInEvent()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("AwayOwner", "password");
@@ -338,7 +338,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_NoticeToUserWithAwayMessage_GetsNoAwayReply()
+	public async Task NoticeToAway_NoReply()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("NoticeOwner", "password");
@@ -353,7 +353,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_SenderWithoutChatPostPrivate_IsDeniedNamingIt()
+	public async Task PostNoPrivate_Denied()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("DeniedOwner", "password");
@@ -369,7 +369,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_RecipientBlockedTheSender_ReturnsBlocked()
+	public async Task PostBlocked_Blocked()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("Blocker", "password");
@@ -386,7 +386,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_BlockedSenderHoldingChatMessageAnyone_GetsThrough()
+	public async Task PostBlockedAnyone_GetsThrough()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("BlockerOfStaff", "password");
@@ -404,7 +404,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_FriendsOnlyRecipient_AcceptsFriendsAndRefusesStrangers()
+	public async Task PostFriendsOnly_FriendsAccepted()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOnly", "password");
@@ -427,7 +427,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_RecipientIsSilenced_ReturnsTargetSilenced()
+	public async Task PostRecipientSilenced_TargetSilenced()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("SilencedOwner", "password");
@@ -442,7 +442,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ToBasilBot_IsDeliveredEvenThoughTheBotHoldsNoPrivileges()
+	public async Task PostToBot_Delivered()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -457,7 +457,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task Join_OtherUsersPrivateMessageChannel_IsRefused()
+	public async Task OtherPrivateChannel_Refused()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("PmChannelOwner", "password");
@@ -474,7 +474,7 @@ public sealed class ScopedChannelTests
 	#region General channel management
 
 	[Fact]
-	public async Task ConfigureAsync_WithoutChatManageChannels_IsDeniedNamingIt()
+	public async Task ConfigureNoManage_Denied()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -488,7 +488,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_RaisingReadPrivileges_RemovesMembersWhoCanNoLongerReadAndReportsThem()
+	public async Task ConfigureRaiseRead_MembersRemoved()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -509,7 +509,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_WithoutChatManageChannels_IsDeniedAndLeavesTheChannelOpen()
+	public async Task DeleteNoManage_ChannelOpen()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -524,7 +524,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_Allowed_ClosesTheChannelRemovesMembersAndForgetsIt()
+	public async Task DeleteAllowed_Closed()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);

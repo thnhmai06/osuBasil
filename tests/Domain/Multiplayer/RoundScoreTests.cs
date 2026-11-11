@@ -45,7 +45,7 @@ public class RoundScoreTests
 	}
 
 	[Fact]
-	public void Constructor_TeamInTeamVersus_IsAccepted()
+	public void TeamVersusTeam_Accepted()
 	{
 		var score = new RoundScore(MakeScore(), MakeRound(GameTeamType.TeamVs), GameTeam.Red);
 
@@ -53,7 +53,7 @@ public class RoundScoreTests
 	}
 
 	[Fact]
-	public void Constructor_NoTeamInHeadToHead_IsAccepted()
+	public void HeadToHead_NoTeamAccepted()
 	{
 		var score = new RoundScore(MakeScore(), MakeRound(GameTeamType.HeadToHead), null);
 
@@ -64,7 +64,7 @@ public class RoundScoreTests
 	[InlineData(GameTeamType.TeamVs, null)]
 	[InlineData(GameTeamType.TagTeamVs, null)]
 	[InlineData(GameTeamType.HeadToHead, GameTeam.Blue)]
-	public void Constructor_TeamNotMatchingTheRound_ThrowsArgumentException(GameTeamType type, GameTeam? team)
+	public void MismatchedTeam_Throws(GameTeamType type, GameTeam? team)
 	{
 		Assert.Throws<ArgumentException>(() => new RoundScore(MakeScore(), MakeRound(type), team));
 	}

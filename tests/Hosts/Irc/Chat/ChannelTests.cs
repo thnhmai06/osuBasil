@@ -13,7 +13,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Join_ReadableChannel_SendsJoinTopicAndNames()
+	public async Task ReadableChannel_SendsJoinTopic()
 	{
 		Host.AddChannel("#lounge1", topic: "chill here");
 		using var irc = await Host.SignInAsync("JoLounge");
@@ -27,7 +27,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task AutoJoinChannel_IsJoinedOnceAtLogin()
+	public async Task AutoJoinChannel_JoinedOnce()
 	{
 		using var irc = await Host.SignInAsync("JoOnce");
 
@@ -37,7 +37,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_ChannelWithoutTopic_Sends331()
+	public async Task ChannelWithoutTopic_Sends331()
 	{
 		Host.AddChannel("#lounge2", topic: "");
 		using var irc = await Host.SignInAsync("JoNoTopic");
@@ -48,7 +48,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_UnknownChannel_Gets403()
+	public async Task JoinUnknownChannel_Gets403()
 	{
 		using var irc = await Host.SignInAsync("JoUnknown");
 
@@ -58,7 +58,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_ChannelTheUserMayNotRead_Gets473()
+	public async Task UnreadableChannel_Gets473()
 	{
 		Host.AddChannel("#staff1", UserPrivileges.Moderator);
 		using var irc = await Host.SignInAsync("JoStaff");
@@ -69,7 +69,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_SpectatorChannel_Gets473()
+	public async Task SpectatorChannel_Gets473()
 	{
 		using var irc = await Host.SignInAsync("JoSpec");
 
@@ -79,7 +79,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_AChannelAlreadyJoined_AddsNothing()
+	public async Task AlreadyJoinedChannel_AddsNothing()
 	{
 		using var irc = await Host.SignInAsync("JoTwice");
 
@@ -90,7 +90,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_CommaSeparatedList_JoinsEach()
+	public async Task CommaSeparatedList_JoinsEach()
 	{
 		Host.AddChannel("#lounge3");
 		Host.AddChannel("#lounge4");
@@ -103,7 +103,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_WithoutParameter_Gets461()
+	public async Task JoinWithoutParameter_Gets461()
 	{
 		using var irc = await Host.SignInAsync("JoNothing");
 
@@ -113,7 +113,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Part_JoinedChannel_EchoesPartToTheClient()
+	public async Task PartJoinedChannel_EchoedToClient()
 	{
 		using var irc = await Host.SignInAsync("PaLeave");
 
@@ -123,7 +123,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Part_ChannelTheClientIsNotIn_Gets442()
+	public async Task PartUnjoinedChannel_Gets442()
 	{
 		Host.AddChannel("#lounge5");
 		using var irc = await Host.SignInAsync("PaNotIn");
@@ -134,7 +134,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Part_UnknownChannel_Gets403()
+	public async Task PartUnknownChannel_Gets403()
 	{
 		using var irc = await Host.SignInAsync("PaUnknown");
 
@@ -144,7 +144,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Topic_ReadOnAJoinedChannel_Answers332()
+	public async Task JoinedChannelTopic_Answers332()
 	{
 		Host.AddChannel("#topical", topic: "the topic");
 		using var irc = await Host.SignInAsync("ToRead");
@@ -157,7 +157,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Topic_Set_Gets482()
+	public async Task TopicSet_Gets482()
 	{
 		using var irc = await Host.SignInAsync("ToSet");
 
@@ -167,7 +167,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Topic_OfAChannelTheClientIsNotIn_Gets442()
+	public async Task UnjoinedChannelTopic_Gets442()
 	{
 		Host.AddChannel("#topical2");
 		using var irc = await Host.SignInAsync("ToOutside");
@@ -178,7 +178,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Mode_ChannelQuery_Answers324WithNoModes()
+	public async Task ChannelModeQuery_Answers324()
 	{
 		using var irc = await Host.SignInAsync("MoQuery");
 
@@ -206,7 +206,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	[InlineData("KICK #ghost Somebody", "MoGh1")]
 	[InlineData("INVITE Somebody #ghost", "MoGh2")]
 	[InlineData("MODE #ghost", "MoGh3")]
-	public async Task ManagementCommand_OnAnUnknownChannel_Gets403(string line, string name)
+	public async Task UnknownChannelManagement_Gets403(string line, string name)
 	{
 		using var irc = await Host.SignInAsync(name);
 
@@ -216,7 +216,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Mode_OwnUser_AnswersAndOthersAreRefused()
+	public async Task OwnUserMode_AnswersOthersRefused()
 	{
 		using var irc = await Host.SignInAsync("MoSelf");
 
@@ -243,7 +243,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Line_LongerThanTheLimit_Gets417AndIsDropped()
+	public async Task OverlongLine_DroppedWith417()
 	{
 		using var irc = await Host.SignInAsync("LiLong");
 
@@ -255,7 +255,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Ping_IsAnsweredWithPongAndTheSameToken()
+	public async Task Ping_PongSameToken()
 	{
 		using var irc = await Host.SignInAsync("PiPong");
 
@@ -265,7 +265,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Keepalive_TheServerPingsAnIdleClientEveryTwoMinutes()
+	public async Task IdleClient_TwoMinutePing()
 	{
 		using var irc = await Host.SignInAsync("PiKeep");
 
@@ -275,7 +275,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Motd_WhenNoneIsSet_Answers422()
+	public async Task NoMotd_Answers422()
 	{
 		using var irc = await Host.SignInAsync("MoMotd");
 
@@ -285,7 +285,7 @@ public sealed class ChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Motd_WhenSet_IsSentLineByLine()
+	public async Task MotdSet_SentPerLine()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
 		var before = await settings.GetAsync(TestContext.Current.CancellationToken);

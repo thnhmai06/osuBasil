@@ -15,7 +15,7 @@ public sealed class TourneyTests(StableHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task TourneyClient_WithoutObservePermission_CannotLogin()
+	public async Task TourneyNoObserve_LoginDenied()
 	{
 		using var tourney = await Host.NewClientAsync("NoObserve", tourney: true);
 
@@ -25,7 +25,7 @@ public sealed class TourneyTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TourneyClient_Observing_GetsTheMatchAndItsRounds()
+	public async Task TourneyObserving_MatchAndRounds()
 	{
 		var creator = await Host.NewClientAsync("TourneyHost");
 		var player = await Host.NewClientAsync("TourneyPlayer");
@@ -72,7 +72,7 @@ public sealed class TourneyTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TourneyClient_JoiningAPrivateRoomItMayView_BecomesAnObserver()
+	public async Task TourneyJoinsViewable_BecomesObserver()
 	{
 		var (matchId, observer) = await PrivateRoomAndTourneyAsync("Yes",
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament | UserPrivileges.Tournament);

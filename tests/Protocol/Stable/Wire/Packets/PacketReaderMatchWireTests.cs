@@ -72,7 +72,7 @@ public class PacketReaderMatchWireTests
 	}
 
 	[Fact]
-	public void ReadMatch_QuitStatusInEverySlot_ReadsNoPlayerIds()
+	public void QuitEverySlot_NoPlayerIds()
 	{
 		// room id 40000, every slot marked quit (0x80), no occupied slots, so no player-id words follow.
 		var stream = MatchPayload(
@@ -94,7 +94,7 @@ public class PacketReaderMatchWireTests
 	}
 
 	[Fact]
-	public void ReadMatch_ReadyStatusReadsPlayerId_OtherStatusesDoNot()
+	public void ReadyStatus_OthersNotRead()
 	{
 		// slot 0 is ready (0x08), which carries a player id; quit (0x80), locked (0x02) and open (0x01) carry none.
 		var stream = MatchPayload(
@@ -119,7 +119,7 @@ public class PacketReaderMatchWireTests
 	}
 
 	[Fact]
-	public void ReadMatch_FreeModsOff_ReadsNoSlotMods()
+	public void FreeModsOff_NoSlotMods()
 	{
 		var stream = MatchPayload(
 			40_000,
@@ -139,7 +139,7 @@ public class PacketReaderMatchWireTests
 	}
 
 	[Fact]
-	public void ReadMatch_FreeModsOn_ReadsASlotModWordPerSlot()
+	public void FreeModsOn_SlotModWords()
 	{
 		var stream = MatchPayload(
 			40_000,

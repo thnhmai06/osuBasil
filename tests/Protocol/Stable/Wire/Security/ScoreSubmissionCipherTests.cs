@@ -54,7 +54,7 @@ public class ScoreSubmissionCipherTests
 
 	[Theory]
 	[MemberData(nameof(RoundTripCases))]
-	public void Decrypt_CipherTextFromADocumentedKeyAndVector_RestoresThePlaintext(
+	public void DocumentedKeyVector_RestoresPlaintext(
 		string osuVersion,
 		string plaintext)
 	{
@@ -66,7 +66,7 @@ public class ScoreSubmissionCipherTests
 	}
 
 	[Fact]
-	public void Decrypt_InitializationVectorOfWrongLength_ThrowsArgumentException()
+	public void WrongIvLength_ThrowsArgument()
 	{
 		var (ciphertext, iv) = Encrypt("body", "20240815");
 		var shortIv = Convert.ToBase64String(Convert.FromBase64String(iv)[..31]);
@@ -76,7 +76,7 @@ public class ScoreSubmissionCipherTests
 
 	[Theory]
 	[MemberData(nameof(InvalidKeyLengths))]
-	public void Decrypt_KeyOfUndocumentedLength_ThrowsArgumentException(string osuVersion)
+	public void UndocumentedKeyLength_ThrowsArgument(string osuVersion)
 	{
 		var key = Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}");
 		var iv = Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray());
@@ -87,7 +87,7 @@ public class ScoreSubmissionCipherTests
 	}
 
 	[Fact]
-	public void Decrypt_CipherTextNotOnABlockBoundary_ThrowsDataLengthException()
+	public void UnblockedCiphertext_ThrowsDataLength()
 	{
 		var (ciphertextBase64, iv) = Encrypt("body", "20240815");
 		var truncated = Convert.ToBase64String(Convert.FromBase64String(ciphertextBase64)[..5]);
@@ -96,7 +96,7 @@ public class ScoreSubmissionCipherTests
 	}
 
 	[Fact]
-	public void Decrypt_CipherTextWithCorruptedPadding_ThrowsInvalidCipherTextException()
+	public void CorruptedPadding_ThrowsInvalidCipher()
 	{
 		// One exact block of CBC ciphertext whose final plaintext byte is 0x00, encrypted without padding.
 		// PKCS#7 unpadding then sees a padding byte of zero and rejects the ciphertext deterministically.
@@ -119,7 +119,7 @@ public class ScoreSubmissionCipherTests
 
 	[Theory]
 	[MemberData(nameof(MalformedBase64))]
-	public void Decrypt_MalformedBase64Argument_ThrowsFormatException(string ciphertext, string iv)
+	public void MalformedBase64_ThrowsFormat(string ciphertext, string iv)
 	{
 		Assert.Throws<FormatException>(() => ScoreSubmissionCipher.Decrypt(ciphertext, iv, "20240815"));
 	}

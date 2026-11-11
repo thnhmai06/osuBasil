@@ -22,19 +22,19 @@ public class BeatmapsetTests
 	}
 
 	[Fact]
-	public void IsLocallyIngested_IdBelowFloor_ReturnsFalse()
+	public void IdBelowFloor_ReturnsFalse()
 	{
 		Assert.False(Make(999_999_999).IsLocallyIngested);
 	}
 
 	[Fact]
-	public void IsLocallyIngested_IdAtFloor_ReturnsTrue()
+	public void IdAtFloor_ReturnsTrue()
 	{
 		Assert.True(Make(1_000_000_000).IsLocallyIngested);
 	}
 
 	[Fact]
-	public void IsLocallyIngested_IdAboveFloor_ReturnsTrue()
+	public void IdAboveFloor_ReturnsTrue()
 	{
 		Assert.True(Make(1_000_000_001).IsLocallyIngested);
 	}

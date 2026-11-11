@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Users.Tests.Handlers;
 public sealed class SessionEndHandlerTests
 {
 	[Fact]
-	public async Task Handle_UserConnectionClosed_StoresTheEndedSession()
+	public async Task ConnectionClosed_StoresEndedSession()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Leaver", "password"), SessionType.Stable);
@@ -26,7 +26,7 @@ public sealed class SessionEndHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_WhenTheSessionCannotBeStored_CountsTheFailureAndDoesNotThrow()
+	public async Task SessionStoreFailure_CountedNoThrow()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Unstored", "password"), SessionType.Stable);

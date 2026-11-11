@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Users.Tests.Handlers;
 public sealed class ConnectionHandlerTests
 {
 	[Fact]
-	public async Task Handle_UserConnectionClosed_StopsSpectating()
+	public async Task ConnectionClosed_StopsSpectating()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");

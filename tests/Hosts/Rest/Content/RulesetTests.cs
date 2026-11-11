@@ -10,7 +10,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 		UserPrivilegesExtensions.Default | UserPrivileges.Developer;
 
 	[Fact]
-	public async Task Version_IsPublic_AndNamesTheAppAndTheRulesetVersion()
+	public async Task RulesetVersion_PublicAndNamed()
 	{
 		using var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -22,7 +22,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task RulesetVersion_NeedsAToken_AndTheSettingsPermission_AndShowsNoStagedVersion()
+	public async Task StagedVersion_NeedsTokenPermission()
 	{
 		var (manager, _) = await fixture.SignInAsync("RulesetManager", Manager);
 		var (plain, _) = await fixture.SignInAsync("RulesetPlain");
@@ -44,7 +44,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task RulesetUpdate_ByAPlainUser_Answers403WithTheMissingMask()
+	public async Task PlainUserUpdate_Answers403Mask()
 	{
 		var (plain, _) = await fixture.SignInAsync("RulesetUpdPlain");
 		using (plain)
@@ -57,7 +57,7 @@ public sealed class RulesetTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Reload_Answers202ToAManager_AndRefusesAPlainUserAndAnonymous()
+	public async Task Reload_ManagerOnly()
 	{
 		var (manager, _) = await fixture.SignInAsync("ReloadManager", Manager);
 		var (plain, _) = await fixture.SignInAsync("ReloadPlain");

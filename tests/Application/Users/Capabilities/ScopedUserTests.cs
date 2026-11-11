@@ -11,7 +11,7 @@ public sealed class ScopedUserTests
 {
 
 	[Fact]
-	public async Task SetPrivilegesAsync_GrantExceedsActorsPrivileges_NamesTheMissingPrivilege()
+	public async Task GrantExceedsActor_NamesMissing()
 	{
 		using var app = new TestApplication();
 		var actorPrivileges = UserPrivilegesExtensions.Default | UserPrivileges.Owner |
@@ -29,7 +29,7 @@ public sealed class ScopedUserTests
 	}
 
 	[Fact]
-	public async Task SetAwayAndPmPrivate_OtherConnectionCannotChangeUsersSettings()
+	public async Task AwayPmPrivate_OtherCannotChange()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("SettingsOwner", "password");
@@ -48,7 +48,7 @@ public sealed class ScopedUserTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_DeletedAccount_StaysDeletedAndClosesConnections()
+	public async Task DeletedAccount_StaysDeletedCloses()
 	{
 		using var app = new TestApplication();
 		var actorRecord = await app.CreateUserAsync("DeleteModerator", "password", UserPrivilegesExtensions.All);

@@ -20,7 +20,7 @@ public sealed class HostLabelsTests
 	[InlineData("api.evil.test", HostLabels.Other)]
 	[InlineData("xapi.basil.test", HostLabels.Other)]
 	[InlineData("", HostLabels.Other)]
-	public void A_host_maps_to_its_label(string host, string expected)
+	public void KnownHost_MapsToLabel(string host, string expected)
 	{
 		Assert.Equal(expected, HostLabels.Resolve(host, Domain));
 	}

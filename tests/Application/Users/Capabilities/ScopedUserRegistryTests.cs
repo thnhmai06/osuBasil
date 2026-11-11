@@ -12,7 +12,7 @@ public sealed class ScopedUserRegistryTests
 	private static Md5 Hash => new("0123456789abcdef0123456789abcdef");
 
 	[Fact]
-	public async Task CreateAccountAsync_ActorLacksUserManage_NamesTheMissingPermission()
+	public async Task CreateNoManage_Named()
 	{
 		using var app = new TestApplication();
 		var actorRecord = await app.CreateUserAsync("NoAccountManage", "password");
@@ -26,7 +26,7 @@ public sealed class ScopedUserRegistryTests
 	}
 
 	[Fact]
-	public async Task CreateAccountAsync_RequestedPermissionNotHeld_NamesTheMissingPermission()
+	public async Task CreateNotHeld_Named()
 	{
 		using var app = new TestApplication();
 		var privileges = UserPrivilegesExtensions.Default | UserPrivileges.Owner;
@@ -41,7 +41,7 @@ public sealed class ScopedUserRegistryTests
 	}
 
 	[Fact]
-	public async Task CreateAccountAsync_AllowedPermissionsWithinActorsGrant_CreatesAccount()
+	public async Task CreateWithinGrant_Created()
 	{
 		using var app = new TestApplication();
 		var actorRecord = await app.CreateUserAsync("AccountManager", "password", UserPrivilegesExtensions.All);
@@ -56,7 +56,7 @@ public sealed class ScopedUserRegistryTests
 	}
 
 	[Fact]
-	public async Task CreateAccountAsync_NoPermissionsAsked_GrantsTheConfiguredDefault()
+	public async Task CreateNoPermissions_Default()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("DefaultMgr", "password",
@@ -74,7 +74,7 @@ public sealed class ScopedUserRegistryTests
 	}
 
 	[Fact]
-	public async Task CreateAccountAsync_PermissionsAsked_WinOverTheConfiguredDefault()
+	public async Task CreateAsked_OverDefault()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("ExplicitMgr", "password",
@@ -92,7 +92,7 @@ public sealed class ScopedUserRegistryTests
 	}
 
 	[Fact]
-	public async Task CreateAccountAsync_DuplicateName_ReturnsNameTaken()
+	public async Task CreateDuplicate_NameTaken()
 	{
 		using var app = new TestApplication();
 		var actorRecord = await app.CreateUserAsync("DupManager", "password", UserPrivilegesExtensions.All);

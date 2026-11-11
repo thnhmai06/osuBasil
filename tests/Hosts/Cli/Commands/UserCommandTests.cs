@@ -22,7 +22,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_StoresTheAccountWithTheDefaultPrivilegesAndAPassword()
+	public async Task Create_DefaultsAndPassword()
 	{
 		var name = CliFixture.Name("create");
 
@@ -36,7 +36,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_WithAdmin_GivesEveryPermission_AndWithPermissions_GivesTheMask()
+	public async Task CreateAdminMask_AppliesMasks()
 	{
 		var admin = CliFixture.Name("admin");
 		var mask = CliFixture.Name("mask");
@@ -50,7 +50,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_ATakenName_IsRefusedWithCode1AndTheApiCode()
+	public async Task CreateTakenName_Refused()
 	{
 		var name = CliFixture.Name("taken");
 		await fixture.RunAsync($"users create --username {name} --password pw");
@@ -62,7 +62,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_WithoutAPassword_IsAUsageErrorWithCode2()
+	public async Task CreateNoPassword_UsageError()
 	{
 		var (code, text) = await fixture.RunAsync("users create --username nopass");
 
@@ -71,7 +71,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Show_PrintsTheAccountWithTheNamesOfItsPrivileges()
+	public async Task Show_PrintsPrivilegeNames()
 	{
 		var name = CliFixture.Name("show");
 		await fixture.RunAsync(
@@ -87,7 +87,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Show_AnUnknownAccount_IsNotFound()
+	public async Task ShowUnknownAccount_NotFound()
 	{
 		var (code, text) = await fixture.RunAsync("users 999999");
 
@@ -96,7 +96,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_FiltersWithTheSearchSyntax_AndPrintsATableWithItsPosition()
+	public async Task ListSearch_PrintsPositionedTable()
 	{
 		var name = CliFixture.Name("listed");
 		await fixture.RunAsync($"users create --username {name} --password pw");
@@ -109,7 +109,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_WithALimitOver100_IsInvalid()
+	public async Task ListLimitOver100_Invalid()
 	{
 		var (code, _) = await fixture.RunAsync("users list --limit 101");
 
@@ -117,7 +117,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Set_ChangesOnlyTheGivenFields()
+	public async Task Set_OnlyGivenFields()
 	{
 		var name = CliFixture.Name("set");
 		var renamed = name + "x";
@@ -137,7 +137,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Set_Password_ReplacesThePassword()
+	public async Task SetPassword_Replaced()
 	{
 		var name = CliFixture.Name("pass");
 		await fixture.RunAsync($"users create --username {name} --password old");
@@ -151,7 +151,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Set_AwayAndPmPrivate_AreSetForTheAccount()
+	public async Task SetAwayPm_Applied()
 	{
 		var name = CliFixture.Name("away");
 		await fixture.Host.CreateUserAsync(name);
@@ -168,7 +168,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Set_AWrongCountry_IsInvalid()
+	public async Task SetWrongCountry_Invalid()
 	{
 		var name = CliFixture.Name("country");
 		await fixture.RunAsync($"users create --username {name} --password pw");
@@ -180,7 +180,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Set_PermissionsOnBasilBot_IsRefusedAsASystemAccount()
+	public async Task BotPermissions_SystemRefused()
 	{
 		var (code, text) =
 			await fixture.RunAsync($"users {BasilBot.Id} set --privileges {(ulong)UserPrivilegesExtensions.All}");
@@ -190,7 +190,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Set_OnAnAdministrator_Works_BecauseTheConsoleOutranksEveryone()
+	public async Task AdminSet_ConsoleAllowed()
 	{
 		var name = CliFixture.Name("rank");
 		await fixture.RunAsync($"users create --username {name} --password pw --admin");
@@ -205,7 +205,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	[Theory]
 	[InlineData("friends")]
 	[InlineData("blocks")]
-	public async Task Relationships_OfAnotherAccount_CannotBeChangedFromTheConsole(string word)
+	public async Task OtherRelationships_DeniedInConsole(string word)
 	{
 		var owner = await NewAsync($"{word[0]}o");
 		var other = await NewAsync($"{word[0]}t");
@@ -221,7 +221,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Silence_AndUnsilence_SetAndClearTheEndOfTheSilence()
+	public async Task SilenceAndUnsilence_SetsAndClears()
 	{
 		var user = await NewAsync("sl");
 
@@ -237,7 +237,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Silence_AWrongDuration_IsInvalid()
+	public async Task SilenceWrongDuration_Invalid()
 	{
 		var user = await NewAsync("sw");
 
@@ -247,7 +247,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Sessions_ListShowAndClose_WorkForAnOnlineApiSession()
+	public async Task SessionCommands_ApiSessionWorks()
 	{
 		var name = CliFixture.Name("sess");
 		await fixture.Host.CreateUserAsync(name);
@@ -270,7 +270,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Sessions_Connections_ListTheTrailOfOneSession()
+	public async Task SessionConnections_TrailListed()
 	{
 		var name = CliFixture.Name("trail");
 		await fixture.Host.CreateUserAsync(name);
@@ -289,7 +289,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Sessions_DeleteAll_ClosesEverySessionOfTheAccount()
+	public async Task DeleteAllSessions_AllClosed()
 	{
 		var name = CliFixture.Name("sessall");
 		await fixture.Host.CreateUserAsync(name);
@@ -303,7 +303,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Delete_RemovesTheAccountForGood()
+	public async Task Delete_AccountGone()
 	{
 		var user = await NewAsync("del");
 
@@ -316,7 +316,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_OfAnUnknownAccount_IsNotFound()
+	public async Task AvatarUnknownAccount_NotFound()
 	{
 		var (code, _) = await fixture.RunAsync("users 999999 avatar delete");
 

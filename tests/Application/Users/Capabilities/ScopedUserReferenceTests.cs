@@ -41,7 +41,7 @@ public sealed class ScopedUserReferenceTests
 
 	[Theory]
 	[MemberData(nameof(ViewNames))]
-	public async Task View_CallerWithoutThePrivilegeOverAnotherId_IsDeniedWhetherOrNotTheAccountExists(string view)
+	public async Task ViewNoPrivilege_AlwaysDenied(string view)
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -58,7 +58,7 @@ public sealed class ScopedUserReferenceTests
 
 	[Theory]
 	[MemberData(nameof(ViewNames))]
-	public async Task View_PermittedCallerOverAMissingId_GetsNotFound(string view)
+	public async Task ViewMissing_NotFound(string view)
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
@@ -70,7 +70,7 @@ public sealed class ScopedUserReferenceTests
 	}
 
 	[Fact]
-	public async Task Relationships_OverAMissingId_AreNotFound()
+	public async Task MissingRelationship_NotFound()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Friendly", "password"));
@@ -81,7 +81,7 @@ public sealed class ScopedUserReferenceTests
 	}
 
 	[Fact]
-	public async Task OpenIrcAsync_OverAnotherId_IsNotSelfWhetherOrNotTheAccountExists()
+	public async Task IrcOpenOther_NotSelf()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Irc", "password"));
@@ -95,7 +95,7 @@ public sealed class ScopedUserReferenceTests
 	}
 
 	[Fact]
-	public async Task Names_ByNameIgnoringCaseAndUnderscores_FindsTheSameAccount()
+	public async Task NameLookup_IgnoresCaseUnderscores()
 	{
 		using var app = new TestApplication();
 		var account = await app.CreateUserAsync("Some Name", "password");

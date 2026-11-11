@@ -36,7 +36,7 @@ public sealed class ScopedScoreSubmitterTests
 	}
 
 	[Fact]
-	public async Task SubmitAsync_OnABeatmapTheServerDoesNotHaveAndNoRound_IsRejectedAsUnknownBeatmap()
+	public async Task UnknownBeatmap_Rejected()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("UnknownMap", "password");

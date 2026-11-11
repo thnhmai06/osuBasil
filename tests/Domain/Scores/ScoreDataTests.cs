@@ -15,13 +15,13 @@ public class ScoreDataTests
 	}
 
 	[Fact]
-	public void TotalScore_Negative_Constructor_Throws()
+	public void NegativeScoreConstructor_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(totalScore: -1));
 	}
 
 	[Fact]
-	public void TotalScore_Negative_With_Throws()
+	public void NegativeScoreWith_Throws()
 	{
 		var score = Make();
 
@@ -30,19 +30,19 @@ public class ScoreDataTests
 	}
 
 	[Fact]
-	public void UserId_Zero_Constructor_Throws()
+	public void ZeroUserId_ConstructorThrows()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(0));
 	}
 
 	[Fact]
-	public void UserId_Negative_Constructor_Throws()
+	public void NegativeUserId_ConstructorThrows()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(-1));
 	}
 
 	[Fact]
-	public void UserId_Negative_With_Throws()
+	public void NegativeUserId_WithThrows()
 	{
 		var score = Make(5);
 
@@ -50,19 +50,19 @@ public class ScoreDataTests
 	}
 
 	[Fact]
-	public void UserId_Unknown_IsAccepted()
+	public void UnknownUserId_Accepted()
 	{
 		Assert.Null(Make().UserId);
 	}
 
 	[Fact]
-	public void Mode_Undefined_Constructor_Throws()
+	public void UndefinedModeConstructor_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(mode: (GameMode)200));
 	}
 
 	[Fact]
-	public void Mode_Undefined_With_Throws()
+	public void UndefinedModeWith_Throws()
 	{
 		var score = Make();
 
@@ -70,13 +70,13 @@ public class ScoreDataTests
 	}
 
 	[Fact]
-	public void Grade_Undefined_Constructor_Throws()
+	public void UndefinedGradeConstructor_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(grade: (Grade)200));
 	}
 
 	[Fact]
-	public void Grade_Undefined_With_Throws()
+	public void UndefinedGradeWith_Throws()
 	{
 		var score = Make();
 

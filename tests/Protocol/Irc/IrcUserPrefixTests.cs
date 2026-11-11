@@ -5,7 +5,7 @@ namespace Basil.Protocol.Irc.Tests;
 public class IrcUserPrefixTests
 {
 	[Fact]
-	public void TryParse_NickOnly_ReturnsTheNickWithoutUserOrHost()
+	public void NickOnly_ReturnsNickAlone()
 	{
 		Assert.True(IrcUserPrefix.TryParse("alice", null, out var prefix));
 
@@ -15,7 +15,7 @@ public class IrcUserPrefixTests
 	}
 
 	[Fact]
-	public void TryParse_NickAndHost_ReturnsTheNickAndHostWithoutUser()
+	public void NickAndHost_ReturnsNickHost()
 	{
 		Assert.True(IrcUserPrefix.TryParse("alice@basil", null, out var prefix));
 
@@ -25,7 +25,7 @@ public class IrcUserPrefixTests
 	}
 
 	[Fact]
-	public void TryParse_NickUserHost_ReturnsEveryPart()
+	public void NickUserHost_ReturnsEveryPart()
 	{
 		Assert.True(IrcUserPrefix.TryParse("alice!alice@basil", null, out var prefix));
 
@@ -42,19 +42,19 @@ public class IrcUserPrefixTests
 	[InlineData("!alice@basil")]
 	[InlineData("alice!alice")]
 	[InlineData("alice!alice@")]
-	public void TryParse_MalformedPrefix_ReturnsFalse(string text)
+	public void MalformedPrefix_ReturnsFalse(string text)
 	{
 		Assert.False(IrcUserPrefix.TryParse(text, null, out _));
 	}
 
 	[Fact]
-	public void TryParse_Null_ReturnsFalse()
+	public void Null_ReturnsFalse()
 	{
 		Assert.False(IrcUserPrefix.TryParse(null, null, out _));
 	}
 
 	[Fact]
-	public void TryParse_MalformedPrefix_ReturnsTheDefaultPrefix()
+	public void Malformed_ReturnsDefault()
 	{
 		Assert.False(IrcUserPrefix.TryParse("@basil", null, out var prefix));
 
@@ -62,13 +62,13 @@ public class IrcUserPrefixTests
 	}
 
 	[Fact]
-	public void Parse_MalformedPrefix_ThrowsFormatException()
+	public void MalformedPrefix_ThrowsFormatException()
 	{
 		Assert.Throws<FormatException>(() => IrcUserPrefix.Parse("alice!alice", null));
 	}
 
 	[Fact]
-	public void Constructor_UserWithoutHost_ThrowsArgumentException()
+	public void UserWithoutHost_ThrowsArgumentException()
 	{
 		Assert.Throws<ArgumentException>(() => new IrcUserPrefix("alice", "alice"));
 	}
@@ -87,13 +87,13 @@ public class IrcUserPrefixTests
 	[InlineData("alice")]
 	[InlineData("alice@basil")]
 	[InlineData("alice!alice@basil")]
-	public void Parse_ThenToString_ReturnsTheSameText(string text)
+	public void RoundTrip_ReturnsSameText(string text)
 	{
 		Assert.Equal(text, IrcUserPrefix.Parse(text, null).ToString());
 	}
 
 	[Fact]
-	public void ToString_NickOnly_ReturnsTheNick()
+	public void NickOnly_ReturnsTheNick()
 	{
 		var prefix = new IrcUserPrefix("alice");
 
@@ -101,7 +101,7 @@ public class IrcUserPrefixTests
 	}
 
 	[Fact]
-	public void ToString_NickAndHost_ReturnsNickAtHost()
+	public void NickAndHost_NickAtHost()
 	{
 		var prefix = new IrcUserPrefix("alice", null, "basil");
 
@@ -109,7 +109,7 @@ public class IrcUserPrefixTests
 	}
 
 	[Fact]
-	public void ToString_NickUserAndHost_ReturnsNickUserHost()
+	public void NickUserHost_ReturnsFull()
 	{
 		var prefix = new IrcUserPrefix("alice", "alice", "basil");
 

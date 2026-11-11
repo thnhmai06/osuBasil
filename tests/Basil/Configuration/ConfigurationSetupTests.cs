@@ -14,7 +14,7 @@ public sealed class ConfigurationSetupTests
 	private const string EnvironmentValue = "Host=environment;Username=environment";
 
 	[Fact]
-	public void AnEnvironmentVariableWinsOverTheConfigurationFile()
+	public void EnvironmentVariable_WinsOverFile()
 	{
 		var file = Path.Combine(ConfigurationSetup.Directory, "appsettings.json");
 		var previous = File.Exists(file) ? File.ReadAllText(file) : null;

@@ -42,7 +42,7 @@ public sealed class ServerLoggingTests : IDisposable
 	}
 
 	[Fact]
-	public void TheDefaultLevelAppliesToASourceWithoutAnEntry()
+	public void DefaultLevel_AppliesNoEntry()
 	{
 		var logger = Logger("Basil.Logging.LoginLog");
 
@@ -51,7 +51,7 @@ public sealed class ServerLoggingTests : IDisposable
 	}
 
 	[Fact]
-	public void ASourceWithAnEntryUsesItsOwnLevel()
+	public void SourceWithEntry_OwnLevel()
 	{
 		var logger = Logger("Microsoft.AspNetCore.Hosting.Diagnostics");
 
@@ -60,7 +60,7 @@ public sealed class ServerLoggingTests : IDisposable
 	}
 
 	[Fact]
-	public void AChangeToTheLevelsAppliesToLoggersThatAlreadyExist()
+	public void LevelChange_AppliesExistingLoggers()
 	{
 		var logger = Logger("Basil.Logging.LoginLog");
 		Assert.False(logger.IsEnabled(LogLevel.Debug));

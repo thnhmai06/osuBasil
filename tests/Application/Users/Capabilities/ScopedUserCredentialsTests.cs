@@ -40,7 +40,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_OfOwnAccount_ReplacesThePasswordAndSignsOutEveryOtherSession()
+	public async Task OwnAccount_SignsOutOthers()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Changer", "old");
@@ -65,7 +65,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_WithIncludeCurrent_SignsOutTheCallingSessionToo()
+	public async Task IncludeCurrent_SignsOutCaller()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Everything", "old");
@@ -80,7 +80,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_ToTheSamePassword_SignsNobodyOut()
+	public async Task SamePassword_SignsNobodyOut()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Same", "old");
@@ -96,7 +96,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_OfOwnAccountWithAWrongCurrentPassword_ChangesNothing()
+	public async Task OwnWrongCurrent_NothingChanged()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Wrong", "old");
@@ -112,7 +112,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_OfOwnAccountWithoutTheCurrentPassword_ChangesNothing()
+	public async Task OwnNoCurrent_NothingChanged()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Missing", "old");
@@ -125,7 +125,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_ByStaff_NeedsNoCurrentPassword_SignsOutEverythingAndRecordsIt()
+	public async Task StaffNoCurrent_SignsOutAll()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
@@ -147,7 +147,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_ByAUserWithoutUserManage_NamesTheMissingPermission()
+	public async Task UserWithoutManage_NamesPermission()
 	{
 		using var app = new TestApplication();
 		var other = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
@@ -160,7 +160,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_ByStaffOfEqualRank_IsRefused()
+	public async Task EqualRankStaff_Refused()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -173,7 +173,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_WhileProfilesAreLocked_RefusesAUserWhoDoesNotManageAccounts()
+	public async Task LockedProfiles_NonManagerRefused()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Profiles });
@@ -188,7 +188,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_WhileProfilesAreLocked_LetsAnAccountManagerChangeTheirOwn()
+	public async Task LockedProfiles_ManagerChangesOwn()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Profiles });
@@ -204,7 +204,7 @@ public sealed class ScopedUserCredentialsTests
 	}
 
 	[Fact]
-	public async Task ChangePasswordAsync_OfBasilBot_IsRefusedForEveryone()
+	public async Task BasilBotPassword_RefusedForAll()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));

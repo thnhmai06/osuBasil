@@ -15,7 +15,7 @@ namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 public sealed class MpSettingsTests
 {
 	[Fact]
-	public async Task Settings_OfANewRoom_ListsTheRoomTheCreatorAndTheHostInOrder()
+	public async Task NewRoom_CreatorAndHost()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -35,7 +35,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Settings_WithTwoSeatedPlayers_ListsOneSlotLinePerPlayerInSlotOrder()
+	public async Task TwoSeatedPlayers_SlotLines()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -57,7 +57,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Lock_ByTheCreator_SaysTheMatchIsLockedAndLocksIt()
+	public async Task ByCreator_LockedAndLocks()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -71,7 +71,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Unlock_ByTheCreatorOfALockedRoom_SaysTheMatchIsUnlockedAndUnlocksIt()
+	public async Task LockedByCreator_Unlocks()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -88,7 +88,7 @@ public sealed class MpSettingsTests
 	[Theory]
 	[InlineData(false, "public")]
 	[InlineData(true, "private")]
-	public async Task Private_WithoutAnArgument_SaysWhetherTheRoomIsPrivate(bool isPrivate, string privacy)
+	public async Task NoArgument_SaysWhetherPrivate(bool isPrivate, string privacy)
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -101,7 +101,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Private_WithOne_MakesTheRoomPrivateAndSaysSo()
+	public async Task WithOne_PrivateAndSays()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -115,7 +115,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Private_WithZero_MakesTheRoomPublicAndSaysSo()
+	public async Task WithZero_PublicAndSays()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -131,7 +131,7 @@ public sealed class MpSettingsTests
 	[Theory]
 	[InlineData("!mp private 2")]
 	[InlineData("!mp private abc")]
-	public async Task Private_WithSomethingOtherThanZeroOrOne_SaysHowToUseItAndChangesNothing(string message)
+	public async Task OtherValue_UsageNoChange(string message)
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -145,7 +145,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Size_WithEight_SaysTheNewSizeAndLeavesEightUsableSlots()
+	public async Task WithEight_SaysNewSize()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -163,7 +163,7 @@ public sealed class MpSettingsTests
 	[InlineData("!mp size 17")]
 	[InlineData("!mp size x")]
 	[InlineData("!mp size")]
-	public async Task Size_OutsideOneToSixteenOrNotANumber_SaysHowToUseItAndChangesNothing(string message)
+	public async Task OutOfRange_UsageNoChange(string message)
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -177,7 +177,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Name_WithAText_RenamesTheRoomAndSaysSo()
+	public async Task WithText_RenamesAndSays()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -191,7 +191,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Name_WithoutAText_SaysHowToUseItAndKeepsTheName()
+	public async Task WithoutText_UsageKeepsName()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -205,7 +205,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Password_WithAText_SaysItChangedAndMakesJoiningNeedIt()
+	public async Task WithText_ChangedJoinNeeds()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -224,7 +224,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Password_WithoutAText_SaysItWasRemovedAndMakesJoiningNeedNone()
+	public async Task WithoutText_RemovedNoPassword()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -242,7 +242,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Set_WithTeamModeWinConditionAndSize_ChangesAllThreeAndSaysWhatTheRoomNowHas()
+	public async Task AllThreeGiven_ChangesAll()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -267,7 +267,7 @@ public sealed class MpSettingsTests
 	}
 
 	[Fact]
-	public async Task Set_WithOnlyTheTeamMode_ChangesItAndSaysNoSize()
+	public async Task OnlyTeamMode_ChangesNoSize()
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -293,7 +293,7 @@ public sealed class MpSettingsTests
 	[Theory]
 	[InlineData("!mp set")]
 	[InlineData("!mp set 9")]
-	public async Task Set_WithoutAValidTeamMode_SaysHowToUseItAndChangesNothing(string message)
+	public async Task InvalidTeamMode_UsageNoChange(string message)
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -313,7 +313,7 @@ public sealed class MpSettingsTests
 	[InlineData("!mp name Other")]
 	[InlineData("!mp password x")]
 	[InlineData("!mp set 2")]
-	public async Task SettingsChange_ByAPlainPlayer_IsRefusedAndChangesNothing(string message)
+	public async Task PlainPlayer_RefusedNoChange(string message)
 	{
 		using var bot = new BotHarness();
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");

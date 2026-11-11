@@ -14,7 +14,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Login_Session_RoomCommands_AndTheLiveRoomStream()
+	public async Task LoginSession_RoomsAndStream()
 	{
 		var user = await Host.CreateUserAsync("E2eRestRooms");
 		using var rest = new RestClient(Host.Url, Host.Domain);
@@ -56,7 +56,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task TheMatchReport_IsPublicWhileRunning_And204_AnswersAReconnectAfterTheLastEvent()
+	public async Task MatchReport_Public204Reconnect()
 	{
 		await Host.CreateUserAsync("E2eRestMatches");
 		using var owner = new RestClient(Host.Url, Host.Domain);
@@ -94,7 +94,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task Spectate_OverTheApi_SendsOneBundleForTheFramesOfTheSecond()
+	public async Task Spectate_BundlePerSecond()
 	{
 		using var player = await Host.NewClientAsync("E2eSpecPlayer");
 		await player.LoginAsync();
@@ -121,7 +121,7 @@ public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task AProtectedRoute_WithoutAToken_Answers401()
+	public async Task WithoutAToken_Answers401()
 	{
 		using var anon = new RestClient(Host.Url, Host.Domain);
 

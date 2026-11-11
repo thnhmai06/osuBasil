@@ -16,7 +16,7 @@ namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 public sealed class MatchRecorderTests
 {
 	[Fact]
-	public async Task Handle_LobbyRoomOpened_RecordsTheCreationWithTheCreatorAsActor()
+	public async Task RoomOpened_RecordsCreatorActor()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -33,7 +33,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomRoundStarted_RecordsTheRound()
+	public async Task RoundStarted_RecordsRound()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -48,7 +48,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomRoundCompleted_RecordsTheRoundAgainWithItsEnd()
+	public async Task RoundCompleted_RecordsEnd()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -65,7 +65,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomPlayerJoined_RecordsTheJoinWithThePlayerAsTarget()
+	public async Task PlayerJoined_RecordsPlayerTarget()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -83,7 +83,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomRefereeAdded_RecordsWhoGrantedItAndToWhom()
+	public async Task RefereeAdded_RecordsTwoParties()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -99,7 +99,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomHostChanged_RecordsTheNewHostAsTarget()
+	public async Task HostChanged_RecordsNewHost()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -115,7 +115,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyRoomClosed_EndsTheMatchAndRecordsWhoClosedIt()
+	public async Task RoomClosed_EndsAndRecords()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -134,7 +134,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyRoomClosed_NeverLetsTheMatchReadAsEndedBeforeItsClosingEntryIsStored()
+	public async Task RoomClosingUnstored_MatchNotEnded()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -155,7 +155,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyMatchRecovered_NeverLetsTheMatchReadAsEndedBeforeItsClosingEntryIsStored()
+	public async Task RecoveryClosingUnstored_MatchNotEnded()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -174,7 +174,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyMatchRecovered_StoresTheAbortedRoundsAndTheEndAndRecordsTheRecovery()
+	public async Task MatchRecovered_StoresRoundsEnd()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -193,7 +193,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomRoundScoreSubmitted_StoresTheRelationOfTheScoreToTheRound()
+	public async Task ScoreSubmitted_LinkedToRound()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();
@@ -209,7 +209,7 @@ public sealed class MatchRecorderTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomRoundDecided_StoresTheRoundWithItsDecision()
+	public async Task RoundDecided_StoredWithDecision()
 	{
 		using var app = new TestApplication();
 		var recorder = new RecordingRecorder();

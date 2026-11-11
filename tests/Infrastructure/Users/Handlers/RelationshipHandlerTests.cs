@@ -12,7 +12,7 @@ public sealed class RelationshipHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task AddFriend_MakesTheTargetAFriendOfTheSender()
+	public async Task AddFriend_TargetBecomesFriend()
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
@@ -24,7 +24,7 @@ public sealed class RelationshipHandlerTests
 	}
 
 	[Fact]
-	public async Task RemoveFriend_EndsTheFriendshipTheSenderHeld()
+	public async Task RemoveFriend_Ended()
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
@@ -37,7 +37,7 @@ public sealed class RelationshipHandlerTests
 	}
 
 	[Fact]
-	public async Task BlockUser_BlocksTheTargetForTheSender()
+	public async Task BlockUser_TargetBlocked()
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
@@ -49,7 +49,7 @@ public sealed class RelationshipHandlerTests
 	}
 
 	[Fact]
-	public async Task UnblockUser_LiftsTheBlockTheSenderHeld()
+	public async Task UnblockUser_Lifted()
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
@@ -62,7 +62,7 @@ public sealed class RelationshipHandlerTests
 	}
 
 	[Fact]
-	public async Task ListFriends_OfAnotherAccount_IsRefusedAsNotSelf()
+	public async Task FriendsOther_Refused()
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);
@@ -74,7 +74,7 @@ public sealed class RelationshipHandlerTests
 	}
 
 	[Fact]
-	public async Task ListBlocks_OfAnotherAccount_IsRefusedAsNotSelf()
+	public async Task BlocksOther_Refused()
 	{
 		using var app = new TestApplication();
 		var (actor, target) = await TwoAsync(app);

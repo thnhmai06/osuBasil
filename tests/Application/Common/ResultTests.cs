@@ -5,7 +5,7 @@ namespace Basil.Application.Common.Tests;
 public class ResultTests
 {
 	[Fact]
-	public void IsOk_OutcomeOkWithNothingMissing_IsTrue()
+	public void OkNothingMissing_True()
 	{
 		Result<SampleOutcome> result = SampleOutcome.Ok;
 
@@ -13,13 +13,13 @@ public class ResultTests
 	}
 
 	[Fact]
-	public void IsOk_DefaultResult_IsFalse()
+	public void DefaultResult_IsFalse()
 	{
 		Assert.False(default(Result<SampleOutcome>).IsOk);
 	}
 
 	[Fact]
-	public void IsOk_OtherOutcome_IsFalse()
+	public void OtherOutcome_IsFalse()
 	{
 		Result<SampleOutcome> result = SampleOutcome.NotFound;
 
@@ -27,7 +27,7 @@ public class ResultTests
 	}
 
 	[Fact]
-	public void Denied_NamesTheMissingPrivilegesAndIsNotOk()
+	public void Denied_MissingNotOk()
 	{
 		var result = Result<SampleOutcome>.Denied(UserPrivileges.Player | UserPrivileges.Player);
 
@@ -36,7 +36,7 @@ public class ResultTests
 	}
 
 	[Fact]
-	public void Denied_EvenWithOkOutcome_IsNotOk()
+	public void DeniedEvenOk_NotOk()
 	{
 		var result = new Result<SampleOutcome>(SampleOutcome.Ok, UserPrivileges.Player);
 
@@ -44,13 +44,13 @@ public class ResultTests
 	}
 
 	[Fact]
-	public void Denied_NoPermissions_Throws()
+	public void NoPermissions_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Result<SampleOutcome>.Denied(UserPrivileges.None));
 	}
 
 	[Fact]
-	public void ImplicitConversion_FromOutcome_HasNothingMissing()
+	public void FromOutcome_HasNothingMissing()
 	{
 		Result<SampleOutcome> result = SampleOutcome.NotFound;
 

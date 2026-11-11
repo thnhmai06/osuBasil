@@ -31,13 +31,13 @@ public class MenuBannerTests
 	}
 
 	[Fact]
-	public void IsCurrent_BothBoundsNull_AlwaysCurrent()
+	public void BothBoundsNull_Current()
 	{
 		Assert.True(Make(null, null).IsCurrent(Now));
 	}
 
 	[Fact]
-	public void IsCurrent_BeginsNull_OnlyExpiresChecked()
+	public void BeginsNull_ExpiresChecked()
 	{
 		var now = Now;
 		Assert.True(Make(null, now.AddDays(1)).IsCurrent(now));
@@ -45,7 +45,7 @@ public class MenuBannerTests
 	}
 
 	[Fact]
-	public void IsCurrent_ExpiresNull_OnlyBeginsChecked()
+	public void ExpiresNull_BeginsChecked()
 	{
 		var now = Now;
 		Assert.True(Make(now.AddDays(-1), null).IsCurrent(now));
@@ -53,14 +53,14 @@ public class MenuBannerTests
 	}
 
 	[Fact]
-	public void IsCurrent_BothBoundsSet_WithinWindow_ReturnsTrue()
+	public void BoundsSetWithin_Current()
 	{
 		var now = Now;
 		Assert.True(Make(now.AddDays(-1), now.AddDays(1)).IsCurrent(now));
 	}
 
 	[Fact]
-	public void IsCurrent_BothBoundsSet_OutsideWindow_ReturnsFalse()
+	public void BoundsSetOutside_NotCurrent()
 	{
 		var now = Now;
 		Assert.False(Make(now.AddDays(1), now.AddDays(2)).IsCurrent(now));
@@ -68,7 +68,7 @@ public class MenuBannerTests
 	}
 
 	[Fact]
-	public void IsCurrent_ExactlyAtEnd_IsNotCurrent()
+	public void ExactlyAtEnd_NotCurrent()
 	{
 		var endsAt = Now.AddDays(1);
 
@@ -76,7 +76,7 @@ public class MenuBannerTests
 	}
 
 	[Fact]
-	public void IsCurrent_ExactlyAtStart_IsCurrent()
+	public void ExactlyAtStart_Current()
 	{
 		var startsAt = Now.AddDays(1);
 
@@ -84,31 +84,31 @@ public class MenuBannerTests
 	}
 
 	[Fact]
-	public void Url_Relative_Throws()
+	public void RelativeUrl_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => Make(null, null, new Uri("/relative", UriKind.Relative)));
 	}
 
 	[Fact]
-	public void Url_NotHttp_Throws()
+	public void NonHttpUrl_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => Make(null, null, new Uri("javascript:alert(1)")));
 	}
 
 	[Fact]
-	public void Url_FileScheme_Throws()
+	public void FileSchemeUrl_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => Make(null, null, new Uri("file:///tmp/banner.png")));
 	}
 
 	[Fact]
-	public void StartsAt_AfterEndsAt_Throws()
+	public void StartsAfterEnds_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(Now.AddDays(1), Now));
 	}
 
 	[Fact]
-	public void EndsAt_BeforeStartsAt_Throws()
+	public void EndsBeforeStarts_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => MakeEndsFirst(Now.AddDays(1), Now));
 	}

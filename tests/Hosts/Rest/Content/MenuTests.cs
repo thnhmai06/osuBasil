@@ -13,7 +13,7 @@ public sealed class MenuTests(RestHostFixture fixture)
 		File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "avatar-default.png"));
 
 	[Fact]
-	public async Task Faq_IsPublicToRead_AndManagersWriteIt()
+	public async Task FaqPublic_ManagerWrite()
 	{
 		var (manager, _) = await fixture.SignInAsync("MenuFaqMgr", Manager);
 		var (plain, _) = await fixture.SignInAsync("MenuFaqPlain");
@@ -44,7 +44,7 @@ public sealed class MenuTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Banner_IsAddedByManagers_ListedPublicly_AndDeleted()
+	public async Task BannerAdded_ListedDeleted()
 	{
 		var (manager, _) = await fixture.SignInAsync("MenuBanMgr", Manager);
 		var (plain, _) = await fixture.SignInAsync("MenuBanPlain");
@@ -73,7 +73,7 @@ public sealed class MenuTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Seasonals_AndIcon_FollowTheSameRule()
+	public async Task SeasonalsIcon_SameRule()
 	{
 		var (manager, _) = await fixture.SignInAsync("MenuSeaMgr", Manager);
 		var (plain, _) = await fixture.SignInAsync("MenuSeaPlain");

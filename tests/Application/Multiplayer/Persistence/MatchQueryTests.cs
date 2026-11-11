@@ -14,25 +14,25 @@ public sealed class MatchQueryTests
 	private static readonly UserRecord Viewer = new() { Id = 7, Value = new UserData { Name = "viewer" } };
 
 	[Fact]
-	public void LimitTo_AskerHoldingRoomViewPrivate_LeavesTheQueryUnrestricted()
+	public void AskerViewPrivate_QueryUnrestricted()
 	{
 		Assert.Null(new MatchQuery().LimitTo(UserPrivileges.Tournament, Viewer).VisibleTo);
 	}
 
 	[Fact]
-	public void LimitTo_AskerHoldingRoomManageAny_LeavesTheQueryUnrestricted()
+	public void AskerManageAny_QueryUnrestricted()
 	{
 		Assert.Null(new MatchQuery().LimitTo(UserPrivileges.Tournament, Viewer).VisibleTo);
 	}
 
 	[Fact]
-	public void LimitTo_AskerWithoutRoomViewPrivate_RestrictsPrivateMatchesToTheAsker()
+	public void AskerNoView_PrivateRestricted()
 	{
 		Assert.Equal(Viewer.Id, new MatchQuery().LimitTo(UserPrivilegesExtensions.Default, Viewer).VisibleTo);
 	}
 
 	[Fact]
-	public void LimitTo_AskerWithoutRoomViewPrivate_KeepsWhatTheAskerSearchedFor()
+	public void AskerNoView_SearchKept()
 	{
 		var limited = MatchQuery.Parse("private=1 ended=0").LimitTo(UserPrivileges.None, Viewer);
 
@@ -41,7 +41,7 @@ public sealed class MatchQueryTests
 	}
 
 	[Fact]
-	public void Parse_AnyText_DoesNotSetAViewer()
+	public void AnyText_NoViewer()
 	{
 		Assert.Null(MatchQuery.Parse("private=* ended=* visibleto=7").VisibleTo);
 	}

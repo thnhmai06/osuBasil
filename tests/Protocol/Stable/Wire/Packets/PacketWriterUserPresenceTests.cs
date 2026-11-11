@@ -41,7 +41,7 @@ public class PacketWriterUserPresenceTests
 	[Theory]
 	[InlineData(-12, 0x0C)] // -12 + 24 = 12; the wire byte is always non-negative
 	[InlineData(14, 0x26)] // 14 + 24 = 38
-	public void UserPresence_UtcOffset_WritesOffsetPlus24(int utcOffset, byte expectedByte)
+	public void UtcOffset_OffsetPlus24(int utcOffset, byte expectedByte)
 	{
 		Assert.Equal(Expected(expectedByte, 0x00), Write(utcOffset, 0, 0));
 	}
@@ -51,7 +51,7 @@ public class PacketWriterUserPresenceTests
 	[InlineData(0, 7, 0xE0)] // mode 7 << 5 = 224
 	[InlineData(12, 3, 0x6C)] // 12 | (3 << 5) = 108
 	[InlineData(31, 7, 0xFF)] // both fields fill the byte together
-	public void UserPresence_Mode_SitsInTheHighBitsOfThePrivilegeByte(
+	public void PresenceMode_HighPrivilegeBits(
 		int stablePrivileges, int mode, byte expectedByte)
 	{
 		Assert.Equal(Expected(0x18, expectedByte), Write(0, stablePrivileges, mode));
@@ -60,21 +60,21 @@ public class PacketWriterUserPresenceTests
 	[Theory]
 	[InlineData(32, 0, 0x00)] // the Tournament bit would be read back as mode bit 0
 	[InlineData(33, 2, 0x41)] // Player kept, Tournament dropped, mode 2 << 5 = 64
-	public void UserPresence_PrivilegeBitsAboveTheLowFive_DoNotReachTheModeBits(
+	public void HighPrivilegeBits_NotInMode(
 		int stablePrivileges, int mode, byte expectedByte)
 	{
 		Assert.Equal(Expected(0x18, expectedByte), Write(0, stablePrivileges, mode));
 	}
 
 	[Fact]
-	public void UserPresence_UtcOffsetOutsideByteRange_ThrowsOverflow()
+	public void OffsetOutsideByte_Overflow()
 	{
 		// -12 + 24 to 38 fit the byte; 250 + 24 = 274 does not.
 		Assert.Throws<OverflowException>(() => Write(250, 0, 0));
 	}
 
 	[Fact]
-	public void UserPresence_ModeAboveFiveBits_ThrowsOverflow()
+	public void ModeAboveFive_Overflow()
 	{
 		// mode 8 << 5 = 256 does not fit the privilege byte.
 		Assert.Throws<OverflowException>(() => Write(0, 0, 8));

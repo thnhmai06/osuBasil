@@ -37,14 +37,14 @@ public class SpectatorButtonValuesTests
 
 	[Theory]
 	[MemberData(nameof(KeysValues))]
-	public void Keys_NamedButton_HasTheDocumentedWireValue(KeyState buttonState, int wireValue)
+	public void NamedButton_DocumentedValue(KeyState buttonState, int wireValue)
 	{
 		Assert.Equal(wireValue, (int)buttonState);
 	}
 
 	[Theory]
 	[MemberData(nameof(TaikoValues))]
-	public void TaikoByte_NamedDrumZone_HasTheDocumentedWireValue(TaikoDrumState drumStateZone, int wireValue)
+	public void NamedDrumZone_DocumentedValue(TaikoDrumState drumStateZone, int wireValue)
 	{
 		Assert.Equal(wireValue, (int)drumStateZone);
 	}

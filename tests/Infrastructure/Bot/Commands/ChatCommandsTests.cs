@@ -16,7 +16,7 @@ namespace Basil.Infrastructure.Bot.Tests.Commands;
 public sealed class ChatCommandsTests
 {
 	[Fact]
-	public async Task AMessageWithoutThePrefixInAChannel_IsNotACommand()
+	public async Task ChannelNoPrefix_NotCommand()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -40,7 +40,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task AMessageToTheBotInPrivate_NeedsNoPrefix()
+	public async Task BotPrivate_NeedsNoPrefix()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -52,7 +52,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Help_AnswersInPrivateMessagesEvenWhenTypedInAChannel()
+	public async Task HelpInChannel_AnswersPrivate()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -71,7 +71,7 @@ public sealed class ChatCommandsTests
 	[InlineData("!roll 0", 101)]
 	[InlineData("!roll -5", 101)]
 	[InlineData("!roll 2147483647", 2147483648)]
-	public async Task Roll_RollsFromZeroUpToAndIncludingTheMaximum(string message, long exclusiveUpperBound)
+	public async Task Roll_ZeroToMaximum(string message, long exclusiveUpperBound)
 	{
 		var dice = new RecordingRandom();
 		using var bot = new BotHarness(dice);
@@ -84,7 +84,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Roll_SaysWhoRolledAndWhatTheyRolled()
+	public async Task Roll_WhoAndWhat()
 	{
 		using var bot = new BotHarness(new RecordingRandom { Result = 42 });
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -95,7 +95,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Where_WithoutAName_SaysHowToUseItAndFails()
+	public async Task WhereNoName_UsageAndFails()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -107,7 +107,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Where_ForAnUnregisteredName_SaysTheyAreNotRegistered()
+	public async Task UnregisteredName_NotRegistered()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -118,7 +118,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Where_ForARegisteredUser_SaysTheirNameAndCountry()
+	public async Task RegisteredUser_NameAndCountry()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -132,7 +132,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Faq_WithoutAnEntry_SaysHowToUseItAndFails()
+	public async Task FaqNoEntry_UsageAndFails()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -144,7 +144,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Faq_List_WithNoEntries_SaysSo()
+	public async Task NoEntries_SaysSo()
 	{
 		using var bot = new BotHarness();
 		bot.Faqs.ListAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IEnumerable<string>>([]));
@@ -156,7 +156,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Faq_List_NamesEveryEntry()
+	public async Task List_NamesEveryEntry()
 	{
 		using var bot = new BotHarness();
 		bot.Faqs.ListAsync(Arg.Any<CancellationToken>())
@@ -169,7 +169,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Faq_ForAMissingEntry_SaysItWasNotFound()
+	public async Task MissingEntry_NotFound()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -180,7 +180,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task Faq_ForAnEntry_SaysItsText()
+	public async Task ForAnEntry_SaysItsText()
 	{
 		using var bot = new BotHarness();
 		bot.Faqs.ReadAsync("rules", Arg.Any<CancellationToken>())
@@ -194,7 +194,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task AChain_InTheLobbyChannel_IsRefused()
+	public async Task LobbyChain_Refused()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -213,7 +213,7 @@ public sealed class ChatCommandsTests
 	[InlineData("!mp lock;!mp in 1")]
 	[InlineData("!mp lock;!mp help")]
 	[InlineData("!mp lock;!mp")]
-	public async Task AChain_WithACommandThatCannotBeChained_IsRefusedWithoutRunningAnyOfIt(string message)
+	public async Task UnchainableCommand_RefusedNoRun(string message)
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -225,7 +225,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task ASemicolonChain_RunsTheNextCommandEvenAfterAFailure()
+	public async Task SemicolonChain_RunsAfterFailure()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
@@ -237,7 +237,7 @@ public sealed class ChatCommandsTests
 	}
 
 	[Fact]
-	public async Task ADoubleAmpersandChain_StopsAtTheFirstFailure()
+	public async Task DoubleAmpersand_StopsAtFailure()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");

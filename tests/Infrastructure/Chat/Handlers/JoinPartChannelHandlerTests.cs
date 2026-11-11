@@ -36,7 +36,7 @@ public sealed class JoinPartChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Join_OpenGeneralChannel_AddsTheSender()
+	public async Task OpenGeneralChannel_AddsTheSender()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -49,7 +49,7 @@ public sealed class JoinPartChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Join_ChannelThatDoesNotExist_AnswersNotFound()
+	public async Task JoinMissing_AnswersNotFound()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -61,7 +61,7 @@ public sealed class JoinPartChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Join_ChannelTheSenderIsAlreadyIn_AnswersAlreadyMember()
+	public async Task SenderIn_AnswersAlreadyMember()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -75,7 +75,7 @@ public sealed class JoinPartChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Part_ChannelTheSenderIsIn_RemovesTheSender()
+	public async Task SenderIn_RemovesSender()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -90,7 +90,7 @@ public sealed class JoinPartChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Part_ChannelTheSenderIsNotIn_AnswersNotMember()
+	public async Task SenderOut_AnswersNotMember()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -102,7 +102,7 @@ public sealed class JoinPartChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Part_ChannelThatDoesNotExist_AnswersNotFound()
+	public async Task PartMissing_AnswersNotFound()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);

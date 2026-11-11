@@ -21,7 +21,7 @@ namespace Basil.Application.Multiplayer.Tests.Capabilities;
 public sealed class ScopedLobbyTests
 {
 	[Fact]
-	public async Task OpenRoomAsync_WithoutRoomCreate_IsDeniedNamingRoomCreate()
+	public async Task NoRoomCreate_Denied()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
@@ -35,7 +35,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_OpenedInGameWithoutRoomJoin_IsDeniedNamingRoomJoin()
+	public async Task GameJoinMissing_Denied()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
@@ -49,7 +49,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_OpenedInGame_SeatsTheCreatorAsTheFirstHost()
+	public async Task InGameOpened_SeatsCreator()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -66,7 +66,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_OpenedThroughTheApiWhileTheCreatorsClientIsOffline_SeatsNobody()
+	public async Task ApiCreatorOffline_SeatsNobody()
 	{
 		using var app = new TestApplication();
 		var creator = await app.CreateUserAsync("Creator", "password");
@@ -84,7 +84,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_OpenedThroughTheApiWhileTheCreatorsClientIsOnline_SeatsTheCreatorAsHost()
+	public async Task ApiCreatorOnline_SeatsCreator()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -99,7 +99,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_OpenedThroughTheApiWhileTheCreatorIsInAnotherRoom_LeavesTheCreatorThere()
+	public async Task ApiCreatorElsewhere_LeavesCreator()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -115,7 +115,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_OpenedInGameWhileTheCreatorIsInAnotherRoom_IsRefused()
+	public async Task GameCreatorElsewhere_Refused()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -129,7 +129,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_AFifthRoomOpenedThroughTheApi_IsRefused()
+	public async Task FifthApiRoom_Refused()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -143,7 +143,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_AFifthRoomOpenedInGame_IsRefused()
+	public async Task FifthGameRoom_Refused()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -157,7 +157,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_WithRoomCreateUnlimited_OpensMoreThanFourRooms()
+	public async Task UnlimitedRoomCreate_MoreThanFour()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
@@ -172,7 +172,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_WhileRoomCreationIsLocked_ReturnsLocked()
+	public async Task RoomCreationLocked_Locked()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
@@ -190,7 +190,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_WhileRoomCreationIsLocked_AUserWhoManagesEveryRoomIsAllowed()
+	public async Task LockedRoomManager_Allowed()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
@@ -209,7 +209,7 @@ public sealed class ScopedLobbyTests
 	[Theory]
 	[InlineData("")]
 	[InlineData("   ")]
-	public async Task OpenRoomAsync_WithAnInvalidName_IsRefused(string name)
+	public async Task InvalidName_Refused(string name)
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -221,7 +221,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_GivesEveryRoomACreator()
+	public async Task EveryRoom_GetsCreator()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Creator", "password");
@@ -234,7 +234,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_GivesEveryOpenRoomItsOwnId()
+	public async Task EveryOpenRoom_OwnId()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -246,7 +246,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_AfterARoomClosed_HandsOutItsIdAgain()
+	public async Task ClosedRoomId_Reused()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -268,7 +268,7 @@ public sealed class ScopedLobbyTests
 	#region CanViewAsync
 
 	[Fact]
-	public async Task CanViewAsync_APublicMatch_IsOpenToAnyone()
+	public async Task PublicMatch_OpenToAnyone()
 	{
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), false);
@@ -278,7 +278,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateMatch_IsClosedToAStranger()
+	public async Task PrivateMatch_ClosedToStranger()
 	{
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
@@ -288,7 +288,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateMatch_IsOpenToAHolderOfRoomViewPrivate()
+	public async Task PrivateMatch_ViewPrivateSees()
 	{
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
@@ -299,7 +299,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateMatch_IsOpenToAHolderOfRoomManageAny()
+	public async Task PrivateMatch_ManageAnySees()
 	{
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
@@ -310,7 +310,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APlayerWhoLeftAPrivateOpenRoom_LosesTheViewWhileItStaysOpen()
+	public async Task LeftPrivateRoom_LosesView()
 	{
 		using var app = new TestApplication();
 		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), SessionType.Stable);
@@ -331,7 +331,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateMatch_IsOpenToItsCreator()
+	public async Task PrivateMatch_OpenToCreator()
 	{
 		using var app = new TestApplication();
 		var creator = await app.CreateUserAsync("Creator", "password");
@@ -342,7 +342,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateMatch_IsOpenToAPlayerWhoJoined()
+	public async Task PrivateMatch_JoinedPlayerSees()
 	{
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
@@ -354,7 +354,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateMatch_IsOpenToACurrentReferee()
+	public async Task PrivateMatch_OpenToReferee()
 	{
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
@@ -366,7 +366,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateMatch_IsClosedToARemovedReferee()
+	public async Task PrivateMatch_RemovedRefereeDenied()
 	{
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
@@ -379,7 +379,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateOpenRoom_IsOpenToAPlayerSeatedInItBeforeItsHistoryIsStored()
+	public async Task SeatedBeforeHistory_SeesOpenRoom()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -392,7 +392,7 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task CanViewAsync_APrivateOpenRoom_IsClosedToAStrangerWhoIsNotInIt()
+	public async Task PrivateOpenRoom_StrangerDenied()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");

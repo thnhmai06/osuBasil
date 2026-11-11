@@ -19,7 +19,7 @@ public class ScopedLifetimeTests
 	];
 
 	[Fact]
-	public void NoTypeKeepsACapabilityInAFieldOrProperty()
+	public void CapabilityInField_NotFound()
 	{
 		var assemblies = ModuleAssemblies.Applications.Concat(ModuleAssemblies.Infrastructures)
 			.Concat(OtherAssemblies.Select(Assembly.Load));
@@ -30,7 +30,7 @@ public class ScopedLifetimeTests
 	}
 
 	[Fact]
-	public void TheDetectorSeesATypeThatKeepsACapability_PositiveControl()
+	public void KeptCapability_DetectorSees()
 	{
 		var offenders = KeepersOfCapabilities([typeof(Holder)]).ToList();
 

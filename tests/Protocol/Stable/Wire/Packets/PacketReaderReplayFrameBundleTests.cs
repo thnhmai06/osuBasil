@@ -62,7 +62,7 @@ public class PacketReaderReplayFrameBundleTests
 	}
 
 	[Fact]
-	public void ReadReplayFrameBundle_EmptyFrameCount_ParsesWholeBundle()
+	public void EmptyCount_Parsed()
 	{
 		var bundle = new PacketReader(new MemoryStream(Bundle(0))).ReadReplayFrameBundle();
 
@@ -74,7 +74,7 @@ public class PacketReaderReplayFrameBundleTests
 	}
 
 	[Fact]
-	public void ReadReplayFrameBundle_TwoFrames_ParsesBothFrames()
+	public void TwoFrames_Parsed()
 	{
 		var bundle = new PacketReader(new MemoryStream(Bundle(2))).ReadReplayFrameBundle();
 
@@ -86,7 +86,7 @@ public class PacketReaderReplayFrameBundleTests
 	}
 
 	[Fact]
-	public void ReadReplayFrameBundle_HighestFrameCount_ReadsAllFrames()
+	public void HighestCount_ReadsAll()
 	{
 		var bundle = new PacketReader(new MemoryStream(Bundle(65_535))).ReadReplayFrameBundle();
 
@@ -102,7 +102,7 @@ public class PacketReaderReplayFrameBundleTests
 
 	[Theory]
 	[MemberData(nameof(Truncations))]
-	public void ReadReplayFrameBundle_TruncatedAtAnyByte_ThrowsEndOfStream(int byteLength)
+	public void Truncated_EndOfStream(int byteLength)
 	{
 		var bytes = Bundle(2);
 

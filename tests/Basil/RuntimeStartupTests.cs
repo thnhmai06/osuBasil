@@ -7,7 +7,7 @@ namespace Basil.Tests;
 public sealed class RuntimeStartupTests
 {
 	[Fact]
-	public async Task StartAsync_Recovers_TheBotEndsUpOnline()
+	public async Task StartupRecovers_BotOnline()
 	{
 		using var app = new TestApplication();
 		var bot = await app.SeedBotAsync();

@@ -11,7 +11,7 @@ public sealed class ScopedUserSilenceTests
 	private static readonly UserPrivileges Staff = UserPrivilegesExtensions.All;
 
 	[Fact]
-	public async Task ImposeAsync_Allowed_SilencesTheAccountPublishesEventAndRecordsModeration()
+	public async Task Allowed_SilencesPublishesRecords()
 	{
 		using var app = new TestApplication();
 		var actorRecord = await app.CreateUserAsync("Moderator", "password", Staff);
@@ -34,7 +34,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task ImposeAsync_EndNotInTheFuture_ReturnsInvalidSilenceAndSilencesNobody()
+	public async Task EndNotFuture_InvalidSilenceNobody()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Moderator", "password", Staff));
@@ -47,7 +47,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task ImposeAsync_EqualPrivileges_ReturnsNotOutranking()
+	public async Task EqualPrivileges_ReturnsNotOutranking()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("EqualActor", "password", Staff));
@@ -61,7 +61,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task ImposeAsync_TargetIsActor_ReturnsNotOutranking()
+	public async Task TargetIsActor_ReturnsNotOutranking()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("SelfSilence", "password", Staff);
@@ -74,7 +74,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task ImposeAsync_WithoutTheModeratorPrivilege_NamesItAsMissing()
+	public async Task NoModerator_NamesMissing()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -88,7 +88,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task LiftAsync_ASilencedAccount_EndsTheSilencePublishesEventAndRecordsModeration()
+	public async Task SilencedAccount_EndsPublishesRecords()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("LiftMod", "password", Staff));
@@ -105,7 +105,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task LiftAsync_AnAccountThatIsNotSilenced_IsOkAndRecordsNothing()
+	public async Task NotSilenced_OkRecordsNothing()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("LiftMod", "password", Staff));
@@ -119,7 +119,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task LiftAsync_WithoutTheModeratorPrivilege_NamesItAsMissingAndKeepsTheSilence()
+	public async Task NoModeratorLift_KeepsSilence()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -134,7 +134,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task IsSilenced_AfterTheEndTime_IsFalse()
+	public async Task AfterEndTime_NotSilenced()
 	{
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("Expiring", "password");

@@ -25,13 +25,13 @@ public sealed class UserNameTests
 	[InlineData("12345")]
 	[InlineData("123456789012345")]
 	[InlineData("a@b")]
-	public void IsValidName_BreaksARule_ReturnsFalse(string name)
+	public void InvalidName_ReturnsFalse(string name)
 	{
 		Assert.False(UserData.IsValidName(name));
 	}
 
 	[Fact]
-	public void Name_SetterAndCheck_Agree()
+	public void SetterAndCheck_Agree()
 	{
 		Assert.Throws<ArgumentException>(() => new UserData { Name = "ab" });
 	}

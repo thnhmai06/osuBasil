@@ -9,7 +9,7 @@ namespace Basil.Tests.Lifetime;
 public sealed class RestarterTests
 {
 	[Fact]
-	public async Task FreePorts_AreNotWaitedFor()
+	public async Task FreePorts_NotWaited()
 	{
 		var clock = new FakeTimeProvider();
 
@@ -18,7 +18,7 @@ public sealed class RestarterTests
 	}
 
 	[Fact]
-	public async Task APortThatIsFreedLater_IsWaitedFor()
+	public async Task PortFreedLater_WaitedFor()
 	{
 		var clock = new FakeTimeProvider();
 		var checks = 0;
@@ -31,7 +31,7 @@ public sealed class RestarterTests
 	}
 
 	[Fact]
-	public async Task APortThatStaysTaken_IsGivenUpOnAfterTheTimeout()
+	public async Task PortStaysTaken_GivesUp()
 	{
 		var clock = new FakeTimeProvider();
 
@@ -44,7 +44,7 @@ public sealed class RestarterTests
 	}
 
 	[Fact]
-	public void APortCanBeBoundOnlyWhenNobodyHoldsIt()
+	public void PortBinding_OnlyWhenFree()
 	{
 		using var holder = new TcpListener(IPAddress.Loopback, 0);
 		holder.Start();
@@ -62,7 +62,7 @@ public sealed class RestarterTests
 	}
 
 	[Fact]
-	public void TheRestartExitCodeIs75()
+	public void Restart_ExitCode75()
 	{
 		Assert.Equal(75, ProcessExitCodes.Restart);
 	}
@@ -72,20 +72,20 @@ public sealed class RestarterTests
 	[InlineData(null, "systemd", true)]
 	[InlineData(null, "bash", false)]
 	[InlineData(null, null, false)]
-	public void OnlyAContainerOrASystemdParent_IsAManager(string? container, string? parent, bool expected)
+	public void ContainerOrSystemd_IsManager(string? container, string? parent, bool expected)
 	{
 		Assert.Equal(expected, Restarter.UnderManager(
 			name => name == "DOTNET_RUNNING_IN_CONTAINER" ? container : null, () => parent));
 	}
 
 	[Fact]
-	public void AnInheritedInvocationId_DoesNotMakeAManager()
+	public void InheritedInvocation_NotManager()
 	{
 		Assert.False(Restarter.UnderManager(name => name == "INVOCATION_ID" ? "abc" : null, () => "bash"));
 	}
 
 	[Fact]
-	public void UnderTheDotnetHost_TheProgramStaysTheFirstArgument()
+	public void DotnetHost_FirstArgumentStays()
 	{
 		var (file, arguments) = Restarter.RelaunchCommand("/usr/share/dotnet/dotnet",
 			["/srv/Basil.dll", "--x"], ["--x"]);
@@ -95,7 +95,7 @@ public sealed class RestarterTests
 	}
 
 	[Fact]
-	public void ANativeExecutable_KeepsOnlyItsArguments()
+	public void NativeExecutable_KeepsArguments()
 	{
 		var (file, arguments) = Restarter.RelaunchCommand("/srv/Basil", ["/srv/Basil", "--x"], ["--x"]);
 

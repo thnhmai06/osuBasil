@@ -22,7 +22,7 @@ public class PacketWriterOsuStringTests
 	[InlineData(128, "0b8001", 131)] // 128 = 2 bytes (0x80 with continuation, 0x01)
 	[InlineData(16383, "0bff7f", 16386)] // 16383 = 2 bytes
 	[InlineData(16384, "0b808001", 16388)] // 16384 = 3 bytes
-	public void WriteOsuString_StringOfDocumentedByteLength_WritesUleb128LengthPrefix(
+	public void DocumentedLength_WritesUlebPrefix(
 		int byteLength, string ulebHex, int payloadLength)
 	{
 		// packet id 91 (MatchChangePassword, u16 little-endian), padding byte 0, payload length u32
@@ -48,13 +48,13 @@ public class PacketWriterOsuStringTests
 	[Theory]
 	[InlineData("héllo", "5b0000080000000b0668c3a96c6c6f")] // 6 UTF-8 bytes, not 5 characters
 	[InlineData("日本語", "5b00000b0000000b09e697a5e69cace8aa9e")] // 9 UTF-8 bytes, not 3 characters
-	public void WriteOsuString_MultibyteString_LengthCountsBytesNotCharacters(string value, string expectedHex)
+	public void Multibyte_LengthCountsBytes(string value, string expectedHex)
 	{
 		Assert.Equal(Convert.FromHexString(expectedHex), Write(writer => writer.MatchChangePassword(value)));
 	}
 
 	[Fact]
-	public void WriteOsuString_NullString_WritesOnlyTheMarkerByte()
+	public void NullString_WritesMarkerOnly()
 	{
 		// WriteOsuString documents that a null string is written as the single 0x00 existence byte,
 		// exactly like "" — same bytes as writer.MatchChangePassword("").

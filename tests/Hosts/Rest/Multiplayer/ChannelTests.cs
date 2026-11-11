@@ -10,7 +10,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 		Manager = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
 
 	[Fact]
-	public async Task List_WithoutAToken_Answers401()
+	public async Task ListNoToken_401()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -20,7 +20,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_ByAManager_Answers201_AndByAPlainUser_Answers403WithTheMissingMask()
+	public async Task ManagerOrPlain_201And403()
 	{
 		var (manager, _) = await fixture.SignInAsync("ChanManager", Manager);
 		var (plain, _) = await fixture.SignInAsync("ChanPlain");
@@ -38,7 +38,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_WithTheNameOfAnOpenChannel_Answers409()
+	public async Task OpenChannelName_409()
 	{
 		var (manager, _) = await fixture.SignInAsync("ChanDup", Manager);
 		using (manager)
@@ -52,7 +52,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_WithAnInvalidName_Answers422()
+	public async Task InvalidName_422()
 	{
 		var (manager, _) = await fixture.SignInAsync("ChanBad", Manager);
 		using (manager)
@@ -64,7 +64,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_ChangesTheTopic_AndAHiddenChannelIsListedOnlyForManagers()
+	public async Task PatchTopic_ManagersSeeHidden()
 	{
 		var (manager, _) = await fixture.SignInAsync("ChanPatch", Manager);
 		var (plain, _) = await fixture.SignInAsync("ChanViewer");
@@ -86,7 +86,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Delete_RemovesTheChannel_AndAnUnknownChannelAnswers404()
+	public async Task DeleteChannel_Unknown404()
 	{
 		var (manager, _) = await fixture.SignInAsync("ChanDel", Manager);
 		using (manager)
@@ -102,7 +102,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_WithoutTheManagePermission_AnswersTheSameWhetherOrNotTheChannelExists()
+	public async Task PatchWithoutManage_SameEitherWay()
 	{
 		var (manager, _) = await fixture.SignInAsync("ChanPatchDenied", Manager);
 		var (plain, _) = await fixture.SignInAsync("ChanPatchPlain");
@@ -124,7 +124,7 @@ public sealed class ChannelTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Delete_WithoutTheManagePermission_AnswersTheSameWhetherOrNotTheChannelExists()
+	public async Task DeleteWithoutManage_SameEitherWay()
 	{
 		var (manager, _) = await fixture.SignInAsync("ChanDelDenied", Manager);
 		var (plain, _) = await fixture.SignInAsync("ChanDelPlain");

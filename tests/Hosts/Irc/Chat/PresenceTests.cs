@@ -10,7 +10,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Join_OfAnotherIrcClient_IsShownToTheOthersInTheChannel()
+	public async Task OtherIrcJoin_ShownToOthers()
 	{
 		Host.AddChannel("#presence1");
 		using var watcher = await Host.SignInAsync("PrWatcher");
@@ -25,7 +25,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Part_OfAnotherIrcClient_IsShownToTheOthersInTheChannel()
+	public async Task OtherIrcPart_ShownToOthers()
 	{
 		using var watcher = await Host.SignInAsync("PrPartWatch");
 		using var leaver = await Host.SignInAsync("PrLeaver");
@@ -37,7 +37,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OsuLogin_ShowsAJoinToIrcClientsInTheAutoJoinChannel()
+	public async Task OsuLogin_JoinAutoJoin()
 	{
 		using var watcher = await Host.SignInAsync("PrOsuWatcher");
 
@@ -48,7 +48,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OsuLogout_ShowsOneQuitAndNoPart()
+	public async Task OsuLogout_QuitNoPart()
 	{
 		using var watcher = await Host.SignInAsync("PrQuitWatcher");
 		using var osu = await Host.LoginOsuAsync("PrOsuLeaves");
@@ -65,7 +65,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task IrcQuit_ShowsOneQuitToTheOthers()
+	public async Task IrcQuit_QuitToOthers()
 	{
 		using var watcher = await Host.SignInAsync("PrQuitSeer");
 		using var leaver = await Host.SignInAsync("PrQuitter");
@@ -79,7 +79,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task UserWithAnIrcAndAnOsuConnection_IsShownJoiningOnce_AndNotLeavingWhenOneCloses()
+	public async Task IrcAndOsu_JoinOnceStays()
 	{
 		await Host.CreateUserAsync("PrTwin");
 		var key = await Host.CreateIrcKeyAsync("PrTwin");
@@ -101,7 +101,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ExtendedJoin_AddsTheAccountAndRealName()
+	public async Task ExtendedJoin_AccountRealName()
 	{
 		using var watcher = await Host.SignInAsync("PrExtWatcher", "extended-join");
 		using var osu = await Host.LoginOsuAsync("PrExtComes");
@@ -111,7 +111,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task AwayNotify_RelaysAwayChangesToClientsThatAskedForThem()
+	public async Task AwayNotify_RelaysToRequesters()
 	{
 		using var watcher = await Host.SignInAsync("PrAwayWatcher", "away-notify");
 		using var sleeper = await Host.SignInAsync("PrSleeper");
@@ -124,7 +124,7 @@ public sealed class PresenceTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task AwayNotify_IsNotSentWithoutTheCapability()
+	public async Task AwayNotify_NoCapability()
 	{
 		using var watcher = await Host.SignInAsync("PrNoAwayCap");
 		using var sleeper = await Host.SignInAsync("PrNoAwaySleeper");

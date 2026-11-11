@@ -48,7 +48,7 @@ public sealed class ConfigurationWatcherTests
 	}
 
 	[Fact]
-	public void ALoggingChangeAppliesAtOnce()
+	public void LoggingChange_AppliesAtOnce()
 	{
 		var logger = LoggerFactory.Create(logging =>
 		{
@@ -64,7 +64,7 @@ public sealed class ConfigurationWatcherTests
 	}
 
 	[Fact]
-	public void AnUpdatesChangeAppliesAtOnce()
+	public void UpdateChange_AppliesAtOnce()
 	{
 		var monitor = _services.GetRequiredService<IOptionsMonitor<UpdateOptions>>();
 		Assert.True(monitor.CurrentValue.CheckOnStartup);
@@ -76,7 +76,7 @@ public sealed class ConfigurationWatcherTests
 	}
 
 	[Fact]
-	public void AServerChangeIsNotAppliedBeforeTheNextStartAndIsReportedAsPending()
+	public void ServerChange_PendingUntilRestart()
 	{
 		Edit("Basil:Server:Irc:Port", "7000");
 
@@ -85,7 +85,7 @@ public sealed class ConfigurationWatcherTests
 	}
 
 	[Fact]
-	public void ChangingAServerValueBackClearsThePendingRestart()
+	public void ServerValueRevert_ClearsPending()
 	{
 		Edit("Basil:Server:Irc:Port", "7000");
 
@@ -95,7 +95,7 @@ public sealed class ConfigurationWatcherTests
 	}
 
 	[Fact]
-	public void ASectionThatWasAbsentAtStartAndIsAddedLaterWaitsForTheNextStart()
+	public void AddedSection_WaitsForRestart()
 	{
 		Edit("ConnectionStrings:Write", "Host=elsewhere");
 

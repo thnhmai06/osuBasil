@@ -15,7 +15,7 @@ public sealed class CompositionTests
 	private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
 
 	[Fact]
-	public async Task EveryRegistrationOfTheApplicationCanBeBuiltAndResolved()
+	public async Task EveryRegistration_BuiltAndResolved()
 	{
 		var services = new ServiceCollection();
 		services.AddLogging();
@@ -36,7 +36,7 @@ public sealed class CompositionTests
 
 	/// <summary>Every handler class of the modules is registered for each event type it handles.</summary>
 	[Fact]
-	public async Task EveryEventHandlerIsRegisteredForTheEventsItHandles()
+	public async Task EveryHandler_RegisteredForEvents()
 	{
 		var services = new ServiceCollection();
 		services.AddLogging();

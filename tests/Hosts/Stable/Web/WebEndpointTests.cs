@@ -27,7 +27,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_WhileTheServerIsOverloaded_Answers503()
+	public async Task OverloadedServer_Answers503()
 	{
 		using var client = await OnlineAsync("WebShed");
 		var load = Host.Services.GetRequiredService<LoadSignal>();
@@ -46,7 +46,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task GetScores_UnknownBeatmap_AnswersNotSubmitted()
+	public async Task UnknownBeatmap_NotSubmitted()
 	{
 		using var client = await OnlineAsync("ScoresUnknown");
 
@@ -57,7 +57,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task GetScores_KnownBeatmapWithoutScores_ListsTheHeaderOnly()
+	public async Task ScorelessBeatmap_ListsHeaderOnly()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/mosi-mosi-taiko.osz")).First();
 		using var client = await OnlineAsync("ScoresEmpty");
@@ -70,7 +70,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task GetBeatmapInfo_ByFilename_RepliesWithTheBeatmapIds()
+	public async Task FilenameLookup_RepliesWithIds()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var client = await OnlineAsync("InfoByName");
@@ -84,7 +84,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task LastFm_CheatFlag_TellsTheClientToStop_AndCleanFlagsDoNot()
+	public async Task CheatFlag_StopsClientOnly()
 	{
 		using var client = await OnlineAsync("LastFmUser");
 
@@ -96,7 +96,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Screenshot_ValidPng_ReturnsItsReference()
+	public async Task ValidPngScreenshot_ReturnsReference()
 	{
 		using var client = await OnlineAsync("ShotOk");
 
@@ -107,7 +107,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Screenshot_TooManyPixelsPerSide_IsRefusedAsTooLarge()
+	public async Task HugeScreenshot_RefusedTooLarge()
 	{
 		using var client = await OnlineAsync("ShotHuge");
 
@@ -117,7 +117,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Screenshot_WithoutAForm_IsRefusedAsBadRequest()
+	public async Task ScreenshotWithoutForm_BadRequest()
 	{
 		using var client = new HttpClient { BaseAddress = Host.Url };
 		using var request = new HttpRequestMessage(HttpMethod.Post, "/web/osu-screenshot.php")
@@ -131,7 +131,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Register_WithoutAForm_IsRefusedAsBadRequest()
+	public async Task RegisterWithoutForm_BadRequest()
 	{
 		using var client = new HttpClient { BaseAddress = Host.Url };
 		using var request = new HttpRequestMessage(HttpMethod.Post, "/users")
@@ -145,7 +145,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Replay_OfAStoredScore_IsServedAsTheUploadedBytes()
+	public async Task StoredScoreReplay_ServedAsUploaded()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var client = await OnlineAsync("ReplayOwner");
@@ -160,7 +160,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SubmitScore_WithWrongChecksum_IsRejected()
+	public async Task WrongChecksum_Rejected()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var client = await OnlineAsync("BadChecksum");
@@ -171,7 +171,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Register_NewName_CreatesAnAccountThatCanLogIn()
+	public async Task NewName_CreatesLoginAccount()
 	{
 		var (status, text) = await OsuClient.RegisterAsync(Host, "Newcomer", "hunter22", forwardedFor: "198.51.100.1");
 		using var client = OsuClient.Create(Host, "Newcomer", "hunter22");
@@ -183,7 +183,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Register_SecondAccountFromTheSameAddressWithinADay_IsRefused()
+	public async Task SameAddressAgain_Refused()
 	{
 		await OsuClient.RegisterAsync(Host, "FirstOfIp", "hunter22", forwardedFor: "198.51.100.2");
 
@@ -193,7 +193,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Register_NameChecksFromOneAddress_AreLimited_AndOtherAddressesAreNot()
+	public async Task AddressNameChecks_Limited()
 	{
 		HttpStatusCode last = default;
 		for (var i = 0; i < OsuWebRoutes.RegistrationChecksPerWindow; i++)
@@ -207,7 +207,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Register_TakenName_IsRefusedWithAFormError()
+	public async Task TakenName_FormError()
 	{
 		await Host.CreateUserAsync("TakenName");
 
@@ -218,7 +218,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Direct_WithoutThePermission_IsForbidden_AndWithItServesTheArchive()
+	public async Task DirectWithoutPermission_Forbidden()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var plain = await Host.NewClientAsync("DirectPlain",
@@ -239,7 +239,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Direct_HiddenSet_IsNotSearchedOrDownloaded_ByThoseWhoMayNotViewIt()
+	public async Task HiddenSet_Unsearchable()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		var sets = Host.Services.GetRequiredService<IBeatmapsetRepository>();
@@ -270,7 +270,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_CorrectHashBeforeTheLimit_StillSucceeds()
+	public async Task HashBeforeLimit_Succeeds()
 	{
 		using var client = await OnlineAsync("WebRateOk");
 		using var impostor = OsuClient.Create(Host, "WebRateOk", "wrong");
@@ -282,7 +282,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_AWrongHashAfterTheCorrectOne_IsStillRefused()
+	public async Task HashAfterCorrect_Refused()
 	{
 		using var client = await OnlineAsync("WebRepeat");
 		using var impostor = OsuClient.Create(Host, "WebRepeat", "wrong");
@@ -296,7 +296,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_AfterTooManyWrongHashes_RefusesEvenTheCorrectOne()
+	public async Task ManyWrongHashes_RefusesCorrect()
 	{
 		using var client = await OnlineAsync("WebRateLocked");
 		using var impostor = OsuClient.Create(Host, "WebRateLocked", "wrong");
@@ -309,7 +309,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_AfterTheWindowPasses_AcceptsTheCorrectHashAgain()
+	public async Task WindowPassed_AcceptsCorrectHash()
 	{
 		using var client = await OnlineAsync("WebRateWindow");
 		using var impostor = OsuClient.Create(Host, "WebRateWindow", "wrong");
@@ -330,7 +330,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_ConcurrentWrongHashes_CannotExceedTheLimit()
+	public async Task ConcurrentWrongHashes_StayWithinLimit()
 	{
 		using var client = await OnlineAsync("WebRateParallel");
 		using var impostor = OsuClient.Create(Host, "WebRateParallel", "wrong");
@@ -345,7 +345,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_WrongHashesOnOneAccount_DoNotBlockAnotherAccountFromAnotherAddress()
+	public async Task AccountWrongHashes_OthersFree()
 	{
 		using var victim = await OnlineAsync("WebRateVictim");
 		using var other = await OnlineAsync("WebRateOther");

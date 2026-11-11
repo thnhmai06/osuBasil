@@ -22,25 +22,25 @@ public class LoginRequestTests
 		false);
 
 	[Fact]
-	public void Parse_Text_ReadsEveryField()
+	public void ParseText_ReadsAll()
 	{
 		Assert.Equal(Expected, LoginRequest.Parse(Body));
 	}
 
 	[Fact]
-	public void Parse_Bytes_ReadsEveryField()
+	public void ParseBytes_ReadsAll()
 	{
 		Assert.Equal(Expected, LoginRequest.Parse(Encoding.UTF8.GetBytes(Body)));
 	}
 
 	[Fact]
-	public void Parse_WithoutTrailingNewline_ReadsEveryField()
+	public void ParseNoNewline_ReadsAll()
 	{
 		Assert.Equal(Expected, LoginRequest.Parse(Body.TrimEnd('\n')));
 	}
 
 	[Fact]
-	public void Parse_FlagsOne_AreTrue()
+	public void ParseFlagsOne_True()
 	{
 		var body = LoginRequest.Parse(
 			"u\np\nb20190326|0|1|0123456789abcdef0123456789abcdef:1.2.3.:fedcba9876543210fedcba9876543210:00112233445566778899aabbccddeeff:ffeeddccbbaa99887766554433221100:|1\n");
@@ -50,7 +50,7 @@ public class LoginRequestTests
 	}
 
 	[Fact]
-	public void Parse_FlagsZero_AreFalse()
+	public void ParseFlagsZero_False()
 	{
 		var body = LoginRequest.Parse(
 			"u\np\nb20190326|0|0|0123456789abcdef0123456789abcdef:1.2.3.:fedcba9876543210fedcba9876543210:00112233445566778899aabbccddeeff:ffeeddccbbaa99887766554433221100:|0\n");
@@ -74,7 +74,7 @@ public class LoginRequestTests
 	}
 
 	[Fact]
-	public void Parse_InvalidUtf8_ThrowsFormatException()
+	public void InvalidUtf8_Throws()
 	{
 		Assert.Throws<FormatException>(() => LoginRequest.Parse([0xFF, 0xFE]));
 	}
@@ -88,13 +88,13 @@ public class LoginRequestTests
 	[InlineData(LoginFailureReason.NeedsSupporter, -6)]
 	[InlineData(LoginFailureReason.PasswordReset, -7)]
 	[InlineData(LoginFailureReason.RequiresVerification, -8)]
-	public void LoginFailureReason_HasTheWireId(LoginFailureReason reason, int id)
+	public void LoginFailure_WireId(LoginFailureReason reason, int id)
 	{
 		Assert.Equal(id, (int)reason);
 	}
 
 	[Fact]
-	public void LoginReply_Failure_WritesNegativeIdAsInt32()
+	public void LoginReply_NegativeInt32()
 	{
 		var bytes = PacketWriter.Build(w => w.LoginReply((int)LoginFailureReason.BannedAlternate));
 

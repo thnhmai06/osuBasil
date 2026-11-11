@@ -17,7 +17,7 @@ public sealed class ScopedServerChannelsTests
 	}
 
 	[Fact]
-	public async Task CreateAsync_WithoutChatManageChannels_IsDeniedAndOpensNothing()
+	public async Task NoManageChannels_Denied()
 	{
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Plain");
@@ -29,7 +29,7 @@ public sealed class ScopedServerChannelsTests
 	}
 
 	[Fact]
-	public async Task CreateAsync_WithChatManageChannels_OpensTheChannel_AndTheSameNameIsTakenAfterwards()
+	public async Task ManageChannels_OpenNameTaken()
 	{
 		using var app = new TestApplication();
 		var manager = await RoomFixture.PlayerAsync(app, "Boss",
@@ -46,7 +46,7 @@ public sealed class ScopedServerChannelsTests
 	}
 
 	[Fact]
-	public async Task CreateAsync_WhenStoringTheChannelFails_LeavesNoOpenChannelAndRethrows()
+	public async Task StoreFailure_NoChannelRethrows()
 	{
 		var repository = Substitute.For<IChannelRepository>();
 		repository.CreateOrUpdateAsync(Arg.Any<GeneralChannelRecord>())

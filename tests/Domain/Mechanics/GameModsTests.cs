@@ -16,13 +16,13 @@ public class GameModsTests
 	[InlineData(GameMods.Relax | GameMods.NoFail, GameMods.Relax)]
 	[InlineData(GameMods.Autopilot | GameMods.NoFail, GameMods.Autopilot)]
 	[InlineData(GameMods.Perfect | GameMods.SuddenDeath, GameMods.Perfect)]
-	public void RemoveInvalidMods_ModeInspecificConflicts_ResolvesToExpected(GameMods input, GameMods expected)
+	public void ConflictsAnyMode_ResolvedAsExpected(GameMods input, GameMods expected)
 	{
 		Assert.Equal(expected, input.RemoveInvalidMods(GameMode.Standard));
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_NonOsuMode_RemovesOsuSpecificMods()
+	public void NonOsuMode_OsuModsRemoved()
 	{
 		var result = (GameMods.Autopilot | GameMods.SpunOut | GameMods.Target | GameMods.Hidden)
 			.RemoveInvalidMods(GameMode.Taiko);
@@ -31,7 +31,7 @@ public class GameModsTests
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_NonManiaMode_RemovesManiaSpecificMods()
+	public void NonManiaMode_ManiaModsRemoved()
 	{
 		var result = (GameMods.Mirror | GameMods.Random | GameMods.FadeIn | GameMods.Key4 | GameMods.Hidden)
 			.RemoveInvalidMods(GameMode.Standard);
@@ -43,13 +43,13 @@ public class GameModsTests
 	[InlineData(GameMode.Standard)]
 	[InlineData(GameMode.Taiko)]
 	[InlineData(GameMode.Catch)]
-	public void RemoveInvalidMods_KeyCoopOutsideMania_IsRemoved(GameMode mode)
+	public void KeyCoopOutside_Removed(GameMode mode)
 	{
 		Assert.Equal(GameMods.Hidden, (GameMods.KeyCoop | GameMods.Hidden).RemoveInvalidMods(mode));
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_KeyCoopInMania_IsKept()
+	public void KeyCoopMania_Kept()
 	{
 		Assert.Equal(GameMods.Key5 | GameMods.KeyCoop,
 			(GameMods.Key5 | GameMods.KeyCoop).RemoveInvalidMods(GameMode.Mania));
@@ -59,44 +59,44 @@ public class GameModsTests
 	[InlineData(GameMode.Standard)]
 	[InlineData(GameMode.Taiko)]
 	[InlineData(GameMode.Catch)]
-	public void IsValid_KeyCoopOutsideMania_Rejected(GameMode mode)
+	public void KeyCoopOutside_Rejected(GameMode mode)
 	{
 		Assert.False(GameMods.KeyCoop.IsValid(mode));
 	}
 
 	[Fact]
-	public void IsValid_KeyCoopInMania_Accepted()
+	public void KeyCoopMania_Accepted()
 	{
 		Assert.True(GameMods.KeyCoop.IsValid(GameMode.Mania));
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_StandardAutopilotWithSpunOut_RemovesAutopilot()
+	public void AutopilotSpunOut_AutopilotRemoved()
 	{
 		Assert.Equal(GameMods.SpunOut, (GameMods.Autopilot | GameMods.SpunOut).RemoveInvalidMods(GameMode.Standard));
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_StandardAutopilotWithRelax_RemovesAutopilot()
+	public void AutopilotRelax_AutopilotRemoved()
 	{
 		Assert.Equal(GameMods.Relax, (GameMods.Autopilot | GameMods.Relax).RemoveInvalidMods(GameMode.Standard));
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_Mania_RemovesRelax()
+	public void ManiaRelax_RelaxRemoved()
 	{
 		Assert.Equal(GameMods.NoMod, GameMods.Relax.RemoveInvalidMods(GameMode.Mania));
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_ManiaHiddenWithFadeIn_RemovesFadeIn()
+	public void ManiaHidden_FadeInRemoved()
 	{
 		Assert.Equal(GameMods.Hidden,
 			(GameMods.Hidden | GameMods.FadeIn).RemoveInvalidMods(GameMode.Mania));
 	}
 
 	[Fact]
-	public void RemoveInvalidMods_MultipleKeymods_KeepsOnlyFirst()
+	public void MultipleKeymods_FirstKept()
 	{
 		Assert.Equal(GameMods.Key1, (GameMods.Key1 | GameMods.Key2 | GameMods.Key4).RemoveInvalidMods(GameMode.Mania));
 	}
@@ -106,27 +106,27 @@ public class GameModsTests
 	[InlineData("", GameMods.NoMod)]
 	[InlineData("hddt", GameMods.Hidden | GameMods.DoubleTime)]
 	[InlineData("ZZHD", GameMods.Hidden)]
-	public void FromModString_ParsesTwoCharacterChunks(string input, GameMods expected)
+	public void ModString_ParsesChunks(string input, GameMods expected)
 	{
 		Assert.Equal(expected, ModsExtensions.FromModString(input));
 	}
 
 	[Fact]
-	public void FromNowPlayingString_ParsesTaggedTokensAndFiltersInvalidCombos()
+	public void NowPlaying_ParsesAndFilters()
 	{
 		Assert.Equal(GameMods.Hidden | GameMods.DoubleTime,
 			ModsExtensions.FromNowPlayingString("+Hidden +DoubleTime", GameMode.Standard));
 	}
 
 	[Fact]
-	public void FromNowPlayingString_UnknownToken_Ignored()
+	public void NowPlayingUnknown_Ignored()
 	{
 		Assert.Equal(GameMods.Hidden,
 			ModsExtensions.FromNowPlayingString("+Hidden +NotAMod", GameMode.Standard));
 	}
 
 	[Fact]
-	public void NightcoreWireForm_IsDoubleTimeWithNightcore()
+	public void NightcoreWire_DoubleTime()
 	{
 		var wireForm = GameMods.DoubleTime | GameMods.Nightcore;
 
@@ -134,7 +134,7 @@ public class GameModsTests
 	}
 
 	[Fact]
-	public void PerfectWireForm_IsPerfectWithSuddenDeath()
+	public void PerfectWire_SuddenDeath()
 	{
 		var wireForm = GameMods.Perfect | GameMods.SuddenDeath;
 
@@ -146,7 +146,7 @@ public class GameModsTests
 	[InlineData(GameMods.Perfect)]
 	[InlineData(GameMods.DoubleTime | GameMods.Nightcore)]
 	[InlineData(GameMods.Perfect | GameMods.SuddenDeath)]
-	public void IsValid_SingleAndWireFormMods_Accepted(GameMods mods)
+	public void ValidSingleWire_Accepted(GameMods mods)
 	{
 		Assert.True(mods.IsValid(GameMode.Standard));
 	}
@@ -156,7 +156,7 @@ public class GameModsTests
 	[InlineData(GameMods.Nightcore | GameMods.HalfTime)]
 	[InlineData(GameMods.DoubleTime | GameMods.Nightcore | GameMods.HalfTime)]
 	[InlineData(GameMods.Perfect | GameMods.NoFail)]
-	public void IsValid_ConflictingMods_Rejected(GameMods mods)
+	public void ConflictingMods_Rejected(GameMods mods)
 	{
 		Assert.False(mods.IsValid(GameMode.Standard));
 	}

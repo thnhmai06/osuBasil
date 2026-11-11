@@ -13,7 +13,7 @@ public sealed class DatabaseSetupTests
 	}
 
 	[Fact]
-	public void TheWriteAndReadConnectionStringsAreTakenFromConnectionStrings()
+	public void BothConnectionStrings_ReadFromConfig()
 	{
 		var options = DatabaseSetup.Read(Settings(("ConnectionStrings:Write", "Host=primary"),
 			("ConnectionStrings:Read", "Host=replica")));
@@ -23,7 +23,7 @@ public sealed class DatabaseSetupTests
 	}
 
 	[Fact]
-	public void WithoutAReadConnectionStringReadsUseTheWriteOne()
+	public void NoReadString_ReadsUseWrite()
 	{
 		var options = DatabaseSetup.Read(Settings(("ConnectionStrings:Write", "Host=primary")));
 
@@ -31,7 +31,7 @@ public sealed class DatabaseSetupTests
 	}
 
 	[Fact]
-	public void ThePoolSizesDefaultToTheDriverForReadsAndEightForWrites()
+	public void PoolSizes_PerDirectionDefaults()
 	{
 		var options = DatabaseSetup.Read(Settings(("ConnectionStrings:Write", "Host=primary")));
 
@@ -40,7 +40,7 @@ public sealed class DatabaseSetupTests
 	}
 
 	[Fact]
-	public void ThePoolSizesAreTakenFromTheDatabaseSection()
+	public void PoolSizes_FromDatabaseSection()
 	{
 		var options = DatabaseSetup.Read(Settings(("ConnectionStrings:Write", "Host=primary"),
 			("Basil:Database:Read:PoolSize", "20"), ("Basil:Database:Write:PoolSize", "3")));
@@ -50,7 +50,7 @@ public sealed class DatabaseSetupTests
 	}
 
 	[Fact]
-	public void AMissingWriteConnectionStringStopsTheServerWithAClearError()
+	public void MissingWriteString_ServerStops()
 	{
 		var exception = Assert.Throws<InvalidOperationException>(() => DatabaseSetup.Read(Settings(
 			("ConnectionStrings:Read", "Host=replica"))));

@@ -21,7 +21,7 @@ public class ImplementationPlacementTests
 			.ToArray();
 
 	[Fact]
-	public void ApplicationProjects_HoldNoHandlerLogicOrWorkerFolder()
+	public void ApplicationHandlerFolder_Absent()
 	{
 		var misplaced = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Where(InImplementationFolder).Select(type => type.FullName);
@@ -30,7 +30,7 @@ public class ImplementationPlacementTests
 	}
 
 	[Fact]
-	public void ApplicationProjects_ImplementNoHandlerOrHostedService()
+	public void ApplicationHandlerImplementation_Absent()
 	{
 		var misplaced = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Where(IsImplementation).Select(type => type.FullName);
@@ -39,7 +39,7 @@ public class ImplementationPlacementTests
 	}
 
 	[Fact]
-	public void TheDetectorSeesTheHandlersAndWorkersOfInfrastructure_PositiveControl()
+	public void DetectorSeesHandlers_PositiveControl()
 	{
 		var types = ModuleInfrastructures.SelectMany(assembly => assembly.GetTypes()).ToArray();
 
@@ -48,7 +48,7 @@ public class ImplementationPlacementTests
 	}
 
 	[Fact]
-	public void InfrastructureProjects_ShowOnlyTheirRegistrationPublicly()
+	public void InfrastructureExposure_RegistrationOnly()
 	{
 		var exposed = ModuleInfrastructures.SelectMany(assembly => assembly.GetExportedTypes())
 			.Where(type => !IsRegistration(type) && !IsMigration(type) &&
@@ -59,7 +59,7 @@ public class ImplementationPlacementTests
 	}
 
 	[Fact]
-	public void TheExposureCheckSeesPublicTypes_PositiveControl()
+	public void ExposureCheck_PositiveControl()
 	{
 		var exposed = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetExportedTypes())
 			.Where(type => !IsRegistration(type));
@@ -68,7 +68,7 @@ public class ImplementationPlacementTests
 	}
 
 	[Fact]
-	public void EveryModuleInfrastructureRegistersItself()
+	public void ModuleInfrastructure_SelfRegisters()
 	{
 		foreach (var assembly in ModuleInfrastructures)
 		{

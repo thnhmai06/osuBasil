@@ -105,7 +105,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	#region Which messages are commands
 
 	[Fact]
-	public async Task AMessageWithoutThePrefixInAChannel_IsNotAnswered()
+	public async Task UnprefixedChannelMessage_Ignored()
 	{
 		await PostAsync(_channel, "hello everyone");
 
@@ -113,7 +113,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Help_InAChannel_IsWhisperedToTheTypistAndNotPostedInTheChannel()
+	public async Task ChannelHelp_WhisperedNotPosted()
 	{
 		await PostAsync(_channel, "!help");
 
@@ -122,7 +122,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Roll_InAChannel_IsSaidInThatChannel()
+	public async Task ChannelRoll_SaidInChannel()
 	{
 		await PostAsync(_channel, "!roll");
 
@@ -131,7 +131,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task AMessageToTheBotInPrivate_NeedsNoPrefix()
+	public async Task PrivateBotMessage_NoPrefix()
 	{
 		await PostAsync(_bot.App.PmChannels.Of(_botUser), "help");
 
@@ -139,7 +139,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task AMessageToTheBotInPrivate_IsAnsweredByWhisperAndNotPostedInTheBotsChannel()
+	public async Task PrivateBotMessage_WhisperedOnly()
 	{
 		await PostAsync(_bot.App.PmChannels.Of(_botUser), "roll");
 
@@ -149,7 +149,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task APrivateMessageToAnotherUser_IsIgnored()
+	public async Task ForeignPrivateMessage_Ignored()
 	{
 		var other = await RoomFixture.PlayerAsync(_bot.App, "Other");
 
@@ -159,7 +159,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task ANotice_IsIgnored()
+	public async Task Notice_Ignored()
 	{
 		await PostAsync(_channel, "!roll", true);
 
@@ -169,7 +169,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Theory]
 	[InlineData("   ")]
 	[InlineData("\t")]
-	public async Task AWhitespaceMessage_IsRunAsACommandLineAndGetsNoReply(string content)
+	public async Task WhitespaceMessage_NoReply(string content)
 	{
 		await PostAsync(_bot.App.PmChannels.Of(_botUser), content);
 
@@ -177,7 +177,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task AMessageAuthoredByTheBotItself_IsIgnored()
+	public async Task BotAuthoredMessage_Ignored()
 	{
 		await PostAsync(_channel, "!roll", author: _botUser.Record);
 
@@ -185,7 +185,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task AMessageTheServerSaidItself_IsIgnored()
+	public async Task ServerMessage_Ignored()
 	{
 		var message = new Message
 			{ Author = _typist.Record, Content = "!roll", Timestamp = _bot.App.Clock.GetUtcNow() };
@@ -201,7 +201,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	#region Long answers
 
 	[Fact]
-	public async Task AReplyWithSeveralLines_IsPostedAsOneMessagePerLine()
+	public async Task MultiLineReply_OnePerLine()
 	{
 		GivenFaq("rules", "first\nsecond\nthird");
 
@@ -211,7 +211,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task AReplyWithEmptyLines_SkipsThem()
+	public async Task ReplyEmptyLines_Skipped()
 	{
 		GivenFaq("rules", "first\n\n\nsecond\n");
 
@@ -221,7 +221,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task AReplyWithWindowsLineEndings_IsPostedWithoutCarriageReturns()
+	public async Task WindowsLineEndings_NoCarriageReturns()
 	{
 		GivenFaq("rules", "first\r\nsecond");
 
@@ -231,7 +231,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task ALineOfExactlyTheLimit_IsPostedWhole()
+	public async Task LineAtLimit_PostedWhole()
 	{
 		var line = new string('a', MaxPieceLength);
 		GivenFaq("long", line);
@@ -242,7 +242,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task ALineOverTheLimit_IsSplitAtTheLastSpaceBeforeTheLimit()
+	public async Task OverlongLine_SplitAtSpace()
 	{
 		var head = new string('A', 1000) + " " + new string('B', 900);
 		var tail = new string('C', 500);
@@ -254,7 +254,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task ALineWhoseFirstPartEndsExactlyAtTheLimit_IsSplitAtThatSpace()
+	public async Task ExactFirstPart_SplitThere()
 	{
 		var head = new string('a', MaxPieceLength);
 		var tail = new string('b', 10);
@@ -266,7 +266,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task ALineOverTheLimitWithoutSpaces_IsSplitEveryLimitCharacters()
+	public async Task UnbrokenOverlongLine_SplitEveryLimit()
 	{
 		GivenFaq("long", new string('x', 4500));
 
@@ -276,7 +276,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task EveryPieceOfALongLine_IsAtMostTheLimit()
+	public async Task LongLinePieces_AtMostLimit()
 	{
 		GivenFaq("long", string.Join(' ', Enumerable.Repeat("word", 1500)));
 
@@ -292,7 +292,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	#region Failures
 
 	[Fact]
-	public async Task ACommandThatThrows_SaysNothing()
+	public async Task ThrowingCommand_SaysNothing()
 	{
 		GivenFailingFaq("boom");
 
@@ -302,7 +302,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task AMessageAfterACommandThatThrew_IsStillAnswered()
+	public async Task AfterThrowingCommand_StillAnswered()
 	{
 		GivenFailingFaq("boom");
 		await PostAsync(_channel, "!faq boom");

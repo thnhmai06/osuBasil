@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 public sealed class ConnectionLobbyHandlerTests
 {
 	[Fact]
-	public async Task Handle_UserConnectionClosed_ReleasesTheRoomItPlayedIn()
+	public async Task UserClosed_ReleasesPlayedRoom()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -31,7 +31,7 @@ public sealed class ConnectionLobbyHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_UserConnectionClosed_StopsWatchingTheLobby()
+	public async Task UserClosed_StopsWatchingLobby()
 	{
 		using var app = new TestApplication();
 		var handler = Handler(app);

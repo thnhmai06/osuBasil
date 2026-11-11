@@ -6,7 +6,7 @@ namespace Basil.Application.Bot.Tests.Replies;
 public sealed class RepliesOptionsTests
 {
 	[Fact]
-	public void Path_ByDefault_IsTheTemplatesFolderBesideTheProgram()
+	public void ByDefault_TemplatesFolder()
 	{
 		Assert.Equal("Configurations/Templates/replies.json", new RepliesOptions().Path);
 	}

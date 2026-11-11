@@ -15,7 +15,7 @@ public sealed class GuideTests(RestHostFixture fixture)
 	[Theory]
 	[InlineData("bot", "!mp mods")]
 	[InlineData("irc", "AUTHENTICATE")]
-	public async Task AGuide_IsServedAsMarkdown_AndAsAPage(string slug, string expected)
+	public async Task KnownGuide_MarkdownAndPage(string slug, string expected)
 	{
 		var markdown = await GetAsync($"/guides/{slug}.md");
 		var page = await GetAsync($"/guides/{slug}");
@@ -30,7 +30,7 @@ public sealed class GuideTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TheIndex_ListsEveryGuide()
+	public async Task GuideIndex_ListsEveryGuide()
 	{
 		var index = await GetAsync("/guides");
 
@@ -40,7 +40,7 @@ public sealed class GuideTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task AnUnknownGuide_IsNotFound()
+	public async Task UnknownGuide_NotFound()
 	{
 		Assert.Equal(404, (await GetAsync("/guides/nothing")).Status);
 		Assert.Equal(404, (await GetAsync("/guides/nothing.md")).Status);

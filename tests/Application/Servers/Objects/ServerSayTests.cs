@@ -23,7 +23,7 @@ public sealed class ServerSayTests
 	}
 
 	[Fact]
-	public async Task SayAsync_Text_PostsItAsTheBot()
+	public async Task Text_PostsAsBot()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -39,7 +39,7 @@ public sealed class ServerSayTests
 	}
 
 	[Fact]
-	public async Task SayAsync_WhitespaceOnlyText_IsPostedAsIs()
+	public async Task WhitespaceText_PostedAsIs()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -55,7 +55,7 @@ public sealed class ServerSayTests
 	[Theory]
 	[InlineData("")]
 	[InlineData("bad\0text")]
-	public async Task SayAsync_EmptyOrInvalidText_PostsNothing(string text)
+	public async Task EmptyOrInvalid_PostsNothing(string text)
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();

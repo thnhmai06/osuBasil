@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Users.Tests.Handlers;
 public sealed class ConnectionClosedHandlerTests
 {
 	[Fact]
-	public async Task Handle_UserConnectionClosed_StoresTheEndOfTheConnection()
+	public async Task UserConnectionClosed_EndStored()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Leaver", "password"), SessionType.Stable);
@@ -28,7 +28,7 @@ public sealed class ConnectionClosedHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_AConnectionOfTheServer_StoresNothing()
+	public async Task ServerConnection_StoresNothing()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -44,7 +44,7 @@ public sealed class ConnectionClosedHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_WhenTheClosingCannotBeStored_CountsTheFailureAndDoesNotThrow()
+	public async Task UnstorableClosing_CountedNoThrow()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Unstored", "password"), SessionType.Stable);

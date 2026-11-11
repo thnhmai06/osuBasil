@@ -13,7 +13,7 @@ public class ContentReferenceTests
 	[InlineData("LPT9.log")]
 	[InlineData("aux")]
 	[InlineData("menu/CON")]
-	public void Path_WindowsDeviceName_Throws(string path)
+	public void PathDevice_Throws(string path)
 	{
 		Assert.Throws<ArgumentException>(() => new ContentReference(path));
 	}
@@ -22,7 +22,7 @@ public class ContentReferenceTests
 	[InlineData("folder.")]
 	[InlineData("folder /file")]
 	[InlineData("folder/file.")]
-	public void Path_SegmentEndingWithDotOrSpace_Throws(string path)
+	public void PathDotSpace_Throws(string path)
 	{
 		Assert.Throws<ArgumentException>(() => new ContentReference(path));
 	}
@@ -34,19 +34,19 @@ public class ContentReferenceTests
 	[InlineData("a|b")]
 	[InlineData("a?b")]
 	[InlineData("a*b")]
-	public void Path_ForbiddenCharacter_Throws(string path)
+	public void PathForbidden_Throws(string path)
 	{
 		Assert.Throws<ArgumentException>(() => new ContentReference(path));
 	}
 
 	[Fact]
-	public void Parse_Whitespace_ThrowsFormatException()
+	public void ParseWhitespace_Throws()
 	{
 		Assert.Throws<FormatException>(() => ContentReference.Parse(" ", null));
 	}
 
 	[Fact]
-	public void ToString_UnsupportedFormat_ThrowsFormatException()
+	public void ToStringFormat_Throws()
 	{
 		var reference = new ContentReference("banner.png");
 
@@ -54,7 +54,7 @@ public class ContentReferenceTests
 	}
 
 	[Fact]
-	public void ToString_GeneralFormat_ReturnsCanonicalText()
+	public void ToStringGeneral_Canonical()
 	{
 		var reference = new ContentReference("banner.png");
 

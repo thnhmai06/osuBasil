@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Diagnostics.Tests.Pipeline;
 public sealed class MessageMeasurementTests
 {
 	[Fact]
-	public async Task Handle_RecordsOneDurationTaggedWithTheMessageType_AndReturnsTheAnswer()
+	public async Task RecordsDuration_ReturnsAnswer()
 	{
 		var seen = new List<(string Name, string? Message, int Tags)>();
 		var duration = BasilMeter.MessageDuration; // created before the listener starts, or it is never published to it

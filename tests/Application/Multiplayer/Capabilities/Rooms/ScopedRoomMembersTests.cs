@@ -19,7 +19,7 @@ namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 public sealed class ScopedRoomMembersTests
 {
 	[Fact]
-	public async Task JoinAsync_WithTheWrongPassword_IsRefusedAndTakesNoSlot()
+	public async Task WrongPassword_RefusedNoSlot()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -34,7 +34,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_WithTheRightPassword_SeatsThePlayer()
+	public async Task RightPassword_SeatsPlayer()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -50,7 +50,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_WithoutAPassword_SeatsThePlayerInTheFirstOpenSlot()
+	public async Task NoPassword_SeatsFirstOpen()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -63,7 +63,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ToARoomWhoseSlotsAreLocked_SeatsThePlayer()
+	public async Task LockedSlots_SeatsPlayer()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -77,7 +77,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForABannedUser_IsRefused()
+	public async Task BannedUser_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -91,7 +91,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForAFullRoom_IsRefused()
+	public async Task FullRoom_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -106,7 +106,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForAPlayerWhoIsAlreadySeated_IsRefused()
+	public async Task AlreadySeated_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -117,7 +117,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForAPlayerWhoIsSeatedInAnotherRoom_IsRefused()
+	public async Task SeatedElsewhere_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -134,7 +134,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task LeaveAsync_ForTheHost_GivesTheHostToTheNextSeatedPlayer()
+	public async Task HostLeaves_HostPasses()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -152,7 +152,7 @@ public sealed class ScopedRoomMembersTests
 	[Theory]
 	[InlineData(RoomSource.Game)]
 	[InlineData(RoomSource.Api)]
-	public async Task LeaveAsync_ForTheLastPlayer_KeepsTheRoomOpenAndAnnouncesItsClosing(RoomSource source)
+	public async Task LastPlayerLeaves_OpenAnnouncesClose(RoomSource source)
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -168,7 +168,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task KickAsync_ForAPlayer_RemovesThemAndAnnouncesItOnce()
+	public async Task Player_RemovedAnnouncedOnce()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -181,7 +181,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task BanAsync_ForAPlayer_RemovesThemAndBlocksThemFromJoiningAgain()
+	public async Task Player_RemovedAndBlocked()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -196,7 +196,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task UnbanAsync_ForABannedUser_LetsThemJoinAgain()
+	public async Task BannedUser_JoinsAgain()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -211,7 +211,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task KickAsync_ForTheCreator_IsRefused()
+	public async Task KickCreator_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -223,7 +223,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task BanAsync_ForTheCreator_IsRefused()
+	public async Task BanCreator_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -235,7 +235,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task ObserverJoinAsync_ForATourneyClient_AddsThemAsObserver()
+	public async Task TourneyClient_AddedAsObserver()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -249,7 +249,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task ObserverJoinAsync_ForAUserWhoIsSeated_IsRefused()
+	public async Task SeatedUser_Refused()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -268,7 +268,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task ObserverLeaveAsync_ForAnObserver_RemovesThem()
+	public async Task ForAnObserver_RemovesThem()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -283,7 +283,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task ObserverLeaveAsync_ForSomebodyWhoDoesNotObserve_IsRefused()
+	public async Task NonObserver_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -295,7 +295,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForAnObserver_IsRefused()
+	public async Task ForAnObserver_IsRefused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -312,7 +312,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_AsATourneyClientWithoutRoomObserve_IsRefused()
+	public async Task TourneyNoObserve_Refused()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Watcher", "password");
@@ -324,7 +324,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task InviteAsync_ToAnOfflineUser_IsRefused()
+	public async Task OfflineUser_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -337,7 +337,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task InviteAsync_ToAUserWhoBlocksTheInviter_IsRefused()
+	public async Task BlockingUser_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -351,7 +351,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task InviteAsync_FromAUserWhoManagesEveryRoom_ReachesAUserWhoBlockedThem()
+	public async Task ManagerInvite_ReachesBlocker()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -366,7 +366,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task KickAsync_ForSomebodyWhoIsNotSeated_IsRefused()
+	public async Task KickNotSeated_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -377,7 +377,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task KickAsync_ForAUserNoAccountHas_IsNotInRoom()
+	public async Task NoAccountUser_NotInRoom()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -388,7 +388,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task KickAsync_ByAPlayerWithoutTheRole_IsRefusedAlikeForAKnownAndAnUnknownUser()
+	public async Task NoRole_RefusedAlike()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -403,7 +403,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task UnbanAsync_ForSomebodyWhoIsNotBanned_IsRefused()
+	public async Task NotBanned_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -414,7 +414,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForAUserWhoMayNotJoinRooms_IsDeniedNamingRoomJoin()
+	public async Task NoJoinRight_DeniedNamingJoin()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -427,7 +427,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForAClosedRoom_IsDeniedNamingRoomJoin_ToAUserWhoMayNotJoinRooms()
+	public async Task ClosedRoom_DeniedNamingJoin()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -439,7 +439,7 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForANewConnectionOfTheSameUser_TakesOverTheSeatOfTheClosedOne()
+	public async Task NewConnection_TakesOverSeat()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

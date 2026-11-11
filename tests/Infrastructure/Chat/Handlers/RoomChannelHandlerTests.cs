@@ -13,7 +13,7 @@ namespace Basil.Infrastructure.Chat.Tests.Handlers;
 public sealed class RoomChannelHandlerTests
 {
 	[Fact]
-	public async Task Of_ForAnOpenRoom_ReturnsTheSameOpenChannelEachTime()
+	public async Task OpenRoom_SameChannel()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -25,7 +25,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Of_ForAClosedRoom_ReturnsAClosedChannelAndKeepsNone()
+	public async Task ClosedRoom_ClosedChannelKept()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -38,7 +38,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyRoomClosed_ClosesAndForgetsTheChannel()
+	public async Task LobbyRoomClosed_ClosesChannel()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -56,7 +56,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyRoomOpened_OpensTheChannelWithTheFirstHost()
+	public async Task LobbyRoomOpened_ChannelWithHost()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -70,7 +70,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomPlayerJoined_AddsThePlayerAndReplacesItsClosedConnection()
+	public async Task RoomPlayerJoined_AddsAndReplaces()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -88,7 +88,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomPlayerLeft_PartsThePlayerButKeepsTheManager()
+	public async Task RoomPlayerLeft_KeepsManager()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -105,7 +105,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomPlayerKicked_PartsTheRemovedPlayer()
+	public async Task RoomPlayerKicked_PartsRemoved()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -120,7 +120,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomPlayerBanned_PartsTheEvictedPlayer()
+	public async Task RoomPlayerBanned_PartsEvicted()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -135,7 +135,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomSlotLockChanged_PartsTheEvictedPlayer()
+	public async Task SlotLockChanged_PartsEvicted()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -152,7 +152,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomObserverJoined_AddsTheObserver()
+	public async Task RoomObserverJoined_AddsObserver()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -169,7 +169,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomObserverLeft_PartsTheObserver()
+	public async Task RoomObserverLeft_PartsObserver()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -190,7 +190,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomRefereeRemoved_PartsTheRefereeWhoSitsInNoSlot()
+	public async Task NoSlotReferee_Parted()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -206,7 +206,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomRefereeRemoved_KeepsTheRefereeWhoSitsInASlot()
+	public async Task SlottedReferee_Kept()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -223,7 +223,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyConnectionReleased_PartsTheConnectionFromEveryRoomChannel()
+	public async Task LobbyConnectionReleased_PartsEveryChannel()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

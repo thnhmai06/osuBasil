@@ -9,7 +9,7 @@ public sealed class LoginTests(StableHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Login_CorrectPassword_ReturnsUserIdTokenAndProtocolVersion()
+	public async Task CorrectPassword_IdTokenVersion()
 	{
 		using var client = await Host.NewClientAsync("LoginOk");
 
@@ -22,7 +22,7 @@ public sealed class LoginTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_WrongPassword_ReplyIsMinusOne()
+	public async Task WrongPassword_MinusOne()
 	{
 		using var client = await Host.NewClientAsync("LoginWrong");
 
@@ -32,7 +32,7 @@ public sealed class LoginTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_UnknownUser_ReplyIsMinusOne()
+	public async Task UnknownUser_MinusOne()
 	{
 		using var client = OsuClient.Create(Host, "NoSuchUser", "password");
 
@@ -42,7 +42,7 @@ public sealed class LoginTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Poll_UnknownToken_AsksTheClientToReconnect()
+	public async Task PollUnknownToken_ReconnectAsked()
 	{
 		using var client = await Host.NewClientAsync("PollUnknown");
 		await client.LoginAsync();

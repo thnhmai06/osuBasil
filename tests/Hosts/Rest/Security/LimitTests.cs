@@ -17,7 +17,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Mutations_BeyondTheLimitOfAUser_Answer429WithRetryAfter_InTheEnvelope()
+	public async Task TooManyMutations_429RetryAfter()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("LimitMut");
@@ -46,7 +46,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ParallelWrongLogins_NeverExceedTheLoginLimit()
+	public async Task ParallelWrongLogins_LimitHeld()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await RestHostFixture.RaiseLimitsAsync(host);
@@ -65,7 +65,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 
 	[Fact]
 	public async Task
-		AnonymousRequests_BeyondTheLimitOfAnAddress_Answer429_ButATokenIsNotCounted() // the login is anonymous too, so 3 allowed = login + 2
+		AnonymousBeyondLimit_429TokensFree() // the login is anonymous too, so 3 allowed = login + 2
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("LimitAnon");
@@ -95,7 +95,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Requests_BeyondTheAdmissionAllowanceOfAnAddress_Answer429WithRetryAfter_ButHealthStillAnswers()
+	public async Task AddressBeyondAdmission_429HealthOk()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await ChangeAsync(host, s => s with
@@ -121,7 +121,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Images_BeyondThePictureAllowanceOfAnAddress_Answer429_ButTheApiAllowanceIsUntouched()
+	public async Task PicturesBeyondAllowance_429ApiIntact()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await ChangeAsync(host, s => s with
@@ -149,7 +149,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OpenStreams_BeyondTheLimitPerAddress_Answer429()
+	public async Task StreamsAddressLimit_429()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("LimitStream", "password",
@@ -173,7 +173,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OpenStreams_BeyondTheApiLimitOfTheUser_Answer429()
+	public async Task StreamsUserLimit_429()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("UserStream", "password",
@@ -195,7 +195,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Shutdown_SendsAFinalServerEvent_EndsStreams_AndRefusesNewOnesWith503()
+	public async Task Shutdown_FinalEventThen503()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("LimitStop", "password",
@@ -221,7 +221,7 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Cors_ReadsTheAllowedOriginsFromTheSettingsOnEveryRequest()
+	public async Task Cors_HonoursLatestOrigins()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		using var http = new HttpClient { BaseAddress = host.Url };

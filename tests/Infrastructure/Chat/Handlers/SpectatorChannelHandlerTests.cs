@@ -16,7 +16,7 @@ namespace Basil.Infrastructure.Chat.Tests.Handlers;
 public sealed class SpectatorChannelHandlerTests
 {
 	[Fact]
-	public async Task Handle_FirstSpectator_JoinsTheSpectatorAndTheHost()
+	public async Task FirstSpectator_JoinsHost()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -33,7 +33,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_SecondSpectator_DoesNotJoinTheHostTwice()
+	public async Task SecondSpectator_HostNotTwice()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -56,7 +56,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_ApiSpectator_JoinsNoChannel()
+	public async Task ApiSpectator_NoChannel()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -74,7 +74,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LastGameSpectatorLeaving_PartsTheHostEvenWhileAnApiConnectionWatches()
+	public async Task LastGameSpectator_PartsHost()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -93,7 +93,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RepeatedJoin_LeavesTheChannelAsItWas()
+	public async Task RepeatedJoin_Unchanged()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -115,7 +115,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LeftSpectator_PartsTheSpectatorAndKeepsTheHost()
+	public async Task LeftSpectator_HostKept()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -137,7 +137,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LastSpectatorLeaving_PartsTheHostToo()
+	public async Task LastSpectator_PartsHost()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -156,7 +156,7 @@ public sealed class SpectatorChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_ConnectionClosed_ClosesTheSpectatorChannel()
+	public async Task ConnectionClosed_ChannelClosed()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");

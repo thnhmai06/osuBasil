@@ -10,7 +10,7 @@ namespace Basil.Domain.Tests.Multiplayer;
 public class MatchSettingsTests
 {
 	[Fact]
-	public void Mods_FreemodsOffAnyValidMods_Accepted()
+	public void FreemodsOffAny_Accepted()
 	{
 		var settings = new MatchSettings { Mods = GameMods.Hidden | GameMods.DoubleTime };
 
@@ -22,7 +22,7 @@ public class MatchSettingsTests
 	[InlineData(GameMods.DoubleTime)]
 	[InlineData(GameMods.HalfTime)]
 	[InlineData(GameMods.Nightcore | GameMods.DoubleTime)]
-	public void Mods_FreemodsOnSpeedChangingMods_Accepted(GameMods mods)
+	public void FreemodsSpeedChanging_Accepted(GameMods mods)
 	{
 		var settings = new MatchSettings { Freemods = true };
 
@@ -34,7 +34,7 @@ public class MatchSettingsTests
 	[Theory]
 	[InlineData(GameMods.Hidden)]
 	[InlineData(GameMods.DoubleTime | GameMods.Hidden)]
-	public void Mods_FreemodsOnOtherMods_Refused(GameMods mods)
+	public void FreemodsOtherMods_Refused(GameMods mods)
 	{
 		var settings = new MatchSettings { Freemods = true };
 
@@ -43,7 +43,7 @@ public class MatchSettingsTests
 	}
 
 	[Fact]
-	public void Freemods_OnWithSpeedChangingMods_Accepted()
+	public void FreemodsSpeedMods_Accepted()
 	{
 		var settings = new MatchSettings { Mods = GameMods.DoubleTime };
 
@@ -53,7 +53,7 @@ public class MatchSettingsTests
 	}
 
 	[Fact]
-	public void Freemods_OnWithNoMods_Accepted()
+	public void FreemodsNoMods_Accepted()
 	{
 		var settings = new MatchSettings();
 
@@ -63,7 +63,7 @@ public class MatchSettingsTests
 	}
 
 	[Fact]
-	public void Freemods_OnWithOtherMods_Refused()
+	public void FreemodsOnOthers_Refused()
 	{
 		var settings = new MatchSettings { Mods = GameMods.Hidden | GameMods.DoubleTime };
 
@@ -72,7 +72,7 @@ public class MatchSettingsTests
 	}
 
 	[Fact]
-	public void Freemods_OffWithOtherMods_Accepted()
+	public void FreemodsOffOthers_Accepted()
 	{
 		var settings = new MatchSettings { Mods = GameMods.Hidden };
 
@@ -82,7 +82,7 @@ public class MatchSettingsTests
 	}
 
 	[Fact]
-	public void Freemods_OffAfterOn_AllowsOtherModsAgain()
+	public void FreemodsOffAgain_AllowsMods()
 	{
 		var settings = new MatchSettings { Freemods = true };
 		settings.Freemods = false;
@@ -93,7 +93,7 @@ public class MatchSettingsTests
 	}
 
 	[Fact]
-	public void Initializer_ModsBeforeFreemodsWithSpeedChangingMods_Accepted()
+	public void ModsBeforeFreemods_Accepted()
 	{
 		var settings = new MatchSettings { Mods = GameMods.HalfTime, Freemods = true };
 
@@ -102,7 +102,7 @@ public class MatchSettingsTests
 	}
 
 	[Fact]
-	public void Initializer_FreemodsBeforeOtherMods_Refused()
+	public void FreemodsBeforeMods_Refused()
 	{
 		Assert.Throws<ArgumentException>(() => new MatchSettings { Freemods = true, Mods = GameMods.Hidden });
 	}

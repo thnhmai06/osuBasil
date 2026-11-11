@@ -5,7 +5,7 @@ namespace Basil.Protocol.Irc.Tests;
 public class IrcMessageTests
 {
 	[Fact]
-	public void Parse_CommandOnly_NoPrefixNoParams()
+	public void CommandOnlyLine_Parsed()
 	{
 		var message = IrcMessage.Parse("PING", null);
 
@@ -15,7 +15,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_WithoutPrefix_ReturnsNullPrefix()
+	public void NoPrefix_NullPrefix()
 	{
 		var message = IrcMessage.Parse("PRIVMSG #osu :hello there", null);
 
@@ -25,7 +25,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_WithPrefixAndMiddleParams()
+	public void PrefixAndParams_Parsed()
 	{
 		var message = IrcMessage.Parse(":alice!alice@basil JOIN #osu", null);
 
@@ -35,7 +35,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_MiddleParams_ReturnsEveryParam()
+	public void SeveralMiddleParams_AllReturned()
 	{
 		var message = IrcMessage.Parse("USER guest 0 *", null);
 
@@ -45,7 +45,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_WithTrailingParam_KeepsSpacesInside()
+	public void TrailingParam_KeepsSpaces()
 	{
 		var message = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there world", null);
 
@@ -54,7 +54,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_TrailingWithNoMiddleParams()
+	public void TrailingOnly_Parsed()
 	{
 		var message = IrcMessage.Parse("PASS :s3cret", null);
 
@@ -63,7 +63,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_TrailingParamStartingWithColon_KeepsColon()
+	public void TrailingColon_Kept()
 	{
 		var message = IrcMessage.Parse("PRIVMSG #osu ::) hi", null);
 
@@ -71,7 +71,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_EmptyTrailing_ReturnsOneEmptyParam()
+	public void EmptyTrailing_OneEmptyParam()
 	{
 		var message = IrcMessage.Parse("PING :", null);
 
@@ -79,7 +79,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_ColonInsideMiddleParam_IsKept()
+	public void ColonInMiddle_Kept()
 	{
 		var message = IrcMessage.Parse("MODE #osu +b bad:word", null);
 
@@ -87,7 +87,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_ConsecutiveSpacesBetweenTokens_CollapseToSeparators()
+	public void ConsecutiveSpaces_Collapse()
 	{
 		var message = IrcMessage.Parse("USER   guest    0  *", null);
 
@@ -98,7 +98,7 @@ public class IrcMessageTests
 	[Theory]
 	[InlineData(15)]
 	[InlineData(16)]
-	public void Parse_ManyParams_ReturnsEveryParam(int count)
+	public void ManyParams_AllReturned(int count)
 	{
 		var parameters = Enumerable.Range(1, count).Select(index => $"p{index}").ToArray();
 
@@ -108,7 +108,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_LowercaseCommand_IsUpperCased()
+	public void LowercaseCommand_UpperCased()
 	{
 		var message = IrcMessage.Parse("privmsg #osu :hi", null);
 
@@ -116,7 +116,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_LeadingTagSection_IsSkipped()
+	public void LeadingTags_Skipped()
 	{
 		var message = IrcMessage.Parse(
 			"@time=2020-01-01T00:00:00Z :alice!alice@basil PRIVMSG #osu :hi", null);
@@ -127,26 +127,26 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Parse_EmptyLine_Fails()
+	public void EmptyLine_Fails()
 	{
 		Assert.False(IrcMessage.TryParse("", null, out _));
 	}
 
 	[Fact]
-	public void TryParse_Null_ReturnsFalse()
+	public void NullLine_False()
 	{
 		Assert.False(IrcMessage.TryParse(null, null, out var message));
 		Assert.Null(message);
 	}
 
 	[Fact]
-	public void TryParse_PrefixOnly_ReturnsFalse()
+	public void PrefixOnly_False()
 	{
 		Assert.False(IrcMessage.TryParse(":p", null, out _));
 	}
 
 	[Fact]
-	public void TryParse_EmptyPrefix_ReturnsFalse()
+	public void EmptyPrefix_False()
 	{
 		Assert.False(IrcMessage.TryParse(": PING", null, out _));
 	}
@@ -154,19 +154,19 @@ public class IrcMessageTests
 	[Theory]
 	[InlineData("@a=b")]
 	[InlineData("@a=b ")]
-	public void TryParse_TagSectionWithoutCommand_ReturnsFalse(string line)
+	public void TagsWithoutCommand_False(string line)
 	{
 		Assert.False(IrcMessage.TryParse(line, null, out _));
 	}
 
 	[Fact]
-	public void TryParse_OnlySpaces_ReturnsFalse()
+	public void SpacesOnly_False()
 	{
 		Assert.False(IrcMessage.TryParse("   ", null, out _));
 	}
 
 	[Fact]
-	public void TryParse_WellFormedLine_ReturnsTrueAndTheMessage()
+	public void WellFormedLine_TrueWithMessage()
 	{
 		Assert.True(IrcMessage.TryParse(":irc.basil 001 alice :Welcome to the network", null, out var message));
 		Assert.NotNull(message);
@@ -180,7 +180,7 @@ public class IrcMessageTests
 	[InlineData("PING\n")]
 	[InlineData("PING\r\n")]
 	[InlineData("PI\0NG")]
-	public void TryParse_LineWithControlCharacter_ReturnsFalse(string line)
+	public void ControlCharacter_False(string line)
 	{
 		Assert.False(IrcMessage.TryParse(line, null, out _));
 	}
@@ -189,7 +189,7 @@ public class IrcMessageTests
 	[InlineData("PING\r")]
 	[InlineData("PING\n")]
 	[InlineData("PI\0NG")]
-	public void Parse_LineWithControlCharacter_ThrowsFormatException(string line)
+	public void ControlCharacter_FormatException(string line)
 	{
 		Assert.Throws<FormatException>(() => IrcMessage.Parse(line, null));
 	}
@@ -199,7 +199,7 @@ public class IrcMessageTests
 	[InlineData(":p")]
 	[InlineData(": PING")]
 	[InlineData("   ")]
-	public void Parse_MalformedLine_ThrowsFormatException(string line)
+	public void MalformedLine_FormatException(string line)
 	{
 		Assert.Throws<FormatException>(() => IrcMessage.Parse(line, null));
 	}
@@ -213,7 +213,7 @@ public class IrcMessageTests
 	[InlineData("PRIVMSG #osu ::) hi")]
 	[InlineData("CMD :")]
 	[InlineData("MODE #osu +m")]
-	public void RoundTrip_ParseThenFormat_ProducesEquivalentLine(string line)
+	public void ParseThenFormat_SameLine(string line)
 	{
 		var message = IrcMessage.Parse(line, null);
 		var formatted = message.ToString();
@@ -222,7 +222,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_WithoutArguments_ReturnsTheWireLine()
+	public void NoArguments_WireLine()
 	{
 		var message = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there", null);
 
@@ -230,7 +230,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_WithoutPrefix_StartsWithTheCommand()
+	public void NoPrefix_StartsWithCommand()
 	{
 		var message = new IrcMessage("JOIN", null, "#osu");
 
@@ -238,7 +238,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_WithPrefix_StartsWithThePrefixedSource()
+	public void WithPrefix_StartsWithSource()
 	{
 		var message = new IrcMessage("JOIN", "alice!alice@basil", "#osu");
 
@@ -246,7 +246,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_LastParamWithSpace_IsPrefixedWithAColon()
+	public void LastParamSpace_ColonPrefix()
 	{
 		var message = new IrcMessage("PRIVMSG", null, "#osu", "hello there");
 
@@ -254,7 +254,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_LastParamStartingWithColon_IsPrefixedWithAColon()
+	public void ColonStartParam_ColonPrefixed()
 	{
 		var message = new IrcMessage("PRIVMSG", null, "#osu", ":) hi");
 
@@ -262,7 +262,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_EmptyLastParam_IsEmittedAsABareColon()
+	public void EmptyLastParam_BareColon()
 	{
 		var message = new IrcMessage("PING", null, "");
 
@@ -270,7 +270,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_PlainLastParam_IsEmittedWithoutAColon()
+	public void PlainLastParam_NoColon()
 	{
 		var message = new IrcMessage("PING", null, "token");
 
@@ -278,7 +278,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void ToString_LastParamContainingColon_IsEmittedWithoutAColon()
+	public void InnerColonParam_NoColon()
 	{
 		var message = new IrcMessage("MODE", null, "#osu", "+b", "bad:word");
 
@@ -289,7 +289,7 @@ public class IrcMessageTests
 	[InlineData("")]
 	[InlineData("a b")]
 	[InlineData(":a")]
-	public void ToString_NonLastParamCannotBeMiddle_ThrowsArgumentException(string parameter)
+	public void ParamBeforeLast_ArgumentException(string parameter)
 	{
 		var message = new IrcMessage("CMD", null, parameter, "last");
 
@@ -301,7 +301,7 @@ public class IrcMessageTests
 	[InlineData("PING", "alice\r", "p")]
 	[InlineData("PING", null, "p\n")]
 	[InlineData("PING", "al\0ice", "p")]
-	public void ToString_ControlCharacterInALinePart_ThrowsArgumentException(
+	public void ControlCharacter_ArgumentException(
 		string command, string? prefix, string parameter)
 	{
 		var message = new IrcMessage(command, prefix, parameter);
@@ -310,7 +310,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Equals_SameLineParsedTwice_ReturnsTrue()
+	public void SameLineTwice_Equal()
 	{
 		var first = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there", null);
 		var second = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there", null);
@@ -319,7 +319,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void GetHashCode_SameLineParsedTwice_ReturnsTheSameCode()
+	public void SameLineTwice_SameHash()
 	{
 		var first = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there", null);
 		var second = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there", null);
@@ -328,7 +328,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Equals_DifferentCommand_ReturnsFalse()
+	public void DifferentCommand_Unequal()
 	{
 		var first = new IrcMessage("PRIVMSG", "alice!a@b", "#osu", "hi");
 		var second = new IrcMessage("NOTICE", "alice!a@b", "#osu", "hi");
@@ -337,7 +337,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Equals_DifferentPrefix_ReturnsFalse()
+	public void DifferentPrefix_Unequal()
 	{
 		var first = new IrcMessage("PRIVMSG", "alice!a@b", "#osu", "hi");
 		var second = new IrcMessage("PRIVMSG", "carol!c@d", "#osu", "hi");
@@ -346,7 +346,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Equals_DifferentParamOrder_ReturnsFalse()
+	public void DifferentParamOrder_Unequal()
 	{
 		var first = new IrcMessage("CMD", null, "a", "b");
 		var second = new IrcMessage("CMD", null, "b", "a");
@@ -355,7 +355,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Equals_DifferentParamCount_ReturnsFalse()
+	public void DifferentParamCount_Unequal()
 	{
 		var first = new IrcMessage("CMD", null, "a", "b");
 		var second = new IrcMessage("CMD", null, "a");
@@ -364,7 +364,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Equals_Null_ReturnsFalse()
+	public void NullOther_Unequal()
 	{
 		var message = new IrcMessage("PING", null, "token");
 
@@ -375,7 +375,7 @@ public class IrcMessageTests
 	[InlineData(IrcNumericReply.RplWelcome, "001")]
 	[InlineData(IrcNumericReply.RplIsupport, "005")]
 	[InlineData(IrcNumericReply.ErrNicknameInUse, "433")]
-	public void Numeric_Code_IsPaddedToThreeDigits(IrcNumericReply numericReply, string code)
+	public void Code_ThreeDigitPadding(IrcNumericReply numericReply, string code)
 	{
 		var message = IrcMessage.Numeric("irc.basil", numericReply, "alice");
 
@@ -383,7 +383,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Numeric_WithArgs_EmitsTheTargetBeforeTheArgs()
+	public void WithArgs_TargetBeforeParams()
 	{
 		var message = IrcMessage.Numeric(
 			"irc.basil", IrcNumericReply.RplWelcome, "alice", "Welcome to the network");
@@ -392,7 +392,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Numeric_WithoutArgs_EndsAtTheTarget()
+	public void WithoutArgs_EndsAtTarget()
 	{
 		var message = IrcMessage.Numeric("irc.basil", IrcNumericReply.RplNoTopic, "alice", "#osu");
 
@@ -400,7 +400,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Privmsg_FormatsTheWireLine()
+	public void Privmsg_WireLine()
 	{
 		var message = IrcMessage.Privmsg(new IrcUserPrefix("alice", "alice", "basil"), "#osu", "hello there");
 
@@ -408,7 +408,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Part_WithoutReason_OmitsTheTrailingParam()
+	public void PartWithoutReason_NoTrailingParam()
 	{
 		var message = IrcMessage.Part(new IrcUserPrefix("alice", "alice", "basil"), "#osu");
 
@@ -416,7 +416,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Part_WithReason_EmitsTheTrailingParam()
+	public void PartWithReason_TrailingParam()
 	{
 		var message = IrcMessage.Part(new IrcUserPrefix("alice", "alice", "basil"), "#osu", "see you");
 
@@ -424,7 +424,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Ping_FormatsTheWireLine()
+	public void Ping_WireLine()
 	{
 		var message = IrcMessage.Ping("token");
 
@@ -440,7 +440,7 @@ public class IrcMessageTests
 	}
 
 	[Fact]
-	public void Pong_FormatsTheWireLine()
+	public void Pong_WireLine()
 	{
 		var message = IrcMessage.Pong("token");
 

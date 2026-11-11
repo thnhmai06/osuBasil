@@ -9,13 +9,13 @@ namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 public class PacketWriterStreamContractTests
 {
 	[Fact]
-	public void Constructor_NonSeekableStream_ThrowsArgumentException()
+	public void NonSeekableStream_ThrowsArgumentException()
 	{
 		Assert.Throws<ArgumentException>(() => new PacketWriter(new NonSeekableStream()));
 	}
 
 	[Fact]
-	public void WritePacket_LeavesTheStreamOpen()
+	public void WritePacket_LeavesStreamOpen()
 	{
 		var stream = new MemoryStream();
 		var writer = new PacketWriter(stream);

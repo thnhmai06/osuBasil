@@ -17,7 +17,7 @@ namespace Basil.Application.Servers.Tests.Objects;
 public sealed class ServerRecoverTests
 {
 	[Fact]
-	public async Task RecoverAsync_OpensEveryStoredChannel()
+	public async Task Recover_OpensStoredChannels()
 	{
 		using var app = new TestApplication();
 		var channels = app.Provider.GetRequiredService<IChannelRepository>();
@@ -35,7 +35,7 @@ public sealed class ServerRecoverTests
 	}
 
 	[Fact]
-	public async Task RecoverAsync_BringsBasilBotOnline()
+	public async Task Recover_BotOnline()
 	{
 		using var app = new TestApplication();
 		var bot = await app.SeedBotAsync();
@@ -47,7 +47,7 @@ public sealed class ServerRecoverTests
 	}
 
 	[Fact]
-	public async Task RecoverAsync_AnotherAccountHoldsTheBotsId_TheBotComesOnlineInIt()
+	public async Task OtherHoldsId_BotOnline()
 	{
 		using var app = new TestApplication();
 		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
@@ -60,7 +60,7 @@ public sealed class ServerRecoverTests
 	}
 
 	[Fact]
-	public async Task RecoverAsync_TheBotsIdHoldsNothing_TheBotIsCreatedAndOnline()
+	public async Task BotIdEmpty_BotCreated()
 	{
 		using var app = new TestApplication();
 
@@ -71,7 +71,7 @@ public sealed class ServerRecoverTests
 	}
 
 	[Fact]
-	public async Task RecoverAsync_TheBotsAccountWasDeleted_TheBotIsRestoredAndOnline()
+	public async Task BotDeleted_BotRestored()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Gone", "secret", deletedAt: app.Clock.GetUtcNow());
@@ -83,7 +83,7 @@ public sealed class ServerRecoverTests
 	}
 
 	[Fact]
-	public async Task RecoverAsync_EndsTheMatchLeftRunning()
+	public async Task Recover_EndsRunningMatch()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
@@ -99,7 +99,7 @@ public sealed class ServerRecoverTests
 	}
 
 	[Fact]
-	public async Task RecoverAsync_ClosesTheConnectionsTheLastRunLeftOpen_AndCountsThem()
+	public async Task ClosesLeftOpen_Counted()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Stopped", "password");

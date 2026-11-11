@@ -9,7 +9,7 @@ public class ModerationDataTests
 	private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;
 
 	[Fact]
-	public void Action_Undefined_Throws()
+	public void UndefinedAction_Throws()
 	{
 		var user = new UserRecord { Id = 1, Value = new UserData { Name = "moderator" } };
 
@@ -23,7 +23,7 @@ public class ModerationDataTests
 	}
 
 	[Fact]
-	public void Reason_AtTheLimit_IsAccepted()
+	public void ReasonAtLimit_Accepted()
 	{
 		var reason = new string('a', 2048);
 		var data = MakeData(reason);
@@ -32,7 +32,7 @@ public class ModerationDataTests
 	}
 
 	[Fact]
-	public void Reason_AboveTheLimit_Throws()
+	public void ReasonAboveLimit_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => MakeData(new string('a', 2049)));
 	}

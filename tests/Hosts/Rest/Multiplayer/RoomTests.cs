@@ -12,7 +12,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Rooms_WithoutAToken_Answer401()
+	public async Task WithoutAToken_Answer401()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -24,7 +24,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_ThenGet_ShowsTheCreator_AndNeverThePassword()
+	public async Task ThenGet_CreatorNoPassword()
 	{
 		var (client, id) = await fixture.SignInAsync("RoomMaker");
 		using (client)
@@ -43,7 +43,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_ShowsARoomWithoutAKindOfRoom()
+	public async Task Create_RoomNoKind()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomKind");
 		using (client)
@@ -57,7 +57,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_WithoutAName_Answers422()
+	public async Task WithoutAName_Answers422()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomNoName");
 		using (client)
@@ -69,7 +69,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Commands_ByTheCreator_ChangeTheRoom()
+	public async Task ByTheCreator_ChangeTheRoom()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomCmd");
 		using (client)
@@ -93,7 +93,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	[Theory]
 	[InlineData("size", 0)]
 	[InlineData("size", 17)]
-	public async Task Size_OutOfRange_Answers422(string command, int size)
+	public async Task OutOfRange_Answers422(string command, int size)
 	{
 		var (client, _) = await fixture.SignInAsync("RoomSize" + size);
 		using (client)
@@ -107,7 +107,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Command_ByANonManager_Answers403_AndAPrivateRoomIsHidden()
+	public async Task NonManager_Answers403Hidden()
 	{
 		var (owner, _) = await fixture.SignInAsync("RoomOwner");
 		var (other, _) = await fixture.SignInAsync("RoomOther");
@@ -129,7 +129,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Close_RemovesTheRoom_AndLaterCommandsAnswer404()
+	public async Task Close_RoomRemovedThen404()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomCloser");
 		using (client)
@@ -145,7 +145,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Kick_OfAUserWhoIsNotInTheRoom_Answers409()
+	public async Task NotInRoom_Answers409()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomKicker");
 		var target = await fixture.Host.CreateUserAsync("RoomKickee");
@@ -161,7 +161,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Timer_OutOfRange_Answers422_AndReferees_CanBeAddedAndRemoved()
+	public async Task TimerRange422_RefereesAddRemove()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomTimer");
 		var referee = await fixture.Host.CreateUserAsync("RoomRef");
@@ -184,7 +184,7 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_WithAPageOutOfBounds_Answers422()
+	public async Task OutOfBounds_Answers422()
 	{
 		var (client, _) = await fixture.SignInAsync("RoomPaging");
 		using (client)

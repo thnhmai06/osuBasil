@@ -9,7 +9,7 @@ public sealed class IrcEndToEndTests(HostEndToEndFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Pass_Registration_SignsIn_AndChatReachesTheOsuClientInBothDirections()
+	public async Task PassRegistration_SignsInChats()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("E2eIrcChat");
 		using var ircClient = irc;
@@ -33,7 +33,7 @@ public sealed class IrcEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task SaslRegistration_WithTheSameKey_SignsInAsTheAccount()
+	public async Task SaslSameKey_SignsInAccount()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("E2eIrcSasl");
 		using var ircClient = irc;

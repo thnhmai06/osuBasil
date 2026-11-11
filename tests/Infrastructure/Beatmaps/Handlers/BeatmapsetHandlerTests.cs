@@ -26,7 +26,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task Delete_ByAManager_RemovesTheSet()
+	public async Task ByAManager_RemovesTheSet()
 	{
 		var (app, world, set, actor) = await SetupAsync(Manager);
 		using var _ = app;
@@ -39,7 +39,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task Delete_WithoutBeatmapsetManage_IsDeniedWithThatPermission()
+	public async Task NoManage_DeniedWithPermission()
 	{
 		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
@@ -52,7 +52,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task Patch_ByAManager_AppliesEveryGivenField()
+	public async Task ByManager_AppliesEveryField()
 	{
 		var (app, _, set, actor) = await SetupAsync(Manager);
 		using var _ = app;
@@ -68,7 +68,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task Patch_WithNoField_IsOkAndChangesNothing()
+	public async Task NoField_OkNoChange()
 	{
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
@@ -81,7 +81,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task Patch_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
+	public async Task PatchNoManage_DeniedNoChange()
 	{
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
@@ -96,7 +96,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task Delete_OfAnUnknownSetByAManager_IsNotFound()
+	public async Task UnknownSetManager_NotFound()
 	{
 		var (app, _, _, actor) = await SetupAsync(Manager);
 		using var _ = app;
@@ -108,7 +108,7 @@ public sealed class BeatmapsetHandlerTests
 	}
 
 	[Fact]
-	public async Task Delete_OfAnUnknownSetWithoutTheRight_IsDeniedAsForAKnownSet()
+	public async Task NoRightUnknown_DeniedLikeKnown()
 	{
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;

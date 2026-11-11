@@ -18,7 +18,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_IsForManagersOnly()
+	public async Task List_ManagersOnly()
 	{
 		var (plain, _) = await fixture.SignInAsync("MatchPlain");
 		var (manager, _) = await fixture.SignInAsync("MatchManager", Manager);
@@ -40,7 +40,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Report_OfAnUnknownMatch_Answers404()
+	public async Task UnknownMatch_Answers404()
 	{
 		using var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -52,7 +52,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Report_OfAPrivateMatch_IsHiddenFromAnonymousCallers_AndShownToItsCreator()
+	public async Task PrivateHidden_CreatorSees()
 	{
 		var (owner, _) = await fixture.SignInAsync("MatchSecret");
 		using (owner)
@@ -72,7 +72,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Report_OfAnOpenMatch_IsPublic_StartsWithTheFullReport_AndThenSendsNewEntries()
+	public async Task OpenMatch_FullThenNew()
 	{
 		var (owner, _) = await fixture.SignInAsync("MatchLive");
 		var referee = await fixture.Host.CreateUserAsync("MatchLiveRef");
@@ -105,7 +105,7 @@ public sealed class MatchTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Report_OfAnEndedMatch_IsASnapshotThatEnds_AndTheLastEventIdAnswers204()
+	public async Task EndedMatch_SnapshotEnds204()
 	{
 		var (owner, _) = await fixture.SignInAsync("MatchEnded");
 		using (owner)

@@ -8,7 +8,7 @@ public class UserTests
 	[InlineData("cmyui", "cmyui")]
 	[InlineData("Cool Guy", "cool_guy")]
 	[InlineData("ALL CAPS NAME", "all_caps_name")]
-	public void NormalizedName_LowercasesAndReplacesSpacesWithUnderscores(string name, string expected)
+	public void NormalizedName_LowercasesSpaces(string name, string expected)
 	{
 		Assert.Equal(expected, new UserData { Name = name }.NormalizedName);
 	}
@@ -36,13 +36,13 @@ public class UserTests
 	[InlineData("プレイヤー")]
 	[InlineData("player@home")]
 	[InlineData("player!")]
-	public void Name_InvalidRegistrationName_Throws(string name)
+	public void InvalidRegistrationName_Throws(string name)
 	{
 		Assert.Throws<ArgumentException>(() => new UserData { Name = name });
 	}
 
 	[Fact]
-	public void DeletedAt_DeletedAccountCannotBeRestored()
+	public void DeletedAccount_RestoreRefused()
 	{
 		var user = new UserData { Name = "player", DeletedAt = DateTimeOffset.UnixEpoch };
 
@@ -51,25 +51,25 @@ public class UserTests
 	}
 
 	[Fact]
-	public void Name_TrailingNewline_Throws()
+	public void TrailingNewline_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => new UserData { Name = "abc\n" });
 	}
 
 	[Fact]
-	public void Name_Null_Throws()
+	public void NullName_Throws()
 	{
 		Assert.Throws<ArgumentNullException>(() => new UserData { Name = null! });
 	}
 
 	[Fact]
-	public void Country_Undefined_Throws()
+	public void UndefinedCountry_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new UserData { Name = "player", Country = (Country)255 });
 	}
 
 	[Fact]
-	public void Country_UndefinedCode_Throws()
+	public void UndefinedCountryCode_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new UserData { Name = "player", Country = default });
 	}

@@ -19,7 +19,7 @@ public partial class HostGraphTests
 		["Basil.Host.Stable", "Basil.Host.Irc", "Basil.Host.Rest", "Basil.Host.Cli"];
 
 	[Fact]
-	public void EveryTransportReferencesTheSharedHostProject()
+	public void TransportSharedReference_Passes()
 	{
 		Assert.Empty(MissingShared(ProjectEdges()));
 		// The control: a synthetic graph without the edge is reported.
@@ -27,7 +27,7 @@ public partial class HostGraphTests
 	}
 
 	[Fact]
-	public void TransportsDoNotReferenceEachOther()
+	public void TransportPeerReference_Fails()
 	{
 		var forbidden = ProjectEdges().Where(edge => ReferEachOther(edge.From, edge.To))
 			.Select(edge => $"{edge.From} -> {edge.To}");
@@ -36,7 +36,7 @@ public partial class HostGraphTests
 	}
 
 	[Fact]
-	public void RestAndCliDoNotReferenceTheStableProtocol()
+	public void CliStableProtocol_Fails()
 	{
 		var forbidden = ProjectEdges().Where(edge => NeedsStableProtocol(edge.From, edge.To))
 			.Select(edge => $"{edge.From} -> {edge.To}");
@@ -45,14 +45,14 @@ public partial class HostGraphTests
 	}
 
 	[Fact]
-	public void TheMeasureSeesAnEdgeItShould()
+	public void MeasureSeesEdge_PositiveControl()
 	{
 		Assert.Contains(("Basil.Host.Stable", ProtocolStable), ProjectEdges());
 		Assert.Contains(("Basil.Host.Stable", Shared), ProjectEdges());
 	}
 
 	[Fact]
-	public void TheRulesRefuseAnEdgeTheyShould()
+	public void RulesRefuseEdge_PositiveControl()
 	{
 		Assert.True(ReferEachOther("Basil.Host.Stable", "Basil.Host.Irc"));
 		Assert.True(ReferEachOther("Basil.Host.Irc", "Basil.Host.Rest"));
@@ -64,7 +64,7 @@ public partial class HostGraphTests
 	}
 
 	[Fact]
-	public void HostsHoldNoRepositoryOrStorage()
+	public void HostStoreField_Absent()
 	{
 		var types = HostAssemblies().SelectMany(LoadableTypes).ToList();
 
@@ -73,7 +73,7 @@ public partial class HostGraphTests
 	}
 
 	[Fact]
-	public void HostsAskNoServiceProviderForARepositoryOrStorage()
+	public void ProviderStoreLookup_Absent()
 	{
 		var root = Path.Combine(RepositoryRoot(), "src", "Hosts");
 		var offenders = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
@@ -86,7 +86,7 @@ public partial class HostGraphTests
 	}
 
 	[Fact]
-	public void TheStoreRulesSeeAStoreTheyShouldRefuse()
+	public void DetectorSeesStore_PositiveControl()
 	{
 		Assert.Equal([typeof(HostWithARepository).FullName], Offenders([typeof(HostWithARepository)]));
 		Assert.Equal([typeof(HostWithAStaticRouteHandler).FullName], Offenders([typeof(HostWithAStaticRouteHandler)]));

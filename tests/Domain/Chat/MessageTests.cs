@@ -21,7 +21,7 @@ public class MessageTests
 	[InlineData("tab\there")]
 	[InlineData("line\nbreak\r\n")]
 	[InlineData("\u0001ACTION waves\u0001")]
-	public void Content_NormalText_IsAccepted(string content)
+	public void NormalText_Accepted(string content)
 	{
 		Assert.Equal(content, Make(content).Content);
 	}
@@ -32,19 +32,19 @@ public class MessageTests
 	[InlineData("\t")]
 	[InlineData(" ")]
 	[InlineData("　")]
-	public void Content_OnlyWhitespace_IsAccepted(string content)
+	public void WhitespaceOnly_Accepted(string content)
 	{
 		Assert.Equal(content, Make(content).Content);
 	}
 
 	[Fact]
-	public void Content_Empty_Throws()
+	public void EmptyContent_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => Make(""));
 	}
 
 	[Fact]
-	public void Content_Null_Throws()
+	public void NullContent_Throws()
 	{
 		Assert.Throws<ArgumentNullException>(() => Make(null!));
 	}
@@ -59,13 +59,13 @@ public class MessageTests
 	[InlineData("\u007f")]
 	[InlineData("\u0085")]
 	[InlineData("\u009f")]
-	public void Content_ControlCharacter_Throws(string content)
+	public void ControlCharacter_Throws(string content)
 	{
 		Assert.Throws<ArgumentException>(() => Make(content));
 	}
 
 	[Fact]
-	public void Content_LongText_IsAccepted()
+	public void LongText_Accepted()
 	{
 		var content = new string('x', 100_000);
 
@@ -73,7 +73,7 @@ public class MessageTests
 	}
 
 	[Fact]
-	public void Content_ChangedWithAnInvalidValue_Throws()
+	public void InvalidContentChange_Throws()
 	{
 		var message = Make("hello");
 
@@ -81,7 +81,7 @@ public class MessageTests
 	}
 
 	[Fact]
-	public void IsNotice_NotGiven_IsFalse()
+	public void NoticeNotGiven_IsFalse()
 	{
 		Assert.False(Make("hello").IsNotice);
 	}
@@ -91,7 +91,7 @@ public class MessageTests
 	[InlineData(" ", true)]
 	[InlineData("", false)]
 	[InlineData("a\0", false)]
-	public void IsValidContent_Text_AgreesWithContent(string text, bool expected)
+	public void Text_IsValidContent(string text, bool expected)
 	{
 		Assert.Equal(expected, Message.IsValidContent(text));
 	}

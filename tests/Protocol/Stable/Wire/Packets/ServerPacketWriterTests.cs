@@ -53,7 +53,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "0500000400000000000000")]
 	[InlineData(2147483647, "05000004000000ffffff7f")]
-	public void LoginReply(int userId, string expectedHex)
+	public void LoginReply_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.LoginReply(userId)));
 	}
@@ -74,7 +74,7 @@ public class ServerPacketWriterTests
 	}
 
 	[Fact]
-	public void Pong()
+	public void Pong_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("08000000000000"), WritePacket(writer => writer.Pong()));
 	}
@@ -122,7 +122,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "0c0000050000000000000000")]
 	[InlineData(2147483647, "0c000005000000ffffff7f00")]
-	public void Logout(int userId, string expectedHex)
+	public void Logout_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.Logout(userId)));
 	}
@@ -130,7 +130,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "0d00000400000000000000")]
 	[InlineData(2147483647, "0d000004000000ffffff7f")]
-	public void SpectatorJoined(int userId, string expectedHex)
+	public void SpectatorJoined_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.SpectatorJoined(userId)));
 	}
@@ -138,13 +138,13 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "0e00000400000000000000")]
 	[InlineData(2147483647, "0e000004000000ffffff7f")]
-	public void SpectatorLeft(int userId, string expectedHex)
+	public void SpectatorLeft_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.SpectatorLeft(userId)));
 	}
 
 	[Fact]
-	public void SpectateFrames()
+	public void SpectateFrames_WritesGoldenBytes()
 	{
 		var raw = Hex("0300017261772d737065637461746f722d6672616d652d64617461");
 		var expected = Hex("0f00001b0000000300017261772d737065637461746f722d6672616d652d64617461");
@@ -152,7 +152,7 @@ public class ServerPacketWriterTests
 	}
 
 	[Fact]
-	public void VersionUpdate()
+	public void VersionUpdate_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("13000000000000"), WritePacket(writer => writer.VersionUpdate()));
 	}
@@ -160,13 +160,13 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "1600000400000000000000")]
 	[InlineData(2147483647, "16000004000000ffffff7f")]
-	public void SpectatorCantSpectate(int userId, string expectedHex)
+	public void SpectatorCantSpectate_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.SpectatorCantSpectate(userId)));
 	}
 
 	[Fact]
-	public void GetAttention()
+	public void GetAttention_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("17000000000000"), WritePacket(writer => writer.GetAttention()));
 	}
@@ -174,7 +174,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("waowww", "180000080000000b0677616f777777")]
 	[InlineData("", "1800000100000000")]
-	public void Notification(string msg, string expectedHex)
+	public void Notification_WritesGoldenBytes(string msg, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.Notification(msg)));
 	}
@@ -198,7 +198,7 @@ public class ServerPacketWriterTests
 	}
 
 	[Fact]
-	public void NewMatch()
+	public void NewMatch_WritesGoldenBytes()
 	{
 		var expected =
 			Hex(
@@ -209,19 +209,19 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "1c00000400000000000000")]
 	[InlineData(2147483647, "1c000004000000ffffff7f")]
-	public void DisposeMatch(int matchId, string expectedHex)
+	public void DisposeMatch_WritesGoldenBytes(int matchId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.DisposeMatch(matchId)));
 	}
 
 	[Fact]
-	public void ToggleBlockNonFriendDm()
+	public void NonFriendDm_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("22000000000000"), WritePacket(writer => writer.ToggleBlockNonFriendDm()));
 	}
 
 	[Fact]
-	public void MatchJoinSuccess()
+	public void MatchJoinSuccess_WritesGoldenBytes()
 	{
 		var expected =
 			Hex(
@@ -230,7 +230,7 @@ public class ServerPacketWriterTests
 	}
 
 	[Fact]
-	public void MatchJoinFail()
+	public void MatchJoinFail_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("25000000000000"), WritePacket(writer => writer.MatchJoinFail()));
 	}
@@ -238,7 +238,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "2a00000400000000000000")]
 	[InlineData(2147483647, "2a000004000000ffffff7f")]
-	public void FellowSpectatorJoined(int userId, string expectedHex)
+	public void FellowSpectatorJoined_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.FellowSpectatorJoined(userId)));
 	}
@@ -246,13 +246,13 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "2b00000400000000000000")]
 	[InlineData(2147483647, "2b000004000000ffffff7f")]
-	public void FellowSpectatorLeft(int userId, string expectedHex)
+	public void FellowSpectatorLeft_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.FellowSpectatorLeft(userId)));
 	}
 
 	[Fact]
-	public void MatchStart()
+	public void MatchStart_WritesGoldenBytes()
 	{
 		var expected =
 			Hex(
@@ -279,13 +279,13 @@ public class ServerPacketWriterTests
 	}
 
 	[Fact]
-	public void MatchTransferHost()
+	public void MatchTransferHost_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("32000000000000"), WritePacket(writer => writer.MatchTransferHost()));
 	}
 
 	[Fact]
-	public void MatchAllPlayersLoaded()
+	public void AllPlayersLoaded_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("35000000000000"), WritePacket(writer => writer.MatchAllPlayersLoaded()));
 	}
@@ -293,19 +293,19 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "3900000400000000000000")]
 	[InlineData(2147483647, "39000004000000ffffff7f")]
-	public void MatchPlayerFailed(int slotId, string expectedHex)
+	public void MatchPlayerFailed_WritesGoldenBytes(int slotId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.MatchPlayerFailed(slotId)));
 	}
 
 	[Fact]
-	public void MatchComplete()
+	public void MatchComplete_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("3a000000000000"), WritePacket(writer => writer.MatchComplete()));
 	}
 
 	[Fact]
-	public void MatchSkip()
+	public void MatchSkip_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("3d000000000000"), WritePacket(writer => writer.MatchSkip()));
 	}
@@ -313,7 +313,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("#osu", "400000060000000b04236f7375")]
 	[InlineData("", "4000000100000000")]
-	public void ChannelJoin(string name, string expectedHex)
+	public void ChannelJoin_WritesGoldenBytes(string name, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.ChannelJoin(name)));
 	}
@@ -335,7 +335,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("#osu", "420000060000000b04236f7375")]
 	[InlineData("", "4200000100000000")]
-	public void ChannelKick(string name, string expectedHex)
+	public void ChannelKick_WritesGoldenBytes(string name, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.ChannelKick(name)));
 	}
@@ -357,7 +357,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "4700000400000000000000")]
 	[InlineData(2147483647, "47000004000000ffffff7f")]
-	public void StablePrivileges(int priv, string expectedHex)
+	public void StablePrivileges_WritesGoldenBytes(int priv, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.Privileges(priv)));
 	}
@@ -378,7 +378,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "4b00000400000000000000")]
 	[InlineData(2147483647, "4b000004000000ffffff7f")]
-	public void ProtocolVersion(int ver, string expectedHex)
+	public void ProtocolVersion_WritesGoldenBytes(int ver, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.ProtocolVersion(ver)));
 	}
@@ -400,7 +400,7 @@ public class ServerPacketWriterTests
 	}
 
 	[Fact]
-	public void Monitor()
+	public void Monitor_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("50000000000000"), WritePacket(writer => writer.Monitor()));
 	}
@@ -408,7 +408,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "5100000400000000000000")]
 	[InlineData(2147483647, "51000004000000ffffff7f")]
-	public void MatchPlayerSkipped(int userId, string expectedHex)
+	public void MatchPlayerSkipped_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.MatchPlayerSkipped(userId)));
 	}
@@ -436,13 +436,13 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "5600000400000000000000")]
 	[InlineData(2147483647, "56000004000000ffffff7f")]
-	public void RestartServer(int ms, string expectedHex)
+	public void RestartServer_WritesGoldenBytes(int ms, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.RestartServer(ms)));
 	}
 
 	[Fact]
-	public void MatchInvite()
+	public void MatchInvite_WritesGoldenBytes()
 	{
 		var expected =
 			Hex(
@@ -453,7 +453,7 @@ public class ServerPacketWriterTests
 	}
 
 	[Fact]
-	public void ChannelInfoEnd()
+	public void ChannelInfoEnd_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("59000000000000"), WritePacket(writer => writer.ChannelInfoEnd()));
 	}
@@ -461,7 +461,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("newpassword", "5b00000d0000000b0b6e657770617373776f7264")]
 	[InlineData("", "5b00000100000000")]
-	public void MatchChangePassword(string newPassword, string expectedHex)
+	public void MatchChangePassword_WritesGoldenBytes(string newPassword, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.MatchChangePassword(newPassword)));
 	}
@@ -469,7 +469,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "5c00000400000000000000")]
 	[InlineData(2147483647, "5c000004000000ffffff7f")]
-	public void SilenceEnd(int delta, string expectedHex)
+	public void SilenceEnd_WritesGoldenBytes(int delta, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.SilenceEnd(delta)));
 	}
@@ -477,7 +477,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "5e00000400000000000000")]
 	[InlineData(2147483647, "5e000004000000ffffff7f")]
-	public void UserSilenced(int userId, string expectedHex)
+	public void UserSilenced_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.UserSilenced(userId)));
 	}
@@ -485,7 +485,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "5f00000400000000000000")]
 	[InlineData(2147483647, "5f000004000000ffffff7f")]
-	public void UserPresenceSingle(int userId, string expectedHex)
+	public void UserPresenceSingle_WritesGoldenBytes(int userId, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.UserPresenceSingle(userId)));
 	}
@@ -506,7 +506,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("cover", "6400000d00000000000b05636f76657200000000")]
 	[InlineData("", "6400000700000000000000000000")]
-	public void UserDmBlocked(string target, string expectedHex)
+	public void UserDmBlocked_WritesGoldenBytes(string target, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.UserDmBlocked(target)));
 	}
@@ -514,13 +514,13 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("cover", "6500000d00000000000b05636f76657200000000")]
 	[InlineData("", "6500000700000000000000000000")]
-	public void TargetSilenced(string target, string expectedHex)
+	public void TargetSilenced_WritesGoldenBytes(string target, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.TargetSilenced(target)));
 	}
 
 	[Fact]
-	public void VersionUpdateForced()
+	public void VersionUpdateForced_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("66000000000000"), WritePacket(writer => writer.VersionUpdateForced()));
 	}
@@ -528,13 +528,13 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData(0, "6700000400000000000000")]
 	[InlineData(2147483647, "67000004000000ffffff7f")]
-	public void SwitchServer(int t, string expectedHex)
+	public void SwitchServer_WritesGoldenBytes(int t, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.SwitchServer(t)));
 	}
 
 	[Fact]
-	public void AccountRestricted()
+	public void AccountRestricted_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("68000000000000"), WritePacket(writer => writer.AccountRestricted()));
 	}
@@ -542,13 +542,13 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("yoyoo rip rtx", "6900000f0000000b0d796f796f6f2072697020727478")]
 	[InlineData("", "6900000100000000")]
-	public void Rtx(string msg, string expectedHex)
+	public void Rtx_WritesGoldenBytes(string msg, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.Rtx(msg)));
 	}
 
 	[Fact]
-	public void MatchAbort()
+	public void MatchAbort_WritesGoldenBytes()
 	{
 		Assert.Equal(Hex("6a000000000000"), WritePacket(writer => writer.MatchAbort()));
 	}
@@ -556,7 +556,7 @@ public class ServerPacketWriterTests
 	[Theory]
 	[InlineData("61.91.139.24", "6b00000e0000000b0c36312e39312e3133392e3234")]
 	[InlineData("", "6b00000100000000")]
-	public void SwitchTournamentServer(string ip, string expectedHex)
+	public void SwitchTournamentServer_WritesGoldenBytes(string ip, string expectedHex)
 	{
 		Assert.Equal(Hex(expectedHex), WritePacket(writer => writer.SwitchTournamentServer(ip)));
 	}

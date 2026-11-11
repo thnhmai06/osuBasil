@@ -19,7 +19,7 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Connections_UpToTheLimit_AreAccepted()
+	public async Task UpToLimit_Accepted()
 	{
 		await WithConnectionLimitAsync(2, async () =>
 		{
@@ -32,7 +32,7 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Connection_BeyondTheLimit_IsClosedWithTooManyConnections()
+	public async Task BeyondLimit_ClosedTooMany()
 	{
 		await WithConnectionLimitAsync(2, async () =>
 		{
@@ -50,7 +50,7 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Connection_FromAnotherAddress_IsNotCountedAgainstTheLimit()
+	public async Task OtherAddress_NotCounted()
 	{
 		await WithConnectionLimitAsync(1, async () =>
 		{

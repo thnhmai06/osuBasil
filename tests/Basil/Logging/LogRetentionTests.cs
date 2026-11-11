@@ -23,7 +23,7 @@ public sealed class LogRetentionTests : IDisposable
 	}
 
 	[Fact]
-	public void AnOldLogFileIsDeletedAndARecentOneStays()
+	public void OldLogDeleted_RecentKept()
 	{
 		var old = Touch("basil-20261001.log", TimeSpan.FromDays(15));
 		var recent = Touch("basil-20261028.log", TimeSpan.FromDays(13));
@@ -36,7 +36,7 @@ public sealed class LogRetentionTests : IDisposable
 	}
 
 	[Fact]
-	public void OnlyLogFilesAreDeleted()
+	public void NonLogFiles_Kept()
 	{
 		var other = Touch("notes.txt", TimeSpan.FromDays(100));
 
@@ -45,13 +45,13 @@ public sealed class LogRetentionTests : IDisposable
 	}
 
 	[Fact]
-	public void AMissingFolderIsNotAnError()
+	public void MissingFolder_NoError()
 	{
 		Assert.Equal(0, LogRetention.Sweep(Path.Combine(_directory, "missing"), TimeSpan.FromDays(14), 0, 0, Now));
 	}
 
 	[Fact]
-	public void TheRetentionIsFourteenDaysThirtyFilesAndAGigabyteByDefault()
+	public void DefaultRetention_DaysFilesBytes()
 	{
 		var retention = new LoggingOptions().File.Retention;
 
@@ -61,7 +61,7 @@ public sealed class LogRetentionTests : IDisposable
 	}
 
 	[Fact]
-	public void OnlyTheNewestFilesWithinTheCountAreKept()
+	public void NewestWithinCount_Kept()
 	{
 		var oldest = Touch("a.log", TimeSpan.FromHours(3));
 		var middle = Touch("b.log", TimeSpan.FromHours(2));
@@ -76,7 +76,7 @@ public sealed class LogRetentionTests : IDisposable
 	}
 
 	[Fact]
-	public void OldFilesAreDeletedUntilTheTotalSizeFits()
+	public void OldFilesDeleted_SizeFits()
 	{
 		var oldest = Touch("a.log", TimeSpan.FromHours(3));
 		var middle = Touch("b.log", TimeSpan.FromHours(2));
@@ -92,7 +92,7 @@ public sealed class LogRetentionTests : IDisposable
 	}
 
 	[Fact]
-	public void TheNewestFileIsKeptEvenWhenItAloneExceedsTheTotalSize()
+	public void NewestExceedsSize_StillKept()
 	{
 		File.WriteAllText(Path.Combine(_directory, "big.log"), "0123456789");
 

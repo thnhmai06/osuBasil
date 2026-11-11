@@ -29,7 +29,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ChangesThePasswordAndKeepsItOutOfTheEvent()
+	public async Task ConfigureAsync_PasswordHidden()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -45,7 +45,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_WithAnEmptyPassword_RemovesThePassword()
+	public async Task ConfigureEmptyPassword_Removed()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -73,7 +73,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ChangingTheMode_DropsTheModsTheModeDoesNotAllow()
+	public async Task ModeChange_ModsDropped()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -89,7 +89,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ChangesTheWinCondition()
+	public async Task ConfigureAsync_WinCondition()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -102,7 +102,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ChangingTheTeamType_ReassignsTheTeams()
+	public async Task ConfigureTeamType_TeamsReassigned()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -117,7 +117,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ChangesTheBeatmapAndSetsTheReadyPlayersBackToNotReady()
+	public async Task ConfigureBeatmap_ReadyReset()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -132,7 +132,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_TurningFreemodOn_GivesTheRoomsModsToThePlayers()
+	public async Task ConfigureFreemodOn_ModsToPlayers()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -148,7 +148,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_TurningFreemodOff_GivesTheRoomTheHostsMods()
+	public async Task ConfigureFreemodOff_ModsToRoom()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -169,7 +169,7 @@ public sealed class ScopedRoomSettingsTests
 	[InlineData("")]
 	[InlineData("   ")]
 	[InlineData("bad\0name")]
-	public async Task ConfigureAsync_WithAnInvalidName_IsRefused(string name)
+	public async Task ConfigureInvalidName_Refused(string name)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -184,7 +184,7 @@ public sealed class ScopedRoomSettingsTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(17)]
-	public async Task ConfigureAsync_WithAnInvalidSize_IsRefused(int size)
+	public async Task ConfigureInvalidSize_Refused(int size)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -196,7 +196,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_WithModsTheModeDoesNotAllow_IsRefused()
+	public async Task ModsNotAllowed_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -209,7 +209,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_WhileARoundIsInProgress_IsRefused()
+	public async Task ConfigureRoundRunning_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -225,7 +225,7 @@ public sealed class ScopedRoomSettingsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_WithNothingToChange_ChangesNothing()
+	public async Task ConfigureNothing_NoChange()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

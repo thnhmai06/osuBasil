@@ -11,7 +11,7 @@ public sealed class ShutdownTests(IrcHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Announce_Restart_NoticesThenErrorsThenCloses_AndRefusesNewConnections()
+	public async Task Restart_NoticeErrorClose()
 	{
 		using var irc = await Host.SignInAsync("ShRestart");
 

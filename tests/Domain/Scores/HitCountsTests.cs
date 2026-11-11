@@ -16,14 +16,14 @@ public class HitCountsTests
 	}
 
 	[Fact]
-	public void Osu_NoObjectsHit_ReturnsZero()
+	public void NoObjectsHit_ReturnsZero()
 	{
 		var hits = new HitCounts(0, 0, 0, 0, 0, 0);
 		Assert.Equal(0.0, hits.CalculateAccuracy(GameMode.Standard, GameMods.NoMod));
 	}
 
 	[Fact]
-	public void Taiko_UsesHalfWeightFor100s()
+	public void Taiko_HundredsHalfWeight()
 	{
 		var hits = new HitCounts(80, 10, 0, 0, 0, 10);
 		var acc = hits.CalculateAccuracy(GameMode.Taiko, GameMods.NoMod);
@@ -33,7 +33,7 @@ public class HitCountsTests
 	}
 
 	[Fact]
-	public void Catch_CountsFruitsAndDropletsOnly()
+	public void Catch_FruitsAndDroplets()
 	{
 		var hits = new HitCounts(90, 5, 3, 0, 1, 1);
 		var acc = hits.CalculateAccuracy(GameMode.Catch, GameMods.NoMod);
@@ -43,7 +43,7 @@ public class HitCountsTests
 	}
 
 	[Fact]
-	public void Mania_WithoutScoreV2_TreatsGekiAsPerfect300()
+	public void V2Absent_GekiPerfect()
 	{
 		var hits = new HitCounts(50, 20, 10, 15, 5, 0);
 		var acc = hits.CalculateAccuracy(GameMode.Mania, GameMods.NoMod);
@@ -54,7 +54,7 @@ public class HitCountsTests
 	}
 
 	[Fact]
-	public void Mania_WithScoreV2_WeighsGekiHigherThanPerfect300()
+	public void ScoreV2_GekiWeighsHigher()
 	{
 		var hits = new HitCounts(50, 20, 10, 15, 5, 0);
 		var acc = hits.CalculateAccuracy(GameMode.Mania, GameMods.ScoreV2);
@@ -79,7 +79,7 @@ public class HitCountsTests
 	[InlineData(0, 0, 0, -1, 0, 0)]
 	[InlineData(0, 0, 0, 0, -1, 0)]
 	[InlineData(0, 0, 0, 0, 0, -1)]
-	public void NegativeCount_Constructor_Throws(int n300, int n100, int n50, int geki, int katu, int miss)
+	public void ConstructorNegativeCount_Throws(int n300, int n100, int n50, int geki, int katu, int miss)
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new HitCounts(n300, n100, n50, geki, katu, miss));
 	}
@@ -87,7 +87,7 @@ public class HitCountsTests
 	[Theory]
 	[InlineData(-1)]
 	[InlineData(-100)]
-	public void NegativeCount_With_Throws(int negative)
+	public void WithNegativeCount_Throws(int negative)
 	{
 		var hits = new HitCounts(1, 2, 3, 4, 5, 6);
 

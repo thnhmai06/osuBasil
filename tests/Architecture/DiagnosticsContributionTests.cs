@@ -22,7 +22,7 @@ public class DiagnosticsContributionTests
 	}
 
 	[Fact]
-	public void EveryModuleWithHandlersOwnsItsMeterAndAnswersTheDiagnosticsQuestion()
+	public void EveryModule_OwnsMeter()
 	{
 		var missing = ModuleInfrastructures().SelectMany(assembly => Missing(assembly.GetName().Name!.Split('.')[2],
 			assembly.GetTypes()));
@@ -31,7 +31,7 @@ public class DiagnosticsContributionTests
 	}
 
 	[Fact]
-	public void TheCheckInspectsTheModulesThatHandleMessages_PositiveControl()
+	public void InspectsModules_PositiveControl()
 	{
 		var inspected = ModuleInfrastructures().Where(assembly => HasHandlers(assembly.GetTypes())).ToList();
 
@@ -40,7 +40,7 @@ public class DiagnosticsContributionTests
 	}
 
 	[Fact]
-	public void TheCheckReportsAModuleThatLacksEither_PositiveControl()
+	public void ReportsMissing_PositiveControl()
 	{
 		Assert.Equal(new[] { "Fake has no meter named Basil.Fake", "Fake has no handler of CollectDiagnostics" },
 			Missing("Fake", [typeof(OnlyAHandlerOfSomethingElse)]).ToArray());

@@ -21,7 +21,7 @@ public class PacketWriterInt32ListTests
 	}
 
 	[Fact]
-	public void FriendsList_OneElement_WritesCountThenValue()
+	public void OneFriend_CountThenValue()
 	{
 		// packet id 72 (u16 LE), padding 0, payload length 6, payload: count u16 LE = 1, then
 		// -2147483648 = 0x80000000 as i32 LE (00 00 00 80).
@@ -31,7 +31,7 @@ public class PacketWriterInt32ListTests
 	}
 
 	[Fact]
-	public void FriendsList_MaximumCount_WritesU16CountPrefixWithEveryValue()
+	public void MaximumFriends_PrefixedValues()
 	{
 		// 65535 elements: the exact upper bound of the u16 count prefix. Elements are the literal
 		// sequence 0..65534, written as i32 little-endian per the osu! list format.
@@ -48,7 +48,7 @@ public class PacketWriterInt32ListTests
 	}
 
 	[Fact]
-	public void FriendsList_EmptyList_WritesOnlyTheCountPrefix()
+	public void EmptyFriendsList_CountOnly()
 	{
 		// packet id 72 (u16 LE), padding 0, payload length 2, payload: count u16 LE = 0.
 		Assert.Equal(
@@ -57,7 +57,7 @@ public class PacketWriterInt32ListTests
 	}
 
 	[Fact]
-	public void FriendsList_CountAboveU16Maximum_ThrowsOverflow()
+	public void TooManyFriends_Overflow()
 	{
 		var friends = new int[65536];
 

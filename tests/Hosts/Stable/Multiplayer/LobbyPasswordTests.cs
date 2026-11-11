@@ -19,7 +19,7 @@ public sealed class LobbyPasswordTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task NewRoomWithPassword_ShownToALobbyWatcher_CarriesABlankPassword()
+	public async Task NewPasswordRoom_ListedBlankPassword()
 	{
 		var watcher = await Host.NewClientAsync("PwLiveWatcher");
 		var creator = await Host.NewClientAsync("PwLiveCreator");
@@ -36,7 +36,7 @@ public sealed class LobbyPasswordTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task NewRoomWithPassword_JoinSuccessForTheCreator_CarriesTheRealPassword()
+	public async Task CreatorJoinSuccess_RealPassword()
 	{
 		var creator = await Host.NewClientAsync("PwOwnCreator");
 		await creator.LoginAsync();
@@ -50,7 +50,7 @@ public sealed class LobbyPasswordTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ExistingRoomWithPassword_ListedToAWatcherWhoJoinsLater_CarriesABlankPassword()
+	public async Task LateWatcherListing_BlankPassword()
 	{
 		var creator = await Host.NewClientAsync("PwListCreator");
 		var watcher = await Host.NewClientAsync("PwListWatcher");

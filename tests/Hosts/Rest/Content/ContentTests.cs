@@ -13,7 +13,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 		UserPrivilegesExtensions.Default | UserPrivileges.Developer;
 
 	[Fact]
-	public async Task Settings_WithoutPermission_Answer403WithTheMissingMask_AndWithoutAToken401()
+	public async Task SettingsRefusals_Answer403401()
 	{
 		var (client, _) = await fixture.SignInAsync("SetPlain");
 		using (client)
@@ -31,7 +31,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Get_ListsEveryCategory_AndAnUnknownCategoryAnswers404()
+	public async Task SettingsCategories_ListedAnd404()
 	{
 		var (client, _) = await fixture.SignInAsync("SetReader", Settings);
 		using (client)
@@ -54,7 +54,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Patch_MergesTheGivenFields_AppliesAtOnce_AndRefusesInvalidValues()
+	public async Task SettingsPatch_MergesAppliesRefuses()
 	{
 		var (client, _) = await fixture.SignInAsync("SetWriter", Settings);
 		using (client)
@@ -76,7 +76,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_SessionLimits_PatchRoundTrips_AndRefusesNonPositiveValues()
+	public async Task SessionLimitsPatch_RoundTripsRefuses()
 	{
 		var (client, _) = await fixture.SignInAsync("SetSessions", Settings);
 		using (client)
@@ -99,7 +99,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Settings_Locks_AreSwitchedAsFlags()
+	public async Task SettingsLocks_SwitchAsFlags()
 	{
 		var (client, _) = await fixture.SignInAsync("SetLocks", Settings);
 		using (client)
@@ -117,7 +117,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Announce_NeedsThePermission_AValidBody_AndKnownRecipients()
+	public async Task AnnounceNeeds_PermissionAndBody()
 	{
 		var (plain, _) = await fixture.SignInAsync("AnnPlain");
 		var (staff, _) = await fixture.SignInAsync("AnnStaff",
@@ -143,7 +143,7 @@ public sealed class ContentTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Screenshots_ListAndDelete_NeedTheManagePermission()
+	public async Task Screenshots_NeedManagePermission()
 	{
 		var reference = await fixture.Host.Services.GetRequiredService<IScreenshotStorage>()
 			.SaveAsync(new MemoryStream([1, 2, 3]), "png");

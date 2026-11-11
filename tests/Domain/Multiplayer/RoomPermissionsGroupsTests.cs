@@ -27,20 +27,20 @@ public class RoomPermissionsGroupsTests
 		RoomPermissions.ChatPost;
 
 	[Fact]
-	public void GetPermissions_NoRole_GrantsNothing()
+	public void NoRole_NothingGranted()
 	{
 		Assert.Equal(RoomPermissions.None, RoomRoles.None.GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_Player_GrantsChatAndInviting()
+	public void Player_ChatAndInviting()
 	{
 		Assert.Equal(RoomPermissions.ChatPost | RoomPermissions.MembersInvite,
 			RoomRoles.Player.GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_Host_GrantsTheInClientHostOperations()
+	public void Host_InClientOperations()
 	{
 		const RoomPermissions expected =
 			RoomPermissions.SettingsChange |
@@ -56,52 +56,52 @@ public class RoomPermissionsGroupsTests
 	}
 
 	[Fact]
-	public void GetPermissions_Referee_GrantsEveryRightExceptManagingReferees()
+	public void Referee_AllButManaging()
 	{
 		Assert.Equal(EveryRight & ~RoomPermissions.RefereesManage, RoomRoles.Referee.GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_Creator_GrantsEveryRight()
+	public void Creator_EveryRight()
 	{
 		Assert.Equal(EveryRight, RoomRoles.Creator.GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_HostAndPlayer_GrantsTheUnion()
+	public void HostAndPlayer_Union()
 	{
 		Assert.Equal(RoomRoles.Host.GetPermissions() | RoomRoles.Player.GetPermissions(),
 			(RoomRoles.Host | RoomRoles.Player).GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_RefereeAndPlayer_GrantsTheUnion()
+	public void RefereeAndPlayer_Union()
 	{
 		Assert.Equal(RoomRoles.Referee.GetPermissions() | RoomRoles.Player.GetPermissions(),
 			(RoomRoles.Referee | RoomRoles.Player).GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_CreatorAndReferee_GrantsEveryRight()
+	public void CreatorAndReferee_EveryRight()
 	{
 		Assert.Equal(EveryRight, (RoomRoles.Creator | RoomRoles.Referee).GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_CreatorAndHostAndPlayer_GrantsEveryRight()
+	public void CreatorHostPlayer_EveryRight()
 	{
 		Assert.Equal(EveryRight, (RoomRoles.Creator | RoomRoles.Host | RoomRoles.Player).GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_AllRoles_GrantsEveryRight()
+	public void AllRoles_EveryRight()
 	{
 		Assert.Equal(EveryRight,
 			(RoomRoles.Creator | RoomRoles.Referee | RoomRoles.Host | RoomRoles.Player).GetPermissions());
 	}
 
 	[Fact]
-	public void GetPermissions_Referee_GrantsMoreThanTheHost()
+	public void Referee_MoreThanHost()
 	{
 		Assert.True(RoomRoles.Referee.GetPermissions().HasFlag(RoomPermissions.SlotsMovePlayers));
 		Assert.True(RoomRoles.Referee.GetPermissions().HasFlag(RoomPermissions.MembersBan));
@@ -109,13 +109,13 @@ public class RoomPermissionsGroupsTests
 	}
 
 	[Fact]
-	public void GetPermissions_Host_DoesNotGrantManagingReferees()
+	public void Host_NoManageReferees()
 	{
 		Assert.False(RoomRoles.Host.GetPermissions().HasFlag(RoomPermissions.RefereesManage));
 	}
 
 	[Fact]
-	public void GetPermissions_Player_DoesNotGrantAnyManagement()
+	public void Player_NoManagement()
 	{
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.SlotsMovePlayers));
 		Assert.False(RoomRoles.Player.GetPermissions().HasFlag(RoomPermissions.SlotsLock));

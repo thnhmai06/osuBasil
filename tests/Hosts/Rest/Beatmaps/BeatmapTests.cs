@@ -27,7 +27,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Get_ASetAndABeatmap_IsPublic_AndTheBeatmapCarriesItsSet()
+	public async Task PublicBeatmap_CarriesItsSet()
 	{
 		var (setId, mapId) = await ImportAsync("Sets/padoru-standard.osz");
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
@@ -42,7 +42,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Get_UnknownSet_Answers404()
+	public async Task UnknownSet_Answers404()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -52,7 +52,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Search_NeedsAToken_AndPagingIsBounded()
+	public async Task SearchNeedsToken_PagingBounded()
 	{
 		var (client, _) = await fixture.SignInAsync("BmSearcher");
 		using (client)
@@ -69,7 +69,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_ByAManager_HidesTheSetFromEveryoneButManagers()
+	public async Task ManagerPatch_HidesFromOthers()
 	{
 		var (setId, _) = await ImportAsync("Sets/mosi-mosi-taiko.osz");
 		var (manager, _) = await fixture.SignInAsync("BmManager", Manager);
@@ -96,7 +96,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_Status_IsStoredAndShown()
+	public async Task StatusPatch_StoredAndShown()
 	{
 		var (setId, _) = await ImportAsync("Sets/selene-ui-mania.osz");
 		var (manager, _) = await fixture.SignInAsync("BmStatus", Manager);
@@ -112,7 +112,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Upload_Again_Answers409_GarbageAnswers422_AndDeleteIsForManagersOnly()
+	public async Task Reupload_Answers409()
 	{
 		var (client, _) = await fixture.SignInAsync("BmUploader");
 		var (manager, _) = await fixture.SignInAsync("BmDeleter", Manager);
@@ -140,7 +140,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Upload_ByAPlainUser_WhileTheAreaIsLockedByDefault_Answers409Locked()
+	public async Task PlainUserUpload_Answers409Locked()
 	{
 		var (client, _) = await fixture.SignInAsync("BmLocked");
 		using (client)
@@ -153,7 +153,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Upload_WithoutAToken_Answers401()
+	public async Task TokenlessUpload_Answers401()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -163,7 +163,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SetLevelResources_RedirectToTheLowestBeatmap_AndTheTokenRulesHold()
+	public async Task SetLevelRedirect_ToLowestBeatmap()
 	{
 		var (setId, mapId) = await ImportAsync("Sets/padoru-standard.osz");
 		var (client, _) = await fixture.SignInAsync("BmRedirect");
@@ -184,7 +184,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task AHiddenBeatmap_IsNotFoundForEveryoneButViewersOfHiddenContent_AndNeverTheRedirectTarget()
+	public async Task HiddenBeatmap_HiddenFromOthers()
 	{
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/selene-ui-mania.osz");
 		var hidden = beatmaps.OrderBy(b => b.Id).First();
@@ -228,7 +228,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	[InlineData("evil.html", "application/octet-stream")]
 	[InlineData("evil.svg", "application/octet-stream")]
 	[InlineData("evil.png.html", "application/octet-stream")]
-	public async Task Background_IsServedWithATypeFromTheAllowlist_AndNoSniff(string fileName, string expected)
+	public async Task Background_TypedNoSniff(string fileName, string expected)
 	{
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/mosi-mosi-taiko.osz");
 		var beatmap = beatmaps.OrderBy(b => b.Id).First();
@@ -246,7 +246,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Download_WithAToken_ReturnsAnArchive()
+	public async Task TokenDownload_ReturnsArchive()
 	{
 		var (setId, _) = await ImportAsync("Sets/padoru-standard.osz");
 		var (client, _) = await fixture.SignInAsync("BmDownload");
@@ -260,7 +260,7 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Download_WithNoVideoSetToOne_ReturnsAnArchive()
+	public async Task NoVideoDownload_ReturnsArchive()
 	{
 		var (setId, _) = await ImportAsync("Sets/padoru-standard.osz");
 		var (client, _) = await fixture.SignInAsync("BmNoVideo");

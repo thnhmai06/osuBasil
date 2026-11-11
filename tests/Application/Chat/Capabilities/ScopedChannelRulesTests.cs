@@ -50,7 +50,7 @@ public sealed class ScopedChannelRulesTests
 	#region Join
 
 	[Fact]
-	public async Task Join_AfterThePreviousConnectionOfTheSameKindClosed_ReplacesItAndTheEventReportsIt()
+	public async Task SameKindClosed_ReplacesAndReports()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -70,7 +70,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task Join_FirstTimeOfAUser_ReportsNoReplacedConnection()
+	public async Task FirstTime_ReportsNoReplaced()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -82,7 +82,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task Join_TwoApiConnectionsOfOneUser_AreBothMembers()
+	public async Task TwoApiConnections_BothMembers()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -100,7 +100,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task Join_ConnectionOfAnotherKindOfTheSameUser_IsNotAReplacement()
+	public async Task OtherKind_NotReplacement()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -116,7 +116,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task Join_ClosedChannelByAConnectionWithoutReadRights_ReturnsClosedBeforeAccessDenied()
+	public async Task NoReadRights_ClosedBeforeDenied()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
@@ -130,7 +130,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task Part_ConnectionThatNeverJoinedAndTheOneThatAlreadyParted_BothGetNotMember()
+	public async Task NeverJoinedParted_NotMember()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -151,7 +151,7 @@ public sealed class ScopedChannelRulesTests
 	#region Post
 
 	[Fact]
-	public async Task PostAsync_ClosedChannel_ReturnsClosedAndPublishesNothing()
+	public async Task ClosedChannel_ClosedNoPublish()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -169,7 +169,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ToPrivateChannelOfUserWhoWentOffline_ReturnsClosed()
+	public async Task PrivateOfOffline_ReturnsClosed()
 	{
 		using var app = new TestApplication();
 		var ownerRecord = await app.CreateUserAsync("WentOffline", "password");
@@ -188,7 +188,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_PrivateChannelClosedWhileCheckingTheRelationship_ReturnsClosedAndPublishesNothing()
+	public async Task ClosedDuringCheck_ClosedNoPublish()
 	{
 		PmChannel? pm = null;
 		var relationships = new ClosingRelationshipRepository(() => pm?.Close());
@@ -227,7 +227,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_TextOfExactlyTheLimit_IsKeptWhole()
+	public async Task TextAtLimit_KeptWhole()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -243,7 +243,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_NoticeFlag_IsCarriedOnTheMessage()
+	public async Task NoticeFlag_CarriedOnMessage()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -256,7 +256,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ChannelNeedsModeratorRoleToWrite_ModeratorIsAccepted()
+	public async Task ModeratorRole_ModeratorAccepted()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, write: UserPrivileges.Moderator);
@@ -271,7 +271,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_AfterTheChannelRaisedItsWriteRole_PlayerAlreadyInsideIsRefused()
+	public async Task WriteRoleRaised_InsidePlayerRefused()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -289,7 +289,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ToPrivateChannelOfUserWhoBlockedSomeoneElse_StillGetsThrough()
+	public async Task PrivateOfBlocker_GetsThrough()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("Selective", "password");
@@ -306,7 +306,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_FriendsOnlyRecipientAndSenderHoldingChatMessageAnyone_GetsThrough()
+	public async Task FriendsOnly_SenderPassesThrough()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOwner", "password");
@@ -339,7 +339,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task PostAsync_ToYourOwnPrivateChannelWhileAway_GetsNoAwayReply()
+	public async Task OwnPrivateAway_NoAwayReply()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("TalksToSelf", "password");
@@ -358,7 +358,7 @@ public sealed class ScopedChannelRulesTests
 	#region Scope shape
 
 	[Fact]
-	public async Task General_OnAPrivateMessageChannel_IsNull()
+	public async Task PrivateMessageChannel_IsNull()
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("PmOwner", "password");
@@ -368,7 +368,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task General_OnAGeneralChannel_ExposesThatChannel()
+	public async Task GeneralChannel_ExposesChannel()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -382,7 +382,7 @@ public sealed class ScopedChannelRulesTests
 	#region Configure
 
 	[Fact]
-	public async Task ConfigureAsync_EveryFieldGiven_AppliesAllOfThem()
+	public async Task EveryField_AppliesAll()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -401,7 +401,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_OnlyTopicGiven_LeavesTheOtherSettingsAsTheyWere()
+	public async Task OnlyTopic_LeavesOthers()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Player, UserPrivileges.Moderator);
@@ -420,7 +420,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_AutoJoinAndVisibleFlippedBackAndForth_FollowTheLastValue()
+	public async Task FlipBack_FollowsLastValue()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -434,7 +434,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_Allowed_PublishesOneEventWithTheChange()
+	public async Task Allowed_PublishesOneEvent()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -450,7 +450,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_LoweringReadPrivileges_RemovesNobody()
+	public async Task LoweringReadPrivileges_RemovesNobody()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
@@ -467,7 +467,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_Allowed_PersistsTheNewSettings()
+	public async Task Allowed_PersistsSettings()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -482,7 +482,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_Denied_PersistsNothingAndChangesNothing()
+	public async Task Denied_PersistsNothing()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -497,7 +497,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ClosedChannel_ReturnsClosed()
+	public async Task ClosedChannel_ReturnsClosed()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -510,7 +510,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ClosedChannelByAConnectionWithoutChatManageChannels_IsDeniedBeforeClosed()
+	public async Task ClosedNoManage_DeniedBeforeClosed()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -524,7 +524,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_UndefinedReadPrivilegeBit_ThrowsAndChangesNothing()
+	public async Task UndefinedReadBit_ThrowsNoChange()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -539,7 +539,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_UndefinedWritePrivilegeBit_ThrowsAndChangesNothing()
+	public async Task UndefinedWriteBit_ThrowsNoChange()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -553,7 +553,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_TopicContainingNul_ThrowsAndChangesNothing()
+	public async Task TopicWithNul_ThrowsNoChange()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -567,7 +567,7 @@ public sealed class ScopedChannelRulesTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_Allowed_RemovesTheChannelFromStorage()
+	public async Task Allowed_RemovesFromStorage()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);

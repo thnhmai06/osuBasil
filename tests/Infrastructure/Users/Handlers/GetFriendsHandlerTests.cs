@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Users.Tests.Handlers;
 public sealed class GetFriendsHandlerTests
 {
 	[Fact]
-	public async Task GetFriends_ListsTheUsersTheSenderFriended()
+	public async Task GetFriends_ListsSenderFriends()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Mine", "password"));
@@ -24,7 +24,7 @@ public sealed class GetFriendsHandlerTests
 	}
 
 	[Fact]
-	public async Task GetFriends_WithNoFriend_IsOkAndEmpty()
+	public async Task NoFriend_OkEmpty()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Alone", "password"));

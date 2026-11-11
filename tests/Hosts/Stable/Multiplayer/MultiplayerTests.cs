@@ -35,7 +35,7 @@ public sealed class MultiplayerTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task CreateMatch_SeatsTheCreatorAndShowsTheMatchToTheLobby()
+	public async Task CreatedMatch_CreatorSeated()
 	{
 		var watcher = await Host.NewClientAsync("LobbyWatcher");
 		await watcher.LoginAsync();
@@ -51,7 +51,7 @@ public sealed class MultiplayerTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task JoinMatch_WrongPassword_Fails()
+	public async Task WrongPassword_Fails()
 	{
 		var creator = await Host.NewClientAsync("PwCreator");
 		var guest = await Host.NewClientAsync("PwGuest");
@@ -68,7 +68,7 @@ public sealed class MultiplayerTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Round_ReadyStartLoadScoreComplete_ReachesEveryPlayerInOrder()
+	public async Task FullRound_ReachesEveryPlayer()
 	{
 		var (host, guest, _) = await SeatedPairAsync("RoundHost", "RoundGuest");
 		host.ClearReceived();
@@ -98,7 +98,7 @@ public sealed class MultiplayerTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Round_AfterIt_ASubmittedScoreIsAccepted_AndListedOnTheLeaderboard()
+	public async Task PostRoundScore_AcceptedAndListed()
 	{
 		var (host, guest, _) = await SeatedPairAsync("ScoreHost", "ScoreGuest");
 		var beatmap = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
@@ -115,7 +115,7 @@ public sealed class MultiplayerTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Kick_ByNonHost_IsRefused_AndLeaveReachesTheHost()
+	public async Task NonHostKick_Refused()
 	{
 		var (host, guest, _) = await SeatedPairAsync("LeaveHost", "LeaveGuest");
 		host.ClearReceived();

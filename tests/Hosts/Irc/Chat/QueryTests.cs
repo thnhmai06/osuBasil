@@ -11,7 +11,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Names_MarksWritersWithPlus_AndTheBotIsAMember()
+	public async Task WritersPlus_BotMember()
 	{
 		using var irc = await Host.SignInAsync("QnPlus");
 
@@ -22,7 +22,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Names_ChannelManagerHasAtAndWithMultiPrefixBoth()
+	public async Task ManagerAt_MultiPrefix()
 	{
 		var privileges = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
 		using var manager = await Host.SignInAsync("QnManager", "multi-prefix userhost-in-names", privileges);
@@ -31,7 +31,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Names_WithoutMultiPrefix_ShowsOnlyTheHighestSymbol()
+	public async Task NoMulti_HighestSymbol()
 	{
 		var privileges = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
 		using var manager = await Host.SignInAsync("QnSingle", privileges: privileges);
@@ -40,7 +40,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Names_ReadOnlyMember_HasNoSymbol()
+	public async Task ReadOnly_NoSymbol()
 	{
 		Host.AddChannel("#readonly1", write: UserPrivileges.Moderator);
 		using var irc = await Host.SignInAsync("QnReader");
@@ -53,7 +53,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Names_UnknownChannel_OnlyEndsTheList()
+	public async Task UnknownChannel_EndsList()
 	{
 		using var irc = await Host.SignInAsync("QnNone");
 
@@ -63,7 +63,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Names_ChannelTheUserMayNotRead_IsNotListed()
+	public async Task NoReadChannel_NotListed()
 	{
 		Host.AddChannel("#staff2", UserPrivileges.Moderator);
 		using var irc = await Host.SignInAsync("QnHidden");
@@ -75,7 +75,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_ShowsReadableVisibleChannelsOnly()
+	public async Task List_ReadableVisibleOnly()
 	{
 		Host.AddChannel("#listed1", topic: "visible one");
 		Host.AddChannel("#staff3", UserPrivileges.Moderator, topic: "staff only");
@@ -95,7 +95,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Who_Channel_ListsEachUserOnceWithFlags()
+	public async Task WhoChannel_EachOnceFlags()
 	{
 		using var irc = await Host.SignInAsync("WhoAsker");
 		using var away = await Host.SignInAsync("WhoAway");
@@ -117,7 +117,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Who_Nick_ShowsThatUserWithoutAChannel()
+	public async Task WhoNick_NoChannel()
 	{
 		using var irc = await Host.SignInAsync("WhoNickAsker");
 		using var other = await Host.SignInAsync("WhoNickOther");
@@ -130,7 +130,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Whois_Online_ShowsTheFixedMaskAccountAndChannels()
+	public async Task WhoisOnline_MaskChannels()
 	{
 		using var asker = await Host.SignInAsync("WsAsker");
 		using var other = await Host.SignInAsync("WsOther");
@@ -146,7 +146,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Whois_OfANameWithASpace_NamesTheAccountAsOneParameter()
+	public async Task WhoisSpace_OneParameter()
 	{
 		using var asker = await Host.SignInAsync("WsSpaceAsker");
 		using var other = await Host.SignInAsync("Ws Spaced");
@@ -158,7 +158,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Whois_AwayUser_Shows301()
+	public async Task WhoisAway_Shows301()
 	{
 		using var asker = await Host.SignInAsync("WsAwayAsker");
 		using var away = await Host.SignInAsync("WsAwayWho");
@@ -171,7 +171,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Whois_UnknownNick_Gets401Then318()
+	public async Task WhoisUnknown_401Then318()
 	{
 		using var asker = await Host.SignInAsync("WsNobody");
 
@@ -182,7 +182,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Whois_OsuUser_IsFoundByNameWithUnderscoreForSpaces()
+	public async Task WhoisOsuUser_UnderscoreSpaces()
 	{
 		using var asker = await Host.SignInAsync("WsSpacer");
 		using var osu = await Host.LoginOsuAsync("Ws Space");
@@ -194,7 +194,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Ison_ListsOnlyTheOnlineNicks()
+	public async Task Ison_OnlineNicksOnly()
 	{
 		using var asker = await Host.SignInAsync("IsAsker");
 		using var other = await Host.SignInAsync("IsOnline");
@@ -205,7 +205,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Userhost_ShowsTheFixedMaskAndAway()
+	public async Task Userhost_MaskAndAway()
 	{
 		using var asker = await Host.SignInAsync("UhAsker");
 		using var away = await Host.SignInAsync("UhAway");
@@ -219,7 +219,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task NoLineShowsARealAddress()
+	public async Task NoLine_RealAddress()
 	{
 		using var asker = await Host.SignInAsync("NoAddress");
 		await asker.SendAsync("WHOIS NoAddress");

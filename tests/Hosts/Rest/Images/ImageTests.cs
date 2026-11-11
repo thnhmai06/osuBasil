@@ -24,7 +24,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_OfAUserWithoutOne_IsTheDefault_BasilBotIncluded()
+	public async Task NoAvatar_DefaultForBot()
 	{
 		using var client = Anonymous();
 
@@ -38,7 +38,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_Uploaded_IsServedWithCachingHeaders_AndAnUnchangedEtagAnswers304()
+	public async Task UploadedAvatar_CachingAnd304()
 	{
 		var (owner, id) = await fixture.SignInAsync("ImgAvatar");
 		using (owner)
@@ -58,7 +58,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_WhosePictureCannotBeDecoded_IsNotFound()
+	public async Task UndecodableAvatar_NotFound()
 	{
 		var headerOnly = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images",
 			"seasonal-3500x2487-header.png"));
@@ -75,7 +75,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_CanBeResizedByQuery()
+	public async Task AvatarQuery_Resized()
 	{
 		var (owner, id) = await fixture.SignInAsync("ImgResize");
 		using (owner)
@@ -93,7 +93,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_TooLarge_Answers422()
+	public async Task OversizedAvatar_422()
 	{
 		var (owner, id) = await fixture.SignInAsync("ImgBigAvatar");
 		using (owner)
@@ -107,7 +107,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Avatar_ThatIsNotAPicture_Answers422()
+	public async Task NonPictureAvatar_422()
 	{
 		var (owner, id) = await fixture.SignInAsync("ImgNotPicture");
 		using (owner)
@@ -121,7 +121,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Screenshot_IsPublicOnTheOsuHost()
+	public async Task Screenshot_OsuHostPublic()
 	{
 		var reference = await fixture.Host.Services.GetRequiredService<IScreenshotStorage>()
 			.SaveAsync(new MemoryStream(Png), "png");
@@ -136,7 +136,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task MenuBanner_IsServedOnTheAssetsHost()
+	public async Task MenuBanner_OnAssetsHost()
 	{
 		await fixture.Host.Services.GetRequiredService<IMenuBannerStorage>()
 			.SaveAsync("rest-banner.png", new MemoryStream(Png));
@@ -149,7 +149,7 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BeatmapCover_IsPublic_AHiddenSetShowsNothing_AndTheThumbnailHasTheClientsPath()
+	public async Task BeatmapCover_PublicHiddenThumbnail()
 	{
 		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/padoru-standard.osz");
 		var set = beatmaps.First().Beatmapset;

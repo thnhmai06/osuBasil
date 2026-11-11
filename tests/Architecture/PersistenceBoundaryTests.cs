@@ -11,7 +11,7 @@ public sealed class PersistenceBoundaryTests
 	private const string Persistence = "Basil.Infrastructure.Persistence";
 
 	[Fact]
-	public void OnlyTheCompositionRootReferencesThePersistenceProject()
+	public void PersistenceProject_OnlyRootReferences()
 	{
 		var referrers = Projects().Where(project => References(project).Contains(Persistence))
 			.Select(Path.GetFileNameWithoutExtension);
@@ -20,7 +20,7 @@ public sealed class PersistenceBoundaryTests
 	}
 
 	[Fact]
-	public void NoProjectOutsideThePersistenceProjectUsesNpgsqlPackages()
+	public void OutsidePersistence_NoNpgsql()
 	{
 		var offenders = Projects().Where(project => Path.GetFileNameWithoutExtension(project) != Persistence)
 			.Where(project => Packages(project).Any(IsNpgsql))
@@ -30,7 +30,7 @@ public sealed class PersistenceBoundaryTests
 	}
 
 	[Fact]
-	public void TheMeasureSeesNpgsqlInThePersistenceProject_PositiveControl()
+	public void NpgsqlInPersistence_ControlDetected()
 	{
 		var persistence = Projects().Single(project => Path.GetFileNameWithoutExtension(project) == Persistence);
 
@@ -38,7 +38,7 @@ public sealed class PersistenceBoundaryTests
 	}
 
 	[Fact]
-	public void NoMigrationNamesAProviderOrAStoreType()
+	public void Migrations_NoProviderStore()
 	{
 		var offenders = MigrationFiles().Where(Offends).Select(Path.GetFileName);
 
@@ -46,7 +46,7 @@ public sealed class PersistenceBoundaryTests
 	}
 
 	[Fact]
-	public void TheMeasureSeesAProviderAndAStoreTypeInAMigration_PositiveControl()
+	public void ProviderInMigration_ControlDetected()
 	{
 		var directory = Directory.CreateTempSubdirectory();
 		try

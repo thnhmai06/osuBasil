@@ -15,13 +15,13 @@ public class ScoreFrameTests
 		new ScoreV2Portion(0.5, 0.25));
 
 	[Fact]
-	public void ScoreFrame_TwoInstancesWithEqualPropertyValues_AreEqual()
+	public void EqualPropertyValues_AreEqual()
 	{
 		Assert.Equal(Frame, Frame);
 	}
 
 	[Fact]
-	public void ScoreFrame_TwoInstancesWithADifferingPropertyValue_AreNotEqual()
+	public void DifferingProperty_NotEqual()
 	{
 		var changed = Frame with { State = Frame.State with { TotalScore = 287_454_020 + 1 } };
 
@@ -29,7 +29,7 @@ public class ScoreFrameTests
 	}
 
 	[Fact]
-	public void WithExpression_ChangesOnlyTheTargetedProperty()
+	public void WithExpression_ChangesTargetOnly()
 	{
 		var changed = Frame with { Time = TimeSpan.FromMilliseconds(2_500) };
 

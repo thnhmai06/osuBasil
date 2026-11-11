@@ -10,7 +10,7 @@ public class BeatmapMetadataTests
 	[InlineData("")]
 	[InlineData(" ")]
 	[InlineData("\t")]
-	public void Version_EmptyOrWhitespace_Throws(string version)
+	public void EmptyWhitespace_Throws(string version)
 	{
 		Assert.Throws<ArgumentException>(() => new BeatmapMetadata
 		{
@@ -21,7 +21,7 @@ public class BeatmapMetadataTests
 	}
 
 	[Fact]
-	public void Version_Valid_IsAccepted()
+	public void ValidVersion_Accepted()
 	{
 		var metadata = new BeatmapMetadata
 		{

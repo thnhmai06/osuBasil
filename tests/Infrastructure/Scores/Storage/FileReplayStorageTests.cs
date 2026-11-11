@@ -175,7 +175,7 @@ public sealed class FileReplayStorageTests : IDisposable
 
 	[Fact]
 	public async Task
-		A_saved_replay_opens_as_a_complete_file_that_records_the_client_version_and_ends_with_the_score_id()
+		SavedReplay_CompleteFile()
 	{
 		await _replays.SaveAsync(Score(), Version, Bytes("frames"));
 

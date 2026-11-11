@@ -8,13 +8,13 @@ public sealed class Sha256Tests
 	[Theory]
 	[InlineData("", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")]
 	[InlineData("abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")]
-	public void TheDigestOfSomeContent_IsItsSha256InLowerCaseHex(string content, string expected)
+	public void SomeContent_LowerHexDigest(string content, string expected)
 	{
 		Assert.Equal(expected, new Sha256(System.Text.Encoding.UTF8.GetBytes(content)).ToString());
 	}
 
 	[Fact]
-	public void ADigestGivenAsUpperCaseText_IsKeptInLowerCase_AndEqualsTheLowerCaseOne()
+	public void UpperCaseDigest_KeptLowercase()
 	{
 		const string Text = "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD";
 
@@ -26,13 +26,13 @@ public sealed class Sha256Tests
 	[InlineData("abc")]
 	[InlineData("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015a")]
 	[InlineData("za7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")]
-	public void TextThatIsNotSixtyFourHexCharacters_IsRefused(string text)
+	public void NotHex64_Refused(string text)
 	{
 		Assert.Throws<ArgumentException>(() => new Sha256(text));
 	}
 
 	[Fact]
-	public async Task TheDigestOfAStream_EqualsTheDigestOfItsBytes()
+	public async Task Stream_EqualsBytesDigest()
 	{
 		using var stream = new MemoryStream("abc"u8.ToArray());
 

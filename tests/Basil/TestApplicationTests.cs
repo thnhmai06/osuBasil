@@ -7,7 +7,7 @@ namespace Basil.Tests;
 public sealed class TestApplicationTests
 {
 	[Fact]
-	public async Task AddApplication_AllRootsResolveAndUserLogsIn_Succeeds()
+	public async Task AllRootsResolve_LoginSucceeds()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("FixtureUser", "secret");

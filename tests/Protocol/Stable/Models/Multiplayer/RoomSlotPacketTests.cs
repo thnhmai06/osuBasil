@@ -5,7 +5,7 @@ namespace Basil.Protocol.Stable.Tests.Models.Multiplayer;
 public class RoomSlotPacketTests
 {
 	[Fact]
-	public void HasPlayer_MatchesStatusMask_ForEveryByteValue()
+	public void StatusMask_MatchesEveryByte()
 	{
 		for (var status = 0; status <= byte.MaxValue; status++)
 		{

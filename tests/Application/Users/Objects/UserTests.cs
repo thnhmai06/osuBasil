@@ -7,7 +7,7 @@ namespace Basil.Application.Users.Tests.Objects;
 public sealed class UserTests
 {
 	[Fact]
-	public async Task Of_OnlineAccount_ReturnsSameUserInstance()
+	public async Task OnlineAccount_SameInstance()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("OnlineIdentity", "password");
@@ -21,7 +21,7 @@ public sealed class UserTests
 	}
 
 	[Fact]
-	public async Task Of_OfflineAccount_ReturnsTransientUserInstances()
+	public async Task OfflineAccount_TransientInstances()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("OfflineIdentity", "password");
@@ -36,7 +36,7 @@ public sealed class UserTests
 	}
 
 	[Fact]
-	public async Task EffectivePrivileges_PermissionNeverGranted_LacksIt()
+	public async Task UngrantedPermission_NotEffective()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("NoPermission", "password");

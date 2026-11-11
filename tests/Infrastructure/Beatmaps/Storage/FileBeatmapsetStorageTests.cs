@@ -651,7 +651,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	[InlineData("NUL.txt")]
 	[InlineData("COM1")]
 	[InlineData("LPT9.png")]
-	public async Task A_name_that_is_not_a_plain_file_name_is_refused_and_stores_nothing(string name)
+	public async Task NotPlainName_Refused(string name)
 	{
 		var set = StoredSet(out var folder);
 		var before = TempData.FilesUnder(Sets);

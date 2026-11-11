@@ -14,7 +14,7 @@ public sealed class ChannelHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task CreateGeneralChannel_WithTheRight_CreatesTheChannel()
+	public async Task WithTheRight_CreatesTheChannel()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -27,7 +27,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task CreateGeneralChannel_WithoutTheRight_IsDeniedAndCreatesNothing()
+	public async Task NoRight_DeniedCreatesNothing()
 	{
 		using var app = new TestApplication();
 		var plain = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
@@ -41,7 +41,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task ConfigureGeneralChannel_WithTheRight_ChangesTheTopicAndAnswersWithTheChannel()
+	public async Task ConfigureGeneral_RightChangesTopic()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -55,7 +55,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task ConfigureGeneralChannel_OfAChannelThatDoesNotExist_AnswersWithoutAChannel()
+	public async Task ConfigureMissingChannel_AnswersNoChannel()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -68,7 +68,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteGeneralChannel_WithTheRight_RemovesTheChannel()
+	public async Task WithTheRight_RemovesTheChannel()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -81,7 +81,7 @@ public sealed class ChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task DeleteGeneralChannel_OfAChannelThatDoesNotExist_AnswersWithoutAChannel()
+	public async Task DeleteMissingChannel_AnswersNoChannel()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));

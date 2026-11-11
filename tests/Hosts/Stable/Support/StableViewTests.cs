@@ -7,7 +7,7 @@ namespace Basil.Host.Stable.Tests.Support;
 public sealed class StableViewTests
 {
 	[Fact]
-	public void Roles_AreTheEffectivePrivileges()
+	public void Roles_EffectivePrivileges()
 	{
 		const UserPrivileges held = UserPrivileges.Player | UserPrivileges.Moderator;
 
@@ -15,7 +15,7 @@ public sealed class StableViewTests
 	}
 
 	[Fact]
-	public void Roles_WithoutAnyPrivilege_FallBackToPlayer()
+	public void NoPrivileges_PlayerDefault()
 	{
 		Assert.Equal(UserPrivileges.Player, StableView.Roles(UserPrivileges.None));
 	}

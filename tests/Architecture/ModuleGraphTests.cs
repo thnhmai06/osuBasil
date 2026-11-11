@@ -42,7 +42,7 @@ public class ModuleGraphTests
 	};
 
 	[Fact]
-	public void EveryProjectReferenceIsInsideTheAllowedGraph()
+	public void ProjectReferences_AllInsideGraph()
 	{
 		var unexpected = ProjectEdges().Where(edge => !IsAllowed(edge.From, edge.To))
 			.Select(edge => $"{edge.From} -> {edge.To}");
@@ -51,7 +51,7 @@ public class ModuleGraphTests
 	}
 
 	[Fact]
-	public void NoProjectIsLeftOutOfTheGraph()
+	public void ProjectGraph_NoProjectMissing()
 	{
 		var unknown = ProjectFiles().Select(Name).Where(name => !IsKnown(name));
 
@@ -59,20 +59,20 @@ public class ModuleGraphTests
 	}
 
 	[Fact]
-	public void NoCycleJoinsTheProjects()
+	public void ProjectGraph_NoCycles()
 	{
 		Assert.Empty(FindCycles(ProjectEdges()));
 	}
 
 	[Fact]
-	public void TheMeasureSeesAnEdgeItShould()
+	public void GraphMeasure_SeesValidEdge()
 	{
 		Assert.Contains(("Basil.Infrastructure.Users", "Basil.Application.Users"), ProjectEdges());
 		Assert.Contains(("Basil.Application.Users", "Basil.Application.Authentication"), ProjectEdges());
 	}
 
 	[Fact]
-	public void TheRulesRefuseAnEdgeTheyShould()
+	public void GraphRules_RefuseBadEdge()
 	{
 		Assert.False(IsAllowed("Basil.Application.Authentication", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
@@ -98,7 +98,7 @@ public class ModuleGraphTests
 	}
 
 	[Fact]
-	public void TheCycleScanFindsACycleItShould()
+	public void CycleScan_FindsCycle()
 	{
 		var edges = new[] { ("One", "Two"), ("Two", "Three"), ("Three", "One") };
 

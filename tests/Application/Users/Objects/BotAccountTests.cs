@@ -16,7 +16,7 @@ public sealed class BotAccountTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task EnsureBotAsync_AccountHoldsTheId_KeepsItsNameAndCountry()
+	public async Task ExistingBot_KeepsNameCountry()
 	{
 		using var app = new TestApplication();
 		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret");
@@ -30,7 +30,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_AccountHoldsTheId_RemovesItsPrivileges()
+	public async Task ExistingBot_RemovesPrivileges()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
@@ -42,7 +42,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_AccountHoldsTheId_RemovesItsPassword()
+	public async Task ExistingBot_RemovesPassword()
 	{
 		using var app = new TestApplication();
 		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret");
@@ -54,7 +54,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_IdHoldsDeletedAccount_RestoresItWithTheDefaultName()
+	public async Task DeletedBotAccount_RestoredDefaultName()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Gone", "secret", deletedAt: app.Clock.GetUtcNow());
@@ -68,7 +68,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_IdHoldsDeletedAccount_RemovesItsPassword()
+	public async Task DeletedBotAccount_RemovesPassword()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Gone", "secret", deletedAt: app.Clock.GetUtcNow());
@@ -79,7 +79,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_DeletedAccountAndDefaultNameTaken_Throws()
+	public async Task DefaultNameTaken_Throws()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Gone", "secret", deletedAt: app.Clock.GetUtcNow());
@@ -89,7 +89,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_IdHoldsNothing_CreatesTheBotWithTheFixedId()
+	public async Task MissingBot_CreatesFixedId()
 	{
 		using var app = new TestApplication();
 
@@ -103,7 +103,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_IdHoldsNothing_AccountsCreatedLaterTakeOtherIds()
+	public async Task LaterAccounts_AvoidFixedId()
 	{
 		using var app = new TestApplication();
 		await app.Users.EnsureBotAsync(Token);
@@ -114,7 +114,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_AfterTakeover_BotCanComeOnline()
+	public async Task AfterTakeover_BotComesOnline()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
@@ -128,7 +128,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_AfterTakeover_NobodyCanSignInAsTheBot()
+	public async Task AfterTakeover_SignInRefused()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret");
@@ -140,7 +140,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_CalledTwice_ChangesNothing()
+	public async Task SecondCall_ChangesNothing()
 	{
 		using var app = new TestApplication();
 		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPrivileges.Tournament);
@@ -155,7 +155,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_BotIsOnline_KeepsItsConnectionsOpen()
+	public async Task OnlineBot_KeepsConnections()
 	{
 		using var app = new TestApplication();
 		await app.Users.EnsureBotAsync(Token);
@@ -171,7 +171,7 @@ public sealed class BotAccountTests
 	}
 
 	[Fact]
-	public async Task EnsureBotAsync_BotWasGivenPermissionsWhileOnline_ResetsItAndClosesItsConnections()
+	public async Task OnlinePermissionGrant_Resets()
 	{
 		using var app = new TestApplication();
 		var bot = await app.Users.EnsureBotAsync(Token);

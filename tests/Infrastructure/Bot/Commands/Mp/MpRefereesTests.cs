@@ -16,7 +16,7 @@ public sealed class MpRefereesTests
 	private const int RefereeLimit = 8;
 
 	[Fact]
-	public async Task AddRef_WithoutAName_SaysHowToUseIt()
+	public async Task WithoutName_UsageShown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -29,7 +29,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task AddRef_ForANameNoAccountHas_SaysTheTargetIsNotInTheMatch()
+	public async Task NameNoAccount_NotInMatch()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -44,7 +44,7 @@ public sealed class MpRefereesTests
 	[Theory]
 	[InlineData(false)]
 	[InlineData(true)]
-	public async Task AddRef_ForARegisteredUser_SaysSoAndMakesThemAReferee(bool online)
+	public async Task RegisteredUser_MadeReferee(bool online)
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -60,7 +60,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task AddRef_ForAUserWhoIsAlreadyAReferee_SaysSoAndKeepsOneEntry()
+	public async Task AlreadyReferee_SaidKeepsOne()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -75,7 +75,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task AddRef_ForTheCreator_SaysTheUserCreatedTheMatchAndAddsNobody()
+	public async Task Creator_AddsNobody()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -88,7 +88,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task AddRef_WhenTheMatchHasTheMostRefereesItCanHave_SaysTheLimitWasReachedAndAddsNobody()
+	public async Task RefereeLimit_LimitAddsNobody()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -109,7 +109,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task RemoveRef_WithoutAName_SaysHowToUseIt()
+	public async Task RemoveWithoutName_UsageShown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -121,7 +121,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task RemoveRef_OfAReferee_SaysSoAndTakesThemOffTheRefereeList()
+	public async Task Referee_SaidAndRemoved()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -136,7 +136,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task RemoveRef_OfAUserWhoIsNoReferee_SaysThatUserIsNotAReferee()
+	public async Task NonReferee_SaysNotReferee()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -151,7 +151,7 @@ public sealed class MpRefereesTests
 	[Theory]
 	[InlineData("!mp addref Third")]
 	[InlineData("!mp removeref Other")]
-	public async Task RefereeCommand_ByARefereeWhoIsNotTheCreator_IsRefusedAndChangesNoReferee(string message)
+	public async Task NonCreatorReferee_RefusedNoChange(string message)
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -171,7 +171,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task ListRefs_WithNoReferees_SaysThereAreNone()
+	public async Task NoReferees_SaysNone()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -183,7 +183,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task ListRefs_WithReferees_SaysTheHeaderThenOneLinePerRefereeWithTheRoomPrefix()
+	public async Task Referees_HeaderAndLines()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -203,7 +203,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task BanList_WithNoBans_SaysThereAreNone()
+	public async Task NoBans_SaysNone()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
@@ -215,7 +215,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task BanList_WithBans_SaysTheHeaderThenOneLinePerBannedUserWithTheRoomPrefix()
+	public async Task Bans_HeaderAndLines()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);

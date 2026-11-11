@@ -10,7 +10,7 @@ namespace Basil.Host.Irc.Tests;
 public sealed class FloodTests(IrcHostFixture fixture)
 {
 	[Fact]
-	public async Task Lines_BeyondTheAllowance_AreAnsweredWithANotice_ThenTheConnectionIsClosed()
+	public async Task BeyondAllowance_NoticeThenClosed()
 	{
 		var settings = fixture.Host.Services.GetRequiredService<ISettingsRepository>();
 		var original = await settings.GetAsync(TestContext.Current.CancellationToken);

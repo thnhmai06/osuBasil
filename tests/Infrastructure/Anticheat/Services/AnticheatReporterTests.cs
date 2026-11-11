@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Anticheat.Tests.Services;
 public sealed class AnticheatReporterTests
 {
 	[Fact]
-	public async Task Report_WithoutCheatSigns_PublishesNothingAndReturnsClean()
+	public async Task NoCheatSigns_NothingReturnsClean()
 	{
 		using var app = new TestApplication();
 		var player = await LoginAsync(app);
@@ -25,7 +25,7 @@ public sealed class AnticheatReporterTests
 	}
 
 	[Fact]
-	public async Task Report_WithCheatSigns_PublishesOneFlaggedEventNamingThePlayerAndTheSigns()
+	public async Task CheatSigns_OneFlaggedEvent()
 	{
 		using var app = new TestApplication();
 		var player = await LoginAsync(app);
@@ -41,7 +41,7 @@ public sealed class AnticheatReporterTests
 	}
 
 	[Fact]
-	public async Task Report_FlagsOutsideCheatSigns_PublishesOnlyTheSignBits()
+	public async Task FlagsOutsideSigns_OnlySignBits()
 	{
 		using var app = new TestApplication();
 		var player = await LoginAsync(app);

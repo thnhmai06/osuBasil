@@ -13,7 +13,7 @@ public class ConnectionRecordTests
 	}
 
 	[Fact]
-	public void Equals_SameId_IsTrueWhateverTheDataIs()
+	public void SameId_TrueWhateverData()
 	{
 		var first = new ConnectionRecord { Id = 3, Value = Data() };
 		var other = new ConnectionRecord { Id = 3, Value = Data(9) };
@@ -23,7 +23,7 @@ public class ConnectionRecordTests
 	}
 
 	[Fact]
-	public void Equals_DifferentId_IsFalse()
+	public void DifferentId_IsFalse()
 	{
 		Assert.NotEqual(new ConnectionRecord { Id = 1, Value = Data() },
 			new ConnectionRecord { Id = 2, Value = Data() });
@@ -32,7 +32,7 @@ public class ConnectionRecordTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-1)]
-	public void New_NonPositiveId_Throws(long id)
+	public void NonPositiveId_Throws(long id)
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new ConnectionRecord { Id = id, Value = Data() });
 	}
@@ -40,26 +40,26 @@ public class ConnectionRecordTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-5)]
-	public void Data_NonPositiveSessionId_Throws(long sessionId)
+	public void NonPositiveSession_Throws(long sessionId)
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Data(sessionId));
 	}
 
 	[Fact]
-	public void Data_UndefinedCloseReason_Throws()
+	public void UndefinedCloseReason_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Data(reason: (SessionEndReason)200));
 	}
 
 	[Fact]
-	public void Data_NoCloseReason_MeansTheConnectionIsOpen()
+	public void NoCloseReason_MeansOpen()
 	{
 		Assert.Null(Data().CloseReason);
 		Assert.Null(Data().ClosedAt);
 	}
 
 	[Fact]
-	public void ServerStopped_IsADefinedReason()
+	public void ServerStopped_DefinedReason()
 	{
 		Assert.True(Enum.IsDefined(SessionEndReason.ServerStopped));
 		Assert.Equal(SessionEndReason.ServerStopped, Data(reason: SessionEndReason.ServerStopped).CloseReason);

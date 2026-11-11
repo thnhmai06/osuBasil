@@ -21,7 +21,7 @@ public class ScopedRightsTests
 	}
 
 	[Fact]
-	public void RequireRight_FlagsHoldingEveryRequiredBit_IsMet()
+	public void AllFlagsHeld_Met()
 	{
 		var held = SampleBits.Read | SampleBits.Write;
 
@@ -30,7 +30,7 @@ public class ScopedRightsTests
 	}
 
 	[Fact]
-	public void RequireRight_FlagsMissingABit_NamesOnlyTheMissingBits()
+	public void MissingBit_OnlyMissingNamed()
 	{
 		var held = SampleBits.Read;
 
@@ -39,7 +39,7 @@ public class ScopedRightsTests
 	}
 
 	[Fact]
-	public void RequireRight_FlagsRequiringNothing_IsMet()
+	public void NoFlagsRequired_Met()
 	{
 		var held = SampleBits.None;
 
@@ -52,7 +52,7 @@ public class ScopedRightsTests
 	[InlineData(SampleLevel.Guest, SampleLevel.Guest, true)]
 	[InlineData(SampleLevel.Member, SampleLevel.Admin, false)]
 	[InlineData(SampleLevel.Guest, SampleLevel.Member, false)]
-	public void RequireRight_Levels_AreMetWhenHeldIsAtLeastRequired(SampleLevel held, SampleLevel required,
+	public void RequiredLevelHeld_Met(SampleLevel held, SampleLevel required,
 		bool met)
 	{
 		var missing = ScopedRights.Require(held, required);

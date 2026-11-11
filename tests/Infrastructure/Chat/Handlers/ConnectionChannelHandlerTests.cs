@@ -16,7 +16,7 @@ namespace Basil.Infrastructure.Chat.Tests.Handlers;
 public sealed class ConnectionChannelHandlerTests
 {
 	[Fact]
-	public async Task Handle_UserConnectionOpened_JoinsTheChannelsThatJoinThemselves()
+	public async Task ConnectionOpened_JoinsAutoJoin()
 	{
 		using var app = new TestApplication();
 		var auto = await OpenChannelAsync(app, "#auto", true);
@@ -33,7 +33,7 @@ public sealed class ConnectionChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_UserConnectionClosed_PartsItsChannels()
+	public async Task ConnectionClosed_PartsChannels()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, "#lobby");

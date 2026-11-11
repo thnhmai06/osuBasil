@@ -18,7 +18,7 @@ public class PacketWriterUserStatsTests
 	}
 
 	[Fact]
-	public void UserStats_Accuracy_WritesFloatOfAccuracyOver100()
+	public void Accuracy_WritesFloatOver100()
 	{
 		// Layout per the osu! UserStats packet: i32 userId, u8 action, osu! string info text,
 		// osu! string map md5, u32 mods, u8 mode, i32 mapId, u64 ranked score, f32 accuracy/100,
@@ -45,19 +45,19 @@ public class PacketWriterUserStatsTests
 	}
 
 	[Fact]
-	public void UserStats_PpAboveU16Maximum_ThrowsOverflow()
+	public void PpAboveMax_ThrowsOverflow()
 	{
 		Assert.Throws<OverflowException>(() => Write(pp: 65536));
 	}
 
 	[Fact]
-	public void UserStats_ActionAboveByteMaximum_ThrowsOverflow()
+	public void ActionAboveByte_ThrowsOverflow()
 	{
 		Assert.Throws<OverflowException>(() => Write(256));
 	}
 
 	[Fact]
-	public void UserStats_ModeAboveByteMaximum_ThrowsOverflow()
+	public void ModeAboveByte_ThrowsOverflow()
 	{
 		Assert.Throws<OverflowException>(() => Write(mode: 256));
 	}

@@ -18,7 +18,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void AccuracyComparer_PerfectTie_BrokenByTotalScore()
+	public void PerfectTie_BrokenTotalScore()
 	{
 		var comparer = GameWinCondition.Accuracy.ToComparer();
 		var lower = Make(Perfect, 1000, 10, 10);
@@ -29,7 +29,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void AccuracyComparer_TieBelowPerfect_IsDraw()
+	public void TieBelowPerfect_IsDraw()
 	{
 		var comparer = GameWinCondition.Accuracy.ToComparer();
 		var lower = Make(NearlyPerfect, 1000, 10, 10);
@@ -40,7 +40,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void AccuracyComparer_DifferentAccuracy_OrdersByAccuracy()
+	public void DifferentAccuracy_OrdersByAccuracy()
 	{
 		var comparer = GameWinCondition.Accuracy.ToComparer();
 		var perfect = Make(Perfect, 1000, 10, 10);
@@ -51,7 +51,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void ComboComparer_HigherMaxCombo_ComparesGreater()
+	public void HigherMaxCombo_ComparesGreater()
 	{
 		var comparer = GameWinCondition.Combo.ToComparer();
 		var higher = Make(Perfect, 1000, 500, 10);
@@ -62,7 +62,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void ComboComparer_EqualMaxCombo_TieBrokenByTotalScore()
+	public void EqualMaxCombo_BrokenTotalScore()
 	{
 		var comparer = GameWinCondition.Combo.ToComparer();
 		var lower = Make(Perfect, 1000, 500, 10);
@@ -73,7 +73,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void Metric_Combo_IsHighestComboReached()
+	public void Combo_HighestComboReached()
 	{
 		var score = Make(Perfect, 1000, 500, 10);
 
@@ -81,7 +81,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void Metric_Accuracy_IsAccuracyPercentage()
+	public void Accuracy_IsAccuracyPercentage()
 	{
 		var score = Make(NearlyPerfect, 1000, 10, 10);
 
@@ -89,7 +89,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void Metric_Score_IsTotalScore()
+	public void Score_IsTotalScore()
 	{
 		var score = Make(Perfect, 1234, 10, 10);
 
@@ -97,7 +97,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void Metric_UndefinedCondition_Throws()
+	public void MetricUndefined_Throws()
 	{
 		var score = Make(Perfect, 1000, 10, 10);
 
@@ -105,7 +105,7 @@ public class GameWinConditionTests
 	}
 
 	[Fact]
-	public void ToComparer_UndefinedCondition_Throws()
+	public void ComparerUndefined_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => ((GameWinCondition)200).ToComparer());
 	}

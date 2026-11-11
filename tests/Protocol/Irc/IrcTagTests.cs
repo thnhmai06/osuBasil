@@ -6,7 +6,7 @@ namespace Basil.Protocol.Irc.Tests;
 public class IrcTagTests
 {
 	[Fact]
-	public void Parse_TagsAndPrefix_ReadsEveryTagInOrder()
+	public void TagsAndPrefix_AllInOrder()
 	{
 		var message = IrcMessage.Parse("@id=123AB;rose;+draft/x=y :nick!u@h PRIVMSG #chan :hi", null);
 
@@ -16,7 +16,7 @@ public class IrcTagTests
 	}
 
 	[Fact]
-	public void Parse_EscapedValue_IsUnescaped()
+	public void EscapedValue_Unescaped()
 	{
 		// The specification's table: \: is ";", \s is " ", \\ is "\", \r is CR, \n is LF.
 		var message = IrcMessage.Parse(@"@a=1\:2\s3\\4\r\n5 PING x", null);
@@ -27,13 +27,13 @@ public class IrcTagTests
 	[Theory]
 	[InlineData(@"@a=x\ PING", "x")]
 	[InlineData(@"@a=x\b PING", "xb")]
-	public void Parse_InvalidEscape_DropsTheBackslash(string line, string expected)
+	public void InvalidEscape_BackslashDropped(string line, string expected)
 	{
 		Assert.Equal(expected, IrcMessage.Parse(line, null).Tag("a"));
 	}
 
 	[Fact]
-	public void Parse_EmptyValue_IsTheSameAsNoValue()
+	public void EmptyValue_NoValue()
 	{
 		var message = IrcMessage.Parse("@a=;b PING", null);
 
@@ -43,7 +43,7 @@ public class IrcTagTests
 	}
 
 	[Fact]
-	public void ToString_Tags_AreEscapedAndPrecedeThePrefix()
+	public void Tags_EscapedBeforePrefix()
 	{
 		var message = new IrcMessage("PRIVMSG", "n!u@h", "#c", "hi")
 			.WithTag("time", "2026-01-01T00:00:00.000Z").WithTag("note", "a b;c\\d").WithTag("flag");
@@ -52,13 +52,13 @@ public class IrcTagTests
 	}
 
 	[Fact]
-	public void ToString_NoTags_HasNoAtSign()
+	public void NoTags_NoAtSign()
 	{
 		Assert.Equal("PING x", new IrcMessage("PING", null, "x").ToString());
 	}
 
 	[Fact]
-	public void RoundTrip_TaggedLine_IsStable()
+	public void TaggedLine_RoundTrips()
 	{
 		const string line = @"@a=b\sc;d :p PRIVMSG #x :t t";
 
@@ -75,7 +75,7 @@ public class IrcTagTests
 	}
 
 	[Fact]
-	public void ToString_ForceTrailing_WritesAColonEvenWithoutASpace()
+	public void ForcedTrailing_ColonWithoutSpace()
 	{
 		var message = new IrcMessage("PRIVMSG", "n!u@h", "#c", "hi") { ForceTrailing = true };
 

@@ -31,7 +31,7 @@ public class ClientSerialTests
 
 	[Theory]
 	[MemberData(nameof(ValidSerials))]
-	public void Parse_DocumentedSerialText_SplitsOnTheFirstPipe(string text, string uninstallId, string diskSignature)
+	public void DocumentedSerial_FirstPipeSplit(string text, string uninstallId, string diskSignature)
 	{
 		var serial = ClientSerial.Parse(text);
 
@@ -40,27 +40,27 @@ public class ClientSerialTests
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
-	public void TryParse_SerialTextWithoutPipe_ReturnsFalse(string text)
+	public void SerialWithoutPipe_False(string text)
 	{
 		Assert.False(ClientSerial.TryParse(text, out _));
 	}
 
 	[Fact]
-	public void TryParse_NullText_ReturnsFalse()
+	public void NullText_False()
 	{
 		Assert.False(ClientSerial.TryParse(null, out _));
 	}
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
-	public void Parse_SerialTextWithoutPipe_ThrowsFormatException(string text)
+	public void SerialWithoutPipe_FormatException(string text)
 	{
 		Assert.Throws<FormatException>(() => ClientSerial.Parse(text));
 	}
 
 	[Theory]
 	[MemberData(nameof(ValidSerials))]
-	public void ToString_SerialOfComponents_BuildsTheWireText(string text, string uninstallId, string diskSignature)
+	public void SerialComponents_WireText(string text, string uninstallId, string diskSignature)
 	{
 		var serial = new ClientSerial(uninstallId, diskSignature);
 

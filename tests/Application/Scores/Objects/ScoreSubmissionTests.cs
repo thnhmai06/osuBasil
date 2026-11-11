@@ -54,7 +54,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WhenTheStatisticsCannotBeStored_ReachesTheCallerAndPublishesNothing()
+	public async Task StatsNotStored_ErrorNoPublish()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		f.App.Provider.GetRequiredService<IScoreRepository>()
@@ -70,7 +70,7 @@ public sealed class ScoreSubmissionTests
 	#region The submission checksum is the legacy osu! formula
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithTheChecksumOfTheLegacyFormula_IsAccepted()
+	public async Task LegacyChecksum_Accepted()
 	{
 		// raw = "chickenmcnuggets100o1500smustard00uu" + beatmap + "100" + "True" + "Submitter" + "1000" + "S" + "0" + "Q" + "True"
 		//       + "0" + "20260101" + "260102030405" + "client-hash"; its MD5 was computed by md5sum, not by this code base.
@@ -89,7 +89,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAStoryboardOnTheBeatmap_ExpectsTheStoryboardInTheChecksum()
+	public async Task StoryboardOnBeatmap_ChecksumIncludesStoryboard()
 	{
 		// The osu! client appends the storyboard checksum of the beatmap when it has one.
 		using var f = await ScoreSubmissionFixture.CreateAsync();
@@ -110,7 +110,7 @@ public sealed class ScoreSubmissionTests
 	#region Privilege and ownership
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithoutTheScoreSubmitPermission_IsDeniedWithExactlyThatPermission()
+	public async Task NoSubmitRight_DeniedNamingIt()
 	{
 		using var f =
 			await ScoreSubmissionFixture.CreateAsync(privileges: UserPrivilegesExtensions.Default &
@@ -129,7 +129,7 @@ public sealed class ScoreSubmissionTests
 	#region One test per rejection reason
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAnotherClientVersion_IsRejectedAsVersionMismatch()
+	public async Task OtherVersion_RejectedVersionMismatch()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient() with { VersionDate = "20250101" };
@@ -142,7 +142,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAnotherClientFingerprint_IsRejectedAsClientHashMismatch()
+	public async Task OtherClientHash_ClientHashMismatch()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var genuine = ScoreSubmissionFixture.GenuineClient();
@@ -159,7 +159,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAnotherUninstallId_IsRejectedAsUninstallerHashMismatch()
+	public async Task OtherUninstallId_UninstallerHashMismatch()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient() with { UninstallId = "someone-else" };
@@ -172,7 +172,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAnotherDiskSignature_IsRejectedAsDiskSignatureHashMismatch()
+	public async Task OtherDiskSignature_DiskHashMismatch()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient() with { DiskSignature = "another-disk" };
@@ -185,7 +185,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAChecksumThatDoesNotMatchTheScore_IsRejectedAsSubmissionHashMismatch()
+	public async Task ChecksumMismatch_SubmissionHashMismatch()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var score = ScoreSubmissionFixture.PassedScore();
@@ -200,7 +200,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WhenAFieldOfTheScoreChangedAfterTheChecksum_IsRejectedAsSubmissionHashMismatch()
+	public async Task ScoreFieldChanged_SubmissionHashMismatch()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var genuine = f.Genuine(ScoreSubmissionFixture.PassedScore());
@@ -215,7 +215,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_OnAnotherBeatmapThanTheOneChecked_IsRejectedAsBeatmapHashMismatch()
+	public async Task OtherBeatmap_BeatmapHashMismatch()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient(new Md5("11111111111111111111111111111111"));
@@ -228,7 +228,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_OnABeatmapTheServerDoesNotHave_IsRejectedAsUnknownBeatmap()
+	public async Task BeatmapOffServer_UnknownBeatmap()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
@@ -241,7 +241,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WhenSeveralChecksFail_ReportsTheFirstInTheDocumentedOrder()
+	public async Task SeveralChecksFail_FirstInOrder()
 	{
 		// Documented order: version, client hash, uninstaller, disk signature, submission checksum, beatmap.
 		using var f = await ScoreSubmissionFixture.CreateAsync();
@@ -279,7 +279,7 @@ public sealed class ScoreSubmissionTests
 	#region Duplicates
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAChecksumAlreadyStored_IsRejectedAsDuplicate()
+	public async Task ChecksumStored_RejectedAsDuplicate()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
@@ -295,7 +295,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAValidScore_StoresTheClientChecksumToIdentifyTheSubmission()
+	public async Task ValidScore_StoresClientChecksum()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
@@ -306,7 +306,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithADuplicate_DoesNotCountAgainstTheStatistics()
+	public async Task Duplicate_NotCountedStats()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
@@ -324,7 +324,7 @@ public sealed class ScoreSubmissionTests
 	#region Recording
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAValidScore_StoresItForThePlayerAndPublishesOneScoreSubmitted()
+	public async Task ValidScore_StoredAndPublished()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
@@ -340,7 +340,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_ThePublishedStatisticsAreTheOnesAfterTheScore()
+	public async Task StatsPublished_AfterScore()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
@@ -352,7 +352,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAPassedPlay_AddsToPlayCountTotalScoreAndRankedScore()
+	public async Task PassedPlay_PlayTotalRanked()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
@@ -365,7 +365,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAFailedPlay_AddsToPlayCountAndTotalScoreButNotRankedScore()
+	public async Task FailedPlay_TotalNoRank()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var failed = ScoreSubmissionFixture.PassedScore() with { IsPassed = false, Grade = Grade.F };
@@ -380,7 +380,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithSeveralScores_AccumulatesTheStatistics()
+	public async Task WithSeveralScores_AccumulatesTheStatistics()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var first = ScoreSubmissionFixture.PassedScore();
@@ -396,7 +396,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_InAnotherMode_KeepsTheStatisticsOfTheModesApart()
+	public async Task OtherMode_StatsKeptApart()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var taiko = ScoreSubmissionFixture.PassedScore() with { Mode = GameMode.Taiko };
@@ -415,7 +415,7 @@ public sealed class ScoreSubmissionTests
 	[InlineData(24)]
 	[InlineData(25)]
 	[InlineData(4096)]
-	public async Task SubmitScoreAsync_WithAPassedPlayAndAReplayOfAtLeast24Bytes_KeepsTheReplay(int length)
+	public async Task PassedWithReplay_KeepsReplay(int length)
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		using var replay = Replay(length);
@@ -431,7 +431,7 @@ public sealed class ScoreSubmissionTests
 	[InlineData(0)]
 	[InlineData(1)]
 	[InlineData(23)]
-	public async Task SubmitScoreAsync_WithAReplayShorterThan24Bytes_KeepsNoReplayButStillRecordsTheScore(int length)
+	public async Task ShortReplay_ScoreRecorded(int length)
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		using var replay = Replay(length);
@@ -444,7 +444,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAFailedPlayAndALongReplay_KeepsNoReplay()
+	public async Task FailedWithReplay_KeepsNoReplay()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var failed = ScoreSubmissionFixture.PassedScore() with { IsPassed = false, Grade = Grade.F };
@@ -456,7 +456,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithNoReplay_RecordsTheScoreWithoutOne()
+	public async Task NoReplay_ScoreRecorded()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
@@ -467,7 +467,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithAReplay_LeavesTheStreamOpen()
+	public async Task Replay_LeavesStreamOpen()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		using var replay = Replay(100);
@@ -494,7 +494,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_OnTheRoundBeatmapTheServerDoesNotHave_IsAccepted()
+	public async Task RoundOffServer_Accepted()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		await StartRoundAsync(f);
@@ -508,7 +508,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_InARound_IsTakenByTheRoundOnceTheHandlerGetsTheEvent()
+	public async Task InRound_TakenOnEvent()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
@@ -544,7 +544,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_OnTheRoundBeatmapTheServerDoesNotHave_OnceTheRoundIsDecided_IsRejected()
+	public async Task UnknownRoundBeatmap_RejectedOnceDecided()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
@@ -559,7 +559,7 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_OnAnotherUnknownBeatmapWhileInARound_IsRejectedAsUnknownBeatmap()
+	public async Task RoundOtherBeatmap_RejectedUnknown()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		await StartRoundAsync(f);

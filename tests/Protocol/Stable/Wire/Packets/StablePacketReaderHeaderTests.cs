@@ -15,7 +15,7 @@ public class StablePacketReaderHeaderTests
 	}
 
 	[Fact]
-	public void ReadHeader_PingWithNoPayload_ReturnsTypeAndZeroLength()
+	public void PingNoPayload_ZeroLength()
 	{
 		var (reader, stream) = Reader("04000000000000");
 
@@ -27,7 +27,7 @@ public class StablePacketReaderHeaderTests
 	}
 
 	[Fact]
-	public void ReadHeader_WithPayload_LeavesPayloadUnconsumed()
+	public void WithPayload_LeavesPayloadUnconsumed()
 	{
 		var (reader, stream) = Reader("5500000400000001000000");
 
@@ -40,7 +40,7 @@ public class StablePacketReaderHeaderTests
 	}
 
 	[Fact]
-	public void ReadHeader_Id256_IsNotAliasedToId0()
+	public void Id256_NotAliased()
 	{
 		// id 256 as u16 little-endian: bytes 00 01. A reader that truncates the id to one
 		// byte would alias 256 to 0.
@@ -55,7 +55,7 @@ public class StablePacketReaderHeaderTests
 	[Theory]
 	[InlineData("00")] // 1 byte
 	[InlineData("000000000000")] // 6 bytes, one short of the 7-byte header
-	public void ReadHeader_ShorterThanSevenBytes_ThrowsEndOfStream(string hex)
+	public void ShorterHeader_EndOfStream(string hex)
 	{
 		var reader = new PacketReader(new MemoryStream(Convert.FromHexString(hex)));
 
@@ -63,7 +63,7 @@ public class StablePacketReaderHeaderTests
 	}
 
 	[Fact]
-	public void ReadHeader_NegativePayloadLength_ThrowsInvalidData()
+	public void NegativePayloadLength_ThrowsInvalidData()
 	{
 		// id 4, padding 0, length 0xffffffff (little-endian -1).
 		var reader = new PacketReader(new MemoryStream(Convert.FromHexString("040000ffffffff")));

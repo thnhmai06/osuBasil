@@ -17,13 +17,13 @@ public class NetworkAdaptersTests
 	}
 
 	[Fact]
-	public void NetworkAdapters_WineSentinel_IsRecognized()
+	public void WineSentinel_Recognized()
 	{
 		Assert.True(MakeAdapters("runningunderwine").IsRunningUnderWine);
 	}
 
 	[Fact]
-	public void NetworkAdapters_NormalAdapterString_IsRetained()
+	public void NormalAdapter_Retained()
 	{
 		var adapters = MakeAdapters("aa11bb22.cc33dd44.");
 
@@ -32,13 +32,13 @@ public class NetworkAdaptersTests
 	}
 
 	[Fact]
-	public void NetworkAdapters_MissingTrailingDelimiter_Throws()
+	public void MissingTrailingDelimiter_Throws()
 	{
 		Assert.Throws<FormatException>(() => MakeAdapters("aa11bb22"));
 	}
 
 	[Fact]
-	public void NetworkAdapters_NullAdapters_Throws()
+	public void NullAdapters_Throws()
 	{
 		Assert.Throws<ArgumentNullException>(() => new NetworkAdapters
 		{
@@ -50,13 +50,13 @@ public class NetworkAdaptersTests
 	[Theory]
 	[InlineData(".")]
 	[InlineData("a..b.")]
-	public void NetworkAdapters_EmptyChunk_Throws(string adapters)
+	public void EmptyChunk_Throws(string adapters)
 	{
 		Assert.Throws<FormatException>(() => MakeAdapters(adapters));
 	}
 
 	[Fact]
-	public void NetworkAdapters_Default_IsNotRunningUnderWine()
+	public void Default_NotUnderWine()
 	{
 		Assert.False(default(NetworkAdapters).IsRunningUnderWine);
 	}

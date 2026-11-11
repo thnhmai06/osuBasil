@@ -10,7 +10,7 @@ public sealed class PresenceTests(StableHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Login_ShowsBasilBotAsAnOnlineUser()
+	public async Task Login_ShowsBotOnline()
 	{
 		using var client = await Host.NewClientAsync("SeesBot");
 
@@ -21,7 +21,7 @@ public sealed class PresenceTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_OfASecondUser_ReachesTheFirstOnItsNextPoll()
+	public async Task SecondUser_FirstNextPoll()
 	{
 		using var first = await Host.NewClientAsync("FirstOnline");
 		using var second = await Host.NewClientAsync("SecondOnline");
@@ -37,7 +37,7 @@ public sealed class PresenceTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Logout_IsAnnouncedToOthers()
+	public async Task Logout_AnnouncedToOthers()
 	{
 		using var stays = await Host.NewClientAsync("StaysOnline");
 		using var leaves = await Host.NewClientAsync("LeavesOnline");
@@ -54,7 +54,7 @@ public sealed class PresenceTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task FriendAdd_AppearsInTheFriendList()
+	public async Task FriendAdd_AppearsInList()
 	{
 		using var owner = await Host.NewClientAsync("FriendOwner");
 		using var friend = await Host.NewClientAsync("FriendTarget");
@@ -69,7 +69,7 @@ public sealed class PresenceTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task WebEndpoint_WrongPassword_IsUnauthorized()
+	public async Task WrongPassword_IsUnauthorized()
 	{
 		using var client = await Host.NewClientAsync("WebWrongPw");
 		await client.LoginAsync();

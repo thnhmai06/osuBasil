@@ -32,7 +32,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task Login_RecordsAnOpenConnectionOfTheSession()
+	public async Task Login_RecordsSessionConnection()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Trail", "password"));
@@ -49,7 +49,7 @@ public sealed class ConnectionTrailTests
 	[InlineData(SessionType.Api)]
 	[InlineData(SessionType.Stable)]
 	[InlineData(SessionType.StableTourney)]
-	public async Task Login_OfEveryKindThatSignsInWithAPassword_RecordsAConnection(SessionType type)
+	public async Task PasswordLogins_RecordConnection(SessionType type)
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Kinds", "password", UserPrivilegesExtensions.All);
@@ -60,7 +60,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task OpeningAnIrcKey_RecordsAConnectionOfThatSession()
+	public async Task IrcKeyOpened_RecordsConnection()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Key", "password");
@@ -76,7 +76,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ALoginTheServerRefused_LeavesNoConnection()
+	public async Task RefusedLogin_NoConnection()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Refused", "password");
@@ -87,7 +87,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task Closing_StoresWhenAndWhyTheConnectionEnded_AndWhenItWasLastActive()
+	public async Task Closing_StoresEndActivity()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Leaves", "password"));
@@ -105,7 +105,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ATokenThatComesBackFromTheSameAddressSoon_ContinuesTheLastConnection()
+	public async Task SameAddressSoon_ContinuesConnection()
 	{
 		using var app = new TestApplication();
 		var first = await app.LoginAsync(await app.CreateUserAsync("Back", "password"));
@@ -121,7 +121,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ATokenThatComesBackFromAnotherAddress_AddsAConnection()
+	public async Task AnotherAddress_AddsConnection()
 	{
 		using var app = new TestApplication();
 		var first = await app.LoginAsync(await app.CreateUserAsync("Moves", "password"));
@@ -134,7 +134,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ATokenThatComesBackAfterTheWindow_AddsAConnection()
+	public async Task AfterWindow_AddsConnection()
 	{
 		using var app = new TestApplication();
 		var first = await app.LoginAsync(await app.CreateUserAsync("Late", "password"));
@@ -149,7 +149,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ATokenThatComesBackExactlyAtTheEndOfTheWindow_ContinuesTheLastConnection()
+	public async Task AtWindowEnd_Continues()
 	{
 		using var app = new TestApplication();
 		var first = await app.LoginAsync(await app.CreateUserAsync("Edge", "password"));
@@ -163,7 +163,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task TheConnectionsOfTwoSessions_AreKeptApart()
+	public async Task TwoSessions_ConnectionsApart()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Two", "password");
@@ -188,7 +188,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task FlushingActivity_StoresWhenAnOpenConnectionWasLastUsed()
+	public async Task FlushedActivity_StoresLastUse()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Flush", "password"));
@@ -201,7 +201,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task CloseStopped_ClosesWhatTheStopLeftOpenAtItsLastActivity_AndEndsTheOsuSessionsButNotTheTokens()
+	public async Task StopClosesOpen_EndsOsuOnly()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Crash", "password");
@@ -228,7 +228,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task CloseStopped_LeavesTheConnectionsThatAlreadyClosedAsTheyWere()
+	public async Task AlreadyClosed_LeftUntouched()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Already", "password"));
@@ -241,7 +241,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ListConnections_OfOwnSession_ReturnsTheTrailNewestFirst()
+	public async Task ListOwnSession_NewestFirst()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Reads", "password");
@@ -259,7 +259,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ListConnections_OfAnotherAccount_NeedsTheViewPermissionAndIsRecorded()
+	public async Task ListOtherAccount_NeedsViewRecorded()
 	{
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("Watched", "password");
@@ -281,7 +281,7 @@ public sealed class ConnectionTrailTests
 	}
 
 	[Fact]
-	public async Task ListConnections_OfASessionThatIsNotTheAccounts_IsNotFound()
+	public async Task ForeignSession_NotFound()
 	{
 		using var app = new TestApplication();
 		var mine = await app.LoginAsync(await app.CreateUserAsync("Mine", "password"));

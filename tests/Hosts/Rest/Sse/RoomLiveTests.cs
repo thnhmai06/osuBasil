@@ -7,7 +7,7 @@ namespace Basil.Host.Rest.Tests.Sse;
 public sealed class RoomLiveTests(RestHostFixture fixture)
 {
 	[Fact]
-	public async Task Live_NeedsAToken_AndAHiddenRoomIs404()
+	public async Task LiveNeedsToken_Hidden404()
 	{
 		var (owner, _) = await fixture.SignInAsync("LiveOwner");
 		var (other, _) = await fixture.SignInAsync("LiveOther");
@@ -31,7 +31,7 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Live_DoesNotRepeatTheSnapshotWhileTheRoomIsUnchanged()
+	public async Task UnchangedRoom_NoRepeatedSnapshot()
 	{
 		var (owner, _) = await fixture.SignInAsync("LiveRepeat");
 		using (owner)
@@ -54,7 +54,7 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Live_SendsTheRoomFirst_ThenTheChange_AndEndsWhenTheRoomCloses()
+	public async Task LiveSequence_RoomChangeClose()
 	{
 		var (owner, _) = await fixture.SignInAsync("LiveWatch");
 		using (owner)

@@ -8,7 +8,7 @@ namespace Basil.Application.Users.Tests.Registry;
 public sealed class AccountGateTests
 {
 	[Fact]
-	public async Task LoginAsync_TwoAccountsAtOnce_BothAreAccepted()
+	public async Task TwoAccounts_BothAccepted()
 	{
 		using var app = new TestApplication();
 		var first = await app.CreateUserAsync("GateFirst", "password");
@@ -24,7 +24,7 @@ public sealed class AccountGateTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_ManyLoginsOfTwoAccounts_EachAccountKeepsExactlyOneStableConnection()
+	public async Task ManyLogins_OneStableEach()
 	{
 		using var app = new TestApplication();
 		var first = await app.CreateUserAsync("GateOne", "password");

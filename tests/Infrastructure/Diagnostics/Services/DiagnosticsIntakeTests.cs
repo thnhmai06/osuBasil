@@ -15,7 +15,7 @@ public sealed class DiagnosticsIntakeTests
 	}
 
 	[Fact]
-	public async Task TakeSample_MergesTheCountsOfEveryModuleIntoTheirCategories()
+	public async Task MergesCounts_IntoCategories()
 	{
 		var sample = await TakeAsync(
 			new Module(new DiagnosticsValue("application", "rooms", 2),
@@ -29,7 +29,7 @@ public sealed class DiagnosticsIntakeTests
 	}
 
 	[Fact]
-	public async Task TakeSample_WhenACountIsReportedTwice_KeepsTheLastValue()
+	public async Task ReportedTwice_KeepsLastValue()
 	{
 		var sample = await TakeAsync(new Module(new DiagnosticsValue("application", "rooms", 1)),
 			new Module(new DiagnosticsValue("application", "rooms", 4)));
@@ -38,7 +38,7 @@ public sealed class DiagnosticsIntakeTests
 	}
 
 	[Fact]
-	public async Task TakeSample_AlwaysHasTheProcessCategories_AndMarksTheUnmeasuredOnesUnavailable()
+	public async Task ProcessCategories_UnmeasuredUnavailable()
 	{
 		var sample = await TakeAsync();
 
@@ -49,7 +49,7 @@ public sealed class DiagnosticsIntakeTests
 	}
 
 	[Fact]
-	public async Task TakeSample_ListsTheCategoriesInTheOrderOfTheApi()
+	public async Task Categories_ApiOrder()
 	{
 		var sample = await TakeAsync(new Module(new DiagnosticsValue("irc", "connections", 0)));
 

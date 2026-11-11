@@ -10,7 +10,7 @@ public sealed class StoredChangeFailureTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task SetPermissionsAsync_WhenTheStoreRefuses_ThrowsAndKeepsThePrivileges()
+	public async Task PermissionStoreFailure_ThrowsKeepsPrivileges()
 	{
 		using var app = new TestApplication();
 		var staff = await app.LoginAsync(await app.CreateUserAsync("PermStaff", "password", UserPrivilegesExtensions.All));
@@ -25,7 +25,7 @@ public sealed class StoredChangeFailureTests
 	}
 
 	[Fact]
-	public async Task SetCountryAsync_WhenTheStoreRefuses_ThrowsAndKeepsTheCountry()
+	public async Task CountryStoreFailure_ThrowsKeepsCountry()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("CountryRefused", "password");
@@ -40,7 +40,7 @@ public sealed class StoredChangeFailureTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_WhenTheStoreRefuses_ThrowsAndLeavesTheAccountUndeletedSoItCanBeRetried()
+	public async Task DeleteStoreFailure_ThrowsUndeleted()
 	{
 		using var app = new TestApplication();
 		var staff = await app.LoginAsync(
@@ -58,7 +58,7 @@ public sealed class StoredChangeFailureTests
 	}
 
 	[Fact]
-	public async Task ListAsync_OfAnotherAccountsSessions_WhenTheAuditCannotBeStored_ThrowsInsteadOfReading()
+	public async Task AuditStoreFailure_ThrowsBeforeRead()
 	{
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("AuditTarget", "password");

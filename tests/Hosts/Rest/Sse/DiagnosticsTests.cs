@@ -11,7 +11,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 	                                                UserPrivileges.Developer;
 
 	[Fact]
-	public async Task Diagnostics_WithoutPermission_Answer403_AndWithoutAToken401()
+	public async Task NoPermission_403Or401()
 	{
 		var (plain, _) = await fixture.SignInAsync("DiagPlain");
 		using (plain)
@@ -33,7 +33,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Stream_OfEveryCategory_StartsWithAFullSample_AndOneCategoryIsFiltered()
+	public async Task EveryCategory_FullThenFiltered()
 	{
 		var (staff, _) = await fixture.SignInAsync("DiagStaff", Staff);
 		using (staff)
@@ -60,7 +60,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Stream_SendsABundleEachSecond()
+	public async Task Stream_BundleEachSecond()
 	{
 		var (staff, _) = await fixture.SignInAsync("DiagTick", Staff);
 		using (staff)
@@ -79,7 +79,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Actions_RunForStaff_AndAnUnknownActionIs404()
+	public async Task StaffActions_UnknownIs404()
 	{
 		var (staff, _) = await fixture.SignInAsync("DiagAction", Staff);
 		using (staff)
@@ -96,7 +96,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task GarbageCollection_AskedTwiceWithinHalfAMinute_IsRefusedTheSecondTime_AndAllowedAfterwards()
+	public async Task GcAskedTwice_RefusedThenAllowed()
 	{
 		var (staff, _) = await fixture.SignInAsync("DiagCollect", Staff);
 		using (staff)

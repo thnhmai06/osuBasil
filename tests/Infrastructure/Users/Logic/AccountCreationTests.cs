@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Users.Tests.Logic;
 public sealed class AccountCreationTests
 {
 	[Fact]
-	public async Task RegisterAsync_WhenTheCredentialCannotBeStored_ThrowsAndLeavesNoAccountBehind()
+	public async Task CredentialNotStored_ThrowsNoAccount()
 	{
 		using var app = new TestApplication(services =>
 			services.AddSingleton<ICredentialRepository>(new RefusingCredentials()));

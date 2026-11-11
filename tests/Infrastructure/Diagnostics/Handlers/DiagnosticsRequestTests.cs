@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Diagnostics.Tests.Handlers;
 public sealed class DiagnosticsRequestTests
 {
 	[Fact]
-	public async Task ClearCaches_FromAUserWithoutThePermission_IsRefusedWithTheMissingMask()
+	public async Task CacheClearDenied_RefusedWithMask()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -20,7 +20,7 @@ public sealed class DiagnosticsRequestTests
 	}
 
 	[Fact]
-	public async Task ResetExceptions_FromAUserWithoutThePermission_IsRefusedWithTheMissingMask()
+	public async Task ExceptionResetDenied_RefusedWithMask()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -31,7 +31,7 @@ public sealed class DiagnosticsRequestTests
 	}
 
 	[Fact]
-	public async Task CollectGarbage_FromAUserWithoutThePermission_IsRefusedWithTheMissingMask()
+	public async Task GarbageCollectDenied_RefusedWithMask()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -42,7 +42,7 @@ public sealed class DiagnosticsRequestTests
 	}
 
 	[Fact]
-	public async Task CheckDiagnosticsAccess_FromAUserWithoutThePermission_IsRefusedWithTheMissingMask()
+	public async Task DiagnosticsNoPermission_Refused()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -53,7 +53,7 @@ public sealed class DiagnosticsRequestTests
 	}
 
 	[Fact]
-	public async Task ResetExceptions_FromStaff_IsOk()
+	public async Task StaffExceptionReset_IsOk()
 	{
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff",

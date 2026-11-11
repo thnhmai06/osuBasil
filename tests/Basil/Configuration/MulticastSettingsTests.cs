@@ -6,13 +6,13 @@ namespace Basil.Tests.Configuration;
 public sealed class MulticastSettingsTests
 {
 	[Fact]
-	public void TheAdvertisementIsOffByDefault()
+	public void Advertisement_OffByDefault()
 	{
 		Assert.False(new ServerOptions().Multicast.Enabled);
 	}
 
 	[Fact]
-	public void BothFamiliesAreOnByDefault()
+	public void BothFamilies_OnByDefault()
 	{
 		using var service = LanAdvertiser.NewService(new ServerOptions.MulticastSettings());
 
@@ -21,7 +21,7 @@ public sealed class MulticastSettingsTests
 	}
 
 	[Fact]
-	public void UseIPv4FalseSwitchesIpv4Off()
+	public void Ipv4False_SwitchesOff()
 	{
 		using var service = LanAdvertiser.NewService(new ServerOptions.MulticastSettings { UseIPv4 = false });
 
@@ -30,7 +30,7 @@ public sealed class MulticastSettingsTests
 	}
 
 	[Fact]
-	public void UseIPv6FalseSwitchesIpv6Off()
+	public void Ipv6False_SwitchesOff()
 	{
 		using var service = LanAdvertiser.NewService(new ServerOptions.MulticastSettings { UseIPv6 = false });
 

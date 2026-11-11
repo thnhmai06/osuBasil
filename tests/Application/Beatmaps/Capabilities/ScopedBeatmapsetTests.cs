@@ -33,7 +33,7 @@ public sealed class ScopedBeatmapsetTests
 
 	[Fact]
 	public async Task
-		DeleteAsync_WithBeatmapsetManage_DeletesTheSetItsBeatmapsAndItsFilesAndPublishesBeatmapsetDeleted()
+		WithManage_DeletesSetFiles()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -48,7 +48,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_ByAnActorThatIsNoConnection_FollowsItsEffectivePrivileges()
+	public async Task ActorNotConnection_UsesEffectiveRights()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -60,7 +60,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_ByAnActorWithoutBeatmapsetManage_IsDeniedAndChangesNothing()
+	public async Task ActorWithoutManage_Denied()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -82,7 +82,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetStatusAsync_WithBeatmapsetManage_ChangesTheStatusAndStoresIt()
+	public async Task StatusWithManage_ChangedStored()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -95,7 +95,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetStatusAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
+	public async Task StatusWithoutManage_Denied()
 	{
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -108,7 +108,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_OfALockedSet_IsRefusedAsLockedAndChangesNothing()
+	public async Task LockedSetDelete_RefusedLocked()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -124,7 +124,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_WithoutBeatmapsetManage_IsDeniedWithExactlyThatPermission()
+	public async Task DeleteWithoutManage_DeniedPermission()
 	{
 		var (app, world, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
@@ -138,7 +138,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetVisibleAsync_ToFalse_HidesTheSet()
+	public async Task VisibleFalse_SetHidden()
 	{
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -150,7 +150,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetVisibleAsync_WhenTheStoreFails_ReachesTheCaller()
+	public async Task VisibleStoreFails_ReachesCaller()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -161,7 +161,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetLockedAsync_WhenTheStoreFails_ReachesTheCaller()
+	public async Task LockedStoreFails_ReachesCaller()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -172,7 +172,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetStatusAsync_WhenTheStoreFails_ReachesTheCaller()
+	public async Task StatusStoreFails_ReachesCaller()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -183,7 +183,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetVisibleAsync_ToTrueAgain_ShowsTheSet()
+	public async Task VisibleTrue_SetShown()
 	{
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -196,7 +196,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetVisibleAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
+	public async Task VisibleWithoutManage_Denied()
 	{
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
@@ -208,7 +208,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetLockedAsync_ToTrue_LocksTheSet()
+	public async Task LockedTrue_SetLocked()
 	{
 		var (app, _, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -220,7 +220,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetLockedAsync_ToFalse_UnlocksTheSetSoItCanBeDeleted()
+	public async Task LockedFalse_SetDeletable()
 	{
 		var (app, world, set, actor) = await SetupAsync();
 		using var _ = app;
@@ -234,7 +234,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task SetLockedAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
+	public async Task LockedWithoutManage_Denied()
 	{
 		var (app, _, set, actor) = await SetupAsync(UserPrivilegesExtensions.Default);
 		using var _ = app;
@@ -246,7 +246,7 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task Of_GivesTheObjectOfTheStoredSet()
+	public async Task Of_ReturnsStoredSet()
 	{
 		var (app, world, set, _) = await SetupAsync();
 		using var _ = app;

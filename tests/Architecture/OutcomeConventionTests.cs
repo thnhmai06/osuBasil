@@ -15,13 +15,13 @@ public class OutcomeConventionTests
 	}
 
 	[Fact]
-	public void OutcomeEnums_AreFoundInTheModules_PositiveControl()
+	public void OutcomeEnums_FoundInModules()
 	{
 		Assert.True(OutcomeEnums().Count() >= 6);
 	}
 
 	[Fact]
-	public void OutcomeEnums_HaveOkEqualToOne_SoTheDefaultValueIsNeverSuccess()
+	public void OutcomeEnums_OkIsOne()
 	{
 		foreach (var outcome in OutcomeEnums())
 		{

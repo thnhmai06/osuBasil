@@ -15,7 +15,7 @@ namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 public sealed class ScopedRoomSlotsTests
 {
 	[Fact]
-	public async Task ChangeAsync_ToAnOpenSlot_MovesThePlayer()
+	public async Task OpenSlot_MovesPlayer()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -32,7 +32,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ChangeAsync_ToAnOpenSlot_CarriesTheReadyStateToTheNewSlot()
+	public async Task OpenSlot_KeepsReadyState()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -44,7 +44,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ChangeAsync_ToTheSameSlot_ChangesNothing()
+	public async Task SameSlot_ChangesNothing()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -60,7 +60,7 @@ public sealed class ScopedRoomSlotsTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(17)]
-	public async Task ChangeAsync_ToASlotOutsideTheRoom_IsRefused(int index)
+	public async Task ChangingOutsideSlot_Refused(int index)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -71,7 +71,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ChangeAsync_ToALockedSlot_IsRefused()
+	public async Task LockedSlot_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -84,7 +84,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ChangeAsync_ToAnOccupiedSlot_IsRefused()
+	public async Task ChangingOccupiedSlot_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -96,7 +96,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ChangeAsync_WhileTheRoomIsLocked_IsRefused()
+	public async Task LockedRoomChange_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -109,7 +109,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ChangeAsync_ForSomebodyWhoIsNotSeated_IsRefused()
+	public async Task UnseatedPlayer_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -120,7 +120,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task MoveAsync_ToAnOccupiedSlot_IsRefused()
+	public async Task MovingOccupiedSlot_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -134,7 +134,7 @@ public sealed class ScopedRoomSlotsTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(17)]
-	public async Task MoveAsync_ToASlotOutsideTheRoom_IsRefused(int index)
+	public async Task MovingOutsideSlot_Refused(int index)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -145,7 +145,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task MoveAsync_WhileTheRoomIsLocked_StillMovesThePlayer()
+	public async Task LockedRoomMove_StillMoves()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -158,7 +158,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ToggleLockAsync_ForTheCallersOwnSlot_IsRefused()
+	public async Task OwnSlotLock_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -171,7 +171,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ToggleLockAsync_ForAnOccupiedSlot_EvictsThePlayer()
+	public async Task OccupiedSlotLock_Evicts()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -189,7 +189,7 @@ public sealed class ScopedRoomSlotsTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(17)]
-	public async Task ToggleLockAsync_ForASlotOutsideTheRoom_IsRefused(int index)
+	public async Task LockingOutsideSlot_Refused(int index)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -200,7 +200,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ConfigureAsync_ResizingTheRoom_KeepsThePlayersWhereTheySit()
+	public async Task RoomResized_KeepsPlayerSlots()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -218,7 +218,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task SetReadyAsync_ForAPlayer_SetsThemReady()
+	public async Task PlayerReady_MarkedReady()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -232,7 +232,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task SetReadyAsync_WhileARoundIsInProgress_IsRefused()
+	public async Task ReadyDuringRound_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -246,7 +246,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task SetHasMapAsync_WithoutTheMap_SetsTheSlotToNoMap()
+	public async Task MissingMap_SlotCleared()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -259,7 +259,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ToggleTeamAsync_InARoomWithoutTeams_IsRefused()
+	public async Task TeamlessRoom_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -270,7 +270,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ToggleTeamAsync_WhileTheRoomIsLocked_IsRefused()
+	public async Task LockedTeamToggle_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -284,7 +284,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task SetModsAsync_WithoutFreemod_IsRefused()
+	public async Task NoFreemod_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -295,7 +295,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task SetModsAsync_WithASpeedChangingMod_IsRefused()
+	public async Task SpeedChangingMod_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -308,7 +308,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task SetModsAsync_WithAModTheModeDoesNotAllow_IsRefused()
+	public async Task ModeDisallowedMod_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -321,7 +321,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ArrangeAsync_WithAnArrangementThatDoesNotHoldEveryPlayer_IsRefused()
+	public async Task ArrangementTooSmall_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -334,7 +334,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task ChangeAsync_WhileARoundIsInProgress_IsRefused()
+	public async Task ChangingDuringRound_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -349,7 +349,7 @@ public sealed class ScopedRoomSlotsTests
 	}
 
 	[Fact]
-	public async Task SetModsAsync_UnderFreemod_SetsThePlayersMods()
+	public async Task FreemodActive_SetsPlayerMods()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

@@ -37,7 +37,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task SpectateAsync_FromAnApiConnection_AddsItAsASpectator()
+	public async Task ApiConnectionSpectate_Added()
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
@@ -50,7 +50,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task SpectateAsync_WithoutTheWatchPermission_NamesIt()
+	public async Task SpectateWithoutWatch_NamesPermission()
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
@@ -63,7 +63,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task SpectateAsync_WhenTheHostBlockedTheWatcher_IsRefused()
+	public async Task BlockedWatcher_Refused()
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
@@ -76,7 +76,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task PublishFrames_WithoutAnApiSpectator_PublishesNothing()
+	public async Task NoSpectator_PublishesNothing()
 	{
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
@@ -88,7 +88,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task PublishFrames_FromTheHost_ReachesTheApiSpectators()
+	public async Task HostFrames_ReachSpectators()
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
@@ -103,7 +103,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task PublishFrames_FromAnotherConnection_IsRefused()
+	public async Task ForeignFramePublish_Refused()
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
@@ -113,7 +113,7 @@ public sealed class ApiSpectatorTests
 	}
 
 	[Fact]
-	public async Task ClosingTheApiConnection_StopsTheSpectating()
+	public async Task ApiConnectionClosed_SpectatingStops()
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);

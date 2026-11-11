@@ -18,7 +18,7 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_JoinRoom_Play_SubmitScore_AndRemoteSignOut_LetsTheClientSignInAgainWithItsPassword()
+	public async Task RoomPlayScore_SignInAgain()
 	{
 		var beatmap = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var player = await Host.NewClientAsync("E2eOsuPlayer");

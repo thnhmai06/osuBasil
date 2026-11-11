@@ -44,7 +44,7 @@ public sealed class BeatmapReloaderTests
 	}
 
 	[Fact]
-	public async Task Reload_StoresTheStarRatingTheRulesetsNowCompute()
+	public async Task Reload_StoresStarRating()
 	{
 		var beatmap = OneSetWithABeatmap();
 		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
@@ -62,7 +62,7 @@ public sealed class BeatmapReloaderTests
 	}
 
 	[Fact]
-	public async Task Reload_ABeatmapWhoseFileIsMissing_KeepsItsStoredValues()
+	public async Task MissingFile_KeepsValues()
 	{
 		var beatmap = OneSetWithABeatmap();
 		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
@@ -76,7 +76,7 @@ public sealed class BeatmapReloaderTests
 	}
 
 	[Fact]
-	public async Task Reload_ABeatmapThatCannotBeAnalysed_KeepsItsStoredValues_AndTheOthersStillReload()
+	public async Task Unanalysable_KeepsValues()
 	{
 		var beatmap = OneSetWithABeatmap();
 		_storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
@@ -92,7 +92,7 @@ public sealed class BeatmapReloaderTests
 	}
 
 	[Fact]
-	public async Task TryStart_WhileAReloadRuns_IsRefused()
+	public async Task TryStartRunning_Refused()
 	{
 		var release = new TaskCompletionSource<Page<BeatmapsetRecord>>();
 		_sets.ListAsync(Arg.Any<BeatmapQuery>(), Arg.Any<PageRequest>(), Arg.Any<CancellationToken>())

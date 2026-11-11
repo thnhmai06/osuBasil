@@ -73,7 +73,7 @@ public sealed class ScopedServerScreenshotsTests
 	#region Upload: privileges
 
 	[Fact]
-	public async Task UploadAsync_WithoutScreenshotUpload_IsDeniedNamingItAndStoresNothing()
+	public async Task UploadNoPermission_Denied()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -88,7 +88,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_HoldingOnlyScreenshotDelete_IsStillDenied()
+	public async Task UploadDeleteOnly_Denied()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -107,7 +107,7 @@ public sealed class ScopedServerScreenshotsTests
 	[Theory]
 	[InlineData("png")]
 	[InlineData("jpg")]
-	public async Task UploadAsync_AcceptedPicture_IsStoredUnderItsFormatAndTheReferenceReturned(string extension)
+	public async Task UploadAccepted_StoredByFormat(string extension)
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo(extension, 1920, 1080));
@@ -121,7 +121,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_AcceptedPicture_StoresTheWholeUploadedContent()
+	public async Task UploadAccepted_WholeStored()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 10, 10));
@@ -142,7 +142,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_ExactlyTheByteCeiling_IsAccepted()
+	public async Task UploadByteCeiling_Accepted()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -155,7 +155,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_AcceptedPicture_DoesNotDisposeTheCallersStream()
+	public async Task UploadAccepted_StreamKept()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -170,7 +170,7 @@ public sealed class ScopedServerScreenshotsTests
 	[Theory]
 	[InlineData(1, 1)]
 	[InlineData(MaxSide, MaxSide)]
-	public async Task UploadAsync_PictureAtTheSmallestAndLargestSide_IsAccepted(int width, int height)
+	public async Task UploadSides_Accepted(int width, int height)
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", width, height));
@@ -186,7 +186,7 @@ public sealed class ScopedServerScreenshotsTests
 	#region Upload: refusals
 
 	[Fact]
-	public async Task UploadAsync_OneByteOverTheCeiling_ReturnsTooLargeAndStoresNothing()
+	public async Task UploadOneOver_TooLarge()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -201,7 +201,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_OverTheConfiguredByteLimit_ReturnsTooLargeAndStoresNothing()
+	public async Task UploadOverLimit_TooLarge()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -217,7 +217,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_OverTheConfiguredSide_ReturnsDimensionsTooLarge()
+	public async Task UploadOverSide_DimensionsTooLarge()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 300, 200));
@@ -231,7 +231,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_FarOverTheCeiling_ReturnsTooLarge()
+	public async Task UploadFarOver_TooLarge()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -244,7 +244,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_ContentOfAnUnsupportedFormat_ReturnsInvalidImageAndStoresNothing()
+	public async Task UploadUnsupported_InvalidImage()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(null);
@@ -258,7 +258,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_ContentOfAnUnsupportedFormat_IsKeptInQuarantineAndNothingStaysInTheSpool()
+	public async Task UploadUnsupported_Quarantined()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(null);
@@ -271,7 +271,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_AcceptedPicture_LeavesNothingInTheSpoolOrTheQuarantine()
+	public async Task UploadAccepted_NothingLeftBehind()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -285,7 +285,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_EmptyContent_IsNotAPictureAndStoresNothing()
+	public async Task UploadEmpty_NotPicture()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(null);
@@ -302,7 +302,7 @@ public sealed class ScopedServerScreenshotsTests
 	[InlineData(100, 0)]
 	[InlineData(-1, 100)]
 	[InlineData(100, -1)]
-	public async Task UploadAsync_PictureWithANonPositiveSide_ReturnsInvalidImage(int width, int height)
+	public async Task NonPositiveSide_InvalidImage(int width, int height)
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", width, height));
@@ -318,7 +318,7 @@ public sealed class ScopedServerScreenshotsTests
 	[InlineData(MaxSide + 1, 100)]
 	[InlineData(100, MaxSide + 1)]
 	[InlineData(MaxSide + 1, MaxSide + 1)]
-	public async Task UploadAsync_PictureOverThePixelCeilingOnASide_ReturnsDimensionsTooLargeAndStoresNothing(
+	public async Task UploadPixelCeiling_DimensionsTooLarge(
 		int width, int height)
 	{
 		using var f = new Fixture();
@@ -333,7 +333,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_OversizedUpload_IsNeverShownToTheInspector()
+	public async Task UploadOversized_NotInspected()
 	{
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
@@ -350,7 +350,7 @@ public sealed class ScopedServerScreenshotsTests
 	#region Delete
 
 	[Fact]
-	public async Task DeleteAsync_WithScreenshotDelete_IsOkAndRemovesTheScreenshot()
+	public async Task DeleteWithPermission_Removed()
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
@@ -362,7 +362,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_WithoutScreenshotDelete_IsDeniedNamingItAndRemovesNothing()
+	public async Task DeleteNoPermission_Denied()
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
@@ -375,7 +375,7 @@ public sealed class ScopedServerScreenshotsTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_HoldingOnlyScreenshotUpload_IsStillDenied()
+	public async Task DeleteUploadOnly_Denied()
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(

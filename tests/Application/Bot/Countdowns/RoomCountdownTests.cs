@@ -11,50 +11,50 @@ namespace Basil.Application.Bot.Tests.Countdowns;
 public sealed class RoomCountdownTests
 {
 	[Fact]
-	public void MarksFor_ATimerOfFiveMinutes_AreSixtyThirtyTenAndFive()
+	public void FiveMinuteTimer_FourMarks()
 	{
 		Assert.Equal(Seconds(60, 30, 10, 5), RoomCountdown.MarksFor(TimeSpan.FromMinutes(5), false));
 	}
 
 	[Fact]
-	public void MarksFor_ATimerExactlyAsLongAsAMark_LeavesThatMarkOut()
+	public void TimerAtMark_MarkLeftOut()
 	{
 		Assert.Equal(Seconds(10, 5), RoomCountdown.MarksFor(TimeSpan.FromSeconds(30), false));
 	}
 
 	[Fact]
-	public void MarksFor_ATimerOfOneSecond_HasNoMarks()
+	public void OneSecondTimer_NoMarks()
 	{
 		Assert.Empty(RoomCountdown.MarksFor(TimeSpan.FromSeconds(1), false));
 	}
 
 	[Fact]
-	public void MarksFor_ARoundOf90Seconds_AreTheMinuteThenThirtyTenFiveFourAndThree()
+	public void NinetySecondRound_MinuteThenMarks()
 	{
 		Assert.Equal(Seconds(60, 30, 10, 5, 4, 3), RoomCountdown.MarksFor(TimeSpan.FromSeconds(90), true));
 	}
 
 	[Fact]
-	public void MarksFor_ARoundOfFiveMinutes_AnnouncesEveryWholeMinuteLeft()
+	public void FiveMinuteRound_EveryMinute()
 	{
 		Assert.Equal(Seconds(240, 180, 120, 60, 30, 10, 5, 4, 3),
 			RoomCountdown.MarksFor(TimeSpan.FromMinutes(5), true));
 	}
 
 	[Fact]
-	public void MarksFor_ARoundWhoseMinuteMarkIsWithinFiveSecondsOfTheEnd_LeavesThatMinuteOut()
+	public void MinuteNearEnd_LeftOut()
 	{
 		Assert.Equal(Seconds(30, 10, 5, 4, 3), RoomCountdown.MarksFor(TimeSpan.FromSeconds(65), true));
 	}
 
 	[Fact]
-	public void MarksFor_ARoundOf30Seconds_StartsAtTen()
+	public void ThirtySecondRound_StartsAtTen()
 	{
 		Assert.Equal(Seconds(10, 5, 4, 3), RoomCountdown.MarksFor(TimeSpan.FromSeconds(30), true));
 	}
 
 	[Fact]
-	public void EndsAt_IsTheStartPlusTheLength()
+	public void EndsAt_StartPlusLength()
 	{
 		var started = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 		var countdown = new RoomCountdown(null!, TimeSpan.FromSeconds(45), false, started);

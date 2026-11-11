@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Users.Tests.Handlers;
 public sealed class ProfileSettingHandlerTests
 {
 	[Fact]
-	public async Task SetAway_Message_IsStoredOnTheSendersAccount()
+	public async Task AwayMessage_StoredOnAccount()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Away", "password"));
@@ -21,7 +21,7 @@ public sealed class ProfileSettingHandlerTests
 	}
 
 	[Fact]
-	public async Task SetAway_Null_ClearsTheMessage()
+	public async Task Null_ClearsTheMessage()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Back", "password"));
@@ -35,7 +35,7 @@ public sealed class ProfileSettingHandlerTests
 	}
 
 	[Fact]
-	public async Task SetPmPrivate_True_RestrictsPrivateMessagesToFriends()
+	public async Task PmPrivateTrue_FriendsOnly()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Private", "password"));
@@ -48,7 +48,7 @@ public sealed class ProfileSettingHandlerTests
 	}
 
 	[Fact]
-	public async Task SetPmPrivate_False_AcceptsEveryone()
+	public async Task False_AcceptsEveryone()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Open", "password"));

@@ -31,7 +31,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Login_IssuesATokenOf256RandomBitsThatIsNotRepeated()
+	public async Task IssuesToken_Random256Unique()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("TokenUser", "password");
@@ -44,7 +44,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Login_StoresOnlyTheSha256HashOfTheToken()
+	public async Task TokenStored_OnlySha256Hash()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("HashUser", "password");
@@ -58,7 +58,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Login_ExpiresTheTokenAfterTheLifetimeOfTheServerSettings()
+	public async Task LifetimeFromSettings_ExpiresToken()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("DefaultLifetime", "password");
@@ -69,7 +69,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Login_UsesTheConfiguredLifetime()
+	public async Task Login_UsesConfiguredLifetime()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
@@ -87,7 +87,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Use_RenewsTheExpiryFromTheMomentOfUse_AndStoresItOnTheNextFlush()
+	public async Task Use_RenewsAndSaves()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Sliding", "password");
@@ -106,7 +106,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Token_OfAnOpenConnection_OpensThatSameConnection()
+	public async Task OpenConnection_OpensSameConnection()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("OpenToken", "password"));
@@ -117,7 +117,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Token_OfAConnectionSweptAsIdle_IsVerifiedAgainAndOpensANewConnectionOfTheSameSession()
+	public async Task IdleConnection_ReverifiedOpensNew()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Evicted", "password");
@@ -137,7 +137,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Token_OfAConnectionSweptAsIdle_StaysValidForTheSession()
+	public async Task IdleConnection_StaysValidSession()
 	{
 		using var app = new TestApplication();
 		var first = await app.LoginAsync(await app.CreateUserAsync("StillValid", "password"));
@@ -148,7 +148,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Token_PastItsExpiry_OpensNothing()
+	public async Task PastItsExpiry_OpensNothing()
 	{
 		using var app = new TestApplication();
 		var first = await app.LoginAsync(await app.CreateUserAsync("Expired", "password"));
@@ -162,7 +162,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Token_OfAnOpenConnectionPastItsExpiry_OpensNothingAndClosesTheConnection()
+	public async Task ExpiredConnection_OpensNothingCloses()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
@@ -182,7 +182,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Token_ThatMatchesNoSession_OpensNothing()
+	public async Task NoMatchingSession_OpensNothing()
 	{
 		using var app = new TestApplication();
 
@@ -192,7 +192,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Token_OfADeletedAccount_OpensNothing()
+	public async Task DeletedAccount_OpensNothing()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -208,7 +208,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task AnApiConnection_ThatSentNothingFor300Seconds_IsClosed_AndOneThatSpokeIsNot()
+	public async Task SilentApi_ClosedSpeakerKept()
 	{
 		using var app = new TestApplication();
 		var quiet = await app.LoginAsync(await app.CreateUserAsync("Quiet", "password"));
@@ -224,7 +224,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task Login_WithAnIrcKey_IsRefusedForAnApiToken()
+	public async Task IrcKey_RefusedForToken()
 	{
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Mixed", "password"));
@@ -235,7 +235,7 @@ public sealed class ApiTokenTests
 	}
 
 	[Fact]
-	public async Task LoginWithToken_OfTheOtherKinds_Throws()
+	public async Task OtherKinds_Throws()
 	{
 		using var app = new TestApplication();
 

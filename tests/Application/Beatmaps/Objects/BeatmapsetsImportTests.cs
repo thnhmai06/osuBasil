@@ -23,7 +23,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAReadableArchive_StoresTheSetWithEveryDifficulty()
+	public async Task ReadableArchive_StoresEveryDifficulty()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -40,7 +40,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAReadableArchive_PublishesOneBeatmapsetImportedWithTheStoredSet()
+	public async Task ReadableArchive_PublishesImportedSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -53,7 +53,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAReadableArchive_KeepsTheArchiveAsTheSetsOwnAndNothingElse()
+	public async Task ReadableArchive_KeepsOnlyArchive()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -66,7 +66,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAReadableArchive_MakesTheFilesTheSetServes()
+	public async Task ReadableArchive_MakesServedFiles()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -80,7 +80,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithDeclaredVideos_MakesTheArchiveWithoutVideoWithoutExactlyThoseFiles()
+	public async Task DeclaredVideos_RemovesThoseFiles()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -94,7 +94,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithADeclaredSetId_GivesTheNewSetThatId()
+	public async Task DeclaredSetId_GivesThatId()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -108,7 +108,7 @@ public sealed class BeatmapsetsImportTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-5)]
-	public async Task ImportAsync_WithADeclaredSetIdThatIsNotPositive_GivesTheNewSetALocalId(int declared)
+	public async Task BadSetId_GivesLocalId(int declared)
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -120,7 +120,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithoutReplacing_RejectsTheArchiveOfAStoredSetAndKeepsTheStoredOne()
+	public async Task NoReplace_RejectsStoredSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -137,7 +137,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithoutReplacing_StoresAnArchiveOfANewSet()
+	public async Task NoReplace_StoresNewSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -150,7 +150,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithoutADeclaredSetId_GivesTheNewSetALocalId()
+	public async Task MissingSetId_GivesLocalId()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -161,7 +161,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithADeclaredBeatmapId_GivesTheNewBeatmapThatId()
+	public async Task DeclaredBeatmapId_GivesThatId()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -172,7 +172,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAnArchiveThatIsNotReadable_IsRejectedAsUnreadableAndKeepsNothing()
+	public async Task UnreadableArchive_RejectedKeepsNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -190,7 +190,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAnArchiveThatIsNotReadable_KeepsItInQuarantine()
+	public async Task UnreadableArchive_KeptInQuarantine()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -201,7 +201,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAnEmptyArchive_IsRejectedAsUnreadable()
+	public async Task EmptyArchive_RejectedUnreadable()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -213,7 +213,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_WithAnArchiveThatRepeatsADifficulty_IsRejectedAsUnreadable()
+	public async Task RepeatedDifficulty_RejectedUnreadable()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -226,7 +226,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfTheSameArchiveAgain_ReplacesTheSetAndPublishesAgain()
+	public async Task SameArchiveAgain_ReplacesAndPublishes()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -241,7 +241,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfANewVersionSharingADifficulty_ReplacesTheSetThatHasIt()
+	public async Task NewVersionSharing_ReplacesSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -255,7 +255,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfANewVersion_RemovesTheDifficultiesItNoLongerHas()
+	public async Task NewVersion_RemovesMissingDifficulties()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -268,7 +268,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfAnArchiveWithTheDeclaredIdOfAStoredSet_ReplacesThatSet()
+	public async Task DeclaredStoredId_ReplacesThatSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -282,7 +282,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfASetThatAlreadyHasADifficulty_PrefersThatSetToTheDeclaredId()
+	public async Task SetWithDifficulty_PrefersThatSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -295,7 +295,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_KeepsTheCreationTimeOfAReplacedSet()
+	public async Task ReplacedSet_KeepsCreationTime()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -308,7 +308,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfALockedSet_IsRejectedAsLockedAndChangesNothing()
+	public async Task LockedSet_RejectedUnchanged()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -325,7 +325,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_ThatWouldRemoveALockedDifficulty_IsRejectedAsLocked()
+	public async Task RemoveLockedDifficulty_Rejected()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -340,7 +340,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_ThatChangesTheFileOfALockedDifficulty_IsRejectedAsLocked()
+	public async Task ChangeLockedDifficulty_Rejected()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -355,7 +355,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_ThatKeepsALockedDifficultyUnchanged_IsAccepted()
+	public async Task LockedDifficultyUnchanged_Accepted()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -369,7 +369,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfADifficultyOfALockedSetInAnotherSet_IsRejectedAsLocked()
+	public async Task LockedSetDifficulty_Rejected()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -384,7 +384,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_OfAnArchiveThatTakesADifficultyFromALockedSet_IsRejectedAsLocked()
+	public async Task TakesLockedDifficulty_Rejected()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -400,7 +400,7 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
-	public async Task ImportAsync_LeavesTheArchiveStreamOpen()
+	public async Task ArchiveStream_LeftOpen()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();

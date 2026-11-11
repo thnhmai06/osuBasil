@@ -21,7 +21,7 @@ public sealed class DatabaseProvidersTests
 	}
 
 	[Fact]
-	public void AReadEngineDifferentFromTheWriteEngineIsValid()
+	public void ReadEngineDiffers_Valid()
 	{
 		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options("MySql", "PostgreSQL"));
 
@@ -30,7 +30,7 @@ public sealed class DatabaseProvidersTests
 	}
 
 	[Fact]
-	public void TheReadEngineFallsBackToTheWriteEngine()
+	public void ReadEngine_FallsToWrite()
 	{
 		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options(null, "MySql"));
 
@@ -39,7 +39,7 @@ public sealed class DatabaseProvidersTests
 	}
 
 	[Fact]
-	public void TheWriteEngineDefaultsToPostgreSql()
+	public void WriteEngine_DefaultsPostgreSql()
 	{
 		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options(null, null));
 
@@ -47,7 +47,7 @@ public sealed class DatabaseProvidersTests
 	}
 
 	[Fact]
-	public void TheNamesAreNotCaseSensitive()
+	public void Names_NotCaseSensitive()
 	{
 		var providers = Infrastructure.Persistence.DependencyInjection.Providers(Options("mysql", "postgresql"));
 
@@ -55,7 +55,7 @@ public sealed class DatabaseProvidersTests
 	}
 
 	[Fact]
-	public void AnUnknownEngineStopsTheServerNamingTheAllowedValues()
+	public void UnknownEngine_StopsNamingValues()
 	{
 		var exception = Assert.Throws<InvalidOperationException>(() =>
 			Infrastructure.Persistence.DependencyInjection.Providers(Options("Oracle", "PostgreSQL")));
@@ -66,7 +66,7 @@ public sealed class DatabaseProvidersTests
 	}
 
 	[Fact]
-	public async Task EachEndpointBuildsItsContextsWithItsOwnEngine()
+	public async Task EachEndpoint_BuildsOwnEngine()
 	{
 		var options = Options("MySql", "PostgreSQL");
 		options.ReadConnectionString = "Server=replica;Database=basil;User ID=u;Password=p";

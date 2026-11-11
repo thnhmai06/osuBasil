@@ -13,7 +13,7 @@ public sealed class BasilBotProtectionTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task DeleteAsync_OfBasilBot_IsRefused()
+	public async Task DeleteBasilBot_Refused()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
@@ -26,7 +26,7 @@ public sealed class BasilBotProtectionTests
 	}
 
 	[Fact]
-	public async Task Silence_OfBasilBot_IsRefused()
+	public async Task SilenceBasilBot_Refused()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
@@ -40,7 +40,7 @@ public sealed class BasilBotProtectionTests
 	}
 
 	[Fact]
-	public async Task SetPrivileges_OfBasilBot_IsRefused()
+	public async Task PrivilegesBasilBot_Refused()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));

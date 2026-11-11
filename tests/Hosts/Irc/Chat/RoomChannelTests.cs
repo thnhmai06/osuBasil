@@ -30,7 +30,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_TheRoomOfWhichTheUserIsCreator_IsAllowed()
+	public async Task CreatorRoom_Allowed()
 	{
 		var (osu, irc, id) = await CreatorWithIrcAsync("RmCreator");
 		using var _ = osu;
@@ -43,7 +43,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_ARoomOfSomeoneElse_Gets473()
+	public async Task OthersRoom_Gets473()
 	{
 		var (osu, _, id) = await CreatorWithIrcAsync("RmOwner");
 		using var _ = osu;
@@ -56,7 +56,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_ANonExistentRoom_Gets403()
+	public async Task NonExistentRoom_Gets403()
 	{
 		using var irc = await Host.SignInAsync("RmNoRoom");
 
@@ -66,7 +66,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Join_ARoomWithAnAccountThatCanObserveEveryRoom_IsAllowed()
+	public async Task ObserverAccount_Allowed()
 	{
 		var (osu, _, id) = await CreatorWithIrcAsync("RmHostOf");
 		using var _ = osu;
@@ -78,7 +78,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task RoomChat_ReachesTheCreatorsIrcClient_AndTheCreatorIsMarkedAsAuthority()
+	public async Task CreatorChat_ReachesMarkedAuthority()
 	{
 		var (osu, irc, id) = await CreatorWithIrcAsync("RmChatter");
 		using var _ = osu;
@@ -95,7 +95,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task IrcMessageInTheRoom_ReachesThePlayerInTheGame()
+	public async Task IrcInRoom_ReachesPlayer()
 	{
 		var (osu, irc, id) = await CreatorWithIrcAsync("RmSpeaker");
 		using var _ = osu;
@@ -117,7 +117,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ListShowsOnlyTheRoomChannelsTheClientCouldJoin()
+	public async Task List_JoinableRoomsOnly()
 	{
 		var (osu, irc, id) = await CreatorWithIrcAsync("RmLister");
 		using var _ = osu;
@@ -136,7 +136,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BotCommandFromIrc_RunsWithTheRightsOfTheIrcConnection()
+	public async Task IrcBotCommand_RunsAsIrc()
 	{
 		var (osu, irc, id) = await CreatorWithIrcAsync("RmCommander");
 		using var _ = osu;
@@ -150,7 +150,7 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BotCommandFromIrc_ByAnOutsider_IsRefusedByTheRoomNotByTheTransport()
+	public async Task OutsiderIrc_RefusedByRoom()
 	{
 		var (osu, _, _) = await CreatorWithIrcAsync("RmOwnerCmd");
 		using var _ = osu;

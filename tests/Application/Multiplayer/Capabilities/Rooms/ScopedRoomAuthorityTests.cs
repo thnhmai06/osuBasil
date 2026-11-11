@@ -40,7 +40,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task MoveAsync_TheCallersRoleDecidesWhoMayMoveAnotherPlayer(RoomRole role,
+	public async Task MoveAsync_RoleDecidesMove(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -75,7 +75,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task ArrangeAsync_TheCallersRoleDecidesWhoMayArrangeTheSlots(RoomRole role,
+	public async Task ArrangeAsync_RoleDecidesArranging(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -116,7 +116,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task SetTeamAsync_TheCallersRoleDecidesWhoMayPutAPlayerOnATeam(RoomRole role,
+	public async Task SetTeamAsync_RoleDecidesTeams(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -153,7 +153,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task ToggleLockAsync_TheCallersRoleDecidesWhoMayLockASlot(RoomRole role,
+	public async Task ToggleLockAsync_RoleSlotLock(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -187,7 +187,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task SetLockedAsync_TheCallersRoleDecidesWhoMayLockTheRoom(RoomRole role,
+	public async Task SetLockedAsync_RoleRoomLock(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -221,7 +221,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task ConfigureAsync_TheCallersRoleDecidesWhoMayChangeTheSettings(RoomRole role,
+	public async Task ConfigureAsync_RoleDecidesSettings(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -255,7 +255,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task StartAsync_TheCallersRoleDecidesWhoMayStartARound(RoomRole role, RoomExpectation expected)
+	public async Task StartAsync_RoleDecidesStart(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -291,7 +291,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task RequireStart_TheCallersRoleDecidesWhoMayStartRounds(RoomRole role,
+	public async Task RequireStart_RoleDecidesRounds(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -319,7 +319,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task AbortAsync_TheCallersRoleDecidesWhoMayAbortTheRound(RoomRole role, RoomExpectation expected)
+	public async Task AbortAsync_RoleDecidesAbort(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -355,7 +355,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task KickAsync_TheCallersRoleDecidesWhoMayKickAPlayer(RoomRole role, RoomExpectation expected)
+	public async Task KickAsync_RoleDecidesKick(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -389,7 +389,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task BanAsync_TheCallersRoleDecidesWhoMayBanAPlayer(RoomRole role, RoomExpectation expected)
+	public async Task BanAsync_RoleDecidesBan(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -424,7 +424,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task UnbanAsync_TheCallersRoleDecidesWhoMayLiftABan(RoomRole role, RoomExpectation expected)
+	public async Task UnbanAsync_RoleDecidesLift(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -460,7 +460,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task InviteAsync_TheCallersRoleDecidesWhoMayInviteAUser(RoomRole role, RoomExpectation expected)
+	public async Task InviteAsync_RoleDecidesInvite(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -492,7 +492,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task AddRefereeAsync_TheCallersRoleDecidesWhoMayMakeAReferee(RoomRole role,
+	public async Task AddRefereeAsync_RoleDecidesReferee(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -527,7 +527,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task RemoveRefereeAsync_TheCallersRoleDecidesWhoMayRemoveAReferee(RoomRole role,
+	public async Task RemoveRefereeAsync_RoleDecidesRemoval(RoomRole role,
 		RoomExpectation expected)
 	{
 		using var app = new TestApplication();
@@ -562,7 +562,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task SetHostAsync_TheCallersRoleDecidesWhoMayGiveTheHost(RoomRole role, RoomExpectation expected)
+	public async Task SetHostAsync_RoleDecidesHost(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -595,7 +595,7 @@ public sealed class ScopedRoomAuthorityTests
 	[InlineData(RoomRole.Manager, RoomExpectation.Allowed)]
 	[InlineData(RoomRole.NoRoomJoin, RoomExpectation.RoomJoinDenied)]
 	[InlineData(RoomRole.SuspendedCreator, RoomExpectation.RoomJoinDenied)]
-	public async Task CloseAsync_TheCallersRoleDecidesWhoMayCloseTheRoom(RoomRole role, RoomExpectation expected)
+	public async Task CloseAsync_RoleDecidesClose(RoomRole role, RoomExpectation expected)
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -637,7 +637,7 @@ public sealed class ScopedRoomAuthorityTests
 	#region Outcomes about the target
 
 	[Fact]
-	public async Task AddRefereeAsync_ForTheCreator_IsRefused()
+	public async Task ForTheCreator_IsRefused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -649,7 +649,7 @@ public sealed class ScopedRoomAuthorityTests
 	}
 
 	[Fact]
-	public async Task AddRefereeAsync_ForAnExistingReferee_IsRefused()
+	public async Task AddRefereeAsync_ExistingRefereeRefused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -660,7 +660,7 @@ public sealed class ScopedRoomAuthorityTests
 	}
 
 	[Fact]
-	public async Task AddRefereeAsync_ForTheNinthReferee_IsRefused()
+	public async Task AddRefereeAsync_NinthRefereeRefused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -678,7 +678,7 @@ public sealed class ScopedRoomAuthorityTests
 	}
 
 	[Fact]
-	public async Task RemoveRefereeAsync_ForSomebodyWhoIsNotAReferee_IsRefused()
+	public async Task RemoveRefereeAsync_NonRefereeRefused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -689,7 +689,7 @@ public sealed class ScopedRoomAuthorityTests
 	}
 
 	[Fact]
-	public async Task SetHostAsync_ForSomebodyWhoIsNotSeated_IsRefused()
+	public async Task SetHostAsync_UnseatedRefused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

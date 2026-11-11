@@ -15,7 +15,7 @@ public sealed class ChatTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ChannelMessage_ReachesTheOtherMember_AndNotTheSender()
+	public async Task ChannelMessage_ReachesOtherOnly()
 	{
 		using var sender = await Host.NewClientAsync("ChatSender");
 		using var listener = await Host.NewClientAsync("ChatListener");
@@ -37,7 +37,7 @@ public sealed class ChatTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PrivateMessage_ReachesTheRecipientNamedByUsername()
+	public async Task PrivateMessage_ReachesNamedRecipient()
 	{
 		using var sender = await Host.NewClientAsync("PmSender");
 		using var recipient = await Host.NewClientAsync("PmRecipient");
@@ -54,7 +54,7 @@ public sealed class ChatTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PrivateMessage_ToSomeoneWhoBlocksNonFriends_TellsTheSender()
+	public async Task BlocksNonFriends_TellsSender()
 	{
 		using var sender = await Host.NewClientAsync("DmBlockedSender");
 		using var recipient = await Host.NewClientAsync("DmBlocker");
@@ -69,7 +69,7 @@ public sealed class ChatTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task LongMessage_IsCutAtTheLimit()
+	public async Task LongMessage_CutAtLimit()
 	{
 		using var sender = await Host.NewClientAsync("LongSender");
 		using var listener = await Host.NewClientAsync("LongListener");
@@ -86,7 +86,7 @@ public sealed class ChatTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Flooding_IsRefusedWithANotice()
+	public async Task Flooding_RefusedWithNotice()
 	{
 		using var sender = await Host.NewClientAsync("Flooder");
 		await sender.LoginAsync();

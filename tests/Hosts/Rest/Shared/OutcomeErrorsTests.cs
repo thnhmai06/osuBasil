@@ -85,7 +85,7 @@ public sealed class OutcomeErrorsTests
 
 	[Theory]
 	[MemberData(nameof(Rows))]
-	public void Describe_EveryRefusal_HasTheKindThatTheSpecificationGives(string row, string expected)
+	public void EveryRefusal_SpecKind(string row, string expected)
 	{
 		var (area, name) = (row.Split(':')[0], row.Split(':')[1]);
 		var info = area switch
@@ -103,7 +103,7 @@ public sealed class OutcomeErrorsTests
 	}
 
 	[Fact]
-	public void Tables_CoverEveryRefusalOfEveryEnum()
+	public void Tables_CoverEveryRefusal()
 	{
 		Assert.Equal(Enum.GetValues<UserOutcome>().Length - 1, Users.Count);
 		Assert.Equal(Enum.GetValues<RoomOutcome>().Length - 1, Rooms.Count);
@@ -122,7 +122,7 @@ public sealed class OutcomeErrorsTests
 	[InlineData(SystemAccount, 409)]
 	[InlineData(Gone, 410)]
 	[InlineData(Invalid, 422)]
-	public void StatusOf_EveryKind_IsTheStatusOfAdr009(ErrorKind kind, int status)
+	public void EveryKind_Adr009Status(ErrorKind kind, int status)
 	{
 		Assert.Equal(status, OutcomeResults.StatusOf(kind));
 	}

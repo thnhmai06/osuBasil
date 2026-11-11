@@ -15,7 +15,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Login_AfterTheSessionWasClosedByTheServer_SignsInAgainWithTheSavedPassword()
+	public async Task ClosedByServer_SignsWithPassword()
 	{
 		using var client = await Host.NewClientAsync("ClosedUser");
 		await client.LoginAsync();
@@ -30,7 +30,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_SilencedAccount_StillLogsInAndIsToldHowLongTheSilenceLasts()
+	public async Task SilencedAccount_LogsInTold()
 	{
 		var record = await Host.CreateUserAsync("SilencedOne");
 		record.Value.SilencedUntil = Host.Time.GetUtcNow().AddHours(1);
@@ -45,7 +45,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_AfterTooManyWrongPasswords_IsRefusedEvenWithTheRightOne()
+	public async Task WrongPasswords_RefusedEvenRight()
 	{
 		using var client = await Host.NewClientAsync("LockedOut");
 		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
@@ -60,7 +60,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_FromAnotherAddress_IsNotAffectedByTheLockout()
+	public async Task OtherAddress_NotAffectedLockout()
 	{
 		using var client = await Host.NewClientAsync("OtherAddress");
 		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
@@ -73,7 +73,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_BeyondTheConnectionLimitOfOneAddress_IsRefused()
+	public async Task BeyondAddressLimit_Refused()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
 		var original = await settings.GetAsync(TestContext.Current.CancellationToken);
@@ -108,7 +108,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_SecondGameClientOfTheSameUser_IsRefusedWithTheTooManySessionsNotice()
+	public async Task SecondClient_TooManySessions()
 	{
 		using var first = await Host.NewClientAsync("TwoClients");
 		using var second = OsuClient.Create(Host, "TwoClients", "password");
@@ -122,7 +122,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Restart_AnnouncedByTheServer_ReachesEveryOnlineClientWithTheDelay()
+	public async Task AnnouncedRestart_ReachesOnlineClients()
 	{
 		using var client = await Host.NewClientAsync("RestartWatcher");
 		await client.LoginAsync();
@@ -134,7 +134,7 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Login_WhileTheServerStopsAcceptingLogins_IsRefusedWithoutAToken()
+	public async Task StoppingLogins_RefusedNoToken()
 	{
 		var state = Host.Services.GetRequiredService<StableState>();
 		using var client = await Host.NewClientAsync("StoppingLogin");

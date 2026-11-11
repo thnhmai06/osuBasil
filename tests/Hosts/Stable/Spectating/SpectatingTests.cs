@@ -9,7 +9,7 @@ public sealed class SpectatingTests(StableHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task StartSpectating_TellsTheHost_AndLaterSpectatorsLearnOfEachOther()
+	public async Task StartSpectating_TellsHostPeers()
 	{
 		var host = await Host.NewClientAsync("SpecHost");
 		var first = await Host.NewClientAsync("SpecFirst");
@@ -30,7 +30,7 @@ public sealed class SpectatingTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Frames_FromTheHost_ReachTheSpectatorByteForByte()
+	public async Task HostFrames_ReachSpectator()
 	{
 		var host = await Host.NewClientAsync("FrameHost");
 		var spectator = await Host.NewClientAsync("FrameWatcher");
@@ -48,7 +48,7 @@ public sealed class SpectatingTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Frames_MalformedBundle_StillReachTheSpectator()
+	public async Task MalformedFrames_StillReach()
 	{
 		var host = await Host.NewClientAsync("BadFrameHost");
 		var spectator = await Host.NewClientAsync("BadFrameWatch");
@@ -80,7 +80,7 @@ public sealed class SpectatingTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task CantSpectate_TellsTheHostWhoLacksTheBeatmap()
+	public async Task CantSpectate_TellsHost()
 	{
 		var host = await Host.NewClientAsync("CantHost");
 		var spectator = await Host.NewClientAsync("CantWatcher");

@@ -21,7 +21,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task Access_WithoutThePermission_IsDeniedAndNamesIt()
+	public async Task AccessNoPermission_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -33,7 +33,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task Access_WithThePermission_IsOk()
+	public async Task AccessPermitted_Ok()
 	{
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff", Staff);
@@ -42,7 +42,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task ClearCaches_WithoutThePermission_IsDeniedAndDeletesNothing()
+	public async Task ClearNoPermission_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -55,7 +55,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task ClearCaches_WithThePermission_ReportsHowManyFilesWereDeleted()
+	public async Task ClearPermitted_CountReported()
 	{
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff", Staff);
@@ -68,7 +68,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task ResetExceptions_WithoutThePermission_IsDeniedAndResetsNothing()
+	public async Task ResetNoPermission_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -80,7 +80,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task ResetExceptions_WithThePermission_ResetsTheTally()
+	public async Task ResetPermitted_Reset()
 	{
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff", Staff);
@@ -92,7 +92,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task CollectGarbage_WithoutThePermission_IsDenied()
+	public async Task CollectNoPermission_Denied()
 	{
 		using var app = new TestApplication();
 		var plain = await RoomFixture.PlayerAsync(app, "Plain");
@@ -103,7 +103,7 @@ public sealed class ScopedDiagnosticsTests
 	}
 
 	[Fact]
-	public async Task CollectGarbage_WithThePermission_IsOk()
+	public async Task CollectPermitted_Ok()
 	{
 		using var app = new TestApplication();
 		var staff = await RoomFixture.PlayerAsync(app, "Staff", Staff);

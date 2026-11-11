@@ -39,7 +39,7 @@ public sealed class ServerNotifyTests
 	#region Server.Notify and NotifyAll (system operation)
 
 	[Fact]
-	public async Task Notify_OneUserWithOpenClient_ReachesOnlyThatClient()
+	public async Task OneUserOpen_ReachesOnlyClient()
 	{
 		using var app = new TestApplication();
 		var (target, targetClient) = await OnlineClientAsync(app, "Target");
@@ -54,7 +54,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task Notify_SeveralUsers_ReachesEachOpenClientAndReturnsTheCount()
+	public async Task SeveralUsers_EachCounted()
 	{
 		using var app = new TestApplication();
 		var (first, firstClient) = await OnlineClientAsync(app, "First");
@@ -71,7 +71,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task Notify_SeveralUsersOfWhichOneIsOffline_CountsOnlyTheOnlineOne()
+	public async Task SeveralWithOffline_CountsOnline()
 	{
 		using var app = new TestApplication();
 		var (online, onlineClient) = await OnlineClientAsync(app, "Online");
@@ -84,7 +84,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task Notify_OfflineUser_SendsNothing()
+	public async Task OfflineUser_SendsNothing()
 	{
 		using var app = new TestApplication();
 		var offline = await app.CreateUserAsync("Offline", "password");
@@ -96,7 +96,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task Notify_NoUsersGiven_SendsNothing()
+	public async Task NoUsersGiven_SendsNothing()
 	{
 		using var app = new TestApplication();
 		await OnlineClientAsync(app, "Bystander");
@@ -111,7 +111,7 @@ public sealed class ServerNotifyTests
 	[InlineData(SessionType.Irc)]
 	[InlineData(SessionType.Api)]
 	[InlineData(SessionType.StableTourney)]
-	public async Task Notify_UserWhoseOnlyConnectionIsNotAnOsuGameClient_SendsNothing(SessionType type)
+	public async Task NonGameOnly_SendsNothing(SessionType type)
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync($"Only{(int)type}", "password",
@@ -125,7 +125,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task Notify_UserWithGameClientAndOtherConnections_ReachesOnlyTheGameClient()
+	public async Task GameAndOthers_ReachesGameClient()
 	{
 		using var app = new TestApplication();
 		var (user, client) = await OnlineClientAsync(app, "Many");
@@ -139,7 +139,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task Notify_UserWhoseGameClientClosed_SendsNothing()
+	public async Task ClosedGameClient_SendsNothing()
 	{
 		using var app = new TestApplication();
 		var (user, client) = await OnlineClientAsync(app, "Gone");
@@ -154,7 +154,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task Notify_EmptyText_SendsNothing()
+	public async Task NotifyEmpty_SendsNothing()
 	{
 		using var app = new TestApplication();
 		var (user, _) = await OnlineClientAsync(app, "Target");
@@ -168,7 +168,7 @@ public sealed class ServerNotifyTests
 	[Theory]
 	[InlineData("   ")]
 	[InlineData("\t\n")]
-	public async Task Notify_WhitespaceOnlyText_IsSentAsIs(string text)
+	public async Task WhitespaceText_SentAsIs(string text)
 	{
 		using var app = new TestApplication();
 		var (user, client) = await OnlineClientAsync(app, "Target");
@@ -182,7 +182,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task NotifyAll_EveryOpenGameClient_IsReachedAndCounted()
+	public async Task EveryOpenClient_ReachedAndCounted()
 	{
 		using var app = new TestApplication();
 		var (_, first) = await OnlineClientAsync(app, "First");
@@ -199,7 +199,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task NotifyAll_SkipsClosedClientsAndConnectionsThatAreNotGameClients()
+	public async Task ClosedNonGame_Skipped()
 	{
 		using var app = new TestApplication();
 		var (_, open) = await OnlineClientAsync(app, "Open");
@@ -218,7 +218,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public void NotifyAll_NoClientsOnline_SendsNothing()
+	public void NoClientsOnline_SendsNothing()
 	{
 		using var app = new TestApplication();
 
@@ -229,7 +229,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task NotifyAll_EmptyText_SendsNothing()
+	public async Task NotifyAllEmpty_SendsNothing()
 	{
 		using var app = new TestApplication();
 		await OnlineClientAsync(app, "Target");
@@ -241,7 +241,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task NotifyAll_WhitespaceOnlyText_IsSentAsIs()
+	public async Task AllWhitespaceText_SentAsIs()
 	{
 		using var app = new TestApplication();
 		var (_, client) = await OnlineClientAsync(app, "Target");
@@ -259,7 +259,7 @@ public sealed class ServerNotifyTests
 	#region ScopedServer.Notify and NotifyAll (needs ChatManageAnnounce)
 
 	[Fact]
-	public async Task ScopedNotify_OneUserWithChatAnnounce_IsOkAndReachesTheClient()
+	public async Task OneUserAnnounce_OkReachesClient()
 	{
 		using var app = new TestApplication();
 		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
@@ -273,7 +273,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task ScopedNotify_SeveralUsersWithChatAnnounce_IsOkAndCountsClients()
+	public async Task SeveralAnnounce_OkCountsClients()
 	{
 		using var app = new TestApplication();
 		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
@@ -287,7 +287,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task ScopedNotifyAll_WithChatAnnounce_IsOkAndCountsEveryClient()
+	public async Task AllAnnounce_OkCountsEvery()
 	{
 		using var app = new TestApplication();
 		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
@@ -301,7 +301,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task ScopedNotifyAll_EmptyTextWithChatAnnounce_IsOkAndSendsNothing()
+	public async Task EmptyAnnounce_OkSendsNothing()
 	{
 		using var app = new TestApplication();
 		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
@@ -315,7 +315,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task ScopedNotify_OneUserWithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
+	public async Task OneNoAnnounce_DeniedSendsNothing()
 	{
 		using var app = new TestApplication();
 		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
@@ -330,7 +330,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task ScopedNotify_SeveralUsersWithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
+	public async Task SeveralNoAnnounce_DeniedSendsNothing()
 	{
 		using var app = new TestApplication();
 		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);
@@ -345,7 +345,7 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task ScopedNotifyAll_WithoutChatAnnounce_IsDeniedNamingItAndSendsNothing()
+	public async Task AllNoAnnounce_DeniedSendsNothing()
 	{
 		using var app = new TestApplication();
 		var actor = await AnnouncerAsync(app, UserPrivilegesExtensions.Default & ~UserPrivileges.Moderator);

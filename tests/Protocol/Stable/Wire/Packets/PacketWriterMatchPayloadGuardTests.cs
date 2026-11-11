@@ -26,37 +26,37 @@ public class PacketWriterMatchPayloadGuardTests
 	}
 
 	[Fact]
-	public void UpdateMatch_RoomWith15Slots_ThrowsArgumentException()
+	public void Update15Slots_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => Write(writer => writer.UpdateMatch(Room(15, 7))));
 	}
 
 	[Fact]
-	public void NewMatch_RoomWith15Slots_ThrowsArgumentException()
+	public void New15Slots_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => Write(writer => writer.NewMatch(Room(15, 7))));
 	}
 
 	[Fact]
-	public void MatchJoinSuccess_RoomWith15Slots_ThrowsArgumentException()
+	public void Join15Slots_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => Write(writer => writer.MatchJoinSuccess(Room(15, 7))));
 	}
 
 	[Fact]
-	public void UpdateMatch_RoomId65536_ThrowsOverflow()
+	public void UpdateId65536_Overflow()
 	{
 		Assert.Throws<OverflowException>(() => Write(writer => writer.UpdateMatch(Room(16, 65536))));
 	}
 
 	[Fact]
-	public void NewMatch_RoomId65536_ThrowsOverflow()
+	public void NewId65536_Overflow()
 	{
 		Assert.Throws<OverflowException>(() => Write(writer => writer.NewMatch(Room(16, 65536))));
 	}
 
 	[Fact]
-	public void MatchJoinSuccess_RoomId65536_ThrowsOverflow()
+	public void JoinId65536_Overflow()
 	{
 		Assert.Throws<OverflowException>(() => Write(writer => writer.MatchJoinSuccess(Room(16, 65536))));
 	}

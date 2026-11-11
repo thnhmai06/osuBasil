@@ -15,7 +15,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Document_ListsEveryRoomCommandAsItsOwnRoute()
+	public async Task EveryRoomCommand_OwnRoute()
 	{
 		var paths = (await DocumentAsync())["paths"]!.AsObject();
 
@@ -29,7 +29,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Document_MarksTokenRoutesWithTheBearerScheme_AndPublicRoutesWithout()
+	public async Task TokenAndPublic_BearerMarked()
 	{
 		var paths = (await DocumentAsync())["paths"]!;
 
@@ -49,7 +49,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Document_EverySummaryStartsWithAVerbOfTheClosedSet()
+	public async Task EverySummary_StartsWithVerb()
 	{
 		var paths = (await DocumentAsync())["paths"]!.AsObject();
 
@@ -62,7 +62,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public void SummaryVerbCheck_RefusesAVerbOutsideTheSet_AndAcceptsOneInside()
+	public void VerbOutsideSet_RefusedInsideAccepted()
 	{
 		Assert.False(StartsWithSummaryVerb("Retrieve x."));
 		Assert.True(StartsWithSummaryVerb("Get x."));
@@ -70,7 +70,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Document_EverySummaryIsOneSentence_AndNothingNamesTheImplementation()
+	public async Task EverySummary_OneSentence()
 	{
 		var paths = (await DocumentAsync())["paths"]!.AsObject();
 
@@ -107,7 +107,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	[InlineData("/d/{setId}", "get")]
 	[InlineData("/users", "post")]
 	[InlineData("/", "post")]
-	public async Task StableDocument_ListsTheEndpointsTheClientCalls(string path, string method)
+	public async Task StableDocument_ListsClientEndpoints(string path, string method)
 	{
 		var paths = (await StableDocumentAsync())["paths"]!.AsObject();
 
@@ -115,7 +115,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task StableDocument_ListsThePacketsByTheirIds_AndEverySummaryIsOneSentence()
+	public async Task StableDocument_PacketIdsSummary()
 	{
 		var document = await StableDocumentAsync();
 		var paths = document["paths"]!.AsObject();
@@ -131,7 +131,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TheTwoDocuments_DoNotListEachOthersEndpoints()
+	public async Task TwoDocuments_NoOtherEndpoints()
 	{
 		var rest = (await DocumentAsync())["paths"]!.AsObject();
 		var osu = (await StableDocumentAsync())["paths"]!.AsObject();
@@ -141,7 +141,7 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Docs_AndHealth_ArePublic()
+	public async Task AndHealth_ArePublic()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 

@@ -21,7 +21,7 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
-	public async Task RunAsync_RunsTheDeliveriesInOrder()
+	public async Task Run_DeliveriesInOrder()
 	{
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();
@@ -38,7 +38,7 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
-	public async Task Enqueue_RunsNothingUntilTheQueueRuns()
+	public async Task Enqueue_NothingRunsYet()
 	{
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();
@@ -54,7 +54,7 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
-	public async Task RunAsync_KeepsRunningAfterADeliveryThrows()
+	public async Task AfterThrow_KeepsRunning()
 	{
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();
@@ -70,7 +70,7 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
-	public async Task RunAsync_EndsWithoutAnExceptionWhenTheServerStopsDuringADelivery()
+	public async Task StopDuringDelivery_NoException()
 	{
 		var queue = NewQueue();
 		using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
@@ -83,7 +83,7 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
-	public async Task DrainAsync_RunsWhatIsQueuedAndReturns()
+	public async Task Drain_QueuedRuns()
 	{
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();
@@ -96,7 +96,7 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
-	public async Task DrainAsync_WaitsForADeliveryTheRunningLoopAlreadyTook()
+	public async Task DrainInFlight_Waited()
 	{
 		var started = new TaskCompletionSource();
 		var release = new TaskCompletionSource();
@@ -125,7 +125,7 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
-	public async Task Outstanding_CountsQueuedDeliveriesUntilTheyHaveRun_EvenWhenTheyFail()
+	public async Task Outstanding_CountedUntilRun()
 	{
 		var done = Channel.CreateUnbounded<string>();
 		var queue = NewQueue();

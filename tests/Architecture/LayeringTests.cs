@@ -53,7 +53,7 @@ public class LayeringTests
 	];
 
 	[Fact]
-	public void Domain_DependsOnNoOtherProjectOrFramework()
+	public void Domain_DependsOnNothing()
 	{
 		AssertNoDependency(DomainAssembly,
 		[
@@ -63,13 +63,13 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ProtocolStable_DependsOnDomainOnly()
+	public void ProtocolStable_DependsOnDomain()
 	{
 		AssertNoDependency(ProtocolStable, [.. ModuleRoots, .. Host]);
 	}
 
 	[Fact]
-	public void ProtocolStable_DoesDependOnDomain_PositiveControl()
+	public void ProtocolStableDomain_ControlDetected()
 	{
 		var result = Types.InAssembly(ProtocolStable).Should().NotHaveDependencyOnAny("Basil.Domain").GetResult();
 
@@ -77,13 +77,13 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ProtocolIrc_DependsOnNoOtherProject()
+	public void ProtocolIrc_DependsOnNothing()
 	{
 		AssertNoDependency(ProtocolIrc, ["Basil.Domain", .. ModuleRoots, .. Host]);
 	}
 
 	[Fact]
-	public void ApplicationPersistence_DoesNotSeeTheLayersAboveItInfrastructureOrTheHosts()
+	public void ApplicationPersistence_NoUpperLayers()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Persistence)
 			.ShouldNot().HaveDependencyOnAny(
@@ -96,7 +96,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationCapabilities_DoNotSeeHandlersOrWorkers()
+	public void Capabilities_NoHandlersWorkers()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Computation)
 			.ShouldNot().HaveDependencyOnAny(ReactionNamespaces()).GetResult();
@@ -105,7 +105,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationCapabilities_PublicTypesAreScopedViewsOnly()
+	public void Capabilities_ScopedTypesOnly()
 	{
 		var others = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Where(type => type is { IsPublic: true, IsNested: false, Namespace: not null } &&
@@ -119,7 +119,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationLogic_HasNoPublicTypes()
+	public void ApplicationLogic_NoPublicTypes()
 	{
 		var publicTypes = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Where(type => type is { IsPublic: true, IsNested: false, Namespace: not null } &&
@@ -148,7 +148,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationCapabilities_DoDependOnPersistence_PositiveControl()
+	public void CapabilitiesOnPersistence_ControlDetected()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Capabilities)
 			.Should().NotHaveDependencyOnAny(PersistenceNamespaces()).GetResult();
@@ -157,7 +157,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationPersistence_DoesDependOnDomain_PositiveControl()
+	public void PersistenceOnDomain_ControlDetected()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Persistence)
 			.Should().NotHaveDependencyOnAny("Basil.Domain").GetResult();
@@ -173,7 +173,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationProjects_DoNotDependOnInfrastructureHostsOrProtocol()
+	public void ApplicationProjects_NoHigherLayers()
 	{
 		foreach (var assembly in ModuleAssemblies.Applications)
 			AssertNoDependency(assembly,
@@ -181,7 +181,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationObjects_DoDependOnPersistence_PositiveControl()
+	public void ObjectsOnPersistence_ControlDetected()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Objects)
 			.Should().NotHaveDependencyOnAny(PersistenceNamespaces()).GetResult();
@@ -190,7 +190,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureProjects_OutsideWorkersAndHandlersDoNotSeeApplicationObjectsOrHosts()
+	public void Infrastructure_NoObjectsHosts()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.DoNotResideInNamespaceMatching(InfrastructureWorkers).And()
@@ -201,7 +201,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureHandlers_DoNotSeeTheHosts()
+	public void Handlers_NoHosts()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.ResideInNamespaceMatching(InfrastructureHandlers).ShouldNot()
@@ -211,7 +211,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureHandlers_DoDependOnApplicationObjects_PositiveControl()
+	public void HandlersOnObjects_ControlDetected()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.ResideInNamespaceMatching(InfrastructureHandlers).Should().NotHaveDependencyOnAny(ObjectNamespaces())
@@ -221,7 +221,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureProjects_OutsideWorkers_DoDependOnApplicationPersistence_PositiveControl()
+	public void InfrastructurePersistence_ControlDetected()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.DoNotResideInNamespaceMatching(InfrastructureWorkers)
@@ -231,7 +231,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureProjects_DoNotSeeCapabilitiesOutsideTheirOwnModule()
+	public void Infrastructure_OnlyOwnCapabilities()
 	{
 		foreach (var assembly in ModuleAssemblies.Infrastructures.Where(assembly =>
 			         assembly.GetName().Name != "Basil.Infrastructure.Common"))
@@ -244,7 +244,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureWorkers_DoNotSeeCapabilitiesOrTheHosts()
+	public void Workers_NoCapabilitiesHosts()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.ResideInNamespaceMatching(InfrastructureWorkers).ShouldNot()
@@ -254,7 +254,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void InfrastructureWorkers_DoDependOnApplicationStorage_PositiveControl()
+	public void WorkersOnStorage_ControlDetected()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
 			.ResideInNamespaceMatching(InfrastructureWorkers).Should().NotHaveDependencyOnAny(StorageNamespaces())
@@ -264,7 +264,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void BotApplication_DoesNotSeeInfrastructureHostsOrUnscopedCapabilities()
+	public void BotApplication_NoInfraCapabilities()
 	{
 		AssertNoDependency(BotApplication,
 		[
@@ -274,7 +274,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void BotInfrastructure_DoesNotSeeTheInfrastructureOfOtherModulesHostsOrUnscopedCapabilities()
+	public void BotInfrastructure_NoOtherModules()
 	{
 		AssertNoDependency(BotInfrastructure,
 		[
@@ -286,7 +286,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void BotInfrastructure_DoesDependOnTheMessagesOfApplication_PositiveControl()
+	public void BotOnMessages_ControlDetected()
 	{
 		var startRound = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
 			.Single(type => type.Name == "StartRound");
@@ -297,7 +297,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationObjects_HasNoSessionNamedType()
+	public void ApplicationObjects_NoSessionTypes()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Objects)
 			.And().ArePublic().Should().NotHaveNameMatching(".*Session$").GetResult();
@@ -306,7 +306,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationObjects_HasNoPublicServiceContract()
+	public void ApplicationObjects_NoPublicServices()
 	{
 		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Objects)
 			.And().AreInterfaces().And().ArePublic().Should().NotHaveNameMatching("^I.*Service$").GetResult();
@@ -315,7 +315,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void Sources_DoNotUseConfigureAwait()
+	public void Sources_NoConfigureAwait()
 	{
 		var sources = Path.Combine(FindRepositoryRoot(), "src");
 		var offenders = Directory.EnumerateFiles(sources, "*.cs", SearchOption.AllDirectories)
@@ -327,7 +327,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationSources_DoNotBufferPayloadsInAMemoryStream()
+	public void ApplicationSources_NoMemoryStream()
 	{
 		var applications = Path.Combine(FindRepositoryRoot(), "src", "Application");
 		var offenders = Directory.EnumerateFiles(applications, "*.cs", SearchOption.AllDirectories)
@@ -342,7 +342,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void TheMemoryStreamCheckSeesASourceThatBuffers_PositiveControl()
+	public void MemoryStreamBuffering_ControlDetected()
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.cs");
 		File.WriteAllText(path, "class C { void M() { using var m = new MemoryStream(); } }");
@@ -362,7 +362,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void MessageOnlyHosts_DoNotCallScopeTo()
+	public void MessageOnlyHosts_NoScopeTo()
 	{
 		var offenders = MessageOnlyHosts.SelectMany(SourcesOfHost).Where(HasScopeTo).ToList();
 
@@ -371,7 +371,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void TheScopeToCheckSeesAHostThatScopes_PositiveControl()
+	public void ScopeToHost_ControlDetected()
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.cs");
 		File.WriteAllText(path, "class C { void M(object x) { x.ScopeTo(y); } }");

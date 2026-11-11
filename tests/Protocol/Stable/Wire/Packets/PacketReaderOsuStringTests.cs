@@ -58,7 +58,7 @@ public class PacketReaderOsuStringTests
 	}
 
 	[Fact]
-	public void ReadMessage_MissingMarkerByte_YieldsEmptyStrings()
+	public void MissingMarkerByte_YieldsEmptyStrings()
 	{
 		// three 0x00 existence bytes (each reads as "") followed by sender id 0.
 		var message = new PacketReader(new MemoryStream(Convert.FromHexString("00000000000000"))).ReadMessage();
@@ -67,7 +67,7 @@ public class PacketReaderOsuStringTests
 	}
 
 	[Fact]
-	public void ReadMessage_ExistsMarkerWithZeroLength_YieldsEmptyStrings()
+	public void ZeroLengthMarker_EmptyStrings()
 	{
 		// three "0x0B + ULEB128 length 0" strings followed by sender id 0.
 		var message = new PacketReader(new MemoryStream(Convert.FromHexString("0b000b000b0000000000"))).ReadMessage();
@@ -80,7 +80,7 @@ public class PacketReaderOsuStringTests
 	[InlineData(128)]
 	[InlineData(16383)]
 	[InlineData(16384)]
-	public void ReadMessage_StringOfDocumentedByteLength_RoundTrips(int byteLength)
+	public void DocumentedLength_RoundTrips(int byteLength)
 	{
 		var value = new string('a', byteLength);
 
@@ -92,7 +92,7 @@ public class PacketReaderOsuStringTests
 	[Theory]
 	[InlineData("héllo")]
 	[InlineData("日本語")]
-	public void ReadMessage_MultibyteString_RoundTrips(string value)
+	public void MultibyteString_RoundTrips(string value)
 	{
 		var message = new PacketReader(new MemoryStream(Message(value, value, value))).ReadMessage();
 
@@ -102,7 +102,7 @@ public class PacketReaderOsuStringTests
 	[Theory]
 	[InlineData("0b")] // length byte itself missing
 	[InlineData("0b0561")] // length 5, one UTF-8 byte present
-	public void ReadMessage_StringTruncatedInsideItsBytes_ThrowsEndOfStream(string hex)
+	public void TruncatedBytes_EndOfStream(string hex)
 	{
 		var reader = new PacketReader(new MemoryStream(Convert.FromHexString(hex)));
 
@@ -110,7 +110,7 @@ public class PacketReaderOsuStringTests
 	}
 
 	[Fact]
-	public void ReadMessage_StringLengthNeedingSixUleb128Bytes_ThrowsInvalidData()
+	public void LengthSixUleb_ThrowsInvalidData()
 	{
 		// five continuation bytes (0x80) with no terminator: a ULEB128 length that never ends.
 		var reader = new PacketReader(new MemoryStream(Convert.FromHexString("0b8080808080")));
@@ -119,7 +119,7 @@ public class PacketReaderOsuStringTests
 	}
 
 	[Fact]
-	public void ReadMessage_StringLengthAboveDocumentedMaximum_ThrowsInvalidData()
+	public void LengthAboveMaximum_InvalidData()
 	{
 		// 0x0B, then ULEB128 0x81 0x80 0x40 0x00 = 64 * 16,384 + 1 = 1,048,577, one above MaxStringBytes.
 		var reader = new PacketReader(new MemoryStream(Convert.FromHexString("0b81804000")));
@@ -128,7 +128,7 @@ public class PacketReaderOsuStringTests
 	}
 
 	[Fact]
-	public void ReadMessage_NegativeStringLength_ThrowsInvalidData()
+	public void NegativeStringLength_ThrowsInvalidData()
 	{
 		// 0x0B, then ULEB128 bytes 0x80 0x80 0x80 0x80 0x08: a five-byte length whose final
 		// seven data bits hold 8 shifted 28, i.e. 0x80000000 — negative when formed into an i32.

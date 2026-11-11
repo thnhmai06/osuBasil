@@ -14,7 +14,7 @@ public sealed class KestrelEndpointsTests
 	}
 
 	[Fact]
-	public void AnHttpsEndpointMeansTheServerServesTls()
+	public void HttpsEndpoint_ServesTls()
 	{
 		Assert.True(KestrelSetup.UsesHttps(Endpoints("http://127.0.0.1:8080", "https://0.0.0.0:443")));
 	}
@@ -22,7 +22,7 @@ public sealed class KestrelEndpointsTests
 	[Theory]
 	[InlineData("basil", true)]
 	[InlineData("my-own-password", false)]
-	public void TheShippedCertificatePasswordIsRecognisedOnlyWhenTlsIsServed(string password, bool expected)
+	public void ShippedCertPassword_OnlyWithTls(string password, bool expected)
 	{
 		var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
@@ -34,7 +34,7 @@ public sealed class KestrelEndpointsTests
 	}
 
 	[Fact]
-	public void ThePublishedCertificateIsNotAnIssueWithoutTls()
+	public void CertNoTls_NotIssue()
 	{
 		var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
 		{
@@ -46,19 +46,19 @@ public sealed class KestrelEndpointsTests
 	}
 
 	[Fact]
-	public void OnlyHttpEndpointsMeanPlainHttpBehindAProxy()
+	public void OnlyHttp_PlainBehindProxy()
 	{
 		Assert.False(KestrelSetup.UsesHttps(Endpoints("http://127.0.0.1:8080")));
 	}
 
 	[Fact]
-	public void NoEndpointsMeansNoTls()
+	public void NoEndpoints_NoTls()
 	{
 		Assert.False(KestrelSetup.UsesHttps(Endpoints()));
 	}
 
 	[Fact]
-	public void TheBindingsAreTheAddressesAndPortsOfTheEndpoints()
+	public void Bindings_AddressesAndPorts()
 	{
 		var bindings = KestrelSetup.Bindings(Endpoints("https://0.0.0.0:443", "http://[::1]:8080", "http://*:9000"));
 
@@ -70,7 +70,7 @@ public sealed class KestrelEndpointsTests
 	}
 
 	[Fact]
-	public void AFreePortIsNotABinding()
+	public void FreePort_NotBinding()
 	{
 		Assert.Empty(KestrelSetup.Bindings(Endpoints("http://127.0.0.1:0")));
 	}

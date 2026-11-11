@@ -17,7 +17,7 @@ public sealed class MpPlayersTests
 	[Theory]
 	[InlineData("!mp move")]
 	[InlineData("!mp move Player")]
-	public async Task Move_WithoutANameAndASlot_SaysHowToUseItAndMovesNobody(string message)
+	public async Task WithoutNameSlot_UsageNoMove(string message)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -31,7 +31,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Move_ForANameNoAccountHas_SaysTheTargetIsNotInTheMatch()
+	public async Task UnknownName_NotInMatch()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -47,7 +47,7 @@ public sealed class MpPlayersTests
 	[Theory]
 	[InlineData(false)]
 	[InlineData(true)]
-	public async Task Move_ForARegisteredUserWhoIsNotSeated_SaysTheUserIsNotInTheMatch(bool online)
+	public async Task UnseatedUser_NotInMatch(bool online)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -63,7 +63,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Move_OfASeatedPlayerToAFreeSlot_SaysSoAndSeatsThePlayerThere()
+	public async Task SeatedToFree_SaysAndSeats()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -76,7 +76,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Move_WithTheUserIdAfterAHash_MovesThatUser()
+	public async Task HashUserId_MovesUser()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -89,7 +89,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Move_ToASlotThatIsTaken_SaysItIsNotOpenAndKeepsEveryoneSeated()
+	public async Task TakenSlot_NotOpenKept()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -106,7 +106,7 @@ public sealed class MpPlayersTests
 	[InlineData("17")]
 	[InlineData("0")]
 	[InlineData("x")]
-	public async Task Move_ToASlotOutsideOneToSixteenOrNotANumber_SaysHowToUseItAndKeepsThePlayerSeated(string slot)
+	public async Task BadSlot_UsageKeepsSeat(string slot)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -120,7 +120,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Host_WithoutAName_SaysHowToUseItAndKeepsTheHost()
+	public async Task WithoutName_UsageHostKept()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -133,7 +133,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Host_ForASeatedPlayer_SaysSoAndMakesThePlayerTheHost()
+	public async Task SeatedPlayer_SaidMakesHost()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -146,7 +146,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Host_ForANameNoAccountHas_SaysTheUserWasNotFoundAndKeepsTheHost()
+	public async Task NameNoAccount_NotFoundKept()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -159,7 +159,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task ClearHost_SaysTheHostWasClearedAndLeavesTheMatchWithoutAHost()
+	public async Task ClearHost_ClearedNoHost()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -172,7 +172,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Invite_WithoutAName_SaysHowToUseIt()
+	public async Task InviteWithoutName_UsageShown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -184,7 +184,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Invite_OfAnAccountThatIsOffline_SaysThePlayerIsNotOnline()
+	public async Task OfflineAccount_PlayerNotOnline()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -197,7 +197,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Invite_OfANameNoAccountHas_SaysTheUserWasNotFound()
+	public async Task NameNoAccount_UserNotFound()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -209,7 +209,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Invite_OfAnOnlineUser_SaysTheUserWasInvited()
+	public async Task OnlineUser_UserInvited()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -222,7 +222,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Invite_OfAUserWhoIsSeated_SaysTheUserIsAlreadyInTheRoom()
+	public async Task SeatedUser_AlreadyInRoom()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -234,7 +234,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Invite_ByAPlainSeatedPlayer_IsAllowed()
+	public async Task PlainSeatedPlayer_IsAllowed()
 	{
 		using var bot = new BotHarness();
 		var (room, _, player) = await SetUpAsync(bot);
@@ -247,7 +247,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Kick_WithoutAName_SaysHowToUseIt()
+	public async Task KickWithoutName_UsageShown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -261,7 +261,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Kick_OfASeatedPlayer_SaysSoAndTakesThePlayerOutOfTheirSlot()
+	public async Task SeatedPlayer_SaidAndRemoved()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -276,7 +276,7 @@ public sealed class MpPlayersTests
 	[Theory]
 	[InlineData("Creator")]
 	[InlineData("Referee")]
-	public async Task Kick_OfTheCreatorOrAReferee_SaysThatCannotBeDoneAndKeepsThemSeated(string target)
+	public async Task CreatorOrReferee_RefusedAndSeated(string target)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -293,7 +293,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Kick_OfAUserWhoIsNotInTheMatch_SaysThePlayerIsNotInTheMatch()
+	public async Task OutsideUser_NotInMatch()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -308,7 +308,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Ban_WithoutAName_SaysHowToUseIt()
+	public async Task BanWithoutName_UsageShown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -321,7 +321,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Ban_OfASeatedPlayer_SaysSoTakesThePlayerOutAndListsThemAsBanned()
+	public async Task SeatedPlayer_RemovedAndBanned()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -335,7 +335,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Join_ByAPlayerBannedFromTheMatch_SaysTheyAreBannedAndDoesNotSeatThem()
+	public async Task BannedPlayerJoins_BannedNotSeated()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -349,7 +349,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Ban_ForANameNoAccountHas_SaysTheTargetIsNotInTheMatch()
+	public async Task NameNoAccount_NotInMatch()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -362,7 +362,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Unban_WithoutAName_SaysHowToUseIt()
+	public async Task UnbanWithoutName_UsageShown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -374,7 +374,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Unban_OfABannedPlayer_SaysSoAndRemovesThemFromTheBannedList()
+	public async Task BannedPlayer_SaidAndUnbanned()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -388,7 +388,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Join_ByAnUnbannedPlayer_SeatsThemAgain()
+	public async Task UnbannedPlayerJoins_SeatsAgain()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);
@@ -403,7 +403,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Unban_OfAPlayerWhoIsNotBanned_SaysThePlayerIsNotBanned()
+	public async Task NotBannedPlayer_PlayerNotBanned()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -418,7 +418,7 @@ public sealed class MpPlayersTests
 	[InlineData("!mp team")]
 	[InlineData("!mp team Player")]
 	[InlineData("!mp team Player green")]
-	public async Task Team_WithoutANameAndRedOrBlue_SaysHowToUseItAndChangesNoTeam(string message)
+	public async Task NoNameColour_UsageNoChange(string message)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -435,7 +435,7 @@ public sealed class MpPlayersTests
 	[Theory]
 	[InlineData("red", "Red", GameTeam.Red, "blue")]
 	[InlineData("blue", "Blue", GameTeam.Blue, "red")]
-	public async Task Team_InATeamMatch_SaysSoAndPutsThePlayerOnThatTeam(string input, string label, GameTeam team,
+	public async Task TeamMatch_SaidTeamSet(string input, string label, GameTeam team,
 		string otherTeam)
 	{
 		using var bot = new BotHarness();
@@ -451,7 +451,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task Team_InAHeadToHeadMatch_SaysTheMatchHasNoTeams()
+	public async Task HeadToHead_SaysNoTeams()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -472,7 +472,7 @@ public sealed class MpPlayersTests
 	[InlineData("!mp ban Creator")]
 	[InlineData("!mp unban Creator")]
 	[InlineData("!mp team Player red")]
-	public async Task PlayerCommand_ByAPlainSeatedPlayer_IsRefusedAndChangesNothing(string message)
+	public async Task PlainSeatedPlayer_RefusedNoChange(string message)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, player) = await SetUpAsync(bot);

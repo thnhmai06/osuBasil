@@ -24,7 +24,7 @@ public sealed class RoomCountdownsTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task Start_ForATimer_AnnouncesTheSixtyThirtyTenAndFiveSecondMarksAndThenTheEnd()
+	public async Task TimerStart_AnnouncesMarks()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -50,7 +50,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Start_ForARound_AnnouncesTheMarksAndStartsTheRoundWhenItElapses()
+	public async Task RoundStart_AnnouncesAndStarts()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -70,7 +70,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Start_ForARound_DoesNotStartTheRoundBeforeItElapses()
+	public async Task RoundStart_WaitsForElapse()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -85,7 +85,7 @@ public sealed class RoomCountdownsTests
 	[Theory]
 	[InlineData(false)]
 	[InlineData(true)]
-	public async Task Start_ByAPlainPlayer_IsRefusedAndStartsNothing(bool startsRound)
+	public async Task PlainPlayerStart_Refused(bool startsRound)
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -102,7 +102,7 @@ public sealed class RoomCountdownsTests
 	[InlineData(0)]
 	[InlineData(999)]
 	[InlineData(3_600_001)]
-	public async Task Start_WithALengthOutsideOneSecondToOneHour_IsRefused(int milliseconds)
+	public async Task BadLength_Refused(int milliseconds)
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -116,7 +116,7 @@ public sealed class RoomCountdownsTests
 	[Theory]
 	[InlineData(1_000)]
 	[InlineData(3_600_000)]
-	public async Task Start_WithAnAcceptedBoundaryLength_Starts(int milliseconds)
+	public async Task BoundaryLength_Starts(int milliseconds)
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -128,7 +128,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Start_ForARoundWhileARoundIsInProgress_IsRefused()
+	public async Task RoundAlreadyRunning_Refused()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -141,7 +141,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Start_ForATimerWhileARoundIsInProgress_Starts()
+	public async Task TimerDuringRound_Starts()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -154,7 +154,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Start_InAClosedRoom_IsRefused()
+	public async Task ClosedRoomStart_Refused()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -166,7 +166,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Start_WhileOneRuns_ReplacesItAndOnlyTheNewOneElapses()
+	public async Task StartWhileRunning_Replaces()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -184,7 +184,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Elapse_WhenTheStartingConnectionIsGone_CancelsTheCountdownAndStartsNoRound()
+	public async Task StartConnectionGone_Cancels()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -199,7 +199,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Elapse_WhenTheStartingUserIsNoLongerAllowedToStart_CancelsTheCountdownAndStartsNoRound()
+	public async Task StarterNotAllowed_Cancels()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -214,7 +214,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Elapse_ForARoundWithoutABeatmap_SaysTheMatchCannotStart()
+	public async Task RoundWithoutBeatmap_RefusesStart()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -227,7 +227,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Cancel_ARunningCountdown_AnswersOkAnnouncesItAndNothingElapses()
+	public async Task RunningCountdownCancel_AnswersOk()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -245,7 +245,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Cancel_WithNoCountdown_AnswersNotInProgress()
+	public async Task CancelWithoutCountdown_NotInProgress()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -258,7 +258,7 @@ public sealed class RoomCountdownsTests
 	[Theory]
 	[InlineData(false)]
 	[InlineData(true)]
-	public async Task Cancel_ByAPlainPlayer_IsRefusedWhetherOrNotACountdownRuns(bool running)
+	public async Task PlainPlayerCancel_Refused(bool running)
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -272,7 +272,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task Cancel_InAClosedRoom_AnswersRoomClosed()
+	public async Task ClosedRoomCancel_RoomClosed()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -296,7 +296,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task RoundStartedByHand_CancelsTheCountdownAndSaysSo()
+	public async Task ManualRoundStart_CancelsCountdown()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -309,7 +309,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task RoundAborted_CancelsTheCountdownAndSaysSo()
+	public async Task RoundAbort_CancelsCountdown()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -323,7 +323,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task SettingsOfTheRoundChanged_CancelsACountdownThatStartsARoundAndSaysSo()
+	public async Task RoundSettingsChanged_CancelsStart()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -337,7 +337,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task SettingsOfTheRoundChanged_LeavesATimerRunning()
+	public async Task RoundSettingsChanged_LeavesTimer()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
@@ -350,7 +350,7 @@ public sealed class RoomCountdownsTests
 	}
 
 	[Fact]
-	public async Task SettingsUnrelatedToTheRoundChanged_LeavesTheCountdownRunning()
+	public async Task UnrelatedSettingsChange_LeavesCountdown()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);

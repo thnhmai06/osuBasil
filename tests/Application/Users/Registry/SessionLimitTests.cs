@@ -31,7 +31,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public void MaxPerUser_Defaults_AreStable1Tourney10Irc5Api10()
+	public void DefaultLimits_AreStable()
 	{
 		var max = new ServerSettings().Sessions.MaxPerUser;
 
@@ -45,7 +45,7 @@ public sealed class SessionLimitTests
 	[Theory]
 	[InlineData(0)]
 	[InlineData(-1)]
-	public void MaxPerUser_NotPositive_IsRefused(int value)
+	public void NonPositiveLimit_Refused(int value)
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new ServerSettings.MaxSessionsSettings { Stable = value });
 		Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -58,7 +58,7 @@ public sealed class SessionLimitTests
 	[InlineData(SessionType.Stable, 1)]
 	[InlineData(SessionType.StableTourney, 3)]
 	[InlineData(SessionType.Irc, 2)]
-	public async Task LoginAsync_AtTheLimit_ReturnsTooManySessions(SessionType type, int limit)
+	public async Task AtLimit_ReturnsTooMany(SessionType type, int limit)
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(Limits(1, 3, 2));
@@ -75,7 +75,7 @@ public sealed class SessionLimitTests
 	[InlineData(SessionType.Stable)]
 	[InlineData(SessionType.StableTourney)]
 	[InlineData(SessionType.Irc)]
-	public async Task LoginAsync_BelowTheLimit_Succeeds(SessionType type)
+	public async Task BelowLimit_Succeeds(SessionType type)
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(Limits(2, 2, 2));
@@ -88,7 +88,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_TheLimitIsPerKind_AnotherKindIsUnaffected()
+	public async Task LimitPerKind_OtherKindUnaffected()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("PerKind", "password", Observer);
@@ -102,7 +102,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_TheLimitIsPerUser_AnotherUserIsUnaffected()
+	public async Task LimitPerUser_OtherUserUnaffected()
 	{
 		using var app = new TestApplication();
 		var first = await app.CreateUserAsync("FullUser", "password");
@@ -115,7 +115,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_LimitRaisedAtRunTime_AdmitsTheNextConnection()
+	public async Task RaisedLimit_AdmitsNext()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Raised", "password");
@@ -130,7 +130,7 @@ public sealed class SessionLimitTests
 	[Theory]
 	[InlineData(SessionType.Stable)]
 	[InlineData(SessionType.Irc)]
-	public async Task LoginAsync_AtTheLimitWithAnIdleConnection_ClosesItAndAdmitsTheNewOne(SessionType type)
+	public async Task IdleAtLimit_ClosesAdmitsNew(SessionType type)
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(Limits(1, 1, 1));
@@ -146,7 +146,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_AtTheLimitWithIdleConnections_ClosesOnlyThoseOfItsOwnKind()
+	public async Task IdleConnections_ClosesOwnKind()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("IdleElsewhere", "password");
@@ -161,7 +161,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_ApiAtTheLimit_ReplacesTheConnectionActiveLongestAgo()
+	public async Task ApiAtLimit_ReplacesOldest()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(Limits(api: 2));
@@ -180,7 +180,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_ApiAtTheLimit_EndsTheSessionOfTheReplacedConnection_SoItsTokenIsRefused()
+	public async Task ReplacedApiSession_TokenRefused()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(Limits(api: 1));
@@ -197,7 +197,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_ApiLimitedToOne_NeverRefuses()
+	public async Task ApiLimitOne_NeverRefuses()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(Limits(api: 1));
@@ -211,7 +211,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_ManyLoginsRaceForTheLastSlot_ExactlyOneIsAccepted()
+	public async Task LastSlotRace_OneAccepted()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Racer", "password");
@@ -226,7 +226,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_Refused_CountsARejectedConnectionWithItsKindAndReason()
+	public async Task RefusedLogin_CountedWithReason()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Counted", "password");
@@ -262,7 +262,7 @@ public sealed class SessionLimitTests
 	}
 
 	[Fact]
-	public async Task ConnectBotAsync_AfterALongIdleTime_KeepsTheBotConnections()
+	public async Task BotAfterIdle_KeepsConnections()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();

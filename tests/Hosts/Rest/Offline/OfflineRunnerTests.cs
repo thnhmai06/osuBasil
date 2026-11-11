@@ -29,7 +29,7 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task UsersCreate_StoresAnAdministrator_WhoCanThenSignInToTheServer_AndATakenNameFails()
+	public async Task CreateAdmin_LoginAndRefusal()
 	{
 		var name = "basil-offline-" + Guid.NewGuid().ToString("N");
 		var connection = await fixture.Database.CreateDatabaseAsync(name);

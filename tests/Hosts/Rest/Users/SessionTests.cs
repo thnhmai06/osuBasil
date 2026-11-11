@@ -15,7 +15,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task GetSession_OfOwn_Works_OfAnotherUserIs403_AndAnUnknownIdIs404()
+	public async Task GetOwn_Works()
 	{
 		var (client, id) = await fixture.SignInAsync("SesGet");
 		var other = await fixture.Host.CreateUserAsync("SesGetOther");
@@ -36,7 +36,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Connections_OfOwnSession_ListTheSignInsAndAnotherUserIs403_AndAnUnknownSessionIs404()
+	public async Task ConnectionsOwn_Listed()
 	{
 		var (client, id) = await fixture.SignInAsync("SesTrail");
 		var other = await fixture.Host.CreateUserAsync("SesTrailOther");
@@ -64,7 +64,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Connections_OfAClosedSession_ShowWhyTheConnectionEnded()
+	public async Task ConnectionsClosed_ShowReason()
 	{
 		var (first, id) = await fixture.SignInAsync("SesTrailEnd");
 		using var second = await SecondClientAsync("SesTrailEnd");
@@ -83,7 +83,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task CloseAll_KeepsTheCurrentSessionByDefault_AndClosesItWhenAsked()
+	public async Task CloseAllDefault_KeepsCurrent()
 	{
 		var (first, id) = await fixture.SignInAsync("SesAll");
 		using var second = await SecondClientAsync("SesAll");
@@ -105,7 +105,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task CloseAll_WithABodyThatIsNotValid_IsRefusedAndClosesNothing()
+	public async Task InvalidBody_Refused()
 	{
 		var (first, id) = await fixture.SignInAsync("SesBadBody");
 		using var second = await SecondClientAsync("SesBadBody");
@@ -120,7 +120,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task CloseOne_RevokesThatToken_AndStaffCloseEverySessionOfAnotherUser()
+	public async Task CloseOne_RevokesStaffCloses()
 	{
 		var (first, id) = await fixture.SignInAsync("SesOne");
 		using var second = await SecondClientAsync("SesOne");
@@ -143,7 +143,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BasilBot_CannotHaveItsSessionsClosedOrAnIrcKeyOpened()
+	public async Task BasilBot_NoCloseOpen()
 	{
 		var (staff, _) = await fixture.SignInAsync("SesBotStaff", RestHostFixture.StaffPrivileges);
 		using (staff)
@@ -158,7 +158,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Password_WithIncludeCurrent_ClosesTheCallingSessionToo_AndStaffChangeClosesEverySession()
+	public async Task PasswordIncludeCurrent_ClosesAll()
 	{
 		var (first, id) = await fixture.SignInAsync("SesPwInc");
 		var (staff, _) = await fixture.SignInAsync("SesPwStaff", RestHostFixture.StaffPrivileges);
@@ -183,7 +183,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ProfilesLock_BlocksTheOwnerFromChangingTheNameAndPassword_ButNotStaff()
+	public async Task ProfilesLock_BlocksOwner()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await RestHostFixture.RaiseLimitsAsync(host);
@@ -210,7 +210,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task RoomsLock_BlocksCreatingARoom_ForNonManagers()
+	public async Task RoomsLock_BlocksNonManagers()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await RestHostFixture.RaiseLimitsAsync(host);
@@ -227,7 +227,7 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ListSessions_OfAnUnknownUserWithoutThePrivilege_Is403LikeAnExistingOne()
+	public async Task UnknownNoPrivilege_403()
 	{
 		var (client, _) = await fixture.SignInAsync("SesUnknownUser");
 		var other = await fixture.Host.CreateUserAsync("SesUnknownOther");

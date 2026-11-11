@@ -17,7 +17,7 @@ public sealed class CollectDiagnosticsHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_WithNobodyOnline_ReportsEveryConnectionTypeAsZero()
+	public async Task NobodyOnline_AllTypesZero()
 	{
 		using var app = new TestApplication();
 
@@ -32,7 +32,7 @@ public sealed class CollectDiagnosticsHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_CountsEachConnectionUnderItsType()
+	public async Task ConnectionTypes_CountedEach()
 	{
 		using var app = new TestApplication();
 		await app.LoginAsync(await app.CreateUserAsync("Osu", "password"), SessionType.Stable);
@@ -51,7 +51,7 @@ public sealed class CollectDiagnosticsHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_DoesNotCountTheBotsOwnConnectionsAsClients()
+	public async Task BotOwnConnections_NotClients()
 	{
 		using var app = new TestApplication();
 		await app.Users.EnsureBotAsync(TestContext.Current.CancellationToken);

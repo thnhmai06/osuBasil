@@ -70,7 +70,7 @@ public class OsuVersionExtensionsTests
 
 	[Theory]
 	[MemberData(nameof(ValidBuilds))]
-	public void Parse_DocumentedBuildText_ParsesDateRevisionAndStream(
+	public void DocumentedBuild_ParsesAllFields(
 		string text,
 		string expectedDate,
 		int? expectedRevision,
@@ -85,27 +85,27 @@ public class OsuVersionExtensionsTests
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
-	public void TryParse_MalformedBuildText_ReturnsFalse(string text)
+	public void MalformedBuildText_ReturnsFalse(string text)
 	{
 		Assert.False(OsuVersionExtensions.TryParse(text, out _));
 	}
 
 	[Fact]
-	public void TryParse_NullText_ReturnsFalse()
+	public void NullText_ReturnsFalse()
 	{
 		Assert.False(OsuVersionExtensions.TryParse(null, out _));
 	}
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
-	public void Parse_MalformedBuildText_ThrowsFormatException(string text)
+	public void MalformedBuildText_ThrowsFormat(string text)
 	{
 		Assert.Throws<FormatException>(() => OsuVersionExtensions.Parse(text));
 	}
 
 	[Theory]
 	[MemberData(nameof(CanonicalText))]
-	public void ToString_ParsedBuild_ReturnsCanonicalLowercaseWireText(string text, string expected)
+	public void ParsedBuild_CanonicalLowercase(string text, string expected)
 	{
 		var build = OsuVersionExtensions.Parse(text);
 
@@ -114,7 +114,7 @@ public class OsuVersionExtensionsTests
 
 	[Theory]
 	[MemberData(nameof(ToStringCases))]
-	public void ToString_Build_ReturnsDocumentedWireText(
+	public void BuildText_ReturnsDocumented(
 		string date,
 		int? revision,
 		int stream,

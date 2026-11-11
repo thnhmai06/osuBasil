@@ -6,19 +6,19 @@ namespace Basil.Domain.Tests.Stable;
 public class OsuFlagsExtensionsTests
 {
 	[Fact]
-	public void SignNames_Clean_IsEmpty()
+	public void Clean_NoNames()
 	{
 		Assert.Empty(OsuFlags.Clean.SignNames());
 	}
 
 	[Fact]
-	public void SignNames_SingleFlag_IsItsName()
+	public void SingleFlag_ItsName()
 	{
 		Assert.Equal(["SpeedHackDetected"], OsuFlags.SpeedHackDetected.SignNames());
 	}
 
 	[Fact]
-	public void SignNames_SeveralFlags_AreListedInAscendingBitOrder()
+	public void SeveralFlags_AscendingBitOrder()
 	{
 		var flags = OsuFlags.AqnMenuSample | OsuFlags.FastPress | OsuFlags.IncorrectModValue;
 
@@ -26,13 +26,13 @@ public class OsuFlagsExtensionsTests
 	}
 
 	[Fact]
-	public void SignNames_UndefinedBit_IsIgnored()
+	public void UndefinedBit_Ignored()
 	{
 		Assert.Equal(["ChecksumFailure"], (OsuFlags.ChecksumFailure | (OsuFlags)(1u << 30)).SignNames());
 	}
 
 	[Fact]
-	public void SignNames_EveryDefinedFlag_ListsOneNameEach()
+	public void EveryDefinedFlag_OneNameEach()
 	{
 		var all = Enum.GetValues<OsuFlags>().Aggregate(OsuFlags.Clean, (a, b) => a | b);
 

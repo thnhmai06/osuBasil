@@ -44,7 +44,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_GeneralChannelTheSenderIsIn_PostsTheMessage()
+	public async Task GeneralSenderIn_PostsMessage()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -57,7 +57,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_GeneralChannelTheSenderIsNotIn_RefusesWithNotMember()
+	public async Task GeneralSenderOut_RefusesNotMember()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -68,7 +68,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_SenderWithoutThePermissionToPost_IsDeniedWithTheMissingPermission()
+	public async Task NoPostPermission_DeniedMissing()
 	{
 		using var app = new TestApplication();
 		await OpenChannelAsync(app);
@@ -85,7 +85,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_GeneralChannelThatDoesNotExist_AnswersNotFound()
+	public async Task GeneralMissing_AnswersNotFound()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -96,7 +96,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomThatIsNotOpen_AnswersNotFound()
+	public async Task RoomNotOpen_AnswersNotFound()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -107,7 +107,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_OwnRoomWhenTheSenderIsInNone_AnswersNotFound()
+	public async Task OwnRoomNone_AnswersNotFound()
 	{
 		using var app = new TestApplication();
 		var actor = await RoomFixture.PlayerAsync(app, "Roomless");
@@ -118,7 +118,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_OwnRoomForAPlayerInOne_PostsToTheRoomChannel()
+	public async Task OwnRoomPlayer_PostsRoomChannel()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -130,7 +130,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomById_PostsToThatRoomsChannel()
+	public async Task RoomById_PostsRoomChannel()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -142,7 +142,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_OwnSpectatorsWhenNobodyIsWatching_AnswersNotFound()
+	public async Task NoSpectators_AnswersNotFound()
 	{
 		using var app = new TestApplication();
 		var actor = await RoomFixture.PlayerAsync(app, "Alone");
@@ -153,7 +153,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_PrivateMessageToAnOnlineUser_PostsIntoTheirChannel()
+	public async Task PrivateOnline_PostsIntoChannel()
 	{
 		using var app = new TestApplication();
 		var sender = await app.LoginAsync(await app.CreateUserAsync("Sender", "password"));
@@ -168,7 +168,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_PrivateMessageToAnOfflineUser_AnswersNotFound()
+	public async Task PrivateOffline_AnswersNotFound()
 	{
 		using var app = new TestApplication();
 		var sender = await app.LoginAsync(await app.CreateUserAsync("Sender", "password"));
@@ -180,7 +180,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_Notice_IsPostedAsANotice()
+	public async Task Notice_PostedAsNotice()
 	{
 		using var app = new TestApplication();
 		var actor = await OpenChannelAsync(app);
@@ -195,7 +195,7 @@ public sealed class PostChatMessageHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_SenderIsAStableClient_StillResolvesTheGeneralChannel()
+	public async Task StableSender_ResolvesGeneral()
 	{
 		using var app = new TestApplication();
 		await OpenChannelAsync(app);

@@ -46,7 +46,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task SetCountryAsync_OfOwnProfile_ChangesTheCountry()
+	public async Task SetCountryOwn_Changed()
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
@@ -60,7 +60,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task SetCountryAsync_WithAValueNoCountryHas_IsRefused()
+	public async Task SetCountryUnknown_Refused()
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
@@ -73,7 +73,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task RenameAsync_OfOwnProfile_GivesTheNewName()
+	public async Task RenameOwn_NewName()
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
@@ -87,7 +87,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task RenameAsync_ToANameAnotherAccountHas_IsRefused()
+	public async Task RenameTaken_Refused()
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
@@ -102,7 +102,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task RenameAsync_ToAnInvalidName_IsRefused()
+	public async Task RenameInvalid_Refused()
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
@@ -115,7 +115,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task SetAvatarAsync_ThenRemoveAvatarAsync_StoresThenRemovesTheImage()
+	public async Task AvatarRemoved_ImageGone()
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
@@ -130,7 +130,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task SetAvatarAsync_APngPicture_IsStored()
+	public async Task AvatarPng_Stored()
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
@@ -145,7 +145,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task SetAvatarAsync_AJpegPicture_IsStored()
+	public async Task AvatarJpeg_Stored()
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
@@ -161,7 +161,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task SetAvatarAsync_ContentThatIsNotAPicture_IsRefusedAndLeavesThePreviousAvatar()
+	public async Task AvatarNotPicture_Refused()
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
@@ -182,7 +182,7 @@ public sealed class ScopedUserProfileTests
 	[Theory]
 	[InlineData(0, 8)]
 	[InlineData(8, 0)]
-	public async Task SetAvatarAsync_PictureWithANonPositiveSide_IsRefusedAsInvalidImage(int width, int height)
+	public async Task AvatarNonPositive_InvalidImage(int width, int height)
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
@@ -200,7 +200,7 @@ public sealed class ScopedUserProfileTests
 	[Theory]
 	[InlineData(9, 8)]
 	[InlineData(8, 9)]
-	public async Task SetAvatarAsync_PictureOverThePixelLimit_IsRefusedAndStoresNothing(int width, int height)
+	public async Task AvatarOverPixels_Refused(int width, int height)
 	{
 		var (app, avatars) = await StartAsync(uploads: new ServerSettings.UploadSettings { AvatarMaxSide = 8 });
 		using var _ = app;
@@ -216,7 +216,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task SetAvatarAsync_ContentOverTheByteLimit_IsRefusedWithoutReadingItAll()
+	public async Task AvatarOverBytes_Refused()
 	{
 		var (app, avatars) = await StartAsync(uploads: new ServerSettings.UploadSettings { AvatarMaxSize = 64 });
 		using var _ = app;
@@ -232,7 +232,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task EveryChange_OfAnotherAccount_ByAUserWithoutUserManage_NamesTheMissingPermission()
+	public async Task OtherNoManage_Named()
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;
@@ -250,7 +250,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task EveryChange_OfAnotherAccount_ByStaffOfEqualRank_IsRefused()
+	public async Task OtherEqualRank_Refused()
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
@@ -263,7 +263,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task RenameAsync_ByStaffOfHigherRank_RenamesTheAccount()
+	public async Task RenameHigherRank_Renamed()
 	{
 		var (app, _) = await StartAsync();
 		using var _ = app;
@@ -277,7 +277,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task EveryChange_WhileProfilesAreLocked_IsRefusedForAUserWhoDoesNotManageAccounts()
+	public async Task LockedProfiles_Refused()
 	{
 		var (app, avatars) = await StartAsync(Locks.Profiles);
 		using var _ = app;
@@ -294,7 +294,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task EveryChange_WhileProfilesAreLocked_IsAllowedForAUserWhoManagesAccounts()
+	public async Task LockedProfiles_ManagerAllowed()
 	{
 		var (app, _) = await StartAsync(Locks.Profiles);
 		using var _ = app;
@@ -307,7 +307,7 @@ public sealed class ScopedUserProfileTests
 	}
 
 	[Fact]
-	public async Task BasilBot_CanBeRenamedAndGivenAnAvatarLikeAnyUser()
+	public async Task BasilBot_RenamedAndAvatar()
 	{
 		var (app, avatars) = await StartAsync();
 		using var _ = app;

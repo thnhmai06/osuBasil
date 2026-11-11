@@ -15,7 +15,7 @@ public sealed class ByteSizeTests
 	[InlineData("0", 0)]
 	[InlineData("", 0)]
 	[InlineData(null, 0)]
-	public void ASizeIsReadInBytes(string? text, long bytes)
+	public void Size_ReadInBytes(string? text, long bytes)
 	{
 		Assert.Equal(bytes, ByteSize.Parse(text, "Setting"));
 	}
@@ -25,7 +25,7 @@ public sealed class ByteSizeTests
 	[InlineData("12TB")]
 	[InlineData("ten")]
 	[InlineData("-5MB")]
-	public void ATextThatIsNotASizeIsRefusedWithTheNameOfTheSetting(string text)
+	public void NotSize_RefusedNamingSetting(string text)
 	{
 		var exception = Assert.Throws<FormatException>(() => ByteSize.Parse(text, "Logging:File:Rolling:MaxSize"));
 

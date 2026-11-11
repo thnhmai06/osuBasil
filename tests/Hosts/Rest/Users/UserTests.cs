@@ -12,7 +12,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	[InlineData("/v1/users?limit=101")]
 	[InlineData("/v1/users?limit=0")]
 	[InlineData("/v1/users?offset=-1")]
-	public async Task List_WithAPageOutOfBounds_Answers422(string path)
+	public async Task PageBeyondEnd_Answers422(string path)
 	{
 		var (client, _) = await fixture.SignInAsync("Pg" + Interlocked.Increment(ref _pages));
 		using (client)
@@ -24,7 +24,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task List_WithTheLargestPage_Answers200WithPagingMeta()
+	public async Task LargestPage_Answers200Paged()
 	{
 		var (client, _) = await fixture.SignInAsync("PageMax");
 		using (client)
@@ -38,7 +38,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Search_ListsADeletedAccountOnlyForThoseWhoMayViewDeletedAccounts()
+	public async Task DeletedAccount_OnlyForViewers()
 	{
 		var (staff, _) = await fixture.SignInAsync("SearchDelStaff", RestHostFixture.StaffPrivileges);
 		var (plain, _) = await fixture.SignInAsync("SearchDelPlain");
@@ -57,7 +57,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Search_WithoutAToken_Answers401()
+	public async Task SearchWithoutToken_Answers401()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -67,7 +67,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Get_UnknownUser_Answers404()
+	public async Task UnknownUser_Answers404()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -77,7 +77,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_OwnName_Changes()
+	public async Task OwnName_Changes()
 	{
 		var (client, id) = await fixture.SignInAsync("PatchSelf");
 		using (client)
@@ -91,7 +91,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_AnotherUserWithoutPermission_Answers403WithTheMissingMask()
+	public async Task OtherUserDenied_Answers403Mask()
 	{
 		var (client, _) = await fixture.SignInAsync("PatchOther");
 		var victim = await fixture.Host.CreateUserAsync("PatchVictim");
@@ -107,7 +107,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_BasilBotAsStaff_Answers409SystemAccount()
+	public async Task BotAsStaff_Answers409()
 	{
 		var (client, _) = await fixture.SignInAsync("PatchBotStaff", RestHostFixture.StaffPrivileges);
 		using (client)
@@ -120,7 +120,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Patch_StaffRenamesAnotherUser_Succeeds()
+	public async Task StaffRenamesOther_Succeeds()
 	{
 		var (client, _) = await fixture.SignInAsync("PatchStaff", RestHostFixture.StaffPrivileges);
 		var target = await fixture.Host.CreateUserAsync("PatchTarget");
@@ -134,7 +134,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Me_RedirectsWith307ToTheCallersOwnRoute_KeepingTheRest()
+	public async Task MeAlias_Redirects307Kept()
 	{
 		var (client, id) = await fixture.SignInAsync("MeRedirect");
 		using (client)
@@ -147,7 +147,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SessionsAlias_RedirectsWith307()
+	public async Task SessionsAlias_Redirects307()
 	{
 		var (client, id) = await fixture.SignInAsync("SessionsAlias");
 		using (client)
@@ -160,7 +160,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Alias_WithoutAToken_Answers401()
+	public async Task AliasWithoutToken_Answers401()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 
@@ -170,7 +170,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Password_ChangeOfOwn_ClosesTheOtherTokensButNotTheCurrent()
+	public async Task OwnPasswordChange_ClosesOtherTokens()
 	{
 		var (first, id) = await fixture.SignInAsync("PwOwn");
 		using var second = new RestClient(fixture.Host.Url, fixture.Host.Domain);
@@ -189,7 +189,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Password_WithTheWrongCurrent_Answers403WrongPassword()
+	public async Task WrongCurrentPassword_Answers403()
 	{
 		var (client, id) = await fixture.SignInAsync("PwWrong");
 		using (client)
@@ -203,7 +203,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task IrcKey_OfOwn_IsCreatedOnce_AndOfAnotherUserIsRefused()
+	public async Task OwnIrcKey_CreatedOthersRefused()
 	{
 		var (client, id) = await fixture.SignInAsync("IrcKeyOwner");
 		var other = await fixture.Host.CreateUserAsync("IrcKeyOther");
@@ -221,7 +221,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task IrcKey_WithoutABody_Answers422AJsonBodyIsRequired()
+	public async Task IrcKeyEmpty_Answers422Json()
 	{
 		var (client, id) = await fixture.SignInAsync("IrcKeyNoBody");
 		using (client)
@@ -234,7 +234,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Sessions_ListOfAnotherUserWithoutPermission_Answers403_AndOwnIsListed()
+	public async Task OtherSessions_ForbiddenOwnListed()
 	{
 		var (client, id) = await fixture.SignInAsync("SessList");
 		var other = await fixture.Host.CreateUserAsync("SessListOther");
@@ -251,7 +251,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Sessions_UnknownSessionId_Answers404()
+	public async Task UnknownSession_Answers404()
 	{
 		var (client, id) = await fixture.SignInAsync("SessUnknown");
 		using (client)
@@ -263,7 +263,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Silence_ImposedByStaff_ShowsOnTheUser_ThenLifted()
+	public async Task StaffSilence_ShownThenLifted()
 	{
 		var (staff, _) = await fixture.SignInAsync("SilenceStaff", RestHostFixture.StaffPrivileges);
 		var target = await fixture.Host.CreateUserAsync("SilenceTarget");
@@ -284,7 +284,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Silence_ByANonModerator_Answers403()
+	public async Task NonModeratorSilence_Answers403()
 	{
 		var (client, _) = await fixture.SignInAsync("SilenceNobody");
 		var target = await fixture.Host.CreateUserAsync("SilenceVictim");
@@ -298,7 +298,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Friends_AddedAndListed_OfOwnAccountOnly()
+	public async Task Friends_OwnAccountOnly()
 	{
 		var (client, id) = await fixture.SignInAsync("FriendOwner");
 		var friend = await fixture.Host.CreateUserAsync("FriendOther");
@@ -316,7 +316,7 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Create_ByStaff_Answers201_AndByAnotherUserIsRefused()
+	public async Task CreateByStaff_SucceedsOthersRefused()
 	{
 		var (staff, _) = await fixture.SignInAsync("CreateStaff", RestHostFixture.StaffPrivileges);
 		var (plain, _) = await fixture.SignInAsync("CreatePlain");

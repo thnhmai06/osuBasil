@@ -29,14 +29,14 @@ public sealed class RoomSettingsChangeTests
 
 	[Theory]
 	[MemberData(nameof(RoundChanges))]
-	public void AltersTheRound_ForAChangeOfWhatTheRoundPlays_IsTrue(RoomSettingsChange change)
+	public void RoundPlayChange_True(RoomSettingsChange change)
 	{
 		Assert.True(change.AltersTheRound);
 	}
 
 	[Theory]
 	[MemberData(nameof(OtherChanges))]
-	public void AltersTheRound_ForAnyOtherChange_IsFalse(RoomSettingsChange change)
+	public void OtherChange_False(RoomSettingsChange change)
 	{
 		Assert.False(change.AltersTheRound);
 	}

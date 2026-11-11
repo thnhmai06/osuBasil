@@ -10,7 +10,7 @@ namespace Basil.Application.Chat.Tests.Registry;
 public sealed class PmChannelsTests
 {
 	[Fact]
-	public async Task Of_WhenTheConnectionOpenedAndItsHandlerHasNotRun_AddsTheConnection()
+	public async Task OpenedNotRun_AddsConnection()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("PmOwner", "password");
@@ -23,7 +23,7 @@ public sealed class PmChannelsTests
 	}
 
 	[Fact]
-	public async Task Of_ForEveryOpenNonTourneyConnection_AddsAllOfThem()
+	public async Task OpenNonTourney_AddsAll()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("ManyClients", "password");
@@ -37,7 +37,7 @@ public sealed class PmChannelsTests
 	}
 
 	[Fact]
-	public async Task Of_ForATourneyConnection_DoesNotAddIt()
+	public async Task TourneyConnection_NotAdded()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Observer", "password",
@@ -50,7 +50,7 @@ public sealed class PmChannelsTests
 	}
 
 	[Fact]
-	public async Task Of_CalledAgain_ReturnsTheSameChannel()
+	public async Task CalledAgain_ReturnsSameChannel()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("SameOwner", "password");
@@ -64,7 +64,7 @@ public sealed class PmChannelsTests
 	}
 
 	[Fact]
-	public async Task Of_ForAnOwnerWhoWasNeverOnline_RegistersNothing()
+	public async Task NeverOnlineOwner_RegistersNothing()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("OfflineOwner", "password");
@@ -77,7 +77,7 @@ public sealed class PmChannelsTests
 	}
 
 	[Fact]
-	public async Task Of_ForAnOwnerWhoWentOffline_ForgetsTheChannel()
+	public async Task OfflineOwner_ForgetsChannel()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("LeftOwner", "password");

@@ -17,13 +17,13 @@ public sealed class ClientAddressTests
 	}
 
 	[Fact]
-	public void Resolve_WithoutHeaders_IsTheSocketAddress()
+	public void NoHeaders_SocketAddress()
 	{
 		Assert.Equal(IPAddress.Parse("10.0.0.1"), ClientAddress.Resolve(Request()));
 	}
 
 	[Fact]
-	public void Resolve_CloudflareHeader_WinsOverTheOthers()
+	public void CloudflareHeader_WinsOverOthers()
 	{
 		var context = Request(("CF-Connecting-IP", "1.1.1.1"), ("X-Forwarded-For", "2.2.2.2"),
 			("X-Real-IP", "3.3.3.3"));
@@ -32,7 +32,7 @@ public sealed class ClientAddressTests
 	}
 
 	[Fact]
-	public void Resolve_ForwardedFor_UsesTheFirstEntry_BeforeRealIp()
+	public void ForwardedFor_FirstEntry()
 	{
 		var context = Request(("X-Forwarded-For", "2.2.2.2, 9.9.9.9"), ("X-Real-IP", "3.3.3.3"));
 
@@ -40,13 +40,13 @@ public sealed class ClientAddressTests
 	}
 
 	[Fact]
-	public void Resolve_RealIp_IsUsedWhenNothingElseIsGiven()
+	public void RealIp_OnlyFallback()
 	{
 		Assert.Equal(IPAddress.Parse("3.3.3.3"), ClientAddress.Resolve(Request(("X-Real-IP", "3.3.3.3"))));
 	}
 
 	[Fact]
-	public void Resolve_GarbageHeader_FallsThroughToTheNextSource()
+	public void GarbageHeader_FallsThrough()
 	{
 		var context = Request(("CF-Connecting-IP", "not-an-ip"), ("X-Real-IP", "3.3.3.3"));
 
@@ -54,7 +54,7 @@ public sealed class ClientAddressTests
 	}
 
 	[Fact]
-	public void ResolveCountry_CloudflareHeader_WinsOverCountryCode()
+	public void CloudflareCountry_WinsOverCode()
 	{
 		var context = Request(("CF-IPCountry", "VN"), ("X-Country-Code", "US"));
 
@@ -62,13 +62,13 @@ public sealed class ClientAddressTests
 	}
 
 	[Fact]
-	public void ResolveCountry_CountryCodeHeader_IsUsedWithoutCloudflare()
+	public void CountryCodeHeader_UsedNoCloudflare()
 	{
 		Assert.Equal(Country.Us, ClientAddress.ResolveCountry(Request(("X-Country-Code", "us"))));
 	}
 
 	[Fact]
-	public void ResolveCountry_NoHeader_IsUnknown()
+	public void NoHeader_IsUnknown()
 	{
 		Assert.Null(ClientAddress.ResolveCountry(Request()));
 	}

@@ -12,7 +12,7 @@ namespace Basil.Application.Multiplayer.Tests.Objects.Rooms;
 public sealed class RoomConcurrencyTests
 {
 	[Fact]
-	public async Task JoinAsync_TwoPlayersRacingForTheLastSlot_SeatsOneAndRefusesTheOther()
+	public async Task LastSlotRace_SeatsOne()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -31,7 +31,7 @@ public sealed class RoomConcurrencyTests
 	}
 
 	[Fact]
-	public async Task SetHostAsync_TwoCallersRacing_LeavesOneSeatedHost()
+	public async Task HostRace_LeavesOneHost()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -47,7 +47,7 @@ public sealed class RoomConcurrencyTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_OnePlayerRacingForTwoRooms_IsSeatedInExactlyOne()
+	public async Task RacingTwoRooms_SeatedOnce()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -70,7 +70,7 @@ public sealed class RoomConcurrencyTests
 	}
 
 	[Fact]
-	public async Task StartAsync_TwoCallersRacing_StartsOneRound()
+	public async Task StartRace_StartsOneRound()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -87,7 +87,7 @@ public sealed class RoomConcurrencyTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_RacingTheRoomsClosing_LeavesNobodySeatedInAClosedRoom()
+	public async Task JoinDuringClose_SeatsNobody()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

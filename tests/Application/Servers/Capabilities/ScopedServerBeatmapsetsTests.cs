@@ -28,7 +28,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_WhenUnlocked_StoresTheSet()
+	public async Task WhenUnlocked_StoresTheSet()
 	{
 		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;
@@ -42,7 +42,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_ArchiveLargerThanTheConfiguredLimit_IsTooLargeAndStoresNothing()
+	public async Task OverLimitArchive_TooLargeUnstored()
 	{
 		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;
@@ -59,7 +59,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_ArchiveExactlyAtTheConfiguredLimit_StoresTheSet()
+	public async Task ArchiveAtLimit_StoresSet()
 	{
 		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;
@@ -74,7 +74,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_WithoutTheUploadPermission_NamesIt()
+	public async Task NoUploadPermission_NamesIt()
 	{
 		var (app, world, uploads) = await SetupAsync(
 			UserPrivilegesExtensions.Default & ~UserPrivileges.Player, Locks.None);
@@ -90,7 +90,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_WhileLocked_RefusesAUserWithoutBeatmapsetManage()
+	public async Task Locked_RefusesNonManager()
 	{
 		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.Beatmapsets);
 		using var _ = app;
@@ -104,7 +104,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_WhileLocked_LetsABeatmapsetManagerUpload()
+	public async Task Locked_ManagerUploads()
 	{
 		var (app, world, uploads) = await SetupAsync(
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament, Locks.Beatmapsets);
@@ -118,7 +118,7 @@ public sealed class ScopedServerBeatmapsetsTests
 	}
 
 	[Fact]
-	public async Task UploadAsync_OfASetTheServerHas_IsRejectedAndTheStoredSetStays()
+	public async Task ExistingSet_RejectedSetStays()
 	{
 		var (app, world, uploads) = await SetupAsync(UserPrivilegesExtensions.Default, Locks.None);
 		using var _ = app;

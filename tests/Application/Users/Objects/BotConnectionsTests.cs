@@ -21,7 +21,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task ConnectBotAsync_OpensExactlyOneStableAndOneIrcConnection()
+	public async Task ConnectBot_StableAndIrc()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;
@@ -34,7 +34,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task ConnectBotAsync_BringsTheBotOnlineOnce()
+	public async Task ConnectBot_BringsOnlineOnce()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;
@@ -44,7 +44,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task ConnectBotAsync_CalledAgain_OpensNothingNew()
+	public async Task ConnectBotAgain_NothingNew()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;
@@ -58,7 +58,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task ConnectBotAsync_OneConnectionWasClosed_OpensOnlyTheMissingOne()
+	public async Task OneClosed_OpensMissingOnly()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;
@@ -75,7 +75,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task ConnectBotAsync_RecordIsNotStored_ReturnsNull()
+	public async Task UnstoredRecord_ReturnsNull()
 	{
 		using var app = new TestApplication();
 
@@ -83,7 +83,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task BotConnections_TokensCannotBeFound()
+	public async Task BotTokens_NotFound()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;
@@ -92,7 +92,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task Bot_IsNotAnOsuGameClient()
+	public async Task Bot_NotGameClient()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;
@@ -103,7 +103,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task Bot_StaysOnlineAfterAnHourWithoutActivity()
+	public async Task BotIdleHour_StaysOnline()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;
@@ -114,7 +114,7 @@ public sealed class BotConnectionsTests
 	}
 
 	[Fact]
-	public async Task CloseIdle_BotAndAnIdleClient_ClosesOnlyTheClient()
+	public async Task BotAndIdle_OnlyClientClosed()
 	{
 		var (app, bot) = await StartAsync();
 		using var _ = app;

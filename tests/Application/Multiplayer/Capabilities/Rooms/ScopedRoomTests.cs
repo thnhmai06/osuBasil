@@ -13,7 +13,7 @@ namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 public sealed class ScopedRoomTests
 {
 	[Fact]
-	public async Task CloseAsync_EvictsThePlayersEndsTheRoundClosesTheChannelAndForgetsTheRoom()
+	public async Task Close_ClearsEverything()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -36,7 +36,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_ForAClosedRoom_DoesNothing()
+	public async Task ClosedRoomClose_DoesNothing()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -50,7 +50,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task JoinAsync_ForAClosedRoom_ReturnsRoomClosed()
+	public async Task JoinClosedRoom_RoomClosed()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -63,7 +63,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task LeaveAsync_ForAClosedRoom_ReturnsRoomClosed()
+	public async Task LeaveClosedRoom_RoomClosed()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -75,7 +75,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task ScopeTo_ForTheCreator_GivesThemTheCreatorRole()
+	public async Task Creator_GetsCreatorRole()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -86,7 +86,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task ScopeTo_ForAReferee_GivesThemTheRefereeRole()
+	public async Task Referee_GetsRefereeRole()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -98,7 +98,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task ScopeTo_ForTheHost_GivesThemTheHostRoleButNoRefereeRole()
+	public async Task Host_GetsHostRole()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -111,7 +111,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task ScopeTo_ForASeatedPlayer_GivesThemThePlayerRole()
+	public async Task SeatedPlayer_GetsPlayerRole()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -122,7 +122,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task ScopeTo_ForAnOutsider_GivesThemNoRoleAndNoRight()
+	public async Task Outsider_GetsNoRights()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -134,7 +134,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task ScopeTo_ForACreatorWhoseRoomJoinIsSuspended_GivesThemNoRight()
+	public async Task SuspendedCreator_GetsNoRight()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -146,7 +146,7 @@ public sealed class ScopedRoomTests
 	}
 
 	[Fact]
-	public async Task ScopeTo_ForAUserWhoManagesEveryRoom_GivesThemEveryRight()
+	public async Task EveryRoomManager_GetsEveryRight()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

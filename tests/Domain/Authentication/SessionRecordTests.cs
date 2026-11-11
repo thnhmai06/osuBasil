@@ -12,7 +12,7 @@ public class SessionRecordTests
 	private static readonly DateTimeOffset Start = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 
 	[Fact]
-	public void Equals_SameId_IsTrueWhateverTheDataIs()
+	public void SameId_TrueWhateverData()
 	{
 		var id = 7L;
 		var first = Make(id);
@@ -23,19 +23,19 @@ public class SessionRecordTests
 	}
 
 	[Fact]
-	public void Equals_DifferentId_IsFalseWhateverTheDataIs()
+	public void DifferentId_FalseWhateverData()
 	{
 		Assert.NotEqual(Make(1), Make(2));
 	}
 
 	[Fact]
-	public void New_NonPositiveId_Throws()
+	public void NonPositiveId_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(0));
 	}
 
 	[Fact]
-	public void New_UndefinedType_Throws()
+	public void UndefinedType_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(type: 0));
 	}
@@ -43,7 +43,7 @@ public class SessionRecordTests
 	[Theory]
 	[InlineData(SessionType.Stable)]
 	[InlineData(SessionType.StableTourney)]
-	public void New_OsuKindWithoutClient_Throws(SessionType type)
+	public void OsuNoClient_Throws(SessionType type)
 	{
 		Assert.Throws<ArgumentException>(() => Make(type: type, client: null));
 	}
@@ -51,7 +51,7 @@ public class SessionRecordTests
 	[Theory]
 	[InlineData(SessionType.Stable)]
 	[InlineData(SessionType.StableTourney)]
-	public void New_OsuKindWithClient_IsAccepted(SessionType type)
+	public void OsuWithClient_Accepted(SessionType type)
 	{
 		Assert.Equal(type, Make(type: type, client: Client()).Value.Type);
 	}
@@ -59,19 +59,19 @@ public class SessionRecordTests
 	[Theory]
 	[InlineData(SessionType.Irc)]
 	[InlineData(SessionType.Api)]
-	public void New_NonOsuKindWithoutClient_IsAccepted(SessionType type)
+	public void NonOsu_NoClientOk(SessionType type)
 	{
 		Assert.Equal(type, Make(type: type, client: null).Value.Type);
 	}
 
 	[Fact]
-	public void New_ActiveBeforeItStarted_Throws()
+	public void ActiveBeforeStart_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => Make(lastActiveAt: Start.AddTicks(-1)));
 	}
 
 	[Fact]
-	public void New_ActiveExactlyWhenItStarted_IsAccepted()
+	public void ActiveAtStart_Accepted()
 	{
 		Assert.Equal(Start, Make(lastActiveAt: Start).Value.LastActiveAt);
 	}

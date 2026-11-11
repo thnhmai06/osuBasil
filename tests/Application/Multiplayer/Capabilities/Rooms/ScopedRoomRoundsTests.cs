@@ -14,7 +14,7 @@ namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 public sealed class ScopedRoomRoundsTests
 {
 	[Fact]
-	public async Task StartAsync_WithoutABeatmap_IsRefused()
+	public async Task NoBeatmapStart_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -26,7 +26,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task StartAsync_WhileARoundIsInProgress_IsRefused()
+	public async Task ActiveRoundStart_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -40,7 +40,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task StartAsync_StartsTheFirstRoundAndMovesThePlayersToPlaying()
+	public async Task FirstRoundStart_MovesToPlaying()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -57,7 +57,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task StartAsync_AfterARoundEnded_StartsTheNextRound()
+	public async Task AfterRoundEnd_StartsNext()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -72,7 +72,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task MarkLoadedAsync_ForTheLastPlayer_AnnouncesThatEverybodyLoaded()
+	public async Task LastPlayerLoaded_AnnouncesAll()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -88,7 +88,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task MarkLoadedAsync_ForSomebodyWhoIsNotPlaying_IsRefused()
+	public async Task NonPlayerLoaded_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -99,7 +99,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task SkipAsync_ForTheLastPlayer_AnnouncesThatEverybodySkipped()
+	public async Task LastPlayerSkipped_AnnouncesAll()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -115,7 +115,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task FailAsync_ForAPlayer_AnnouncesTheFailure()
+	public async Task PlayerFailure_Announced()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -129,7 +129,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task CompleteAsync_ForAPlayer_AnnouncesTheCompletion()
+	public async Task PlayerCompletion_Announced()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -144,7 +144,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task CompleteAsync_ForSomebodyWhoIsNotPlaying_IsRefused()
+	public async Task NonPlayerComplete_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -155,7 +155,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task CompleteAsync_ForTheLastPlayer_EndsTheRound()
+	public async Task LastPlayerComplete_EndsRound()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -171,7 +171,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task AbortAsync_WithoutARound_IsRefused()
+	public async Task NoRoundAbort_Refused()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -182,7 +182,7 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task AbortAsync_EndsTheRoundAndSetsThePlayersBackToNotReady()
+	public async Task Abort_EndsAndResets()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);

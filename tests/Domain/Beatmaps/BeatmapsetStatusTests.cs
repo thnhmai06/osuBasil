@@ -29,7 +29,7 @@ public class BeatmapStatusTests
 	}
 
 	[Fact]
-	public void OsuApi_UnmappedStatus_Throws()
+	public void UnmappedStatus_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => BeatmapsetStatus.NotSubmitted.ToOsuApi());
 		Assert.Throws<ArgumentOutOfRangeException>(() => BeatmapsetStatus.UpdateAvailable.ToOsuApi());

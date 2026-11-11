@@ -15,13 +15,13 @@ public class PacketWriterParityPacketsTests
 	}
 
 	[Fact]
-	public void Build_OnePacket_ReturnsItsBytes()
+	public void OnePacket_ReturnsBytes()
 	{
 		Assert.Equal(Hex("08000000000000"), PacketWriter.Build(w => w.Pong()));
 	}
 
 	[Fact]
-	public void Build_TwoPackets_ReturnsThemInOrder()
+	public void TwoPackets_ReturnsInOrder()
 	{
 		Assert.Equal(Hex("08000000000000" + "13000000000000"), PacketWriter.Build(w =>
 		{
@@ -49,13 +49,13 @@ public class PacketWriterParityPacketsTests
 	}
 
 	[Fact]
-	public void BeatmapInfoReply_NoMaps_WritesZeroCount()
+	public void NoMaps_WritesZeroCount()
 	{
 		Assert.Equal(Hex("45000004000000" + "00000000"), PacketWriter.Build(w => w.BeatmapInfoReply([])));
 	}
 
 	[Fact]
-	public void BeatmapInfoReply_OneMap_WritesFieldsInOrder()
+	public void OneMap_FieldsInOrder()
 	{
 		// i32 count, then i16 index, i32 map id, i32 set id, i32 thread id, u8 status, i8 osu, catch, taiko, mania, string md5
 		var map = new BeatmapInfoResponse(1, 2, 3, 4, 5, 6, 7, 8, -1, "ab");

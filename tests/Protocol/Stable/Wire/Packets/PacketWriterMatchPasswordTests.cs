@@ -47,7 +47,7 @@ public class PacketWriterMatchPasswordTests
 	}
 
 	[Fact]
-	public void UpdateMatch_RoomWithEmptyPassword_WritesASingleExistenceByte()
+	public void EmptyPassword_WritesExistenceByte()
 	{
 		// packet id 26 (UpdateMatch, u16 LE), padding 0, payload length 0xd4 — the golden match
 		// payload of ServerPacketWriterTests.UpdateMatch_SendPasswordTrue (0xdb) minus the seven
@@ -59,7 +59,7 @@ public class PacketWriterMatchPasswordTests
 	}
 
 	[Fact]
-	public void NewMatch_SendPasswordFalse_WritesTheSameBlankPasswordBytesAsUpdateMatch()
+	public void SendPasswordFalse_SameBlankBytes()
 	{
 		var room = Room() with { Password = "secret" };
 
@@ -73,7 +73,7 @@ public class PacketWriterMatchPasswordTests
 	}
 
 	[Fact]
-	public void NewMatch_DefaultSendPassword_IsByteIdenticalToSendingThePassword()
+	public void DefaultSendPassword_ByteIdentical()
 	{
 		var room = Room() with { Password = "secret" };
 

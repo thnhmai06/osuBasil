@@ -18,7 +18,7 @@ public sealed partial class ScopedThinnessTests
 	private static readonly HashSet<string> NotThinnedYet = new(StringComparer.Ordinal);
 
 	[Fact]
-	public void ScopedTypes_DeclareNoNestedTypes()
+	public void ScopedTypes_NoNestedTypes()
 	{
 		var offenders = ScopedFiles().SelectMany(path => NestedTypes(File.ReadAllText(path))
 			.Select(line => $"{Path.GetFileName(path)}: {line.Trim()}")).ToList();
@@ -27,7 +27,7 @@ public sealed partial class ScopedThinnessTests
 	}
 
 	[Fact]
-	public void ScopedMethods_StayWithinTheBodyLimit()
+	public void ScopedMethods_WithinBodyLimit()
 	{
 		var offenders = ScopedFiles().Where(path => !NotThinnedYet.Contains(Path.GetFileName(path)))
 			.SelectMany(path => LongBodies(File.ReadAllText(path)).Select(body => $"{Path.GetFileName(path)}: {body}"))
@@ -39,7 +39,7 @@ public sealed partial class ScopedThinnessTests
 	}
 
 	[Fact]
-	public void TheListOfFilesNotThinnedYet_HoldsOnlyFilesThatAreStillTooLong()
+	public void NotThinnedList_OnlyTooLong()
 	{
 		var tooLong = ScopedFiles().Where(path => LongBodies(File.ReadAllText(path)).Any())
 			.Select(Path.GetFileName).ToHashSet(StringComparer.Ordinal);
@@ -57,7 +57,7 @@ public sealed partial class ScopedThinnessTests
 	}
 
 	[Fact]
-	public void NestedTypes_FindsATypeDeclaredInsideAType()
+	public void NestedType_Found()
 	{
 		const string source =
 			"namespace A;\npublic readonly struct ScopedX\n{\n\tprivate sealed class Helper\n\t{\n\t}\n}\n";
@@ -66,14 +66,14 @@ public sealed partial class ScopedThinnessTests
 	}
 
 	[Fact]
-	public void NestedTypes_IgnoresATypeAtTheTopOfTheFile()
+	public void TopLevelType_Ignored()
 	{
 		Assert.Empty(NestedTypes(
 			"namespace A;\npublic readonly struct ScopedX\n{\n\tpublic int M()\n\t{\n\t\treturn 1;\n\t}\n}\n"));
 	}
 
 	[Fact]
-	public void LongBodies_FindsAMethodOverTheLimit()
+	public void OverlongMethod_Found()
 	{
 		var body = string.Concat(Enumerable.Repeat("\t\tx++;\n", MaxBodyLines + 1));
 		var source = $"namespace A;\npublic struct ScopedX\n{{\n\tpublic void Long()\n\t{{\n{body}\t}}\n}}\n";
@@ -82,7 +82,7 @@ public sealed partial class ScopedThinnessTests
 	}
 
 	[Fact]
-	public void LongBodies_AcceptsAMethodAtTheLimit_AndSkipsBlankAndCommentLines()
+	public void MethodAtLimit_AcceptedSkipsBlank()
 	{
 		var body = string.Concat(Enumerable.Repeat("\t\tx++;\n", MaxBodyLines)) + "\n\t\t// note\n";
 		var source = $"namespace A;\npublic struct ScopedX\n{{\n\tpublic void Ok()\n\t{{\n{body}\t}}\n}}\n";

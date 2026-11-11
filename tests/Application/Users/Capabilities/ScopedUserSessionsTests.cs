@@ -36,7 +36,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnOnlineApiSession_ClosesItAndTheTokenOpensNothingAgain()
+	public async Task OnlineApi_TokenOpensNothing()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Closer", "password");
@@ -52,7 +52,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnOfflineApiSession_RevokesItsToken()
+	public async Task OfflineApi_RevokesToken()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("OfflineCloser", "password");
@@ -71,7 +71,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnOnlineOsuSession_ClosesItAndTheClientSignsInAgainWithItsPassword()
+	public async Task OnlineOsu_SignsInAgain()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("DeviceUser", "password");
@@ -86,7 +86,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnOnlineSessionNotYetStored_StillClosesIt()
+	public async Task OnlineNotStored_StillCloses()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("UnstoredUser", "password");
@@ -101,7 +101,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnIrcKey_StopsThatKeyAndLeavesTheOthersWorking()
+	public async Task IrcKey_OthersWork()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("IrcUser", "password");
@@ -116,7 +116,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnUnknownSession_IsNotFound()
+	public async Task UnknownSession_NotFound()
 	{
 		using var app = new TestApplication();
 		var api = await app.LoginAsync(await app.CreateUserAsync("Lost", "password"));
@@ -127,7 +127,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnotherUsersSession_IsNotFoundAndLeavesItOpen()
+	public async Task OthersSession_NotFoundOpen()
 	{
 		using var app = new TestApplication();
 		var mine = await app.LoginAsync(await app.CreateUserAsync("Mine", "password"));
@@ -140,7 +140,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAsync_OfAnotherAccountsSession_NeedsUserManageAndHierarchy()
+	public async Task OthersAccount_NeedsManageHierarchy()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Target", "password");
@@ -160,7 +160,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task AnUserCanBeConnectedFromSeveralIrcClientsAtOnce_EachWithItsOwnKey()
+	public async Task SeveralIrcClients_EachOwnKey()
 	{
 		using var app = new TestApplication();
 		var api = await app.LoginAsync(await app.CreateUserAsync("Multi", "password"));
@@ -178,7 +178,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAllAsync_KeepingTheCurrent_ClosesEveryOtherSessionOfEveryKind()
+	public async Task KeepCurrent_OthersAllKinds()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("AllOut", "password");
@@ -200,7 +200,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAllAsync_NotKeepingTheCurrent_ClosesItToo()
+	public async Task NotKeepCurrent_ClosesToo()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoKeep", "password");
@@ -214,7 +214,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAllAsync_ByStaff_ClosesEverythingAndRecordsIt()
+	public async Task ByStaff_ClosesAllRecorded()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
@@ -233,7 +233,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAllAsync_ByAUserWithoutUserManage_NamesTheMissingPermission()
+	public async Task NoManage_NamesMissing()
 	{
 		using var app = new TestApplication();
 		var other = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
@@ -247,7 +247,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task CloseAllAsync_ByStaffOfEqualRank_IsRefused()
+	public async Task EqualRankStaff_Refused()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
@@ -261,7 +261,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task ListAsync_OfOwnSessions_NeedsNoPermission_AndFiltersByStateAndKind()
+	public async Task OwnSessions_NoPermissionFilters()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Lister", "password", UserPrivileges.None);
@@ -281,7 +281,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task ListAsync_OfAnotherUsersSessions_NeedsTheViewPermissionAndIsRecorded()
+	public async Task OthersSessions_NeedsViewRecorded()
 	{
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("Viewed", "password");
@@ -302,7 +302,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task OpenIrcAsync_ReturnsAKeyThatOpensAnIrcConnectionOfThatSession()
+	public async Task OpenIrc_KeyForSession()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("KeyOwner", "password");
@@ -319,7 +319,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task IrcKey_SurvivesTheConnectionClosing_AndWrongKeysOpenNothing()
+	public async Task IrcKeySurvives_WrongKeysNone()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Reconnect", "password");
@@ -334,7 +334,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task OpenIrcAsync_ForAnotherUser_IsRefused()
+	public async Task ForAnotherUser_IsRefused()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));
@@ -349,7 +349,7 @@ public sealed class ScopedUserSessionsTests
 	[Theory]
 	[InlineData("")]
 	[InlineData("   ")]
-	public async Task OpenIrcAsync_WithoutALabel_IsRefused(string label)
+	public async Task WithoutALabel_IsRefused(string label)
 	{
 		using var app = new TestApplication();
 		var api = await app.LoginAsync(await app.CreateUserAsync("Unlabeled", "password"));
@@ -360,7 +360,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task OpenIrcAsync_WithATooLongLabel_IsRefused()
+	public async Task TooLongLabel_Refused()
 	{
 		using var app = new TestApplication();
 		var api = await app.LoginAsync(await app.CreateUserAsync("LongLabel", "password"));
@@ -372,7 +372,7 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
-	public async Task BasilBot_SessionsCannotBeClosedOrOpened()
+	public async Task BasilBot_NoCloseOpen()
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPrivilegesExtensions.All));

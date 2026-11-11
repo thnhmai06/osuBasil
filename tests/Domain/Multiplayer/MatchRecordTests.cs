@@ -9,25 +9,25 @@ namespace Basil.Domain.Tests.Multiplayer;
 public class MatchRecordTests
 {
 	[Fact]
-	public void Id_Zero_Throws()
+	public void ZeroId_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new MatchRecord { Id = 0, Value = MakeData() });
 	}
 
 	[Fact]
-	public void Id_Negative_Throws()
+	public void NegativeId_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new MatchRecord { Id = -1, Value = MakeData() });
 	}
 
 	[Fact]
-	public void Id_One_IsAccepted()
+	public void SingleId_Accepted()
 	{
 		Assert.Equal(1, new MatchRecord { Id = 1, Value = MakeData() }.Id);
 	}
 
 	[Fact]
-	public void Creator_IsRequired_EveryMatchHasOne()
+	public void Creator_Required()
 	{
 		var creator = typeof(MatchData).GetProperty(nameof(MatchData.Creator))!;
 

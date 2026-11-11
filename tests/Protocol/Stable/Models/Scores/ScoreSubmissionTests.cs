@@ -27,7 +27,7 @@ public class ScoreSubmissionTests
 
 	/// <summary>The full recorded fields of <see cref="FullLine" />, asserted against the parser record-for-field.</summary>
 	[Fact]
-	public void Parse_EighteenFields_ParsesEveryField()
+	public void EighteenFields_ParseAll()
 	{
 		var submission = ScoreSubmission.Parse(FullLine);
 
@@ -46,7 +46,7 @@ public class ScoreSubmissionTests
 	[Theory]
 	[InlineData(17)]
 	[InlineData(16)]
-	public void Parse_FewerThanEighteenFields_ThrowsFormatException(int fieldCount)
+	public void ShortFieldList_ThrowsFormat(int fieldCount)
 	{
 		var text = fieldCount == 17 ? LineWithoutLastField : LineWithoutLastTwoFields;
 
@@ -65,7 +65,7 @@ public class ScoreSubmissionTests
 	[Theory]
 	[InlineData("True", true)]
 	[InlineData("False", false)]
-	public void Parse_PassFlag_IsTheExactTrueOrFalseText(string flagText, bool expected)
+	public void PassFlag_ExactText(string flagText, bool expected)
 	{
 		var text =
 			$"md5:lyx:checksum:5:4:3:2:1:0:123456:999:True:XH:16:{flagText}:0:260419081102:3 4 ";
@@ -76,7 +76,7 @@ public class ScoreSubmissionTests
 	[Theory]
 	[InlineData("True", true)]
 	[InlineData("False", false)]
-	public void Parse_FullComboFlag_IsTheExactTrueOrFalseText(string flagText, bool expected)
+	public void FullComboFlag_ExactText(string flagText, bool expected)
 	{
 		var text =
 			$"md5:lyx:checksum:5:4:3:2:1:0:123456:999:{flagText}:XH:16:True:0:260419081102:3 4 ";
@@ -105,7 +105,7 @@ public class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public void Parse_Timestamp_InterpretsUtc()
+	public void Timestamp_InterpretsUtc()
 	{
 		var text =
 			"md5:lyx:checksum:5:4:3:2:1:0:123456:999:True:XH:16:True:0:991231235959:3 4 ";

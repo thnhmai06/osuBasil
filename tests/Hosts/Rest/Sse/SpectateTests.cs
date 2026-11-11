@@ -22,7 +22,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Spectate_WithoutAToken_Answers401_AndOfflinePlayerAnswers409()
+	public async Task NoToken_Answers401()
 	{
 		var offline = await fixture.Host.CreateUserAsync("SpecOffline");
 		var (client, _) = await fixture.SignInAsync("SpecNoGame");
@@ -41,7 +41,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Spectate_SendsTheSnapshotFirst_ThenOneBundleAfterEachSecondWithFrames()
+	public async Task SnapshotFirst_BundleEverySecond()
 	{
 		var (player, watcher, id) = await StartAsync("SpecPlayer", "SpecWatcher");
 		using (player)
@@ -69,7 +69,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Spectate_ASecondWithoutEvents_SendsOnlyAKeepAlive_AndRevokingTheTokenEndsTheStream()
+	public async Task QuietSecond_KeepAlive()
 	{
 		var (player, watcher, id) = await StartAsync("SpecQuiet", "SpecRevoked");
 		using (player)
@@ -91,7 +91,7 @@ public sealed class SpectateTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Spectate_WhenThePlayerGoesOffline_TheStreamEnds()
+	public async Task PlayerOffline_StreamEnds()
 	{
 		var (player, watcher, id) = await StartAsync("SpecLeaver", "SpecStays");
 		using (watcher)

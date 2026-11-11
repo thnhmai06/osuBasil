@@ -27,7 +27,7 @@ public sealed class LoadPolicyTests
 	[InlineData(WorkClass.Upload, 1)]
 	[InlineData(WorkClass.Live, 1)]
 	[InlineData(WorkClass.Asset, 2)]
-	public void AClass_IsDeniedAsSaturatedPastItsCap(WorkClass workClass, int cap)
+	public void ClassSaturated_DeniedPastCap(WorkClass workClass, int cap)
 	{
 		var admission = NewAdmission();
 		for (var i = 0; i < cap; i++) Assert.True(admission.Admit(Subject, workClass).Allowed);
@@ -40,7 +40,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void ASaturatedClass_DoesNotAffectTheOthers()
+	public void SaturatedClass_OthersUnaffected()
 	{
 		var admission = NewAdmission();
 		for (var i = 0; i < 3; i++) admission.Admit(Subject, WorkClass.Listing);
@@ -49,7 +49,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void ReleasingAPlace_LetsTheClassAdmitAgain()
+	public void ReleasedPlace_ClassAdmitsAgain()
 	{
 		var admission = NewAdmission();
 		admission.Admit(Subject, WorkClass.Upload);
@@ -61,7 +61,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void ADeniedRequest_DoesNotKeepAPlace()
+	public void DeniedRequest_NoPlaceKept()
 	{
 		var admission = NewAdmission();
 		admission.Admit(Subject, WorkClass.Upload);
@@ -73,7 +73,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void ARequestOverTheRateLimit_DoesNotKeepAPlace()
+	public void OverRateLimit_NoPlaceKept()
 	{
 		var admission = new Admission(new FakeTimeProvider(), Limits with { Requests = 1 });
 		admission.Admit(Subject, WorkClass.Upload);
@@ -86,7 +86,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void Assets_HaveTheirOwnAllowance_ApartFromTheRequestsOfTheSubject()
+	public void AssetsOwnAllowance_SeparateFromSubject()
 	{
 		var admission = new Admission(new FakeTimeProvider(), Limits with { Requests = 1, AssetConcurrency = 10 });
 
@@ -112,13 +112,13 @@ public sealed class LoadPolicyTests
 	[InlineData(WorkClass.Asset, 0.7, true)]
 	[InlineData(WorkClass.Upload, 0.89, false)]
 	[InlineData(WorkClass.Upload, 0.9, true)]
-	public void TheShedOrder_RefusesListingsFirstAndEverythingLater(WorkClass workClass, double load, bool shed)
+	public void ShedOrder_ListingsRefusedFirst(WorkClass workClass, double load, bool shed)
 	{
 		Assert.Equal(shed, Limits.Sheds(workClass, load));
 	}
 
 	[Fact]
-	public void AShedClass_IsDeniedAsShedWithoutTakingAPlace()
+	public void ShedClass_DeniedNoPlace()
 	{
 		var load = new LoadSignal();
 		var admission = NewAdmission(load);
@@ -134,7 +134,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void UnderShedding_InteractiveWorkIsStillAdmitted()
+	public void UnderShedding_InteractiveAdmitted()
 	{
 		var load = new LoadSignal();
 		var admission = NewAdmission(load);
@@ -166,7 +166,7 @@ public sealed class LoadPolicyTests
 	[InlineData(WorkClass.Live, 1, AdmissionHealth.Shedding)]
 	[InlineData(WorkClass.Listing, 2, AdmissionHealth.Healthy)]
 	[InlineData(WorkClass.Asset, 2, AdmissionHealth.Healthy)]
-	public void Health_FollowsHowFullTheClassesThatAreNeverShedFirstAre(WorkClass workClass, int running,
+	public void Health_FollowsUnshedFullness(WorkClass workClass, int running,
 		AdmissionHealth expected)
 	{
 		var admission = NewAdmission();
@@ -176,7 +176,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void WhenInteractiveWorkFillsItsClass_ListingsAreShed_AndTheyReturnWhenTheWorkIsDone()
+	public void InteractiveFull_ShedThenBack()
 	{
 		var admission = NewAdmission();
 		for (var i = 0; i < 3; i++) admission.Admit(Subject);
@@ -189,7 +189,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void TheReportedLoad_StillCountsWhenTheClassesAreEmpty()
+	public void ReportedLoad_CountsWhenEmpty()
 	{
 		var signal = new LoadSignal();
 		signal.Report(0.8, 1);
@@ -208,7 +208,7 @@ public sealed class LoadPolicyTests
 	[InlineData(20, 10, 1.0)]
 	[InlineData(-3, 10, 0.0)]
 	[InlineData(5, 0, 0.0)]
-	public void ALoadSignal_IsTheClampedFractionOfItsCapacity(double used, double capacity, double expected)
+	public void LoadSignal_ClampedFraction(double used, double capacity, double expected)
 	{
 		var signal = new LoadSignal();
 
@@ -218,7 +218,7 @@ public sealed class LoadPolicyTests
 	}
 
 	[Fact]
-	public void AnEntryPoint_DefaultsToInteractiveWork()
+	public void EntryPoint_DefaultsInteractive()
 	{
 		Assert.Equal(WorkClass.Interactive, new AdmissionPolicyAttribute().Class);
 	}

@@ -44,7 +44,7 @@ public class OsuFingerprintExtensionsTests
 
 	[Theory]
 	[MemberData(nameof(ValidAdapters))]
-	public void Parse_FiveComponents_YieldsEveryField(string adapters)
+	public void ParseFive_YieldsAll(string adapters)
 	{
 		var fingerprint = OsuFingerprintExtensions.Parse($"{Path}:{adapters}:{AdaptersHash}:{Uninstall}:{Disk}:");
 
@@ -57,27 +57,27 @@ public class OsuFingerprintExtensionsTests
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
-	public void TryParse_MalformedText_ReturnsFalse(string text)
+	public void TryParseMalformed_False(string text)
 	{
 		Assert.False(OsuFingerprintExtensions.TryParse(text, out _));
 	}
 
 	[Fact]
-	public void TryParse_NullText_ReturnsFalse()
+	public void TryParseNull_False()
 	{
 		Assert.False(OsuFingerprintExtensions.TryParse(null, out _));
 	}
 
 	[Theory]
 	[MemberData(nameof(Rejects))]
-	public void Parse_MalformedText_ThrowsFormatException(string text)
+	public void ParseMalformed_Throws(string text)
 	{
 		Assert.Throws<FormatException>(() => OsuFingerprintExtensions.Parse(text));
 	}
 
 	[Theory]
 	[MemberData(nameof(ValidAdapters))]
-	public void ToText_ParsedFingerprint_RestoresTheWireText(string adapters)
+	public void ParsedText_RestoresWire(string adapters)
 	{
 		var text = $"{Path}:{adapters}:{AdaptersHash}:{Uninstall}:{Disk}:";
 
@@ -85,7 +85,7 @@ public class OsuFingerprintExtensionsTests
 	}
 
 	[Fact]
-	public void ToText_UppercaseHashes_AreWrittenInLowercase()
+	public void UppercaseText_Lowercase()
 	{
 		var fingerprint =
 			OsuFingerprintExtensions.Parse($"{Path.ToUpperInvariant()}:1.:{AdaptersHash}:{Uninstall}:{Disk}:");

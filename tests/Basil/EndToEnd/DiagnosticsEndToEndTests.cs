@@ -14,7 +14,7 @@ public sealed class DiagnosticsEndToEndTests(HostEndToEndFixture fixture)
 		UserPrivilegesExtensions.Default | UserPrivileges.Developer;
 
 	[Fact]
-	public async Task TheDiagnosticsStream_AndTheDashboard_ReportTheSameCounts()
+	public async Task StreamAndDashboard_SameCounts()
 	{
 		await fixture.Host.CreateUserAsync("E2eDiag", "password", Staff);
 		using var rest = new RestClient(fixture.Host.Url, fixture.Host.Domain);

@@ -22,7 +22,7 @@ public sealed class DiagnosticsFeedTests
 	}
 
 	[Fact]
-	public async Task Watch_AfterSeveralSamples_GivesTheNewestAndDropsTheOlderOnes()
+	public async Task SeveralSamples_NewestOnly()
 	{
 		var feed = new DiagnosticsFeed();
 		await using var watcher = feed.Watch(null, TestContext.Current.CancellationToken)
@@ -36,7 +36,7 @@ public sealed class DiagnosticsFeedTests
 	}
 
 	[Fact]
-	public async Task Watch_GivesNothingTakenBeforeItStarted()
+	public async Task WatchStart_NothingOlder()
 	{
 		var feed = new DiagnosticsFeed();
 		feed.Publish(Sample(1));
@@ -49,7 +49,7 @@ public sealed class DiagnosticsFeedTests
 	}
 
 	[Fact]
-	public async Task ASlowWatcher_DoesNotDelayAFastOne()
+	public async Task SlowWatcher_FastUnaffected()
 	{
 		var feed = new DiagnosticsFeed();
 		await using var fast = feed.Watch(null, TestContext.Current.CancellationToken)
@@ -69,7 +69,7 @@ public sealed class DiagnosticsFeedTests
 	}
 
 	[Fact]
-	public async Task Watch_OfOneCategory_GivesOnlyThatCategory()
+	public async Task OneCategory_OnlyThatCategory()
 	{
 		var feed = new DiagnosticsFeed();
 		await using var watcher = feed.Watch("gc", TestContext.Current.CancellationToken)
@@ -83,13 +83,13 @@ public sealed class DiagnosticsFeedTests
 	}
 
 	[Fact]
-	public void Watch_OfAnUnknownCategory_Throws()
+	public void UnknownCategory_Throws()
 	{
 		Assert.Throws<KeyNotFoundException>(() => new DiagnosticsFeed().Watch("nothing", TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
-	public async Task AWatcherThatStops_IsNoLongerCounted()
+	public async Task StoppedWatcher_NotCounted()
 	{
 		var feed = new DiagnosticsFeed();
 		var watcher = feed.Watch(null, TestContext.Current.CancellationToken)

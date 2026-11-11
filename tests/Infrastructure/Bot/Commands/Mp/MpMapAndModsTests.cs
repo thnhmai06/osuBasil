@@ -24,7 +24,7 @@ public sealed class MpMapAndModsTests
 	[Theory]
 	[InlineData("!mp map")]
 	[InlineData("!mp map x")]
-	public async Task Map_WithoutANumericId_SaysHowToUseItAndSelectsNothing(string message)
+	public async Task MapNoId_UsageShown(string message)
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -37,7 +37,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Map_ForAnIdNoBeatmapHas_SaysNoBeatmapWasFoundAndSelectsNothing()
+	public async Task MapUnknownId_NotFound()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -50,7 +50,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Map_ForAKnownBeatmap_SaysItsArtistTitleAndVersionAndSelectsIt()
+	public async Task MapKnown_Selected()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -70,7 +70,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithoutAnArgument_SaysHowToUseItAndChangesNothing()
+	public async Task ModsNoArgument_UsageShown()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -83,7 +83,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithHidden_SaysHiddenWasEnabledAndTheRoomHasIt()
+	public async Task ModsHidden_Enabled()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -96,7 +96,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_AddingHardRockToHidden_SaysOnlyHardRockWasEnabled()
+	public async Task AddHardRock_OnlyHardRock()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -110,7 +110,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithNoneAfterHidden_SaysHiddenWasDisabledAndClearsTheMods()
+	public async Task ModsNone_HiddenDisabled()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -124,7 +124,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithTheSameModsAgain_SaysNothingChanged()
+	public async Task ModsSameAgain_NothingChanged()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -138,7 +138,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithFreemod_SaysFreemodWasEnabledAndTheRoomIsFreemod()
+	public async Task ModsFreemod_Enabled()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -151,7 +151,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithNoneAfterFreemod_SaysFreemodWasDisabledAndTheRoomIsNoLongerFreemod()
+	public async Task NoneAfterFreemod_Disabled()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -165,7 +165,7 @@ public sealed class MpMapAndModsTests
 	}
 
 	[Fact]
-	public async Task Mods_WithAConflictingCombination_KeepsEasyAndDropsHardRock()
+	public async Task ModsConflict_KeepsEasy()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -179,7 +179,7 @@ public sealed class MpMapAndModsTests
 	[Theory]
 	[InlineData("!mp map 1234")]
 	[InlineData("!mp mods HD")]
-	public async Task MapOrModsCommand_ByAPlainSeatedPlayer_IsRefusedAndChangesNothing(string message)
+	public async Task PlainSeatedMods_Refused(string message)
 	{
 		using var bot = new BotHarness();
 		var (room, _, player) = await SetUpAsync(bot);

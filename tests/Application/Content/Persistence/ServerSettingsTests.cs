@@ -49,7 +49,7 @@ public class ServerSettingsTests
 	}
 
 	[Fact]
-	public void MenuIconUrl_FileScheme_Throws()
+	public void FileScheme_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => new ServerSettings
 		{
@@ -58,7 +58,7 @@ public class ServerSettingsTests
 	}
 
 	[Fact]
-	public void DownloadEndpoint_FtpScheme_Throws()
+	public void FtpScheme_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => new ServerSettings
 		{
@@ -70,7 +70,7 @@ public class ServerSettingsTests
 	}
 
 	[Fact]
-	public void SearchEndpoint_Relative_Throws()
+	public void Relative_Throws()
 	{
 		Assert.Throws<ArgumentException>(() => new ServerSettings
 		{
@@ -83,7 +83,7 @@ public class ServerSettingsTests
 	}
 
 	[Fact]
-	public void Endpoints_Http_IsAccepted()
+	public void Http_IsAccepted()
 	{
 		var settings = new ServerSettings
 		{
@@ -117,7 +117,7 @@ public class ServerSettingsTests
 
 	[Theory]
 	[MemberData(nameof(InvalidValues))]
-	public void AValueThatIsNotPositive_IsRefused(Action create)
+	public void ValueNotPositive_Refused(Action create)
 	{
 		Assert.ThrowsAny<ArgumentException>(create);
 	}

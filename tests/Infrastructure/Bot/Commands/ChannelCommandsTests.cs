@@ -16,7 +16,7 @@ public sealed class ChannelCommandsTests
 		Manager = UserPrivilegesExtensions.Default | UserPrivileges.Moderator;
 
 	[Fact]
-	public async Task Create_ByAManager_OpensTheChannelWithTheOptionsGiven()
+	public async Task ByManager_OpensWithOptions()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -34,7 +34,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Create_WithoutTheManagePermission_NamesTheMissingPermission_AndCreatesNothing()
+	public async Task NoManage_MissingNoCreate()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Player");
@@ -52,7 +52,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Create_AnExistingName_IsRefused()
+	public async Task AnExistingName_IsRefused()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -71,7 +71,7 @@ public sealed class ChannelCommandsTests
 	[InlineData("channel create #bad read=128")]
 	[InlineData("channel create #bad autojoin=maybe")]
 	[InlineData("channel create #bad novalue")]
-	public async Task Create_WithAnInvalidNameOrOption_SaysSoAndCreatesNothing(string line)
+	public async Task InvalidNameOption_SaysNoCreate(string line)
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -84,7 +84,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Set_ChangesOnlyTheOptionsGiven()
+	public async Task Set_ChangesOnlyGiven()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -100,7 +100,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Set_WithoutTheManagePermission_NamesTheMissingPermission_AndChangesNothing()
+	public async Task SetNoManage_NamesNoChange()
 	{
 		using var bot = new BotHarness();
 		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -120,7 +120,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Set_WithoutTheManagePermission_RefusesTheSameWhetherOrNotTheChannelExists()
+	public async Task SetNoManage_RefusesSame()
 	{
 		using var bot = new BotHarness();
 		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -140,7 +140,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Set_AnUnknownChannel_SaysItDoesNotExist()
+	public async Task SetUnknown_SaysNotExist()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -152,7 +152,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Set_AnInvalidPrivilegeMask_SaysSo()
+	public async Task SetInvalidMask_SaysSo()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -165,7 +165,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Delete_ByAManager_ClosesTheChannel()
+	public async Task ByAManager_ClosesTheChannel()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -179,7 +179,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Delete_WithoutTheManagePermission_NamesTheMissingPermission_AndKeepsTheChannel()
+	public async Task DeleteNoManage_NamesKeepsChannel()
 	{
 		using var bot = new BotHarness();
 		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -199,7 +199,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Delete_WithoutTheManagePermission_RefusesTheSameWhetherOrNotTheChannelExists()
+	public async Task DeleteNoManage_RefusesSame()
 	{
 		using var bot = new BotHarness();
 		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -219,7 +219,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task Delete_AnUnknownChannel_SaysItDoesNotExist()
+	public async Task DeleteUnknown_SaysNotExist()
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -230,7 +230,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task List_ShowsTheChannelsTheTypistCanSee_OneLineEach()
+	public async Task List_ShowsVisibleLines()
 	{
 		using var bot = new BotHarness();
 		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -249,7 +249,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task List_ByAManager_AlsoShowsHiddenChannels()
+	public async Task ByManager_ShowsHidden()
 	{
 		using var bot = new BotHarness();
 		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
@@ -262,7 +262,7 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
-	public async Task List_WithNothingToSee_SaysSo()
+	public async Task List_NothingToSee()
 	{
 		using var bot = new BotHarness();
 		var player = await RoomFixture.PlayerAsync(bot.App, "Player");
@@ -280,7 +280,7 @@ public sealed class ChannelCommandsTests
 	[InlineData("channel create")]
 	[InlineData("channel set #x")]
 	[InlineData("channel delete")]
-	public async Task AMissingOrUnknownSubcommand_ShowsTheUsage(string line)
+	public async Task MissingSubcommand_ShowsUsage(string line)
 	{
 		using var bot = new BotHarness();
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);

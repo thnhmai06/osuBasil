@@ -16,7 +16,7 @@ public sealed class OperatorConnectionTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task OperateAsync_ActsAsBasilBot()
+	public async Task Operate_ActsAsBot()
 	{
 		using var app = new TestApplication();
 
@@ -26,7 +26,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task OperateAsync_KindIsApi_AndKeepsEveryConsolePermission()
+	public async Task KindApi_KeepsPermissions()
 	{
 		using var app = new TestApplication();
 
@@ -37,7 +37,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task OperateAsync_BotOnline_DoesNotAddAConnectionToTheBot()
+	public async Task BotOnline_NoConnection()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -49,7 +49,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task OperateAsync_BotOffline_IsNotRegisteredAsOnline()
+	public async Task BotOffline_NotOnline()
 	{
 		using var app = new TestApplication();
 
@@ -59,7 +59,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task Operator_CreatesAnAccountWithEveryPermission()
+	public async Task Operator_CreatesEveryPermission()
 	{
 		using var app = new TestApplication();
 		var actor = await app.Users.OperateAsync(Token);
@@ -85,7 +85,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task Operator_CannotActOnBasilBotsRecord()
+	public async Task BotRecord_Refused()
 	{
 		using var app = new TestApplication();
 		var actor = await app.Users.OperateAsync(Token);
@@ -97,7 +97,7 @@ public sealed class OperatorConnectionTests
 	}
 
 	[Fact]
-	public async Task BasilBotsOwnConnections_StillHaveNoAuthority()
+	public async Task BasilBotConnections_NoAuthority()
 	{
 		using var app = new TestApplication();
 		await app.Users.EnsureBotAsync(Token);
@@ -120,7 +120,7 @@ public sealed class OperatorRelationshipTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task TheOperatorMaySetAnotherAccountsAwayMessage_ButAnAdministratorMayNot()
+	public async Task AwayMessage_AdminRefused()
 	{
 		using var app = new TestApplication();
 		var target = await app.CreateUserAsync("AwayTarget", "password");

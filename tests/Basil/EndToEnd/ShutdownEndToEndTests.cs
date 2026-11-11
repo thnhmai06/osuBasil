@@ -39,7 +39,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task Stopping_TheHost_LeavesNoBackgroundServiceFaulted()
+	public async Task HostStopped_NoFaultedService()
 	{
 		await using var host = await StartAsync();
 		var (irc, _) = await RegisteredIrcAsync(host, "E2eStopQuiet");
@@ -53,7 +53,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task Shutdown_RefusesNewWork_TellsEveryClient_ClosesRooms_AndDrains()
+	public async Task Shutdown_RefusesAndDrains()
 	{
 		await using var host = await StartAsync();
 		using var osu = await host.NewClientAsync("E2eStopOsu");
@@ -109,7 +109,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task Restart_TellsEveryClientThatTheServerComesBack()
+	public async Task Restart_TellsEveryClient()
 	{
 		await using var host = await StartAsync();
 		using var osu = await host.NewClientAsync("E2eRestartOsu");
@@ -132,7 +132,7 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
-	public async Task TheSseStream_EndsWithAServerEventThatSaysTheServerRestarts()
+	public async Task SseStream_RestartEvent()
 	{
 		await using var host = await StartAsync();
 		await host.CreateUserAsync("E2eRestartRest");

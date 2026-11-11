@@ -16,7 +16,7 @@ public sealed class WireMapTests
 	[Theory]
 	[InlineData(0, GameMode.Standard)]
 	[InlineData(3, GameMode.Mania)]
-	public void Known_DefinedNumber_IsTheDomainValue(int wire, GameMode expected)
+	public void DefinedNumber_DomainValue(int wire, GameMode expected)
 	{
 		Assert.Equal(expected, WireMap.Known<GameMode>(wire));
 	}
@@ -25,13 +25,13 @@ public sealed class WireMapTests
 	[InlineData(4)]
 	[InlineData(-1)]
 	[InlineData(256)]
-	public void Known_UndefinedNumber_IsNull(int wire)
+	public void UndefinedNumber_Null(int wire)
 	{
 		Assert.Null(WireMap.Known<GameMode>(wire));
 	}
 
 	[Fact]
-	public void Known_SignedEnum_AcceptsItsNegativeMember()
+	public void SignedEnum_NegativeAccepted()
 	{
 		Assert.Equal(BeatmapsetStatus.NotSubmitted, WireMap.Known<BeatmapsetStatus>(-1));
 	}
@@ -39,31 +39,31 @@ public sealed class WireMapTests
 	[Theory]
 	[InlineData(2, UserActivity.Playing)]
 	[InlineData(13, UserActivity.OsuDirect)]
-	public void Known_Activity_IsTheDomainValue(int wire, UserActivity expected)
+	public void KnownActivity_DomainValue(int wire, UserActivity expected)
 	{
 		Assert.Equal(expected, WireMap.Known<UserActivity>(wire));
 	}
 
 	[Fact]
-	public void Known_UnknownActivity_IsNull()
+	public void UnknownActivity_Null()
 	{
 		Assert.Null(WireMap.Known<UserActivity>(14));
 	}
 
 	[Fact]
-	public void Mods_Combination_IsTheDomainMods()
+	public void ModsCombination_DomainMods()
 	{
 		Assert.Equal(GameMods.Hidden | GameMods.DoubleTime, WireMap.Mods(8 | 64));
 	}
 
 	[Fact]
-	public void Mods_UnknownBit_IsDropped()
+	public void UnknownModBit_Dropped()
 	{
 		Assert.Equal(GameMods.Easy, WireMap.Mods((1L << 31) | 2));
 	}
 
 	[Fact]
-	public void Mods_AllNegativeBits_KeepsOnlyDefinedMods()
+	public void AllNegativeBits_DefinedKept()
 	{
 		var all = Enum.GetValues<GameMods>().Aggregate(GameMods.NoMod, (all, mod) => all | mod);
 
@@ -90,7 +90,7 @@ public sealed class WireMapTests
 	}
 
 	[Fact]
-	public void SlotTeam_UnknownDomainValue_Throws()
+	public void UnknownTeamValue_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => WireMap.ToWire((GameTeam)9));
 	}

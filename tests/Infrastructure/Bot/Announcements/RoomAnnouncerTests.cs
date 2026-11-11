@@ -50,7 +50,7 @@ public sealed class RoomAnnouncerTests
 	#region Rounds
 
 	[Fact]
-	public async Task RoundStarted_WithNoPlayers_SaysTheMatchCannotStart()
+	public async Task EmptyRoundStart_CannotStart()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -63,7 +63,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task RoundStarted_WithPlayers_SaysNothing()
+	public async Task PopulatedRoundStart_SaysNothing()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -76,7 +76,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task RoundAborted_SaysTheMatchWasAborted()
+	public async Task RoundAborted_AnnouncesAbort()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -90,7 +90,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task RoundDecided_NamesEachPlayerWhoseScoreDidNotCome_OnTheirOwnLine()
+	public async Task MissingScores_NamedPerLine()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -109,7 +109,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task RoundDecided_WithNobodyMissing_SaysAllScoresWereReceived()
+	public async Task NoMissingScores_AllReceived()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -124,7 +124,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task RoundDecided_OfARoundNotAnnouncedAsEnded_SaysNothing()
+	public async Task RoundNotAnnounced_SaysNothing()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -136,7 +136,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task RoundEnded_TellsTheRoundNumberAndTheWaitInSeconds()
+	public async Task RoundEnded_TellsNumberWait()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -159,7 +159,7 @@ public sealed class RoomAnnouncerTests
 	[InlineData(900, 15)]
 	[InlineData(840, 14)]
 	[InlineData(1, 1)]
-	public async Task ClosingAnnounced_SaysTheMinutesUntilClosingRoundedUpInTheRoomChannel(int secondsLeft,
+	public async Task ClosingAnnounced_SaysRoundedMinutes(int secondsLeft,
 		int minutes)
 	{
 		using var bot = new BotHarness();
@@ -172,7 +172,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task ClosingAnnounced_WhispersTheSameTextToTheCreator()
+	public async Task ClosingAnnounced_WhispersCreator()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -186,7 +186,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task ClosingAnnounced_WhispersTheSameTextToAnOnlineReferee()
+	public async Task ClosingAnnounced_WhispersOnlineReferee()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -200,7 +200,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task ClosingAnnounced_WhispersNothingToAnOfflineReferee()
+	public async Task ClosingAnnounced_OfflineRefereeSilent()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -212,7 +212,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task ClosingAnnounced_WhispersNothingToThePlayersOfTheRoom()
+	public async Task ClosingAnnounced_PlayersSilent()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -223,7 +223,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerJoined_AfterAClosingAnnouncement_SaysTheRoomWillNoLongerClose()
+	public async Task JoinAfterClosing_NoLongerCloses()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -238,7 +238,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerJoined_ASecondTimeAfterAClosingAnnouncement_SaysNothing()
+	public async Task RejoinAfterClosing_SaysNothing()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -253,7 +253,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerJoined_IntoARoomNeverAnnouncedAsClosing_SaysNothing()
+	public async Task UnannouncedRoomJoin_SaysNothing()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -264,7 +264,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task PlayerJoined_AfterTheRoomClosed_SaysNothing()
+	public async Task JoinAfterClose_SaysNothing()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -279,7 +279,7 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task ClosingAnnouncements_OfTwoRooms_AreTrackedIndependently()
+	public async Task TwoRoomAnnouncements_TrackedSeparately()
 	{
 		using var bot = new BotHarness();
 		await bot.StartBotAsync();

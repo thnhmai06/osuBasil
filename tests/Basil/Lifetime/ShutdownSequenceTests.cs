@@ -26,7 +26,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task TheStepsRunInTheOrderTheyAreGiven()
+	public async Task GivenSteps_RunInOrder()
 	{
 		var results = await Sequence.RunAsync([Quick("first"), Quick("second"), Quick("third")],
 			TestContext.Current.CancellationToken);
@@ -36,7 +36,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task AStepStartsOnlyAfterThePreviousOneEnded()
+	public async Task PreviousStepEnded_NextStarts()
 	{
 		var gate = new TaskCompletionSource();
 		var slow = new ShutdownStep("slow", Limit, async _ =>
@@ -55,7 +55,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task AStepThatHangsIsLeftBehindAfterItsLimit_AndTheNextOneStillRuns()
+	public async Task HungStepTimeout_NextRuns()
 	{
 		var hung = new ShutdownStep("hung", Limit, _ => new TaskCompletionSource().Task);
 
@@ -70,7 +70,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task AHungStepIsGivenItsOwnLimitNotMore()
+	public async Task HungStep_OwnLimitOnly()
 	{
 		var hung = new ShutdownStep("hung", Limit, _ => new TaskCompletionSource().Task);
 
@@ -82,7 +82,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task TheTokenOfAStepThatTimedOutIsCancelled()
+	public async Task TimedOutStep_TokenCancelled()
 	{
 		CancellationToken seen = default;
 		var hung = new ShutdownStep("hung", Limit, token =>
@@ -99,7 +99,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task AStepThatThrowsDoesNotStopTheShutdown()
+	public async Task ThrowingStep_ShutdownContinues()
 	{
 		var failing = new ShutdownStep("failing", Limit, _ => throw new InvalidOperationException("boom"));
 
@@ -111,7 +111,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task ForcingTheShutdownCancelsTheRunningStepAndSkipsTheRest()
+	public async Task ForcedShutdown_CancelsAndSkips()
 	{
 		using var force = new CancellationTokenSource();
 		var waiting = new ShutdownStep("waiting", Limit, token => Task.Delay(Timeout.Infinite, token));
@@ -125,7 +125,7 @@ public sealed class ShutdownSequenceTests
 	}
 
 	[Fact]
-	public async Task EachResultSaysHowLongTheStepTookOnTheClock()
+	public async Task StepResult_ReportsElapsedTime()
 	{
 		var step = new ShutdownStep("waits", Limit,
 			async token => await Task.Delay(TimeSpan.FromSeconds(3), _clock, token));

@@ -8,13 +8,13 @@ public class ContentStampTests
 	private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;
 
 	[Fact]
-	public void Size_Negative_Constructor_Throws()
+	public void NegativeConstructor_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new ContentStamp(-1, Now));
 	}
 
 	[Fact]
-	public void Size_Negative_With_Throws()
+	public void NegativeWith_Throws()
 	{
 		var stamp = new ContentStamp(10, Now);
 
@@ -22,7 +22,7 @@ public class ContentStampTests
 	}
 
 	[Fact]
-	public void ModifiedAt_Constructor_IsNormalisedToUtc()
+	public void ModifiedAtConstructor_Utc()
 	{
 		var local = new DateTimeOffset(2026, 1, 2, 12, 0, 0, TimeSpan.FromHours(5));
 
@@ -33,7 +33,7 @@ public class ContentStampTests
 	}
 
 	[Fact]
-	public void ModifiedAt_With_IsNormalisedToUtc()
+	public void ModifiedAtWith_Utc()
 	{
 		var local = new DateTimeOffset(2026, 1, 2, 12, 0, 0, TimeSpan.FromHours(5));
 		var stamp = new ContentStamp(10, Now);

@@ -25,7 +25,7 @@ public sealed class StreamBudgetTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OpenStreams_ParallelOnTwoRoots_ExactlyOneBeyondTheLimitIsRefused()
+	public async Task ParallelTwoRoots_OneRefused()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("BudgetRace", "password",
@@ -46,7 +46,7 @@ public sealed class StreamBudgetTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OpenStreams_AfterEveryStreamClosed_TheLimitIsAvailableAgain()
+	public async Task AllStreamsClosed_LimitFreeAgain()
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);
 		await host.CreateUserAsync("BudgetFree", "password",

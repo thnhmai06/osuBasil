@@ -9,7 +9,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task CapLs302_ListsTheSupportedCapabilitiesAndTheSaslMechanism()
+	public async Task CapLs302_ListsSaslMechanism()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("CapLs");
 		using var _ = irc;
@@ -22,7 +22,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task CapLs_WithoutVersion_ListsSaslWithoutValue()
+	public async Task VersionlessCapLs_SaslNoValue()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("CapLsOld");
 		using var _ = irc;
@@ -41,7 +41,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	[InlineData("labeled-response")]
 	[InlineData("chathistory")]
 	[InlineData("sts")]
-	public async Task CapReq_OfACapabilityTheServerDoesNotHave_IsNakedAsAWhole(string unsupported)
+	public async Task UnsupportedCapReq_NakedAsWhole(string unsupported)
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("Nak" + unsupported[..3] + unsupported.Length);
 		using var _ = irc;
@@ -52,7 +52,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task CapReq_SupportedCapabilities_AreAcknowledgedAndListed()
+	public async Task SupportedCapReq_AcknowledgedAndListed()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("CapAck");
 		using var _ = irc;
@@ -65,7 +65,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Registration_WaitsForCapEnd()
+	public async Task PendingCapEnd_RegistrationWaits()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("CapWait");
 		using var _ = irc;
@@ -83,7 +83,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SaslPlain_CorrectKey_Succeeds903AndWelcomes()
+	public async Task CorrectSaslKey_SucceedsAndWelcomes()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("SaslOk");
 		using var _ = irc;
@@ -97,7 +97,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SaslPlain_WrongKey_Fails904AndKeepsTheConnectionUnregistered()
+	public async Task WrongSaslKey_Fails904Unregistered()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("SaslBad");
 		using var __ = irc;
@@ -108,7 +108,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SaslPlain_AuthenticationIdentityOfAnotherUser_Fails904()
+	public async Task ForeignAuthzid_Fails904()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("SaslMine");
 		using var _ = irc;
@@ -120,7 +120,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SaslPlain_NickDifferentFromTheAccount_IsRenamedToTheAccount()
+	public async Task ForeignNick_RenamedToAccount()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("SaslRename");
 		using var _ = irc;
@@ -132,7 +132,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Authenticate_Star_Aborts906()
+	public async Task StarAuthenticate_Aborts906()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("SaslAbort");
 		using var __ = irc;
@@ -147,7 +147,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Authenticate_WithoutTheSaslCapability_Fails904()
+	public async Task NoSaslCapability_Fails904()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("SaslNoCap");
 		using var __ = irc;
@@ -158,7 +158,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Authenticate_UnknownMechanism_ListsPlain()
+	public async Task UnknownMechanism_ListsPlain()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("SaslMech");
 		using var __ = irc;
@@ -172,7 +172,7 @@ public sealed class CapabilityTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Authenticate_TwiceAfterSuccess_Gets907()
+	public async Task AuthenticateTwice_Gets907()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("SaslTwice");
 		using var _ = irc;

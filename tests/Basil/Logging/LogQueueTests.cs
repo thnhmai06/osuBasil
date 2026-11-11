@@ -8,7 +8,7 @@ namespace Basil.Tests.Logging;
 public sealed class LogQueueTests
 {
 	[Fact]
-	public void AFullQueueDropsTheNewestEventsAndCountsThem()
+	public void FullQueue_DropsNewestCounted()
 	{
 		const int capacity = 8, total = 100;
 		var drops = new LogDrops();
@@ -27,7 +27,7 @@ public sealed class LogQueueTests
 	}
 
 	[Fact]
-	public void AQueueThatIsNotFullDropsNothing()
+	public void NotFullQueue_DropsNothing()
 	{
 		var drops = new LogDrops();
 		var sink = new BlockedSink();

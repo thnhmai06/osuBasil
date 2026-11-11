@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Chat.Tests.Handlers;
 public sealed class PmChannelHandlerTests
 {
 	[Fact]
-	public async Task Handle_ConnectionOpened_AddsTheConnection()
+	public async Task ConnectionOpened_Adds()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Opened", "password");
@@ -24,7 +24,7 @@ public sealed class PmChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_TourneyConnectionOpened_DoesNotOpenAChannel()
+	public async Task TourneyConnection_NoChannel()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("TourneyObserver", "password",
@@ -38,7 +38,7 @@ public sealed class PmChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_ConnectionClosed_PartsItButKeepsTheChannelOpen()
+	public async Task ConnectionClosed_PartsKeepsChannel()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("StillHere", "password");
@@ -59,7 +59,7 @@ public sealed class PmChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LastConnectionClosed_ClosesAndForgetsTheChannel()
+	public async Task LastConnection_ClosesChannel()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Leaving", "password");

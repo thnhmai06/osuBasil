@@ -17,7 +17,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task IrcChannelMessage_ReachesTheOsuClient()
+	public async Task IrcChannelMessage_ReachesOsu()
 	{
 		using var irc = await Host.SignInAsync("ChIrcToOsu");
 		using var osu = await Host.LoginOsuAsync("ChOsuListens");
@@ -31,7 +31,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OsuChannelMessage_ReachesTheIrcClientAsAPrivmsgFromTheFixedMask()
+	public async Task OsuChannelMessage_ReachesIrc()
 	{
 		using var irc = await Host.SignInAsync("ChIrcListens");
 		using var osu = await Host.LoginOsuAsync("ChOsuToIrc");
@@ -44,7 +44,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task IrcChannelMessage_ReachesAnotherIrcClient_ButNotTheSender()
+	public async Task IrcChannelMessage_ReachesOthers()
 	{
 		using var sender = await Host.SignInAsync("ChSender");
 		using var listener = await Host.SignInAsync("ChListener");
@@ -59,7 +59,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Notice_ReachesTheChannelAsANotice()
+	public async Task Notice_ReachesChannel()
 	{
 		using var sender = await Host.SignInAsync("ChNoticer");
 		using var listener = await Host.SignInAsync("ChNoticed");
@@ -70,7 +70,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PrivateMessage_FromIrcToOsu_ArrivesAddressedToTheRecipient()
+	public async Task IrcToOsu_AddressedToRecipient()
 	{
 		using var irc = await Host.SignInAsync("ChPmIrc");
 		using var osu = await Host.LoginOsuAsync("ChPmOsu");
@@ -83,7 +83,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PrivateMessage_FromOsuToIrc_ArrivesAddressedToTheIrcNick()
+	public async Task OsuToIrc_AddressedToNick()
 	{
 		using var irc = await Host.SignInAsync("ChPmTarget");
 		using var osu = await Host.LoginOsuAsync("ChPmSender");
@@ -95,7 +95,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PrivateMessage_BetweenIrcClients_IsDelivered()
+	public async Task IrcToIrc_Delivered()
 	{
 		using var first = await Host.SignInAsync("ChPmOne");
 		using var second = await Host.SignInAsync("ChPmTwo");
@@ -106,7 +106,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PrivateMessage_ToTheSameUsersOtherIrcDevice_ReachesIt()
+	public async Task OtherIrcDevice_ReceivesPrivate()
 	{
 		var (first, firstKey) = await Host.NewIrcClientAsync("ChTwoDevices");
 		using var _ = first;
@@ -125,7 +125,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PrivateMessage_ToAnOfflineOrUnknownNick_Gets401()
+	public async Task OfflineNick_Gets401()
 	{
 		using var irc = await Host.SignInAsync("ChLonely");
 
@@ -135,7 +135,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BasilBot_AnswersACommandSentAsAPrivateMessage()
+	public async Task PrivateCommand_AnsweredByBot()
 	{
 		using var irc = await Host.SignInAsync("ChBotAsker");
 
@@ -146,7 +146,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BasilBot_AnswersEachCommandOnce()
+	public async Task RepeatCommand_AnsweredOnce()
 	{
 		using var irc = await Host.SignInAsync("ChBotOnce");
 
@@ -158,7 +158,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BasilBot_AnswersACommandSentInAChannel()
+	public async Task ChannelCommand_AnsweredByBot()
 	{
 		using var irc = await Host.SignInAsync("ChBotChannel");
 
@@ -169,7 +169,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task BasilBot_MultiLineReply_ArrivesAsOneLinePerLine()
+	public async Task MultiLineReply_LinePerMessage()
 	{
 		using var irc = await Host.SignInAsync("ChBotHelp");
 
@@ -182,7 +182,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OsuMessageWithLineBreaks_ArrivesAsOneLinePerLine()
+	public async Task LineBreakMessage_EachLineSeparate()
 	{
 		using var irc = await Host.SignInAsync("ChBreaksIrc");
 		using var osu = await Host.LoginOsuAsync("ChBreaksOsu");
@@ -196,7 +196,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task OsuMessageLongerThanALine_IsSplitAcrossLines()
+	public async Task LongOsuMessage_SplitAcrossLines()
 	{
 		using var irc = await Host.SignInAsync("ChLongIrc");
 		using var osu = await Host.LoginOsuAsync("ChLongOsu");
@@ -210,7 +210,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task IrcMessageLongerThanTheLimit_IsCutAt450Characters()
+	public async Task LongIrcMessage_CutAt450()
 	{
 		using var irc = await Host.SignInAsync("ChCutIrc");
 		using var osu = await Host.LoginOsuAsync("ChCutOsu");
@@ -223,7 +223,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Flood_BeyondTheChatRateLimit_DropsTheMessageAndTellsTheClient()
+	public async Task FloodPastLimit_DroppedAndTold()
 	{
 		using var irc = await Host.SignInAsync("ChFlood");
 		using var osu = await Host.LoginOsuAsync("ChFloodListener");
@@ -239,7 +239,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Flood_WithStandardReplies_IsAFailMessage()
+	public async Task FloodStandardReply_FailMessage()
 	{
 		using var irc = await Host.SignInAsync("ChFloodFail", "standard-replies");
 
@@ -250,7 +250,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Privmsg_WithoutTargetOrText_GetsTheMatchingErrors()
+	public async Task MissingPrivmsgArgs_MatchingErrors()
 	{
 		using var irc = await Host.SignInAsync("ChBadForm");
 
@@ -261,7 +261,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Privmsg_ToAnUnknownChannel_Gets403()
+	public async Task PrivmsgUnknownChannel_Gets403()
 	{
 		using var irc = await Host.SignInAsync("ChNoChannel");
 
@@ -271,7 +271,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Privmsg_ToAChannelTheClientIsNotIn_Gets404()
+	public async Task PrivmsgUnjoinedChannel_Gets404()
 	{
 		using var irc = await Host.SignInAsync("ChNotIn");
 		await irc.SendAsync("PART #osu");
@@ -283,7 +283,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Privmsg_ToAUserWhoBlocksNonFriendMessages_Gets404WithTheReason()
+	public async Task BlockingUser_RefusedWithReason()
 	{
 		using var irc = await Host.SignInAsync("ChBlocked");
 		using var osu = await Host.LoginOsuAsync("ChBlocker");
@@ -295,7 +295,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Privmsg_ToAnAwayUser_RepliesWith301()
+	public async Task AwayUser_Replies301()
 	{
 		using var irc = await Host.SignInAsync("ChAwayAsker");
 		using var away = await Host.SignInAsync("ChAwayUser");
@@ -309,7 +309,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Away_WithoutText_ClearsTheMessageWith305()
+	public async Task AwayWithoutText_ClearsWith305()
 	{
 		using var irc = await Host.SignInAsync("ChBack");
 		await irc.SendAsync("AWAY :brb");
@@ -322,7 +322,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Silenced_UserCannotChat_Gets404()
+	public async Task SilencedUser_CannotChat()
 	{
 		using var irc = await Host.SignInAsync("ChMute", privileges: UserPrivileges.None);
 		await irc.SendAsync("PRIVMSG #osu :can I?");
@@ -331,7 +331,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task EchoMessage_SendsTheSenderItsOwnMessage()
+	public async Task EchoMessage_ReturnedToSender()
 	{
 		using var irc = await Host.SignInAsync("ChEcho", "echo-message");
 
@@ -341,7 +341,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task EchoMessage_OfAPrivateMessage_GoesToTheSender()
+	public async Task PrivateEcho_GoesToSender()
 	{
 		using var irc = await Host.SignInAsync("ChEchoPm", "echo-message");
 		using var other = await Host.SignInAsync("ChEchoPmTo");
@@ -353,7 +353,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ServerTimeAndAccountTag_AreAddedToRelayedMessages()
+	public async Task RelayedMessages_TimeAndTag()
 	{
 		using var listener = await Host.SignInAsync("ChTagListener", "server-time account-tag");
 		using var sender = await Host.SignInAsync("ChTagSender");
@@ -367,7 +367,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ClientTags_AreAcceptedAndNotRelayed()
+	public async Task ClientTags_AcceptedNotRelayed()
 	{
 		using var listener = await Host.SignInAsync("ChCtagListener", "message-tags");
 		using var sender = await Host.SignInAsync("ChCtagSender", "message-tags");
@@ -379,7 +379,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task ReadByTheOsuClientsAlias_TheOsuUserIsNotShownTwice()
+	public async Task OsuAliasRead_UserShownOnce()
 	{
 		using var irc = await Host.SignInAsync("ChDouble");
 		using var osu = await Host.LoginOsuAsync("ChDoubleOsu");

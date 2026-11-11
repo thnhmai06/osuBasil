@@ -16,7 +16,7 @@ public sealed class RoomBlocksTests
 	private static readonly DateTimeOffset CreatedAt = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
 	[Fact]
-	public async Task BlocksAsync_WithoutARelationship_IsFalse()
+	public async Task BlocksNoRelation_False()
 	{
 		using var app = new TestApplication();
 		var blocker = await app.CreateUserAsync("Blocker", "password");
@@ -28,7 +28,7 @@ public sealed class RoomBlocksTests
 	}
 
 	[Fact]
-	public async Task BlocksAsync_WithABlockFromTheBlocker_IsTrue()
+	public async Task BlocksFromBlocker_True()
 	{
 		using var app = new TestApplication();
 		var blocker = await app.CreateUserAsync("Blocker", "password");
@@ -41,7 +41,7 @@ public sealed class RoomBlocksTests
 	}
 
 	[Fact]
-	public async Task BlocksAsync_WithABlockTowardTheBlocker_IsFalse()
+	public async Task BlocksTowardBlocker_False()
 	{
 		using var app = new TestApplication();
 		var blocker = await app.CreateUserAsync("Blocker", "password");
@@ -54,7 +54,7 @@ public sealed class RoomBlocksTests
 	}
 
 	[Fact]
-	public async Task BlocksAsync_WithANonBlockRelationship_IsFalse()
+	public async Task BlocksNonBlock_False()
 	{
 		using var app = new TestApplication();
 		var blocker = await app.CreateUserAsync("Blocker", "password");
@@ -67,7 +67,7 @@ public sealed class RoomBlocksTests
 	}
 
 	[Fact]
-	public async Task BlocksAsync_WithBasilBotAsTheBlocker_IsFalseEvenWithABlock()
+	public async Task BlocksBot_FalseEvenBlock()
 	{
 		using var app = new TestApplication();
 		var bot = await app.SeedBotAsync();

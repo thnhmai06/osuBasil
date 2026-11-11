@@ -40,7 +40,7 @@ public sealed class BeatmapsetsScanTests
 	#region The whole storage
 
 	[Fact]
-	public async Task ScanAsync_OfAnEmptyStorage_ChangesNothing()
+	public async Task EmptyStorage_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -52,7 +52,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithALooseArchive_TakesItInAndPublishesOneBeatmapsetImported()
+	public async Task LooseArchive_TakesAndImports()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -68,7 +68,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithALooseArchive_MovesItIntoTheSetsFolderAndMakesItsFiles()
+	public async Task LooseArchive_MovesIntoFolder()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -82,7 +82,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithSeveralLooseArchives_PublishesTheImportsInTheOrderTheyWereTakenIn()
+	public async Task SeveralArchives_PublishesInOrder()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -97,7 +97,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAnArchiveThatIsNotReadable_TakesNothingInAndLeavesItWhereItIs()
+	public async Task UnreadableArchive_TakesNothingIn()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -112,7 +112,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAReadableAndAnUnreadableArchive_TakesInOnlyTheReadableOne()
+	public async Task MixedArchives_TakesReadableOnly()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -126,7 +126,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAFolderOfLooseFiles_PacksItTakesItInAndKeepsNoPackedArchive()
+	public async Task LooseFilesFolder_PacksIntoSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -140,7 +140,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAFolderOfLooseFilesThatIsNotABeatmapset_ChangesNothingAndKeepsNoPackedArchive()
+	public async Task NonBeatmapsetFolder_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -154,7 +154,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAFolderThatPacksToNothing_ChangesNothing()
+	public async Task EmptyPackingFolder_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -167,7 +167,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAnUnchangedStorage_ChangesNothingAndDoesNotReadTheArchive()
+	public async Task UnchangedStorage_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -183,7 +183,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAnArchiveThatChanged_UpdatesTheSetAndPublishesAnImport()
+	public async Task ChangedArchive_UpdatesAndPublishes()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -200,7 +200,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAChangedArchiveThatNoLongerHasADifficulty_RemovesIt()
+	public async Task ArchiveLostDifficulty_RemovesIt()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -214,7 +214,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAnArchiveTouchedButNotChanged_PublishesNothingAndRemembersItsNewTime()
+	public async Task TouchedArchive_RemembersNewTime()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -230,7 +230,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WhenASetsFolderIsGone_ForgetsTheSetAndPublishesBeatmapsetDeleted()
+	public async Task SetFolderGone_ForgetsAndPublishes()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -247,7 +247,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WhenASetsArchiveBecameUnreadable_ForgetsTheSetButKeepsItsFiles()
+	public async Task SetArchiveUnreadable_ForgetsSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -263,7 +263,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithAnImportAndAForgottenSet_PublishesTheImportBeforeTheDeletion()
+	public async Task ImportAndForget_PublishesImportFirst()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -282,7 +282,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithALockedSetWhoseArchiveChanged_LeavesItAsItIs()
+	public async Task LockedSetChanged_LeavesUntouched()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -300,7 +300,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithTwoArchivesOfOneSet_TakesInTheFirstAndLeavesTheOtherForTheNextScan()
+	public async Task DuplicateSetArchives_TakesFirstOnly()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -316,7 +316,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WithADifficultyOfAStoredSetInAnArchiveOfAnotherId_UpdatesTheStoredSet()
+	public async Task ForeignArchiveDifficulty_UpdatesStoredSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -331,7 +331,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_WhenAFileOfAStoredSetIsMissing_MakesItAgainWithoutPublishing()
+	public async Task MissingSetFile_MakesItAgain()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -347,7 +347,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_Twice_ChangesNothingTheSecondTime()
+	public async Task SecondScan_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -367,7 +367,7 @@ public sealed class BeatmapsetsScanTests
 	#region One entry
 
 	[Fact]
-	public async Task ScanAsync_OfALooseArchive_TakesItInAndPublishesOneImport()
+	public async Task SingleLooseArchive_PublishesOneImport()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -380,7 +380,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAnUnreadableLooseArchive_ChangesNothing()
+	public async Task UnreadableLooseArchive_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -393,7 +393,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAnUnchangedFolder_ChangesNothing()
+	public async Task UnchangedFolder_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -407,7 +407,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAFolderWhoseArchiveChanged_UpdatesItsSet()
+	public async Task ChangedFolder_UpdatesItsSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -422,7 +422,7 @@ public sealed class BeatmapsetsScanTests
 
 	[Fact]
 	public async Task
-		ScanAsync_OfAFolderWhoseNameStartsWithTheIdOfAStoredSet_ReplacesThatSetEvenWithoutASharedDifficulty()
+		IdNamedFolder_ReplacesStoredSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -437,7 +437,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfTheSameChangedFolderAgain_ChangesNothingTheSecondTime()
+	public async Task RepeatedChangedFolder_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -452,7 +452,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAFolderWhoseArchiveIsUnreadable_ForgetsItsSet()
+	public async Task UnreadableFolderArchive_ForgetsSet()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -467,7 +467,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAFolderThatIsGone_ForgetsItsSetAndPublishesBeatmapsetDeleted()
+	public async Task GoneFolder_ForgetsAndPublishes()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -482,7 +482,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAFolderThatIsGoneWhileTheSetKeepsItsArchiveElsewhere_ChangesNothing()
+	public async Task ElsewhereArchiveGone_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -497,7 +497,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAGoneFolderWithoutAnIdOrAStoredSet_ChangesNothing()
+	public async Task IdlessGoneFolder_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -511,7 +511,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAFolderOfLooseFiles_PacksItAndTakesItIn()
+	public async Task LooseFilesFolder_TakenIn()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -525,7 +525,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAFolderOfLooseFilesThatIsNotABeatmapset_ChangesNothingAndKeepsNoPackedArchive()
+	public async Task NonBeatmapsetFolder_KeepsNoArchive()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();
@@ -540,7 +540,7 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfALockedSetsChangedFolder_ChangesNothing()
+	public async Task LockedSetFolder_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();

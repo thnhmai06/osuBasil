@@ -16,7 +16,7 @@ public class PacketReaderClientPayloadTests
 	}
 
 	[Fact]
-	public void Split_ReturnsEachPacketWithItsOwnPayload()
+	public void Split_PayloadPerPacket()
 	{
 		// Ping (4) empty, ChannelJoin (63) with "#"
 		var packets = PacketReader.Split(Convert.FromHexString("04000000000000" + "3f000003000000" + "0b0123"));
@@ -35,7 +35,7 @@ public class PacketReaderClientPayloadTests
 	}
 
 	[Fact]
-	public void Split_UnknownType_IsSkippedByItsLength()
+	public void UnknownType_SkippedByLength()
 	{
 		// id 0xFFFF with two payload bytes, then Ping
 		var packets = PacketReader.Split(Convert.FromHexString("ffff00" + "02000000" + "aabb" + "04000000000000"));
@@ -44,37 +44,37 @@ public class PacketReaderClientPayloadTests
 	}
 
 	[Fact]
-	public void Split_EmptyBody_ReturnsNoPackets()
+	public void EmptyBody_NoPackets()
 	{
 		Assert.Empty(PacketReader.Split([]));
 	}
 
 	[Fact]
-	public void Split_TruncatedHeader_ThrowsEndOfStream()
+	public void TruncatedHeader_ThrowsStreamEnd()
 	{
 		Assert.Throws<EndOfStreamException>(() => PacketReader.Split(Convert.FromHexString("040000")));
 	}
 
 	[Fact]
-	public void Split_TruncatedPayload_ThrowsEndOfStream()
+	public void TruncatedPayload_ThrowsStreamEnd()
 	{
 		Assert.Throws<EndOfStreamException>(() => PacketReader.Split(Convert.FromHexString("3f000005000000" + "0b")));
 	}
 
 	[Fact]
-	public void Split_NegativeLength_ThrowsInvalidData()
+	public void NegativeLength_ThrowsInvalidData()
 	{
 		Assert.Throws<InvalidDataException>(() => PacketReader.Split(Convert.FromHexString("040000" + "ffffffff")));
 	}
 
 	[Fact]
-	public void Reader_OverPayload_ThrowsEndOfStream()
+	public void ReaderOverPayload_ThrowsStreamEnd()
 	{
 		Assert.Throws<EndOfStreamException>(() => Reader("0200").ReadInt32());
 	}
 
 	[Fact]
-	public void ReadChangeAction_ReadsFieldsInOrder()
+	public void ChangeAction_FieldsInOrder()
 	{
 		// u8 action 2, "hi", "" md5, u32 mods 64, u8 mode 1, i32 map id 5
 		var action = Reader("02" + "0b026869" + "00" + "40000000" + "01" + "05000000").ReadChangeAction();
@@ -83,7 +83,7 @@ public class PacketReaderClientPayloadTests
 	}
 
 	[Fact]
-	public void ReadChangeAction_ModsHighBit_ReadsUnsigned()
+	public void ModsHighBit_ReadsUnsigned()
 	{
 		var action = Reader("00" + "00" + "00" + "00000080" + "00" + "00000000").ReadChangeAction();
 
@@ -91,13 +91,13 @@ public class PacketReaderClientPayloadTests
 	}
 
 	[Fact]
-	public void ReadJoinMatch_ReadsIdAndPassword()
+	public void JoinMatch_IdAndPassword()
 	{
 		Assert.Equal(new JoinMatchRequest(258, "pw"), Reader("02010000" + "0b027077").ReadJoinMatch());
 	}
 
 	[Fact]
-	public void ReadBeatmapInfoRequest_ReadsFilenamesThenIds()
+	public void BeatmapInfo_FilenamesThenIds()
 	{
 		var request = Reader("02000000" + "0b05612e6f7375" + "0b0162" + "01000000" + "07000000")
 			.ReadBeatmapInfoRequest();
@@ -107,20 +107,20 @@ public class PacketReaderClientPayloadTests
 	}
 
 	[Fact]
-	public void ReadBeatmapInfoRequest_NegativeCount_ThrowsInvalidData()
+	public void NegativeCount_ThrowsInvalidData()
 	{
 		Assert.Throws<InvalidDataException>(() => Reader("ffffffff").ReadBeatmapInfoRequest());
 	}
 
 	[Fact]
-	public void ReadInt32List_ReadsU16CountThenSignedValues()
+	public void Int32List_CountThenValues()
 	{
 		// UserStatsRequest and UserPresenceRequest carry this shape
 		Assert.Equal([1, -1], Reader("0200" + "01000000" + "ffffffff").ReadInt32List());
 	}
 
 	[Fact]
-	public void ReadInt32_ReadsSignedLittleEndian()
+	public void Int32_SignedLittleEndian()
 	{
 		// StartSpectating, MatchChangeSlot, MatchLock, MatchChangeMods, MatchTransferHost, MatchInvite,
 		// FriendAdd, FriendRemove, ReceiveUpdates, ToggleBlockNonFriendDms, Tournament*, UserPresenceRequestAll
@@ -128,14 +128,14 @@ public class PacketReaderClientPayloadTests
 	}
 
 	[Fact]
-	public void ReadOsuString_ReadsErrorReportAndChannelNames()
+	public void OsuString_ReadsErrorChannels()
 	{
 		// ErrorReport, ChannelJoin and ChannelPart carry one string
 		Assert.Equal("#osu", Reader("0b04236f7375").ReadOsuString());
 	}
 
 	[Fact]
-	public void ReadMessage_ReadsPublicPrivateAndAwayMessages()
+	public void Message_ReadsThreeKinds()
 	{
 		// SendPublicMessage, SendPrivateMessage and SetAwayMessage carry a message
 		var message = Reader("00" + "0b0168" + "0b022366" + "01000000").ReadMessage();

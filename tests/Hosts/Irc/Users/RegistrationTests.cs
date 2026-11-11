@@ -12,7 +12,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	private BasilHost Host => fixture.Host;
 
 	[Fact]
-	public async Task Pass_ValidKey_WelcomesWithNumerics001To005()
+	public async Task ValidKey_WelcomesWithNumerics()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("RegOk");
 		using var _ = irc;
@@ -28,7 +28,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Welcome_Isupport_AdvertisesTheServersRules()
+	public async Task Isupport_AdvertisesRules()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("RegSupport");
 		using var _ = irc;
@@ -42,7 +42,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Pass_NickDiffersOnlyInCase_IsAccepted()
+	public async Task NickCaseDiffers_Accepted()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("RegCase");
 		using var _ = irc;
@@ -53,7 +53,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Pass_NameWithSpace_IsTheNameWithAnUnderscore()
+	public async Task NameWithSpace_UnderscoreName()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("Reg Space");
 		using var _ = irc;
@@ -64,7 +64,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Pass_NickOfAnotherUser_IsRefusedWith464AndTheConnectionCloses()
+	public async Task OtherUserNick_Refused464Closes()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("RegOwner");
 		using var _ = irc;
@@ -80,7 +80,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Pass_AccountAtItsConnectionLimit_IsRefusedWith464AndTheTooManySessionsText()
+	public async Task LimitAccount_Refused464TooMany()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
 		var original = await settings.GetAsync(TestContext.Current.CancellationToken);
@@ -111,7 +111,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Pass_WrongKey_IsRefusedWith464()
+	public async Task WrongKey_IsRefusedWith464()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("RegWrongKey");
 		using var __ = irc;
@@ -124,7 +124,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Pass_RevokedKey_IsRefusedWith464()
+	public async Task RevokedKey_IsRefusedWith464()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("RegRevoked");
 		using var _ = irc;
@@ -138,7 +138,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Registration_WithoutAnyCredential_IsRefusedWith464()
+	public async Task WithoutAnyCredential_IsRefusedWith464()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("RegNoPass");
 		using var __ = irc;
@@ -150,7 +150,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task AccountPassword_IsNotAKey()
+	public async Task AccountPassword_NotAKey()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("RegPassword");
 		using var __ = irc;
@@ -163,7 +163,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Command_BeforeRegistration_Gets451()
+	public async Task BeforeRegistration_Gets451()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("RegEarly");
 		using var __ = irc;
@@ -174,7 +174,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Ping_BeforeRegistration_IsAnswered()
+	public async Task BeforeRegistration_IsAnswered()
 	{
 		var (irc, _) = await Host.NewIrcClientAsync("RegPing");
 		using var __ = irc;
@@ -188,7 +188,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	[InlineData("NICK", "NICK RegAgain", "462")]
 	[InlineData("USER", "USER a 0 * :a", "462")]
 	[InlineData("PASS", "PASS x", "462")]
-	public async Task IdentityCommand_AfterRegistration_Gets462(string name, string line, string numeric)
+	public async Task AfterRegistration_Gets462(string name, string line, string numeric)
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("RegAgain" + name);
 		using var _ = irc;
@@ -200,7 +200,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task SecondSocketWithTheSameKey_IsClosed()
+	public async Task SecondSocket_SameKeyClosed()
 	{
 		var (first, key) = await Host.NewIrcClientAsync("RegTwice");
 		using var _ = first;
@@ -217,7 +217,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task TwoKeysOfOneUser_AreTwoConnections()
+	public async Task OneUserKeys_TwoConnections()
 	{
 		var (first, key) = await Host.NewIrcClientAsync("RegDevices");
 		using var _ = first;
@@ -231,7 +231,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task Quit_ClosesWithErrorLine()
+	public async Task Quit_ClosesWithError()
 	{
 		var (irc, key) = await Host.NewIrcClientAsync("RegQuit");
 		using var _ = irc;
@@ -244,7 +244,7 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task RepeatedWrongKeysForOneAccountFromOneAddress_AreRefusedAsTooManyAttempts()
+	public async Task RepeatedWrongKeys_TooManyAttempts()
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
 		var before = await settings.GetAsync(TestContext.Current.CancellationToken);

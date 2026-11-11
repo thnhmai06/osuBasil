@@ -14,7 +14,7 @@ public sealed class SessionHandlerTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	[Fact]
-	public async Task GetUserSession_OfTheSendersOwnAccount_ReturnsTheSession()
+	public async Task OwnSession_Returned()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Reader", "password"));
@@ -27,7 +27,7 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
-	public async Task GetUserSession_OfAnotherAccountWithoutTheRight_IsRefusedAndReturnsNothing()
+	public async Task UnauthorizedForeignSession_Refused()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
@@ -41,7 +41,7 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
-	public async Task ListUserSessions_OfTheSendersOwnAccount_ListsItsSessions()
+	public async Task OwnSessions_Listed()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Lister", "password"));
@@ -54,7 +54,7 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
-	public async Task ListUserSessions_OfAnotherAccountWithoutTheRight_IsRefusedAndReturnsNothing()
+	public async Task UnauthorizedForeignSessions_Refused()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
@@ -68,7 +68,7 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
-	public async Task CloseUserSession_OfTheSendersOwnAccount_EndsThatSession()
+	public async Task OwnSessionClose_EndsIt()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Closer", "password");
@@ -84,7 +84,7 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
-	public async Task CloseUserSession_OfAnotherAccountWithoutTheRight_IsRefusedAndLeavesTheSessionOpen()
+	public async Task UnauthorizedForeignClose_Refused()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Nosy", "password"));
@@ -98,7 +98,7 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
-	public async Task CloseUserSessions_KeepingTheCurrentOne_LeavesTheSendersApiSessionOpen()
+	public async Task CloseOthers_KeepsCurrent()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Sweeper", "password");
@@ -114,7 +114,7 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
-	public async Task CloseUserSessions_NotKeepingTheCurrentOne_EndsTheSendersSessionToo()
+	public async Task CloseAll_EndsCurrentToo()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Sweeper", "password");

@@ -14,7 +14,7 @@ namespace Basil.Application.Users.Tests.Registry;
 public sealed class UserRegistryTests
 {
 	[Fact]
-	public async Task CheckRegistrationAsync_AccountsAreLocked_ReturnsLocked()
+	public async Task AccountsAreLocked_ReturnsLocked()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Accounts });
@@ -27,7 +27,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task CreateAccountAsync_AccountManagerBypassesAccountLock()
+	public async Task AccountManager_BypassesLock()
 	{
 		using var app = new TestApplication();
 		var manager = await app.CreateUserAsync("LockManager", "password",
@@ -43,7 +43,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task RegisterAsync_DefaultSettings_GrantsThePlayerAndSupporterPrivileges()
+	public async Task DefaultSettings_GrantsPlayerSupporter()
 	{
 		using var app = new TestApplication();
 
@@ -56,7 +56,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task RegisterAsync_DefaultPrivilegesChanged_GrantsExactlyThatMask()
+	public async Task DefaultsChanged_GrantsExactMask()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
@@ -73,7 +73,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_UnknownName_ReturnsUnknownUser()
+	public async Task UnknownName_ReturnsUnknownUser()
 	{
 		using var app = new TestApplication();
 
@@ -83,7 +83,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_WrongPassword_ReturnsWrongPassword()
+	public async Task WrongPassword_ReturnsWrongPassword()
 	{
 		using var app = new TestApplication();
 		await app.CreateUserAsync("PasswordUser", "right-password");
@@ -94,7 +94,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_DeletedAccount_ReturnsAccountDeleted()
+	public async Task DeletedAccount_ReturnsAccountDeleted()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("DeletedUser", "password");
@@ -106,7 +106,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_CorrectCredentials_PublishesCameOnline()
+	public async Task CorrectCredentials_PublishesCameOnline()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("OnlineUser", "password");
@@ -122,7 +122,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_RemovedBotKindRequested_ThrowsArgumentOutOfRangeException()
+	public async Task RemovedBotKind_OutOfRange()
 	{
 		using var app = new TestApplication();
 
@@ -133,7 +133,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_IrcWithTheAccountPassword_ThrowsArgumentException()
+	public async Task IrcAccountPassword_ThrowsArgument()
 	{
 		using var app = new TestApplication();
 		await app.CreateUserAsync("IrcByPassword", "password");
@@ -144,7 +144,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginWithTokenAsync_OwnerRefusedByTheCaller_OpensNothingForAnOpenOrAStoredKey()
+	public async Task OwnerRefused_OpensNothingKeys()
 	{
 		using var app = new TestApplication();
 		var opened = await app.LoginAsync(await app.CreateUserAsync("KeyClaimed", "password"), SessionType.Irc);
@@ -159,7 +159,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginWithTokenAsync_StoredKeyWhoseOwnerIsRefused_IsNotBroughtOnline()
+	public async Task StoredKeyRefused_NotOnline()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("KeyStored", "password");
@@ -175,7 +175,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_BasilBotName_ReturnsUnknownUser()
+	public async Task BasilBotName_ReturnsUnknownUser()
 	{
 		using var app = new TestApplication();
 		await app.SeedBotAsync();
@@ -186,7 +186,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondStableLoginRightAfterTheFirst_ReturnsTooManySessions()
+	public async Task SecondStableLogin_TooManySessions()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("AlreadyOnline", "password");
@@ -199,7 +199,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_SecondStableLoginWhileTheFirstIsOpen_ReturnsTooManySessionsHoweverLongItHasBeenIdle()
+	public async Task SecondWhileOpen_TooManyIdle()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("StillOpen", "password");
@@ -213,7 +213,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
-	public async Task LoginAsync_TourneyWithoutRoomObserve_ReturnsNoTourneyPermission()
+	public async Task TourneyNoObserve_NoTourneyPermission()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoTourney", "password", UserPrivilegesExtensions.Default);
@@ -226,7 +226,7 @@ public sealed class UserRegistryTests
 	[Theory]
 	[InlineData(SessionType.Stable)]
 	[InlineData(SessionType.StableTourney)]
-	public async Task LoginAsync_OsuKindWithoutClient_ThrowsArgumentNullException(SessionType type)
+	public async Task OsuNoClient_ThrowsArgumentNull(SessionType type)
 	{
 		using var app = new TestApplication();
 

@@ -27,7 +27,7 @@ public sealed class LogLevelSettingsTests
 	}
 
 	[Fact]
-	public void TheDefaultLevelAppliesToASourceWithoutAnEntry()
+	public void LogLevel_DefaultNoEntry()
 	{
 		var logger = Logger("Basil.Logging.LoginLog", Shipped);
 
@@ -39,7 +39,7 @@ public sealed class LogLevelSettingsTests
 	[InlineData("Microsoft.AspNetCore.Hosting.Diagnostics")]
 	[InlineData("Microsoft.EntityFrameworkCore.Database.Command")]
 	[InlineData("System.Net.Http.HttpClient.Default.LogicalHandler")]
-	public void TheFrameworksDoNotWritePerRequestInformation(string category)
+	public void LogLevel_FrameworkQuiet(string category)
 	{
 		var logger = Logger(category, Shipped);
 
@@ -48,13 +48,13 @@ public sealed class LogLevelSettingsTests
 	}
 
 	[Fact]
-	public void TheLifetimeOfTheHostIsWrittenAtInformation()
+	public void LogLevel_HostLifetimeInfo()
 	{
 		Assert.True(Logger("Microsoft.Hosting.Lifetime", Shipped).IsEnabled(LogLevel.Information));
 	}
 
 	[Fact]
-	public void TheLongestMatchingEntryWins()
+	public void LogLevel_LongestEntryWins()
 	{
 		var levels = new Dictionary<string, string?>
 			{ ["Default"] = "Information", ["Basil"] = "Debug", ["Basil.Logging"] = "Error" };
@@ -64,7 +64,7 @@ public sealed class LogLevelSettingsTests
 	}
 
 	[Fact]
-	public void NoneWritesNothing()
+	public void LogLevel_NoneWritesNothing()
 	{
 		Assert.False(Logger("Basil", new Dictionary<string, string?> { ["Default"] = "None" })
 			.IsEnabled(LogLevel.Critical));

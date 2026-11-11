@@ -9,13 +9,13 @@ namespace Basil.ArchitectureTests;
 public class GatewayGraphTests
 {
 	[Fact]
-	public void GatewayReferencesNoOtherProjectAndNoAspNetCore()
+	public void Gateway_ReferencesNoProject()
 	{
 		Assert.Empty(Violations(GatewayProject()));
 	}
 
 	[Fact]
-	public void TheRuleRefusesAProjectThatBreaksIt()
+	public void RuleBroken_Refused()
 	{
 		var project = XDocument.Parse("""
 		                              <Project>
@@ -31,7 +31,7 @@ public class GatewayGraphTests
 	}
 
 	[Fact]
-	public void TheMeasureSeesTheGatewayProject()
+	public void Measure_SeesGateway()
 	{
 		Assert.Contains(GatewayProject().Descendants(), element => element.Name.LocalName == "RootNamespace" &&
 		                                                           element.Value == "Basil.Gateway");

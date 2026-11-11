@@ -7,13 +7,13 @@ namespace Basil.Domain.Tests.Users;
 public class UserStatsTests
 {
 	[Fact]
-	public void Mode_Undefined_Throws()
+	public void UndefinedMode_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new UserStats { UserId = 1, Mode = (GameMode)200 });
 	}
 
 	[Fact]
-	public void TotalScore_Negative_Throws()
+	public void NegativeTotalScore_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new UserStats
 		{
@@ -24,7 +24,7 @@ public class UserStatsTests
 	}
 
 	[Fact]
-	public void RankedScore_Negative_Throws()
+	public void NegativeRankedScore_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new UserStats
 		{
@@ -35,7 +35,7 @@ public class UserStatsTests
 	}
 
 	[Fact]
-	public void PlayCount_Negative_Throws()
+	public void NegativePlayCount_Throws()
 	{
 		Assert.Throws<ArgumentOutOfRangeException>(() => new UserStats
 		{

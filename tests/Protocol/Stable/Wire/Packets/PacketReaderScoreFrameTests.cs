@@ -51,7 +51,7 @@ public class PacketReaderScoreFrameTests
 	}
 
 	[Fact]
-	public void ReadScoreFrame_V1TwentynineBytes_ParsesEveryField()
+	public void V1Frame_ParsesAllFields()
 	{
 		var frame = new PacketReader(new MemoryStream(Convert.FromHexString(V1Hex))).ReadScoreFrame();
 
@@ -59,7 +59,7 @@ public class PacketReaderScoreFrameTests
 	}
 
 	[Fact]
-	public void ReadScoreFrame_V2FortyfiveBytes_ParsesComboAndBonusPortion()
+	public void V2Frame_ComboAndBonus()
 	{
 		var frame = new PacketReader(new MemoryStream(Convert.FromHexString(V2Hex))).ReadScoreFrame();
 
@@ -68,7 +68,7 @@ public class PacketReaderScoreFrameTests
 
 	[Theory]
 	[MemberData(nameof(V1Truncations))]
-	public void ReadScoreFrame_V1TruncatedAtAnyByte_ThrowsEndOfStream(int length)
+	public void TruncatedV1_StreamEnd(int length)
 	{
 		var bytes = Convert.FromHexString(V1Hex);
 
@@ -77,7 +77,7 @@ public class PacketReaderScoreFrameTests
 
 	[Theory]
 	[MemberData(nameof(V2Truncations))]
-	public void ReadScoreFrame_V2TruncatedAtAnyByte_ThrowsEndOfStream(int length)
+	public void TruncatedV2_StreamEnd(int length)
 	{
 		var bytes = Convert.FromHexString(V2Hex);
 
