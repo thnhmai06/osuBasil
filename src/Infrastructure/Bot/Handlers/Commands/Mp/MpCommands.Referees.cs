@@ -2,6 +2,7 @@ using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
@@ -20,15 +21,21 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args);
-		var outcome = await sender.Send(new AddReferee(actor, room, ReferenceOf(rawTarget)), ct);
+		var target = await ResolveUserAsync(rawTarget, ct);
+		if (target is null)
+		{
+			await context.Reply(MpReplies.UserNotFound, ct);
+			return false;
+		}
+
+		var outcome = await sender.Send(new AddReferee(actor, room, UserReference.ById(target.Id)), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		var player = await NameOfAsync(rawTarget, ct);
-		await context.Reply(MpReplies.AddedReferee, new { player = player }, ct);
+		await context.Reply(MpReplies.AddedReferee, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -43,15 +50,21 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args);
-		var outcome = await sender.Send(new RemoveReferee(actor, room, ReferenceOf(rawTarget)), ct);
+		var target = await ResolveUserAsync(rawTarget, ct);
+		if (target is null)
+		{
+			await context.Reply(MpReplies.UserNotFound, ct);
+			return false;
+		}
+
+		var outcome = await sender.Send(new RemoveReferee(actor, room, UserReference.ById(target.Id)), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		var player = await NameOfAsync(rawTarget, ct);
-		await context.Reply(MpReplies.RemovedReferee, new { player = player }, ct);
+		await context.Reply(MpReplies.RemovedReferee, new { player = target.Value.Name }, ct);
 		return true;
 	}
 

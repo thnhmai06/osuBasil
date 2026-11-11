@@ -37,7 +37,7 @@ public sealed class MpRefereesTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp addref Nobody");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.TargetNotInMatch)], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.UserNotFound)], said.Here);
 		Assert.Empty(room.Authority.Referees);
 	}
 

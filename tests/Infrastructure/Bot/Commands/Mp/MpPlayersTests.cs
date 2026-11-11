@@ -40,7 +40,7 @@ public sealed class MpPlayersTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp move Nobody 3");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.TargetNotInMatch)], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.UserNotFound)], said.Here);
 		Assert.Equal(before, Snapshot(room));
 	}
 
@@ -357,7 +357,7 @@ public sealed class MpPlayersTests
 		var (succeeded, said) = await bot.TypeAsync(creator, "#osu", "!mp ban Nobody");
 
 		Assert.False(succeeded);
-		Assert.Equal([bot.TextIn(room.Id, MpReplies.TargetNotInMatch)], said.Here);
+		Assert.Equal([bot.TextIn(room.Id, MpReplies.UserNotRegistered)], said.Here);
 		Assert.Empty(room.Members.Banned);
 	}
 

@@ -8,7 +8,6 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
@@ -208,16 +207,6 @@ internal sealed partial class MpCommands(
 	}
 
 	// ── helpers ──────────────────────────────────────────────────────────────────────────
-
-	private static UserReference ReferenceOf(string raw)
-	{
-		return raw.StartsWith('#') && int.TryParse(raw[1..], out var id) ? UserReference.ById(id) : UserReference.ByName(raw);
-	}
-
-	private async ValueTask<string> NameOfAsync(string raw, CancellationToken ct)
-	{
-		return (await ResolveUserAsync(raw, ct))?.Value.Name ?? raw;
-	}
 
 	private async ValueTask<UserRecord?> ResolveUserAsync(string raw, CancellationToken ct)
 	{

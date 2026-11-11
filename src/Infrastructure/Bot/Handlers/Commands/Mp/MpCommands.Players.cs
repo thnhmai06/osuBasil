@@ -3,6 +3,7 @@ using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 
@@ -23,15 +24,21 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args.Take(args.Count - 1));
-		var outcome = await sender.Send(new MovePlayer(actor, room, ReferenceOf(rawTarget), slot), ct);
+		var target = await ResolveUserAsync(rawTarget, ct);
+		if (target is null)
+		{
+			await context.Reply(MpReplies.UserNotFound, ct);
+			return false;
+		}
+
+		var outcome = await sender.Send(new MovePlayer(actor, room, UserReference.ById(target.Id), slot), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		var player = await NameOfAsync(rawTarget, ct);
-		await context.Reply(MpReplies.MovedToSlot, new { player = player, slot }, ct);
+		await context.Reply(MpReplies.MovedToSlot, new { player = target.Value.Name, slot }, ct);
 		return true;
 	}
 
@@ -130,15 +137,21 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args);
-		var outcome = await sender.Send(new KickPlayer(actor, room, ReferenceOf(rawTarget)), ct);
+		var target = await ResolveUserAsync(rawTarget, ct);
+		if (target is null)
+		{
+			await context.Reply(MpReplies.UserNotRegistered, ct);
+			return false;
+		}
+
+		var outcome = await sender.Send(new KickPlayer(actor, room, UserReference.ById(target.Id)), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		var player = await NameOfAsync(rawTarget, ct);
-		await context.Reply(MpReplies.KickedFromMatch, new { player = player }, ct);
+		await context.Reply(MpReplies.KickedFromMatch, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -153,15 +166,21 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args);
-		var outcome = await sender.Send(new BanPlayer(actor, room, ReferenceOf(rawTarget)), ct);
+		var target = await ResolveUserAsync(rawTarget, ct);
+		if (target is null)
+		{
+			await context.Reply(MpReplies.UserNotRegistered, ct);
+			return false;
+		}
+
+		var outcome = await sender.Send(new BanPlayer(actor, room, UserReference.ById(target.Id)), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		var player = await NameOfAsync(rawTarget, ct);
-		await context.Reply(MpReplies.BannedPlayerFromMatch, new { player = player }, ct);
+		await context.Reply(MpReplies.BannedPlayerFromMatch, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -176,15 +195,21 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args);
-		var outcome = await sender.Send(new UnbanPlayer(actor, room, ReferenceOf(rawTarget)), ct);
+		var target = await ResolveUserAsync(rawTarget, ct);
+		if (target is null)
+		{
+			await context.Reply(MpReplies.UserNotRegistered, ct);
+			return false;
+		}
+
+		var outcome = await sender.Send(new UnbanPlayer(actor, room, UserReference.ById(target.Id)), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
 			return false;
 		}
 
-		var player = await NameOfAsync(rawTarget, ct);
-		await context.Reply(MpReplies.UnbannedFromMatch, new { player = player }, ct);
+		await context.Reply(MpReplies.UnbannedFromMatch, new { player = target.Value.Name }, ct);
 		return true;
 	}
 
@@ -208,8 +233,15 @@ internal sealed partial class MpCommands
 		}
 
 		var rawTarget = string.Join(' ', args.Take(args.Count - 1));
+		var target = await ResolveUserAsync(rawTarget, ct);
+		if (target is null)
+		{
+			await context.Reply(MpReplies.UserNotFound, ct);
+			return false;
+		}
+
 		var team = teamArg == "red" ? GameTeam.Red : GameTeam.Blue;
-		var outcome = await sender.Send(new SetPlayerTeam(actor, room, ReferenceOf(rawTarget), team), ct);
+		var outcome = await sender.Send(new SetPlayerTeam(actor, room, UserReference.ById(target.Id), team), ct);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), ct);
@@ -217,8 +249,7 @@ internal sealed partial class MpCommands
 		}
 
 		var teamDisplay = char.ToUpperInvariant(teamArg[0]) + teamArg[1..];
-		var player = await NameOfAsync(rawTarget, ct);
-		await context.Reply(MpReplies.MovedToTeam, new { player = player, team = teamDisplay },
+		await context.Reply(MpReplies.MovedToTeam, new { player = target.Value.Name, team = teamDisplay },
 			ct);
 		return true;
 	}
