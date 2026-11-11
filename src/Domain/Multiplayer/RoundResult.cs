@@ -77,13 +77,17 @@ public abstract class RoundResult : IEquatable<RoundResult>
 	/// </param>
 	/// <param name="margin">How far the winner was ahead of the runner-up when the round finished.</param>
 	/// <param name="isDraw">Whether the round finished without a winner.</param>
-	/// <returns>The result, with the scores in the stored order.</returns>
+	/// <param name="winnerId">The winning player of a round without teams as stored, or <see langword="null" />.</param>
+	/// <param name="winner">The winning team of a team round as stored, or <see langword="null" />.</param>
+	/// <param name="redScore">The win metric the red team reached as stored; absent counts as zero.</param>
+	/// <param name="blueScore">The win metric the blue team reached as stored; absent counts as zero.</param>
+	/// <returns>The result, with the scores in the stored order and every other value as stored.</returns>
 	public static RoundResult Restore(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
-		double margin, bool isDraw)
+		double margin, bool isDraw, int? winnerId, GameTeam? winner, double? redScore, double? blueScore)
 	{
 		return round.Settings.TeamType.IsTeamMode()
-			? new TeamVersusResult(round, scores, order, margin, isDraw)
-			: new HeadToHeadResult(round, scores, order, margin, isDraw);
+			? new TeamVersusResult(round, scores, order, margin, isDraw, winner, redScore, blueScore)
+			: new HeadToHeadResult(round, scores, order, margin, isDraw, winnerId);
 	}
 
 	/// <summary>Puts scores in the order a decision stored, scores it does not name last.</summary>
@@ -176,15 +180,16 @@ public sealed class HeadToHeadResult : RoundResult
 	/// <param name="order">The stored order of score ids, the winner first.</param>
 	/// <param name="margin">The stored margin.</param>
 	/// <param name="isDraw">Whether the stored decision is a draw.</param>
+	/// <param name="winnerId">The stored winning player, or <see langword="null" />.</param>
 	[SetsRequiredMembers]
 	internal HeadToHeadResult(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
-		double margin, bool isDraw)
+		double margin, bool isDraw, int? winnerId)
 	{
 		Round = round;
 		Scores = InOrder(scores, order);
 		Margin = margin;
 		IsDraw = isDraw;
-		WinnerId = isDraw ? null : Scores.FirstOrDefault()?.Score.Value.UserId;
+		WinnerId = winnerId;
 	}
 
 	/// <summary>
@@ -249,17 +254,24 @@ public sealed class TeamVersusResult : RoundResult
 	/// <param name="order">The stored order of score ids, the winning team first.</param>
 	/// <param name="margin">The stored margin.</param>
 	/// <param name="isDraw">Whether the stored decision is a draw.</param>
+	/// <param name="winner">The stored winning team, or <see langword="null" />.</param>
+	/// <param name="redScore">The stored win metric of the red team.</param>
+	/// <param name="blueScore">The stored win metric of the blue team.</param>
 	[SetsRequiredMembers]
 	internal TeamVersusResult(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
-		double margin, bool isDraw)
+		double margin, bool isDraw, GameTeam? winner, double? redScore, double? blueScore)
 	{
 		Round = round;
 		Scores = InOrder(scores, order);
 		TeamScores = ScoresByTeam(scores);
-		TeamScore = TotalsOf(Contenders(scores, round.Settings.WinCondition));
+		TeamScore = new Dictionary<GameTeam, double>
+		{
+			[GameTeam.Red] = redScore ?? 0,
+			[GameTeam.Blue] = blueScore ?? 0
+		}.ToFrozenDictionary();
 		Margin = margin;
 		IsDraw = isDraw;
-		Winner = isDraw ? null : Scores.FirstOrDefault()?.Team;
+		Winner = winner;
 	}
 
 	/// <summary>

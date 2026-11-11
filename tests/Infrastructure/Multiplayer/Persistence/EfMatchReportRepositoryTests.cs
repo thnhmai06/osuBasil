@@ -115,7 +115,8 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		var second = await CreatePlayerAsync("restart_second");
 		var low = await RecordScoreAsync(round, first, 1000, First);
 		var high = await RecordScoreAsync(round, second, 5000, First);
-		round.Result = RoundResult.Restore(round, [low, high], [low.Score.Id, high.Score.Id], 1500.5, false);
+		round.Result = RoundResult.Restore(round, [low, high], [low.Score.Id, high.Score.Id], 1500.5, false,
+			first.Id, null, null, null);
 		await Rounds.CreateOrUpdateAsync(round);
 		await StoredRows.WaitForAsync(ConnectionString, "select result from rounds where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
@@ -170,7 +171,8 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		var high = await RecordScoreAsync(round, second, 5000, First);
 
 		// The stored decision names the player with the lower score as the winner; a fresh decision would not.
-		round.Result = RoundResult.Restore(round, [low, high], [low.Score.Id, high.Score.Id], 4000, false);
+		round.Result = RoundResult.Restore(round, [low, high], [low.Score.Id, high.Score.Id], 4000, false,
+			first.Id, null, null, null);
 		await Rounds.CreateOrUpdateAsync(round);
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);

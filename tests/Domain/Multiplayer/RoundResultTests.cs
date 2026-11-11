@@ -59,7 +59,7 @@ public class RoundResultTests
 		var low = Play(round, 1, 1, 100);
 		var high = Play(round, 2, 2, 900);
 
-		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 800, false));
+		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 800, false, 2, null, null, null));
 
 		Assert.Equal(2, restored.WinnerId);
 		Assert.Equal(800, restored.Margin);
@@ -74,7 +74,7 @@ public class RoundResultTests
 		var red = Play(round, 1, 1, 100, team: GameTeam.Red);
 		var blue = Play(round, 2, 2, 900, team: GameTeam.Blue);
 
-		var restored = Assert.IsType<TeamVersusResult>(RoundResult.Restore(round, [red, blue], [2, 1], 800, false));
+		var restored = Assert.IsType<TeamVersusResult>(RoundResult.Restore(round, [red, blue], [2, 1], 800, false, null, GameTeam.Blue, 100, 900));
 
 		Assert.Equal(GameTeam.Blue, restored.Winner);
 		Assert.Equal(800, restored.Margin);
@@ -91,7 +91,7 @@ public class RoundResultTests
 		var high = Play(round, 2, 2, 900);
 
 		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high],
-			[1, 2], 800, false));
+			[1, 2], 800, false, 1, null, null, null));
 
 		Assert.Equal(1, restored.WinnerId);
 		Assert.Equal([1, 2], restored.Scores.Select(s => s.Score.Id));
@@ -104,11 +104,24 @@ public class RoundResultTests
 		var low = Play(round, 1, 1, 100);
 		var high = Play(round, 2, 2, 900);
 
-		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 0, true));
+		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 0, true, null, null, null, null));
 
 		Assert.Null(restored.WinnerId);
 		Assert.True(restored.IsDraw);
 		Assert.Equal(0, restored.Margin);
+	}
+
+	[Fact]
+	public void Restore_StoredWinnerBeatsRankingByOrder()
+	{
+		var round = MakeRound(GameTeamType.HeadToHead);
+		var low = Play(round, 1, 1, 100);
+		var high = Play(round, 2, 2, 900);
+
+		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 800, false,
+			1, null, null, null));
+
+		Assert.Equal(1, restored.WinnerId);
 	}
 
 	[Fact]

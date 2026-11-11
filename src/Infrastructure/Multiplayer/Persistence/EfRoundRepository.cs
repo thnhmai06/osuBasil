@@ -37,7 +37,7 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 			// A stored decision is shown as it was decided, never decided again from the scores.
 			if (row.Result is not null && JsonSerializer.Deserialize<StoredDecision>(row.Result) is { } stored)
 				round.Result = RoundResult.Restore(round, await roundScores.ListAsync(round, ct), stored.ScoreOrder,
-					stored.Margin, stored.IsDraw);
+					stored.Margin, stored.IsDraw, stored.WinnerId, stored.Winner, stored.RedScore, stored.BlueScore);
 			listed.Add(round);
 		}
 
