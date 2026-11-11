@@ -11,7 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
 /// <summary>Stores the rounds played in matches.</summary>
-internal sealed class EfRoundRepository(DatabaseSession database) : IRoundRepository
+internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRepository roundScores)
+	: IRoundRepository
 {
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Round round)
@@ -29,7 +30,18 @@ internal sealed class EfRoundRepository(DatabaseSession database) : IRoundReposi
 			.OrderBy(row => row.Number)
 			.Take(ListLimits.Ceiling)
 			.ToListAsync(ct), ct);
-		return [.. rows.Select(row => ToRound(match, row))];
+		var listed = new List<Round>(rows.Count);
+		foreach (var row in rows)
+		{
+			var round = ToRound(match, row);
+			// A stored decision is shown as it was decided, never decided again from the scores.
+			if (row.Result is not null && JsonSerializer.Deserialize<StoredDecision>(row.Result) is { } stored)
+				round.Result = RoundResult.Restore(round, await roundScores.ListAsync(round, ct), stored.ScoreOrder,
+					stored.Margin, stored.IsDraw);
+			listed.Add(round);
+		}
+
+		return listed;
 	}
 
 	private static RoundRow ToRow(Round round)
@@ -48,7 +60,7 @@ internal sealed class EfRoundRepository(DatabaseSession database) : IRoundReposi
 			StartedAt = round.StartedAt.ToUniversalTime(),
 			EndedAt = round.EndedAt?.ToUniversalTime(),
 			Aborted = round.Aborted,
-			Result = round.Decision is { } decision ? JsonSerializer.Serialize(decision) : null
+			Result = round.Result is { } result ? JsonSerializer.Serialize(StoredDecision.Of(result)) : null
 		};
 	}
 
@@ -75,8 +87,31 @@ internal sealed class EfRoundRepository(DatabaseSession database) : IRoundReposi
 			Settings = settings,
 			StartedAt = row.StartedAt,
 			EndedAt = row.EndedAt,
-			Aborted = row.Aborted,
-			Decision = row.Result is null ? null : JsonSerializer.Deserialize<RoundVerdict>(row.Result)
+			Aborted = row.Aborted
 		};
+	}
+
+	/// <summary>The decision of a round as the <c>result</c> column keeps it; the property names are the stored JSON names.</summary>
+	private sealed record StoredDecision(
+		IReadOnlyList<int> ScoreOrder,
+		int? WinnerId,
+		GameTeam? Winner,
+		double Margin,
+		bool IsDraw,
+		double? RedScore,
+		double? BlueScore)
+	{
+		public static StoredDecision Of(RoundResult result)
+		{
+			var order = (IReadOnlyList<int>) [.. result.Scores.Select(score => score.Score.Id)];
+			return result switch
+			{
+				TeamVersusResult team => new StoredDecision(order, null, team.Winner, team.Margin, team.IsDraw,
+					team.TeamScore[GameTeam.Red], team.TeamScore[GameTeam.Blue]),
+				HeadToHeadResult head => new StoredDecision(order, head.WinnerId, null, head.Margin, head.IsDraw, null,
+					null),
+				_ => throw new ArgumentOutOfRangeException(nameof(result))
+			};
+		}
 	}
 }

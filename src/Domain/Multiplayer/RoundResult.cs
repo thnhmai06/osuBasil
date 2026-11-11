@@ -6,26 +6,6 @@ using Basil.Domain.Scores;
 
 namespace Basil.Domain.Multiplayer;
 
-/// <summary>
-///     What was decided for a round, as it is stored: the ranking of the scores and who won by how much, so a later
-///     change of the rules leaves a stored decision as it was.
-/// </summary>
-/// <param name="ScoreOrder">The ids of the round's scores, the winner first.</param>
-/// <param name="WinnerId">The id of the winning player of a round without teams, or <see langword="null" />.</param>
-/// <param name="Winner">The winning team of a team round, or <see langword="null" />.</param>
-/// <param name="Margin">How far the winner is ahead of the runner-up; zero for a draw.</param>
-/// <param name="IsDraw">Whether the round has no winner.</param>
-/// <param name="RedScore">The win metric the red team reached in a team round, or <see langword="null" />.</param>
-/// <param name="BlueScore">The win metric the blue team reached in a team round, or <see langword="null" />.</param>
-public sealed record RoundVerdict(
-	IReadOnlyList<int> ScoreOrder,
-	int? WinnerId,
-	GameTeam? Winner,
-	double Margin,
-	bool IsDraw,
-	double? RedScore,
-	double? BlueScore);
-
 /// <summary>Who won a round, and by how much, decided from the scores played in it.</summary>
 public abstract class RoundResult : IEquatable<RoundResult>
 {
@@ -57,9 +37,6 @@ public abstract class RoundResult : IEquatable<RoundResult>
 	/// </summary>
 	public bool IsDraw { get; protected init; }
 
-	/// <summary>Gets the decision as it is stored.</summary>
-	public abstract RoundVerdict Verdict { get; }
-
 	/// <summary>Determines whether another result was decided for the same round.</summary>
 	/// <param name="other">The result to compare against, or <see langword="null" />.</param>
 	/// <returns>
@@ -87,16 +64,26 @@ public abstract class RoundResult : IEquatable<RoundResult>
 				: new HeadToHeadResult(round, scores);
 	}
 
-	/// <summary>Builds the result of a round from the decision that was stored for it.</summary>
+	/// <summary>Builds the result of a round from the decision that was stored for it, without deciding it again.</summary>
+	/// <remarks>
+	///     The ranking, the margin and the draw flag are the ones decided when the round finished; a later change
+	///     of the rules does not alter them.
+	/// </remarks>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores of the round.</param>
-	/// <param name="verdict">The stored decision.</param>
+	/// <param name="order">
+	///     The ids of the round's scores in the order decided when the round finished, the winner first. A score
+	///     it does not name comes last.
+	/// </param>
+	/// <param name="margin">How far the winner was ahead of the runner-up when the round finished.</param>
+	/// <param name="isDraw">Whether the round finished without a winner.</param>
 	/// <returns>The result, with the scores in the stored order.</returns>
-	public static RoundResult Restore(Round round, IReadOnlyCollection<RoundScore> scores, RoundVerdict verdict)
+	public static RoundResult Restore(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
+		double margin, bool isDraw)
 	{
 		return round.Settings.TeamType.IsTeamMode()
-			? new TeamVersusResult(round, scores, verdict)
-			: new HeadToHeadResult(round, scores, verdict);
+			? new TeamVersusResult(round, scores, order, margin, isDraw)
+			: new HeadToHeadResult(round, scores, order, margin, isDraw);
 	}
 
 	/// <summary>Puts scores in the order a decision stored, scores it does not name last.</summary>
@@ -186,15 +173,18 @@ public sealed class HeadToHeadResult : RoundResult
 	/// <summary>Builds a head-to-head result from the decision that was stored for it.</summary>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores of the round.</param>
-	/// <param name="verdict">The stored decision.</param>
+	/// <param name="order">The stored order of score ids, the winner first.</param>
+	/// <param name="margin">The stored margin.</param>
+	/// <param name="isDraw">Whether the stored decision is a draw.</param>
 	[SetsRequiredMembers]
-	internal HeadToHeadResult(Round round, IReadOnlyCollection<RoundScore> scores, RoundVerdict verdict)
+	internal HeadToHeadResult(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
+		double margin, bool isDraw)
 	{
 		Round = round;
-		Scores = InOrder(scores, verdict.ScoreOrder);
-		Margin = verdict.Margin;
-		WinnerId = verdict.WinnerId;
-		IsDraw = verdict.IsDraw;
+		Scores = InOrder(scores, order);
+		Margin = margin;
+		IsDraw = isDraw;
+		WinnerId = isDraw ? null : Scores.FirstOrDefault()?.Score.Value.UserId;
 	}
 
 	/// <summary>
@@ -202,10 +192,6 @@ public sealed class HeadToHeadResult : RoundResult
 	///     no score.
 	/// </summary>
 	public int? WinnerId { get; }
-
-	/// <inheritdoc />
-	public override RoundVerdict Verdict =>
-		new([.. Scores.Select(score => score.Score.Id)], WinnerId, null, Margin, IsDraw, null, null);
 }
 
 /// <summary>Who won a team round, and by how much.</summary>
@@ -228,20 +214,9 @@ public sealed class TeamVersusResult : RoundResult
 		var condition = round.Settings.WinCondition;
 
 		// Every team is present, even one with no score; an absent team counts as zero.
-		TeamScores = Teams.ToFrozenDictionary<GameTeam, GameTeam, IReadOnlyList<ScoreRecord>>(
-			team => team,
-			team => scores.Where(s => s.Team == team).Select(s => s.Score).ToList());
-
-		// Only teams with a player still alive at the end contend; a team whose players all failed drops
-		// out and the opposing team wins unopposed.
-		var teams = Rank(scores.Where(s => s.Score.Value.IsPassed), condition).ToList();
-
-		// When every team failed, the failed scores still decide the winner.
-		if (teams.Count == 0) teams = [.. Rank(scores, condition)];
-
-		TeamScore = Teams.ToFrozenDictionary(
-			team => team,
-			team => teams.FirstOrDefault(t => t.Team == team).Total);
+		TeamScores = ScoresByTeam(scores);
+		var teams = Contenders(scores, condition);
+		TeamScore = TotalsOf(teams);
 
 		Winner = teams.Count == 0 || (teams.Count > 1 && teams[0].Total.NearlyEqual(teams[1].Total))
 			? null
@@ -271,29 +246,21 @@ public sealed class TeamVersusResult : RoundResult
 	/// <summary>Builds a team result from the decision that was stored for it.</summary>
 	/// <param name="round">The team round.</param>
 	/// <param name="scores">The scores of the round.</param>
-	/// <param name="verdict">The stored decision.</param>
+	/// <param name="order">The stored order of score ids, the winning team first.</param>
+	/// <param name="margin">The stored margin.</param>
+	/// <param name="isDraw">Whether the stored decision is a draw.</param>
 	[SetsRequiredMembers]
-	internal TeamVersusResult(Round round, IReadOnlyCollection<RoundScore> scores, RoundVerdict verdict)
+	internal TeamVersusResult(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
+		double margin, bool isDraw)
 	{
 		Round = round;
-		Scores = InOrder(scores, verdict.ScoreOrder);
-		TeamScores = Teams.ToFrozenDictionary<GameTeam, GameTeam, IReadOnlyList<ScoreRecord>>(
-			team => team,
-			team => scores.Where(s => s.Team == team).Select(s => s.Score).ToList());
-		TeamScore = new Dictionary<GameTeam, double>
-		{
-			[GameTeam.Red] = verdict.RedScore ?? 0,
-			[GameTeam.Blue] = verdict.BlueScore ?? 0
-		}.ToFrozenDictionary();
-		Winner = verdict.Winner;
-		Margin = verdict.Margin;
-		IsDraw = verdict.IsDraw;
+		Scores = InOrder(scores, order);
+		TeamScores = ScoresByTeam(scores);
+		TeamScore = TotalsOf(Contenders(scores, round.Settings.WinCondition));
+		Margin = margin;
+		IsDraw = isDraw;
+		Winner = isDraw ? null : Scores.FirstOrDefault()?.Team;
 	}
-
-	/// <inheritdoc />
-	public override RoundVerdict Verdict =>
-		new([.. Scores.Select(score => score.Score.Id)], null, Winner, Margin, IsDraw, TeamScore[GameTeam.Red],
-			TeamScore[GameTeam.Blue]);
 
 	/// <summary>
 	///     Gets the scores each team set, with a team that played none present as an empty sequence.
@@ -310,6 +277,30 @@ public sealed class TeamVersusResult : RoundResult
 	///     Gets the winning team, or <see langword="null" /> for a round without teams or a draw.
 	/// </summary>
 	public GameTeam? Winner { get; }
+
+	private static FrozenDictionary<GameTeam, IReadOnlyList<ScoreRecord>> ScoresByTeam(
+		IReadOnlyCollection<RoundScore> scores)
+	{
+		return Teams.ToFrozenDictionary<GameTeam, GameTeam, IReadOnlyList<ScoreRecord>>(
+			team => team,
+			team => scores.Where(s => s.Team == team).Select(s => s.Score).ToList());
+	}
+
+	// Only teams with a player still alive at the end contend; a team whose players all failed drops out and the
+	// opposing team wins unopposed. When every team failed, the failed scores still decide the winner.
+	private static List<(GameTeam Team, double Total)> Contenders(IReadOnlyCollection<RoundScore> scores,
+		GameWinCondition condition)
+	{
+		var teams = Rank(scores.Where(s => s.Score.Value.IsPassed), condition).ToList();
+		return teams.Count == 0 ? [.. Rank(scores, condition)] : teams;
+	}
+
+	private static FrozenDictionary<GameTeam, double> TotalsOf(List<(GameTeam Team, double Total)> teams)
+	{
+		return Teams.ToFrozenDictionary(
+			team => team,
+			team => teams.FirstOrDefault(t => t.Team == team).Total);
+	}
 
 	/// <summary>Ranks teams by their win metric, the team that is ahead first.</summary>
 	private static IOrderedEnumerable<(GameTeam Team, double Total)> Rank(

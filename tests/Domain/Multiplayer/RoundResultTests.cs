@@ -58,14 +58,13 @@ public class RoundResultTests
 		var round = MakeRound(GameTeamType.HeadToHead);
 		var low = Play(round, 1, 1, 100);
 		var high = Play(round, 2, 2, 900);
-		var decided = RoundResult.Decide(round, [low, high])!;
 
-		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], decided.Verdict));
+		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 800, false));
 
 		Assert.Equal(2, restored.WinnerId);
-		Assert.Equal(decided.Margin, restored.Margin);
-		Assert.Equal(decided.IsDraw, restored.IsDraw);
-		Assert.Equal(decided.Scores.Select(s => s.Score.Id), restored.Scores.Select(s => s.Score.Id));
+		Assert.Equal(800, restored.Margin);
+		Assert.False(restored.IsDraw);
+		Assert.Equal([2, 1], restored.Scores.Select(s => s.Score.Id));
 	}
 
 	[Fact]
@@ -74,15 +73,14 @@ public class RoundResultTests
 		var round = MakeRound(GameTeamType.TeamVs);
 		var red = Play(round, 1, 1, 100, team: GameTeam.Red);
 		var blue = Play(round, 2, 2, 900, team: GameTeam.Blue);
-		var decided = Assert.IsType<TeamVersusResult>(RoundResult.Decide(round, [red, blue]));
 
-		var restored = Assert.IsType<TeamVersusResult>(RoundResult.Restore(round, [red, blue], decided.Verdict));
+		var restored = Assert.IsType<TeamVersusResult>(RoundResult.Restore(round, [red, blue], [2, 1], 800, false));
 
 		Assert.Equal(GameTeam.Blue, restored.Winner);
-		Assert.Equal(decided.Margin, restored.Margin);
-		Assert.Equal(decided.TeamScore[GameTeam.Red], restored.TeamScore[GameTeam.Red]);
-		Assert.Equal(decided.TeamScore[GameTeam.Blue], restored.TeamScore[GameTeam.Blue]);
-		Assert.Equal(decided.Scores.Select(s => s.Score.Id), restored.Scores.Select(s => s.Score.Id));
+		Assert.Equal(800, restored.Margin);
+		Assert.Equal(100, restored.TeamScore[GameTeam.Red]);
+		Assert.Equal(900, restored.TeamScore[GameTeam.Blue]);
+		Assert.Equal([2, 1], restored.Scores.Select(s => s.Score.Id));
 	}
 
 	[Fact]
@@ -93,10 +91,24 @@ public class RoundResultTests
 		var high = Play(round, 2, 2, 900);
 
 		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high],
-			new RoundVerdict([1, 2], 1, null, 800, false, null, null)));
+			[1, 2], 800, false));
 
 		Assert.Equal(1, restored.WinnerId);
 		Assert.Equal([1, 2], restored.Scores.Select(s => s.Score.Id));
+	}
+
+	[Fact]
+	public void Restore_StoredDrawHasNoWinner()
+	{
+		var round = MakeRound(GameTeamType.HeadToHead);
+		var low = Play(round, 1, 1, 100);
+		var high = Play(round, 2, 2, 900);
+
+		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 0, true));
+
+		Assert.Null(restored.WinnerId);
+		Assert.True(restored.IsDraw);
+		Assert.Equal(0, restored.Margin);
 	}
 
 	[Fact]

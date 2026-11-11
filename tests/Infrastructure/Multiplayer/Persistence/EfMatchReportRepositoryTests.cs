@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
@@ -95,15 +96,67 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		var loser = await CreatePlayerAsync("round_loser");
 		var won = await RecordScoreAsync(round, winner, 5000, First);
 		var lost = await RecordScoreAsync(round, loser, 1000, First);
-		round.Decision = RoundResult.Decide(round, [lost, won])!.Verdict;
+		round.Result = RoundResult.Decide(round, [lost, won]);
 		await Rounds.CreateOrUpdateAsync(round);
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
-		var decision = Assert.Single(report.Records.OfType<Round>()).Decision;
-		Assert.NotNull(decision);
+		var decision = Assert.IsType<HeadToHeadResult>(Assert.Single(report.Records.OfType<Round>()).Result);
 		Assert.Equal(winner.Id, decision.WinnerId);
-		Assert.Equal([won.Score.Id, lost.Score.Id], decision.ScoreOrder);
+		Assert.Equal([won.Score.Id, lost.Score.Id], decision.Scores.Select(s => s.Score.Id));
+	}
+
+	[Fact]
+	public async Task RoundDecision_SurvivesRestart()
+	{
+		var match = await CreateMatchAsync("decision_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		var first = await CreatePlayerAsync("restart_first");
+		var second = await CreatePlayerAsync("restart_second");
+		var low = await RecordScoreAsync(round, first, 1000, First);
+		var high = await RecordScoreAsync(round, second, 5000, First);
+		round.Result = RoundResult.Restore(round, [low, high], [low.Score.Id, high.Score.Id], 1500.5, false);
+		await Rounds.CreateOrUpdateAsync(round);
+		await StoredRows.WaitForAsync(ConnectionString, "select result from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id },
+			rows => rows.Count == 1 && rows[0]["result"] is not null,
+			"the decision", TestContext.Current.CancellationToken);
+
+		await using var other = new StorageComposition(ConnectionString);
+		var decision = Assert.IsType<HeadToHeadResult>(Assert.Single(await other.Get<IRoundRepository>().ListAsync(
+			match, TestContext.Current.CancellationToken)).Result);
+
+		Assert.Equal([low.Score.Id, high.Score.Id], decision.Scores.Select(s => s.Score.Id));
+		Assert.Equal((first.Id, 1500.5, false), (decision.WinnerId, decision.Margin, decision.IsDraw));
+	}
+
+	[Fact]
+	public async Task StoredDecision_KeepsItsJsonShape()
+	{
+		var match = await CreateMatchAsync("json_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		var winner = await CreatePlayerAsync("json_winner");
+		var loser = await CreatePlayerAsync("json_loser");
+		var won = await RecordScoreAsync(round, winner, 5000, First);
+		var lost = await RecordScoreAsync(round, loser, 1000, First);
+		round.Result = RoundResult.Decide(round, [lost, won]);
+		await Rounds.CreateOrUpdateAsync(round);
+
+		var rows = await StoredRows.WaitForAsync(ConnectionString, "select result from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id },
+			rows => rows.Count == 1 && rows[0]["result"] is not null,
+			"the decision", TestContext.Current.CancellationToken);
+
+		using var json = JsonDocument.Parse(Convert.ToString(rows[0]["result"])!);
+		var stored = json.RootElement;
+		Assert.Equal([won.Score.Id, lost.Score.Id],
+			stored.GetProperty("ScoreOrder").EnumerateArray().Select(e => e.GetInt32()));
+		Assert.Equal(winner.Id, stored.GetProperty("WinnerId").GetInt32());
+		Assert.Equal(JsonValueKind.Null, stored.GetProperty("Winner").ValueKind);
+		Assert.Equal(4000, stored.GetProperty("Margin").GetDouble());
+		Assert.False(stored.GetProperty("IsDraw").GetBoolean());
+		Assert.Equal(JsonValueKind.Null, stored.GetProperty("RedScore").ValueKind);
+		Assert.Equal(JsonValueKind.Null, stored.GetProperty("BlueScore").ValueKind);
 	}
 
 	[Fact]
@@ -117,13 +170,12 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		var high = await RecordScoreAsync(round, second, 5000, First);
 
 		// The stored decision names the player with the lower score as the winner; a fresh decision would not.
-		round.Decision = new RoundVerdict([low.Score.Id, high.Score.Id], first.Id, null, 4000, false, null, null);
+		round.Result = RoundResult.Restore(round, [low, high], [low.Score.Id, high.Score.Id], 4000, false);
 		await Rounds.CreateOrUpdateAsync(round);
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
-		var decision = Assert.Single(report.Records.OfType<Round>()).Decision;
-		Assert.NotNull(decision);
+		var decision = Assert.IsType<HeadToHeadResult>(Assert.Single(report.Records.OfType<Round>()).Result);
 		Assert.Equal(first.Id, decision.WinnerId);
 	}
 
@@ -137,8 +189,8 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
-		Assert.Null(Assert.Single(report.Records.OfType<Round>()).Decision);
-		Assert.Null((await Rounds.ListAsync(match, TestContext.Current.CancellationToken)).Single().Decision);
+		Assert.Null(Assert.Single(report.Records.OfType<Round>()).Result);
+		Assert.Null((await Rounds.ListAsync(match, TestContext.Current.CancellationToken)).Single().Result);
 	}
 
 	[Fact]

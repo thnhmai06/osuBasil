@@ -2,6 +2,7 @@ using System.Text.Json;
 using Basil.Application.Common;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Persistence;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Gateway;
 using Basil.Host.Rest.Http;
@@ -42,6 +43,18 @@ internal static class MatchRoutes
 			: result.Refusal();
 	}
 
+	private static object VerdictOf(RoundResult result)
+	{
+		var winnerId = (result as HeadToHeadResult)?.WinnerId;
+		var team = result as TeamVersusResult;
+		return new
+		{
+			ScoreOrder = result.Scores.Select(score => score.Score.Id), WinnerId = winnerId, Winner = team?.Winner,
+			result.Margin, result.IsDraw, RedScore = team?.TeamScore[GameTeam.Red],
+			BlueScore = team?.TeamScore[GameTeam.Blue]
+		};
+	}
+
 	private static object EntryOf(MatchReportEntry reported)
 	{
 		switch (reported.Entry)
@@ -54,9 +67,7 @@ internal static class MatchRoutes
 					mode = round.Settings.Mode, mods = round.Settings.Mods.ToString(),
 					teamType = round.Settings.TeamType,
 					aborted = round.Aborted, startedAt = round.StartedAt, endedAt = round.EndedAt,
-					verdict = round.Decision is { } v
-						? new { v.ScoreOrder, v.WinnerId, v.Winner, v.Margin, v.IsDraw, v.RedScore, v.BlueScore }
-						: null,
+					verdict = round.Result is { } r ? VerdictOf(r) : null,
 					scores = reported.Scores.Select(s => new
 					{
 						userId = s.Score.Value.UserId, team = s.Team, totalScore = s.Score.Value.LastState.TotalScore,

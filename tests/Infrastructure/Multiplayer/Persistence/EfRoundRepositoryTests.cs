@@ -121,27 +121,6 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 	}
 
 	[Fact]
-	public async Task RoundDecision_SurvivesRestart()
-	{
-		var match = await CreateMatchAsync("decision_round_match");
-		var round = StoredMatches.Round(match, 1, First);
-		round.Decision = new RoundVerdict([7, 3], 42, null, 1500.5, false, null, null);
-		await Rounds.CreateOrUpdateAsync(round);
-		await StoredRows.WaitForAsync(ConnectionString, "select result from rounds where match_id = @id",
-			new Dictionary<string, object?> { ["@id"] = match.Id },
-			rows => rows.Count == 1 && rows[0]["result"] is not null,
-			"the decision", TestContext.Current.CancellationToken);
-
-		await using var other = new StorageComposition(ConnectionString);
-		var decision = Assert.Single(await other.Get<IRoundRepository>().ListAsync(match,
-			TestContext.Current.CancellationToken)).Decision;
-
-		Assert.NotNull(decision);
-		Assert.Equal([7, 3], decision.ScoreOrder);
-		Assert.Equal((42, 1500.5, false), (decision.WinnerId, decision.Margin, decision.IsDraw));
-	}
-
-	[Fact]
 	public async Task FreshServer_ListsStoredRounds()
 	{
 		var match = await CreateMatchAsync("restart_round_match");

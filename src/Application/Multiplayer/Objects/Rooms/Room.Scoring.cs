@@ -106,7 +106,6 @@ public sealed partial class Room
 
 		var result = RoundResult.Decide(settlement.Round, settlement.Scores);
 		settlement.Round.Result = result;
-		settlement.Round.Decision = result?.Verdict;
 		Context.Events.Publish(new RoomRoundDecided(this, settlement.Round, result, missing));
 	}
 }
