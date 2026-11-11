@@ -1,6 +1,5 @@
 using Basil.Application.Bot.Replies;
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Shared;
 
 namespace Basil.Application.Bot.Commands.Mp;
 
@@ -458,7 +457,7 @@ internal static class MpReplies
 		return outcome switch
 		{
 			RoomOutcome.Denied => MissingPrivileges,
-				RoomOutcome.RoleDenied => NotAuthorizedInMatch,
+			RoomOutcome.RoleDenied => NotAuthorizedInMatch,
 			RoomOutcome.AlreadySeated => AlreadyInThisMatch,
 			RoomOutcome.Banned => BannedFromMatch,
 			RoomOutcome.InAnotherRoom => TargetInAnotherMatch,

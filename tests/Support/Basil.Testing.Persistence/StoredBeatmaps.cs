@@ -3,7 +3,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Shared;
 
 namespace Basil.Testing.Persistence;
 

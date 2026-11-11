@@ -5,7 +5,6 @@ using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Messages.Channels;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer;
@@ -208,7 +207,9 @@ internal static class ChannelRoomCommands
 		var page = call.Page();
 		var rooms = call.Get<Lobby>().Rooms.Values.OrderBy(room => room.Id).ToList();
 		call.PrintPage(new Page<RoomView>(
-			[.. rooms.Skip(page.Offset).Take(page.Limit).Select(RoomView.Of)], page.Offset + page.Limit < rooms.Count), page);
+				[.. rooms.Skip(page.Offset).Take(page.Limit).Select(RoomView.Of)],
+				page.Offset + page.Limit < rooms.Count),
+			page);
 		return Task.FromResult(ExitCodes.Success);
 	}
 

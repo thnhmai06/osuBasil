@@ -4,7 +4,6 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Settings;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
-using Basil.Gateway;
 using Basil.Gateway.Limits;
 using Basil.Host.Stable.Tests.Support;
 using Basil.Host.Stable.Web;
@@ -316,7 +315,9 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		using var impostor = OsuClient.Create(Host, "WebRateWindow", "wrong");
 		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++)
 			await impostor.GetFriendsAsync("203.0.113.32");
-		var window = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login.Window;
+		var window =
+			(await Host.Services.GetRequiredService<ISettingsRepository>()
+				.GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login.Window;
 
 		// advance in steps shorter than the idle limit, polling so the client stays online
 		for (var elapsed = TimeSpan.Zero; elapsed <= window; elapsed += TimeSpan.FromMinutes(2))

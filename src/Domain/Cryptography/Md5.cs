@@ -26,23 +26,6 @@ public readonly record struct Md5 : IParsable<Md5>
 	/// <summary>Gets the digest as 32 lower-case hexadecimal characters.</summary>
 	public string HashValue { get; }
 
-	/// <summary>Computes the MD5 hash of a content read to its end.</summary>
-	/// <param name="content">The content, read from its current position; not disposed.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The hash of the content.</returns>
-	public static async Task<Md5> ComputeAsync(Stream content, CancellationToken ct = default)
-	{
-		var hash = await MD5.HashDataAsync(content, ct);
-		return new Md5(Convert.ToHexStringLower(hash));
-	}
-
-	/// <summary>Returns the digest as 32 lower-case hexadecimal characters.</summary>
-	/// <returns>The digest text.</returns>
-	public override string ToString()
-	{
-		return HashValue;
-	}
-
 	/// <summary>Reads a digest from its hexadecimal text.</summary>
 	/// <param name="s">The 32 hexadecimal characters, in either case.</param>
 	/// <param name="provider">Ignored.</param>
@@ -70,9 +53,27 @@ public readonly record struct Md5 : IParsable<Md5>
 		return false;
 	}
 
+	/// <summary>Computes the MD5 hash of a content read to its end.</summary>
+	/// <param name="content">The content, read from its current position; not disposed.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns>The hash of the content.</returns>
+	public static async Task<Md5> ComputeAsync(Stream content, CancellationToken ct = default)
+	{
+		var hash = await MD5.HashDataAsync(content, ct);
+		return new Md5(Convert.ToHexStringLower(hash));
+	}
+
+	/// <summary>Returns the digest as 32 lower-case hexadecimal characters.</summary>
+	/// <returns>The digest text.</returns>
+	public override string ToString()
+	{
+		return HashValue;
+	}
+
 	private static bool IsHex(string hash)
 	{
-		return hash is { Length: 32 } && hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
+		return hash is { Length: 32 } &&
+		       hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
 	}
 
 	/// <summary>Creates a digest from its hexadecimal text.</summary>

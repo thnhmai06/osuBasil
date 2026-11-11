@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Users;
 

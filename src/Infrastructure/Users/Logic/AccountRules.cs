@@ -1,11 +1,9 @@
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;
 

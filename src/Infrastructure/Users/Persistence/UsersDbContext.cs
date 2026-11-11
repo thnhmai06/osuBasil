@@ -8,8 +8,10 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options) :
 {
 	/// <summary>The stored accounts.</summary>
 	public DbSet<UserRow> Users => Set<UserRow>();
+
 	/// <summary>The stored moderation actions.</summary>
 	public DbSet<ModerationLogRow> ModerationLog => Set<ModerationLogRow>();
+
 	/// <summary>The stored relationships.</summary>
 	public DbSet<RelationshipRow> Relationships => Set<RelationshipRow>();
 

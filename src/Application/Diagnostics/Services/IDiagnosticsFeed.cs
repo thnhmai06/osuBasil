@@ -1,4 +1,3 @@
-
 namespace Basil.Application.Diagnostics.Services;
 
 /// <summary>Distributes the sample of each second to whoever watches; it keeps no history.</summary>

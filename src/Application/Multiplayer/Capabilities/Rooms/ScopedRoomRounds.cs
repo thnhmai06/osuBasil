@@ -1,6 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Shared;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
@@ -48,7 +47,7 @@ public readonly struct ScopedRoomRounds
 	/// </remarks>
 	public Task<RoomOutcome> MarkLoadedAsync()
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Room.MarkLoaded(_scoped.Actor));
+		return Task.FromResult(_scoped.Room.MarkLoaded(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller wants to skip the intro.</summary>
@@ -59,14 +58,14 @@ public readonly struct ScopedRoomRounds
 	/// </remarks>
 	public Task<RoomOutcome> SkipAsync()
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Room.SkipIntro(_scoped.Actor));
+		return Task.FromResult(_scoped.Room.SkipIntro(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller failed; the player keeps playing until completion.</summary>
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed.</returns>
 	public Task<RoomOutcome> FailAsync()
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Room.ReportFailed(_scoped.Actor));
+		return Task.FromResult(_scoped.Room.ReportFailed(_scoped.Actor));
 	}
 
 	/// <summary>Reports that the caller completed the beatmap.</summary>
@@ -77,6 +76,6 @@ public readonly struct ScopedRoomRounds
 	/// </remarks>
 	public Task<RoomOutcome> CompleteAsync()
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Room.ReportCompleted(_scoped.Actor));
+		return Task.FromResult(_scoped.Room.ReportCompleted(_scoped.Actor));
 	}
 }

@@ -1,5 +1,4 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;
 
@@ -10,7 +9,8 @@ namespace Basil.Application.Servers.Messages.Channels;
 /// <param name="Name">The name of the channel.</param>
 /// <param name="Change">The settings to change.</param>
 /// <remarks>
-///     The privilege to manage channels is checked before the name is looked up, so a refusal is the same whether or not the
+///     The privilege to manage channels is checked before the name is looked up, so a refusal is the same whether or not
+///     the
 ///     channel exists. An invalid change throws <see cref="ArgumentException" />.
 /// </remarks>
 public sealed record ConfigureGeneralChannel(Connection Actor, string Name, GeneralChannelChange Change)

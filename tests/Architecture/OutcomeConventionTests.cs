@@ -29,7 +29,8 @@ public class OutcomeConventionTests
 			Assert.Equal(1, Convert.ToInt32(Enum.Parse(outcome, "Ok"), CultureInfo.InvariantCulture));
 			Assert.False(
 				Enum.GetNames(outcome).Any(name => name != "Denied" &&
-					Convert.ToInt32(Enum.Parse(outcome, name), CultureInfo.InvariantCulture) == 0),
+				                                   Convert.ToInt32(Enum.Parse(outcome, name),
+					                                   CultureInfo.InvariantCulture) == 0),
 				$"{outcome.Name} defines a member other than Denied for the value 0, which means \"refused for lack of privileges\".");
 		}
 	}

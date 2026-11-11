@@ -8,6 +8,7 @@ internal sealed class ScoresDbContext(DbContextOptions<ScoresDbContext> options)
 {
 	/// <summary>The submitted scores.</summary>
 	public DbSet<ScoreRow> Scores => Set<ScoreRow>();
+
 	/// <summary>The per-mode statistics of the players.</summary>
 	public DbSet<UserStatsRow> UserStats => Set<UserStatsRow>();
 

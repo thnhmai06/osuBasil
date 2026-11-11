@@ -1,6 +1,5 @@
 using System.Globalization;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
@@ -183,7 +182,8 @@ internal static class UserCommands
 
 	private static async Task<int> ShowAsync(CommandCall call)
 	{
-		if (await call.Get<ISender>().Send(new GetUser(call.UserOf()), call.CancellationToken) is not { } record) return call.NotFound(NoUser);
+		if (await call.Get<ISender>().Send(new GetUser(call.UserOf()), call.CancellationToken) is not { } record)
+			return call.NotFound(NoUser);
 
 		call.Formatter.Print(call.Output, UserView.Of(call.Get<UserRegistry>(), record, call.Get<TimeProvider>()));
 		return ExitCodes.Success;
@@ -205,7 +205,7 @@ internal static class UserCommands
 		var sender = call.Get<ISender>();
 		var actor = await call.ByAsync();
 		if (call.Text("username") is { } name && await sender.Send(new RenameUser(actor, target, name), ct) is
- var renamed and not UserOutcome.Ok)
+			    var renamed and not UserOutcome.Ok)
 			return call.Refuse(renamed);
 
 		if (call.Text("country") is { } code)
@@ -229,12 +229,12 @@ internal static class UserCommands
 		var actor = await call.ByAsync();
 		if (call.Mask("privileges") is { } privileges &&
 		    await sender.Send(new SetUserPrivileges(actor, target, (UserPrivileges)privileges), ct) is
- var set and not UserOutcome.Ok)
+			    var set and not UserOutcome.Ok)
 			return call.Refuse(set);
 
 		if (call.Text("password") is { } password &&
 		    await sender.Send(new ChangeUserPassword(actor, target, CommandHelpers.Md5Of(password), null, false), ct) is
- var changedPassword and not UserOutcome.Ok)
+			    var changedPassword and not UserOutcome.Ok)
 			return call.Refuse(changedPassword);
 
 		return null;
@@ -273,7 +273,8 @@ internal static class UserCommands
 	{
 		var endsAt = call.Get<TimeProvider>().GetUtcNow() + call.Duration("duration")!.Value;
 		return call.Report(await call.Get<ISender>().Send(
-			new SilenceUser(await call.ByAsync(), call.UserOf(), endsAt, call.Text("reason")), call.CancellationToken),
+				new SilenceUser(await call.ByAsync(), call.UserOf(), endsAt, call.Text("reason")),
+				call.CancellationToken),
 			"Silenced.");
 	}
 
@@ -297,7 +298,8 @@ internal static class UserCommands
 			? Enum.GetValues<SessionType>().Where(type => (types & (ulong)type) != 0).ToList()
 			: null;
 		var (result, sessions) = await call.Get<ISender>()
-			.Send(new ListUserSessions(await call.ByAsync(), call.UserOf(), page, state, kinds), call.CancellationToken);
+			.Send(new ListUserSessions(await call.ByAsync(), call.UserOf(), page, state, kinds),
+				call.CancellationToken);
 		if (result != UserOutcome.Ok) return call.Refuse(result);
 
 		call.PrintPage(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
@@ -308,7 +310,9 @@ internal static class UserCommands
 	private static async Task<int> SessionAsync(CommandCall call)
 	{
 		var (result, session) = await call.Get<ISender>()
-			.Send(new GetUserSession(await call.ByAsync(), call.UserOf(), long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
+			.Send(
+				new GetUserSession(await call.ByAsync(), call.UserOf(),
+					long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
 				call.CancellationToken);
 		if (result != UserOutcome.Ok) return call.Refuse(result);
 

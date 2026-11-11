@@ -16,12 +16,15 @@ public static class EnumExtensions
 	/// <returns><paramref name="value" />, unchanged.</returns>
 	public static TEnum ThrowIfUndefined<TEnum>(this TEnum value) where TEnum : struct, Enum
 	{
-		return IsValid(value)
+		return value.IsValid()
 			? value
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
 	}
 
-	/// <summary>Tells whether a value is a member of its enum; for a <see cref="FlagsAttribute" /> enum, whether it sets only bits that a member defines.</summary>
+	/// <summary>
+	///     Tells whether a value is a member of its enum; for a <see cref="FlagsAttribute" /> enum, whether it sets only
+	///     bits that a member defines.
+	/// </summary>
 	/// <param name="value">The value to check.</param>
 	/// <typeparam name="TEnum">The enum type.</typeparam>
 	/// <returns><see langword="true" /> when the value is valid for <typeparamref name="TEnum" />.</returns>

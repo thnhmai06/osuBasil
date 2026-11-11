@@ -19,8 +19,10 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 				await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Hidden", isPrivate = true });
 			var roomId = (int)envelope!["data"]!["id"]!;
 
-			var (noToken, _) = await anon.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
-			var (hidden, _) = await other.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
+			var (noToken, _) =
+				await anon.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
+			var (hidden, _) =
+				await other.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
 			using (noToken)
 			using (hidden)
 			{
@@ -38,7 +40,8 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 		{
 			var (_, envelope) = await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Still" });
 			var roomId = (int)envelope!["data"]!["id"]!;
-			var (response, reader) = await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
+			var (response, reader) =
+				await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.Equal("snapshot", (await reader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Event);
@@ -61,7 +64,8 @@ public sealed class RoomLiveTests(RestHostFixture fixture)
 		{
 			var (_, envelope) = await owner.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = "Watched" });
 			var roomId = (int)envelope!["data"]!["id"]!;
-			var (response, reader) = await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
+			var (response, reader) =
+				await owner.OpenStreamAsync($"/v1/rooms/{roomId}/live", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.NotNull(reader);

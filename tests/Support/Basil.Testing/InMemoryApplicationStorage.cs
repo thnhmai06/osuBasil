@@ -1,7 +1,6 @@
 using System.Net;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
@@ -10,7 +9,6 @@ using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Testing;

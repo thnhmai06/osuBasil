@@ -5,7 +5,6 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Domain.Content;
 using Basil.Domain.Shared;
-using Basil.Gateway;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -117,7 +116,8 @@ internal static class MenuRoutes
 		    !TryTime(form["expires"].ToString(), out var expires))
 			return Api.Invalid("begins and expires must be ISO 8601 times.");
 
-		if (!ContentReference.IsValidPath(file!.FileName) || !url.IsHttp() || !MenuBanner.IsValidWindow(begins, expires))
+		if (!ContentReference.IsValidPath(file!.FileName) || !url.IsHttp() ||
+		    !MenuBanner.IsValidWindow(begins, expires))
 			return Api.Invalid("The banner is not valid.");
 
 		await using var stream = file.OpenReadStream();

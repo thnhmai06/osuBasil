@@ -9,14 +9,19 @@ internal sealed class MatchRow
 {
 	/// <summary>The unique identifier of the match.</summary>
 	public int Id { get; set; }
+
 	/// <summary>The room name.</summary>
 	public string Name { get; set; } = "";
+
 	/// <summary>The user who created the room.</summary>
 	public int CreatorId { get; set; }
+
 	/// <summary>When the match started.</summary>
 	public DateTimeOffset StartedAt { get; set; }
+
 	/// <summary>When the match ended, or <see langword="null" /> while it lasts.</summary>
 	public DateTimeOffset? EndedAt { get; set; }
+
 	/// <summary>Whether the room was private.</summary>
 	public bool IsPrivate { get; set; }
 }

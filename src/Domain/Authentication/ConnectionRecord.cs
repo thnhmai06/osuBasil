@@ -64,7 +64,9 @@ public sealed record ConnectionData(
 		init => field = value > 0
 			? value
 			: throw new ArgumentOutOfRangeException(nameof(value), "Session id must be positive.");
-	} = SessionId > 0 ? SessionId : throw new ArgumentOutOfRangeException(nameof(SessionId), "Session id must be positive.");
+	} = SessionId > 0
+		? SessionId
+		: throw new ArgumentOutOfRangeException(nameof(SessionId), "Session id must be positive.");
 
 	/// <summary>Gets the reason the connection closed, or <see langword="null" /> while it remains open.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The reason is not a defined value.</exception>

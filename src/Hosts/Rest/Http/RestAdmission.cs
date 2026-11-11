@@ -1,4 +1,3 @@
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 
 namespace Basil.Host.Rest.Http;

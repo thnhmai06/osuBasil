@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Actors;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
@@ -12,13 +11,9 @@ namespace Basil.Application.Users.Objects.Connections;
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
 public abstract class Connection(SessionRecord login, string token) : IActor
 {
-	private SessionEnd? _end;
-
-	/// <summary>Holds the last activity and token expiry of the session.</summary>
-	private sealed record Activity(DateTimeOffset LastActiveAt, DateTimeOffset? ExpiresAt);
-
 	// Swapped whole: a connection and the activity flush touch it from different threads.
 	private Activity _activity = new(login.Value.LastActiveAt, login.Value.ExpiresAt);
+	private SessionEnd? _end;
 
 	/// <summary>Gets the online user this connection belongs to.</summary>
 	public User User { get; internal set; } = null!;
@@ -82,7 +77,8 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 		{
 			var current = Volatile.Read(ref _activity);
 			if (End is not null || at < current.LastActiveAt) return;
-			if (Interlocked.CompareExchange(ref _activity, current with { LastActiveAt = at }, current) == current) return;
+			if (Interlocked.CompareExchange(ref _activity, current with { LastActiveAt = at }, current) ==
+			    current) return;
 		}
 	}
 
@@ -95,7 +91,8 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 		{
 			var current = Volatile.Read(ref _activity);
 			if (Type is not SessionType.Api || End is not null) return;
-			if (Interlocked.CompareExchange(ref _activity, current with { ExpiresAt = at + lifetime }, current) == current) return;
+			if (Interlocked.CompareExchange(ref _activity, current with { ExpiresAt = at + lifetime }, current) ==
+			    current) return;
 		}
 	}
 
@@ -115,6 +112,9 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 	{
 		return granted.Allows(target) && granted != target;
 	}
+
+	/// <summary>Holds the last activity and token expiry of the session.</summary>
+	private sealed record Activity(DateTimeOffset LastActiveAt, DateTimeOffset? ExpiresAt);
 }
 
 /// <summary>A connection from an osu! game client.</summary>

@@ -2,7 +2,6 @@ using Basil.Application.Bot.Announcements;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Shared;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
@@ -29,7 +28,7 @@ public sealed class RoomCountdownsTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(5), false)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(5), false) == RoomOutcome.Ok);
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(240));
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(30));
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(20));
@@ -55,7 +54,7 @@ public sealed class RoomCountdownsTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
 
-		Assert.True((await StartAsync(bot, staff.Referee, staff.Room, TimeSpan.FromSeconds(90), true)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Referee, staff.Room, TimeSpan.FromSeconds(90), true) == RoomOutcome.Ok);
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(90));
 
 		var forRound = (int seconds) => bot.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds });
@@ -74,7 +73,7 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(30), true)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(30), true) == RoomOutcome.Ok);
 
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(29));
 
@@ -132,7 +131,7 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync()) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync() == RoomOutcome.Ok);
 
 		var result = await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), true);
 
@@ -145,7 +144,7 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync()) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync() == RoomOutcome.Ok);
 
 		var result = await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false);
 
@@ -158,7 +157,7 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).CloseAsync() == RoomOutcome.Ok);
 
 		var result = await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false);
 
@@ -170,10 +169,12 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(60), false)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(60), false) ==
+		            RoomOutcome.Ok);
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(15));
 
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(30), false)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(30), false) ==
+		            RoomOutcome.Ok);
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(60));
 
 		var said = SaidInRoom(bot, staff.Room);
@@ -188,7 +189,7 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await StartAsync(bot, staff.Referee, staff.Room, TimeSpan.FromSeconds(10), true)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Referee, staff.Room, TimeSpan.FromSeconds(10), true) == RoomOutcome.Ok);
 		bot.App.Users.Close(staff.Referee, SessionEndReason.TimedOut);
 
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(10));
@@ -203,9 +204,10 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await StartAsync(bot, staff.Referee, staff.Room, TimeSpan.FromSeconds(10), true)) == RoomOutcome.Ok);
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Authority.RemoveRefereeAsync(UserReference.ById(staff.Referee.Record.Id)))
-			 == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Referee, staff.Room, TimeSpan.FromSeconds(10), true) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Authority
+			            .RemoveRefereeAsync(UserReference.ById(staff.Referee.Record.Id))
+		            == RoomOutcome.Ok);
 
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(10));
 
@@ -218,7 +220,7 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(10), true)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(10), true) == RoomOutcome.Ok);
 
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(10));
 
@@ -231,7 +233,8 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(30), false)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromSeconds(30), false) ==
+		            RoomOutcome.Ok);
 
 		var result = await CancelAsync(bot, staff.Creator, staff.Room);
 		bot.App.Clock.Advance(TimeSpan.FromSeconds(60));
@@ -263,7 +266,8 @@ public sealed class RoomCountdownsTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 		if (running)
-			Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false)) == RoomOutcome.Ok);
+			Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false) ==
+			            RoomOutcome.Ok);
 
 		var result = await CancelAsync(bot, staff.Player, staff.Room);
 
@@ -276,7 +280,7 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).CloseAsync() == RoomOutcome.Ok);
 
 		var result = await CancelAsync(bot, staff.Creator, staff.Room);
 
@@ -288,9 +292,9 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false) == RoomOutcome.Ok);
 
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).CloseAsync() == RoomOutcome.Ok);
 
 		Assert.False(IsRunning(bot, staff.Room));
 	}
@@ -300,9 +304,9 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false) == RoomOutcome.Ok);
 
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync()) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync() == RoomOutcome.Ok);
 
 		Assert.False(IsRunning(bot, staff.Room));
 		Assert.Equal(bot.Text(AnnouncementReplies.CountdownCancelledByRoundStart), SaidInRoom(bot, staff.Room)[^1]);
@@ -313,10 +317,10 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync()) == RoomOutcome.Ok);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false)) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Rounds.StartAsync() == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false) == RoomOutcome.Ok);
 
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Rounds.AbortAsync()) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Rounds.AbortAsync() == RoomOutcome.Ok);
 
 		Assert.False(IsRunning(bot, staff.Room));
 		Assert.Equal(bot.Text(AnnouncementReplies.CountdownCancelledByRoundAbort), SaidInRoom(bot, staff.Room)[^1]);
@@ -327,10 +331,10 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), true)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), true) == RoomOutcome.Ok);
 
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(WinCondition: GameWinCondition.Accuracy))) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
+			new RoomSettingsChange(WinCondition: GameWinCondition.Accuracy)) == RoomOutcome.Ok);
 
 		Assert.False(IsRunning(bot, staff.Room));
 		Assert.Equal(bot.Text(AnnouncementReplies.SettingsChangedCountdownCancelled), SaidInRoom(bot, staff.Room)[^1]);
@@ -341,10 +345,10 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), false) == RoomOutcome.Ok);
 
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(WinCondition: GameWinCondition.Accuracy))) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
+			new RoomSettingsChange(WinCondition: GameWinCondition.Accuracy)) == RoomOutcome.Ok);
 
 		Assert.True(IsRunning(bot, staff.Room));
 	}
@@ -354,10 +358,10 @@ public sealed class RoomCountdownsTests
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot, true);
-		Assert.True((await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), true)) == RoomOutcome.Ok);
+		Assert.True(await StartAsync(bot, staff.Creator, staff.Room, TimeSpan.FromMinutes(1), true) == RoomOutcome.Ok);
 
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange("Renamed"))) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
+			new RoomSettingsChange("Renamed")) == RoomOutcome.Ok);
 
 		Assert.True(IsRunning(bot, staff.Room));
 	}
@@ -368,8 +372,8 @@ public sealed class RoomCountdownsTests
 		CountdownEvents.Deliver(bot);
 		var staff = await StaffRoom.OpenAsync(bot, "Finals");
 		if (withBeatmap)
-			Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-				new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))) == RoomOutcome.Ok);
+			Assert.True(await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
+				new RoomSettingsChange(Beatmap: RoomFixture.Beatmap)) == RoomOutcome.Ok);
 
 		return staff;
 	}

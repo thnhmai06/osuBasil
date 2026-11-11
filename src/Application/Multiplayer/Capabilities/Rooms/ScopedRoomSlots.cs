@@ -1,10 +1,8 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 
@@ -26,7 +24,7 @@ public readonly struct ScopedRoomSlots
 	/// <remarks>Moving to the caller's own slot returns Ok and does nothing.</remarks>
 	public Task<RoomOutcome> ChangeAsync(int index)
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableConnection stable
 			? _scoped.Room.ChangeSlot(stable, index)
 			: RoomOutcome.NotInRoom);
 	}
@@ -62,7 +60,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<RoomOutcome> SetReadyAsync(bool ready)
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetReady(stable, ready)
 			: RoomOutcome.NotInRoom);
 	}
@@ -76,7 +74,7 @@ public readonly struct ScopedRoomSlots
 	/// </remarks>
 	public Task<RoomOutcome> SetHasMapAsync(bool has)
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetHasMap(stable, has)
 			: RoomOutcome.NotInRoom);
 	}
@@ -85,7 +83,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked, InProgress or RoomClosed when the room has closed.</returns>
 	public Task<RoomOutcome> ToggleTeamAsync()
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableConnection stable
 			? _scoped.Room.ToggleTeam(stable)
 			: RoomOutcome.NotInRoom);
 	}
@@ -107,7 +105,7 @@ public readonly struct ScopedRoomSlots
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed when the room has closed.</returns>
 	public Task<RoomOutcome> SetModsAsync(GameMods mods)
 	{
-		return Task.FromResult<RoomOutcome>(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableConnection stable
 			? _scoped.Room.SetMods(stable, mods)
 			: RoomOutcome.NotInRoom);
 	}

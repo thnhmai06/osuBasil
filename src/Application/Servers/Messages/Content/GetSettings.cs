@@ -1,5 +1,4 @@
 using Basil.Application.Servers.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;

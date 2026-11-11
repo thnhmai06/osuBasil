@@ -146,19 +146,6 @@ public partial class HostGraphTests
 	[GeneratedRegex(@"\b(?:Get|GetService|GetRequiredService)<I\w+(?:Repository|Storage)>")]
 	private static partial Regex StoreLookup();
 
-	private sealed class HostWithARepository(IUserRepository users)
-	{
-		public IUserRepository Users { get; } = users;
-	}
-
-	private sealed class HostWithAStaticRouteHandler
-	{
-		public static Task Handle(IUserRepository users)
-		{
-			return Task.CompletedTask;
-		}
-	}
-
 	private static IEnumerable<string> MissingShared(IEnumerable<(string From, string To)> edges)
 	{
 		var present = edges.ToHashSet();
@@ -195,5 +182,18 @@ public partial class HostGraphTests
 		while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Basil.slnx")))
 			directory = directory.Parent;
 		return directory?.FullName ?? throw new DirectoryNotFoundException("Basil.slnx was not found.");
+	}
+
+	private sealed class HostWithARepository(IUserRepository users)
+	{
+		public IUserRepository Users { get; } = users;
+	}
+
+	private sealed class HostWithAStaticRouteHandler
+	{
+		public static Task Handle(IUserRepository users)
+		{
+			return Task.CompletedTask;
+		}
 	}
 }

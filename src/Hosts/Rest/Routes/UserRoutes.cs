@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
@@ -11,9 +10,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
-using Basil.Gateway;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
@@ -99,7 +96,8 @@ internal static class UserRoutes
 				RelationAsync(c, id, otherId, (me, other) => new UnblockUser(me, other)))
 			.WithSummary("Delete a block on an account.");
 
-		token.MapPut("/{id:int}/silence", SilenceAsync).WithSummary("Create a silence on an account until a given time.")
+		token.MapPut("/{id:int}/silence", SilenceAsync)
+			.WithSummary("Create a silence on an account until a given time.")
 			.WithDescription("A silenced account cannot post chat messages and receives no private messages.");
 		token.MapDelete("/{id:int}/silence", UnsilenceAsync).WithSummary("Delete the silence of an account now.");
 	}
@@ -121,7 +119,8 @@ internal static class UserRoutes
 
 		var found = await sender.Send(new SearchUsers(context.Connection(), UserQuery.Parse(query ?? string.Empty),
 			page!), ct);
-		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.HasNext),
+		return Api.Paged(
+			new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.HasNext),
 			page!);
 	}
 
@@ -133,7 +132,7 @@ internal static class UserRoutes
 			return Api.Invalid("username and password are required.");
 
 		var data = new UserData { Name = request.Username };
-				if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
+		if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
 
 		var (record, result) = await context.Sender().Send(new CreateAccount(context.Connection(), data,
 			new Md5(Encoding.UTF8.GetBytes(request.Password)), request.Privileges), context.RequestAborted);
@@ -160,14 +159,14 @@ internal static class UserRoutes
 	{
 		if (request.Name is not null &&
 		    await context.Sender().Send(new RenameUser(context.Connection(), target, request.Name), ct) is
- var renamed and not UserOutcome.Ok)
+			    var renamed and not UserOutcome.Ok)
 			return renamed.Refusal();
 
 		if (request.Country is null) return null;
 		if (Targets.ParseCountry(request.Country) is not { } country)
 			return Api.Invalid("country must be a two-letter code.");
 		return await context.Sender().Send(new SetUserCountry(context.Connection(), target, country), ct) is
- var changed and not UserOutcome.Ok
+			var changed and not UserOutcome.Ok
 			? changed.Refusal()
 			: null;
 	}
@@ -184,7 +183,7 @@ internal static class UserRoutes
 		if (request.Privileges is { } privileges &&
 		    await context.Sender()
 				    .Send(new SetUserPrivileges(context.Connection(), target, privileges), ct) is
- var set and not UserOutcome.Ok)
+			    var set and not UserOutcome.Ok)
 			return set.Refusal();
 
 		return null;
@@ -278,7 +277,8 @@ internal static class UserRoutes
 		var (result, connections) = await context.Sender()
 			.Send(new ListSessionConnections(context.Connection(), target, sid, page!), context.RequestAborted);
 		return result == UserOutcome.Ok
-			? Api.Paged(new Page<ConnectionView>([.. connections!.Items.Select(ConnectionView.Of)], connections.HasNext),
+			? Api.Paged(
+				new Page<ConnectionView>([.. connections!.Items.Select(ConnectionView.Of)], connections.HasNext),
 				page!)
 			: result.Refusal();
 	}
@@ -377,7 +377,11 @@ internal static class UserRoutes
 	public sealed record PasswordRequest(string? Current, string? New, bool? IncludeCurrent);
 
 	/// <summary>A new account made by staff.</summary>
-	public sealed record CreateUserRequest(string? Username, string? Password, string? Country, UserPrivileges? Privileges);
+	public sealed record CreateUserRequest(
+		string? Username,
+		string? Password,
+		string? Country,
+		UserPrivileges? Privileges);
 
 	/// <summary>A request to close all sessions of one's own account.</summary>
 	public sealed record CloseSessionsRequest(bool? KeepCurrent);

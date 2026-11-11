@@ -2,11 +2,9 @@ using System.Text.Json;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Gateway;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -52,7 +50,8 @@ internal static class MatchRoutes
 		var team = result as TeamVersusResult;
 		return new
 		{
-			ScoreOrder = result.Scores.Select(score => score.Score.Id), WinnerId = winnerId, Winner = team?.Winner,
+			ScoreOrder = result.Scores.Select(score => score.Score.Id), WinnerId = winnerId,
+			team?.Winner,
 			result.Margin, result.IsDraw, RedScore = team?.TeamScore[GameTeam.Red],
 			BlueScore = team?.TeamScore[GameTeam.Blue]
 		};

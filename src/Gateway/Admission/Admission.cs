@@ -12,8 +12,8 @@ namespace Basil.Gateway.Admission;
 /// <param name="load">The load of the server; an idle server when omitted.</param>
 public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, LoadSignal? load = null)
 {
-	private readonly LoadSignal _load = load ?? new LoadSignal();
 	private static readonly WorkClass[] MustServe = [WorkClass.Interactive, WorkClass.Upload, WorkClass.Live];
+	private readonly LoadSignal _load = load ?? new LoadSignal();
 	private readonly RateLimiter _rate = new(clock);
 	private readonly int[] _running = new int[Enum.GetValues<WorkClass>().Length];
 	private Func<GatewayLimits> _source = source;

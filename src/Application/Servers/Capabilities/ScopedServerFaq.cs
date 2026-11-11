@@ -1,6 +1,4 @@
 using Basil.Application.Servers.Objects;
-using Basil.Application.Shared;
-using Basil.Domain.Content;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Servers.Capabilities;

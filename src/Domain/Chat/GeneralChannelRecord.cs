@@ -18,15 +18,6 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 		}
 	}
 
-	/// <summary>Tells whether a name follows the channel naming rules.</summary>
-	/// <param name="name">The name to check.</param>
-	/// <returns><see langword="true" /> when the name can identify a channel.</returns>
-	public static bool IsValidName(string? name)
-	{
-		return !string.IsNullOrEmpty(name) && name.Length >= 2 && name[0] == '#' && !name.Any(char.IsWhiteSpace) &&
-		       !name.Contains(',') && !name.Contains('\0');
-	}
-
 	/// <summary>Gets the settings stored for this channel.</summary>
 	public required GeneralChannelData Value { get; init; }
 
@@ -36,6 +27,15 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 	public bool Equals(GeneralChannelRecord? other)
 	{
 		return other is not null && StringComparer.OrdinalIgnoreCase.Equals(Name, other.Name);
+	}
+
+	/// <summary>Tells whether a name follows the channel naming rules.</summary>
+	/// <param name="name">The name to check.</param>
+	/// <returns><see langword="true" /> when the name can identify a channel.</returns>
+	public static bool IsValidName(string? name)
+	{
+		return !string.IsNullOrEmpty(name) && name.Length >= 2 && name[0] == '#' && !name.Any(char.IsWhiteSpace) &&
+		       !name.Contains(',') && !name.Contains('\0');
 	}
 
 	/// <inheritdoc />
@@ -55,22 +55,6 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 /// <summary>The settings of a configured chat channel.</summary>
 public sealed class GeneralChannelData
 {
-	/// <summary>Tells whether a text can be the topic of a channel.</summary>
-	/// <param name="topic">The text to check.</param>
-	/// <returns><see langword="true" /> when the text is not <see langword="null" /> and holds no NUL character.</returns>
-	public static bool IsValidTopic(string? topic)
-	{
-		return topic is not null && !topic.HasNul();
-	}
-
-	/// <summary>Tells whether a set of roles can be the read or write requirement of a channel.</summary>
-	/// <param name="privileges">The roles to check.</param>
-	/// <returns><see langword="true" /> when the roles set no undefined privilege bit.</returns>
-	public static bool IsValidPrivileges(UserPrivileges privileges)
-	{
-		return privileges.IsValid();
-	}
-
 	/// <summary>Gets or sets the topic shown to users who join the channel.</summary>
 	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
 	public string Topic
@@ -110,4 +94,20 @@ public sealed class GeneralChannelData
 
 	/// <summary>A value that indicates whether the channel is visible in channel listings.</summary>
 	public bool Visible { get; set; } = true;
+
+	/// <summary>Tells whether a text can be the topic of a channel.</summary>
+	/// <param name="topic">The text to check.</param>
+	/// <returns><see langword="true" /> when the text is not <see langword="null" /> and holds no NUL character.</returns>
+	public static bool IsValidTopic(string? topic)
+	{
+		return topic is not null && !topic.HasNul();
+	}
+
+	/// <summary>Tells whether a set of roles can be the read or write requirement of a channel.</summary>
+	/// <param name="privileges">The roles to check.</param>
+	/// <returns><see langword="true" /> when the roles set no undefined privilege bit.</returns>
+	public static bool IsValidPrivileges(UserPrivileges privileges)
+	{
+		return privileges.IsValid();
+	}
 }

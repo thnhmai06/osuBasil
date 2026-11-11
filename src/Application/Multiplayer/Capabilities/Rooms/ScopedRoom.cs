@@ -1,6 +1,5 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
@@ -11,7 +10,8 @@ namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 /// <summary>A room scoped to a connection, with its room privileges snapshot.</summary>
 /// <remarks>
 ///     The snapshot is taken once, so a scope is for one request or command: create it with
-///     <see cref="Objects.Rooms.Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its privileges outlive a
+///     <see cref="Objects.Rooms.Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its privileges
+///     outlive a
 ///     change of
 ///     role or privilege.
 /// </remarks>

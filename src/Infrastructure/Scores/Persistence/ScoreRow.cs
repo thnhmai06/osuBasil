@@ -9,40 +9,58 @@ internal sealed class ScoreRow
 {
 	/// <summary>The unique identifier of the score.</summary>
 	public int Id { get; set; }
+
 	/// <summary>The player who set the score, or <see langword="null" /> when that account no longer exists.</summary>
 	public int? UserId { get; set; }
+
 	/// <summary>The MD5 hash of the beatmap the score was set on.</summary>
 	public string? BeatmapHash { get; set; }
+
 	/// <summary>The game mode the score was set in.</summary>
 	public int Mode { get; set; }
+
 	/// <summary>The mods that were active, as a bit set.</summary>
 	public int Mods { get; set; }
+
 	/// <summary>The number of 300 hits.</summary>
 	public int Num300 { get; set; }
+
 	/// <summary>The number of 100 hits.</summary>
 	public int Num100 { get; set; }
+
 	/// <summary>The number of 50 hits.</summary>
 	public int Num50 { get; set; }
+
 	/// <summary>The number of geki hits.</summary>
 	public int NumGeki { get; set; }
+
 	/// <summary>The number of katu hits.</summary>
 	public int NumKatu { get; set; }
+
 	/// <summary>The number of misses.</summary>
 	public int NumMiss { get; set; }
+
 	/// <summary>The total score points.</summary>
 	public int TotalScore { get; set; }
+
 	/// <summary>The highest combo reached.</summary>
 	public int MaxCombo { get; set; }
+
 	/// <summary>The combo running when the play ended.</summary>
 	public int CurrentCombo { get; set; }
+
 	/// <summary>The grade awarded to the play.</summary>
 	public int Grade { get; set; }
+
 	/// <summary>Whether the play was passed rather than failed.</summary>
 	public bool IsPassed { get; set; }
+
 	/// <summary>Whether no combo was broken during the play.</summary>
 	public bool IsFullCombo { get; set; }
+
 	/// <summary>When the score was set.</summary>
 	public DateTimeOffset Timestamp { get; set; }
+
 	/// <summary>The submission checksum that identifies the play and prevents it from being stored twice.</summary>
 	public string? Checksum { get; set; }
 }

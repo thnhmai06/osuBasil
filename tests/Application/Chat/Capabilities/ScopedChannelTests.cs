@@ -530,7 +530,8 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var member = await MemberOfAsync(app, channel, "Evicted");
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Deleter", "password", UserPrivilegesExtensions.All));
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Deleter", "password",
+			UserPrivilegesExtensions.All));
 
 		var result = await channel.ScopeTo(admin).General!.Value.DeleteAsync();
 

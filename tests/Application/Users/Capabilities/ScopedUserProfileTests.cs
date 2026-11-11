@@ -123,9 +123,9 @@ public sealed class ScopedUserProfileTests
 		var actor = await app.LoginAsync(user);
 		var profile = app.Users.Of(user).ScopeTo(actor).Profile;
 
-		Assert.True((await profile.SetAvatarAsync(new MemoryStream([1, 2, 3]), Token)) == UserOutcome.Ok);
+		Assert.True(await profile.SetAvatarAsync(new MemoryStream([1, 2, 3]), Token) == UserOutcome.Ok);
 		Assert.Equal([1, 2, 3], avatars.Images[user.Id]);
-		Assert.True((await profile.RemoveAvatarAsync()) == UserOutcome.Ok);
+		Assert.True(await profile.RemoveAvatarAsync() == UserOutcome.Ok);
 		Assert.Empty(avatars.Images);
 	}
 
@@ -169,7 +169,7 @@ public sealed class ScopedUserProfileTests
 		var actor = await app.LoginAsync(user);
 		var profile = app.Users.Of(user).ScopeTo(actor).Profile;
 		var previous = await AssetAsync("avatar-default.png");
-		Assert.True((await profile.SetAvatarAsync(new MemoryStream(previous), Token)) == UserOutcome.Ok);
+		Assert.True(await profile.SetAvatarAsync(new MemoryStream(previous), Token) == UserOutcome.Ok);
 
 		InspectedAs(app, null);
 		var html = Encoding.UTF8.GetBytes("<!doctype html><script>alert(1)</script>");
@@ -286,7 +286,7 @@ public sealed class ScopedUserProfileTests
 
 		Assert.Equal(UserOutcome.Locked, await profile.RenameAsync("Thawed"));
 		Assert.Equal(UserOutcome.Locked, await profile.SetCountryAsync(Country.Au));
-		Assert.Equal(UserOutcome.Locked, (await profile.SetAvatarAsync(new MemoryStream([1]), Token)));
+		Assert.Equal(UserOutcome.Locked, await profile.SetAvatarAsync(new MemoryStream([1]), Token));
 		Assert.Equal(UserOutcome.Locked, await profile.RemoveAvatarAsync());
 		Assert.Equal("Frozen", user.Value.Name);
 		Assert.Empty(avatars.Images);
@@ -314,9 +314,9 @@ public sealed class ScopedUserProfileTests
 		var bot = await app.SeedBotAsync();
 		var profile = app.Users.Of(bot).ScopeTo(admin).Profile;
 
-		Assert.True((await profile.RenameAsync("Basilisk")) == UserOutcome.Ok);
-		Assert.True((await profile.SetCountryAsync(Country.Vn)) == UserOutcome.Ok);
-		Assert.True((await profile.SetAvatarAsync(new MemoryStream([9]), Token)) == UserOutcome.Ok);
+		Assert.True(await profile.RenameAsync("Basilisk") == UserOutcome.Ok);
+		Assert.True(await profile.SetCountryAsync(Country.Vn) == UserOutcome.Ok);
+		Assert.True(await profile.SetAvatarAsync(new MemoryStream([9]), Token) == UserOutcome.Ok);
 		Assert.Equal("Basilisk", bot.Value.Name);
 		Assert.Equal([9], avatars.Images[bot.Id]);
 	}

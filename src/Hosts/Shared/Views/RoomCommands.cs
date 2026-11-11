@@ -2,12 +2,10 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Shared;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -178,7 +176,7 @@ public static class RoomCommands
 
 	private static Task<RoomOutcome> Refuse(RoomOutcome outcome)
 	{
-		return Task.FromResult<RoomOutcome>(outcome);
+		return Task.FromResult(outcome);
 	}
 
 	private static Task<RoomOutcome> Countdown(RoomCall room, int seconds, bool startsRound,

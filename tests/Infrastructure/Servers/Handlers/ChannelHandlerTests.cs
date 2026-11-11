@@ -45,10 +45,11 @@ public sealed class ChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
-		await new CreateGeneralChannelHandler(app.Server).Handle(new CreateGeneralChannel(admin, Record("#topic")), Token);
+		await new CreateGeneralChannelHandler(app.Server).Handle(new CreateGeneralChannel(admin, Record("#topic")),
+			Token);
 
 		var answer = await new ConfigureGeneralChannelHandler(app.Server)
-			.Handle(new ConfigureGeneralChannel(admin, "#topic", new GeneralChannelChange(Topic: "hello")), Token);
+			.Handle(new ConfigureGeneralChannel(admin, "#topic", new GeneralChannelChange("hello")), Token);
 
 		Assert.True(answer.Result == ChannelOutcome.Ok);
 		Assert.Equal("hello", answer.Channel!.Topic);
@@ -61,7 +62,7 @@ public sealed class ChannelHandlerTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 
 		var answer = await new ConfigureGeneralChannelHandler(app.Server)
-			.Handle(new ConfigureGeneralChannel(admin, "#missing", new GeneralChannelChange(Topic: "x")), Token);
+			.Handle(new ConfigureGeneralChannel(admin, "#missing", new GeneralChannelChange("x")), Token);
 
 		Assert.False(answer.Result == ChannelOutcome.Ok);
 		Assert.Null(answer.Channel);
@@ -72,9 +73,11 @@ public sealed class ChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
-		await new CreateGeneralChannelHandler(app.Server).Handle(new CreateGeneralChannel(admin, Record("#gone")), Token);
+		await new CreateGeneralChannelHandler(app.Server).Handle(new CreateGeneralChannel(admin, Record("#gone")),
+			Token);
 
-		var answer = await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#gone"), Token);
+		var answer =
+			await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#gone"), Token);
 
 		Assert.True(answer.Result == ChannelOutcome.Ok);
 		Assert.Null(app.Server.ScopeTo(admin).Channels.FindGeneral("#gone").Channel);
@@ -86,7 +89,9 @@ public sealed class ChannelHandlerTests
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 
-		var answer = await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#missing"), Token);
+		var answer =
+			await new DeleteGeneralChannelHandler(app.Server).Handle(new DeleteGeneralChannel(admin, "#missing"),
+				Token);
 
 		Assert.False(answer.Result == ChannelOutcome.Ok);
 		Assert.Null(answer.Channel);

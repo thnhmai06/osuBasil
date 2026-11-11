@@ -10,8 +10,8 @@ public sealed class RestHostFixture : IAsyncLifetime
 {
 	/// <summary>Staff: manages users and restrictions.</summary>
 	public static readonly UserPrivileges StaffPrivileges = UserPrivilegesExtensions.Default |
-	                                                          UserPrivileges.Owner |
-	                                                          UserPrivileges.Moderator;
+	                                                        UserPrivileges.Owner |
+	                                                        UserPrivileges.Moderator;
 
 	public BasilHost Host { get; private set; } = null!;
 

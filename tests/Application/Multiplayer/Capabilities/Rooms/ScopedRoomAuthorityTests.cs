@@ -1,10 +1,8 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Shared;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
@@ -642,7 +640,8 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(setup.Creator.Record.Id));
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority
+			.AddRefereeAsync(UserReference.ById(setup.Creator.Record.Id));
 
 		Assert.Equal(RoomOutcome.IsCreator, result);
 		Assert.DoesNotContain(setup.Creator.Record, setup.Room.Authority.Referees);
@@ -654,7 +653,8 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(setup.Referee.Record.Id));
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority
+			.AddRefereeAsync(UserReference.ById(setup.Referee.Record.Id));
 
 		Assert.Equal(RoomOutcome.AlreadyReferee, result);
 	}
@@ -667,11 +667,13 @@ public sealed class ScopedRoomAuthorityTests
 		for (var index = 1; index < RoomAuthority.MaxReferees; index++)
 		{
 			var user = await RoomFixture.PlayerAsync(app, $"Referee{index}");
-			Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(user.Record.Id))) == RoomOutcome.Ok);
+			Assert.True(await setup.Room.ScopeTo(setup.Creator).Authority
+				.AddRefereeAsync(UserReference.ById(user.Record.Id)) == RoomOutcome.Ok);
 		}
 
 		var ninth = await RoomFixture.PlayerAsync(app, "Ninth");
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.AddRefereeAsync(UserReference.ById(ninth.Record.Id));
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority
+			.AddRefereeAsync(UserReference.ById(ninth.Record.Id));
 
 		Assert.Equal(RoomOutcome.TooManyReferees, result);
 		Assert.Equal(RoomAuthority.MaxReferees, setup.Room.Authority.Referees.Count);
@@ -683,7 +685,8 @@ public sealed class ScopedRoomAuthorityTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Authority.RemoveRefereeAsync(UserReference.ById(setup.Outsider.Record.Id));
+		var result = await setup.Room.ScopeTo(setup.Creator).Authority
+			.RemoveRefereeAsync(UserReference.ById(setup.Outsider.Record.Id));
 
 		Assert.Equal(RoomOutcome.NotReferee, result);
 	}

@@ -1,3 +1,4 @@
+using System.Text;
 using Basil.Domain.Cryptography;
 
 namespace Basil.Domain.Tests.Cryptography;
@@ -10,7 +11,7 @@ public sealed class Sha256Tests
 	[InlineData("abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")]
 	public void SomeContent_LowerHexDigest(string content, string expected)
 	{
-		Assert.Equal(expected, new Sha256(System.Text.Encoding.UTF8.GetBytes(content)).ToString());
+		Assert.Equal(expected, new Sha256(Encoding.UTF8.GetBytes(content)).ToString());
 	}
 
 	[Fact]
@@ -36,6 +37,7 @@ public sealed class Sha256Tests
 	{
 		using var stream = new MemoryStream("abc"u8.ToArray());
 
-		Assert.Equal(new Sha256("abc"u8.ToArray()), await Sha256.ComputeAsync(stream, TestContext.Current.CancellationToken));
+		Assert.Equal(new Sha256("abc"u8.ToArray()),
+			await Sha256.ComputeAsync(stream, TestContext.Current.CancellationToken));
 	}
 }

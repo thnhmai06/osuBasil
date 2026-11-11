@@ -57,7 +57,10 @@ public enum RoomPrivileges : uint
 	/// <summary>The privileges of a seated player: post in room chat and invite users.</summary>
 	Player = ChatPost | MembersInvite,
 
-	/// <summary>The privileges of the current host: the operations the osu! client lets a host do. Hosting grants no management.</summary>
+	/// <summary>
+	///     The privileges of the current host: the operations the osu! client lets a host do. Hosting grants no
+	///     management.
+	/// </summary>
 	Host = SettingsChange | SettingsRename | SettingsPassword | SlotsLock | MembersKick | HostTransfer |
 	       RoundsStart | RoundsAbort,
 

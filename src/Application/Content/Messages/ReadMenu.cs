@@ -24,7 +24,10 @@ public sealed record ReadFaq(string Entry) : IRequest<string?>;
 /// <summary>Asks Content to open a picture of the main menu or an uploaded screenshot.</summary>
 /// <param name="Kind">Which kind of picture.</param>
 /// <param name="Name">The file name of the picture; ignored for the icon.</param>
-/// <remarks>The pictures are public; the answer is <see langword="null" /> when there is no such picture, and the receiver disposes the stream.</remarks>
+/// <remarks>
+///     The pictures are public; the answer is <see langword="null" /> when there is no such picture, and the receiver
+///     disposes the stream.
+/// </remarks>
 public sealed record OpenContentImage(ContentImageKind Kind, string? Name) : IRequest<Stream?>;
 
 /// <summary>The kinds of picture <see cref="OpenContentImage" /> opens.</summary>

@@ -121,7 +121,7 @@ public sealed class ScopedRoomSettingsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true)) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true) == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap));

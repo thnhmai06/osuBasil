@@ -2,7 +2,6 @@ using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
 using Basil.Infrastructure.Scores.Storage;
 
 namespace Basil.Infrastructure.Scores.Tests.Storage;

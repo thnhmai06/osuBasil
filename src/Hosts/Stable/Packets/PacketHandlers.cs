@@ -2,18 +2,14 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Messages;
-using Basil.Application.Shared;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
@@ -187,12 +183,10 @@ internal sealed partial class PacketHandlers(
 	{
 		var entries = new List<BeatmapInfoResponse>();
 		for (var index = 0; index < Math.Min(request.Filenames.Count, MaxRequestedFilenames); index++)
-		{
 			if (await sender.Send(new FindBeatmapByFileName(request.Filenames[index]), ct) is { } map)
 				entries.Add(new BeatmapInfoResponse((short)index, map.Id,
 					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1,
 					map.Hash.ToString()));
-		}
 
 		outbox.Send(osu, writer => writer.BeatmapInfoReply(entries));
 	}

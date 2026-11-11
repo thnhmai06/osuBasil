@@ -1,6 +1,5 @@
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Services;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Actors;
 using Mediator;
 

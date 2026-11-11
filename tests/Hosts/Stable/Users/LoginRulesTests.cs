@@ -1,7 +1,6 @@
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Users;
 using Basil.Host.Stable.Support;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,7 +47,8 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	public async Task WrongPasswords_RefusedEvenRight()
 	{
 		using var client = await Host.NewClientAsync("LockedOut");
-		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
+		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>()
+				.GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
 			.MaxAttempts;
 		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", "203.0.113.7");
 
@@ -63,7 +63,8 @@ public sealed class LoginRulesTests(StableHostFixture fixture)
 	public async Task OtherAddress_NotAffectedLockout()
 	{
 		using var client = await Host.NewClientAsync("OtherAddress");
-		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
+		var limit = (await Host.Services.GetRequiredService<ISettingsRepository>()
+				.GetAsync(TestContext.Current.CancellationToken)).RateLimits.Login
 			.MaxAttempts;
 		for (var attempt = 0; attempt < limit; attempt++) await client.LoginAsync("wrong", "203.0.113.8");
 

@@ -36,7 +36,7 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true)) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Player).Slots.SetReadyAsync(true) == RoomOutcome.Ok);
 
 		await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
@@ -75,7 +75,7 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(7)) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Host).Slots.ToggleLockAsync(7) == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
@@ -100,7 +100,7 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true)) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true) == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Player).Slots.ChangeAsync(7);
 
@@ -125,7 +125,8 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(UserReference.ById(setup.Player.Record.Id), 2);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots
+			.MoveAsync(UserReference.ById(setup.Player.Record.Id), 2);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result);
 		Assert.Equal(3, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -139,7 +140,8 @@ public sealed class ScopedRoomSlotsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(UserReference.ById(setup.Player.Record.Id), index);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots
+			.MoveAsync(UserReference.ById(setup.Player.Record.Id), index);
 
 		Assert.Equal(RoomOutcome.SlotNotOpen, result);
 	}
@@ -149,9 +151,10 @@ public sealed class ScopedRoomSlotsTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true)) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true) == RoomOutcome.Ok);
 
-		var result = await setup.Room.ScopeTo(setup.Creator).Slots.MoveAsync(UserReference.ById(setup.Player.Record.Id), 7);
+		var result = await setup.Room.ScopeTo(setup.Creator).Slots
+			.MoveAsync(UserReference.ById(setup.Player.Record.Id), 7);
 
 		Assert.Equal(RoomOutcome.Ok, result);
 		Assert.Equal(7, setup.Room.Slots.Find(setup.Player)!.Index);
@@ -276,7 +279,7 @@ public sealed class ScopedRoomSlotsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(TeamType: GameTeamType.TeamVs));
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true)) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true) == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Player).Slots.ToggleTeamAsync();
 

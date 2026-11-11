@@ -31,7 +31,7 @@ public sealed class ScopedRoomRoundsTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync() == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
 
@@ -78,11 +78,11 @@ public sealed class ScopedRoomRoundsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
 		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.MarkLoadedAsync()) == RoomOutcome.Ok);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.MarkLoadedAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Rounds.MarkLoadedAsync() == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Host).Rounds.MarkLoadedAsync() == RoomOutcome.Ok);
 		Assert.IsType<RoomRoundPlayerLoaded>(app.RoomEvents.Events[^1]);
 
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.MarkLoadedAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Player).Rounds.MarkLoadedAsync() == RoomOutcome.Ok);
 
 		Assert.IsType<RoomRoundAllLoaded>(app.RoomEvents.Events[^1]);
 	}
@@ -105,11 +105,11 @@ public sealed class ScopedRoomRoundsTests
 		var setup = await RoomFixture.CreateAsync(app);
 		await SelectBeatmapAsync(setup);
 		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync();
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.SkipAsync()) == RoomOutcome.Ok);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.SkipAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Rounds.SkipAsync() == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Host).Rounds.SkipAsync() == RoomOutcome.Ok);
 		Assert.IsType<RoomRoundPlayerSkipped>(app.RoomEvents.Events[^1]);
 
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.SkipAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Player).Rounds.SkipAsync() == RoomOutcome.Ok);
 
 		Assert.IsType<RoomRoundAllSkipped>(app.RoomEvents.Events[^1]);
 	}
@@ -200,14 +200,14 @@ public sealed class ScopedRoomRoundsTests
 
 	private static async Task SelectBeatmapAsync(RoomFixture setup)
 	{
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap)) == RoomOutcome.Ok);
 	}
 
 	private static async Task CompleteRoundAsync(RoomFixture setup)
 	{
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync()) == RoomOutcome.Ok);
-		Assert.True((await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync()) == RoomOutcome.Ok);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Rounds.CompleteAsync() == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Host).Rounds.CompleteAsync() == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync() == RoomOutcome.Ok);
 	}
 }

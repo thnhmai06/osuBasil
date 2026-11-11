@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
@@ -41,12 +40,11 @@ public sealed class DatabaseSessionTests(PersistenceFixture container) : Databas
 	{
 		var first = await NewUserAsync("first_user");
 
-		await Assert.ThrowsAnyAsync<Exception>(() => Database.TransactAsync(
-			async (AuthenticationDbContext context) =>
-			{
-				await AddCredential(first.Id)(context);
-				await AddCredential(first.Id + 1000)(context);
-			}));
+		await Assert.ThrowsAnyAsync<Exception>(() => Database.TransactAsync(async (AuthenticationDbContext context) =>
+		{
+			await AddCredential(first.Id)(context);
+			await AddCredential(first.Id + 1000)(context);
+		}));
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select user_id from credentials", null,
 			TestContext.Current.CancellationToken);

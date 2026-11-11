@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Beatmaps.Ports;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
@@ -150,5 +149,9 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 		JsonElement HasVideo = default,
 		List<RawBeatmap>? ChildrenBeatmaps = null);
 
-	private sealed record RawBeatmap(int BeatmapId = 0, string DiffName = "", double DifficultyRating = 0, int Mode = 0);
+	private sealed record RawBeatmap(
+		int BeatmapId = 0,
+		string DiffName = "",
+		double DifficultyRating = 0,
+		int Mode = 0);
 }

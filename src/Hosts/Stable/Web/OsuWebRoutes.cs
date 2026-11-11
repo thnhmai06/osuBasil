@@ -5,18 +5,14 @@ using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
-using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Scores.Storage;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
@@ -24,9 +20,6 @@ using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
-using Basil.Domain.Users;
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Basil.Gateway.RateLimiting;
@@ -96,7 +89,8 @@ internal static class OsuWebRoutes
 		web.MapGet("/web/osu-search.php", SearchAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Search beatmapsets for osu!direct.")
-			.WithDescription("Query: `u`, `h`, `q` (the search). Needs the privilege to use osu!direct, otherwise 403.");
+			.WithDescription(
+				"Query: `u`, `h`, `q` (the search). Needs the privilege to use osu!direct, otherwise 403.");
 		web.MapGet("/web/osu-search-set.php", SearchSetAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Look up one beatmapset for osu!direct.")
@@ -186,11 +180,9 @@ internal static class OsuWebRoutes
 			?? new BeatmapInfoBody();
 		var lines = new List<string>();
 		for (var index = 0; index < Math.Min(request.Filenames.Length, PacketHandlers.MaxRequestedFilenames); index++)
-		{
 			if (await sender.Send(new FindBeatmapByFileName(request.Filenames[index]), ct) is { } map)
 				lines.Add(
 					$"{index}|{map.Id}|{map.Beatmapset.Id}|0|{(int)map.Beatmapset.Status}|N|N|N|N|{map.Hash}");
-		}
 
 		return Text(string.Join('\n', lines));
 	}
@@ -313,7 +305,8 @@ internal static class OsuWebRoutes
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
-		var page = await sender.Send(new SearchBeatmapsets(player, new BeatmapQuery(query["q"]), new PageRequest(0, 100)),
+		var page = await sender.Send(
+			new SearchBeatmapsets(player, new BeatmapQuery(query["q"]), new PageRequest(0, 100)),
 			ct);
 		return Text(string.Join('\n', new[] { page.Items.Count.ToString(CultureInfo.InvariantCulture) }
 			.Concat(page.Items.Select(DirectLine))));

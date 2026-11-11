@@ -1,6 +1,5 @@
 using System.Globalization;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 

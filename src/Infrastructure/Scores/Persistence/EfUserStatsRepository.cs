@@ -1,5 +1,4 @@
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
@@ -35,7 +34,7 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 			PlayCount = stats.PlayCount
 		};
 		return database.WriteAsync((ScoresDbContext context) =>
-				context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode));
+			context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode));
 	}
 
 	/// <inheritdoc />

@@ -1,9 +1,7 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 
@@ -21,7 +19,10 @@ public readonly struct ScopedRoomAuthority
 
 	/// <summary>Makes a user a referee.</summary>
 	/// <param name="user">The user to make referee, named by id or name.</param>
-	/// <returns>Ok, NotAuthorized, NotInRoom for a user who does not exist, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
+	/// <returns>
+	///     Ok, NotAuthorized, NotInRoom for a user who does not exist, IsCreator, AlreadyReferee, TooManyReferees or
+	///     RoomClosed when the room has closed.
+	/// </returns>
 	public async Task<RoomOutcome> AddRefereeAsync(UserReference user)
 	{
 		if (_scoped.Require(RoomPrivileges.RefereesManage) is { } denied) return denied;
@@ -32,7 +33,10 @@ public readonly struct ScopedRoomAuthority
 
 	/// <summary>Removes a user from the referees.</summary>
 	/// <param name="user">The referee to remove, named by id or name.</param>
-	/// <returns>Ok, NotAuthorized, NotReferee, NotInRoom for a user who does not exist, or RoomClosed when the room has closed.</returns>
+	/// <returns>
+	///     Ok, NotAuthorized, NotReferee, NotInRoom for a user who does not exist, or RoomClosed when the room has
+	///     closed.
+	/// </returns>
 	public async Task<RoomOutcome> RemoveRefereeAsync(UserReference user)
 	{
 		if (_scoped.Require(RoomPrivileges.RefereesManage) is { } denied) return denied;

@@ -7,7 +7,6 @@ using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Testing;
@@ -127,17 +126,17 @@ public sealed class RoomFixture
 		Assert.NotNull(room);
 
 		var host = await PlayerAsync(app, "Host");
-		Assert.True((await room.ScopeTo(host).Members.JoinAsync("")) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(host).Members.JoinAsync("") == RoomOutcome.Ok);
 
 		var player = await PlayerAsync(app, "Player");
-		Assert.True((await room.ScopeTo(player).Members.JoinAsync("")) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(player).Members.JoinAsync("") == RoomOutcome.Ok);
 
 		var referee = await PlayerAsync(app, "Referee");
-		Assert.True((await room.ScopeTo(creator).Authority
-			.AddRefereeAsync(UserReference.ById(referee.Record.Id))) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(creator).Authority
+			.AddRefereeAsync(UserReference.ById(referee.Record.Id)) == RoomOutcome.Ok);
 
-		Assert.True((await room.ScopeTo(creator).Authority
-			.SetHostAsync(host)) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(creator).Authority
+			.SetHostAsync(host) == RoomOutcome.Ok);
 
 		var outsider = await PlayerAsync(app, "Outsider");
 		var manager = await PlayerAsync(app, "Manager", UserPrivilegesExtensions.Default | UserPrivileges.Tournament);

@@ -1,4 +1,3 @@
-using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
 using Basil.Testing;
 

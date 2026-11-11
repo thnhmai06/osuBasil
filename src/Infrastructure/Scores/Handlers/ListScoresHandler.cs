@@ -18,7 +18,8 @@ internal sealed class ListScoresHandler(IScoreRepository scores, IBeatmapReposit
 		Md5? hash = null;
 		if (request.BeatmapId is { } beatmapId)
 		{
-			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map) return new ScoreListing(ScoreListOutcome.NoBeatmap, null);
+			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map)
+				return new ScoreListing(ScoreListOutcome.NoBeatmap, null);
 			hash = map.Hash;
 		}
 

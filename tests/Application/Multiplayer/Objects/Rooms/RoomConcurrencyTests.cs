@@ -108,8 +108,8 @@ public sealed class RoomConcurrencyTests
 			Assert.True(room!.IsClosed);
 			Assert.Null(room.Slots.Find(joiner));
 			Assert.Null(app.Lobby.RoomOf(joiner));
-			Assert.True((await setup.SuspendedRoom.ScopeTo(joiner).Members
-				.JoinAsync("")) == RoomOutcome.Ok);
+			Assert.True(await setup.SuspendedRoom.ScopeTo(joiner).Members
+				.JoinAsync("") == RoomOutcome.Ok);
 			await app.Lobby.ReleaseAsync(joiner);
 		}
 	}

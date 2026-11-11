@@ -1,7 +1,6 @@
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
-using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -9,13 +8,12 @@ namespace Basil.Application.Users.Tests.Capabilities;
 
 public sealed class ScopedUserTests
 {
-
 	[Fact]
 	public async Task GrantExceedsActor_NamesMissing()
 	{
 		using var app = new TestApplication();
 		var actorPrivileges = UserPrivilegesExtensions.Default | UserPrivileges.Owner |
-		                       UserPrivileges.Owner;
+		                      UserPrivileges.Owner;
 		var actorRecord = await app.CreateUserAsync("PermissionActor", "password", actorPrivileges);
 		var target = await app.CreateUserAsync("PermTarget", "password");
 		var actor = await app.LoginAsync(actorRecord);
@@ -57,14 +55,14 @@ public sealed class ScopedUserTests
 		var connection = await app.LoginAsync(target);
 		var scoped = app.Users.Of(target).ScopeTo(actor);
 
-		Assert.True((await scoped.DeleteAsync()) == UserOutcome.Ok);
+		Assert.True(await scoped.DeleteAsync() == UserOutcome.Ok);
 		var deletedAt = target.Value.DeletedAt;
 		Assert.NotNull(deletedAt);
 		Assert.False(connection.IsOpen);
 		Assert.Equal(SessionEndReason.Deleted,
 			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]).Reason);
 
-		Assert.True((await scoped.DeleteAsync()) == UserOutcome.Ok);
+		Assert.True(await scoped.DeleteAsync() == UserOutcome.Ok);
 
 		Assert.Equal(deletedAt, target.Value.DeletedAt);
 	}

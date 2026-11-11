@@ -1,6 +1,5 @@
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Diagnostics.Objects;
-using Basil.Application.Shared;
 using Mediator;
 
 namespace Basil.Infrastructure.Diagnostics.Handlers;

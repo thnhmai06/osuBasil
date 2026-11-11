@@ -60,8 +60,10 @@ public sealed class MatchTests(RestHostFixture fixture)
 		{
 			var (_, matchId) = await OpenAsync(owner, "Secret", true);
 
-			var (hidden, _) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
-			var (shown, reader) = await owner.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
+			var (hidden, _) =
+				await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
+			var (shown, reader) =
+				await owner.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
 			using (hidden)
 			using (shown)
 			{
@@ -82,7 +84,8 @@ public sealed class MatchTests(RestHostFixture fixture)
 			var (roomId, matchId) = await OpenAsync(owner, "Live");
 			await fixture.Host.DrainEventsAsync();
 
-			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
+			var (response, reader) =
+				await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				Assert.NotNull(reader);
@@ -120,7 +123,8 @@ public sealed class MatchTests(RestHostFixture fixture)
 				if (list!["data"]!.AsArray().All(r => (int)r!["id"]! != roomId)) break;
 			}
 
-			var (response, reader) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
+			var (response, reader) =
+				await anon.OpenStreamAsync($"/v1/matches/{matchId}", ct: TestContext.Current.CancellationToken);
 			string lastId;
 			using (response)
 			{
@@ -131,7 +135,8 @@ public sealed class MatchTests(RestHostFixture fixture)
 				lastId = reader.LastId!;
 			}
 
-			var (again, none) = await anon.OpenStreamAsync($"/v1/matches/{matchId}", lastId, TestContext.Current.CancellationToken);
+			var (again, none) =
+				await anon.OpenStreamAsync($"/v1/matches/{matchId}", lastId, TestContext.Current.CancellationToken);
 			using (again)
 			{
 				Assert.Equal(204, (int)again.StatusCode);

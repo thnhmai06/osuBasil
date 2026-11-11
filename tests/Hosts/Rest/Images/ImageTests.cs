@@ -34,7 +34,8 @@ public sealed class ImageTests(RestHostFixture fixture)
 		Assert.Equal(200, (int)plain.StatusCode);
 		Assert.Equal("image/png", plain.Content.Headers.ContentType!.MediaType);
 		Assert.Equal(200, (int)bot.StatusCode);
-		Assert.Equal(await plain.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken), await bot.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+		Assert.Equal(await plain.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken),
+			await bot.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

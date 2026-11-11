@@ -6,6 +6,12 @@ namespace Basil.Host.Rest.Tests.Docs;
 [Collection("REST host")]
 public sealed class OpenApiTests(RestHostFixture fixture)
 {
+	private static readonly string[] SummaryVerbs =
+	[
+		"Get", "List", "Search", "Create", "Upload", "Update", "Replace", "Delete", "Download", "Stream",
+		"Close", "Lock", "Unlock", "Move", "Ban", "Invite", "Add", "Remove", "Start", "Abort"
+	];
+
 	private async Task<JsonNode> DocumentAsync()
 	{
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
@@ -39,10 +45,6 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 		Assert.NotNull(paths["/v1/matches/{id}"]!["get"]!["responses"]!["200"]!["content"]!["text/event-stream"]);
 	}
 
-	private static readonly string[] SummaryVerbs =
-		["Get", "List", "Search", "Create", "Upload", "Update", "Replace", "Delete", "Download", "Stream",
-		"Close", "Lock", "Unlock", "Move", "Ban", "Invite", "Add", "Remove", "Start", "Abort"];
-
 	private static bool StartsWithSummaryVerb(string? summary)
 	{
 		return summary is not null && SummaryVerbs.Contains(summary.Split(' ')[0]);
@@ -55,10 +57,8 @@ public sealed class OpenApiTests(RestHostFixture fixture)
 
 		foreach (var (path, item) in paths)
 		foreach (var (method, operation) in item!.AsObject())
-		{
 			Assert.True(StartsWithSummaryVerb((string?)operation!["summary"]),
 				$"{method} {path}: \"{(string?)operation["summary"]}\" does not start with a verb of the closed set");
-		}
 	}
 
 	[Fact]

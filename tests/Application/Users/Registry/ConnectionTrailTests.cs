@@ -1,5 +1,4 @@
 using System.Net;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Authentication;

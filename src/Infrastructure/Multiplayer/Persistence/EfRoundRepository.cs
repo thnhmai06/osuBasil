@@ -1,11 +1,9 @@
 using System.Text.Json;
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Shared;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,7 +18,7 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 	{
 		var row = ToRow(round);
 		return database.WriteAsync((MultiplayerDbContext context) =>
-				context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number));
+			context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number));
 	}
 
 	/// <inheritdoc />
@@ -104,7 +102,7 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 	{
 		public static StoredDecision Of(RoundResult result)
 		{
-			var order = (IReadOnlyList<int>) [.. result.Scores.Select(score => score.Score.Id)];
+			var order = (IReadOnlyList<int>)[.. result.Scores.Select(score => score.Score.Id)];
 			return result switch
 			{
 				TeamVersusResult team => new StoredDecision(order, null, team.Winner, team.Margin, team.IsDraw,

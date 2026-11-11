@@ -1,5 +1,4 @@
 ﻿using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 
 namespace Basil.Domain.Content;
 

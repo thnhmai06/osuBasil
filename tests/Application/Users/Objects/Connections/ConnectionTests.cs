@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;

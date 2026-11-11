@@ -12,6 +12,7 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 
 	/// <summary>The stored beatmapsets.</summary>
 	public DbSet<BeatmapsetRow> Beatmapsets => Set<BeatmapsetRow>();
+
 	/// <summary>The stored beatmaps.</summary>
 	public DbSet<BeatmapRow> Beatmaps => Set<BeatmapRow>();
 

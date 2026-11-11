@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Mechanics;
 

@@ -177,7 +177,10 @@ public readonly struct ServerIcon
 	{
 		await _server.Context.Icon.DeleteAsync();
 		var settings = await _server.Context.Settings.GetAsync();
-		await _server.Context.Settings.CreateOrUpdateAsync(settings with { MenuIcon = new ServerSettings.MenuIconSettings() });
+		await _server.Context.Settings.CreateOrUpdateAsync(settings with
+		{
+			MenuIcon = new ServerSettings.MenuIconSettings()
+		});
 		return ServerOutcome.Ok;
 	}
 }

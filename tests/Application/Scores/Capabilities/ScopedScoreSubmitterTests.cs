@@ -6,7 +6,6 @@ using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;

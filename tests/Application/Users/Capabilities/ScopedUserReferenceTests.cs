@@ -1,10 +1,8 @@
 using System.Text;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -24,7 +22,8 @@ public sealed class ScopedUserReferenceTests
 			["RemoveAvatar"] = (UserPrivileges.Owner, scope => scope.Profile.RemoveAvatarAsync()),
 			["ChangePassword"] = (UserPrivileges.Owner,
 				scope => scope.Credentials.ChangePasswordAsync(new Md5(Encoding.UTF8.GetBytes("new")), null)),
-			["SetPrivileges"] = (UserPrivileges.Owner, scope => scope.Privileges.SetAsync(UserPrivilegesExtensions.Default)),
+			["SetPrivileges"] = (UserPrivileges.Owner,
+				scope => scope.Privileges.SetAsync(UserPrivilegesExtensions.Default)),
 			["Delete"] = (UserPrivileges.Owner, scope => scope.DeleteAsync()),
 			["Impose"] = (UserPrivileges.Moderator,
 				scope => scope.Silence.ImposeAsync(DateTimeOffset.UnixEpoch.AddYears(100))),
@@ -77,8 +76,8 @@ public sealed class ScopedUserReferenceTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Friendly", "password"));
 		var scope = app.Users.ScopeTo(actor, UserReference.ById(MissingId));
 
-		Assert.Equal(UserOutcome.NotFound, (await scope.Relationships.AddFriendAsync()));
-		Assert.Equal(UserOutcome.NotFound, (await scope.Relationships.BlockAsync()));
+		Assert.Equal(UserOutcome.NotFound, await scope.Relationships.AddFriendAsync());
+		Assert.Equal(UserOutcome.NotFound, await scope.Relationships.BlockAsync());
 	}
 
 	[Fact]

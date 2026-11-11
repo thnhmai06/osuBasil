@@ -8,6 +8,7 @@ internal sealed class UserRow
 {
 	/// <summary>The unique identifier of the account.</summary>
 	public int Id { get; set; }
+
 	/// <summary>The account name.</summary>
 	public string Name { get; set; } = "";
 
@@ -19,10 +20,13 @@ internal sealed class UserRow
 
 	/// <summary>The account country.</summary>
 	public int Country { get; set; }
+
 	/// <summary>The privileges of the account, as a bit set.</summary>
 	public int Privileges { get; set; }
+
 	/// <summary>When the silence ends, or <see langword="null" /> when the account is not silenced.</summary>
 	public DateTimeOffset? SilencedUntil { get; set; }
+
 	/// <summary>When the account was deleted, or <see langword="null" /> while it exists.</summary>
 	public DateTimeOffset? DeletedAt { get; set; }
 }

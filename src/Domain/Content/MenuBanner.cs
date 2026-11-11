@@ -57,15 +57,6 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 		}
 	}
 
-	/// <summary>Tells whether a display window can belong to a banner.</summary>
-	/// <param name="startsAt">When it starts showing, or <see langword="null" /> for no lower bound.</param>
-	/// <param name="endsAt">When it stops showing, or <see langword="null" /> for no upper bound.</param>
-	/// <returns><see langword="true" /> when the window does not start after it ends.</returns>
-	public static bool IsValidWindow(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
-	{
-		return !(startsAt > endsAt);
-	}
-
 	/// <summary>The UTC instant the banner was created.</summary>
 	public required DateTimeOffset CreatedAt { get; init; }
 
@@ -79,6 +70,15 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	{
 		if (other is null) return false;
 		return Image == other.Image;
+	}
+
+	/// <summary>Tells whether a display window can belong to a banner.</summary>
+	/// <param name="startsAt">When it starts showing, or <see langword="null" /> for no lower bound.</param>
+	/// <param name="endsAt">When it stops showing, or <see langword="null" /> for no upper bound.</param>
+	/// <returns><see langword="true" /> when the window does not start after it ends.</returns>
+	public static bool IsValidWindow(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
+	{
+		return !(startsAt > endsAt);
 	}
 
 	/// <summary>Gets whether the banner is currently within its display window.</summary>

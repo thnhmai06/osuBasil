@@ -29,7 +29,6 @@ using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Anticheat;
 using Basil.Infrastructure.Beatmaps;
@@ -75,9 +74,11 @@ public sealed class TestApplication : IDisposable
 	private static readonly DateTimeOffset Start =
 		new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
+	private static long _sessionIds = 1_000_000;
+	private readonly InMemoryConnectionRepository _connections;
+
 	private readonly InMemoryCredentialRepository _credentials;
 	private readonly InMemoryModerationLogRepository _moderationLog;
-	private readonly InMemoryConnectionRepository _connections;
 	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemorySettingsRepository _settings;
 
@@ -387,8 +388,6 @@ public sealed class TestApplication : IDisposable
 		return _settings.CreateOrUpdateAsync(settings);
 	}
 
-	private static long _sessionIds = 1_000_000;
-
 	private async Task<LoginResult> OpenIrcAsync(string username)
 	{
 		if (await _users.GetByNameAsync(username) is not { } record) return LoginResult.Fail(LoginFailure.UnknownUser);
@@ -414,7 +413,8 @@ public sealed class TestApplication : IDisposable
 		var inMemoryPortTypes = new HashSet<Type>
 		{
 			typeof(IUserRepository), typeof(ICredentialRepository),
-			typeof(ISessionRepository), typeof(IConnectionRepository), typeof(IRelationshipRepository), typeof(IModerationLogRepository),
+			typeof(ISessionRepository), typeof(IConnectionRepository), typeof(IRelationshipRepository),
+			typeof(IModerationLogRepository),
 			typeof(ISettingsRepository)
 		};
 		var portAssemblies = new[]

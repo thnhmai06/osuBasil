@@ -45,7 +45,8 @@ public sealed partial class ObjectsDoNotDecidePrivilegesTests
 	[Fact]
 	public void Offences_AcceptsAnObjectThatReceivesPrivilegesAsAValue()
 	{
-		const string source = "public bool Involves(Connection connection, UserPrivileges privileges) => privileges.Allows(UserPrivileges.Player);";
+		const string source =
+			"public bool Involves(Connection connection, UserPrivileges privileges) => privileges.Allows(UserPrivileges.Player);";
 
 		Assert.Empty(Offences(source));
 	}

@@ -2,7 +2,6 @@ using System.Net;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Authentication;

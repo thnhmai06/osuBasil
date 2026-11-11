@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
@@ -57,7 +56,10 @@ public class DatabaseSession(Database database, TimeProvider time)
 		});
 	}
 
-	/// <summary>Runs a change like <see cref="WriteAsync{TContext}(Func{TContext, Task})" /> and gives back what the change returned.</summary>
+	/// <summary>
+	///     Runs a change like <see cref="WriteAsync{TContext}(Func{TContext, Task})" /> and gives back what the change
+	///     returned.
+	/// </summary>
 	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
 	/// <typeparam name="T">The type of the result.</typeparam>
 	/// <param name="change">The change; entities it adds or modifies on the context are saved after it runs.</param>

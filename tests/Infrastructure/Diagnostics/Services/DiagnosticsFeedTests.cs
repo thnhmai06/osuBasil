@@ -85,7 +85,8 @@ public sealed class DiagnosticsFeedTests
 	[Fact]
 	public void UnknownCategory_Throws()
 	{
-		Assert.Throws<KeyNotFoundException>(() => new DiagnosticsFeed().Watch("nothing", TestContext.Current.CancellationToken));
+		Assert.Throws<KeyNotFoundException>(() =>
+			new DiagnosticsFeed().Watch("nothing", TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

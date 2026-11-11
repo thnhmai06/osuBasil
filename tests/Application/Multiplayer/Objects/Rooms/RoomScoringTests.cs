@@ -7,7 +7,6 @@ using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
 using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
 
@@ -32,16 +31,16 @@ public sealed class RoomScoringTests
 	{
 		var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType))) == RoomOutcome.Ok);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType)) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync() == RoomOutcome.Ok);
 		return (app, setup);
 	}
 
 	private static async Task CompleteAsync(RoomFixture setup, params StableConnection[] players)
 	{
 		foreach (var player in players)
-			Assert.True((await setup.Room.ScopeTo(player).Rounds.CompleteAsync()) == RoomOutcome.Ok);
+			Assert.True(await setup.Room.ScopeTo(player).Rounds.CompleteAsync() == RoomOutcome.Ok);
 	}
 
 	private static ScoreRecord ScoreOf(int id, StableConnection player, int total = 1000)
@@ -156,7 +155,7 @@ public sealed class RoomScoringTests
 		setup.Room.ReceiveScore(ScoreOf(1, setup.Creator), setup.Creator.Record);
 		await CompleteAsync(setup, setup.Creator, setup.Host, setup.Player);
 
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync() == RoomOutcome.Ok);
 
 		var events = app.RoomEvents.Events;
 		var decided = Assert.Single(events.OfType<RoomRoundDecided>());
@@ -255,7 +254,7 @@ public sealed class RoomScoringTests
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
 		setup.Room.ReceiveScore(ScoreOf(1, setup.Creator), setup.Creator.Record);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.AbortAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).Rounds.AbortAsync() == RoomOutcome.Ok);
 
 		app.Clock.Advance(ScoreWait * 2);
 		var late = setup.Room.ReceiveScore(ScoreOf(2, setup.Host), setup.Host.Record);
@@ -282,7 +281,7 @@ public sealed class RoomScoringTests
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync() == RoomOutcome.Ok);
 		setup.Room.ReceiveScore(ScoreOf(1, setup.Creator), setup.Creator.Record);
 		setup.Room.ReceiveScore(ScoreOf(2, setup.Host), setup.Host.Record);
 
@@ -301,7 +300,7 @@ public sealed class RoomScoringTests
 		using var _ = app;
 
 		foreach (var player in new[] { setup.Player, setup.Host, setup.Creator })
-			Assert.True((await setup.Room.ScopeTo(player).Members.LeaveAsync()) == RoomOutcome.Ok);
+			Assert.True(await setup.Room.ScopeTo(player).Members.LeaveAsync() == RoomOutcome.Ok);
 
 		Assert.Empty(app.RoomEvents.Events.OfType<RoomRoundEnded>());
 	}
@@ -312,7 +311,7 @@ public sealed class RoomScoringTests
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
 		await CompleteAsync(setup, setup.Player);
-		Assert.True((await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync() == RoomOutcome.Ok);
 		await CompleteAsync(setup, setup.Creator, setup.Host);
 		setup.Room.ReceiveScore(ScoreOf(1, setup.Creator), setup.Creator.Record);
 		setup.Room.ReceiveScore(ScoreOf(2, setup.Host), setup.Host.Record);
@@ -332,7 +331,7 @@ public sealed class RoomScoringTests
 		setup.Room.ReceiveScore(ScoreOf(1, setup.Creator), setup.Creator.Record);
 		await CompleteAsync(setup, setup.Creator, setup.Host, setup.Player);
 
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).CloseAsync() == RoomOutcome.Ok);
 
 		var decided = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundDecided>());
 		Assert.Single(decided.Result!.Scores);

@@ -1,5 +1,4 @@
 using System.Globalization;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
@@ -60,14 +59,14 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		var deletedAt = user.Value.DeletedAt?.ToUniversalTime();
 		// A deletion is permanent: a record that does not know it must not take it back.
 		return database.WriteAsync((UsersDbContext context) => context.Users
-				.Where(row => row.Id == id)
-				.ExecuteUpdateAsync(set => set
-					.SetProperty(row => row.Country, country)
-					.SetProperty(row => row.Privileges, privileges)
-					.SetProperty(row => row.SilencedUntil, silencedUntil)
-					.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt)
-					.SetProperty(row => row.ActiveName,
-						row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null)));
+			.Where(row => row.Id == id)
+			.ExecuteUpdateAsync(set => set
+				.SetProperty(row => row.Country, country)
+				.SetProperty(row => row.Privileges, privileges)
+				.SetProperty(row => row.SilencedUntil, silencedUntil)
+				.SetProperty(row => row.DeletedAt, row => row.DeletedAt ?? deletedAt)
+				.SetProperty(row => row.ActiveName,
+					row => row.DeletedAt == null && deletedAt == null ? row.NormalizedName : null)));
 	}
 
 	/// <inheritdoc />
@@ -92,11 +91,11 @@ internal sealed class EfUserRepository(DatabaseSession database) : IUserReposito
 		try
 		{
 			await database.WriteAsync((UsersDbContext context) => context.Users
-					.Where(row => row.Id == id)
-					.ExecuteUpdateAsync(set => set
-						.SetProperty(row => row.Name, name)
-						.SetProperty(row => row.NormalizedName, normalized)
-						.SetProperty(row => row.ActiveName, row => row.DeletedAt == null ? normalized : null)));
+				.Where(row => row.Id == id)
+				.ExecuteUpdateAsync(set => set
+					.SetProperty(row => row.Name, name)
+					.SetProperty(row => row.NormalizedName, normalized)
+					.SetProperty(row => row.ActiveName, row => row.DeletedAt == null ? normalized : null)));
 		}
 		catch (AlreadyExistsException)
 		{

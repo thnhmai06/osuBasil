@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Moderation;
@@ -152,7 +151,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
 		Assert.Single(page.Items);
-		Assert.Equal(Second,Assert.Single(page.Items).Value.Timestamp);
+		Assert.Equal(Second, Assert.Single(page.Items).Value.Timestamp);
 	}
 
 	[Fact]

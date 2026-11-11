@@ -7,7 +7,6 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Irc.Session;

@@ -8,7 +8,10 @@ using Mediator;
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
 /// <summary>Opens the audio, video or background of a beatmap for a caller who may see it.</summary>
-internal sealed class OpenBeatmapFileHandler(IBeatmapRepository beatmaps, IBeatmapsetStorage storage, TimeProvider clock)
+internal sealed class OpenBeatmapFileHandler(
+	IBeatmapRepository beatmaps,
+	IBeatmapsetStorage storage,
+	TimeProvider clock)
 	: IRequestHandler<OpenBeatmapFile, BeatmapFile?>
 {
 	/// <inheritdoc />

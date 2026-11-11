@@ -1,8 +1,6 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
 using Basil.Host.Stable.Support;
@@ -62,7 +60,8 @@ internal sealed partial class PacketHandlers
 		CancellationToken ct)
 	{
 		var name = UserData.NormalizeName(message.Recipient);
-		if (registry.Online.Keys.FirstOrDefault(user => UserData.NormalizeName(user.Value.Name) == name) is not { } record)
+		if (registry.Online.Keys.FirstOrDefault(user => UserData.NormalizeName(user.Value.Name) == name) is not
+		    { } record)
 			return;
 		if (!await MayChatAsync(osu, ct)) return;
 		var result = await sender.Send(new PostChatMessage(osu, new ChatTarget.Private(record.Id), Limit(message.Text)),

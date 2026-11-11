@@ -1,8 +1,8 @@
+using System.Text;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
@@ -47,7 +47,9 @@ public sealed class AccountHandlerTests
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Before", "password"));
 
-		var result = await new RenameUserHandler(app.Users).Handle(new RenameUser(actor, UserReference.ById(actor.Record.Id), "After"), Token);
+		var result =
+			await new RenameUserHandler(app.Users).Handle(
+				new RenameUser(actor, UserReference.ById(actor.Record.Id), "After"), Token);
 
 		Assert.True(result == UserOutcome.Ok);
 		Assert.Equal("After", actor.User.Record.Value.Name);
@@ -60,7 +62,9 @@ public sealed class AccountHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
 		var other = await app.LoginAsync(await app.CreateUserAsync("Other", "password"));
 
-		var result = await new RenameUserHandler(app.Users).Handle(new RenameUser(actor, UserReference.ById(other.Record.Id), "Taken"), Token);
+		var result =
+			await new RenameUserHandler(app.Users).Handle(
+				new RenameUser(actor, UserReference.ById(other.Record.Id), "Taken"), Token);
 
 		Assert.Equal(UserOutcome.Denied, result);
 		Assert.Equal("Other", other.User.Record.Value.Name);
@@ -98,7 +102,8 @@ public sealed class AccountHandlerTests
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Away", "password"));
 
-		var done = await new SetUserAwayHandler(app.Users).Handle(new SetUserAway(actor, UserReference.ById(actor.Record.Id), "brb"), Token);
+		var done = await new SetUserAwayHandler(app.Users).Handle(
+			new SetUserAway(actor, UserReference.ById(actor.Record.Id), "brb"), Token);
 
 		Assert.True(done);
 		Assert.Equal("brb", actor.User.Profile.AwayMessage);
@@ -111,7 +116,8 @@ public sealed class AccountHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
 		var other = await app.LoginAsync(await app.CreateUserAsync("Other", "password"));
 
-		var done = await new SetUserAwayHandler(app.Users).Handle(new SetUserAway(actor, UserReference.ById(other.Record.Id), "brb"), Token);
+		var done = await new SetUserAwayHandler(app.Users).Handle(
+			new SetUserAway(actor, UserReference.ById(other.Record.Id), "brb"), Token);
 
 		Assert.False(done);
 		Assert.Null(other.User.Profile.AwayMessage);
@@ -164,7 +170,8 @@ public sealed class AccountHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Careless", "old"), password: "old");
 
 		var result = await new ChangeUserPasswordHandler(app.Users).Handle(
-			new ChangeUserPassword(actor, UserReference.ById(actor.Record.Id), Hash("new"), Hash("wrong"), true), Token);
+			new ChangeUserPassword(actor, UserReference.ById(actor.Record.Id), Hash("new"), Hash("wrong"), true),
+			Token);
 
 		Assert.Equal(UserOutcome.WrongPassword, result);
 		Assert.True(await app.VerifiesPasswordAsync(actor.Record, "old"));
@@ -206,7 +213,8 @@ public sealed class AccountHandlerTests
 		var admin = await AdminAsync(app);
 		var target = await app.CreateUserAsync("Doomed", "password");
 
-		var result = await new DeleteUserHandler(app.Users).Handle(new DeleteUser(admin, UserReference.ById(target.Id)), Token);
+		var result =
+			await new DeleteUserHandler(app.Users).Handle(new DeleteUser(admin, UserReference.ById(target.Id)), Token);
 
 		Assert.True(result == UserOutcome.Ok);
 		Assert.NotNull(app.Users.Of(target).Record.Value.DeletedAt);
@@ -219,7 +227,8 @@ public sealed class AccountHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
 		var target = await app.CreateUserAsync("Safe", "password");
 
-		var result = await new DeleteUserHandler(app.Users).Handle(new DeleteUser(actor, UserReference.ById(target.Id)), Token);
+		var result =
+			await new DeleteUserHandler(app.Users).Handle(new DeleteUser(actor, UserReference.ById(target.Id)), Token);
 
 		Assert.Equal(UserOutcome.Denied, result);
 	}
@@ -231,7 +240,9 @@ public sealed class AccountHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Plain", "password"));
 		var other = await app.CreateUserAsync("Other", "password");
 
-		var result = await new RemoveUserAvatarHandler(app.Users).Handle(new RemoveUserAvatar(actor, UserReference.ById(other.Id)), Token);
+		var result =
+			await new RemoveUserAvatarHandler(app.Users).Handle(
+				new RemoveUserAvatar(actor, UserReference.ById(other.Id)), Token);
 
 		Assert.Equal(UserOutcome.Denied, result);
 	}
@@ -256,6 +267,6 @@ public sealed class AccountHandlerTests
 
 	private static Md5 Hash(string password)
 	{
-		return new Md5(System.Text.Encoding.UTF8.GetBytes(password));
+		return new Md5(Encoding.UTF8.GetBytes(password));
 	}
 }

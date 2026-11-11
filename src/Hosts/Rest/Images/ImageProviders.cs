@@ -60,7 +60,8 @@ public sealed partial class ScreenshotProvider(ISender sender)
 }
 
 /// <summary>Beatmapset thumbnails and covers; a hidden set shows nothing, because every image is public.</summary>
-public sealed partial class BeatmapImageProvider(ISender sender) : StreamImageProvider("assets", path => CoverPath().IsMatch(path.Value ?? ""))
+public sealed partial class BeatmapImageProvider(ISender sender)
+	: StreamImageProvider("assets", path => CoverPath().IsMatch(path.Value ?? ""))
 {
 	private static readonly Dictionary<string, (int Width, int Height)> Variants = new()
 	{
@@ -98,7 +99,8 @@ public sealed partial class BeatmapImageProvider(ISender sender) : StreamImagePr
 }
 
 /// <summary>Beatmapset thumbnails on <c>b.&lt;domain&gt;/thumb/{id}.jpg</c>, the fixed paths of the game client.</summary>
-public sealed partial class BeatmapThumbnailProvider(ISender sender) : StreamImageProvider("b", path => ThumbPath().IsMatch(path.Value ?? ""))
+public sealed partial class BeatmapThumbnailProvider(ISender sender)
+	: StreamImageProvider("b", path => ThumbPath().IsMatch(path.Value ?? ""))
 {
 	/// <summary>Finds the crop size a thumbnail path asks for.</summary>
 	/// <param name="path">The request path.</param>

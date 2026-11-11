@@ -14,6 +14,7 @@ internal static class StableView
 {
 	/// <summary>The name osu! clients show for the room channel the player is in.</summary>
 	public const string MultiplayerAlias = "#multiplayer";
+
 	/// <summary>The name osu! clients show for the channel of the player's spectators.</summary>
 	public const string SpectatorAlias = "#spectator";
 

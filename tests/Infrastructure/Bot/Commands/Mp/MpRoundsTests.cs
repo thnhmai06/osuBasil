@@ -263,8 +263,8 @@ public sealed class MpRoundsTests
 		var player = await RoomFixture.PlayerAsync(bot.App, "Player");
 		Assert.True((await bot.TypeAsync(player, "#osu", $"!mp join {room.Id}")).Succeeded);
 		if (withBeatmap)
-			Assert.True((await room.ScopeTo(creator).Settings.ConfigureAsync(
-				new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))) == RoomOutcome.Ok);
+			Assert.True(await room.ScopeTo(creator).Settings.ConfigureAsync(
+				new RoomSettingsChange(Beatmap: RoomFixture.Beatmap)) == RoomOutcome.Ok);
 		return (room, creator, player);
 	}
 }

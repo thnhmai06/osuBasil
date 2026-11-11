@@ -36,7 +36,7 @@ public sealed class LobbyTests
 		var observerUser = await app.CreateUserAsync("Observer", "password",
 			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
 		var observer = (TourneyConnection)await app.LoginAsync(observerUser, SessionType.StableTourney);
-		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync() == RoomOutcome.Ok);
 
 		await app.Lobby.ReleaseAsync(observer);
 
@@ -65,7 +65,8 @@ public sealed class LobbyTests
 		using var app = new TestApplication();
 		var first = await RoomFixture.CreateAsync(app);
 		var creator = await RoomFixture.PlayerAsync(app, "SecondCreator");
-		var (second, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("second room", "", RoomSource.Game, false);
+		var (second, opened) =
+			await app.Lobby.ScopeTo(creator).OpenRoomAsync("second room", "", RoomSource.Game, false);
 		Assert.True(opened == RoomOutcome.Ok);
 
 		var open = app.Lobby.Rooms.Count;
@@ -144,7 +145,7 @@ public sealed class LobbyTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).CloseAsync() == RoomOutcome.Ok);
 
 		Assert.Null(app.Lobby.Find(setup.Room.Id));
 	}
@@ -158,7 +159,7 @@ public sealed class LobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", source, false);
 		Assert.True(opened == RoomOutcome.Ok);
-		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync()) == RoomOutcome.Ok);
+		Assert.True(await room!.ScopeTo(creator).Members.LeaveAsync() == RoomOutcome.Ok);
 
 		app.Clock.Advance(Lobby.EmptyRoomTimeout - OneSecond);
 		var early = app.Lobby.CloseEmptyRooms();
@@ -208,8 +209,8 @@ public sealed class LobbyTests
 		Assert.True(opened == RoomOutcome.Ok);
 		app.Clock.Advance(TimeSpan.FromMinutes(10));
 		var player = await RoomFixture.PlayerAsync(app, "Player");
-		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("")) == RoomOutcome.Ok);
-		Assert.True((await room.ScopeTo(player).Members.LeaveAsync()) == RoomOutcome.Ok);
+		Assert.True(await room!.ScopeTo(player).Members.JoinAsync("") == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(player).Members.LeaveAsync() == RoomOutcome.Ok);
 
 		app.Clock.Advance(Lobby.EmptyRoomTimeout - OneSecond);
 		var early = app.Lobby.CloseEmptyRooms();
@@ -227,7 +228,7 @@ public sealed class LobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", RoomSource.Game, false);
 		Assert.True(opened == RoomOutcome.Ok);
-		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync()) == RoomOutcome.Ok);
+		Assert.True(await room!.ScopeTo(creator).Members.LeaveAsync() == RoomOutcome.Ok);
 		var closesAt = app.Clock.GetUtcNow() + Lobby.EmptyRoomTimeout;
 		var announcedAtLeave = app.LobbyEvents.Events.OfType<LobbyRoomClosingAnnounced>().Count();
 

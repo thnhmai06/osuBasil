@@ -1,4 +1,3 @@
-using Basil.Gateway;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Irc.Commands;
 using Basil.Host.Irc.Session;

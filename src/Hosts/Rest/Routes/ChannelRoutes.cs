@@ -4,7 +4,6 @@ using Basil.Application.Servers.Messages.Channels;
 using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
-using Basil.Gateway;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -44,7 +43,8 @@ internal static class ChannelRoutes
 
 		var read = (UserPrivileges)(request.ReadPrivileges ?? 0);
 		var write = (UserPrivileges)(request.WritePrivileges ?? 0);
-		if (!GeneralChannelRecord.IsValidName(request.Name) || !GeneralChannelData.IsValidTopic(request.Topic ?? string.Empty) ||
+		if (!GeneralChannelRecord.IsValidName(request.Name) ||
+		    !GeneralChannelData.IsValidTopic(request.Topic ?? string.Empty) ||
 		    !GeneralChannelData.IsValidPrivileges(read) || !GeneralChannelData.IsValidPrivileges(write))
 			return Api.Invalid("The channel is not valid.");
 
@@ -75,7 +75,9 @@ internal static class ChannelRoutes
 
 		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Connection(), name, change),
 			context.RequestAborted);
-		return result == ChannelOutcome.Ok ? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully") : result.Refusal();
+		return result == ChannelOutcome.Ok
+			? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully")
+			: result.Refusal();
 	}
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, string name, ISender sender)

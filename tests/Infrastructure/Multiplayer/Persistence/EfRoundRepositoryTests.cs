@@ -1,5 +1,4 @@
 using Basil.Application.Multiplayer.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;

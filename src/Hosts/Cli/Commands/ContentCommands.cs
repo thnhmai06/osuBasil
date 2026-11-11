@@ -5,16 +5,12 @@ using Basil.Application.Content.Messages;
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;
-using Basil.Domain.Users;
-using Basil.Host.Shared;
 using Basil.Host.Shared.Json;
 using Basil.Host.Shared.Views;
 using Mediator;
@@ -437,7 +433,8 @@ internal static class ContentCommands
 				         ? parsed
 				         : throw CommandException.Invalid("--to must be user ids.")).Distinct())
 		{
-			if (await call.Get<ISender>().Send(new GetUser(UserReference.ById(id)), call.CancellationToken) is not { } user)
+			if (await call.Get<ISender>().Send(new GetUser(UserReference.ById(id)), call.CancellationToken) is not
+			    { } user)
 				throw CommandException.NotFound($"No such user: {id}.");
 			recipients.Add(user.Id);
 		}
@@ -459,7 +456,9 @@ internal static class ContentCommands
 		if (result != ServerOutcome.Ok) return call.Refuse(result);
 
 		var views = list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList();
-		call.PrintPage(new Page<ScreenshotView>([.. views.Skip(page.Offset).Take(page.Limit)], page.Offset + page.Limit < views.Count), page);
+		call.PrintPage(
+			new Page<ScreenshotView>([.. views.Skip(page.Offset).Take(page.Limit)],
+				page.Offset + page.Limit < views.Count), page);
 		return ExitCodes.Success;
 	}
 

@@ -1,6 +1,5 @@
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Scores.Persistence;

@@ -1,4 +1,3 @@
-using Basil.Application.Shared.Settings;
 using Mediator;
 
 namespace Basil.Application.Shared.Settings;

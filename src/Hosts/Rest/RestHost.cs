@@ -1,4 +1,3 @@
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Basil.Gateway.RateLimiting;

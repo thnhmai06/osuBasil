@@ -21,7 +21,7 @@ public sealed class GeneralChannelRegistryTests
 			Name = name, Value = new GeneralChannelData { ReadPrivileges = read, Visible = visible }
 		};
 		Assert.True(
-			(await app.Server.ScopeTo(admin).Channels.CreateAsync(record)) == ServerOutcome.Ok);
+			await app.Server.ScopeTo(admin).Channels.CreateAsync(record) == ServerOutcome.Ok);
 	}
 
 	[Fact]

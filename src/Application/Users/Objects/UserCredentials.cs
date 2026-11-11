@@ -4,7 +4,6 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
-using Basil.Domain.Shared;
 
 namespace Basil.Application.Users.Objects;
 

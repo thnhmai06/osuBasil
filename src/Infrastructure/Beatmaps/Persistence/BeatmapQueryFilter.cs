@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Shared.Persistence;

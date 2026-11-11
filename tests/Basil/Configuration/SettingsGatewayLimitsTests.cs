@@ -1,6 +1,5 @@
 using Basil.Application.Shared.Settings;
 using Basil.Configuration;
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Microsoft.Extensions.Time.Testing;

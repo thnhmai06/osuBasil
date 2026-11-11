@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Users;
@@ -15,7 +14,8 @@ public sealed class StoredChangeFailureTests
 	public async Task PrivilegeStoreFailure_ThrowsKeepsPrivileges()
 	{
 		using var app = new TestApplication();
-		var staff = await app.LoginAsync(await app.CreateUserAsync("PermStaff", "password", UserPrivilegesExtensions.All));
+		var staff = await app.LoginAsync(await app.CreateUserAsync("PermStaff", "password",
+			UserPrivilegesExtensions.All));
 		var target = await app.CreateUserAsync("PermRefused", "password");
 		var before = target.Value.Privileges;
 		app.UserUpdateFailure = new InvalidOperationException("refused");
@@ -55,7 +55,7 @@ public sealed class StoredChangeFailureTests
 		Assert.Null(target.Value.DeletedAt);
 
 		app.UserUpdateFailure = null;
-		Assert.True((await scoped.DeleteAsync()) == UserOutcome.Ok);
+		Assert.True(await scoped.DeleteAsync() == UserOutcome.Ok);
 		Assert.NotNull(target.Value.DeletedAt);
 	}
 

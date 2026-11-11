@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Registry;
-using Basil.Gateway;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Sse;
 using Mediator;

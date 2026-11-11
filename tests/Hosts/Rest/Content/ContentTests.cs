@@ -61,7 +61,8 @@ public sealed class ContentTests(RestHostFixture fixture)
 		{
 			var (patched, envelope) =
 				await client.CallAsync(HttpMethod.Patch, "/v1/settings/bot", new { commandPrefix = "?" });
-			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
+			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>()
+				.GetAsync(TestContext.Current.CancellationToken);
 			var (invalid, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
 				new { retentionPeriod = "00:00:00" });
 			var (restored, _) =
@@ -83,7 +84,8 @@ public sealed class ContentTests(RestHostFixture fixture)
 		{
 			var (patched, envelope) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
 				new { maxPerUser = new { irc = 7 } });
-			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
+			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>()
+				.GetAsync(TestContext.Current.CancellationToken);
 			var (invalid, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
 				new { maxPerUser = new { api = 0 } });
 			var (restored, _) = await client.CallAsync(HttpMethod.Patch, "/v1/settings/sessions",
@@ -106,7 +108,8 @@ public sealed class ContentTests(RestHostFixture fixture)
 		{
 			var (patched, envelope) =
 				await client.CallAsync(HttpMethod.Patch, "/v1/settings/locks", new { profiles = true });
-			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>().GetAsync(TestContext.Current.CancellationToken);
+			var stored = await fixture.Host.Services.GetRequiredService<ISettingsRepository>()
+				.GetAsync(TestContext.Current.CancellationToken);
 			await client.CallAsync(HttpMethod.Patch, "/v1/settings/locks", new { profiles = false });
 
 			Assert.Equal(200, patched);

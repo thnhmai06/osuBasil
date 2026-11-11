@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Privileges;
 
 namespace Basil.Tests.Shared;

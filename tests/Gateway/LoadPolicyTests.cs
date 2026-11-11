@@ -13,7 +13,8 @@ public sealed class LoadPolicyTests
 {
 	private static readonly GatewayLimits Limits = new()
 	{
-		Requests = 1000, ListingConcurrency = 2, InteractiveConcurrency = 3, UploadConcurrency = 1, LiveConcurrency = 1, AssetConcurrency = 2, AssetRequests = 3,
+		Requests = 1000, ListingConcurrency = 2, InteractiveConcurrency = 3, UploadConcurrency = 1, LiveConcurrency = 1,
+		AssetConcurrency = 2, AssetRequests = 3,
 		DegradedAbove = 0.5, ShedAbove = 0.7, HardShedAbove = 0.9
 	};
 

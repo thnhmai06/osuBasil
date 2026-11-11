@@ -16,7 +16,8 @@ internal static partial class StoredFileNames
 	/// <summary>Chooses the plain name each file of one kind is stored under.</summary>
 	/// <param name="files">The files of one kind, in difficulty order; a file used by several difficulties comes once.</param>
 	/// <returns>One chosen name per file; two different files never get the same name.</returns>
-	public static IReadOnlyDictionary<BeatmapsetContentFile, string> ChooseNames(IEnumerable<BeatmapsetContentFile?> files)
+	public static IReadOnlyDictionary<BeatmapsetContentFile, string> ChooseNames(
+		IEnumerable<BeatmapsetContentFile?> files)
 	{
 		var names = new Dictionary<BeatmapsetContentFile, string>();
 		var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

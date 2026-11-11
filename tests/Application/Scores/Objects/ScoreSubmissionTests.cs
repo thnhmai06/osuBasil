@@ -4,13 +4,11 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Shared;
 using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
@@ -67,6 +65,25 @@ public sealed class ScoreSubmissionTests
 		Assert.Empty(f.App.ScoreEvents.Events);
 	}
 
+	#region Privilege and ownership
+
+	[Fact]
+	public async Task NoSubmitPrivilege_DeniedNamingIt()
+	{
+		using var f =
+			await ScoreSubmissionFixture.CreateAsync(privileges: UserPrivilegesExtensions.Default &
+			                                                     ~UserPrivileges.Player);
+
+		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
+
+		Assert.False(result == ScoreSubmissionOutcome.Ok);
+		Assert.Equal(ScoreSubmissionOutcome.Denied, result);
+		Assert.Null(rejection);
+		AssertNothingRecorded(f);
+	}
+
+	#endregion
+
 	#region The submission checksum is the legacy osu! formula
 
 	[Fact]
@@ -103,25 +120,6 @@ public sealed class ScoreSubmissionTests
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, withStoryboard.Result);
 		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, without.Rejection);
-	}
-
-	#endregion
-
-	#region Privilege and ownership
-
-	[Fact]
-	public async Task NoSubmitPrivilege_DeniedNamingIt()
-	{
-		using var f =
-			await ScoreSubmissionFixture.CreateAsync(privileges: UserPrivilegesExtensions.Default &
-			                                                      ~UserPrivileges.Player);
-
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
-
-		Assert.False(result == ScoreSubmissionOutcome.Ok);
-		Assert.Equal(ScoreSubmissionOutcome.Denied, result);
-		Assert.Null(rejection);
-		AssertNothingRecorded(f);
 	}
 
 	#endregion
@@ -484,12 +482,13 @@ public sealed class ScoreSubmissionTests
 	private static async Task<Room> StartRoundAsync(ScoreSubmissionFixture f,
 		GameTeamType teamType = GameTeamType.HeadToHead)
 	{
-		var (room, opened) = await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", RoomSource.Game, false);
+		var (room, opened) =
+			await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", RoomSource.Game, false);
 		Assert.True(opened == RoomOutcome.Ok);
 		var scope = room!.ScopeTo(f.Client);
-		Assert.True((await scope.Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType))) == RoomOutcome.Ok);
-		Assert.True((await scope.Rounds.StartAsync()) == RoomOutcome.Ok);
+		Assert.True(await scope.Settings.ConfigureAsync(
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap, TeamType: teamType)) == RoomOutcome.Ok);
+		Assert.True(await scope.Rounds.StartAsync() == RoomOutcome.Ok);
 		return room;
 	}
 
@@ -516,7 +515,7 @@ public sealed class ScoreSubmissionTests
 		var submitted = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
 
 		await new ScoreHandler(f.App.Lobby).Handle(submitted, TestContext.Current.CancellationToken);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(f.Client).Rounds.CompleteAsync() == RoomOutcome.Ok);
 
 		var taken = Assert.Single(f.App.RoomEvents.Events.OfType<RoomRoundScoreSubmitted>());
 		Assert.Equal(submitted.Score, taken.Score.Score);
@@ -532,9 +531,9 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
 		var stays = await RoomFixture.PlayerAsync(f.App, "Stays");
-		Assert.True((await room.ScopeTo(stays).Members.JoinAsync("")) == RoomOutcome.Ok);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()) == RoomOutcome.Ok);
-		Assert.True((await room.ScopeTo(f.Client).Members.LeaveAsync()) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(stays).Members.JoinAsync("") == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(f.Client).Rounds.CompleteAsync() == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(f.Client).Members.LeaveAsync() == RoomOutcome.Ok);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
@@ -548,7 +547,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
-		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync()) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(f.Client).Rounds.CompleteAsync() == RoomOutcome.Ok);
 		f.App.Clock.Advance(ScoreWait);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),

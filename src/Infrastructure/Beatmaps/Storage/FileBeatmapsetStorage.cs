@@ -580,6 +580,7 @@ internal sealed class FileBeatmapsetStorage(
 	{
 		/// <summary>The turn itself.</summary>
 		public SemaphoreSlim Semaphore { get; } = new(1, 1);
+
 		/// <summary>How many callers hold or wait for the turn.</summary>
 		public int Users { get; set; }
 

@@ -1,6 +1,5 @@
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
-using Basil.Application.Shared;
 using Basil.Domain.Scores;
 using Mediator;
 

@@ -23,10 +23,13 @@ internal sealed class SliceStream : Stream
 
 	/// <inheritdoc />
 	public override bool CanRead => true;
+
 	/// <inheritdoc />
 	public override bool CanSeek => true;
+
 	/// <inheritdoc />
 	public override bool CanWrite => false;
+
 	/// <inheritdoc />
 	public override long Length { get; }
 

@@ -1,12 +1,10 @@
 using System.Net;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
@@ -33,7 +31,8 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 		await Sessions.CreateOrUpdateAsync(new SessionRecord
 		{
 			Id = id,
-			Value = new SessionData(user, type, T0, new SessionFingerprint(Home, type is SessionType.Stable ? Client() : null),
+			Value = new SessionData(user, type, T0,
+				new SessionFingerprint(Home, type is SessionType.Stable ? Client() : null),
 				new Sha256(BitConverter.GetBytes(id)),
 				null, T0)
 		});
@@ -166,7 +165,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task TwoSessionTrails_KeptApart()
 	{
-		var first = await SessionAsync("first_user", 1);
+		var first = await SessionAsync("first_user");
 		var second = await SessionAsync("second_user", 2);
 		await Connections.OpenAsync(first, Home, null, T0, Window);
 		await Connections.OpenAsync(second, Work, null, T0, Window);
@@ -180,7 +179,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task Activity_OpenConnectionOnly()
 	{
-		var open = await SessionAsync("open_user", 1);
+		var open = await SessionAsync("open_user");
 		var closed = await SessionAsync("closed_user", 2);
 		await Connections.OpenAsync(open, Home, null, T0, Window);
 		await Connections.OpenAsync(closed, Home, null, T0, Window);
@@ -207,7 +206,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task ClosingOpen_AtLastActivity()
 	{
-		var open = await SessionAsync("open_user", 1);
+		var open = await SessionAsync("open_user");
 		var done = await SessionAsync("done_user", 2);
 		await Connections.OpenAsync(open, Home, null, T0, Window);
 		await Connections.WriteActivityAsync([new ConnectionActivity(open, T0.AddMinutes(8))]);
@@ -227,7 +226,8 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 	public async Task SessionDelete_TrailDeleted()
 	{
 		var session = await SessionAsync();
-		var user = (await Sessions.GetAsync((await Get<IUserRepository>().GetByNameAsync("trail_user", Cancel))!, session,
+		var user = (await Sessions.GetAsync((await Get<IUserRepository>().GetByNameAsync("trail_user", Cancel))!,
+			session,
 			Cancel))!.Value.User;
 		await Connections.OpenAsync(session, Home, null, T0, Window);
 		await Sessions.EndAsync(user, session, null, [SessionType.Api], T0.AddMinutes(1), SessionEndReason.Revoked);

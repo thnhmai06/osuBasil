@@ -4,11 +4,8 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Users;
-using Basil.Gateway;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -59,7 +56,7 @@ internal static class BeatmapRoutes
 				SetFileAsync(c, id, s, BeatmapsetFileType.Preview))
 			.WithSummary("Get the preview clip of a beatmapset.");
 		sets.MapGet("/{id:int}/storyboard", (HttpContext c, int id, ISender s) =>
-			SetFileAsync(c, id, s, BeatmapsetFileType.Storyboard)).RequireToken()
+				SetFileAsync(c, id, s, BeatmapsetFileType.Storyboard)).RequireToken()
 			.WithSummary("Download the storyboard of a beatmapset.");
 		sets.MapGet("/{id:int}/download", DownloadAsync).RequireToken()
 			.WithSummary("Download a beatmapset as an .osz archive.")

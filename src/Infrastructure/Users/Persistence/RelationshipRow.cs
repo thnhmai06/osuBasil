@@ -8,10 +8,13 @@ internal sealed class RelationshipRow
 {
 	/// <summary>The user who holds the relationship.</summary>
 	public int ActorId { get; set; }
+
 	/// <summary>The user the relationship points at.</summary>
 	public int TargetId { get; set; }
+
 	/// <summary>The kind of relationship.</summary>
 	public int Type { get; set; }
+
 	/// <summary>When the relationship was created.</summary>
 	public DateTimeOffset CreatedAt { get; set; }
 }

@@ -1,6 +1,5 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps.Logic;
 using Mediator;
 

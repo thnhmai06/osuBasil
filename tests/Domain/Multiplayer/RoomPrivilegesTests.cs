@@ -70,20 +70,20 @@ public class RoomPrivilegesTests
 	[Fact]
 	public void CreatorAndReferee_EveryPrivilege()
 	{
-		Assert.Equal(EveryPrivilege, (RoomPrivileges.Creator | RoomPrivileges.Referee));
+		Assert.Equal(EveryPrivilege, RoomPrivileges.Creator | RoomPrivileges.Referee);
 	}
 
 	[Fact]
 	public void CreatorHostPlayer_EveryPrivilege()
 	{
-		Assert.Equal(EveryPrivilege, (RoomPrivileges.Creator | RoomPrivileges.Host | RoomPrivileges.Player));
+		Assert.Equal(EveryPrivilege, RoomPrivileges.Creator | RoomPrivileges.Host | RoomPrivileges.Player);
 	}
 
 	[Fact]
 	public void AllRoles_EveryPrivilege()
 	{
 		Assert.Equal(EveryPrivilege,
-			(RoomPrivileges.Creator | RoomPrivileges.Referee | RoomPrivileges.Host | RoomPrivileges.Player));
+			RoomPrivileges.Creator | RoomPrivileges.Referee | RoomPrivileges.Host | RoomPrivileges.Player);
 	}
 
 	[Fact]

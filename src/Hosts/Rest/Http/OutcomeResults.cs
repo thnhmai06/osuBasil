@@ -1,5 +1,3 @@
-using Basil.Application.Shared;
-
 namespace Basil.Host.Rest.Http;
 
 /// <summary>Turns the result of an Application behaviour into the HTTP answer of the API.</summary>

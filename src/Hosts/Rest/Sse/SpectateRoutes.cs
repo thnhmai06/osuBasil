@@ -34,7 +34,8 @@ internal static class SpectateRoutes
 	private static async Task<IResult> SpectateAsync(HttpContext context, int id,
 		UserRegistry registry, ISender sender)
 	{
-		if (await sender.Send(new GetUser(UserReference.ById(id)), context.RequestAborted) is not { } record) return Api.NotFound("No such user.");
+		if (await sender.Send(new GetUser(UserReference.ById(id)), context.RequestAborted) is not { } record)
+			return Api.NotFound("No such user.");
 
 		var host = registry.Of(record).Stable;
 		if (host is not { IsOpen: true })

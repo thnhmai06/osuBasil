@@ -1,10 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;
@@ -62,7 +60,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
+			[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.Equal("Renamed", Assert.Single(replaced).Metadata.Title);
 	}
@@ -73,7 +71,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
+			[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.Equal(set.CreatedAt, Assert.Single(replaced).CreatedAt);
 	}
@@ -85,7 +83,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		set.Locked = true;
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
+			[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.True(Assert.Single(replaced).Locked);
 	}
@@ -97,7 +95,7 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 		set.Visible = false;
 
 		var replaced = await Sets.CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
+			[new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Renamed", "Mapper"))], []));
 
 		Assert.False(Assert.Single(replaced).Visible);
 	}

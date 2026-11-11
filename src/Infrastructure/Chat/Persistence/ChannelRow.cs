@@ -9,14 +9,19 @@ internal sealed class ChannelRow
 {
 	/// <summary>The channel name.</summary>
 	public string Name { get; set; } = "";
+
 	/// <summary>The channel topic.</summary>
 	public string Topic { get; set; } = "";
+
 	/// <summary>The privileges needed to read the channel.</summary>
 	public int ReadPrivileges { get; set; }
+
 	/// <summary>The privileges needed to write to the channel.</summary>
 	public int WritePrivileges { get; set; }
+
 	/// <summary>Whether players join the channel on sign-in.</summary>
 	public bool AutoJoin { get; set; }
+
 	/// <summary>Whether the channel is listed to players.</summary>
 	public bool Visible { get; set; }
 }

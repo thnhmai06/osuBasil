@@ -41,8 +41,8 @@ public sealed class RoomAnnouncerTests
 	/// <summary>Has the creator start a round in the room and returns the event the room published for it.</summary>
 	private static async Task<RoomRoundStarted> StartRoundAsync(BotHarness bot, StaffRoom staff)
 	{
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap))) == RoomOutcome.Ok);
+		Assert.True(await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap)) == RoomOutcome.Ok);
 		Assert.True((await bot.TypeAsync(staff.Creator, "#osu", "!mp start")).Succeeded);
 		return Assert.Single(bot.App.RoomEvents.Events.OfType<RoomRoundStarted>());
 	}

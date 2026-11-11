@@ -1,3 +1,4 @@
+using System.Text;
 using Basil.Application.Content.Storage;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
@@ -129,7 +130,8 @@ public sealed class ContentHandlerTests
 	{
 		using var app = new TestApplication();
 
-		var (result, settings) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(await AdminAsync(app)), Token);
+		var (result, settings) =
+			await new GetSettingsHandler(app.Server).Handle(new GetSettings(await AdminAsync(app)), Token);
 
 		Assert.True(result == ServerOutcome.Ok);
 		Assert.NotNull(settings);
@@ -140,7 +142,8 @@ public sealed class ContentHandlerTests
 	{
 		using var app = new TestApplication();
 
-		var (result, settings) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(await PlainAsync(app)), Token);
+		var (result, settings) =
+			await new GetSettingsHandler(app.Server).Handle(new GetSettings(await PlainAsync(app)), Token);
 
 		Assert.Equal(ServerOutcome.Denied, result);
 		Assert.Null(settings);
@@ -152,7 +155,10 @@ public sealed class ContentHandlerTests
 		using var app = new TestApplication();
 		var admin = await AdminAsync(app);
 		var (_, current) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(admin), Token);
-		var changed = current! with { Accounts = current.Accounts with { DefaultPrivileges = current.Accounts.DefaultPrivileges } };
+		var changed = current! with
+		{
+			Accounts = current.Accounts with { DefaultPrivileges = current.Accounts.DefaultPrivileges }
+		};
 
 		var result = await new UpdateSettingsHandler(app.Server).Handle(new UpdateSettings(admin, changed), Token);
 
@@ -163,7 +169,8 @@ public sealed class ContentHandlerTests
 	public async Task SettingsUpdateDenied_Refused()
 	{
 		using var app = new TestApplication();
-		var (_, current) = await new GetSettingsHandler(app.Server).Handle(new GetSettings(await AdminAsync(app)), Token);
+		var (_, current) =
+			await new GetSettingsHandler(app.Server).Handle(new GetSettings(await AdminAsync(app)), Token);
 
 		var result = await new UpdateSettingsHandler(app.Server)
 			.Handle(new UpdateSettings(await PlainAsync(app), current!), Token);
@@ -238,7 +245,8 @@ public sealed class ContentHandlerTests
 		await RoomFixture.PlayerAsync(app, "One");
 		await RoomFixture.PlayerAsync(app, "Two");
 
-		var (result, sent) = await new NotifyEveryoneHandler(app.Server).Handle(new NotifyEveryone(admin, "hello"), Token);
+		var (result, sent) =
+			await new NotifyEveryoneHandler(app.Server).Handle(new NotifyEveryone(admin, "hello"), Token);
 
 		Assert.True(result == ServerOutcome.Ok);
 		Assert.Equal(2, sent);
@@ -313,7 +321,7 @@ public sealed class ContentHandlerTests
 		public Task<StreamReader?> ReadAsync(string entry, CancellationToken ct = default)
 		{
 			return Task.FromResult<StreamReader?>(Entries.TryGetValue(entry, out var text)
-				? new StreamReader(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text)))
+				? new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(text)))
 				: null);
 		}
 

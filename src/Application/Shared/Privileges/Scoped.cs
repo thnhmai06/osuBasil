@@ -3,7 +3,8 @@ using System.Reflection;
 namespace Basil.Application.Shared.Privileges;
 
 /// <summary>
-///     The comparison every capability view makes when an action needs a privilege: a capability is a short-lived value over
+///     The comparison every capability view makes when an action needs a privilege: a capability is a short-lived value
+///     over
 ///     one object for one actor, and this is how it states what an action needs.
 /// </summary>
 /// <remarks>

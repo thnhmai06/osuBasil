@@ -99,7 +99,8 @@ public sealed class ScoreTests(RestHostFixture fixture)
 		var (client, _) = await fixture.SignInAsync("ScoreWatcher");
 		using (client)
 		{
-			using var response = await client.GetAsync($"/v1/scores/{score.Id}/replay", TestContext.Current.CancellationToken);
+			using var response =
+				await client.GetAsync($"/v1/scores/{score.Id}/replay", TestContext.Current.CancellationToken);
 
 			Assert.Equal(200, (int)response.StatusCode);
 			var file = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);

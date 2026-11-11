@@ -8,10 +8,13 @@ internal sealed class MultiplayerDbContext(DbContextOptions<MultiplayerDbContext
 {
 	/// <summary>The stored matches.</summary>
 	public DbSet<MatchRow> Matches => Set<MatchRow>();
+
 	/// <summary>The stored rounds.</summary>
 	public DbSet<RoundRow> Rounds => Set<RoundRow>();
+
 	/// <summary>The stored match events.</summary>
 	public DbSet<MatchEventRow> MatchEvents => Set<MatchEventRow>();
+
 	/// <summary>The stored round scores.</summary>
 	public DbSet<RoundScoreRow> RoundScores => Set<RoundScoreRow>();
 

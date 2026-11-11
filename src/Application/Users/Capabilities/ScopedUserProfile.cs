@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;

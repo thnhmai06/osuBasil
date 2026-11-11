@@ -1,5 +1,4 @@
 using System.Net;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
@@ -25,7 +24,10 @@ public enum SessionState : byte
 /// <param name="State">Whether to include active sessions, ended sessions, or both.</param>
 /// <param name="Types">The kinds of session to include, or <see langword="null" /> for every kind.</param>
 /// <param name="Now">The moment that decides whether a session has expired.</param>
-public sealed record SessionQuery(UserRecord User, SessionState State, IReadOnlyList<SessionType>? Types,
+public sealed record SessionQuery(
+	UserRecord User,
+	SessionState State,
+	IReadOnlyList<SessionType>? Types,
 	DateTimeOffset Now);
 
 /// <summary>A session found by the token or key that opens it.</summary>

@@ -52,14 +52,14 @@ public sealed class SseStream
 
 	internal string? UserKey { get; }
 
+	/// <summary>Gets the chunks to send, in order; it ends when the stream is over.</summary>
+	public ChannelReader<byte[]> Reader => _channel.Reader;
+
 	/// <summary>Flips the stream to released; only the first call sees <see langword="true" />.</summary>
 	internal bool TryRelease()
 	{
 		return Interlocked.Exchange(ref _released, 1) == 0;
 	}
-
-	/// <summary>Gets the chunks to send, in order; it ends when the stream is over.</summary>
-	public ChannelReader<byte[]> Reader => _channel.Reader;
 
 	internal void Offer(byte[] chunk)
 	{
@@ -341,9 +341,9 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 
 	private sealed class Root
 	{
+		private readonly List<SseStream> _list = [];
 		private readonly SemaphoreSlim _snapshotLock = new(1, 1);
 		private readonly Lock _streams = new();
-		private readonly List<SseStream> _list = [];
 		private bool _retired;
 		private byte[]? _snapshot;
 		private string? _snapshotId;

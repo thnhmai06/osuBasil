@@ -40,7 +40,7 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).CloseAsync() == RoomOutcome.Ok);
 		var events = app.LobbyEvents.Events.Count;
 
 		var result = await setup.Room.ScopeTo(setup.Creator).CloseAsync();
@@ -54,7 +54,7 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).CloseAsync() == RoomOutcome.Ok);
 		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
 
 		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("");
@@ -67,7 +67,7 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
-		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync()) == RoomOutcome.Ok);
+		Assert.True(await setup.Room.ScopeTo(setup.Creator).CloseAsync() == RoomOutcome.Ok);
 
 		var result = await setup.Room.ScopeTo(setup.Player).Members.LeaveAsync();
 

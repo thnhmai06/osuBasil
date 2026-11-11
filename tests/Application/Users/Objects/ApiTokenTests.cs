@@ -1,5 +1,4 @@
 using System.Net;
-using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Settings;
@@ -200,7 +199,7 @@ public sealed class ApiTokenTests
 		var connection = await app.LoginAsync(user);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
 		app.Users.CloseIdle();
-		Assert.True((await app.Users.Of(user).ScopeTo(admin).DeleteAsync()) == UserOutcome.Ok);
+		Assert.True(await app.Users.Of(user).ScopeTo(admin).DeleteAsync() == UserOutcome.Ok);
 
 		var result = await OpenAsync(app, connection.Token);
 

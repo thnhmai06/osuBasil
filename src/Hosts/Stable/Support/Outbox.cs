@@ -113,6 +113,7 @@ internal sealed class Outbox(UserRegistry registry)
 	{
 		/// <summary>The packets waiting to be sent.</summary>
 		public readonly ConcurrentQueue<byte[]> Queue = new();
+
 		/// <summary>The number of bytes waiting to be sent.</summary>
 		public long Bytes;
 	}

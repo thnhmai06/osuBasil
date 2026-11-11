@@ -5,10 +5,8 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Multiplayer;
@@ -451,8 +449,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	/// <returns>How many matches were ended.</returns>
 	public async Task<int> CloseUnfinishedAsync()
 	{
-		var allMatches = await Paging.ListAllAsync(
-			page => Context.Matches.ListAsync(new MatchQuery(false), page));
+		var allMatches = await Paging.ListAllAsync(page => Context.Matches.ListAsync(new MatchQuery(false), page));
 
 		var now = Context.Clock.GetUtcNow();
 

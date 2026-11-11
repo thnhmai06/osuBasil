@@ -40,7 +40,7 @@ public sealed class MpRoomResolutionTests
 		var targeted = await bot.MakeAsync(owner, "Targeted");
 		var channelRoom = await bot.MakeAsync(owner, "Channel");
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPrivileges);
-		Assert.True((await seatedIn.ScopeTo(typist).Members.JoinAsync("")) == RoomOutcome.Ok);
+		Assert.True(await seatedIn.ScopeTo(typist).Members.JoinAsync("") == RoomOutcome.Ok);
 		Assert.True((await bot.TypeAsync(typist, null, $"!mp in {targeted.Id}")).Succeeded);
 
 		var (succeeded, said) = await bot.TypeAsync(typist, $"#mp_{channelRoom.Id}", "!mp lock");
@@ -76,7 +76,7 @@ public sealed class MpRoomResolutionTests
 		var seatedIn = await bot.MakeAsync(owner, "Seated");
 		var targeted = await bot.MakeAsync(owner, "Targeted");
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist", ManagerPrivileges);
-		Assert.True((await seatedIn.ScopeTo(typist).Members.JoinAsync("")) == RoomOutcome.Ok);
+		Assert.True(await seatedIn.ScopeTo(typist).Members.JoinAsync("") == RoomOutcome.Ok);
 		Assert.True((await bot.TypeAsync(typist, null, $"!mp in {targeted.Id}")).Succeeded);
 
 		var (succeeded, said) = await bot.TypeAsync(typist, "#osu", "!mp lock");
@@ -94,8 +94,9 @@ public sealed class MpRoomResolutionTests
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
 		var room = await bot.MakeAsync(owner, "Seated");
 		var referee = await RoomFixture.PlayerAsync(bot.App, "Referee");
-		Assert.True((await room.ScopeTo(owner).Authority.AddRefereeAsync(UserReference.ById(referee.Record.Id))) == RoomOutcome.Ok);
-		Assert.True((await room.ScopeTo(referee).Members.JoinAsync("")) == RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(owner).Authority.AddRefereeAsync(UserReference.ById(referee.Record.Id)) ==
+		            RoomOutcome.Ok);
+		Assert.True(await room.ScopeTo(referee).Members.JoinAsync("") == RoomOutcome.Ok);
 		Assert.Null(bot.Targets.Get(referee.Record.Id));
 
 		var (succeeded, said) = await bot.TypeAsync(referee, "#osu", "!mp lock");

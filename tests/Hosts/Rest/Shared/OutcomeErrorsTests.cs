@@ -5,7 +5,6 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Rest.Http;
-using Basil.Host.Shared;
 using Basil.Host.Shared.Errors;
 using static Basil.Host.Shared.Errors.ErrorKind;
 
@@ -106,9 +105,9 @@ public sealed class OutcomeErrorsTests
 	[Fact]
 	public void DeniedOutcome_PrivilegeDenied()
 	{
-		Assert.Equal(new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, ErrorKind.PrivilegeDenied),
+		Assert.Equal(new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, PrivilegeDenied),
 			OutcomeErrors.Describe(RoomOutcome.Denied));
-		Assert.Equal(new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, ErrorKind.PrivilegeDenied),
+		Assert.Equal(new ErrorInfo(OutcomeErrors.PrivilegeDeniedCode, PrivilegeDenied),
 			OutcomeErrors.Describe(UserOutcome.Denied));
 	}
 

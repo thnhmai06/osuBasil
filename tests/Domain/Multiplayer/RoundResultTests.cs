@@ -2,7 +2,6 @@ using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Multiplayer;
@@ -59,7 +58,9 @@ public class RoundResultTests
 		var low = Play(round, 1, 1, 100);
 		var high = Play(round, 2, 2, 900);
 
-		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 800, false, 2, null, null, null));
+		var restored =
+			Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 800, false, 2, null, null,
+				null));
 
 		Assert.Equal(2, restored.WinnerId);
 		Assert.Equal(800, restored.Margin);
@@ -74,7 +75,8 @@ public class RoundResultTests
 		var red = Play(round, 1, 1, 100, team: GameTeam.Red);
 		var blue = Play(round, 2, 2, 900, team: GameTeam.Blue);
 
-		var restored = Assert.IsType<TeamVersusResult>(RoundResult.Restore(round, [red, blue], [2, 1], 800, false, null, GameTeam.Blue, 100, 900));
+		var restored = Assert.IsType<TeamVersusResult>(RoundResult.Restore(round, [red, blue], [2, 1], 800, false, null,
+			GameTeam.Blue, 100, 900));
 
 		Assert.Equal(GameTeam.Blue, restored.Winner);
 		Assert.Equal(800, restored.Margin);
@@ -104,7 +106,9 @@ public class RoundResultTests
 		var low = Play(round, 1, 1, 100);
 		var high = Play(round, 2, 2, 900);
 
-		var restored = Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 0, true, null, null, null, null));
+		var restored =
+			Assert.IsType<HeadToHeadResult>(RoundResult.Restore(round, [low, high], [2, 1], 0, true, null, null, null,
+				null));
 
 		Assert.Null(restored.WinnerId);
 		Assert.True(restored.IsDraw);

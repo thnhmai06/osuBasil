@@ -1,6 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 

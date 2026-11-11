@@ -134,6 +134,7 @@ public sealed class RateLimiter(TimeProvider clock)
 	{
 		/// <summary>When the recent hits happened.</summary>
 		public readonly Queue<DateTimeOffset> Events = new();
+
 		/// <summary>The span the recent hits are counted over.</summary>
 		public TimeSpan Window;
 	}

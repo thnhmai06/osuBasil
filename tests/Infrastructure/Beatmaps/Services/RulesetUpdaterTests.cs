@@ -93,7 +93,8 @@ public sealed class RulesetUpdaterTests : IDisposable
 		var store = NewStore();
 		var updater = new RulesetUpdater(store, Feed(NewVersion, "Mania"), NullLogger<RulesetUpdater>.Instance);
 
-		await Assert.ThrowsAsync<RulesetUpdateException>(() => updater.StageAsync(TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<RulesetUpdateException>(() =>
+			updater.StageAsync(TestContext.Current.CancellationToken));
 
 		Assert.Null(updater.Version().Staged);
 		Assert.False(Directory.Exists(store.FolderOf(NewVersion)));

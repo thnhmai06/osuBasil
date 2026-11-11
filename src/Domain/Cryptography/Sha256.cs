@@ -12,7 +12,7 @@ public readonly record struct Sha256
 	{
 		ArgumentNullException.ThrowIfNull(hash);
 		if (hash is not { Length: 64 }
-			|| !hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))
+		    || !hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))
 			throw new ArgumentException("The SHA-256 value is invalid.", nameof(hash));
 
 		HashValue = hash.ToLowerInvariant();

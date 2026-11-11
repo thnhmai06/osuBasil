@@ -35,10 +35,10 @@ internal sealed record StaffRoom(
 		var scope = room.ScopeTo(creator).Authority;
 
 		var referee = await RoomFixture.PlayerAsync(bot.App, name + "Referee");
-		Assert.True((await scope.AddRefereeAsync(UserReference.ById(referee.Record.Id))) == RoomOutcome.Ok);
+		Assert.True(await scope.AddRefereeAsync(UserReference.ById(referee.Record.Id)) == RoomOutcome.Ok);
 
 		var offlineReferee = await RoomFixture.PlayerAsync(bot.App, name + "Away");
-		Assert.True((await scope.AddRefereeAsync(UserReference.ById(offlineReferee.Record.Id))) == RoomOutcome.Ok);
+		Assert.True(await scope.AddRefereeAsync(UserReference.ById(offlineReferee.Record.Id)) == RoomOutcome.Ok);
 		bot.App.Users.Close(offlineReferee, SessionEndReason.TimedOut);
 		Assert.DoesNotContain(offlineReferee.Record, bot.App.Users.Online.Keys);
 

@@ -77,18 +77,6 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		}
 	}
 
-	/// <summary>Tells whether a text is a canonical relative path of a stored file, which a stored file name must be.</summary>
-	/// <param name="path">The text to check.</param>
-	/// <returns>
-	///     <see langword="true" /> when the text is already in canonical form: relative, with <c>/</c> separating
-	///     segments, and with no empty, <c>.</c> or <c>..</c> segment, no control or reserved character and no
-	///     leading or trailing white space; otherwise, <see langword="false" />.
-	/// </returns>
-	public static bool IsValidPath([NotNullWhen(true)] string? path)
-	{
-		return path is not null && TryNormalizePath(path, out var canonical) && canonical == path;
-	}
-
 	/// <summary>Tries to parse a reference from its canonical text.</summary>
 	/// <param name="s">The text to parse.</param>
 	/// <param name="provider">A provider that supplies culture-specific formatting information.</param>
@@ -111,6 +99,18 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		{
 			return false;
 		}
+	}
+
+	/// <summary>Tells whether a text is a canonical relative path of a stored file, which a stored file name must be.</summary>
+	/// <param name="path">The text to check.</param>
+	/// <returns>
+	///     <see langword="true" /> when the text is already in canonical form: relative, with <c>/</c> separating
+	///     segments, and with no empty, <c>.</c> or <c>..</c> segment, no control or reserved character and no
+	///     leading or trailing white space; otherwise, <see langword="false" />.
+	/// </returns>
+	public static bool IsValidPath([NotNullWhen(true)] string? path)
+	{
+		return path is not null && TryNormalizePath(path, out var canonical) && canonical == path;
 	}
 
 	/// <inheritdoc />

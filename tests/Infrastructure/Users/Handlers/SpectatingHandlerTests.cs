@@ -5,7 +5,6 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
@@ -137,9 +136,10 @@ public sealed class SpectatingHandlerTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var watcher = await app.LoginAsync(await app.CreateUserAsync("ApiWatcher", "password"));
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True(await host.ScopeTo(watcher).SpectateAsync() == ConnectionOutcome.Ok);
 
-		var published = await new PublishSpectatorFramesHandler().Handle(new PublishSpectatorFrames(host, Bundle()), Token);
+		var published =
+			await new PublishSpectatorFramesHandler().Handle(new PublishSpectatorFrames(host, Bundle()), Token);
 
 		Assert.True(published);
 	}
@@ -150,7 +150,8 @@ public sealed class SpectatingHandlerTests
 		using var app = new TestApplication();
 		var player = await RoomFixture.PlayerAsync(app, "Player");
 
-		var published = await new PublishSpectatorFramesHandler().Handle(new PublishSpectatorFrames(player, Bundle()), Token);
+		var published =
+			await new PublishSpectatorFramesHandler().Handle(new PublishSpectatorFrames(player, Bundle()), Token);
 
 		Assert.False(published);
 	}

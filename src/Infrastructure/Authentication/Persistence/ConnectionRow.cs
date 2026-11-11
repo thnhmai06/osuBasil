@@ -1,6 +1,5 @@
 using System.Net;
 using Basil.Domain.Authentication;
-using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,18 +10,25 @@ internal sealed class ConnectionRow
 {
 	/// <summary>The unique identifier of the connection.</summary>
 	public long Id { get; set; }
+
 	/// <summary>The session the connection belongs to.</summary>
 	public long SessionId { get; set; }
+
 	/// <summary>The address the connection came from.</summary>
 	public IPAddress Ip { get; set; } = IPAddress.None;
+
 	/// <summary>The client information the connection announced, if any.</summary>
 	public string? ClientInfo { get; set; }
+
 	/// <summary>When the connection was opened.</summary>
 	public DateTimeOffset OpenedAt { get; set; }
+
 	/// <summary>When the connection was last active.</summary>
 	public DateTimeOffset LastActiveAt { get; set; }
+
 	/// <summary>When the connection was closed, or <see langword="null" /> while it is open.</summary>
 	public DateTimeOffset? ClosedAt { get; set; }
+
 	/// <summary>Why the connection was closed, or <see langword="null" /> while it is open.</summary>
 	public SessionEndReason? CloseReason { get; set; }
 }

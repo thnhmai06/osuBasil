@@ -1,6 +1,5 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;

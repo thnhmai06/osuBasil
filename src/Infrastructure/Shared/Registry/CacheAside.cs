@@ -54,5 +54,8 @@ public sealed class CacheAside<TKey, TValue>(IMemoryCache cache) where TKey : no
 	}
 
 	// The owner is part of the key, so caches that share one IMemoryCache never see each other's entries.
-	private (CacheAside<TKey, TValue>, TKey) Slot(TKey key) => (this, key);
+	private (CacheAside<TKey, TValue>, TKey) Slot(TKey key)
+	{
+		return (this, key);
+	}
 }

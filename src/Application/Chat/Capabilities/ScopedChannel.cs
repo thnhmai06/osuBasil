@@ -1,6 +1,5 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
@@ -71,7 +70,8 @@ public readonly struct ScopedChannel
 	/// <remarks>
 	///     Messages longer than <see cref="Channel.MaxMessageLength" /> characters are cut. A private message is a
 	///     post into the recipient's channel; their away reply is carried by the same <see cref="ChannelMessagePosted" />.
-	///     Posting requires <see cref="UserPrivileges.Player" /> and no silence. Blocks and friends-only settings are bypassed with
+	///     Posting requires <see cref="UserPrivileges.Player" /> and no silence. Blocks and friends-only settings are bypassed
+	///     with
 	///     <see cref="UserPrivileges.Moderator" />.
 	/// </remarks>
 	public async Task<ChannelOutcome> PostAsync(string text, bool notice = false,

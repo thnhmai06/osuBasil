@@ -1,9 +1,6 @@
-using Basil.Gateway;
 using Basil.Gateway.Admission;
-using Basil.Host.Irc;
 using Basil.Host.Irc.Commands;
 using Basil.Host.Rest;
-using Basil.Host.Stable;
 using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Routes;
 using Basil.Host.Stable.Web;

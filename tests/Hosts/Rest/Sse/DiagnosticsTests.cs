@@ -8,7 +8,7 @@ namespace Basil.Host.Rest.Tests.Sse;
 public sealed class DiagnosticsTests(RestHostFixture fixture)
 {
 	private static readonly UserPrivileges Staff = UserPrivilegesExtensions.Default |
-	                                                UserPrivileges.Developer;
+	                                               UserPrivileges.Developer;
 
 	[Fact]
 	public async Task NoPrivilege_403Or401()
@@ -38,21 +38,26 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		var (staff, _) = await fixture.SignInAsync("DiagStaff", Staff);
 		using (staff)
 		{
-			var (all, allReader) = await staff.OpenStreamAsync("/v1/diagnostics", ct: TestContext.Current.CancellationToken);
-			var (one, oneReader) = await staff.OpenStreamAsync("/v1/diagnostics/application", ct: TestContext.Current.CancellationToken);
-			var (unknown, _) = await staff.OpenStreamAsync("/v1/diagnostics/nothing", ct: TestContext.Current.CancellationToken);
+			var (all, allReader) =
+				await staff.OpenStreamAsync("/v1/diagnostics", ct: TestContext.Current.CancellationToken);
+			var (one, oneReader) = await staff.OpenStreamAsync("/v1/diagnostics/application",
+				ct: TestContext.Current.CancellationToken);
+			var (unknown, _) =
+				await staff.OpenStreamAsync("/v1/diagnostics/nothing", ct: TestContext.Current.CancellationToken);
 			using (all)
 			using (one)
 			using (unknown)
 			{
-				var snapshot = JsonNode.Parse((await allReader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
+				var snapshot =
+					JsonNode.Parse((await allReader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
 				foreach (var category in new[]
 				         {
 					         "process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database",
 					         "stable", "irc", "events", "sessions"
 				         })
 					Assert.NotNull(snapshot[category]);
-				var application = JsonNode.Parse((await oneReader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
+				var application =
+					JsonNode.Parse((await oneReader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
 				Assert.NotNull(application["usersOnline"]);
 				Assert.Equal(404, (int)unknown.StatusCode);
 			}
@@ -65,7 +70,8 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 		var (staff, _) = await fixture.SignInAsync("DiagTick", Staff);
 		using (staff)
 		{
-			var (response, reader) = await staff.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
+			var (response, reader) =
+				await staff.OpenStreamAsync("/v1/diagnostics/runtime", ct: TestContext.Current.CancellationToken);
 			using (response)
 			{
 				await reader!.ReadAsync(TestContext.Current.CancellationToken);

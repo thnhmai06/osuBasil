@@ -1,6 +1,5 @@
 using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 
 namespace Basil.Domain.Tests.Stable;
 

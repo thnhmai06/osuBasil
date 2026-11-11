@@ -7,7 +7,6 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Shared;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;
 using Microsoft.Extensions.Logging;

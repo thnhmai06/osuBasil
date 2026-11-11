@@ -7,7 +7,6 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -50,7 +49,7 @@ public sealed class ScopedUserCredentialsTests
 		var key = await OpenIrcKeyAsync(app, current);
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("old"), false);
+			.ChangePasswordAsync(Hash("new"), Hash("old"));
 
 		Assert.True(result == UserOutcome.Ok);
 		Assert.True(await app.VerifiesPasswordAsync(user, "new"));
@@ -104,7 +103,7 @@ public sealed class ScopedUserCredentialsTests
 		var other = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("guess"), false);
+			.ChangePasswordAsync(Hash("new"), Hash("guess"));
 
 		Assert.Equal(UserOutcome.WrongPassword, result);
 		Assert.True(await app.VerifiesPasswordAsync(user, "old"));
@@ -181,7 +180,7 @@ public sealed class ScopedUserCredentialsTests
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("old"), false);
+			.ChangePasswordAsync(Hash("new"), Hash("old"));
 
 		Assert.Equal(UserOutcome.Locked, result);
 		Assert.True(await app.VerifiesPasswordAsync(user, "old"));
@@ -197,7 +196,7 @@ public sealed class ScopedUserCredentialsTests
 		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
-			.ChangePasswordAsync(Hash("new"), Hash("old"), false);
+			.ChangePasswordAsync(Hash("new"), Hash("old"));
 
 		Assert.True(result == UserOutcome.Ok);
 		Assert.True(await app.VerifiesPasswordAsync(user, "new"));

@@ -1,4 +1,3 @@
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
@@ -23,7 +22,7 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 			CreatedAt = relationship.CreatedAt.ToUniversalTime()
 		};
 		return database.WriteAsync((UsersDbContext context) =>
-				context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId));
+			context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId));
 	}
 
 	/// <inheritdoc />

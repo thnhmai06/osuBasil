@@ -8,8 +8,10 @@ internal sealed class AuthenticationDbContext(DbContextOptions<AuthenticationDbC
 {
 	/// <summary>The stored credentials.</summary>
 	public DbSet<CredentialRow> Credentials => Set<CredentialRow>();
+
 	/// <summary>The stored sessions.</summary>
 	public DbSet<SessionRow> Sessions => Set<SessionRow>();
+
 	/// <summary>The stored connections.</summary>
 	public DbSet<ConnectionRow> Connections => Set<ConnectionRow>();
 

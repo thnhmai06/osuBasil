@@ -3,14 +3,12 @@ using System.Text;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Shared;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Testing;
@@ -475,7 +473,8 @@ public sealed class BeatmapsetWorld
 			CancellationToken ct = default)
 		{
 			var all = Records.Values.OrderByDescending(beatmap => beatmap.Beatmapset.Id).ToList();
-			return Task.FromResult(new Page<BeatmapRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(), page.Offset + page.Limit < all.Count));
+			return Task.FromResult(new Page<BeatmapRecord>(all.Skip(page.Offset).Take(page.Limit).ToList(),
+				page.Offset + page.Limit < all.Count));
 		}
 
 		/// <inheritdoc />

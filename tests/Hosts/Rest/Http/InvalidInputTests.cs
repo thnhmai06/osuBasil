@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Basil.Host.Shared;
 using Basil.Host.Shared.Json;
 
 namespace Basil.Host.Rest.Tests.Http;

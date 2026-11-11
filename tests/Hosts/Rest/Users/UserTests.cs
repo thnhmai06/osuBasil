@@ -1,5 +1,3 @@
-using Basil.Domain.Users;
-
 namespace Basil.Host.Rest.Tests.Users;
 
 /// <summary>Accounts, sessions, restrictions and the redirects of the caller's own account.</summary>
@@ -138,7 +136,8 @@ public sealed class UserTests(RestHostFixture fixture)
 		var (client, id) = await fixture.SignInAsync("MeRedirect");
 		using (client)
 		{
-			using var response = await client.SendAsync(HttpMethod.Patch, "/v1/me/friends?x=1", ct: TestContext.Current.CancellationToken);
+			using var response = await client.SendAsync(HttpMethod.Patch, "/v1/me/friends?x=1",
+				ct: TestContext.Current.CancellationToken);
 
 			Assert.Equal(307, (int)response.StatusCode);
 			Assert.Equal($"/v1/users/{id}/friends?x=1", response.Headers.Location!.OriginalString);

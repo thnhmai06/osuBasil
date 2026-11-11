@@ -12,6 +12,8 @@ internal sealed class OpenReplayFramesHandler(IScoreRepository scores, IReplaySt
 	/// <inheritdoc />
 	public async ValueTask<Stream?> Handle(OpenReplayFrames request, CancellationToken ct)
 	{
-		return await scores.GetAsync(request.ScoreId, ct) is { } score ? await replays.OpenFramesAsync(score, ct) : null;
+		return await scores.GetAsync(request.ScoreId, ct) is { } score
+			? await replays.OpenFramesAsync(score, ct)
+			: null;
 	}
 }

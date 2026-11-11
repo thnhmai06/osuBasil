@@ -6,8 +6,6 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
-using Basil.Gateway;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
 using Mediator;
@@ -35,7 +33,8 @@ internal static class AuthRoutes
 			{
 				var connection = context.Connection();
 				var session = connection.Session;
-				return Api.Ok(new SessionView(session.Id, session.Value.User.Id, session.Value.StartedAt, connection.ExpiresAt));
+				return Api.Ok(new SessionView(session.Id, session.Value.User.Id, session.Value.StartedAt,
+					connection.ExpiresAt));
 			}).RequireToken()
 			.WithSummary("Get the current session, which names the signed-in user.");
 	}

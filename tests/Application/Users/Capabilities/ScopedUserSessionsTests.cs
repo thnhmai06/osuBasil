@@ -1,6 +1,5 @@
 using System.Net;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -110,7 +109,7 @@ public sealed class ScopedUserSessionsTests
 		var (firstKey, first) = await OpenIrcAsync(app, api, "laptop");
 		var (secondKey, _) = await OpenIrcAsync(app, api, "vps");
 
-		Assert.True((await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(first.Id)) == UserOutcome.Ok);
+		Assert.True(await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(first.Id) == UserOutcome.Ok);
 
 		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, firstKey)).Failure);
 		Assert.True((await OpenWithTokenAsync(app, SessionType.Irc, secondKey)).Succeeded);
@@ -188,7 +187,7 @@ public sealed class ScopedUserSessionsTests
 		var osu = await app.LoginAsync(user, SessionType.Stable);
 		var (ircKey, _) = await OpenIrcAsync(app, current, "bot");
 
-		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(true);
+		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync();
 
 		Assert.True(result == UserOutcome.Ok);
 		Assert.True(current.IsOpen);
@@ -207,7 +206,7 @@ public sealed class ScopedUserSessionsTests
 		var user = await app.CreateUserAsync("NoKeep", "password");
 		var current = await app.LoginAsync(user);
 
-		Assert.True((await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(false)) == UserOutcome.Ok);
+		Assert.True(await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(false) == UserOutcome.Ok);
 
 		Assert.False(current.IsOpen);
 		Assert.Equal(LoginFailure.InvalidToken,
@@ -223,7 +222,7 @@ public sealed class ScopedUserSessionsTests
 		var api = await app.LoginAsync(user);
 		var osu = await app.LoginAsync(user, SessionType.Stable);
 
-		var result = await app.Users.Of(user).ScopeTo(admin).Sessions.CloseAllAsync(true);
+		var result = await app.Users.Of(user).ScopeTo(admin).Sessions.CloseAllAsync();
 
 		Assert.True(result == UserOutcome.Ok);
 		Assert.False(api.IsOpen);
@@ -381,8 +380,8 @@ public sealed class ScopedUserSessionsTests
 		await app.Users.ConnectBotAsync(Token);
 		var scoped = app.Users.Of(bot).ScopeTo(admin).Sessions;
 
-		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAsync(long.MaxValue)));
-		Assert.Equal(UserOutcome.SystemAccount, (await scoped.CloseAllAsync(false)));
+		Assert.Equal(UserOutcome.SystemAccount, await scoped.CloseAsync(long.MaxValue));
+		Assert.Equal(UserOutcome.SystemAccount, await scoped.CloseAllAsync(false));
 		Assert.Equal(UserOutcome.SystemAccount, (await scoped.OpenIrcAsync("x")).Result);
 		Assert.All(app.Users.Online[bot].Connections, connection => Assert.True(connection.IsOpen));
 	}

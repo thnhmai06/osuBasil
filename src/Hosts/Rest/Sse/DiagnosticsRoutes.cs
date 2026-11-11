@@ -1,8 +1,6 @@
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Diagnostics.Objects;
 using Basil.Application.Diagnostics.Services;
-using Basil.Application.Shared.Diagnostics;
-using Basil.Gateway;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
 using Mediator;

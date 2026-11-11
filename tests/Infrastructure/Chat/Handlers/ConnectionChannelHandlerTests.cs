@@ -69,7 +69,7 @@ public sealed class ConnectionChannelHandlerTests
 			Name = name,
 			Value = new GeneralChannelData { AutoJoin = autoJoin }
 		};
-		Assert.True((await app.Server.ScopeTo(actor).Channels.CreateAsync(record)) == ServerOutcome.Ok);
+		Assert.True(await app.Server.ScopeTo(actor).Channels.CreateAsync(record) == ServerOutcome.Ok);
 		return app.Channels.Find(name)!;
 	}
 }

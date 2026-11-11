@@ -68,7 +68,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await app.Users.Of(watcher.Record).ScopeTo(host).Relationships.BlockAsync()) == UserOutcome.Ok);
+		Assert.True(await app.Users.Of(watcher.Record).ScopeTo(host).Relationships.BlockAsync() == UserOutcome.Ok);
 
 		var result = await host.ScopeTo(watcher).SpectateAsync();
 
@@ -82,7 +82,7 @@ public sealed class ApiSpectatorTests
 		using var app = new TestApplication();
 		var host = await RoomFixture.PlayerAsync(app, "Watched");
 		var other = await RoomFixture.PlayerAsync(app, "OtherWatcher");
-		Assert.True((await host.ScopeTo(other).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True(await host.ScopeTo(other).SpectateAsync() == ConnectionOutcome.Ok);
 
 		Assert.False(host.ScopeTo(host).PublishFrames(Bundle()));
 		Assert.Empty(app.UserEvents.Events.OfType<UserSpectatorFramesReceived>());
@@ -93,7 +93,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True(await host.ScopeTo(watcher).SpectateAsync() == ConnectionOutcome.Ok);
 		var bundle = Bundle();
 
 		Assert.True(host.ScopeTo(host).PublishFrames(bundle));
@@ -108,7 +108,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True(await host.ScopeTo(watcher).SpectateAsync() == ConnectionOutcome.Ok);
 
 		Assert.False(host.ScopeTo(watcher).PublishFrames(Bundle()));
 	}
@@ -118,7 +118,7 @@ public sealed class ApiSpectatorTests
 	{
 		using var app = new TestApplication();
 		var (host, watcher) = await SetUpAsync(app);
-		Assert.True((await host.ScopeTo(watcher).SpectateAsync()) == ConnectionOutcome.Ok);
+		Assert.True(await host.ScopeTo(watcher).SpectateAsync() == ConnectionOutcome.Ok);
 
 		app.Users.Close(watcher, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),

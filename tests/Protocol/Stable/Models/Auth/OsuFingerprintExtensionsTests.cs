@@ -1,5 +1,4 @@
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Protocol.Stable.Models.Client;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;

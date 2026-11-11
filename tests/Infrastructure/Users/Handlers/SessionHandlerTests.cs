@@ -1,5 +1,4 @@
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
@@ -48,7 +47,8 @@ public sealed class SessionHandlerTests
 		var actor = await app.LoginAsync(await app.CreateUserAsync("Lister", "password"));
 
 		var (result, sessions) = await new ListUserSessionsHandler(app.Users).Handle(
-			new ListUserSessions(actor, UserReference.ById(actor.Record.Id), new PageRequest(0, 10), SessionState.Any, null), Token);
+			new ListUserSessions(actor, UserReference.ById(actor.Record.Id), new PageRequest(0, 10), SessionState.Any,
+				null), Token);
 
 		Assert.Equal(UserOutcome.Ok, result);
 		Assert.Contains(actor.Session.Id, sessions!.Items.Select(session => session.Id));
@@ -62,7 +62,8 @@ public sealed class SessionHandlerTests
 		var other = await app.LoginAsync(await app.CreateUserAsync("Other", "password"));
 
 		var (result, sessions) = await new ListUserSessionsHandler(app.Users).Handle(
-			new ListUserSessions(actor, UserReference.ById(other.Record.Id), new PageRequest(0, 10), SessionState.Any, null), Token);
+			new ListUserSessions(actor, UserReference.ById(other.Record.Id), new PageRequest(0, 10), SessionState.Any,
+				null), Token);
 
 		Assert.NotEqual(UserOutcome.Ok, result);
 		Assert.Null(sessions);

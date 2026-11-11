@@ -4,7 +4,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
@@ -37,8 +36,8 @@ public sealed class UserRegistry
 	private readonly ConnectionContext _connectionContext;
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
-	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 	private readonly ConcurrentDictionary<int, AccountGate> _gates = new();
+	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 
 	/// <summary>Creates the registry that owns online users and their connections.</summary>
 	/// <param name="accounts">The account operations that use persistence.</param>
@@ -747,6 +746,7 @@ public sealed class UserRegistry
 	{
 		/// <summary>The lock guarding the account.</summary>
 		public readonly Lock Lock = new();
+
 		/// <summary>How many scopes are open on the account.</summary>
 		public int Users;
 	}

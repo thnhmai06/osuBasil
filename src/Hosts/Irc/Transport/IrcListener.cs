@@ -5,7 +5,6 @@ using System.Text;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Gateway;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Basil.Host.Irc.Commands;
@@ -101,7 +100,8 @@ internal sealed class IrcListener(
 		state.AcceptingLogins = false;
 		_listener?.Stop();
 		Announce(false);
-		await Task.WhenAny(Task.WhenAll(_sessions.Select(pair => pair.Value)), Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None));
+		await Task.WhenAny(Task.WhenAll(_sessions.Select(pair => pair.Value)),
+			Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None));
 		await base.StopAsync(ct);
 	}
 

@@ -1,13 +1,10 @@
 using System.Net;
-using System.Security.Cryptography;
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
-using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
@@ -24,14 +21,14 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	private static readonly long SecondId = 2;
 	private static readonly long ThirdId = 3;
 
+	private static readonly Sha256 Hash = new("token"u8.ToArray());
+
+	private ISessionRepository Sessions => Get<ISessionRepository>();
+
 	private static SessionQuery All(UserRecord user)
 	{
 		return new SessionQuery(user, SessionState.Any, null, Third);
 	}
-
-	private static readonly Sha256 Hash = new("token"u8.ToArray());
-
-	private ISessionRepository Sessions => Get<ISessionRepository>();
 
 	[Fact]
 	public async Task RecordedSession_Stored()

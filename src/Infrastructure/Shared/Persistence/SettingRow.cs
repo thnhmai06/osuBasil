@@ -8,6 +8,7 @@ internal sealed class SettingRow
 {
 	/// <summary>The setting name.</summary>
 	public string Name { get; set; } = "";
+
 	/// <summary>The stored value of the setting, if set.</summary>
 	public string? Value { get; set; }
 }
