@@ -575,8 +575,9 @@ Diagnostics/   ServerDiagnostics, DiagnosticsOutcome                    (Objects
 ```
 
 `Diagnostics` (intake, feed and the maintenance actions behind `ScopedDiagnostics`) is a module of its own; the
-contribution contracts every module answers (`CollectDiagnostics`, `IDiagnosticsCollector`, `IClearTally`, `ICacheCleaner`,
-`DiagnosticsValue`, `DiagnosticsSample`) live in Application.Common. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
+contribution contracts every module answers (`CollectDiagnostics`, `IDiagnosticsCollector`, `DiagnosticsValue`) live in
+Application.Common; `DiagnosticsSample`, `IClearTally`, `ICacheCleaner`, `HostLabels` and `DiagnosticsMetrics` are Diagnostics'
+own. Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
 event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
 Infrastructure.Common's `Workers/`. Concrete handlers live in the `Handlers/` folder of the module's Infrastructure project or in the consumer that
 owns them, including `Basil.Infrastructure.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands

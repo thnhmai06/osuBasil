@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Diagnostics.Services;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Rest.Http;

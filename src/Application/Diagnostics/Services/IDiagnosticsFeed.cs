@@ -1,4 +1,3 @@
-using Basil.Application.Common.Diagnostics;
 
 namespace Basil.Application.Diagnostics.Services;
 

@@ -1,4 +1,4 @@
-namespace Basil.Application.Common.Diagnostics;
+namespace Basil.Application.Diagnostics.Services;
 
 /// <summary>
 ///     The measurements of every diagnostics category at one moment, which the HTTP API streams and the dashboard

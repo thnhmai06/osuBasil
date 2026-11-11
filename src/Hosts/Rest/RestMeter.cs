@@ -1,5 +1,5 @@
 using System.Diagnostics.Metrics;
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Diagnostics.Services;
 
 namespace Basil.Host.Rest;
 

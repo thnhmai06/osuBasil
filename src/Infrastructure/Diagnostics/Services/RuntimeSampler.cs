@@ -4,7 +4,7 @@ using System.Diagnostics.Metrics;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Diagnostics.Services;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
 

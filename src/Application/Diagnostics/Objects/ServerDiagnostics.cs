@@ -1,5 +1,5 @@
 using System.Runtime;
-using Basil.Application.Common.Diagnostics;
+using Basil.Application.Diagnostics.Services;
 using Basil.Application.Diagnostics.Capabilities;
 using Basil.Application.Users.Objects.Connections;
 

@@ -1,4 +1,4 @@
-namespace Basil.Application.Common.Diagnostics;
+namespace Basil.Application.Diagnostics.Services;
 
 /// <summary>Turns the Host header of a request into one of a fixed set of metric labels, so no caller can create new ones.</summary>
 public static class HostLabels

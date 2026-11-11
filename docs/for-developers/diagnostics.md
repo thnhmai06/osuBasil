@@ -66,9 +66,10 @@ offers two services.
 The HTTP stream shares one sample per second differently: the SSE hub polls the intake once per root and second, serializes
 the result once and hands the same bytes to every stream of the root, so the cost does not grow with the watchers.
 
-The contribution contracts (`CollectDiagnostics`, `IDiagnosticsCollector`, `IClearTally`, `ICacheCleaner`,
-`DiagnosticsValue`, `DiagnosticsSample`) live in Application.Common so every module can contribute without referencing
-Diagnostics. `CollectDiagnostics` is a question, not an event: the intake hands it directly to the handlers (each module
+The contribution contracts (`CollectDiagnostics`, `IDiagnosticsCollector`, `DiagnosticsValue`) live in
+Application.Common so every module can contribute without referencing Diagnostics. What only Diagnostics and the Rest host
+use (`DiagnosticsSample`, `IClearTally`, `ICacheCleaner`, `HostLabels`, `DiagnosticsMetrics`) lives in
+Application.Diagnostics. `CollectDiagnostics` is a question, not an event: the intake hands it directly to the handlers (each module
 has one) and waits for the answers, so it never goes through the event queue.
 
 Every module's Infrastructure project that has handlers owns a `Meter` named `Basil.<Module>` and a handler for
@@ -107,7 +108,7 @@ meter and handler (with a positive control), and the dashboard's use of the samp
 * [`ScopedDiagnostics.cs`](../../src/Application/Diagnostics/Capabilities/ScopedDiagnostics.cs): the privilege gate of the actions
 * [`DiagnosticsIntake.cs`](../../src/Infrastructure/Diagnostics/Services/DiagnosticsIntake.cs) and [`DiagnosticsFeed.cs`](../../src/Infrastructure/Diagnostics/Services/DiagnosticsFeed.cs): the two services
 * [`RuntimeSampler.cs`](../../src/Infrastructure/Diagnostics/Services/RuntimeSampler.cs): process and runtime measurements
-* [`DiagnosticsSample.cs`](../../src/Application/Common/Diagnostics/DiagnosticsSample.cs): the sample of every category and the contribution contracts beside it
+* [`DiagnosticsSample.cs`](../../src/Application/Diagnostics/Services/DiagnosticsSample.cs): the sample of every category
 
 ## See also
 

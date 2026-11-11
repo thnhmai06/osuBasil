@@ -1,4 +1,4 @@
-namespace Basil.Application.Common.Diagnostics;
+namespace Basil.Application.Diagnostics.Services;
 
 /// <summary>The names the hosts and the diagnostics agree on for the measurements the hosts take.</summary>
 public static class DiagnosticsMetrics

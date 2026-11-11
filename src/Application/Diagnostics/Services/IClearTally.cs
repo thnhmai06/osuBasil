@@ -1,4 +1,4 @@
-namespace Basil.Application.Common.Diagnostics;
+namespace Basil.Application.Diagnostics.Services;
 
 /// <summary>A running count that an operator can reset to zero, such as the exceptions the process has thrown.</summary>
 public interface IClearTally
