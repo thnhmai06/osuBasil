@@ -112,6 +112,8 @@ When two documents disagree, the authoritative document wins.
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
 | Admission control (rate, size, concurrency, load)      | [`for-developers/gateway.md`](for-developers/gateway.md)               |
 | Migration status (target vs. code)                     | [`for-developers/migration-status.md`](for-developers/migration-status.md) |
+| Module layout (folders of Application and Infrastructure) | [`for-agents/module-layout.md`](for-agents/module-layout.md)           |
+| Working notes (lessons for agents)                     | [`for-agents/working-notes.md`](for-agents/working-notes.md)           |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
 | Diagnostics (intake, feed, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
 | osu! (stable) protocol (client and server)                     | [`for-developers/osu-stable.md`](for-developers/osu-stable.md)                 |

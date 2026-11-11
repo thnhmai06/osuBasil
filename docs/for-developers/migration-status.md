@@ -32,3 +32,10 @@ carrying their own "(target)" notes.
 
 * `tests/Architecture/ModuleGraphTests.cs`, `HostGraphTests.cs`: the dependency rules above.
 * [`architecture.md`](architecture.md): the target architecture.
+
+## Known gaps
+
+* `!mp` kick, unban, team and removeref have no test for an unknown name.
+* The `MissingPrivileges` reply constants keep their names and keys so reply files that override them still apply, though a refusal no longer names the privileges.
+* No load test exists for the 1k-concurrent-users target; the write pool (8 by default) and the single event reader are the first limits to measure.
+* The real binary has been run once against a database (health, a refusal, stop signal) but not as a full per-protocol check.
