@@ -1,4 +1,5 @@
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Scores;
 using Mediator;
 

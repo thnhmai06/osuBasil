@@ -1,6 +1,7 @@
 using System.Text;
 using Basil.Application.Shared;
 using Basil.Host.Shared;
+using Basil.Host.Shared.Errors;
 
 namespace Basil.Host.Cli.Commands;
 

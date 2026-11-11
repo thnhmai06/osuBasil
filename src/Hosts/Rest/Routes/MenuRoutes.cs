@@ -5,6 +5,7 @@ using Basil.Application.Servers.Messages;
 using Basil.Domain.Shared;
 using Basil.Domain.Content;
 using Basil.Gateway;
+using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;

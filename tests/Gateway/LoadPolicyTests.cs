@@ -1,3 +1,6 @@
+using AdmissionGate = Basil.Gateway.Admission.Admission;
+using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Gateway.Tests;
@@ -16,9 +19,9 @@ public sealed class LoadPolicyTests
 
 	private static readonly AdmissionSubject Subject = new("a", AdmissionTier.Standard);
 
-	private static Admission NewAdmission(LoadSignal? load = null)
+	private static AdmissionGate NewAdmission(LoadSignal? load = null)
 	{
-		return new Admission(new FakeTimeProvider(), Limits, load);
+		return new AdmissionGate(new FakeTimeProvider(), Limits, load);
 	}
 
 	[Theory]
@@ -75,7 +78,7 @@ public sealed class LoadPolicyTests
 	[Fact]
 	public void OverRateLimit_NoPlaceKept()
 	{
-		var admission = new Admission(new FakeTimeProvider(), Limits with { Requests = 1 });
+		var admission = new AdmissionGate(new FakeTimeProvider(), Limits with { Requests = 1 });
 		admission.Admit(Subject, WorkClass.Upload);
 		admission.Release(WorkClass.Upload);
 		Assert.Equal(AdmissionDenial.RateExceeded, admission.Admit(Subject, WorkClass.Upload).Reason);
@@ -88,7 +91,7 @@ public sealed class LoadPolicyTests
 	[Fact]
 	public void AssetsOwnAllowance_SeparateFromSubject()
 	{
-		var admission = new Admission(new FakeTimeProvider(), Limits with { Requests = 1, AssetConcurrency = 10 });
+		var admission = new AdmissionGate(new FakeTimeProvider(), Limits with { Requests = 1, AssetConcurrency = 10 });
 
 		var assets = Enumerable.Range(0, 4).Select(_ => admission.Admit(Subject, WorkClass.Asset)).ToArray();
 
@@ -200,7 +203,7 @@ public sealed class LoadPolicyTests
 	[Fact]
 	public void ANewAdmission_IsHealthy()
 	{
-		Assert.Equal(AdmissionHealth.Healthy, new Admission(new FakeTimeProvider()).Health);
+		Assert.Equal(AdmissionHealth.Healthy, new AdmissionGate(new FakeTimeProvider()).Health);
 	}
 
 	[Theory]

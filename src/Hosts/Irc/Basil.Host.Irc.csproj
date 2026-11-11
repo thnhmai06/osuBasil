@@ -23,6 +23,9 @@
 		<Using Include="Microsoft.Extensions.DependencyInjection"/>
 		<Using Include="Microsoft.Extensions.Logging"/>
 		<Using Include="Basil.Host.Shared"/>
+		<Using Include="Basil.Host.Shared.Errors"/>
+		<Using Include="Basil.Host.Shared.Json"/>
+		<Using Include="Basil.Host.Shared.Info"/>
 	</ItemGroup>
 
 	<ItemGroup>

@@ -1,6 +1,9 @@
 using Basil.Gateway;
+using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared;
+using Basil.Host.Shared.Errors;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Web.DependencyInjection;
 

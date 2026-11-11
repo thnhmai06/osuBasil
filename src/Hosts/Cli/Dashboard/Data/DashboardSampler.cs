@@ -8,6 +8,7 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Shared;
+using Basil.Host.Shared.Json;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Data;

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
 

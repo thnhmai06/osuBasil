@@ -1,6 +1,7 @@
 using System.Text;
 using Basil.Application.Chat.Objects;
 using Basil.Domain.Users;
+using Basil.Host.Irc.Session;
 using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Support;

@@ -1,6 +1,8 @@
 using System.Net;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Exceptions;
+using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;

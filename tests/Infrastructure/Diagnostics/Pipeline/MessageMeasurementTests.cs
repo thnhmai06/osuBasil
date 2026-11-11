@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Basil.Infrastructure.Diagnostics.Metrics;
 using Basil.Infrastructure.Diagnostics.Pipeline;
 using Mediator;
 

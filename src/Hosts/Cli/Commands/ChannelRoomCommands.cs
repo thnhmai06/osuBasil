@@ -6,6 +6,7 @@ using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Messages.Channels;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;

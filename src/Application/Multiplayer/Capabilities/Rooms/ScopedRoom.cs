@@ -1,6 +1,7 @@
 using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;

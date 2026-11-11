@@ -1,5 +1,6 @@
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Actors;
 using Mediator;
 
 namespace Basil.Application.Beatmaps.Messages;

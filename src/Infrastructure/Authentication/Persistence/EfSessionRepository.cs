@@ -1,6 +1,7 @@
 using System.Globalization;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
 using Basil.Domain.Shared;

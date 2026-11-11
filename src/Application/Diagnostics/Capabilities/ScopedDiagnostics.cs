@@ -1,5 +1,6 @@
 using Basil.Application.Shared;
 using Basil.Application.Diagnostics.Objects;
+using Basil.Application.Shared.Privileges;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Diagnostics.Capabilities;

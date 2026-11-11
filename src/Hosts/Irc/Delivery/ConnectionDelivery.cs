@@ -1,5 +1,7 @@
 using Basil.Application.Users.Objects.Events;
+using Basil.Host.Irc.Session;
 using Basil.Host.Irc.Support;
+using Basil.Host.Irc.Transport;
 using Basil.Protocol.Irc.Models;
 using Mediator;
 using Microsoft.Extensions.Options;

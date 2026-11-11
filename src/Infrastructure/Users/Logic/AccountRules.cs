@@ -1,5 +1,6 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;

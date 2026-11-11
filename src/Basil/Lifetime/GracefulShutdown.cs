@@ -2,6 +2,8 @@ using Basil.Application.Shared.Events;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc;
+using Basil.Host.Irc.Session;
+using Basil.Host.Irc.Transport;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Stable.Support;
 using Basil.Logging;

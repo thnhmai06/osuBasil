@@ -1,5 +1,6 @@
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;

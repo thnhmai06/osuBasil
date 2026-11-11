@@ -2,6 +2,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared;
+using Basil.Host.Shared.Errors;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Security;

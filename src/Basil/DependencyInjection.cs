@@ -18,10 +18,14 @@ using Basil.Application.Users;
 using Basil.Application.Users.Objects.Events;
 using Basil.Configuration;
 using Basil.Gateway;
+using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
 using Basil.Host.Cli;
 using Basil.Host.Irc;
+using Basil.Host.Irc.Transport;
 using Basil.Host.Rest;
 using Basil.Host.Stable;
+using Basil.Host.Stable.Routes;
 using Basil.Infrastructure.Anticheat;
 using Basil.Infrastructure.Authentication;
 using Basil.Infrastructure.Beatmaps;
@@ -36,6 +40,7 @@ using Basil.Infrastructure.Persistence;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Servers;
 using Basil.Infrastructure.Users;
+using Basil.Lifetime;
 
 namespace Basil;
 

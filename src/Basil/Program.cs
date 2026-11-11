@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Configuration;
 using Basil.Host.Cli.Shutdown;
+using Basil.Lifetime;
 using Microsoft.Extensions.Options;
 using Velopack;
 

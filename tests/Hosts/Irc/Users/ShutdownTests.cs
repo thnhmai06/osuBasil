@@ -1,4 +1,6 @@
+using Basil.Host.Irc.Session;
 using Basil.Host.Irc.Tests.Support;
+using Basil.Host.Irc.Transport;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;
 

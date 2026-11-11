@@ -1,5 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Actors;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;

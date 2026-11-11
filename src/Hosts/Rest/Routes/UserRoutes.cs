@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using System.Text;
 using System.Text.Json;
@@ -13,6 +14,7 @@ using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
 using Basil.Gateway;
+using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Views;

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Basil.Host.Cli.Shutdown;
+using Basil.Lifetime;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Tests.Lifetime;

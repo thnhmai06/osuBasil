@@ -1,3 +1,4 @@
+using Basil.Infrastructure.Persistence.Providers;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

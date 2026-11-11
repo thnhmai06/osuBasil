@@ -4,6 +4,8 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Exceptions;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Shared;
 using Basil.Domain.Content;

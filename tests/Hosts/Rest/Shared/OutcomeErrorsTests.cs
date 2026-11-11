@@ -6,7 +6,8 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared;
-using static Basil.Host.Shared.ErrorKind;
+using Basil.Host.Shared.Errors;
+using static Basil.Host.Shared.Errors.ErrorKind;
 
 namespace Basil.Host.Rest.Tests.Shared;
 

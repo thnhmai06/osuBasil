@@ -1,4 +1,5 @@
 using Basil.Domain.Users;
+using Basil.Lifetime;
 using Basil.Testing.Persistence;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;

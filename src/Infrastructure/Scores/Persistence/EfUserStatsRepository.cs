@@ -1,5 +1,6 @@
 using Basil.Application.Shared;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Shared.Exceptions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;

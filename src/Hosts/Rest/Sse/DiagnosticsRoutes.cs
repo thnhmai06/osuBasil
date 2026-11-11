@@ -2,6 +2,7 @@ using Basil.Application.Shared.Diagnostics;
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Diagnostics.Services;
 using Basil.Gateway;
+using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
 using Mediator;
 using Basil.Application.Diagnostics.Objects;

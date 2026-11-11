@@ -1,4 +1,6 @@
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
+using Basil.Application.Shared.Privileges;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;

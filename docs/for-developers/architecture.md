@@ -277,11 +277,13 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 ## Related code
 
 * `src/Domain/` — the system at rest.
-* `src/Application/Shared/`, `src/Infrastructure/Shared/` — shared values, events, `Scoped.cs`, dispatcher (`Workers/EventDispatcher.cs`).
+* `src/Application/Shared/`, `src/Infrastructure/Shared/` — shared values (`Paging/`, `Actors/`, `Privileges/Scoped.cs`, `Exceptions/`), events, dispatcher (`Workers/EventDispatcher.cs`).
 * `src/Application/<Module>/`, `src/Infrastructure/<Module>/` — module contracts, objects and implementations.
 * `src/Protocol/Stable/`, `src/Protocol/Irc/` — the translation language of each wire.
 * `src/Hosts/Shared/`, `src/Hosts/{Stable,Irc,Rest,Cli}/` — views and the transports.
-* `src/Basil/` — the composition root.
+* `src/Basil/` — the composition root (`Lifetime/` for start, restart and shutdown, `Http/` for its middleware).
+* `src/Gateway/` — admission control in `Admission/`, `Limits/` and `RateLimiting/`.
+* Each module's Infrastructure project keeps its OpenTelemetry meter in `Metrics/`.
 * `tests/Architecture/` — `ModuleGraphTests`, `HostGraphTests`, `CompositionTests`, `ScopedLifetimeTests`.
 
 ## Where to go from here

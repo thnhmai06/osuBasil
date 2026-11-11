@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Objects;

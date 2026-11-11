@@ -1,6 +1,7 @@
 using System.Diagnostics.Metrics;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Objects.Events;
+using Basil.Infrastructure.Users.Metrics;
 using Mediator;
 using Microsoft.Extensions.Logging;
 

@@ -185,7 +185,7 @@ the connection) is answered with the `RestartServer` packet, which makes the cli
 
 | Component                  | Location |
 |----------------------------|----------|
-| Routes, request flow       | [`StableRoutes.cs`](../../src/Hosts/Stable/StableRoutes.cs) |
+| Routes, request flow       | [`StableRoutes.cs`](../../src/Hosts/Stable/Routes/StableRoutes.cs) |
 | Login                      | [`StableLogin.cs`](../../src/Hosts/Stable/Login/StableLogin.cs) |
 | Packet dispatcher          | [`PacketDispatcher.cs`](../../src/Hosts/Stable/Packets/PacketDispatcher.cs) |
 | Packet handlers            | [`PacketHandlers.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.cs), [`PacketHandlers.Multiplayer.cs`](../../src/Hosts/Stable/Packets/PacketHandlers.Multiplayer.cs) |

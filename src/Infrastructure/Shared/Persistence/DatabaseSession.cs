@@ -1,4 +1,5 @@
 using Basil.Application.Shared;
+using Basil.Application.Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Shared.Persistence;

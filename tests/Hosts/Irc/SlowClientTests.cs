@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
+using Basil.Host.Irc.Session;
+using Basil.Host.Irc.Transport;
 using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Tests;

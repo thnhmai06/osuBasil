@@ -1,4 +1,7 @@
 using Basil.Gateway;
+using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
+using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Routes;
 using Basil.Host.Rest.Sse;

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Exceptions;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;

@@ -1,4 +1,6 @@
 using Basil.Application.Shared;
+using Basil.Application.Shared.Exceptions;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Persistence;

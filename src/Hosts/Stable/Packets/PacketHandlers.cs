@@ -14,6 +14,8 @@ using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Gateway;
+using Basil.Gateway.Admission;
+using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Beatmaps;
 using Basil.Protocol.Stable.Wire.Packets;

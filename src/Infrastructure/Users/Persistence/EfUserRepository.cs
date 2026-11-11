@@ -1,5 +1,7 @@
 using System.Globalization;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Exceptions;
+using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;

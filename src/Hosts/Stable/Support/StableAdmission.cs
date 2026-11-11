@@ -1,5 +1,6 @@
 using Basil.Application.Users.Registry;
 using Basil.Gateway;
+using Basil.Gateway.Admission;
 
 namespace Basil.Host.Stable.Support;
 

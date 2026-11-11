@@ -1,5 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Shared;

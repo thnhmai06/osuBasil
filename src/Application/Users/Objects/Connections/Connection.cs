@@ -1,4 +1,5 @@
 using Basil.Application.Shared;
+using Basil.Application.Shared.Actors;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;

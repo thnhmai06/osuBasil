@@ -1,3 +1,6 @@
+using AdmissionGate = Basil.Gateway.Admission.Admission;
+using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Gateway.Tests;
@@ -23,7 +26,7 @@ public sealed class AdmissionTests
 	[Fact]
 	public void RequestsUnderTheLimit_AreAllowed()
 	{
-		var admission = new Admission(new FakeTimeProvider(), Small);
+		var admission = new AdmissionGate(new FakeTimeProvider(), Small);
 
 		for (var i = 0; i < 3; i++) Assert.True(admission.Admit(Standard("a")).Allowed);
 	}
@@ -31,7 +34,7 @@ public sealed class AdmissionTests
 	[Fact]
 	public void TheRequestOverTheLimit_IsDeniedWithARetryDelay()
 	{
-		var admission = new Admission(new FakeTimeProvider(), Small);
+		var admission = new AdmissionGate(new FakeTimeProvider(), Small);
 		for (var i = 0; i < 3; i++) admission.Admit(Standard("a"));
 
 		var decision = admission.Admit(Standard("a"));
@@ -44,7 +47,7 @@ public sealed class AdmissionTests
 	[Fact]
 	public void AnElevatedSubject_GetsTheMultipliedAllowance()
 	{
-		var admission = new Admission(new FakeTimeProvider(), Small);
+		var admission = new AdmissionGate(new FakeTimeProvider(), Small);
 		var elevated = new AdmissionSubject("a", AdmissionTier.Elevated);
 
 		for (var i = 0; i < 6; i++) Assert.True(admission.Admit(elevated).Allowed);
@@ -54,7 +57,7 @@ public sealed class AdmissionTests
 	[Fact]
 	public void DistinctKeys_HaveIndependentAllowances()
 	{
-		var admission = new Admission(new FakeTimeProvider(), Small);
+		var admission = new AdmissionGate(new FakeTimeProvider(), Small);
 		for (var i = 0; i < 3; i++) admission.Admit(Standard("a"));
 
 		Assert.True(admission.Admit(Standard("b")).Allowed);
@@ -64,7 +67,7 @@ public sealed class AdmissionTests
 	public void ADeniedSubject_IsAllowedAgainWhenTheWindowPasses()
 	{
 		var clock = new FakeTimeProvider();
-		var admission = new Admission(clock, Small);
+		var admission = new AdmissionGate(clock, Small);
 		for (var i = 0; i < 4; i++) admission.Admit(Standard("a"));
 
 		clock.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(1));
@@ -75,7 +78,7 @@ public sealed class AdmissionTests
 	[Fact]
 	public void SwappedLimits_TakeEffectForTheNextRequest()
 	{
-		var admission = new Admission(new FakeTimeProvider(), Small);
+		var admission = new AdmissionGate(new FakeTimeProvider(), Small);
 		for (var i = 0; i < 3; i++) admission.Admit(Standard("a"));
 		Assert.False(admission.Admit(Standard("a")).Allowed);
 
@@ -87,6 +90,6 @@ public sealed class AdmissionTests
 	[Fact]
 	public void DefaultLimits_AllowAtLeastOneRequest()
 	{
-		Assert.True(new Admission(new FakeTimeProvider()).Admit(Standard("a")).Allowed);
+		Assert.True(new AdmissionGate(new FakeTimeProvider()).Admit(Standard("a")).Allowed);
 	}
 }

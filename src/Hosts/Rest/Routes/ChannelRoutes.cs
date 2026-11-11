@@ -4,6 +4,7 @@ using Basil.Application.Servers.Messages.Channels;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Gateway;
+using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;

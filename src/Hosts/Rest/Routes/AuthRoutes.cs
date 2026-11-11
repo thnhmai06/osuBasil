@@ -1,4 +1,5 @@
 using Basil.Application.Shared.Settings;
+using Basil.Gateway.RateLimiting;
 using Mediator;
 using System.Text;
 using Basil.Application.Users.Messages;

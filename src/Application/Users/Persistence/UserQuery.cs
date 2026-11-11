@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Persistence;

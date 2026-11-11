@@ -1,5 +1,6 @@
 using System.Net;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 
 namespace Basil.Application.Authentication.Persistence;

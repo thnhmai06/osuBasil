@@ -5,6 +5,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Gateway;
+using Basil.Gateway.Limits;
 using Basil.Host.Stable.Tests.Support;
 using Basil.Host.Stable.Web;
 using Basil.Testing.Clients;

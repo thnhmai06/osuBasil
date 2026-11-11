@@ -1,5 +1,6 @@
 using System.Text;
 using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Shared;
