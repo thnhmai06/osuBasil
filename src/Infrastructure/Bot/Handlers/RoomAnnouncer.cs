@@ -5,8 +5,8 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Shared;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Mediator;
 

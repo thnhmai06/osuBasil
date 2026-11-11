@@ -1,13 +1,13 @@
-using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Shared;
 using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
 

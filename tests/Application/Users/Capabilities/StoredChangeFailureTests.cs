@@ -1,8 +1,8 @@
 using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
+using Basil.Application.Users.Objects;
 using Basil.Domain.Users;
 using Basil.Testing;
-using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Users.Tests.Capabilities;
 

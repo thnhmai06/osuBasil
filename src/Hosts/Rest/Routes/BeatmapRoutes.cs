@@ -1,8 +1,10 @@
 using Basil.Application.Beatmaps.Messages;
+using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Application.Shared;
 using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
@@ -11,8 +13,6 @@ using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Mediator;
-using Basil.Application.Beatmaps.Objects;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Host.Rest.Routes;
 

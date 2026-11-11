@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Shared.Settings;
 using Basil.Application.Servers.Capabilities;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Users;
 using Basil.Testing;
 using static Basil.Testing.BeatmapsetWorld;

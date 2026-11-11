@@ -1,8 +1,8 @@
 using Basil.Application.Shared;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Mediator;
 

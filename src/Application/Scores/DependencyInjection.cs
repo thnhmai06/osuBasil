@@ -1,7 +1,7 @@
-using Basil.Application.Shared.Events;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Ports;
+using Basil.Application.Shared.Events;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Scores;

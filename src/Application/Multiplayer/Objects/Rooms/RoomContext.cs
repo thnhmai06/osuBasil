@@ -1,6 +1,6 @@
+using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
 

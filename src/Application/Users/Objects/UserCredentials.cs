@@ -2,9 +2,9 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Moderation;
+using Basil.Domain.Shared;
 
 namespace Basil.Application.Users.Objects;
 

@@ -1,18 +1,18 @@
-using Basil.Application.Shared.Settings;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Gateway;
 using Basil.Gateway.RateLimiting;
-using Mediator;
 using Basil.Host.Stable.Support;
+using Mediator;
 
 namespace Basil.Host.Stable.Web;
 

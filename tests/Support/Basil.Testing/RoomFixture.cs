@@ -1,13 +1,13 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Testing;

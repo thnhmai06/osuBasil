@@ -1,8 +1,8 @@
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Shared.Events;
-using Basil.Application.Shared.Storage;
-using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Ports;
+using Basil.Application.Shared.Events;
+using Basil.Application.Shared.Settings;
+using Basil.Application.Shared.Storage;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;

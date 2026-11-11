@@ -1,5 +1,5 @@
-using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Storage;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 

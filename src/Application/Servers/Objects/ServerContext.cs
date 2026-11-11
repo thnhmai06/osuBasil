@@ -2,12 +2,12 @@ using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Registry;
-using Basil.Application.Shared.Storage;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Shared.Settings;
+using Basil.Application.Shared.Storage;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 

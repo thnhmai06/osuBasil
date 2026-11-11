@@ -1,7 +1,7 @@
 using Basil.Application.Users.Messages;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
-using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Client;
 using Basil.Domain.Users;

@@ -1,8 +1,8 @@
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Shared;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
+using Basil.Domain.Shared;
 
 namespace Basil.Domain.Multiplayer;
 

@@ -1,12 +1,12 @@
-using Basil.Application.Shared;
-using Basil.Application.Shared.Paging;
-using Basil.Application.Shared.Privileges;
-using Basil.Application.Shared.Settings;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Shared;
+using Basil.Application.Shared.Paging;
+using Basil.Application.Shared.Privileges;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;

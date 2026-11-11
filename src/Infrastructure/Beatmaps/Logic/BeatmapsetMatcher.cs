@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
+using Basil.Domain.Shared;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 

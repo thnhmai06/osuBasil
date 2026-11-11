@@ -1,11 +1,11 @@
-using Basil.Application.Shared;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Shared;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;

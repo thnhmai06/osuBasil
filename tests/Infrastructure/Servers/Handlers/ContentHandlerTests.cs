@@ -1,13 +1,13 @@
-using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Storage;
 using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Servers.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Infrastructure.Servers.Tests.Handlers;
 

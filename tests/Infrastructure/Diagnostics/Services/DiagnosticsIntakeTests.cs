@@ -1,5 +1,5 @@
-using Basil.Application.Shared.Diagnostics;
 using Basil.Application.Diagnostics.Services;
+using Basil.Application.Shared.Diagnostics;
 using Basil.Infrastructure.Diagnostics.Services;
 using Mediator;
 using Microsoft.Extensions.Time.Testing;

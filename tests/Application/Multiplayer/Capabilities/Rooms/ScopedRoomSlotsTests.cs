@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Application.Users.Objects;
 using Basil.Domain.Mechanics;
 using Basil.Testing;
 

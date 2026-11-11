@@ -1,6 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Shared;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Shared;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;
 

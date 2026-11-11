@@ -1,11 +1,11 @@
-using Basil.Application.Shared.Settings;
-using Basil.Gateway.RateLimiting;
-using Mediator;
 using System.Globalization;
 using System.Text.Json;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Registry;
 using Basil.Gateway;
+using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Sse;
+using Mediator;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 
 namespace Basil.Host.Rest.Http;

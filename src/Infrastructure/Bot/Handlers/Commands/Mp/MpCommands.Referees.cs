@@ -1,9 +1,9 @@
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
+using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
-using Basil.Application.Multiplayer.Objects;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 

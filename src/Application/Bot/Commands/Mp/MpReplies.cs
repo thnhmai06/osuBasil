@@ -1,6 +1,6 @@
 using Basil.Application.Bot.Replies;
-using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Shared;
 
 namespace Basil.Application.Bot.Commands.Mp;
 

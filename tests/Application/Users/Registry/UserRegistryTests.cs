@@ -1,14 +1,14 @@
 using System.Net;
 using System.Text;
 using Basil.Application.Shared.Settings;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Testing;
-using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Users.Tests.Registry;
 

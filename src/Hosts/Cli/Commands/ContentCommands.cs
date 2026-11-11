@@ -1,14 +1,15 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Content.Messages;
+using Basil.Application.Diagnostics.Messages;
+using Basil.Application.Servers.Messages;
+using Basil.Application.Servers.Objects;
 using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Content.Messages;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Diagnostics.Messages;
-using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;
@@ -17,7 +18,6 @@ using Basil.Host.Shared;
 using Basil.Host.Shared.Json;
 using Basil.Host.Shared.Views;
 using Mediator;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Host.Cli.Commands;
 

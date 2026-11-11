@@ -1,18 +1,18 @@
-using Basil.Application.Shared.Settings;
-using Basil.Gateway.Admission;
-using Basil.Gateway.Limits;
-using Basil.Host.Irc.Commands;
-using Basil.Host.Irc.Session;
-using Mediator;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Gateway;
+using Basil.Gateway.Admission;
+using Basil.Gateway.Limits;
+using Basil.Host.Irc.Commands;
+using Basil.Host.Irc.Session;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc.Models;
+using Mediator;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 

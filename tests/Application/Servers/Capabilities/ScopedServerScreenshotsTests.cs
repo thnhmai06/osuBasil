@@ -1,8 +1,8 @@
-using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Ports;
 using Basil.Application.Content.Storage;
 using Basil.Application.Servers.Capabilities;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Shared.Settings;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Testing;

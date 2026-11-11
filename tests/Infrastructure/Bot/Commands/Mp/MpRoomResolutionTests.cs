@@ -1,10 +1,10 @@
 using Basil.Application.Bot.Commands;
-using Basil.Application.Users.Objects;
 using Basil.Application.Bot.Commands.Mp;
+using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;
-using Basil.Application.Multiplayer.Objects;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 

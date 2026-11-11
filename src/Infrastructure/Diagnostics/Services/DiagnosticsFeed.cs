@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using Basil.Application.Shared.Diagnostics;
 using Basil.Application.Diagnostics.Services;
+using Basil.Application.Shared.Diagnostics;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
 

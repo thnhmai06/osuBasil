@@ -1,13 +1,13 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
+using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 

@@ -14,8 +14,8 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Registry;

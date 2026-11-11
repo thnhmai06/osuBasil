@@ -1,6 +1,6 @@
-using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Shared;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;

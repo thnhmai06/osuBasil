@@ -1,5 +1,5 @@
-using Basil.Application.Shared;
 using Basil.Application.Diagnostics.Objects;
+using Basil.Application.Shared;
 using Basil.Application.Users.Objects.Connections;
 using Mediator;
 

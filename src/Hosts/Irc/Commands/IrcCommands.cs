@@ -1,8 +1,8 @@
-using Basil.Application.Shared.Settings;
 using System.Text;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;

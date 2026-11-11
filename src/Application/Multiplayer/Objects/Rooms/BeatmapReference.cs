@@ -1,7 +1,7 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Shared;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 

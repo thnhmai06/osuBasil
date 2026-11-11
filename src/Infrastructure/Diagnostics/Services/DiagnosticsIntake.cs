@@ -1,5 +1,5 @@
-using Basil.Application.Shared.Diagnostics;
 using Basil.Application.Diagnostics.Services;
+using Basil.Application.Shared.Diagnostics;
 using Mediator;
 
 namespace Basil.Infrastructure.Diagnostics.Services;

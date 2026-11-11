@@ -1,8 +1,8 @@
 using System.Text;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
+using Basil.Domain.Shared;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 

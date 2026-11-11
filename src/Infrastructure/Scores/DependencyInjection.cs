@@ -1,10 +1,10 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Storage;
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Scores.Logic;
 using Basil.Infrastructure.Scores.Persistence;
 using Basil.Infrastructure.Scores.Storage;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Scores;

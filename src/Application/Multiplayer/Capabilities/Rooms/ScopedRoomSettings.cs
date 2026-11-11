@@ -1,5 +1,5 @@
-using Basil.Application.Shared;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Shared;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;

@@ -1,16 +1,16 @@
-using Basil.Application.Shared.Settings;
-using Basil.Gateway.RateLimiting;
-using Mediator;
 using System.Text;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Shared;
 using Basil.Domain.Cryptography;
+using Basil.Domain.Shared;
 using Basil.Gateway;
+using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
+using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 

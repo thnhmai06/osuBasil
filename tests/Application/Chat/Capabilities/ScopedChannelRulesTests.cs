@@ -2,6 +2,7 @@ using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
+using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
@@ -12,7 +13,6 @@ using Basil.Infrastructure.Chat.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Chat.Tests.Capabilities;
 

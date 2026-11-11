@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects;
-using Basil.Application.Users.Objects;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;

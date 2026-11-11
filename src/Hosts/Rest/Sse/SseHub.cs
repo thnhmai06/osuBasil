@@ -1,13 +1,13 @@
-using Basil.Application.Shared.Settings;
-using Mediator;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Http;
+using Mediator;
 using Microsoft.Extensions.Hosting;
 
 namespace Basil.Host.Rest.Sse;

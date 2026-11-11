@@ -1,6 +1,6 @@
 using System.Text;
-using Basil.Application.Shared.Settings;
 using Basil.Application.Content.Ports;
+using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Storage;
 using Basil.Domain.Users;

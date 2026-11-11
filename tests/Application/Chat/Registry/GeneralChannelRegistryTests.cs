@@ -1,7 +1,7 @@
+using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Chat.Tests.Registry;
 

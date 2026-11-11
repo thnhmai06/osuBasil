@@ -1,4 +1,5 @@
 using System.Drawing;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
@@ -8,7 +9,6 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
-using Basil.Application.Users.Objects;
 
 namespace Basil.Application.Users.Tests.Objects.Connections;
 

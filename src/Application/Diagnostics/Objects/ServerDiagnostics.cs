@@ -1,6 +1,6 @@
 using System.Runtime;
-using Basil.Application.Diagnostics.Services;
 using Basil.Application.Diagnostics.Capabilities;
+using Basil.Application.Diagnostics.Services;
 using Basil.Application.Users.Objects.Connections;
 
 namespace Basil.Application.Diagnostics.Objects;

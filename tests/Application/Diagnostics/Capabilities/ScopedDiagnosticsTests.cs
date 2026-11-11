@@ -1,5 +1,5 @@
-using Basil.Application.Diagnostics.Services;
 using Basil.Application.Diagnostics.Objects;
+using Basil.Application.Diagnostics.Services;
 using Basil.Domain.Users;
 using Basil.Testing;
 using NSubstitute;

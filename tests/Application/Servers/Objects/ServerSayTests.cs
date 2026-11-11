@@ -1,9 +1,9 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Servers.Objects;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
-using Basil.Application.Servers.Objects;
 
 namespace Basil.Application.Servers.Tests.Objects;
 
