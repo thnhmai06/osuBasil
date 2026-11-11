@@ -1,4 +1,5 @@
 using Basil.Infrastructure.Common.Registry;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Common.Tests.Registry;
 
@@ -8,7 +9,7 @@ public sealed class CacheAsideTests
 	[Fact]
 	public async Task ValueLoadedOnce_ServedFromCache()
 	{
-		var cache = new CacheAside<int, string>();
+		var cache = new CacheAside<int, string>(new MemoryCache(new MemoryCacheOptions()));
 		var loads = 0;
 
 		Task<string?> Load()
@@ -27,7 +28,7 @@ public sealed class CacheAsideTests
 	[Fact]
 	public async Task MissingValue_NotCached()
 	{
-		var cache = new CacheAside<int, string>();
+		var cache = new CacheAside<int, string>(new MemoryCache(new MemoryCacheOptions()));
 		var loads = 0;
 
 		Task<string?> Load()
@@ -45,7 +46,7 @@ public sealed class CacheAsideTests
 	[Fact]
 	public async Task RemovedValue_LoadedAgain()
 	{
-		var cache = new CacheAside<int, string>();
+		var cache = new CacheAside<int, string>(new MemoryCache(new MemoryCacheOptions()));
 		var current = "old";
 		await cache.GetAsync(1, () => Task.FromResult<string?>(current));
 		current = "new";
@@ -57,7 +58,7 @@ public sealed class CacheAsideTests
 	[Fact]
 	public async Task EntryRemovedConcurrently_NotCached()
 	{
-		var cache = new CacheAside<int, string>();
+		var cache = new CacheAside<int, string>(new MemoryCache(new MemoryCacheOptions()));
 		var current = "old";
 		var loading = new TaskCompletionSource();
 		var release = new TaskCompletionSource();

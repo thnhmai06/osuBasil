@@ -24,6 +24,7 @@ public static class DependencyInjection
 		services.AddSingleton<CommonInfrastructureRegistration>();
 		services.AddCommonApplication();
 		services.TryAddSingleton(TimeProvider.System);
+		services.AddMemoryCache();
 		services.AddSingleton<DataPaths>();
 		services.AddSingleton<IUploadSpool, FileUploadSpool>();
 		services.AddSingleton<Database>();

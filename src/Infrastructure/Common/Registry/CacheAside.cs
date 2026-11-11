@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Caching.Memory;
+
 namespace Basil.Infrastructure.Common.Registry;
 
 /// <summary>
@@ -11,10 +13,9 @@ namespace Basil.Infrastructure.Common.Registry;
 ///     unchanged. A value that was loaded while an entry was being dropped is not cached. The cache holds one entry per
 ///     key read and has no size limit; use it for one small value per account.
 /// </remarks>
-public sealed class CacheAside<TKey, TValue> where TKey : notnull where TValue : class
+public sealed class CacheAside<TKey, TValue>(IMemoryCache cache) where TKey : notnull where TValue : class
 {
 	private readonly Lock _gate = new();
-	private readonly Dictionary<TKey, TValue> _values = [];
 	private long _removals;
 
 	/// <summary>Gets the cached value, or loads it from the database and caches it.</summary>
@@ -26,7 +27,7 @@ public sealed class CacheAside<TKey, TValue> where TKey : notnull where TValue :
 		long removalsBefore;
 		lock (_gate)
 		{
-			if (_values.TryGetValue(key, out var cached)) return cached;
+			if (cache.TryGetValue(Slot(key), out TValue? cached)) return cached;
 			removalsBefore = _removals;
 		}
 
@@ -35,7 +36,7 @@ public sealed class CacheAside<TKey, TValue> where TKey : notnull where TValue :
 
 		lock (_gate)
 		{
-			if (_removals == removalsBefore) _values[key] = loaded;
+			if (_removals == removalsBefore) cache.Set(Slot(key), loaded);
 		}
 
 		return loaded;
@@ -48,7 +49,10 @@ public sealed class CacheAside<TKey, TValue> where TKey : notnull where TValue :
 		lock (_gate)
 		{
 			_removals++;
-			_values.Remove(key);
+			cache.Remove(Slot(key));
 		}
 	}
+
+	// The owner is part of the key, so caches that share one IMemoryCache never see each other's entries.
+	private (CacheAside<TKey, TValue>, TKey) Slot(TKey key) => (this, key);
 }

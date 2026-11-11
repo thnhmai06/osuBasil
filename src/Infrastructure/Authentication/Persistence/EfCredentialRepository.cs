@@ -3,18 +3,19 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Persistence;
 using Basil.Infrastructure.Common.Registry;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Authentication.Persistence;
 
 /// <summary>Stores the login credential of each user.</summary>
-internal sealed class EfCredentialRepository(DatabaseSession database) : ICredentialRepository
+internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCache memory) : ICredentialRepository
 {
 	// A hash of a fixed password, checked for an account that has no credential yet, so an unknown account takes
 	// as long as a wrong password and cannot be told apart by timing.
 	private static readonly string AbsentAccountHash = BCrypt.Net.BCrypt.HashPassword("basil-absent-account");
 
 	// The bcrypt hash of each account that signed in, read on every login.
-	private readonly CacheAside<int, string> _hashes = new();
+	private readonly CacheAside<int, string> _hashes = new(memory);
 
 	/// <inheritdoc />
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken ct = default)
