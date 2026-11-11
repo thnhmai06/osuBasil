@@ -1,6 +1,6 @@
-using Basil.Infrastructure.Bot.Workers;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Infrastructure.Bot.Handlers;
+using Basil.Infrastructure.Bot.Workers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Bot.Tests.Support;

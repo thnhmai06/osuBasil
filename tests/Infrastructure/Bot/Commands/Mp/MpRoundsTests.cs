@@ -1,10 +1,10 @@
 using Basil.Application.Bot.Announcements;
 using Basil.Application.Bot.Commands.Mp;
-using Basil.Infrastructure.Bot.Workers;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Infrastructure.Bot.Tests.Support;
+using Basil.Infrastructure.Bot.Workers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 

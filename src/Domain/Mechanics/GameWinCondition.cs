@@ -1,5 +1,5 @@
-﻿using Basil.Domain.Shared;
-using Basil.Domain.Scores;
+﻿using Basil.Domain.Scores;
+using Basil.Domain.Shared;
 
 namespace Basil.Domain.Mechanics;
 

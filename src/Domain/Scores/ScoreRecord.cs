@@ -1,6 +1,6 @@
-﻿using Basil.Domain.Shared;
-using Basil.Domain.Cryptography;
+﻿using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Shared;
 
 namespace Basil.Domain.Scores;
 

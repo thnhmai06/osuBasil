@@ -1,5 +1,5 @@
-using Basil.Infrastructure.Bot.Workers;
 using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Infrastructure.Bot.Workers;
 using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers;
