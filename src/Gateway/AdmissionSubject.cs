@@ -1,7 +1,7 @@
 namespace Basil.Gateway;
 
 /// <summary>How much of the allowance of a policy an authenticated caller gets.</summary>
-public enum AdmissionTier
+public enum AdmissionTier : byte
 {
 	/// <summary>The ordinary allowance.</summary>
 	Standard,

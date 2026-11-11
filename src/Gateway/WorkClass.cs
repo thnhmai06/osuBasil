@@ -4,7 +4,7 @@ namespace Basil.Gateway;
 ///     The kind of work a request asks for; each kind has its own concurrency cap and its own place in the shed
 ///     order.
 /// </summary>
-public enum WorkClass
+public enum WorkClass : byte
 {
 	/// <summary>Gameplay, chat, rooms and account requests that a person waits for.</summary>
 	Interactive,

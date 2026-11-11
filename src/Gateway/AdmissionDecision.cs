@@ -1,7 +1,7 @@
 namespace Basil.Gateway;
 
 /// <summary>Why a request was refused.</summary>
-public enum AdmissionDenial
+public enum AdmissionDenial : byte
 {
 	/// <summary>The caller made more requests in the window than its tier allows.</summary>
 	RateExceeded = 1,

@@ -1,7 +1,7 @@
 namespace Basil.Gateway;
 
 /// <summary>How well the server is keeping up with the work asked of it.</summary>
-public enum AdmissionHealth
+public enum AdmissionHealth : byte
 {
 	/// <summary>The server is keeping up and refuses nothing for load.</summary>
 	Healthy,

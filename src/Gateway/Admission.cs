@@ -79,9 +79,9 @@ public sealed class Admission(TimeProvider clock, Func<GatewayLimits> source, Lo
 	/// </summary>
 	private double CurrentLoad(GatewayLimits limits)
 	{
-		var used = 0.0;
-		foreach (var workClass in MustServe)
-			used = Math.Max(used, (double)Volatile.Read(ref _running[(int)workClass]) / limits.ConcurrencyOf(workClass));
+		var used = MustServe
+			.Select(workClass => (double)Volatile.Read(ref _running[(int)workClass]) / limits.ConcurrencyOf(workClass))
+			.Prepend(0.0).Max();
 
 		return Math.Max(_load.Value, Math.Min(used, 1));
 	}
