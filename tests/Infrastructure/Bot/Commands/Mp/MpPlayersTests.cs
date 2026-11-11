@@ -31,7 +31,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task UnknownName_NotInMatch()
+	public async Task UnknownName_UserNotFound()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);
@@ -349,7 +349,7 @@ public sealed class MpPlayersTests
 	}
 
 	[Fact]
-	public async Task NameNoAccount_NotInMatch()
+	public async Task NameNoAccount_UserNotRegistered()
 	{
 		using var bot = new BotHarness();
 		var (room, creator, _) = await SetUpAsync(bot);

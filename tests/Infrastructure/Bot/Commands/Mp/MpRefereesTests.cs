@@ -29,7 +29,7 @@ public sealed class MpRefereesTests
 	}
 
 	[Fact]
-	public async Task NameNoAccount_NotInMatch()
+	public async Task NameNoAccount_UserNotFound()
 	{
 		using var bot = new BotHarness();
 		var (room, creator) = await SetUpAsync(bot);
