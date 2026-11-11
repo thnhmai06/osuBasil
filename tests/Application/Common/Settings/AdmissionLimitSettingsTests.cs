@@ -1,5 +1,4 @@
 using Basil.Application.Common.Settings;
-using Basil.Application.Common.Settings;
 
 namespace Basil.Application.Common.Tests.Settings;
 
