@@ -66,7 +66,7 @@ public static class CliHost
 		services.AddHostedService(provider => provider.GetRequiredService<ControlServer>());
 		services.AddHostedService<ShutdownTicker>();
 		services.AddSingleton(mode);
-		services.AddSingleton<DashboardApp>(provider => new DashboardApp(provider.GetRequiredService<DashboardModel>(),
+		services.AddSingleton<DashboardApp>(provider => new DashboardApp(provider, provider.GetRequiredService<DashboardModel>(),
 			provider.GetRequiredService<DashboardSampler>(),
 			provider.GetRequiredService<CommandRunner>(), provider.GetRequiredService<CommandSuggestions>(),
 			provider.GetRequiredService<ShutdownController>(), provider.GetRequiredService<ThemeStore>(), mode,

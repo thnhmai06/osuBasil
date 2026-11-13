@@ -125,6 +125,15 @@ internal sealed class ConsoleTab
 		return "  " + _tokens.Wrap(ink, line.Text);
 	}
 
+	/// <summary>Runs a command as if the operator had typed it, showing it and its output in the log.</summary>
+	/// <param name="line">The command line.</param>
+	public void RunCommand(string line)
+	{
+		var shown = Redactor.Redact(_runner.Catalog, line);
+		_app?.Post(() => _log.AppendMarkupLine(_tokens.Wrap(Ink.Accent, $"{_glyphs.Prompt} {shown}")));
+		_ = RunAsync(line);
+	}
+
 	private void OnAccepted()
 	{
 		var line = Prompt?.Text?.Trim() ?? string.Empty;

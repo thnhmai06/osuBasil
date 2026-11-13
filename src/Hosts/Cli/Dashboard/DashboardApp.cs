@@ -30,6 +30,9 @@ public sealed class DashboardApp
 	private readonly DashboardSampler _sampler;
 	private readonly ShutdownController _shutdown;
 	private readonly State<int> _selected = new(0);
+	private readonly Dictionary<DashboardTab, ITabView> _views = [];
+	private readonly IServiceProvider _services;
+	private int _lastActive = -1;
 	private readonly ThemeStore _themes;
 	private TerminalApp? _app;
 	private long _lastSample;
@@ -37,11 +40,12 @@ public sealed class DashboardApp
 	private TabControl? _tabs;
 
 	/// <summary>Creates the dashboard.</summary>
-	public DashboardApp(DashboardModel model, DashboardSampler sampler, CommandRunner runner,
+	public DashboardApp(IServiceProvider services, DashboardModel model, DashboardSampler sampler, CommandRunner runner,
 		CommandSuggestions suggestions, ShutdownController shutdown, ThemeStore themes, CliOptions mode,
 		TimeProvider clock, ILogger<DashboardApp> logger)
 	{
 		_sampler = sampler;
+		_services = services;
 		_shutdown = shutdown;
 		_themes = themes;
 		_mode = mode;
@@ -49,6 +53,8 @@ public sealed class DashboardApp
 		_logger = logger;
 		_glyphs = new Glyphs(mode.Ascii);
 		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), logger);
+		_views[DashboardTab.Users] = new UsersTab(services, _console, () => _selected.Value = (int)DashboardTab.Console,
+			mode, _glyphs, clock, action => _app?.Post(action), logger);
 	}
 
 	private DashboardTab Tab => (DashboardTab)Math.Clamp(_selected.Value, 0, Enum.GetValues<DashboardTab>().Length - 1);
@@ -92,6 +98,14 @@ public sealed class DashboardApp
 				_app = context.App;
 				AddKeys(_app);
 				_console.Attach(_app);
+				foreach (var view in _views.Values) view.Attach(_app);
+			}
+
+			ActiveView()?.Tick();
+			if (_lastActive != _selected.Value)
+			{
+				_lastActive = _selected.Value;
+				ActiveView()?.Activate();
 			}
 
 			_columns.Value = terminal.Size.Columns;
@@ -116,7 +130,13 @@ public sealed class DashboardApp
 
 	private Visual Content(DashboardTab tab)
 	{
-		return tab == DashboardTab.Console ? _console.View : PlaceholderTab.Create(tab.ToString());
+		return tab == DashboardTab.Console ? _console.View
+			: _views.TryGetValue(tab, out var view) ? view.View : PlaceholderTab.Create(tab.ToString());
+	}
+
+	private ITabView? ActiveView()
+	{
+		return _views.GetValueOrDefault(Tab);
 	}
 
 	private bool TooSmall()
@@ -139,7 +159,7 @@ public sealed class DashboardApp
 		var dot = $" {_glyphs.Dot} ";
 		var hints = Tab == DashboardTab.Console
 			? _mode.Editable ? new[] { "Enter run", "Tab complete", "Ctrl+End follow" } : ["Ctrl+End follow"]
-			: ["Ctrl+R refresh"];
+			: ["/ search", "Enter open", "Ctrl+R refresh"];
 		return " " + string.Join(dot, _mode.Editable ? hints : [.. hints, "view only"]);
 	}
 
@@ -180,6 +200,11 @@ public sealed class DashboardApp
 		{
 			Id = "interrupt", LabelMarkup = "Interrupt", Gesture = new KeyGesture('c', TerminalModifiers.Ctrl),
 			Execute = _ => _shutdown.Interrupt(!string.IsNullOrEmpty(_console.Prompt?.Text))
+		});
+		app.AddGlobalCommand(new Command
+		{
+			Id = "refresh", LabelMarkup = "Refresh", Gesture = new KeyGesture('r', TerminalModifiers.Ctrl),
+			Execute = _ => ActiveView()?.Refresh()
 		});
 		app.AddGlobalCommand(new Command
 		{
