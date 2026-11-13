@@ -36,7 +36,20 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		model.Rooms.Add(Number(json, "application", "rooms"));
 		model.Requests.Add(RequestsPerSecond(json));
 		model.Cores = _cores.Read();
+		model.MachineCpu.Add(model.Cores.Length == 0 ? 0 : model.Cores.Average());
+		const double gigabyte = 1_073_741_824;
+		model.MachineMemory.Add(Number(json, "machine", "usedMemoryBytes") / gigabyte);
+		model.ProcessMemory.Add(Number(json, "process", "workingSetBytes") / gigabyte);
+		model.MachineMemoryTotal = Number(json, "machine", "totalMemoryBytes") / gigabyte;
+		model.NetworkSent.Add(Number(json, "machine", "networkSentBytesPerSecond") / 1_048_576);
+		model.NetworkReceived.Add(Number(json, "machine", "networkReceivedBytesPerSecond") / 1_048_576);
 		model.Sessions = SessionCounts(json);
+		model.ConnectionsOpen.Add(model.Sessions.Values.Sum());
+		foreach (var kind in DashboardModel.ConnectionKinds)
+			model.OpenByKind[kind].Add(model.Sessions.GetValueOrDefault(kind));
+
+		model.ConnectionEvents = ConnectionEvents(json);
+		model.Latencies = Latencies(json);
 
 		var lines = new List<(string, string)>();
 		foreach (var (category, value) in json) Flatten(lines, category, value);
@@ -52,6 +65,36 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 			? hosts.Sum(host =>
 				host.Value is JsonObject window && window["requestsPerSecond"] is { } value ? (double)value : 0)
 			: 0;
+	}
+
+	private static Dictionary<string, long> ConnectionEvents(JsonObject json)
+	{
+		return json["connections"] is JsonObject counts
+			? counts.ToDictionary(pair => pair.Key, pair => (long)(pair.Value ?? 0))
+			: new Dictionary<string, long>();
+	}
+
+	private static Dictionary<string, Latency> Latencies(JsonObject json)
+	{
+		var result = new Dictionary<string, Latency>();
+		foreach (var protocol in new[] { "stable", "irc" })
+			if (json[protocol] is JsonObject)
+				result[protocol] = new Latency(Number(json, protocol, "p50Milliseconds"),
+					Number(json, protocol, "p95Milliseconds"), Number(json, protocol, "p99Milliseconds"));
+
+		// The hosts of the API are reported one by one; the slowest of them stands for the API.
+		if (json["http"] is JsonObject { Count: > 0 } hosts)
+		{
+			var windows = hosts.Select(host => host.Value).OfType<JsonObject>().ToList();
+			double Worst(string name)
+			{
+				return windows.Count == 0 ? 0 : windows.Max(window => window[name] is JsonValue v && v.TryGetValue<double>(out var n) ? n : 0);
+			}
+
+			result["api"] = new Latency(Worst("p50Milliseconds"), Worst("p95Milliseconds"), Worst("p99Milliseconds"));
+		}
+
+		return result;
 	}
 
 	private static Dictionary<string, int> SessionCounts(JsonObject json)
