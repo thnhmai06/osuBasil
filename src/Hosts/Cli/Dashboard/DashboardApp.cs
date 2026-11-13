@@ -224,6 +224,11 @@ public sealed class DashboardApp
 		});
 		app.AddGlobalCommand(new Command
 		{
+			Id = "decline", LabelMarkup = "Decline", Gesture = new KeyGesture(TerminalKey.Escape),
+			CanExecute = _ => _console.Asking, Execute = _ => _console.Decline()
+		});
+		app.AddGlobalCommand(new Command
+		{
 			Id = "refresh", LabelMarkup = "Refresh", Gesture = new KeyGesture('r', TerminalModifiers.Ctrl),
 			Execute = _ => ActiveView()?.Refresh()
 		});

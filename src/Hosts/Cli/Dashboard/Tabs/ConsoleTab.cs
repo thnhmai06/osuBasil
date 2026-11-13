@@ -161,6 +161,17 @@ internal sealed class ConsoleTab
 		}
 	}
 
+	private Action? _decline;
+
+	/// <summary>Whether a confirmation is waiting for an answer.</summary>
+	public bool Asking => _decline is not null;
+
+	/// <summary>Answers the waiting confirmation with "no".</summary>
+	public void Decline()
+	{
+		_decline?.Invoke();
+	}
+
 	private Task<bool> AskAsync(string question, CancellationToken ct)
 	{
 		var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -170,9 +181,12 @@ internal sealed class ConsoleTab
 			var dialog = new Dialog().Title("Confirm");
 			void Answer(bool yes)
 			{
+				_decline = null;
 				dialog.Close();
 				source.TrySetResult(yes);
 			}
+
+			_decline = () => Answer(false);
 
 			dialog.Content(new VStack(new TextBlock(question),
 				new HStack(new Button("Yes").Click(() => Answer(true)), new Button("No").Click(() => Answer(false)))
