@@ -34,10 +34,12 @@ The categories are:
 | `threadpool` | thread count, pending work items and completion rate |
 | `runtime` | version, operating system, build, uptime, CPU count and dropped log events |
 | `exceptions` | first-chance exceptions per second, their total and the most recent ones |
-| `http` | request statistics per host label (`c`, `osu`, `api`, ...) |
+| `http` | request statistics per host label (`c`, `osu`, `api`, ...): rate, p50, p95 and p99 durations and status classes |
 | `application` | users online, open rooms, rounds in progress, open live streams, open general channels and diagnostics watchers |
 | `sessions` | open connections by type (osu, tourney, irc, api, ...) |
-| `osu-stable`, `irc` | open connections of that protocol |
+| `connections` | running totals since the server started, by type and event (`<type>.opened`, `.closed`, `.timeout`, `.errors`, `.rejected`) |
+| `machine` | memory used and in total of the whole machine, and bytes sent and received per second over its network interfaces (loopback excluded) |
+| `stable`, `irc` | open connections of that protocol, and the time to handle one poll (stable) or one line (IRC): `requestsPerSecond`, `p50Milliseconds`, `p95Milliseconds`, `p99Milliseconds` |
 | `database`, `events` | not measured yet: they answer `available: false` |
 
 ## Why a shared sample
@@ -77,7 +79,12 @@ Every module's Infrastructure project that has handlers owns a `Meter` named `Ba
 connections of every type (`stable`, `stabletourney`, `irc`, `api`), counting a type with no connection as zero and leaving
 out the bot's own server-owned connections. Multiplayer reports rooms and rounds, Chat the open general channels
 (`application.channels`) and Diagnostics its own watchers (`application.diagnosticsWatchers`); the API host reports the open
-live streams. Modules without live state of their own (Beatmaps, Scores, Servers) answer with nothing. Rejected connections
+live streams. Modules without live state of their own (Beatmaps, Scores, Servers) answer with nothing. Connections are counted when they open and close, by type: `timeout` is a close for being idle too long, `errors` a
+close because the transport was lost, `rejected` a refusal for holding too many connections (also the
+`basil.connections.rejected` counter, by type and reason). The `machine` memory and traffic are read from the system (`/proc/meminfo` on Linux,
+`GlobalMemoryStatusEx` on Windows, the network interfaces' counters on both) and are zero where the system does not
+publish them. The hosts record how long one poll of the game server and one IRC line take, as the API host does for a
+request, and the sampler turns each second's durations into percentiles. Rejected connections
 are counted by type and reason (`basil.connections.rejected`). Labels have a bounded set of values and never carry an id or
 a name.
 

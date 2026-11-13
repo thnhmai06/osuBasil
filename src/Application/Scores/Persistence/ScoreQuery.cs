@@ -9,6 +9,8 @@ namespace Basil.Application.Scores.Persistence;
 /// <param name="BeatmapHash">The beatmap the scores were set on, or <see langword="null" /> for any.</param>
 /// <param name="Mods">The exact mods applied to the play, or <see langword="null" /> for any.</param>
 /// <param name="Players">The players whose scores are included, or <see langword="null" /> for any.</param>
+/// <param name="UserIds">The ids of the users whose scores are included, or <see langword="null" /> for any.</param>
+/// <param name="BeatmapHashes">The beatmaps, by hash, whose scores are included, or <see langword="null" /> for any.</param>
 /// <param name="BestPerPlayer">Whether to include only each player's highest-scoring play.</param>
 /// <remarks>
 ///     A global leaderboard uses <see cref="BeatmapHash" /> and <see cref="BestPerPlayer" />; a mods leaderboard
@@ -19,4 +21,6 @@ public sealed record ScoreQuery(
 	Md5? BeatmapHash = null,
 	GameMods? Mods = null,
 	IReadOnlySet<UserRecord>? Players = null,
-	bool BestPerPlayer = false);
+	bool BestPerPlayer = false,
+	IReadOnlySet<int>? UserIds = null,
+	IReadOnlySet<Md5>? BeatmapHashes = null);

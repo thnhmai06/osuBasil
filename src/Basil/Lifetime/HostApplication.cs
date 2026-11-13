@@ -7,6 +7,7 @@ using Basil.Host.Rest;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Images;
 using Basil.Host.Shared.Documentation;
+using Basil.Host.Shared.Info;
 using Basil.Host.Stable.Routes;
 using Basil.Http;
 using Basil.Infrastructure.Beatmaps;
@@ -45,7 +46,9 @@ public static class HostApplication
 		builder.Services.AddSingleton<ConfigurationWatcher>();
 		builder.Services.AddHostedService(provider => provider.GetRequiredService<ConfigurationWatcher>());
 		builder.Services.AddHostedService<LanAdvertiser>();
-		builder.Services.AddHostedService<UpdateChecker>();
+		builder.Services.AddSingleton<UpdateChecker>();
+		builder.Services.AddHostedService(provider => provider.GetRequiredService<UpdateChecker>());
+		builder.Services.AddSingleton<IUpdateStatus>(provider => provider.GetRequiredService<UpdateChecker>());
 		builder.Services.AddBasil();
 		builder.Services.AddBotInfrastructureOptions(builder.Configuration);
 		builder.Services.AddSingleton<IDocumentPage, BotReferencePage>();

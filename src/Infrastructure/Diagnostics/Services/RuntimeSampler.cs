@@ -17,7 +17,10 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 	private const int RecentExceptions = 20;
 	private readonly TimeProvider _clock;
 	private readonly ConcurrentDictionary<string, HostWindow> _hosts = new();
+	private readonly HostWindow _irc = new();
 	private readonly MeterListener _listener = new();
+	private readonly MachineSampler _machine = new();
+	private readonly HostWindow _stable = new();
 	private readonly ConcurrentQueue<string> _recent = new();
 	private readonly DateTimeOffset _started;
 	private readonly object _sync = new();
@@ -40,7 +43,8 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 		// The hosts own the instrument; it is found by its agreed name wherever it is published.
 		_listener.InstrumentPublished = (instrument, listener) =>
 		{
-			if (instrument.Name == DiagnosticsMetrics.HttpDurationName) listener.EnableMeasurementEvents(instrument);
+			if (instrument.Name is DiagnosticsMetrics.HttpDurationName or DiagnosticsMetrics.StableDurationName
+			    or DiagnosticsMetrics.IrcDurationName) listener.EnableMeasurementEvents(instrument);
 		};
 		_listener.SetMeasurementEventCallback<double>(OnDuration);
 		_listener.Start();
@@ -115,7 +119,10 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 				{
 					perSecond = (exceptions - _lastExceptions) / elapsed, total = exceptions, recent = _recent.ToArray()
 				},
-				["http"] = _hosts.OrderBy(h => h.Key).ToDictionary(h => h.Key, h => h.Value.Snapshot(elapsed))
+				["http"] = _hosts.OrderBy(h => h.Key).ToDictionary(h => h.Key, h => (object)h.Value.Snapshot(elapsed)),
+				["stable"] = _stable.Snapshot(elapsed, false),
+				["irc"] = _irc.Snapshot(elapsed, false),
+				["machine"] = _machine.Sample(elapsed)
 			};
 			_lastCpu = cpu;
 			_lastAllocated = allocated;
@@ -136,6 +143,18 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 	private void OnDuration(Instrument instrument, double value, ReadOnlySpan<KeyValuePair<string, object?>> tags,
 		object? state)
 	{
+		if (instrument.Name == DiagnosticsMetrics.StableDurationName)
+		{
+			_stable.Add(value, "2xx");
+			return;
+		}
+
+		if (instrument.Name == DiagnosticsMetrics.IrcDurationName)
+		{
+			_irc.Add(value, "2xx");
+			return;
+		}
+
 		string host = "other", status = "2xx";
 		foreach (var tag in tags)
 			if (tag.Key == DiagnosticsMetrics.HostTag) host = tag.Value?.ToString() ?? host;
@@ -161,16 +180,17 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 			}
 		}
 
-		public object Snapshot(double seconds)
+		public Dictionary<string, object> Snapshot(double seconds, bool withStatuses = true)
 		{
 			lock (_lock)
 			{
 				var sorted = _durations.Order().ToArray();
-				var result = new
+				var result = new Dictionary<string, object>
 				{
-					requestsPerSecond = sorted.Length / seconds, p50Milliseconds = Percentile(sorted, 0.5),
-					p95Milliseconds = Percentile(sorted, 0.95), statuses = new Dictionary<string, int>(_statuses)
+					["requestsPerSecond"] = sorted.Length / seconds, ["p50Milliseconds"] = Percentile(sorted, 0.5),
+					["p95Milliseconds"] = Percentile(sorted, 0.95), ["p99Milliseconds"] = Percentile(sorted, 0.99)
 				};
+				if (withStatuses) result["statuses"] = new Dictionary<string, int>(_statuses);
 				_durations.Clear();
 				_statuses.Clear();
 				return result;

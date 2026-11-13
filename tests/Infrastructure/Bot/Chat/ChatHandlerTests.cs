@@ -196,6 +196,21 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 		Assert.Empty(Posts());
 	}
 
+	[Fact]
+	public async Task OperatorMessage_RunsAsCommand()
+	{
+		var operatorConnection = await _bot.App.Users.OperateAsync(Token);
+		var message = new Message
+		{
+			Author = operatorConnection.Record, Content = "!roll", Timestamp = _bot.App.Clock.GetUtcNow()
+		};
+
+		await _handler.Handle(new ChannelMessagePosted(_channel, message, false, null, operatorConnection), Token);
+		await DrainAsync();
+
+		Assert.NotEmpty(_bot.SaidIn(_channel));
+	}
+
 	#endregion
 
 	#region Long answers

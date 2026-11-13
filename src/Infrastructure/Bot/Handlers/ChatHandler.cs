@@ -27,7 +27,8 @@ internal sealed class ChatHandler(
 	/// <inheritdoc />
 	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken ct)
 	{
-		if (posted.Actor is not { } actor || IsIgnored(posted.Message))
+		// A message the server said has no actor, so BasilBot's own replies are never read as commands.
+		if (posted.Actor is not { } actor || IsIgnored(posted.Message, actor))
 			return ValueTask.CompletedTask;
 
 		var privateMessage = posted.Channel is PmChannel pm && pm.Owner.Record.IsBasilBot();
@@ -42,9 +43,11 @@ internal sealed class ChatHandler(
 		return ValueTask.CompletedTask;
 	}
 
-	private static bool IsIgnored(Message message)
+	// The operator speaks as BasilBot, so its messages are commands typed by the operator; the bot's own connections
+	// never are.
+	private static bool IsIgnored(Message message, Connection actor)
 	{
-		return message.IsNotice || message.Author.IsBasilBot();
+		return message.IsNotice || (message.Author.IsBasilBot() && actor is not OperatorConnection);
 	}
 
 	private CommandContext NewContext(ChannelMessagePosted posted, Connection actor, bool privateMessage)
