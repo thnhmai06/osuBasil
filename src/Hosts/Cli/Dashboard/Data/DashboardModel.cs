@@ -43,26 +43,38 @@ public sealed record RoomRow(
 	string Host,
 	IReadOnlyList<SlotRow> Slots);
 
-/// <summary>The tabs of the dashboard.</summary>
+/// <summary>The tabs of the dashboard, in the order of F1 to F10.</summary>
 public enum DashboardTab : byte
 {
-	/// <summary>The summary.</summary>
-	Overview,
+	/// <summary>The log and the command box.</summary>
+	Console,
 
-	/// <summary>The accounts online.</summary>
+	/// <summary>The graphs of the machine and the server.</summary>
+	Monitor,
+
+	/// <summary>The accounts.</summary>
 	Users,
 
-	/// <summary>The open rooms.</summary>
-	Rooms,
+	/// <summary>The beatmaps.</summary>
+	Beatmaps,
 
-	/// <summary>Every diagnostics category with its history.</summary>
-	Metrics,
+	/// <summary>The rooms.</summary>
+	Lobby,
 
-	/// <summary>The server log.</summary>
-	Logs,
+	/// <summary>The chat.</summary>
+	Chat,
 
-	/// <summary>The chat feed.</summary>
-	Chat
+	/// <summary>The scores.</summary>
+	Scores,
+
+	/// <summary>The connections by kind.</summary>
+	Connections,
+
+	/// <summary>The server settings.</summary>
+	Settings,
+
+	/// <summary>The version, the licence and the updates.</summary>
+	About
 }
 
 /// <summary>Everything the dashboard shows, refreshed once a second; the tabs only read it.</summary>

@@ -16,6 +16,7 @@ public sealed class LogBuffer : ILoggerProvider
 	private readonly TimeProvider _clock;
 	private readonly Lock _gate = new();
 	private readonly Queue<LogLine> _lines = new();
+	private long _total;
 
 	/// <summary>Creates a buffer.</summary>
 	/// <param name="clock">The clock that stamps the lines.</param>
@@ -46,11 +47,25 @@ public sealed class LogBuffer : ILoggerProvider
 		}
 	}
 
+	/// <summary>Gets the lines added after the first <paramref name="seen" /> ones, which the buffer still holds.</summary>
+	/// <param name="seen">How many lines the caller has already taken (the <paramref name="total" /> of its last call).</param>
+	/// <param name="total">How many lines have been added in all.</param>
+	public IReadOnlyList<LogLine> Since(long seen, out long total)
+	{
+		lock (_gate)
+		{
+			total = _total;
+			var fresh = (int)Math.Min(_total - seen, _lines.Count);
+			return fresh <= 0 ? [] : [.. _lines.Skip(_lines.Count - fresh)];
+		}
+	}
+
 	/// <summary>Adds a line.</summary>
 	public void Add(LogLine line)
 	{
 		lock (_gate)
 		{
+			_total++;
 			_lines.Enqueue(line);
 			while (_lines.Count > _capacity) _lines.Dequeue();
 		}

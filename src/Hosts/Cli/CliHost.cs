@@ -58,7 +58,6 @@ public static class CliHost
 			Log = provider.GetRequiredService<LogBuffer>(), Chat = provider.GetRequiredService<ChatFeed>()
 		});
 		services.AddSingleton<DashboardSampler>();
-		services.AddSingleton<DashboardRenderer>();
 		services.AddSingleton(new ThemeStore(configurationDirectory, mode.NoColor));
 		services.AddSingleton<IThemeControl>(provider => provider.GetRequiredService<ThemeStore>());
 		services.AddSingleton(provider => new ControlServer(provider.GetRequiredService<CommandRunner>(),
@@ -68,7 +67,7 @@ public static class CliHost
 		services.AddHostedService<ShutdownTicker>();
 		services.AddSingleton(mode);
 		services.AddSingleton<DashboardApp>(provider => new DashboardApp(provider.GetRequiredService<DashboardModel>(),
-			provider.GetRequiredService<DashboardRenderer>(), provider.GetRequiredService<DashboardSampler>(),
+			provider.GetRequiredService<DashboardSampler>(),
 			provider.GetRequiredService<CommandRunner>(), provider.GetRequiredService<CommandSuggestions>(),
 			provider.GetRequiredService<ShutdownController>(), provider.GetRequiredService<ThemeStore>(), mode,
 			provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<DashboardApp>>()));
