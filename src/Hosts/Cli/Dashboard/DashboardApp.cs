@@ -55,7 +55,7 @@ public sealed class DashboardApp
 		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), logger);
 		_views[DashboardTab.Users] = new UsersTab(services, _console, () => _selected.Value = (int)DashboardTab.Console,
 			mode, _glyphs, clock, action => _app?.Post(action), logger);
-		_views[DashboardTab.Lobby] = new LobbyTab(services, _console, _ => _selected.Value = (int)DashboardTab.Chat, mode,
+		_views[DashboardTab.Lobby] = new LobbyTab(services, _console, name => OpenIn(DashboardTab.Chat, name), mode,
 			_glyphs, clock, action => _app?.Post(action), logger);
 		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, _console, mode, _glyphs, clock,
 			action => _app?.Post(action), logger);
@@ -64,6 +64,8 @@ public sealed class DashboardApp
 		_views[DashboardTab.About] = new AboutTab(services, _glyphs, action => _app?.Post(action), logger);
 		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
 		_views[DashboardTab.Connections] = new ConnectionsTab(model, themes, _glyphs, mode);
+		_views[DashboardTab.Chat] = new ChatTab(services, model.Chat, mode, _glyphs, new Palette(mode.NoColor),
+			() => (_columns.Value, _rows.Value), logger);
 		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs,
 			action => _app?.Post(action), logger);
 	}
@@ -174,7 +176,9 @@ public sealed class DashboardApp
 	private string Hints()
 	{
 		var dot = $" {_glyphs.Dot} ";
-		var hints = Tab == DashboardTab.Console
+		var hints = Tab == DashboardTab.Chat
+			? _mode.Editable ? new[] { "Enter send", "Tab next pane", "Ctrl+End follow" } : ["Tab next pane"]
+			: Tab == DashboardTab.Console
 			? _mode.Editable ? new[] { "Enter run", "Tab complete", "Ctrl+End follow" } : ["Ctrl+End follow"]
 			: ["/ search", "Enter open", "Ctrl+R refresh"];
 		return " " + string.Join(dot, _mode.Editable ? hints : [.. hints, "view only"]);

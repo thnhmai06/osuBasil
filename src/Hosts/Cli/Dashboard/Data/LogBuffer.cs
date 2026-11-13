@@ -103,18 +103,39 @@ public sealed class LogBuffer : ILoggerProvider
 /// <param name="Text">The text.</param>
 public sealed record ChatLine(DateTimeOffset Time, string Channel, string Author, string Text);
 
-/// <summary>Keeps the most recent chat messages for the chat tab.</summary>
-public sealed class ChatFeed(int capacity = 1000)
+/// <summary>Keeps the most recent chat messages of each channel since the server started, for the chat tab.</summary>
+/// <param name="capacity">How many messages each channel keeps.</param>
+public sealed class ChatFeed(int capacity = 500)
 {
+	private readonly Dictionary<string, Channel> _channels = new(StringComparer.OrdinalIgnoreCase);
 	private readonly Lock _gate = new();
-	private readonly Queue<ChatLine> _lines = new();
 
-	/// <summary>Gets the messages, oldest first.</summary>
-	public IReadOnlyList<ChatLine> Lines()
+	/// <summary>Gets the names of the channels that have messages.</summary>
+	public IReadOnlyList<string> Channels()
 	{
 		lock (_gate)
 		{
-			return [.. _lines];
+			return [.. _channels.Keys.Order()];
+		}
+	}
+
+	/// <summary>Gets the messages of a channel added after the first <paramref name="seen" /> ones that it still holds.</summary>
+	/// <param name="channel">The channel name.</param>
+	/// <param name="seen">How many messages the caller has taken (the <paramref name="total" /> of its last call).</param>
+	/// <param name="total">How many messages the channel has had in all.</param>
+	public IReadOnlyList<ChatLine> Since(string channel, long seen, out long total)
+	{
+		lock (_gate)
+		{
+			if (!_channels.TryGetValue(channel, out var entry))
+			{
+				total = 0;
+				return [];
+			}
+
+			total = entry.Total;
+			var fresh = (int)Math.Min(entry.Total - seen, entry.Lines.Count);
+			return fresh <= 0 ? [] : [.. entry.Lines.Skip(entry.Lines.Count - fresh)];
 		}
 	}
 
@@ -123,8 +144,18 @@ public sealed class ChatFeed(int capacity = 1000)
 	{
 		lock (_gate)
 		{
-			_lines.Enqueue(line);
-			while (_lines.Count > capacity) _lines.Dequeue();
+			if (!_channels.TryGetValue(line.Channel, out var entry)) _channels[line.Channel] = entry = new Channel();
+
+			entry.Total++;
+			entry.Lines.Enqueue(line);
+			while (entry.Lines.Count > capacity) entry.Lines.Dequeue();
 		}
+	}
+
+	private sealed class Channel
+	{
+		public Queue<ChatLine> Lines { get; } = new();
+
+		public long Total { get; set; }
 	}
 }
