@@ -145,10 +145,10 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 
 	private static Ink Status(BeatmapsetStatus status)
 	{
-		return status is BeatmapsetStatus.Ranked or BeatmapsetStatus.Approved ? Ink.Success
-			: status is BeatmapsetStatus.Loved ? Ink.Accent
-			: status is BeatmapsetStatus.Qualified ? Ink.Info
-			: Ink.Muted;
+		return status is BeatmapsetStatus.Ranked or BeatmapsetStatus.Approved ? Ink.MapRanked
+			: status is BeatmapsetStatus.Loved ? Ink.MapLoved
+			: status is BeatmapsetStatus.Qualified ? Ink.MapQualified
+			: Ink.MapPending;
 	}
 
 	private static DetailView Detail(BeatmapItem map, ConsoleTab console, CliOptions options)

@@ -125,10 +125,10 @@ internal sealed class LobbyTab : ITabView
 	{
 		return room.State switch
 		{
-			"playing" => Ink.Success,
-			"locked" => Ink.Warning,
-			"closed" => Ink.Muted,
-			_ => Ink.Info
+			"playing" => Ink.RoomPlaying,
+			"locked" => Ink.RoomLocked,
+			"closed" => Ink.RoomClosed,
+			_ => Ink.RoomOpen
 		};
 	}
 

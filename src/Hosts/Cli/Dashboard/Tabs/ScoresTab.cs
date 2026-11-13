@@ -162,11 +162,11 @@ internal sealed class ScoresTab : ITabView
 	{
 		return grade switch
 		{
-			Grade.X or Grade.Xh or Grade.S or Grade.Sh => Ink.Accent,
-			Grade.A => Ink.Success,
-			Grade.B => Ink.Info,
-			Grade.C => Ink.Warning,
-			Grade.D or Grade.F => Ink.Error,
+			Grade.X or Grade.Xh or Grade.S or Grade.Sh => Ink.GradeTop,
+			Grade.A => Ink.GradeA,
+			Grade.B => Ink.GradeB,
+			Grade.C => Ink.GradeC,
+			Grade.D or Grade.F => Ink.GradeD,
 			_ => Ink.Muted
 		};
 	}

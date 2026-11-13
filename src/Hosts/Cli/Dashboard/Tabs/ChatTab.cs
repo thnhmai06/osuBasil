@@ -259,7 +259,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 
 	private string Format(ChatLine line)
 	{
-		var ink = line.Author.Equals("BasilBot", StringComparison.OrdinalIgnoreCase) ? Ink.Accent : Ink.Text;
+		var ink = line.Author.Equals("BasilBot", StringComparison.OrdinalIgnoreCase) ? Ink.ChatBot : Ink.Text;
 		return $"{_palette.Wrap(Ink.Muted, line.Time.ToLocalTime().ToString("H:mm"))} " +
 		       $"{_palette.Wrap(ink, line.Author + ":")} {_palette.Wrap(Ink.Text, line.Text)}";
 	}

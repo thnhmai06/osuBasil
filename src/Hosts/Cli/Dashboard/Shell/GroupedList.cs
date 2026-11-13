@@ -349,8 +349,9 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			: Style.None.WithForeground(theme.Muted ?? Colors.TerminalBrightBlack);
 	}
 
-	private Style InkStyle(Theme theme, Ink ink)
+	private Style InkStyle(Theme theme, Ink kind)
 	{
+		var ink = InkTable.Basic(kind);
 		if (_noColor)
 			return ink switch
 			{

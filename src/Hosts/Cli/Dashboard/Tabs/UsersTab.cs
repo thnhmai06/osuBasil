@@ -146,8 +146,8 @@ internal sealed class UsersTab : ITabView, ISelectable
 	{
 		var privileges = (UserPrivileges)mask;
 		return privileges.HasFlag(UserPrivileges.Developer) || privileges.HasFlag(UserPrivileges.Owner)
-			? Ink.Accent
-			: privileges.HasFlag(UserPrivileges.Player) ? Ink.Text : Ink.Error;
+			? Ink.RoleStaff
+			: privileges.HasFlag(UserPrivileges.Player) ? Ink.RolePlayer : Ink.RoleRestricted;
 	}
 
 	private static DetailView Detail(UserItem user, ConsoleTab console, Action showConsole, CliOptions options,
