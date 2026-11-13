@@ -62,6 +62,8 @@ public sealed class DashboardApp
 		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, mode, clock,
 			action => _app?.Post(action), logger);
 		_views[DashboardTab.About] = new AboutTab(services, _glyphs, action => _app?.Post(action), logger);
+		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
+		_views[DashboardTab.Connections] = new ConnectionsTab(model, themes, _glyphs, mode);
 		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs,
 			action => _app?.Post(action), logger);
 	}
