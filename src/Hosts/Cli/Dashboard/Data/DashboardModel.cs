@@ -43,6 +43,12 @@ public sealed record RoomRow(
 	string Host,
 	IReadOnlyList<SlotRow> Slots);
 
+/// <summary>How long the server takes to handle one request, in milliseconds, at three percentiles.</summary>
+/// <param name="P50">The median.</param>
+/// <param name="P95">The 95th percentile.</param>
+/// <param name="P99">The 99th percentile.</param>
+public readonly record struct Latency(double P50, double P95, double P99);
+
 /// <summary>The tabs of the dashboard, in the order of F1 to F10.</summary>
 public enum DashboardTab : byte
 {
@@ -83,6 +89,9 @@ public sealed class DashboardModel
 	/// <summary>How many seconds of history the graphs keep.</summary>
 	public const int HistorySeconds = 15 * 60;
 
+	/// <summary>The kinds of connection the server counts, as the diagnostics name them.</summary>
+	public static readonly string[] ConnectionKinds = ["stable", "stabletourney", "irc", "api"];
+
 	private readonly List<OutputLine> _output = [];
 	private readonly Lock _outputGate = new();
 
@@ -109,6 +118,37 @@ public sealed class DashboardModel
 
 	/// <summary>Gets the allocation rate, in megabytes per second.</summary>
 	public Series Allocations { get; } = new(HistorySeconds);
+
+	/// <summary>Gets the CPU use of the whole machine, in percent of all cores.</summary>
+	public Series MachineCpu { get; } = new(HistorySeconds);
+
+	/// <summary>Gets the memory used on the whole machine, in gigabytes.</summary>
+	public Series MachineMemory { get; } = new(HistorySeconds);
+
+	/// <summary>Gets the working set of the process, in gigabytes.</summary>
+	public Series ProcessMemory { get; } = new(HistorySeconds);
+
+	/// <summary>Gets the memory of the whole machine, in gigabytes.</summary>
+	public double MachineMemoryTotal { get; set; }
+
+	/// <summary>Gets the network traffic sent by the machine, in megabytes per second.</summary>
+	public Series NetworkSent { get; } = new(HistorySeconds);
+
+	/// <summary>Gets the network traffic received by the machine, in megabytes per second.</summary>
+	public Series NetworkReceived { get; } = new(HistorySeconds);
+
+	/// <summary>Gets the connections open, of every kind together.</summary>
+	public Series ConnectionsOpen { get; } = new(HistorySeconds);
+
+	/// <summary>Gets the connections open by kind (<c>stable</c>, <c>stabletourney</c>, <c>irc</c>, <c>api</c>).</summary>
+	public IReadOnlyDictionary<string, Series> OpenByKind { get; } =
+		ConnectionKinds.ToDictionary(kind => kind, _ => new Series(HistorySeconds));
+
+	/// <summary>Gets the connection events counted since the server started, by <c>&lt;kind&gt;.&lt;event&gt;</c>.</summary>
+	public IReadOnlyDictionary<string, long> ConnectionEvents { get; set; } = new Dictionary<string, long>();
+
+	/// <summary>Gets how long a poll or an IRC line takes, by protocol (<c>stable</c>, <c>irc</c>, <c>api</c>).</summary>
+	public IReadOnlyDictionary<string, Latency> Latencies { get; set; } = new Dictionary<string, Latency>();
 
 	/// <summary>Gets the busy part of each core, from 0 to 100.</summary>
 	public double[] Cores { get; set; } = [];
