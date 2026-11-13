@@ -208,10 +208,10 @@ internal sealed class ConsoleTab
 		/// <inheritdoc />
 		public void Write(OutputLine line)
 		{
-			var text = tab.Format(line);
+			var parts = line.Text.Split('\n').Select(part => tab.Format(line with { Text = part.TrimEnd('\r') })).ToList();
 			tab._app?.Post(() =>
 			{
-				foreach (var part in text.Split('\n')) tab._log.AppendMarkupLine(part);
+				foreach (var part in parts) tab._log.AppendMarkupLine(part);
 			});
 		}
 	}

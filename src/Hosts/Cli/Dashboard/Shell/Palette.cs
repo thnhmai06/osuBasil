@@ -34,9 +34,19 @@ internal sealed record Palette(bool NoColor)
 	/// <param name="text">The plain text; it is escaped here.</param>
 	public string Wrap(Ink token, string text)
 	{
-		var escaped = XenoAtom.Ansi.AnsiMarkup.Escape(text);
+		var escaped = XenoAtom.Ansi.AnsiMarkup.Escape(Plain(text));
 		var tag = Tag(token);
 		return tag.Length == 0 ? escaped : $"[{tag}]{escaped}[/]";
+	}
+
+	/// <summary>Replaces the control characters of untrusted text, so that it cannot send escape sequences to the terminal.</summary>
+	/// <param name="text">The text, such as a user name or a log message.</param>
+	/// <returns>The text with every control character except the tab shown as <c>?</c>.</returns>
+	public static string Plain(string text)
+	{
+		return text.Any(c => char.IsControl(c) && c != '\t')
+			? string.Concat(text.Select(c => char.IsControl(c) && c != '\t' ? '?' : c))
+			: text;
 	}
 
 	private string Tag(Ink token)
