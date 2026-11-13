@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Basil.Application.Diagnostics.Services;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Gateway.Admission;
@@ -91,8 +93,11 @@ public static class StableRoutes
 		    { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney } connection)
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 
+		var started = Stopwatch.GetTimestamp();
 		registry.MarkActive(connection);
 		await dispatcher.DispatchAsync(connection, body, ct);
-		return Results.Bytes(outbox.Drain(connection), "text/html; charset=UTF-8");
+		var packets = outbox.Drain(connection);
+		DiagnosticsMetrics.StableDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+		return Results.Bytes(packets, "text/html; charset=UTF-8");
 	}
 }

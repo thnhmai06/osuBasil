@@ -28,6 +28,11 @@ Room countdowns belong to the room, not to BasilBot. A countdown that starts a r
 settings change; countdowns stop when the round starts or is aborted or the room closes. BasilBot announces the
 countdown marks.
 
+A message the operator types in the console's chat (posted as BasilBot through the operator's connection) is read as a
+command like any other: the typist is the operator, so the command runs with every right. This is the only message
+under BasilBot's name that is read as a command. BasilBot's own replies and announcements are never read, so a
+reply that starts with `!` cannot start a command; the bot's own osu! and IRC connections are never typists.
+
 BasilBot is shown as an online user to both the osu! client and IRC. Operators also have a console in the server
 process (`Basil`): it runs a command as the operator, which is the one entry point that skips privilege checks,
 while a chat command always runs with the typist's privileges. See [`../for-technicians/console.md`](../for-technicians/console.md).

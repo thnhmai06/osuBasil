@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Diagnostics;
 using System.Text;
+using Basil.Application.Diagnostics.Services;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -183,6 +185,7 @@ internal sealed class IrcListener(
 			return;
 		}
 
+		var started = Stopwatch.GetTimestamp();
 		try
 		{
 			await commands.HandleAsync(session, message, ct);
@@ -193,6 +196,7 @@ internal sealed class IrcListener(
 		}
 		finally
 		{
+			DiagnosticsMetrics.IrcDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 			admission.Release(WorkClass.Interactive);
 		}
 	}

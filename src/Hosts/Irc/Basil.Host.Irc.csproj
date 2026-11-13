@@ -14,6 +14,7 @@
 		<ProjectReference Include="..\..\Protocol\Irc\Basil.Protocol.Irc.csproj"/>
 		<ProjectReference Include="..\..\Application\Chat\Basil.Application.Chat.csproj"/>
 		<ProjectReference Include="..\..\Application\Content\Basil.Application.Content.csproj"/>
+		<ProjectReference Include="..\..\Application\Diagnostics\Basil.Application.Diagnostics.csproj"/>
 		<ProjectReference Include="..\..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
 		<ProjectReference Include="..\..\Application\Servers\Basil.Application.Servers.csproj"/>
 		<ProjectReference Include="..\..\Application\Users\Basil.Application.Users.csproj"/>

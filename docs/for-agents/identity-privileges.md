@@ -55,6 +55,10 @@ touching users, connections, privileges, silences or the bot.
 * **The console is the operator's entry point.** It runs in `Basil.Host.Cli`, as the dashboard command box or as
   `Basil.Host <command>` from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorConnection`:
   BasilBot's identity with every privilege, outranking every account, never registered, so no client can present it. It
+  can also post chat messages as BasilBot (the dashboard's Chat tab): BasilBot reads a `!` command in such a message
+  and runs it with the operator as the typist, so with every right. Only that connection is read this way; what BasilBot
+  itself says (a message with no actor) and what its own osu! and IRC connections post are never parsed as commands, so
+  no reply can start a command. It
   is the **one entry point that skips privilege checks**, because whoever sits at the console owns the machine; BasilBot
   itself still has no privileges. `--console 2` turns the command box off.
 * **Locks freeze an area for everyone but its manager.** `ServerSettings.Locks` is one flags enum: `Accounts`

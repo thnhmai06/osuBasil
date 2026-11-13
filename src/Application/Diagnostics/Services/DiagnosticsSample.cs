@@ -10,7 +10,7 @@ public sealed class DiagnosticsSample
 	public static readonly IReadOnlyList<string> Categories =
 	[
 		"process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database", "stable", "irc",
-		"events", "sessions"
+		"events", "sessions", "connections", "machine"
 	];
 
 	private readonly Dictionary<string, object> _values;

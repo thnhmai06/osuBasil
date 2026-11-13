@@ -122,6 +122,18 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 			q = q.Where(s => s.UserId != null && playerIds.Contains(s.UserId.Value));
 		}
 
+		if (scoreQuery.UserIds is { } userIds)
+		{
+			var ids = userIds.ToList();
+			q = q.Where(s => s.UserId != null && ids.Contains(s.UserId.Value));
+		}
+
+		if (scoreQuery.BeatmapHashes is { } hashes)
+		{
+			var values = hashes.Select(h => h.HashValue).ToList();
+			q = q.Where(s => s.BeatmapHash != null && values.Contains(s.BeatmapHash));
+		}
+
 		if (scoreQuery.BestPerPlayer)
 			q = q.Where(s => s.UserId != null);
 

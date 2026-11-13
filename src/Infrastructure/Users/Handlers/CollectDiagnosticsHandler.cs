@@ -1,4 +1,5 @@
 using Basil.Application.Shared.Diagnostics;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Mediator;
@@ -15,6 +16,12 @@ internal sealed class CollectDiagnosticsHandler(UserRegistry registry) : INotifi
 		collector.Add(new DiagnosticsValue("application", "usersOnline", registry.Online.Count));
 		foreach (var type in Enum.GetValues<SessionType>())
 			collector.Add(new DiagnosticsValue("sessions", type.ToString().ToLowerInvariant(), Count(type)));
+
+		foreach (var type in Enum.GetValues<SessionType>())
+		foreach (var kind in Enum.GetValues<ConnectionCount>())
+			collector.Add(new DiagnosticsValue("connections",
+				$"{type.ToString().ToLowerInvariant()}.{kind.ToString().ToLowerInvariant()}",
+				ConnectionMetrics.Total(type, kind)));
 
 		collector.Add(new DiagnosticsValue("stable", "osu", Count(SessionType.Stable)));
 		collector.Add(new DiagnosticsValue("stable", "tourney", Count(SessionType.StableTourney)));

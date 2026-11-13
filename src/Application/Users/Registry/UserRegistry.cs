@@ -519,6 +519,7 @@ public sealed class UserRegistry
 		// The bot's tokens are never findable: nobody can present one, and nobody should be able to try.
 		if (!connection.IsServerOwned) Index(connection);
 
+		if (!connection.IsServerOwned) ConnectionMetrics.Record(connection.Type, ConnectionCount.Opened);
 		_context.Events.Publish(new UserConnectionOpened(connection, cameOnline));
 		return null;
 	}
@@ -544,6 +545,7 @@ public sealed class UserRegistry
 			return null;
 		}
 
+		ConnectionMetrics.Record(type, ConnectionCount.Rejected);
 		ConnectionMetrics.Rejected.Add(1, new KeyValuePair<string, object?>(ConnectionMetrics.TypeTag, type.ToString()),
 			new KeyValuePair<string, object?>(ConnectionMetrics.ReasonTag, ConnectionMetrics.TooManySessions));
 		return LoginFailure.TooManySessions;
@@ -691,6 +693,14 @@ public sealed class UserRegistry
 
 		var wentOffline = !connection.User.Connections.Any();
 		if (wentOffline) Remove(connection.User);
+
+		if (!connection.IsServerOwned)
+		{
+			ConnectionMetrics.Record(connection.Type, ConnectionCount.Closed);
+			if (reason is SessionEndReason.TimedOut) ConnectionMetrics.Record(connection.Type, ConnectionCount.Timeout);
+			else if (reason is SessionEndReason.ConnectionLost)
+				ConnectionMetrics.Record(connection.Type, ConnectionCount.Errors);
+		}
 
 		_context.Events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
 	}

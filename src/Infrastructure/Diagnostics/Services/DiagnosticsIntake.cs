@@ -22,7 +22,13 @@ internal sealed class DiagnosticsIntake(
 			["events"] = new { available = false }
 		};
 		foreach (var category in reported.Counts.GroupBy(count => count.Key.Category))
-			values[category.Key] = category.ToDictionary(count => count.Key.Name, count => count.Value);
+		{
+			// A protocol category carries the durations the host measured and the counts the modules report.
+			var merged = new Dictionary<string, object>(
+				values.GetValueOrDefault(category.Key) as Dictionary<string, object> ?? []);
+			foreach (var count in category) merged[count.Key.Name] = count.Value;
+			values[category.Key] = merged;
+		}
 
 		return new DiagnosticsSample(DiagnosticsSample.Categories.Where(values.ContainsKey)
 			.Select(category => new KeyValuePair<string, object>(category, values[category])));
