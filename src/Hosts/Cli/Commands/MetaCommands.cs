@@ -23,6 +23,9 @@ public interface IThemeControl
 	/// <summary>Gets the name of the theme in use.</summary>
 	string Current { get; }
 
+	/// <summary>Gets whether the theme is fixed and cannot change (<c>--nocolor</c>).</summary>
+	bool Locked { get; }
+
 	/// <summary>Changes the theme and saves the choice.</summary>
 	/// <param name="name">The name of the theme.</param>
 	/// <returns><see langword="true" /> when the theme exists.</returns>
@@ -172,6 +175,12 @@ internal static class MetaCommands
 			return Task.FromResult(ExitCodes.Success);
 		}
 
+		if (themes.Locked)
+		{
+			call.Output.Error("refused", ThemeReplies.Locked);
+			return Task.FromResult(ExitCodes.Refused);
+		}
+
 		if (!themes.Set(scheme))
 		{
 			call.Output.Error("notFound", $"No such theme: {scheme}.");
@@ -181,4 +190,11 @@ internal static class MetaCommands
 		call.Output.Ok($"Theme changed to {scheme}.");
 		return Task.FromResult(ExitCodes.Success);
 	}
+}
+
+/// <summary>The replies of the <c>theme</c> command that are not about a particular theme.</summary>
+public static class ThemeReplies
+{
+	/// <summary>The theme is fixed by <c>--nocolor</c>.</summary>
+	public const string Locked = "The theme is fixed to monochrome by --nocolor.";
 }

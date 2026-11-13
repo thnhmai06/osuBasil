@@ -56,7 +56,7 @@ touching users, connections, privileges, silences or the bot.
   `Basil.Host <command>` from a shell. It acts through `UserRegistry.OperateAsync`, which returns an `OperatorConnection`:
   BasilBot's identity with every privilege, outranking every account, never registered, so no client can present it. It
   is the **one entry point that skips privilege checks**, because whoever sits at the console owns the machine; BasilBot
-  itself still has no privileges. `--noconsole` turns the command box off.
+  itself still has no privileges. `--console 2` turns the command box off.
 * **Locks freeze an area for everyone but its manager.** `ServerSettings.Locks` is one flags enum: `Accounts`
   (registration; `Owner`), `Rooms` (creation; `Tournament`), `Beatmapsets` (upload and delete on every entry
   point; `Tournament`, while the file watcher keeps running) and `Profiles` (a user changing their own username,

@@ -72,7 +72,7 @@ public sealed class DashboardApp
 	private readonly TimeProvider _clock;
 	private readonly PromptEditorHistory _history = new();
 	private readonly ILogger<DashboardApp> _logger;
-	private readonly CliMode _mode;
+	private readonly CliOptions _mode;
 	private readonly DashboardModel _model;
 	private readonly DashboardRenderer _renderer;
 	private readonly CommandRunner _runner;
@@ -88,7 +88,7 @@ public sealed class DashboardApp
 	/// <summary>Creates the dashboard.</summary>
 	public DashboardApp(DashboardModel model, DashboardRenderer renderer, DashboardSampler sampler,
 		CommandRunner runner,
-		CommandSuggestions suggestions, ShutdownController shutdown, ThemeStore themes, CliMode mode,
+		CommandSuggestions suggestions, ShutdownController shutdown, ThemeStore themes, CliOptions mode,
 		TimeProvider clock,
 		ILogger<DashboardApp> logger)
 	{
@@ -108,9 +108,9 @@ public sealed class DashboardApp
 	public Visual Build()
 	{
 		var canvas = new Canvas().Painter(context =>
-				_renderer.Paint(new CanvasSurface(context, _themes.Theme), _mode == CliMode.Full))
+				_renderer.Paint(new CanvasSurface(context, _themes.Theme), _mode.Editable))
 			.UseFinePixels(true);
-		if (_mode != CliMode.Full) return canvas;
+		if (!_mode.Editable) return canvas;
 
 		_prompt = new PromptEditor()
 			.LineMode(PromptEditorLineMode.SingleLine)

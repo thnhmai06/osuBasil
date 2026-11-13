@@ -36,7 +36,7 @@ public static class CliHost
 	/// <param name="socketPath">Finds the path of the control socket once the options are bound.</param>
 	/// <param name="configurationDirectory">The folder where the dashboard saves its theme.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
-	public static IServiceCollection AddCli(this IServiceCollection services, CliMode mode,
+	public static IServiceCollection AddCli(this IServiceCollection services, CliOptions mode,
 		Func<IServiceProvider, string> socketPath,
 		string configurationDirectory)
 	{
@@ -59,14 +59,14 @@ public static class CliHost
 		});
 		services.AddSingleton<DashboardSampler>();
 		services.AddSingleton<DashboardRenderer>();
-		services.AddSingleton(new ThemeStore(configurationDirectory));
+		services.AddSingleton(new ThemeStore(configurationDirectory, mode.NoColor));
 		services.AddSingleton<IThemeControl>(provider => provider.GetRequiredService<ThemeStore>());
 		services.AddSingleton(provider => new ControlServer(provider.GetRequiredService<CommandRunner>(),
 			socketPath(provider),
 			provider.GetRequiredService<ILogger<ControlServer>>()));
 		services.AddHostedService(provider => provider.GetRequiredService<ControlServer>());
 		services.AddHostedService<ShutdownTicker>();
-		services.AddSingleton(new CliModeSetting(mode));
+		services.AddSingleton(mode);
 		services.AddSingleton<DashboardApp>(provider => new DashboardApp(provider.GetRequiredService<DashboardModel>(),
 			provider.GetRequiredService<DashboardRenderer>(), provider.GetRequiredService<DashboardSampler>(),
 			provider.GetRequiredService<CommandRunner>(), provider.GetRequiredService<CommandSuggestions>(),
@@ -76,10 +76,6 @@ public static class CliHost
 		return services;
 	}
 }
-
-/// <summary>The display mode the server runs in.</summary>
-/// <param name="Mode">The mode.</param>
-public sealed record CliModeSetting(CliMode Mode);
 
 /// <summary>Lists the ids that exist, so the command box can complete them.</summary>
 internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, GeneralChannelRegistry channels)
@@ -116,11 +112,11 @@ internal sealed class ShutdownTicker(ShutdownController controller, TimeProvider
 }
 
 /// <summary>
-///     Shows the server in the terminal: the dashboard in the full and no-console modes, and the messages of the Ctrl+C
-///     rules as plain log lines in the no-gui mode.
+///     Shows the server in the terminal: the dashboard unless the console is log only, where the messages of the Ctrl+C
+///     rules are plain log lines.
 /// </summary>
 internal sealed class DisplayService(
-	CliModeSetting setting,
+	CliOptions setting,
 	IServiceProvider services,
 	ShutdownController shutdown,
 	ILogger<DisplayService> logger,
@@ -132,7 +128,7 @@ internal sealed class DisplayService(
 	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
-		if (setting.Mode == CliMode.NoGui)
+		if (!setting.HasDashboard)
 		{
 			shutdown.Message += Log;
 			return Task.CompletedTask;

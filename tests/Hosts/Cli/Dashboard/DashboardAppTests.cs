@@ -33,14 +33,14 @@ public sealed partial class DashboardAppTests(CliFixture fixture)
 		var services = fixture.Host.Services;
 		var model = new DashboardModel { Log = new LogBuffer(TimeProvider.System), Chat = new ChatFeed() };
 		var lifetime = new Lifetime();
-		var shutdown = new ShutdownController(new CtrlCMachine(TimeProvider.System, CliMode.Full), lifetime,
+		var shutdown = new ShutdownController(new CtrlCMachine(TimeProvider.System, new CliOptions(ConsoleLevel.Full)), lifetime,
 			NullLogger<ShutdownController>.Instance, _ => { });
 		var catalog = services.GetRequiredService<CommandCatalog>();
 		var app = new DashboardApp(model, new DashboardRenderer(model, new ViewFormatter(TimeZoneInfo.Utc)),
 			new DashboardSampler(services, model, TimeProvider.System), services.GetRequiredService<CommandRunner>(),
 			new CommandSuggestions(catalog, new FixedIds()), shutdown,
 			new ThemeStore(Path.Combine(Path.GetTempPath(), "dash-" + Guid.NewGuid().ToString("N"))),
-			CliMode.Full, TimeProvider.System, NullLogger<DashboardApp>.Instance);
+			new CliOptions(ConsoleLevel.Full), TimeProvider.System, NullLogger<DashboardApp>.Instance);
 		var stop = new CancellationTokenSource();
 		var thread = new Thread(() => app.Run(terminal, stop.Token)) { IsBackground = true };
 		thread.Start();

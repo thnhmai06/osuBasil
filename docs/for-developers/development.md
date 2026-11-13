@@ -19,7 +19,7 @@ Clone the repository, start a PostgreSQL server and point Basil at it:
 git clone https://github.com/thnhmai06/osuBasil.git
 cd osuBasil
 docker run -d --name basil-pg -e POSTGRES_PASSWORD=basil -e POSTGRES_DB=basil -p 5432:5432 postgres:17-alpine
-dotnet run --project src/Basil -- --nogui
+dotnet run --project src/Basil -- --console 0
 ```
 
 The default connection string in
@@ -35,8 +35,8 @@ administrator with the console, which runs the command against the storage witho
 dotnet run --project src/Basil -- users create --username admin --password change-me --admin
 ```
 
-The console commands are specified in [`console.md`](../for-technicians/console.md). Without `--nogui` the server shows
-the terminal dashboard; when stdin or stdout is redirected it falls back to `--nogui` by itself.
+The console commands are specified in [`console.md`](../for-technicians/console.md). Without `--console 0` the server shows
+the terminal dashboard; when stdin or stdout is redirected it falls back to `--console 0` by itself.
 
 ## Development configuration
 
@@ -93,7 +93,7 @@ a new migration. A development database that already applied an older `InitialCr
 
 ## Trying the running server
 
-Start the server (`--nogui`), create an account as shown above, and call it with a `Host` header for the sub-domain you
+Start the server (`--console 0`), create an account as shown above, and call it with a `Host` header for the sub-domain you
 want; the sub-domains are listed in [`configuration.md`](../for-technicians/configuration.md):
 
 ```bash

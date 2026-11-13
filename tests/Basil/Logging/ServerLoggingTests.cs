@@ -27,7 +27,7 @@ public sealed class ServerLoggingTests : IDisposable
 		_settings = ((IConfigurationRoot)builder.Configuration).Providers.OfType<MemoryConfigurationProvider>().Last();
 		// The clock of the log retention is the composition root's to give; a builder holding only the logging has none.
 		builder.Services.AddSingleton(TimeProvider.System);
-		ServerLogging.Add(builder, CliMode.Full);
+		ServerLogging.Add(builder, new CliOptions(ConsoleLevel.Full));
 		_app = builder.Build();
 	}
 

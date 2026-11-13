@@ -37,7 +37,7 @@ public static class ShellRunner
 	{
 		output ??= Console.Out;
 		input ??= Console.In;
-		var app = HostApplication.Create(["--nogui"], builder =>
+		var app = HostApplication.Create(["--console", "0"], builder =>
 		{
 			builder.Logging.SetMinimumLevel(LogLevel.Warning);
 			configure?.Invoke(builder);

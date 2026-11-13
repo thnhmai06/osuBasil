@@ -51,7 +51,7 @@ public static class ServerLogging
 	/// <param name="builder">The builder.</param>
 	/// <param name="mode">How the server shows itself in its terminal.</param>
 	/// <returns>The counter of dropped events.</returns>
-	public static LogDrops Add(WebApplicationBuilder builder, CliMode mode)
+	public static LogDrops Add(WebApplicationBuilder builder, CliOptions mode)
 	{
 		var options = builder.Configuration.GetSection("Logging").Get<LoggingOptions>() ?? new LoggingOptions();
 		var file = options.File;
@@ -70,7 +70,7 @@ public static class ServerLogging
 					outputTemplate: Template, rollingInterval: file.Rolling.Interval,
 					fileSizeLimitBytes: rollingBytes > 0 ? rollingBytes : null, rollOnFileSizeLimit: rollingBytes > 0,
 					retainedFileCountLimit: null, encoding: Encoding.UTF8).CreateLogger()));
-			if (mode == CliMode.NoGui) configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None);
+			if (mode.Console == ConsoleLevel.Log) configuration.Console(outputTemplate: Template, theme: ConsoleTheme.None);
 			if (telemetry is { Logs: true, OtlpEndpoint: { Length: > 0 } endpoint })
 				configuration.OpenTelemetry(sink => sink.Endpoint = endpoint);
 		}, options.QueueCapacity, drops);

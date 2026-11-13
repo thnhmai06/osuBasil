@@ -26,8 +26,8 @@ Nothing logs each osu! (stable) packet, IRC line or REST request. Those are coun
 * one rolling file, `Logs/basil-*.log`, UTF-8, rolled by `Logging:File:Rolling` (interval and size) and limited by `Logging:File:Retention`
   (age, count and total size; swept at startup and every six hours; the newest file is always kept); `Logging:File:Enabled`
   switches the file off;
-* a console sink only in `--nogui` mode, plain text without colour;
-* a dashboard log panel, a fixed ring buffer, in the full and `--noconsole` modes;
+* a console sink only with `--console 0`, plain text without colour;
+* a dashboard log panel, a fixed ring buffer, in the full and `--console 2` modes;
 * optional OpenTelemetry log export when `OpenTelemetry:Logs` is on and an endpoint is set.
 
 Every sink is written by one background thread behind a bounded queue (`Logging:QueueCapacity`, 10 000 by default).

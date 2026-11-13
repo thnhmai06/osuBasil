@@ -87,12 +87,14 @@ No rebuild is required.
 
 ```text
 Basil                 start the server
-Basil --noconsole     dashboard without the command box
-Basil --nogui         plain log lines, no dashboard
+Basil --console 2     dashboard to look at only, without the command box
+Basil --console 0     plain log lines, no dashboard
+Basil --nocolor       monochrome dashboard (also when NO_COLOR is set)
+Basil --ascii         dashboard in ASCII characters only
 Basil <command>       run one console command (in the running server, or offline)
 ```
 
-When stdin or stdout is redirected, the server falls back to `--nogui`. A setting can be overridden per run with
+When stdin or stdout is redirected, the server falls back to `--console 0`. A setting can be overridden per run with
 `--Kestrel:Endpoints:Https:Url=https://0.0.0.0:8443`.
 
 ## Upgrading from v1.0.0-alpha.1

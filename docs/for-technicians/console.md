@@ -13,17 +13,22 @@ surface: BasilBot's chat commands are separate and keep checking the typist's pr
 
 ## Modes
 
-| Mode             | Argument      | Shows                                      | Command box |
-|------------------|---------------|--------------------------------------------|-------------|
-| Full (default)   | none          | dashboard and command box                  | yes         |
-| No console       | `--noconsole` | dashboard only                             | no          |
-| Log only         | `--nogui`     | linear log lines on stdout, no colour      | no          |
+| Level            | Argument                | Shows                                                          | Changes the server |
+|------------------|-------------------------|----------------------------------------------------------------|--------------------|
+| Full (default)   | `--console 1`           | dashboard and command box                                      | yes                |
+| View only        | `--console 2`           | dashboard to look at: no command box, no chat, no actions      | no                 |
+| Log only         | `--console 0`           | linear log lines on stdout, no dashboard                       | no                 |
 
-* `--nogui` wins when it is given together with `--noconsole`.
-* The server switches to `--nogui` by itself when stdin or stdout is redirected (Docker, systemd) or the terminal has no
-  colour support.
-* Ctrl+C: the first press clears the line being typed; with nothing typed (always, in `--noconsole`) it warns and opens a
-  3 second window in which a second press starts the graceful shutdown. In `--nogui` the first press starts the graceful
+Two more arguments change how the dashboard looks:
+
+* `--nocolor` makes it monochrome with a fixed theme; the `theme` command is refused. The `NO_COLOR` environment variable
+  turns it on too.
+* `--ascii` draws with ASCII characters only (no box-drawing or braille).
+
+* The server switches to `--console 0` by itself when stdin or stdout is redirected (Docker, systemd) or `TERM` is `dumb`.
+* `--nogui` and `--noconsole` no longer exist; the server refuses them.
+* Ctrl+C: the first press clears the line being typed; with nothing typed (always, in `--console 2`) it warns and opens a
+  3 second window in which a second press starts the graceful shutdown. With `--console 0` the first press starts the graceful
   shutdown. While shutting down nothing ends the process for 30 seconds; after that a warning appears and one more press
   forces the exit (data loss may occur). `SIGTERM` starts the graceful shutdown at once, in every mode.
 
@@ -132,7 +137,7 @@ The output is for people and never JSON; there is no `--json` option.
 * A bitmask is followed by its flag names: `privileges: 12 (ChatPost, ChatPostPrivate)`.
 * Times are shown in the operator's local time zone (injected, so the output of a test does not depend on the machine).
 * The result of an action is one confirmation line.
-* In the dashboard the output is coloured with the theme; from a shell, over the socket and in `--nogui` it is plain
+* In the dashboard the output is coloured with the theme; from a shell, over the socket and with `--console 0` it is plain
   text without colour.
 
 ## The dashboard

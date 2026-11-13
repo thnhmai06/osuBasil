@@ -1,5 +1,7 @@
 using System.Net;
 using Basil.Configuration;
+using Basil.Host.Cli;
+using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Shutdown;
 using Basil.Lifetime;
 using Microsoft.Extensions.Options;
@@ -19,7 +21,17 @@ public static class Program
 		VelopackApp.Build().Run();
 		if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
 
-		var app = HostApplication.Create(args);
+		WebApplication app;
+		try
+		{
+			app = HostApplication.Create(args);
+		}
+		catch (CliOptionException exception)
+		{
+			await Console.Error.WriteLineAsync($"error: invalid: {exception.Message}");
+			return ExitCodes.Invalid;
+		}
+
 		if (Restarter.WasRestarted())
 		{
 			var server = app.Services.GetRequiredService<IOptions<ServerOptions>>().Value;

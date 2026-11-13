@@ -49,12 +49,12 @@ public enum CtrlCState : byte
 
 /// <summary>
 ///     The Ctrl+C rules, apart from any terminal: a first press clears the line or asks for confirmation (or shuts down
-///     at once in <c>--nogui</c>), a second press within 3 seconds shuts down, and while shutting down nothing ends the
+///     at once with <c>--console 0</c>), a second press within 3 seconds shuts down, and while shutting down nothing ends the
 ///     process for 30 seconds, after which a warning is shown and one more press forces the exit.
 /// </summary>
 /// <param name="clock">The clock, which tests replace.</param>
 /// <param name="mode">How the server shows itself.</param>
-public sealed class CtrlCMachine(TimeProvider clock, CliMode mode)
+public sealed class CtrlCMachine(TimeProvider clock, CliOptions mode)
 {
 	/// <summary>How long the second press has to come after the first.</summary>
 	public static readonly TimeSpan ConfirmWindow = TimeSpan.FromSeconds(3);
@@ -79,8 +79,8 @@ public sealed class CtrlCMachine(TimeProvider clock, CliMode mode)
 			switch (State)
 			{
 				case CtrlCState.Running:
-					if (mode == CliMode.Full && hasTypedText) return CtrlCAction.ClearLine;
-					if (mode == CliMode.NoGui) return Begin();
+					if (mode.Console == ConsoleLevel.Full && hasTypedText) return CtrlCAction.ClearLine;
+					if (mode.Console == ConsoleLevel.Log) return Begin();
 
 					State = CtrlCState.Confirming;
 					_until = clock.GetUtcNow() + ConfirmWindow;

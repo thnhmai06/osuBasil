@@ -3,7 +3,7 @@
 ## Overview
 
 Basil writes operational log files to `Logs/` next to the executable and shows the same events in the dashboard (or on
-stdout in `--nogui` mode). In Docker, stdout is also available through `docker compose logs`.
+stdout with `--console 0`). In Docker, stdout is also available through `docker compose logs`.
 
 The folder is created when the server starts.
 

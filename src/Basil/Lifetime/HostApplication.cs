@@ -31,7 +31,7 @@ public static class HostApplication
 	public static WebApplication Create(string[] args, Action<WebApplicationBuilder>? configure = null)
 	{
 		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected,
-			CliModes.TerminalSupportsColour());
+			CliModes.TermIsDumb(), CliModes.NoColorIsSet());
 		args = CliModes.Strip(args);
 		// Relative paths in the settings, such as the certificate of Kestrel, are relative to the executable.
 		var builder = WebApplication.CreateBuilder(new WebApplicationOptions

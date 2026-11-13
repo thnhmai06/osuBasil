@@ -9,16 +9,16 @@ public sealed class CtrlCMachineTests
 	private static readonly TimeSpan Window = TimeSpan.FromSeconds(3);
 	private static readonly TimeSpan Grace = TimeSpan.FromSeconds(30);
 
-	private static (CtrlCMachine Machine, FakeTimeProvider Clock) Create(CliMode mode)
+	private static (CtrlCMachine Machine, FakeTimeProvider Clock) Create(ConsoleLevel mode)
 	{
 		var clock = new FakeTimeProvider();
-		return (new CtrlCMachine(clock, mode), clock);
+		return (new CtrlCMachine(clock, new CliOptions(mode)), clock);
 	}
 
 	[Fact]
 	public void FirstPressText_ClearsLine()
 	{
-		var (machine, _) = Create(CliMode.Full);
+		var (machine, _) = Create(ConsoleLevel.Full);
 
 		Assert.Equal(CtrlCAction.ClearLine, machine.Press(true));
 		Assert.Equal(CtrlCState.Running, machine.State);
@@ -27,7 +27,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void FirstPressEmpty_WarnsOpensWindow()
 	{
-		var (machine, _) = Create(CliMode.Full);
+		var (machine, _) = Create(ConsoleLevel.Full);
 
 		Assert.Equal(CtrlCAction.WarnConfirm, machine.Press());
 		Assert.Equal(CtrlCState.Confirming, machine.State);
@@ -36,7 +36,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void NoConsoleMode_FirstPressWarns()
 	{
-		var (machine, _) = Create(CliMode.NoConsole);
+		var (machine, _) = Create(ConsoleLevel.ViewOnly);
 
 		Assert.Equal(CtrlCAction.WarnConfirm, machine.Press(true));
 	}
@@ -44,7 +44,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void SecondPressWindow_StartsShutdown()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Press();
 		clock.Advance(Window - TimeSpan.FromMilliseconds(1));
 
@@ -55,7 +55,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void PressAfterWindow_FirstAgain()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Press();
 		clock.Advance(Window);
 
@@ -66,7 +66,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void WindowEnd_TickReportsRunning()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Press();
 		clock.Advance(Window);
 
@@ -77,7 +77,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void TickInsideWindow_Nothing()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Press();
 		clock.Advance(TimeSpan.FromSeconds(1));
 
@@ -88,16 +88,16 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void NoGuiMode_FirstPressStops()
 	{
-		var (machine, _) = Create(CliMode.NoGui);
+		var (machine, _) = Create(ConsoleLevel.Log);
 
 		Assert.Equal(CtrlCAction.BeginShutdown, machine.Press(true));
 	}
 
 	[Theory]
-	[InlineData(CliMode.Full)]
-	[InlineData(CliMode.NoConsole)]
-	[InlineData(CliMode.NoGui)]
-	public void Terminate_StopsEveryMode(CliMode mode)
+	[InlineData(ConsoleLevel.Full)]
+	[InlineData(ConsoleLevel.ViewOnly)]
+	[InlineData(ConsoleLevel.Log)]
+	public void Terminate_StopsEveryMode(ConsoleLevel mode)
 	{
 		var (machine, _) = Create(mode);
 
@@ -107,7 +107,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void TerminateInWindow_BeginsShutdown()
 	{
-		var (machine, _) = Create(CliMode.Full);
+		var (machine, _) = Create(ConsoleLevel.Full);
 		machine.Press();
 
 		Assert.Equal(CtrlCAction.BeginShutdown, machine.Terminate());
@@ -116,17 +116,17 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void TerminateDuringShutdown_Nothing()
 	{
-		var (machine, _) = Create(CliMode.Full);
+		var (machine, _) = Create(ConsoleLevel.Full);
 		machine.Terminate();
 
 		Assert.Equal(CtrlCAction.None, machine.Terminate());
 	}
 
 	[Theory]
-	[InlineData(CliMode.Full)]
-	[InlineData(CliMode.NoConsole)]
-	[InlineData(CliMode.NoGui)]
-	public void EarlyPresses_Ignored(CliMode mode)
+	[InlineData(ConsoleLevel.Full)]
+	[InlineData(ConsoleLevel.ViewOnly)]
+	[InlineData(ConsoleLevel.Log)]
+	public void EarlyPresses_Ignored(ConsoleLevel mode)
 	{
 		var (machine, clock) = Create(mode);
 		machine.Terminate();
@@ -144,7 +144,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void LateTick_WarnsThenForces()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Terminate();
 		clock.Advance(Grace);
 
@@ -157,7 +157,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void PressBeforeWarning_ShowsWarning()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Terminate();
 		clock.Advance(Grace + TimeSpan.FromSeconds(1));
 
@@ -168,7 +168,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void ThirtySeconds_FromShutdownStart()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Press();
 		clock.Advance(TimeSpan.FromSeconds(2));
 		machine.Press();
@@ -182,7 +182,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void FinishedShutdown_Nothing()
 	{
-		var (machine, clock) = Create(CliMode.Full);
+		var (machine, clock) = Create(ConsoleLevel.Full);
 		machine.Terminate();
 		machine.Finish();
 		clock.Advance(Grace * 2);
@@ -196,7 +196,7 @@ public sealed class CtrlCMachineTests
 	[Fact]
 	public void ConfirmationAndForce_Separate()
 	{
-		var (machine, clock) = Create(CliMode.NoGui);
+		var (machine, clock) = Create(ConsoleLevel.Log);
 		Assert.Equal(CtrlCAction.BeginShutdown, machine.Press());
 		clock.Advance(TimeSpan.FromSeconds(1));
 		Assert.Equal(CtrlCAction.None, machine.Press());

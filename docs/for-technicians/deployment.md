@@ -238,7 +238,7 @@ Start Basil from its executable directory:
 ```
 
 The server shows a terminal dashboard. Under a service manager (systemd, Docker) stdin and stdout are redirected and it
-falls back to plain log lines by itself; use `--nogui` to ask for that explicitly. `SIGTERM` starts a graceful shutdown.
+falls back to plain log lines by itself; use `--console 0` to ask for that explicitly. `SIGTERM` starts a graceful shutdown.
 Under systemd or a container runtime, the exit code `75` asks the manager to start the server again (the `restart`
 command), while `0` is a normal stop; see [`console.md`](console.md).
 
@@ -254,7 +254,7 @@ Wants=network-online.target
 Type=simple
 User=basil
 WorkingDirectory=/opt/basil
-ExecStart=/opt/basil/Basil --nogui
+ExecStart=/opt/basil/Basil --console 0
 Restart=on-failure
 
 [Install]

@@ -14,8 +14,19 @@ public sealed class ThemeStore : IThemeControl
 
 	/// <summary>Creates the store and reads the saved choice.</summary>
 	/// <param name="directory">The folder the choice is saved in (<c>Configurations/</c>).</param>
-	public ThemeStore(string directory)
+	/// <param name="monochrome">Whether the theme is fixed to the colours of the terminal (<c>--nocolor</c>).</param>
+	public ThemeStore(string directory, bool monochrome = false)
 	{
+		Locked = monochrome;
+		if (monochrome)
+		{
+			_file = string.Empty;
+			_schemes = [];
+			Current = MonochromeName;
+			Theme = Theme.Terminal;
+			return;
+		}
+
 		_file = Path.Combine(directory, "dashboard-theme.txt");
 		_schemes = ColorScheme.GetPredefinedSchemes().Append(ColorScheme.RootLoopsDark)
 			.GroupBy(scheme => scheme.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key,
@@ -24,6 +35,12 @@ public sealed class ThemeStore : IThemeControl
 		Current = saved is not null && _schemes.TryGetValue(saved, out var s) ? s.Name : DefaultScheme;
 		Theme = Theme.FromScheme(_schemes.GetValueOrDefault(Current) ?? ColorScheme.RootLoopsDark);
 	}
+
+	/// <summary>The name of the fixed monochrome theme.</summary>
+	public const string MonochromeName = "monochrome";
+
+	/// <inheritdoc />
+	public bool Locked { get; }
 
 	/// <summary>Gets the theme in use.</summary>
 	public Theme Theme { get; private set; }
@@ -37,6 +54,8 @@ public sealed class ThemeStore : IThemeControl
 	/// <inheritdoc />
 	public bool Set(string name)
 	{
+		if (Locked) return false;
+
 		if (!_schemes.TryGetValue(name, out var scheme)) return false;
 
 		Current = scheme.Name;
