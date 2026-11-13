@@ -111,6 +111,10 @@ public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 	private readonly Dictionary<string, Channel> _channels = new(StringComparer.OrdinalIgnoreCase);
 	private readonly Lock _gate = new();
 	private long _stamp;
+	private long _revision;
+
+	/// <summary>Gets a number that changes whenever a channel gains its first message or is forgotten.</summary>
+	public long Revision => Interlocked.Read(ref _revision);
 
 	/// <summary>Gets the names of the channels that have messages.</summary>
 	public IReadOnlyList<string> Channels()
@@ -152,6 +156,7 @@ public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 					_channels.Remove(_channels.MinBy(pair => pair.Value.Stamp).Key);
 
 				_channels[line.Channel] = entry = new Channel();
+				Interlocked.Increment(ref _revision);
 			}
 
 			entry.Stamp = ++_stamp;
