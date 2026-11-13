@@ -177,10 +177,11 @@ public sealed class DashboardApp
 	{
 		var dot = $" {_glyphs.Dot} ";
 		var hints = Tab == DashboardTab.Chat
-			? _mode.Editable ? new[] { "Enter send", "Tab next pane", "Ctrl+End follow" } : ["Tab next pane"]
+			? _mode.Editable ? new[] { "Enter send", "Tab next pane", "Esc/Alt+← back", "Ctrl+B members", "Ctrl+End follow" } : ["Tab next pane", "Esc/Alt+← back", "Ctrl+B members"]
 			: Tab == DashboardTab.Console
 			? _mode.Editable ? new[] { "Enter run", "Tab complete", "Ctrl+End follow" } : ["Ctrl+End follow"]
-			: ["/ search", "Enter open", "Ctrl+R refresh"];
+			: Tab is DashboardTab.Monitor or DashboardTab.Connections or DashboardTab.About ? ["Ctrl+R refresh"]
+				: ["/ search", "Enter open", "Ctrl+R refresh"];
 		return " " + string.Join(dot, _mode.Editable ? hints : [.. hints, "view only"]);
 	}
 

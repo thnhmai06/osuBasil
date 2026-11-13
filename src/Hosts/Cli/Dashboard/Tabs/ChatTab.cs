@@ -142,6 +142,16 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		});
 		app.AddGlobalCommand(new Command
 		{
+			Id = "chat.back.alt", LabelMarkup = "Back", Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
+			CanExecute = _ => Narrow && _open && Active, Execute = _ =>
+			{
+				_open = false;
+				_membersShown = false;
+				Arrange();
+			}
+		});
+		app.AddGlobalCommand(new Command
+		{
 			Id = "chat.members", LabelMarkup = "Members", Gesture = new KeyGesture('b', TerminalModifiers.Ctrl),
 			CanExecute = _ => Active, Execute = _ =>
 			{
