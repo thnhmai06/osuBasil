@@ -189,9 +189,14 @@ internal sealed class ConsoleTab
 
 			_decline = () => Answer(false);
 
-			dialog.Content(new VStack(new TextBlock(question),
+			dialog.Content(Dialogs.EscapeCloses(dialog, new VStack(new TextBlock(question + " (y/n)"),
 				new HStack(new Button("Yes").Click(() => Answer(true)), new Button("No").Click(() => Answer(false)))
-					.Spacing(2)));
+					.Spacing(2)).KeyDown((_, e) =>
+			{
+				if (e.Char is not ('y' or 'Y' or 'n' or 'N')) return;
+				e.Handled = true;
+				Answer(e.Char is 'y' or 'Y');
+			}), () => Answer(false)));
 			dialog.Show();
 		});
 		return source.Task;

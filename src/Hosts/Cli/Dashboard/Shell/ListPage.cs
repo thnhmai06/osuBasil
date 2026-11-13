@@ -278,7 +278,7 @@ internal sealed class ListPage<T>
 				_ = Task.Run(action.Run);
 			}));
 		rows.Add(new Button("Cancel").Click(dialog.Close));
-		dialog.Content(rows);
+		dialog.Content(Dialogs.EscapeCloses(dialog, rows));
 		dialog.Show();
 	}
 }

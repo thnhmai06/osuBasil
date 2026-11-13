@@ -186,7 +186,8 @@ internal sealed partial class SettingsTab : ITabView
 					_fields.Add(field);
 				}
 
-				list.Add(new HStack(new TextBlock($"{path,-34}").MinWidth(34), control.Stretch(), new Markup(() => field.Result.Value)).Spacing(1));
+				list.Add(new HStack(new TextBlock($"{path,-34}").MinWidth(34), control.Stretch()).Spacing(1));
+				list.Add(new Markup(() => field.Result.Value.Length == 0 ? string.Empty : $"{new string(' ', 35)}{field.Result.Value}"));
 			}
 
 			_content.Content(new ScrollViewer(list));
