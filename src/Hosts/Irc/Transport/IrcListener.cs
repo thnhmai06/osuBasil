@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Diagnostics;
 using System.Text;
 using Basil.Application.Diagnostics.Services;
 using Basil.Application.Shared.Settings;

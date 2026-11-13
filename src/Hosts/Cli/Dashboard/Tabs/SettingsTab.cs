@@ -213,7 +213,7 @@ internal sealed partial class SettingsTab : ITabView
 		if (text == field.Original) return;
 
 		field.Original = text;
-		var quoted = text.Contains(' ') ? $"\"{text.Replace("\"", "'")}\"" : text;
+		var quoted = text.Length == 0 || text.Contains(' ') ? $"\"{text.Replace("\"", "'")}\"" : text;
 		field.Result.Value = string.Empty;
 		_console.RunCommand($"settings {field.Category} set --{field.Path} {quoted}", line => ShowResult(field, line));
 	}

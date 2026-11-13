@@ -13,6 +13,7 @@ public sealed class CatalogTests
 		new[] { "users", "create", "--username", "two words", "--password", "x" })]
 	[InlineData("  a   b  ", new[] { "a", "b" })]
 	[InlineData("say \"a \\\"quoted\\\" word\"", new[] { "say", "a \"quoted\" word" })]
+	[InlineData("settings x set --name \"\"", new[] { "settings", "x", "set", "--name", "" })]
 	public void Split_FollowsQuotingRules(string line, string[] expected)
 	{
 		Assert.Equal(expected, CommandCatalog.Split(line));

@@ -190,7 +190,7 @@ internal sealed class MonitorTab : ITabView
 		var style = _glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded;
 		var panels = groups.Select(group =>
 		{
-			var lines = group.Select(line => (Name: line.Name[(group.Key.Length + 1)..], line.Value)).ToList();
+			var lines = group.Select(line => (Name: line.Name.Length > group.Key.Length ? line.Name[(group.Key.Length + 1)..] : line.Name, line.Value)).ToList();
 			if (lines.Count == 0) lines.Add((string.Empty, "-"));
 			var width = lines.Max(line => line.Name.Length);
 			var text = string.Join('\n', lines.Select(line =>
