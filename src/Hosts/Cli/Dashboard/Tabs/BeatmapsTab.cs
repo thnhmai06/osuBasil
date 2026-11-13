@@ -70,7 +70,7 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 }
 
 /// <summary>The beatmaps: each beatmapset with its difficulties, and what can be done to the set.</summary>
-internal sealed class BeatmapsTab : ITabView
+internal sealed class BeatmapsTab : ITabView, ISelectable
 {
 	private readonly ListPage<BeatmapItem> _page;
 	private bool _opened;

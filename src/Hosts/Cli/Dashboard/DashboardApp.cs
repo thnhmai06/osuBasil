@@ -57,6 +57,11 @@ public sealed class DashboardApp
 			mode, _glyphs, clock, action => _app?.Post(action), logger);
 		_views[DashboardTab.Lobby] = new LobbyTab(services, _console, _ => _selected.Value = (int)DashboardTab.Chat, mode,
 			_glyphs, clock, action => _app?.Post(action), logger);
+		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, _console, mode, _glyphs, clock,
+			action => _app?.Post(action), logger);
+		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, mode, clock,
+			action => _app?.Post(action), logger);
+		_views[DashboardTab.About] = new AboutTab(services, _glyphs, action => _app?.Post(action), logger);
 		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs,
 			action => _app?.Post(action), logger);
 	}
@@ -136,6 +141,12 @@ public sealed class DashboardApp
 	{
 		return tab == DashboardTab.Console ? _console.View
 			: _views.TryGetValue(tab, out var view) ? view.View : PlaceholderTab.Create(tab.ToString());
+	}
+
+	private void OpenIn(DashboardTab tab, string id)
+	{
+		_selected.Value = (int)tab;
+		if (_views.GetValueOrDefault(tab) is ISelectable view) view.Select(id);
 	}
 
 	private ITabView? ActiveView()

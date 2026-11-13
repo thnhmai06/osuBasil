@@ -123,14 +123,16 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 	/// <summary>Selects the item with an id, when it is in the table.</summary>
 	/// <param name="id">The id read by the key function.</param>
-	public void Select(string id)
+	/// <returns>Whether the item is in the table.</returns>
+	public bool Select(string id)
 	{
 		var index = _rows.FindIndex(row => !row.IsHeader && _key(row.Item!) == id);
-		if (index < 0) return;
+		if (index < 0) return false;
 
 		_selected = index;
 		Settle();
 		Revision++;
+		return true;
 	}
 
 	/// <inheritdoc />

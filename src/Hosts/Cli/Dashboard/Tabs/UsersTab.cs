@@ -85,7 +85,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 }
 
 /// <summary>The accounts: who is online and who is not, with what can be done to each.</summary>
-internal sealed class UsersTab : ITabView
+internal sealed class UsersTab : ITabView, ISelectable
 {
 	private readonly ListPage<UserItem> _page;
 	private bool _opened;
@@ -134,6 +134,12 @@ internal sealed class UsersTab : ITabView
 	public void Refresh()
 	{
 		_page.Refresh();
+	}
+
+	/// <inheritdoc />
+	public void Select(string id)
+	{
+		_page.Select(id);
 	}
 
 	private static Ink Role(ulong mask)

@@ -172,7 +172,7 @@ internal sealed partial class SettingsTab : ITabView
 				}
 				else
 				{
-					control = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).Text(value);
+					control = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty).Text(value).MinWidth(24);
 				}
 
 				var field = new Field(category, path, value, control);

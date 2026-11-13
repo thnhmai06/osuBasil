@@ -20,3 +20,10 @@ internal interface ITabView
 	/// <summary>Loads the data again, keeping the selection (Ctrl+R).</summary>
 	void Refresh();
 }
+
+/// <summary>A tab that can select an item by id, so that another tab can jump to it.</summary>
+internal interface ISelectable
+{
+	/// <summary>Selects the item with the id, when it is listed.</summary>
+	void Select(string id);
+}

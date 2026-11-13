@@ -66,6 +66,7 @@ internal sealed class ListPage<T>
 	private int _version;
 	private bool _more;
 	private bool _loading;
+	private string? _pendingSelect;
 	private TextBox? _search;
 	private TerminalApp? _app;
 
@@ -136,7 +137,8 @@ internal sealed class ListPage<T>
 	/// <summary>Selects an item by its id, loading it first when needed.</summary>
 	public void Select(string id)
 	{
-		_list.Select(id);
+		_pendingSelect = id;
+		if (_list.Select(id)) _pendingSelect = null;
 	}
 
 	private void LoadMore()
@@ -187,6 +189,7 @@ internal sealed class ListPage<T>
 		_more = data.Any(section => section.HasMore);
 		_list.SetSections([.. data.Select(section => new Section<T>(section.Title,
 			section.HasMore ? $"{section.Items.Count}+" : section.Items.Count.ToString(), section.Items))]);
+		if (_pendingSelect is not null && _list.Select(_pendingSelect)) _pendingSelect = null;
 		var total = data.Sum(section => section.Items.Count);
 		var (first, last) = _list.VisibleItems();
 		_footer.Value = total == 0 ? "no items" : $"show {first}–{last} in {total}{(_more ? "+" : string.Empty)}";
