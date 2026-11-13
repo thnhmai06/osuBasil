@@ -46,6 +46,7 @@ internal sealed class ListPage<T>
 	public static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(500);
 
 	private const int PageSize = 100;
+	private const int CompactWidth = 100;
 	private readonly TimeProvider _clock;
 	private readonly Func<T, DetailView> _detail;
 	private readonly Group _detailBox = new();
@@ -69,6 +70,9 @@ internal sealed class ListPage<T>
 	private string? _pendingSelect;
 	private TextBox? _search;
 	private TerminalApp? _app;
+	private bool _compact;
+	private int _cap = int.MaxValue;
+	private DetailView? _view;
 
 	/// <summary>Creates the page.</summary>
 	public ListPage(string title, IReadOnlyList<Column<T>> columns, Func<T, string> key, IListSource<T> source,
@@ -112,6 +116,7 @@ internal sealed class ListPage<T>
 	/// <summary>Lets time pass: starts the search once the text stood still long enough.</summary>
 	public void Tick()
 	{
+		FitDetail();
 		var text = _query.Value;
 		var now = _clock.GetTimestamp();
 		if (text != _seenQuery)
@@ -222,16 +227,58 @@ internal sealed class ListPage<T>
 		if (_detailOpen.Value) FillDetail(_list.Selected!);
 	}
 
+	/// <summary>Keeps the detail frame to a third of the page when the page is short, and folds its actions below 100 columns.</summary>
+	private void FitDetail()
+	{
+		var (width, height) = (View.Bounds.Width, View.Bounds.Height);
+		if (width <= 0 || height <= 0) return;
+
+		var cap = height < Layout.WideSize.Height ? Math.Max(height / 3, 3) : int.MaxValue;
+		if (cap != _cap)
+		{
+			_cap = cap;
+			_detailBox.MaxHeight(cap);
+		}
+
+		var compact = width < CompactWidth;
+		if (compact == _compact) return;
+
+		_compact = compact;
+		if (_detailOpen.Value && _view is not null) Fill(_view);
+	}
+
 	private void FillDetail(T item)
 	{
-		var view = _detail(item);
+		Fill(_view = _detail(item));
+	}
+
+	private void Fill(DetailView view)
+	{
 		var fields = new VStack().Spacing(0);
 		foreach (var (label, value, _) in view.Fields)
 			fields.Add(new TextBlock($"{label,-12} {Palette.Plain(value)}"));
 		var actions = new VStack().Spacing(0);
-		foreach (var action in view.Actions)
-			actions.Add(new Button(action.Label).Click(() => _ = Task.Run(action.Run)));
+		if (_compact && view.Actions.Count > 0)
+			actions.Add(new Button("[Actions]").Click(() => ShowActions(view.Actions)));
+		else
+			foreach (var action in view.Actions)
+				actions.Add(new Button(action.Label).Click(() => _ = Task.Run(action.Run)));
 		var top = new HStack(fields.Stretch(), actions);
 		_detailBox.Content(new VStack(top, new TextBlock("Esc/Enter/x · Close")));
+	}
+
+	private static void ShowActions(IReadOnlyList<DetailAction> actions)
+	{
+		var dialog = new Dialog().Title("Actions");
+		var rows = new VStack().Spacing(0);
+		foreach (var action in actions)
+			rows.Add(new Button(action.Label).Click(() =>
+			{
+				dialog.Close();
+				_ = Task.Run(action.Run);
+			}));
+		rows.Add(new Button("Cancel").Click(dialog.Close));
+		dialog.Content(rows);
+		dialog.Show();
 	}
 }

@@ -51,14 +51,14 @@ internal sealed class MonitorTab : ITabView
 		var wide = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() }, new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Star() })
-			.Cell(cpu.View, 0, 0).Cell(ram.View, 0, 1).Cell(network.View, 1, 0).Cell(open.View, 1, 1);
+			.Cell(cpu.View, 0, 0).Cell(ram.View, 0, 1).Cell(network.View, 1, 0).Cell(open.View, 1, 1).Stretch();
 		var categories = new ScrollViewer(new ComputedVisual(Categories)).MaxHeight(9);
 		var wideBody = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
 			.Cell(wide, 0, 0)
 			.Cell(categories.IsVisible(() => _size().Rows >= Layout.WideSize.Height), 1, 0)
-			.IsVisible(() => !IsNarrow());
+			.Stretch().IsVisible(() => !IsNarrow());
 
 		var narrow = new VStack(
 			new Markup(() => Meter("CPU", model.MachineCpu.Latest, model.Cpu.Latest)),

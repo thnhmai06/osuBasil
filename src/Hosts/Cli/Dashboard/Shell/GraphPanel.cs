@@ -58,9 +58,10 @@ internal sealed class GraphPanel
 				return headline();
 			}).HorizontalAlignment(Align.End), 0, 0)
 			.Cell(canvas, 1, 0)
-			.Cell(new Markup(legend), 2, 0);
+			.Cell(new Markup(legend), 2, 0)
+			.Stretch();
 		View = !framed ? (Visual)body : new Group(title).Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
-			.Padding(new Thickness(1, 0, 1, 0)).Content(body);
+			.Padding(new Thickness(1, 0, 1, 0)).Content(body).Stretch();
 	}
 
 	/// <summary>Gets the panel.</summary>
