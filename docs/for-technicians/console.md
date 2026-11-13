@@ -32,6 +32,32 @@ Two more arguments change how the dashboard looks:
   shutdown. While shutting down nothing ends the process for 30 seconds; after that a warning appears and one more press
   forces the exit (data loss may occur). `SIGTERM` starts the graceful shutdown at once, in every mode.
 
+## The dashboard
+
+The dashboard is a server-side admin view: ten tabs on one line, a line of key hints under them, and nothing else on
+screen. A tab changes with `F1`–`F10` or a click.
+
+| Tab         | Shows                                                                                  |
+|-------------|----------------------------------------------------------------------------------------|
+| Console     | The log written straight on the screen and, at `--console 1`, the command box          |
+| Monitor     | CPU, memory, network and connections over the last 15 minutes, and each diagnostics category |
+| Users       | Accounts online and offline; the detail frame kicks, silences and lists sessions        |
+| Beatmaps    | Beatmaps grouped by set; actions apply to the whole set                                 |
+| Lobby       | Open rooms and the ones that ended; creators and referees manage a room from here       |
+| Chat        | Channels, their messages since the server started, and their members; messages are sent as BasilBot |
+| Scores      | Scores, newest first, searched with `user:<id or name> beatmap:<id or query>`           |
+| Connections | osu! stable, Tourney, IRC and the HTTP API: open count, events and durations            |
+| Settings    | One form per settings category, saved field by field, and the read-only configuration   |
+| About       | Version, licence and the update status, with a button to check now                      |
+
+Every action of every tab is a console command, so the level chosen with `--console` decides what the whole dashboard
+may change: at `--console 2` the command box, the chat box and the action buttons are absent.
+
+Lists search while you type, after the text has stood still for half a second. Their footer reads `show 1–50 in 150+`;
+the `+` means more items exist than were loaded, because the database does not count them. Lists are not refreshed on
+their own: `Ctrl+R` reloads the tab in view and keeps the selected item. `Ctrl+End` follows the end of the log or of a
+chat. A terminal smaller than the tab in view needs shows the size it has and the size it needs instead of the tab.
+
 ## Running a command
 
 A command can be typed in the command box or given on the command line of the executable:

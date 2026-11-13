@@ -23,10 +23,10 @@ public sealed class DiagnosticsIntakeTests
 				new DiagnosticsValue("sessions", "stable", 0)),
 			new Module(new DiagnosticsValue("application", "usersOnline", 5)));
 
-		var application = (IReadOnlyDictionary<string, long>)sample["application"];
-		Assert.Equal(2, application["rooms"]);
-		Assert.Equal(5, application["usersOnline"]);
-		Assert.Equal(0, ((IReadOnlyDictionary<string, long>)sample["sessions"])["stable"]);
+		var application = (IReadOnlyDictionary<string, object>)sample["application"];
+		Assert.Equal(2L, application["rooms"]);
+		Assert.Equal(5L, application["usersOnline"]);
+		Assert.Equal(0L, ((IReadOnlyDictionary<string, object>)sample["sessions"])["stable"]);
 	}
 
 	[Fact]
@@ -35,7 +35,7 @@ public sealed class DiagnosticsIntakeTests
 		var sample = await TakeAsync(new Module(new DiagnosticsValue("application", "rooms", 1)),
 			new Module(new DiagnosticsValue("application", "rooms", 4)));
 
-		Assert.Equal(4, ((IReadOnlyDictionary<string, long>)sample["application"])["rooms"]);
+		Assert.Equal(4L, ((IReadOnlyDictionary<string, object>)sample["application"])["rooms"]);
 	}
 
 	[Fact]

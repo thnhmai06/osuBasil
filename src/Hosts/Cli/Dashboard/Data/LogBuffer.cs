@@ -105,10 +105,12 @@ public sealed record ChatLine(DateTimeOffset Time, string Channel, string Author
 
 /// <summary>Keeps the most recent chat messages of each channel since the server started, for the chat tab.</summary>
 /// <param name="capacity">How many messages each channel keeps.</param>
-public sealed class ChatFeed(int capacity = 500)
+/// <param name="maxChannels">How many channels are kept; beyond it the one that was quiet the longest is forgotten.</param>
+public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 {
 	private readonly Dictionary<string, Channel> _channels = new(StringComparer.OrdinalIgnoreCase);
 	private readonly Lock _gate = new();
+	private long _stamp;
 
 	/// <summary>Gets the names of the channels that have messages.</summary>
 	public IReadOnlyList<string> Channels()
@@ -144,8 +146,15 @@ public sealed class ChatFeed(int capacity = 500)
 	{
 		lock (_gate)
 		{
-			if (!_channels.TryGetValue(line.Channel, out var entry)) _channels[line.Channel] = entry = new Channel();
+			if (!_channels.TryGetValue(line.Channel, out var entry))
+			{
+				if (_channels.Count >= maxChannels)
+					_channels.Remove(_channels.MinBy(pair => pair.Value.Stamp).Key);
 
+				_channels[line.Channel] = entry = new Channel();
+			}
+
+			entry.Stamp = ++_stamp;
 			entry.Total++;
 			entry.Lines.Enqueue(line);
 			while (entry.Lines.Count > capacity) entry.Lines.Dequeue();
@@ -157,5 +166,7 @@ public sealed class ChatFeed(int capacity = 500)
 		public Queue<ChatLine> Lines { get; } = new();
 
 		public long Total { get; set; }
+
+		public long Stamp { get; set; }
 	}
 }
