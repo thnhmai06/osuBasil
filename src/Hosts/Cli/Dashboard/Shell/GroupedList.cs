@@ -317,7 +317,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	private void DrawHeader(CellBuffer buffer, Rectangle rect, int y, string title, Theme theme)
 	{
 		var rule = _glyphs.Ascii ? '-' : '─';
-		var text = $"{rule}{rule} {title} ";
+		var text = $"{rule}{rule} {Palette.Plain(title)} ";
 		var line = text + new string(rule, Math.Max(rect.Width - text.Length, 0));
 		buffer.WriteText(rect.X, y, line.Length > rect.Width ? line[..rect.Width] : line, Muted(theme));
 	}

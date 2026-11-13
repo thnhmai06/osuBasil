@@ -188,7 +188,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			_current = selected;
 			_seen = 0;
 			_log.Clear();
-			_title.Value = _current.Length == 0 ? "Chat" : _current;
+			_title.Value = _current.Length == 0 ? "Chat" : Palette.Plain(_current);
 			Members();
 		}
 
