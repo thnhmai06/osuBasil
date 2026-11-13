@@ -55,6 +55,10 @@ public sealed class DashboardApp
 		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), logger);
 		_views[DashboardTab.Users] = new UsersTab(services, _console, () => _selected.Value = (int)DashboardTab.Console,
 			mode, _glyphs, clock, action => _app?.Post(action), logger);
+		_views[DashboardTab.Lobby] = new LobbyTab(services, _console, _ => _selected.Value = (int)DashboardTab.Chat, mode,
+			_glyphs, clock, action => _app?.Post(action), logger);
+		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs,
+			action => _app?.Post(action), logger);
 	}
 
 	private DashboardTab Tab => (DashboardTab)Math.Clamp(_selected.Value, 0, Enum.GetValues<DashboardTab>().Length - 1);
