@@ -127,11 +127,12 @@ internal sealed class ConsoleTab
 
 	/// <summary>Runs a command as if the operator had typed it, showing it and its output in the log.</summary>
 	/// <param name="line">The command line.</param>
-	public void RunCommand(string line)
+	/// <param name="sink">Also receives each output line, on the thread that produced it, or <see langword="null" />.</param>
+	public void RunCommand(string line, Action<OutputLine>? sink = null)
 	{
 		var shown = Redactor.Redact(_runner.Catalog, line);
 		_app?.Post(() => _log.AppendMarkupLine(_tokens.Wrap(Ink.Accent, $"{_glyphs.Prompt} {shown}")));
-		_ = RunAsync(line);
+		_ = RunAsync(line, sink);
 	}
 
 	private void OnAccepted()
@@ -146,9 +147,9 @@ internal sealed class ConsoleTab
 		_ = RunAsync(line);
 	}
 
-	private async Task RunAsync(string line)
+	private async Task RunAsync(string line, Action<OutputLine>? sink = null)
 	{
-		var output = new LogOutput(this);
+		var output = new LogOutput(this, sink);
 		try
 		{
 			var session = new CommandSession(true, AskAsync);
@@ -226,11 +227,12 @@ internal sealed class ConsoleTab
 		}
 	}
 
-	private sealed class LogOutput(ConsoleTab tab) : ICommandOutput
+	private sealed class LogOutput(ConsoleTab tab, Action<OutputLine>? sink = null) : ICommandOutput
 	{
 		/// <inheritdoc />
 		public void Write(OutputLine line)
 		{
+			sink?.Invoke(line);
 			var parts = line.Text.Split('\n').Select(part => tab.Format(line with { Text = part.TrimEnd('\r') })).ToList();
 			tab._app?.Post(() =>
 			{

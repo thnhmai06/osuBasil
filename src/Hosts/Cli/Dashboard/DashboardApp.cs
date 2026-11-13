@@ -235,7 +235,7 @@ public sealed class DashboardApp
 		app.AddGlobalCommand(new Command
 		{
 			Id = "jump.end", LabelMarkup = "Jump to End",
-			Gesture = new KeyGesture(TerminalKey.End, TerminalModifiers.Ctrl), Execute = _ => _console.JumpToEnd()
+			Gesture = new KeyGesture(TerminalKey.End, TerminalModifiers.Ctrl), Execute = _ => { if (ActiveView() is IJumpable view) view.JumpToEnd(); else _console.JumpToEnd(); }
 		});
 	}
 

@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Group = XenoAtom.Terminal.UI.Controls.Group;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Registry;
+using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Shell;
 using Basil.Host.Shared.Json;
 using Basil.Host.Shared.Views;
@@ -34,6 +35,7 @@ internal sealed partial class SettingsTab : ITabView
 	private readonly List<Field> _fields = [];
 	private readonly Glyphs _glyphs;
 	private readonly ILogger _logger;
+	private readonly Palette _palette;
 	private readonly CliOptions _options;
 	private readonly Action<Action> _post;
 	private readonly IServiceProvider _services;
@@ -53,6 +55,7 @@ internal sealed partial class SettingsTab : ITabView
 		_glyphs = glyphs;
 		_post = post;
 		_logger = logger;
+		_palette = new Palette(options.NoColor);
 		_categories = [.. SettingsCategories.Names, Configuration];
 		_strip = new TabControl(_categories.Select(name => new TabPage(name, new TextBlock(string.Empty))).ToArray())
 			.Style(options.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder).SelectedIndex(_selected);
@@ -183,7 +186,7 @@ internal sealed partial class SettingsTab : ITabView
 					_fields.Add(field);
 				}
 
-				list.Add(new HStack(new TextBlock($"{path,-34}").MinWidth(34), control.Stretch()).Spacing(1));
+				list.Add(new HStack(new TextBlock($"{path,-34}").MinWidth(34), control.Stretch(), new Markup(() => field.Result.Value)).Spacing(1));
 			}
 
 			_content.Content(new ScrollViewer(list));
@@ -210,7 +213,24 @@ internal sealed partial class SettingsTab : ITabView
 
 		field.Original = text;
 		var quoted = text.Contains(' ') ? $"\"{text.Replace("\"", "'")}\"" : text;
-		_console.RunCommand($"settings {field.Category} set --{field.Path} {quoted}");
+		field.Result.Value = string.Empty;
+		_console.RunCommand($"settings {field.Category} set --{field.Path} {quoted}", line => ShowResult(field, line));
+	}
+
+	// The output of the command goes to the log as well; here the field shows how it ended.
+	private void ShowResult(Field field, OutputLine line)
+	{
+		var ink = line.Kind switch
+		{
+			OutputKind.Error => Ink.Error,
+			OutputKind.Ok => Ink.Success,
+			_ => Ink.Muted
+		};
+		var text = line.Text.Split('\n')[0].TrimEnd('\r');
+		_post(() =>
+		{
+			if (ink != Ink.Muted || field.Result.Value.Length == 0) field.Result.Value = _palette.Wrap(ink, text);
+		});
 	}
 
 	private IReadOnlyList<(string, string, bool)> ConfigurationRows()
@@ -256,5 +276,7 @@ internal sealed partial class SettingsTab : ITabView
 		public Visual Control { get; } = control;
 
 		public bool Focused { get; set; }
+
+		public State<string> Result { get; } = new(string.Empty);
 	}
 }
