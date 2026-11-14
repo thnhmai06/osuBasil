@@ -61,7 +61,7 @@ public sealed class DashboardApp
 			action => _app?.Post(action), logger);
 		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, mode, clock,
 			action => _app?.Post(action), logger);
-		_views[DashboardTab.About] = new AboutTab(services, _glyphs, action => _app?.Post(action), logger);
+		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, action => _app?.Post(action), logger);
 		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
 		_views[DashboardTab.Connections] = new ConnectionsTab(model, themes, _glyphs, mode);
 		_views[DashboardTab.Chat] = new ChatTab(services, model.Chat, mode, _glyphs, new Palette(mode.NoColor),
