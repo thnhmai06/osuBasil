@@ -1,6 +1,8 @@
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
+using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
+using XenoAtom.Terminal.UI.Input;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
@@ -14,13 +16,39 @@ internal static class Dialogs
 	/// <returns>The same content.</returns>
 	public static T EscapeCloses<T>(Dialog dialog, T content, Action? onEscape = null) where T : Visual
 	{
-		return content.KeyDown((_, e) =>
+		foreach (var gesture in BackGestures)
+			content.AddCommand(new Command
+			{
+				Id = $"dialog.back.{gesture}", LabelMarkup = "Back", Gesture = gesture, Execute = _ =>
+				{
+					dialog.Close();
+					onEscape?.Invoke();
+				}
+			});
+
+		return content;
+	}
+
+	/// <summary>Esc, and Alt+Left for terminals that delay or swallow Esc: the gestures that mean "back".</summary>
+	public static readonly KeyGesture[] BackGestures =
+		[new(TerminalKey.Escape), new(TerminalKey.Left, TerminalModifiers.Alt)];
+
+	/// <summary>Shows lines of text with a Close button; Esc, Enter and Alt+Left close it too.</summary>
+	/// <param name="title">The title of the dialog.</param>
+	/// <param name="lines">The text.</param>
+	public static void Info(string title, IEnumerable<string> lines)
+	{
+		var dialog = new Dialog().Title(title);
+		var rows = new VStack();
+		foreach (var line in lines) rows.Add(new TextBlock(line));
+		rows.Add(new Button("Close").Click(dialog.Close));
+		dialog.Content(EscapeCloses(dialog, rows).KeyDown((_, e) =>
 		{
-			if (e.Key != TerminalKey.Escape) return;
+			if (e.Key != TerminalKey.Enter) return;
 			e.Handled = true;
 			dialog.Close();
-			onEscape?.Invoke();
-		});
+		}));
+		dialog.Show();
 	}
 
 	/// <summary>Asks for a few text values and calls back with them when the operator confirms.</summary>

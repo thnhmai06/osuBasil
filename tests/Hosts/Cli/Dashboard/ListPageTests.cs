@@ -22,7 +22,7 @@ public sealed class ListPageTests
 	{
 		var clock = new FakeTimeProvider();
 		var source = new Source();
-		var page = new ListPage<string>("T", [new Column<string>("X", 0, s => s)], s => s, source,
+		var page = new ListPage<string>("T", "help", [new Column<string>("X", 0, s => s)], s => s, source,
 			_ => new DetailView([], []), new Glyphs(false), false, clock, action => action(),
 			NullLogger.Instance);
 		return (page, source, clock);
@@ -46,5 +46,40 @@ public sealed class ListPageTests
 		page.Tick();
 		await Task.Delay(50, TestContext.Current.CancellationToken);
 		Assert.Equal(["bob"], source.Queries);
+	}
+
+	[Fact]
+	public void Back_WithSearchText_ClearsTheText()
+	{
+		var (page, _, _) = Create();
+		var query = Query(page);
+		query.Value = "bob";
+
+		Back(page);
+
+		Assert.Equal(string.Empty, query.Value);
+	}
+
+	[Fact]
+	public void Back_WithEmptySearch_LeavesTheSearchEmpty()
+	{
+		var (page, _, _) = Create();
+		var query = Query(page);
+
+		Back(page);
+
+		Assert.Equal(string.Empty, query.Value);
+	}
+
+	private static XenoAtom.Terminal.UI.State<string> Query(ListPage<string> page)
+	{
+		var field = typeof(ListPage<string>).GetField("_query", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+		return (XenoAtom.Terminal.UI.State<string>)field.GetValue(page)!;
+	}
+
+	private static void Back(ListPage<string> page)
+	{
+		typeof(ListPage<string>).GetMethod("Back", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+			.Invoke(page, null);
 	}
 }
