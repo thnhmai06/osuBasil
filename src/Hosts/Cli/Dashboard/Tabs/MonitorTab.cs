@@ -214,23 +214,32 @@ internal sealed class MonitorTab : ITabView
 		_ = _stamp.Value;
 		var groups = _model.Diagnostics.GroupBy(line => line.Name.Split('.')[0]);
 		var style = _glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded;
-		var widest = 0;
 		var panels = groups.Select(group =>
 		{
 			var lines = group.Select(line => (Name: line.Name.Length > group.Key.Length ? line.Name[(group.Key.Length + 1)..] : line.Name, line.Value)).ToList();
 			if (lines.Count == 0) lines.Add((string.Empty, "-"));
 			var width = lines.Max(line => line.Name.Length);
-			widest = Math.Max(widest, Math.Max(group.Key.Length, width + 3 + lines.Max(line => Palette.Plain(line.Value).Length)) + 4);
 			var text = string.Join('\n', lines.Select(line =>
 				$"{_palette.Wrap(Ink.Muted, line.Name.PadRight(width))} : {_palette.Wrap(Ink.Text, line.Value)}"));
-			return (Visual)new Group(group.Key).Style(style).Padding(new Thickness(1, 0, 1, 0)).Content(new Markup(text));
+			var panel = new Group(group.Key).Style(style).Padding(new Thickness(1, 0, 1, 0)).Content(new Markup(text));
+			return (Visual: (Visual)panel, Width: Math.Max(group.Key.Length, width + 3 + lines.Max(line => Palette.Plain(line.Value).Length)) + 4);
 		}).ToList();
-		// The scroll viewer gives its content unlimited width, so the grid takes its column count from the terminal.
-		var perRow = Math.Max(1, (_size().Columns - 2) / Math.Max(widest, 1));
-		var grid = new Grid()
-			.Columns([.. Enumerable.Range(0, perRow).Select(_ => new ColumnDefinition { Width = GridLength.Star() })])
-			.Rows([.. Enumerable.Range(0, (panels.Count + perRow - 1) / perRow).Select(_ => new RowDefinition { Height = GridLength.Auto })]);
-		for (var i = 0; i < panels.Count; i++) grid.Cell(panels[i], i / perRow, i % perRow);
-		return grid;
+		// The scroll viewer gives its content unlimited width, so rows are packed from the terminal width.
+		var limit = _size().Columns - 2;
+		var rows = new List<List<Visual>>();
+		var used = 0;
+		foreach (var (visual, width) in panels)
+		{
+			if (rows.Count == 0 || used + width > limit)
+			{
+				rows.Add([]);
+				used = 0;
+			}
+
+			rows[^1].Add(visual);
+			used += width;
+		}
+
+		return new VStack([.. rows.Select(row => (Visual)new HStack([.. row]))]);
 	}
 }
