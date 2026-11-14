@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
+using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
@@ -51,6 +52,8 @@ internal sealed class ListPage<T>
 	private readonly Func<T, DetailView> _detail;
 	private readonly Group _detailBox = new();
 	private readonly Glyphs _glyphs;
+	private readonly string _help;
+	private readonly string _title;
 	private readonly GroupedList<T> _list;
 	private readonly ILogger _logger;
 	private readonly bool _noColor;
@@ -68,6 +71,7 @@ internal sealed class ListPage<T>
 	private bool _more;
 	private bool _loading;
 	private string? _pendingSelect;
+	private bool _focusList;
 	private TextBox? _search;
 	private TerminalApp? _app;
 	private bool _compact;
@@ -75,10 +79,12 @@ internal sealed class ListPage<T>
 	private DetailView? _view;
 
 	/// <summary>Creates the page.</summary>
-	public ListPage(string title, IReadOnlyList<Column<T>> columns, Func<T, string> key, IListSource<T> source,
+	public ListPage(string title, string help, IReadOnlyList<Column<T>> columns, Func<T, string> key, IListSource<T> source,
 		Func<T, DetailView> detail, Glyphs glyphs, bool noColor, TimeProvider clock, Action<Action> post,
 		ILogger logger)
 	{
+		_title = title;
+		_help = help;
 		_source = source;
 		_detail = detail;
 		_glyphs = glyphs;
@@ -90,11 +96,22 @@ internal sealed class ListPage<T>
 		_list.Activated += _ => ToggleDetail(true);
 		_list.NearEnd += LoadMore;
 		_list.KeyHook = OnListKey;
-		_search = new TextBox().Text(_query).Placeholder("search");
+		_list.Moved += () =>
+		{
+			if (_detailOpen.Value && _list.HasSelection) FillDetail(_list.Selected!);
+		};
+		_search = new TextBox().Text(_query).Placeholder("search (? for help)");
+		_search.KeyDown((_, e) => OnSearchKey(e));
 		var searchRow = new HStack(new TextBlock($"{(glyphs.Ascii ? "?" : "⌕")} "), _search.Stretch());
 		var body = new VStack(searchRow, new ScrollViewer(_list).Stretch(), _detailBox.Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Single).Stretch().IsVisible(_detailOpen)).Spacing(0);
 		View = new Group(title).Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0)).Content(body)
 			.BottomLeftText(() => _footer.Value).Stretch();
+		foreach (var gesture in Dialogs.BackGestures)
+			View.AddCommand(new Command
+			{
+				Id = $"{title}.back.{gesture}", LabelMarkup = "Back", Gesture = gesture, CanExecute = _ => CanBack,
+				Execute = _ => Back()
+			});
 	}
 
 	/// <summary>Gets the page to put in a tab.</summary>
@@ -117,6 +134,12 @@ internal sealed class ListPage<T>
 	public void Tick()
 	{
 		FitDetail();
+		if (_focusList && _app is not null && View.Bounds.Width > 0)
+		{
+			_focusList = false;
+			_app.Focus(_list);
+		}
+
 		var text = _query.Value;
 		var now = _clock.GetTimestamp();
 		if (text != _seenQuery)
@@ -137,6 +160,12 @@ internal sealed class ListPage<T>
 	public void FocusSearch()
 	{
 		if (_search is not null) _app?.Focus(_search);
+	}
+
+	/// <summary>Moves the focus to the list as soon as the tab is on screen.</summary>
+	public void FocusList()
+	{
+		_focusList = true;
 	}
 
 	/// <summary>Selects an item by its id, loading it first when needed.</summary>
@@ -204,7 +233,19 @@ internal sealed class ListPage<T>
 
 	private bool OnListKey(KeyEventArgs e)
 	{
-		if (e.Char == '/' || (e.Char == 'f' && e.Modifiers.HasFlag(TerminalModifiers.Ctrl)))
+		if (e.Char == '/' || e.Char == TerminalChar.CtrlF)
+		{
+			FocusSearch();
+			return true;
+		}
+
+		if (e.Char == '?')
+		{
+			ShowHelp();
+			return true;
+		}
+
+		if (e.Key == TerminalKey.Up && e.Modifiers == TerminalModifiers.None && _list.AtFirst)
 		{
 			FocusSearch();
 			return true;
@@ -212,13 +253,53 @@ internal sealed class ListPage<T>
 
 		if (!_detailOpen.Value) return false;
 
-		if (e.Key is TerminalKey.Escape or TerminalKey.Enter || e.Char == 'x')
+		if (e.Key == TerminalKey.Enter || e.Char == 'x')
 		{
 			ToggleDetail(false);
 			return true;
 		}
 
 		return false;
+	}
+
+	private void OnSearchKey(KeyEventArgs e)
+	{
+		if (e.Key == TerminalKey.Down)
+		{
+			LeaveSearch();
+		}
+		else if (e.Key == TerminalKey.Enter && _query.Value.Trim() == "?")
+		{
+			_query.Value = string.Empty;
+			ShowHelp();
+		}
+		else
+		{
+			return;
+		}
+
+		e.Handled = true;
+	}
+
+	/// <summary>Esc and Alt+Left: closes the detail, else clears the search, else leaves the search box.</summary>
+	private void Back()
+	{
+		if (_detailOpen.Value) CloseDetail();
+		else if (_query.Value.Length > 0) _query.Value = string.Empty;
+		else LeaveSearch();
+	}
+
+	private bool CanBack => _detailOpen.Value || _query.Value.Length > 0 || ReferenceEquals(_app?.FocusedElement, _search);
+
+	private void LeaveSearch()
+	{
+		_list.SelectFirst();
+		_app?.Focus(_list);
+	}
+
+	private void ShowHelp()
+	{
+		Dialogs.Info($"{_title}: search", _help.Split('\n'));
 	}
 
 	private void ToggleDetail(bool open)
@@ -258,13 +339,42 @@ internal sealed class ListPage<T>
 		foreach (var (label, value, _) in view.Fields)
 			fields.Add(new TextBlock($"{label,-12} {Palette.Plain(value)}"));
 		var actions = new VStack().Spacing(0);
+		var buttons = new List<Button>();
 		if (_compact && view.Actions.Count > 0)
-			actions.Add(new Button("[Actions]").Click(() => ShowActions(view.Actions)));
+			buttons.Add(new Button("[Actions]").Click(() => ShowActions(view.Actions)));
 		else
-			foreach (var action in view.Actions)
-				actions.Add(new Button(action.Label).Click(() => _ = Task.Run(action.Run)));
+			buttons.AddRange(view.Actions.Select(action => new Button(action.Label).Click(() => _ = Task.Run(action.Run))));
+		foreach (var button in buttons) actions.Add(button);
+		var close = new Button("Close").Click(CloseDetail);
+		buttons.Add(close);
 		var top = new HStack(fields.Stretch(), actions);
-		_detailBox.Content(new VStack(top, new TextBlock("Esc/Enter/x · Close")));
+		_detailBox.Content(new VStack(top, close).KeyDown((_, e) => OnDetailKey(e, buttons)));
+	}
+
+	private void OnDetailKey(KeyEventArgs e, List<Button> buttons)
+	{
+		if (e.Char == 'x')
+		{
+			CloseDetail();
+		}
+		else if (e.Key is TerminalKey.Left or TerminalKey.Right or TerminalKey.Up or TerminalKey.Down)
+		{
+			var at = buttons.FindIndex(button => ReferenceEquals(button, _app?.FocusedElement));
+			var step = e.Key is TerminalKey.Left or TerminalKey.Up ? -1 : 1;
+			_app?.Focus(buttons[Math.Clamp(at + step, 0, buttons.Count - 1)]);
+		}
+		else
+		{
+			return;
+		}
+
+		e.Handled = true;
+	}
+
+	private void CloseDetail()
+	{
+		ToggleDetail(false);
+		_app?.Focus(_list);
 	}
 
 	private static void ShowActions(IReadOnlyList<DetailAction> actions)

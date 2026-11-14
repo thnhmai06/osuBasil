@@ -72,6 +72,16 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 /// <summary>The beatmaps: each beatmapset with its difficulties, and what can be done to the set.</summary>
 internal sealed class BeatmapsTab : ITabView, ISelectable
 {
+	private const string Help = """
+		Words match the artist, title, creator and difficulty; "quoted" keeps spaces.
+		stars ar cs od hp bpm length circles sliders: use = < <= > >=  (stars>5 ar=9)
+		mode=0|1|2|3     game mode        hidden=1|0|*   hidden state
+		status=ranked|approved|qualified|loved|pending
+		creator= artist= title= difficulty= filename=  text the field contains
+		created= updated=  date comparison
+		Example: stars>5 ar=9 mode=0 "some title"
+		""";
+
 	private readonly ListPage<BeatmapItem> _page;
 	private bool _opened;
 
@@ -79,7 +89,7 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 	public BeatmapsTab(IServiceProvider services, ConsoleTab console, CliOptions options, Glyphs glyphs,
 		TimeProvider clock, Action<Action> post, ILogger logger)
 	{
-		_page = new ListPage<BeatmapItem>("Beatmaps",
+		_page = new ListPage<BeatmapItem>("Beatmaps", Help,
 		[
 			new Column<BeatmapItem>("ID", 10, b => b.Id.ToString()),
 			new Column<BeatmapItem>("Version", 0, b => b.Version),
@@ -108,6 +118,7 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 	/// <inheritdoc />
 	public void Activate()
 	{
+		_page.FocusList();
 		if (_opened) return;
 
 		_opened = true;

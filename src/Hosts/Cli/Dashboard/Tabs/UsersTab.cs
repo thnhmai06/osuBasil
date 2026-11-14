@@ -87,6 +87,14 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 /// <summary>The accounts: who is online and who is not, with what can be done to each.</summary>
 internal sealed class UsersTab : ITabView, ISelectable
 {
+	private const string Help = """
+		Words match the name (ignoring case) or the exact id.
+		country=usvn     only these countries (two-letter codes, joined)
+		privilege=4      only accounts granted all these privilege flags (number)
+		deleted=1|0|*    only deleted, only existing, or both (owner only)
+		Example: country=vn privilege=4 bob
+		""";
+
 	private readonly ListPage<UserItem> _page;
 	private bool _opened;
 
@@ -95,7 +103,7 @@ internal sealed class UsersTab : ITabView, ISelectable
 		Glyphs glyphs, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		var colours = options.NoColor;
-		_page = new ListPage<UserItem>("Users",
+		_page = new ListPage<UserItem>("Users", Help,
 		[
 			new Column<UserItem>("ID", 8, u => u.Id.ToString()),
 			new Column<UserItem>("Name", 0, u => u.Name),
@@ -118,6 +126,7 @@ internal sealed class UsersTab : ITabView, ISelectable
 	/// <inheritdoc />
 	public void Activate()
 	{
+		_page.FocusList();
 		if (_opened) return;
 
 		_opened = true;

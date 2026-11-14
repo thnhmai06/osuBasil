@@ -21,6 +21,9 @@ internal sealed class MonitorTab : ITabView
 	private readonly Sparkline _connectionsLine = new();
 	private readonly Sparkline _networkLine = new();
 	private readonly State<int> _stamp = new(0);
+	private readonly Grid _graphs = new Grid().Stretch();
+	private readonly GridCell[] _cells;
+	private bool? _inRow;
 	private object? _seen;
 
 	/// <summary>Creates the tab.</summary>
@@ -48,16 +51,17 @@ internal sealed class MonitorTab : ITabView
 			() => _palette.Wrap(Ink.Accent, model.ConnectionsOpen.Latest.ToString("0")), Legend("Open", null), theme,
 			options);
 
-		var wide = new Grid()
-			.Columns(new ColumnDefinition { Width = GridLength.Star() }, new ColumnDefinition { Width = GridLength.Star() })
-			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Star() })
-			.Cell(cpu.View, 0, 0).Cell(ram.View, 0, 1).Cell(network.View, 1, 0).Cell(open.View, 1, 1).Stretch();
-		var categories = new ScrollViewer(new ComputedVisual(Categories)).MaxHeight(9);
+		// The graphs take at most a third of the screen: four in a row when there is room, else two by two.
+		_cells = [new GridCell(cpu.View), new GridCell(ram.View), new GridCell(network.View), new GridCell(open.View)];
+		foreach (var cell in _cells) _graphs.Cells.Add(cell);
+		_graphs.MaxHeight(() => Math.Max(6, _size().Rows / 3));
+		Arrange();
+		var categories = new ScrollViewer(new ComputedVisual(Categories)).Stretch();
 		var wideBody = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
-			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
-			.Cell(wide, 0, 0)
-			.Cell(categories.IsVisible(() => _size().Rows >= Layout.WideSize.Height), 1, 0)
+			.Rows(new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Star() })
+			.Cell(_graphs, 0, 0)
+			.Cell(categories, 1, 0)
 			.Stretch().IsVisible(() => !IsNarrow());
 
 		var narrow = new VStack(
@@ -93,6 +97,7 @@ internal sealed class MonitorTab : ITabView
 	/// <inheritdoc />
 	public void Tick()
 	{
+		Arrange();
 		if (!ReferenceEquals(_seen, _model.Diagnostics)) Update();
 	}
 
@@ -100,6 +105,22 @@ internal sealed class MonitorTab : ITabView
 	public void Refresh()
 	{
 		Update();
+	}
+
+	private void Arrange()
+	{
+		var inRow = _size().Columns >= Layout.WideSize.Width;
+		if (inRow == _inRow) return;
+
+		_inRow = inRow;
+		var columns = inRow ? 4 : 2;
+		_graphs.Columns([.. Enumerable.Range(0, columns).Select(_ => new ColumnDefinition { Width = GridLength.Star() })]);
+		_graphs.Rows([.. Enumerable.Range(0, 4 / columns).Select(_ => new RowDefinition { Height = GridLength.Star() })]);
+		for (var i = 0; i < _cells.Length; i++)
+		{
+			_cells[i].Row = i / columns;
+			_cells[i].Column = i % columns;
+		}
 	}
 
 	private void Update()

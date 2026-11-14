@@ -8,6 +8,7 @@ using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
+using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Styling;
 
@@ -26,7 +27,9 @@ public sealed class DashboardApp
 	private readonly State<int> _rows = new(40);
 	private readonly ILogger<DashboardApp> _logger;
 	private readonly CliOptions _mode;
+	private readonly State<string> _flash = new(string.Empty);
 	private readonly State<string> _notice = new(string.Empty);
+	private readonly Palette _palette;
 	private readonly DashboardSampler _sampler;
 	private readonly ShutdownController _shutdown;
 	private readonly State<int> _selected = new(0);
@@ -35,6 +38,7 @@ public sealed class DashboardApp
 	private int _lastActive = -1;
 	private readonly ThemeStore _themes;
 	private TerminalApp? _app;
+	private long _flashAt;
 	private long _lastSample;
 	private int _sampling;
 	private TabControl? _tabs;
@@ -52,6 +56,7 @@ public sealed class DashboardApp
 		_clock = clock;
 		_logger = logger;
 		_glyphs = new Glyphs(mode.Ascii);
+		_palette = new Palette(mode.NoColor);
 		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), logger);
 		_views[DashboardTab.Users] = new UsersTab(services, _console, () => _selected.Value = (int)DashboardTab.Console,
 			mode, _glyphs, clock, action => _app?.Post(action), logger);
@@ -61,7 +66,7 @@ public sealed class DashboardApp
 			action => _app?.Post(action), logger);
 		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, mode, clock,
 			action => _app?.Post(action), logger);
-		_views[DashboardTab.About] = new AboutTab(services, _glyphs, action => _app?.Post(action), logger);
+		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, action => _app?.Post(action), logger);
 		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
 		_views[DashboardTab.Connections] = new ConnectionsTab(model, themes, _glyphs, mode);
 		_views[DashboardTab.Chat] = new ChatTab(services, model.Chat, mode, _glyphs, new Palette(mode.NoColor),
@@ -75,24 +80,20 @@ public sealed class DashboardApp
 	/// <summary>Builds what the dashboard shows.</summary>
 	public Visual Build()
 	{
-		var pages = Enum.GetValues<DashboardTab>().Select(tab => new TabPage(tab.ToString(), Content(tab))).ToArray();
+		var pages = Enum.GetValues<DashboardTab>().Select(tab => new TabPage(
+			new Markup(Header(tab)),
+			new Padder(Content(tab)).Padding(new Thickness(1, 0, 1, 0)).Stretch())).ToArray();
 		_tabs = new TabControl(pages).Style(_mode.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder).SelectedIndex(_selected);
-		var status = new TextBlock(() => _notice.Value.Length > 0 ? _notice.Value : Hints());
+		var status = new TextBlock(() => _notice.Value.Length > 0 ? _notice.Value : _flash.Value.Length > 0 ? _flash.Value : Hints());
 		var main = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
 			.Cell(_tabs, 0, 0)
-			.Cell(status, 1, 0)
-			.IsVisible(() => !TooSmall());
+			.Cell(status, 1, 0);
 		var small = new Center(new Group("Terminal too small").Style(GroupStyle.Rounded).Padding(1)
-				.Content(new VStack(new TextBlock(() => SmallLine(0)), new TextBlock(() => SmallLine(1)),
-					new TextBlock("Enlarge the window or zoom out."))))
-			.IsVisible(TooSmall);
-		return new Grid()
-			.Columns(new ColumnDefinition { Width = GridLength.Star() })
-			.Rows(new RowDefinition { Height = GridLength.Star() })
-			.Cell(main, 0, 0)
-			.Cell(small, 0, 0);
+				.Content(new VStack(new Markup(() => SmallLine(0)), new Markup(() => SmallLine(1)),
+					new TextBlock("Enlarge the window or zoom out."))));
+		return new Padder(() => TooSmall() ? small : main).Stretch();
 	}
 
 	/// <summary>Runs the dashboard until the server stops.</summary>
@@ -125,6 +126,9 @@ public sealed class DashboardApp
 			_rows.Value = terminal.Size.Rows;
 			_console.Pump();
 			var now = _clock.GetTimestamp();
+			if (_flash.Value.Length > 0 && _clock.GetElapsedTime(_flashAt, now) >= TimeSpan.FromSeconds(2))
+				_flash.Value = string.Empty;
+
 			if (_clock.GetElapsedTime(_lastSample, now) >= TimeSpan.FromSeconds(1))
 			{
 				_lastSample = now;
@@ -139,6 +143,11 @@ public sealed class DashboardApp
 		});
 		_shutdown.Message -= OnShutdownMessage;
 		_console.Stop();
+	}
+
+	private string Header(DashboardTab tab)
+	{
+		return $"{_palette.Wrap(Ink.Muted, $"F{(int)tab + 1}")} {tab}";
 	}
 
 	private Visual Content(DashboardTab tab)
@@ -166,22 +175,28 @@ public sealed class DashboardApp
 	private string SmallLine(int line)
 	{
 		var (needWidth, needHeight) = Layout.Needed(Tab);
-		var width = _columns.Value < needWidth ? _glyphs.Cross : " ";
-		var height = _rows.Value < needHeight ? _glyphs.Cross : " ";
+		var width = _palette.Wrap(_columns.Value < needWidth ? Ink.Error : Ink.Success, needWidth.ToString());
+		var height = _palette.Wrap(_rows.Value < needHeight ? Ink.Error : Ink.Success, needHeight.ToString());
 		return line == 0
 			? $"Current : {_columns.Value} × {_rows.Value}"
-			: $"Needed  : {needWidth}{width} × {needHeight}{height}  ({Tab})";
+			: $"Needed  : {width} × {height}  ({Tab})";
 	}
 
 	private string Hints()
 	{
 		var dot = $" {_glyphs.Dot} ";
-		var hints = Tab == DashboardTab.Chat
-			? _mode.Editable ? new[] { "Enter send", "Tab next pane", "Esc/Alt+← back", "Ctrl+B members", "Ctrl+End follow" } : ["Tab next pane", "Esc/Alt+← back", "Ctrl+B members"]
-			: Tab == DashboardTab.Console
-			? _mode.Editable ? new[] { "Enter run", "Tab complete", "Ctrl+End follow" } : ["Ctrl+End follow"]
-			: Tab is DashboardTab.Monitor or DashboardTab.Connections or DashboardTab.About ? ["Ctrl+R refresh"]
-				: ["/ search", "Enter open", "Ctrl+R refresh"];
+		string[] hints = Tab switch
+		{
+			DashboardTab.Chat => _mode.Editable
+				? ["Enter send", "Tab pane", "Ctrl+B members", "Esc/Alt+← back", "Ctrl+End follow"]
+				: ["Tab pane", "Ctrl+B members", "Esc/Alt+← back", "Ctrl+End follow"],
+			DashboardTab.Settings => ["←→ category", "↓/Enter fields", "↑/Esc back", "Enter save"],
+			DashboardTab.Console => _mode.Editable
+				? ["Enter run", "Tab/↑↓ complete", "Esc close", "Ctrl+End follow"]
+				: ["Ctrl+End follow"],
+			DashboardTab.Monitor or DashboardTab.Connections or DashboardTab.About => ["Ctrl+R refresh"],
+			_ => ["↑↓ select", "Enter open", "/ search", "? help", "Ctrl+R refresh"]
+		};
 		return " " + string.Join(dot, _mode.Editable ? hints : [.. hints, "view only"]);
 	}
 
@@ -216,11 +231,17 @@ public sealed class DashboardApp
 				Id = $"tab.{(DashboardTab)index}", LabelMarkup = ((DashboardTab)index).ToString(),
 				Gesture = new KeyGesture(TerminalKey.F1 + index), Execute = _ => _selected.Value = index
 			});
+			app.AddGlobalCommand(new Command
+			{
+				Id = $"tab.alt.{(DashboardTab)index}", LabelMarkup = ((DashboardTab)index).ToString(),
+				Gesture = new KeyGesture((char)('0' + (index + 1) % 10), TerminalModifiers.Alt),
+				Execute = _ => _selected.Value = index
+			});
 		}
 
 		app.AddGlobalCommand(new Command
 		{
-			Id = "interrupt", LabelMarkup = "Interrupt", Gesture = new KeyGesture('c', TerminalModifiers.Ctrl),
+			Id = "interrupt", LabelMarkup = "Interrupt", Gesture = new KeyGesture(TerminalChar.CtrlC, TerminalModifiers.Ctrl),
 			Execute = _ => _shutdown.Interrupt(!string.IsNullOrEmpty(_console.Prompt?.Text))
 		});
 		app.AddGlobalCommand(new Command
@@ -230,9 +251,21 @@ public sealed class DashboardApp
 		});
 		app.AddGlobalCommand(new Command
 		{
-			Id = "refresh", LabelMarkup = "Refresh", Gesture = new KeyGesture('r', TerminalModifiers.Ctrl),
-			Execute = _ => ActiveView()?.Refresh()
+			Id = "refresh", LabelMarkup = "Refresh", Gesture = new KeyGesture(TerminalChar.CtrlR, TerminalModifiers.Ctrl),
+			Execute = _ =>
+			{
+				ActiveView()?.Refresh();
+				_flashAt = _clock.GetTimestamp();
+				_flash.Value = $" Refreshed {_clock.GetLocalNow():HH:mm:ss}";
+			}
 		});
+		foreach (var (id, key, step) in new[] { ("tab.previous", TerminalKey.Left, -1), ("tab.next", TerminalKey.Right, 1) })
+			app.AddGlobalCommand(new Command
+			{
+				Id = id, LabelMarkup = id, Gesture = new KeyGesture(key, TerminalModifiers.Ctrl),
+				CanExecute = _ => app.FocusedElement is not (TextBox or PromptEditor or TextArea),
+				Execute = _ => _selected.Value = Math.Clamp(_selected.Value + step, 0, Enum.GetValues<DashboardTab>().Length - 1)
+			});
 		app.AddGlobalCommand(new Command
 		{
 			Id = "jump.end", LabelMarkup = "Jump to End",

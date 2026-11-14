@@ -68,6 +68,9 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <summary>Gets whether an item is selected.</summary>
 	public bool HasSelection => _selected >= 0 && _selected < _rows.Count;
 
+	/// <summary>Gets whether the selection is on the first item, or there is nothing to select.</summary>
+	public bool AtFirst => _selected <= _rows.FindIndex(row => !row.IsHeader);
+
 	/// <summary>Gets how many items there are in all groups.</summary>
 	public int ItemCount => _rows.Count(row => !row.IsHeader);
 
@@ -99,6 +102,9 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <summary>Gets or sets a hook that sees every key first and returns whether it used the key.</summary>
 	public Func<KeyEventArgs, bool>? KeyHook { get; set; }
 
+	/// <summary>Occurs when the selected item changes by key, wheel or click.</summary>
+	public event Action? Moved;
+
 	/// <summary>Occurs when the selection reaches the last rows, so that the next page can be loaded.</summary>
 	public event Action? NearEnd;
 
@@ -119,6 +125,12 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		if (_selected < 0) _selected = rows.FindIndex(row => !row.IsHeader);
 		Settle();
 		Revision++;
+	}
+
+	/// <summary>Selects the first item.</summary>
+	public void SelectFirst()
+	{
+		MoveTo(_rows.FindIndex(row => !row.IsHeader));
 	}
 
 	/// <summary>Selects the item with an id, when it is in the table.</summary>
@@ -225,11 +237,23 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <inheritdoc />
 	protected override void OnPointerPressed(PointerEventArgs e)
 	{
+		if (e.RoutingPhase != RoutingPhase.Bubble || e.Button != TerminalMouseButton.Left) return;
+
 		var index = RowAt(e.LocalY);
 		if (index < 0 || _rows[index].IsHeader) return;
 
+		var again = index == _selected;
 		MoveTo(index);
-		if (e.ClickCount >= 2) Activated?.Invoke(_rows[index].Item!);
+		if (again || e.ClickCount >= 2) Activated?.Invoke(_rows[index].Item!);
+		e.Handled = true;
+	}
+
+	/// <inheritdoc />
+	protected override void OnPointerWheel(PointerEventArgs e)
+	{
+		if (e.RoutingPhase != RoutingPhase.Bubble || e.WheelDelta == 0) return;
+
+		Move(e.WheelDelta > 0 ? -3 : 3);
 		e.Handled = true;
 	}
 
@@ -273,6 +297,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		_selected = index;
 		Settle();
 		Revision++;
+		Moved?.Invoke();
 		if (index >= _rows.Count - 3) NearEnd?.Invoke();
 	}
 
