@@ -8,8 +8,8 @@ using XenoAtom.Terminal.UI.Styling;
 namespace Basil.Host.Cli.Dashboard.Shell;
 
 /// <summary>
-///     A rounded panel with a big current value on top, the graph of one or two series that fills the rest and a legend
-///     line; the graph is drawn again for the size the panel has now.
+///     A rounded panel that shows the graph of one or two series with the current value and a legend on its border; the
+///     graph is drawn again for the size the panel has now.
 /// </summary>
 internal sealed class GraphPanel
 {
@@ -48,20 +48,29 @@ internal sealed class GraphPanel
 			_ = _version.Value;
 			return new Delegator<Action<CanvasContext>>(Paint);
 		}).Stretch();
-		var body = new Grid()
+		var headlineText = new Markup(() =>
+		{
+			_ = _version.Value;
+			return headline();
+		});
+		var legendText = new Markup(legend);
+		if (framed)
+		{
+			// The headline and the legend sit on the border, so that the whole inside is the graph.
+			View = new Group(title).Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
+				.TopRightText(headlineText).BottomLeftText(legendText)
+				.Padding(new Thickness(1, 0, 1, 0)).Content(canvas).Stretch();
+			return;
+		}
+
+		View = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Star() },
 				new RowDefinition { Height = GridLength.Auto })
-			.Cell(new Markup(() =>
-			{
-				_ = _version.Value;
-				return headline();
-			}).HorizontalAlignment(Align.End), 0, 0)
+			.Cell(headlineText.HorizontalAlignment(Align.End), 0, 0)
 			.Cell(canvas, 1, 0)
-			.Cell(new Markup(legend), 2, 0)
+			.Cell(legendText, 2, 0)
 			.Stretch();
-		View = !framed ? (Visual)body : new Group(title).Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
-			.Padding(new Thickness(1, 0, 1, 0)).Content(body).Stretch();
 	}
 
 	/// <summary>Gets the panel.</summary>
