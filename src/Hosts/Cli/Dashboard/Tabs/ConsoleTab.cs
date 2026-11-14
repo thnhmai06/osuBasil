@@ -383,6 +383,11 @@ internal sealed class ConsoleTab
 				if (_items.Count == 1) AcceptAt(0);
 			}
 		});
+		prompt.AddCommand(new Command
+		{
+			Id = "console.suggest.back", LabelMarkup = "Close", Gesture = new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt),
+			CanExecute = _ => Open(), Execute = _ => ClosePopup()
+		});
 		// The editor takes Esc for itself and reports it as canceled: close the popup, else clear the line.
 		prompt.Canceled(() =>
 		{

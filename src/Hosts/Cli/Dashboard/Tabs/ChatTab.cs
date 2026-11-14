@@ -400,11 +400,12 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 
 		Add("down", new KeyGesture(TerminalKey.Down), () => _app?.Focus(list));
 		Add("enter", new KeyGesture(TerminalKey.Enter), () => _app?.Focus(list));
-		Add("escape", new KeyGesture(TerminalKey.Escape), () =>
-		{
-			if (query.Value.Length > 0) query.Value = string.Empty;
-			else _app?.Focus(list);
-		});
+		foreach (var gesture in Dialogs.BackGestures)
+			Add($"back.{gesture}", gesture, () =>
+			{
+				if (query.Value.Length > 0) query.Value = string.Empty;
+				else _app?.Focus(list);
+			});
 	}
 
 	// Narrow: one pane at a time (channels, then the conversation, or its members); wider: the three panes.
