@@ -39,8 +39,9 @@ internal sealed class AboutTab : ITabView
 	private readonly State<string> _rulesets = new(string.Empty);
 	private bool _checking;
 
-	/// <summary>Creates the tab.</summary>
-	public AboutTab(IServiceProvider services, Glyphs glyphs, CliOptions options, Action<Action> post, ILogger logger)
+	/// <summary>Creates the tab; the art beside the details shows only when the terminal is wide.</summary>
+	public AboutTab(IServiceProvider services, Glyphs glyphs, CliOptions options, Func<(int Columns, int Rows)> size,
+		Action<Action> post, ILogger logger)
 	{
 		_updates = services.GetRequiredService<IUpdateStatus>();
 		_post = post;
@@ -51,18 +52,25 @@ internal sealed class AboutTab : ITabView
 			new Markup(palette.Wrap(Ink.Accent, "osu!Basil")),
 			new TextBlock(Description).Wrap(true),
 			new TextBlock(string.Empty),
-			new Markup($"{palette.Wrap(Ink.Muted, "Version")}  {palette.Wrap(Ink.Text, AppVersion.Current)}"),
-			new Markup($"{palette.Wrap(Ink.Muted, "GitHub ")}  {palette.Wrap(Ink.Text, "https://github.com/thnhmai06/osuBasil")}"),
-			new Markup($"{palette.Wrap(Ink.Muted, "License")}  {palette.Wrap(Ink.Text, "MIT")}")).Spacing(0).Stretch();
+			Line(palette, "Version", AppVersion.Current),
+			Line(palette, "GitHub ", "https://github.com/thnhmai06/osuBasil"),
+			Line(palette, "License", "MIT")).Spacing(0);
+		var art = new Markup(XenoAtom.Ansi.AnsiMarkup.Escape(glyphs.Ascii ? Art.Replace("\u0332", string.Empty) : Art));
 		var about = new Group("About").Style(style).Padding(new Thickness(1, 0, 1, 0))
-			.Content(new HStack(new TextBlock(glyphs.Ascii ? Art.Replace("W\u0332", "W") : Art), info).Spacing(3));
+			.Content(new Grid()
+				.Columns(new ColumnDefinition { Width = GridLength.Auto }, new ColumnDefinition { Width = GridLength.Star() })
+				.Rows(new RowDefinition { Height = GridLength.Auto })
+				.Cell(new Padder(art).Padding(new Thickness(0, 0, 3, 0)).IsVisible(() => size().Columns >= Layout.WideSize.Width), 0, 0)
+				.Cell(info, 0, 1))
+			.Stretch();
 		var updates = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() }, new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Auto })
 			.Cell(Panel("Basil", _basil, style), 0, 0)
-			.Cell(Panel("Rulesets", _rulesets, style), 0, 1);
+			.Cell(Panel("Rulesets", _rulesets, style), 0, 1)
+			.Stretch();
 		var check = new HStack(new Button("Check now").Click(CheckNow), new TextBlock(() => _last.Value)).Spacing(2);
-		View = new VStack(about, updates, check).Spacing(0).Stretch();
+		View = new VStack(about, updates, check).Spacing(0);
 		Show();
 	}
 
@@ -129,9 +137,14 @@ internal sealed class AboutTab : ITabView
 		_last.Value = $"Last check  {last}";
 	}
 
+	private static Markup Line(Palette palette, string label, string value)
+	{
+		return new Markup($"{palette.Wrap(Ink.Muted, label)}  {palette.Wrap(Ink.Text, value)}".ToString());
+	}
+
 	private static Group Panel(string title, State<string> text, GroupStyle style)
 	{
-		return new Group(title).Style(style).Padding(new Thickness(1, 0, 1, 0)).Content(new TextBlock(() => text.Value));
+		return new Group(title).Style(style).Padding(new Thickness(1, 0, 1, 0)).Content(new TextBlock(() => text.Value).Wrap(true)).Stretch();
 	}
 
 	private static string Text(UpdateState state, string? version)

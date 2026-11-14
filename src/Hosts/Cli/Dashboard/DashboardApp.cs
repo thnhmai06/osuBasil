@@ -66,7 +66,7 @@ public sealed class DashboardApp
 			action => _app?.Post(action), logger);
 		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, mode, clock,
 			action => _app?.Post(action), logger);
-		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, action => _app?.Post(action), logger);
+		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), action => _app?.Post(action), logger);
 		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
 		_views[DashboardTab.Connections] = new ConnectionsTab(model, themes, _glyphs, mode);
 		_views[DashboardTab.Chat] = new ChatTab(services, model.Chat, mode, _glyphs, new Palette(mode.NoColor),
@@ -83,7 +83,8 @@ public sealed class DashboardApp
 		var pages = Enum.GetValues<DashboardTab>().Select(tab => new TabPage(
 			new Markup(Header(tab)),
 			new Padder(Content(tab)).Padding(new Thickness(1, 0, 1, 0)).Stretch())).ToArray();
-		_tabs = new TabControl(pages).Style(_mode.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder).SelectedIndex(_selected);
+		var strip = (_mode.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder) with { TabPadding = new Thickness(0, 0, 1, 0) };
+		_tabs = new TabControl(pages).Style(strip).SelectedIndex(_selected);
 		var status = new TextBlock(() => _notice.Value.Length > 0 ? _notice.Value : _flash.Value.Length > 0 ? _flash.Value : Hints());
 		var main = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })

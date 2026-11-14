@@ -54,7 +54,7 @@ internal sealed class MonitorTab : ITabView
 		// The graphs take at most a third of the screen: four in a row when there is room, else two by two.
 		_cells = [new GridCell(cpu.View), new GridCell(ram.View), new GridCell(network.View), new GridCell(open.View)];
 		foreach (var cell in _cells) _graphs.Cells.Add(cell);
-		_graphs.MaxHeight(() => Math.Max(6, _size().Rows / 3));
+		_graphs.MinHeight(GraphHeight).MaxHeight(GraphHeight);
 		Arrange();
 		var categories = new ScrollViewer(new ComputedVisual(Categories)).Stretch();
 		var wideBody = new Grid()
@@ -105,6 +105,11 @@ internal sealed class MonitorTab : ITabView
 	public void Refresh()
 	{
 		Update();
+	}
+
+	private int GraphHeight()
+	{
+		return Math.Max(6, _size().Rows / 3);
 	}
 
 	private void Arrange()
