@@ -136,6 +136,33 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		return ([.. result.Distinct()], start, partial.Length);
 	}
 
+	/// <summary>Lists what could be typed at the end of the line, each with a short description.</summary>
+	/// <param name="line">The text before the caret.</param>
+	/// <returns>
+	///     The words that fit with what each does (empty for an id), the index where the word being typed starts, and its
+	///     length.
+	/// </returns>
+	public (IReadOnlyList<(string Word, string Description)> Items, int ReplaceStart, int ReplaceLength) SuggestDescribed(
+		string line)
+	{
+		var (words, start, length) = Suggest(line);
+		var positional = Words(line[..start]).Select(word => word.Text).TakeWhile(word => !CommandCatalog.IsOption(word))
+			.ToList();
+		return ([.. words.Select(word => (word, DescribeWord(positional, word)))], start, length);
+	}
+
+	private string DescribeWord(List<string> positional, string word)
+	{
+		if (word.StartsWith('-'))
+			return catalog.All.FirstOrDefault(command => Fits(command, positional))?.Options
+				.FirstOrDefault(option => $"--{option.Name}" == word)?.Description ?? string.Empty;
+
+		var typed = new List<string>(positional) { word };
+		var candidates = catalog.Starting(typed).ToList();
+		return candidates.FirstOrDefault(command => Fits(command, typed))?.Summary ??
+		       (candidates.Count > 1 ? $"{candidates.Count} commands" : candidates.FirstOrDefault()?.Summary ?? string.Empty);
+	}
+
 	private void AddWordSuggestions(List<string> result, List<string> positional, string partial)
 	{
 		foreach (var command in catalog.Starting(positional).Where(command => command.Words.Length > positional.Count))

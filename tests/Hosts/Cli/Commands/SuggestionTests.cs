@@ -5,7 +5,8 @@ namespace Basil.Host.Cli.Tests.Commands;
 /// <summary>What the command box offers and how it colours a typed line.</summary>
 public sealed class SuggestionTests
 {
-	private static readonly CommandSuggestions Suggestions = new(CommandCatalogFactory.Create(), new Source());
+	private static readonly CommandCatalog Catalog = CommandCatalogFactory.Create();
+	private static readonly CommandSuggestions Suggestions = new(Catalog, new Source());
 
 	[Fact]
 	public void FirstWord_CompletesCommands()
@@ -55,6 +56,42 @@ public sealed class SuggestionTests
 	public void Describe_PatternAndSummary()
 	{
 		Assert.StartsWith("users list  ", Suggestions.Describe("users list"));
+	}
+
+	[Fact]
+	public void Described_CommandWordCarriesItsSummary()
+	{
+		var (items, start, length) = Suggestions.SuggestDescribed("users li");
+
+		Assert.Equal([("list", Catalog.All.First(c => c.Pattern == "users list").Summary)], items);
+		Assert.Equal((6, 2), (start, length));
+	}
+
+	[Fact]
+	public void Described_OptionCarriesItsDescription()
+	{
+		var (items, _, _) = Suggestions.SuggestDescribed("users create --user");
+
+		var option = Catalog.All.First(c => c.Pattern == "users create").Options.First(o => o.Name == "username");
+		Assert.Equal([("--username", option.Description)], items);
+	}
+
+	[Fact]
+	public void Described_IdTakesTheSummaryOfTheCommandItAddresses()
+	{
+		var (items, _, _) = Suggestions.SuggestDescribed("rooms ");
+
+		Assert.Contains(("5", Catalog.All.First(c => c.Pattern == "rooms <id:int>").Summary), items);
+	}
+
+	[Fact]
+	public void Described_WordsMatchSuggest()
+	{
+		var (items, start, length) = Suggestions.SuggestDescribed("channels ");
+		var (words, wordStart, wordLength) = Suggestions.Suggest("channels ");
+
+		Assert.Equal(words, items.Select(item => item.Word));
+		Assert.Equal((wordStart, wordLength), (start, length));
 	}
 
 	[Fact]
