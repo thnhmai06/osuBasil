@@ -72,6 +72,10 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 /// <summary>The rooms: the open ones with what the creator and the referees can do, and the ones that ended.</summary>
 internal sealed class LobbyTab : ITabView
 {
+	private const string Help = """
+		Type part of the room name (ignoring case) or the exact room id.
+		""";
+
 	private readonly ListPage<RoomItem> _page;
 	private bool _opened;
 
@@ -79,7 +83,7 @@ internal sealed class LobbyTab : ITabView
 	public LobbyTab(IServiceProvider services, ConsoleTab console, Action<string> openChat, CliOptions options,
 		Glyphs glyphs, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
-		_page = new ListPage<RoomItem>("Lobby",
+		_page = new ListPage<RoomItem>("Lobby", Help,
 		[
 			new Column<RoomItem>("ID", 8, r => r.Id.ToString()),
 			new Column<RoomItem>("Name", 0, r => r.Name),
@@ -103,6 +107,7 @@ internal sealed class LobbyTab : ITabView
 	/// <inheritdoc />
 	public void Activate()
 	{
+		_page.FocusList();
 		if (_opened) return;
 
 		_opened = true;

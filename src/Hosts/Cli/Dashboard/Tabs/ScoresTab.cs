@@ -100,6 +100,13 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 /// <summary>The scores, newest first, with a jump to the beatmap or the player of each.</summary>
 internal sealed class ScoresTab : ITabView
 {
+	private const string Help = """
+		user:name or user:id          only this player's scores
+		beatmap:id                    only this beatmap's scores
+		Other words are read as a beatmap search (see the Beatmaps tab, ?)
+		Example: user:bob beatmap:75
+		""";
+
 	private readonly ListPage<ScoreItem> _page;
 	private bool _opened;
 
@@ -108,7 +115,7 @@ internal sealed class ScoresTab : ITabView
 	public ScoresTab(IServiceProvider services, Action<DashboardTab, string> openIn, Glyphs glyphs,
 		CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
-		_page = new ListPage<ScoreItem>("Scores",
+		_page = new ListPage<ScoreItem>("Scores", Help,
 		[
 			new Column<ScoreItem>("ID", 8, s => s.Id.ToString(CultureInfo.InvariantCulture)),
 			new Column<ScoreItem>("Player", 18, s => s.Player),
@@ -135,6 +142,7 @@ internal sealed class ScoresTab : ITabView
 	/// <inheritdoc />
 	public void Activate()
 	{
+		_page.FocusList();
 		if (_opened) return;
 
 		_opened = true;
