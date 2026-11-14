@@ -35,7 +35,7 @@ Two more arguments change how the dashboard looks:
 ## The dashboard
 
 The dashboard is a server-side admin view: ten tabs on one line, a line of key hints under them, and nothing else on
-screen. A tab changes with `F1`–`F10` or a click.
+screen. Keys and mouse are listed under [Keys and mouse](#keys-and-mouse).
 
 | Tab         | Shows                                                                                  |
 |-------------|----------------------------------------------------------------------------------------|
@@ -166,16 +166,77 @@ The output is for people and never JSON; there is no `--json` option.
 * In the dashboard the output is coloured with the theme; from a shell, over the socket and with `--console 0` it is plain
   text without colour.
 
-## The dashboard
+## Keys and mouse
 
-| Key                    | Does                                                                                   |
-|------------------------|----------------------------------------------------------------------------------------|
-| `F1` to `F6`           | Overview, Users, Rooms, Metrics, Logs, Chat                                            |
-| `Alt+Up`, `Alt+Down`   | Select a row of the Users or Rooms table                                               |
-| `Alt+Enter`            | Put the id of the selected row in the command box                                      |
-| `PageUp`, `PageDown`   | Freeze the log, follow the log                                                         |
-| `Tab`                  | Complete the command; the ids that exist are offered where a command takes one         |
-| `Ctrl+C`               | See [Modes](#modes)                                                                    |
+Every mouse action has a keyboard equivalent, so the dashboard works over a plain SSH session. `Alt+Left` does what `Esc`
+does everywhere, because some terminals delay or swallow `Esc`. A dialog takes the keys first; the tables below apply
+when none is open.
+
+### Global
+
+| Key                         | Mouse                | Does                                                                                   |
+|-----------------------------|----------------------|----------------------------------------------------------------------------------------|
+| `F1` to `F10`, `Alt+1` to `Alt+0` | click a tab title | Switch tab                                                                             |
+| `Ctrl+Left`, `Ctrl+Right`   |                      | Previous or next tab; inside a text box they move by word instead                      |
+| `Tab`, `Shift+Tab`          | click a pane         | Next or previous pane (search, list, detail actions)                                   |
+| `Ctrl+R`                    |                      | Reload the tab in view; the status line shows `Refreshed hh:mm:ss` for 2 seconds       |
+| `Ctrl+End`                  | click `Jump to End`  | Follow the newest line (Console, Chat)                                                 |
+| `Esc` or `Alt+Left`         | click `Close` or `[X]` | Close the top thing: dialog, detail, search text, search box, and in a narrow Chat the channel view |
+| `Ctrl+C`                    |                      | See [Modes](#modes)                                                                    |
+|                             | wheel                | Scroll the pane under the pointer                                                      |
+
+### Lists (Users, Beatmaps, Lobby, Scores, Chat channels and members)
+
+A list tab opens with the list focused, not the search box.
+
+| Key                                   | Mouse                                   | Does                                                       |
+|---------------------------------------|-----------------------------------------|------------------------------------------------------------|
+| `Up`, `Down`, `PageUp`, `PageDown`, `Home`, `End` | wheel                       | Move the selection                                         |
+|                                       | click a row                             | Select the row                                             |
+| `Enter`                               | double-click a row, or click the selected one | Open the detail                                      |
+| `/` or `Ctrl+F`                       | click the search box                    | Focus the search                                           |
+| `Down` in the search                  |                                         | Leave the search and select the first item                 |
+| `Up` on the first item                |                                         | Go to the search                                           |
+| `Esc` in the search                   |                                         | Clear the text; with no text, leave the search             |
+| `?` then `Enter` in the search        |                                         | Show the search syntax of the tab (`Esc`, `Enter` or `[X]` closes it) |
+| `Esc`, `x` or `Enter` with a detail open | click `Close`                        | Close the detail                                           |
+| `Left`, `Right`, `Tab` in a detail    | click an action                         | Move between actions; `Enter` runs the one in focus        |
+
+### Settings
+
+Two levels: the category strip, then the fields of the category.
+
+| Key                                  | Mouse                      | Does                                                      |
+|--------------------------------------|----------------------------|-----------------------------------------------------------|
+| `Left`, `Right` on the strip         | click a category           | Change category                                           |
+| `Down` or `Enter` on the strip       |                            | Enter the first field                                     |
+| `Up`, `Down` in the fields           | click a field              | Move between fields; `Up` on the first returns to the strip |
+| `Esc` or `Alt+Left` in the fields    |                            | Back to the strip, dropping an unsaved edit of the field  |
+| `Enter`                              |                            | Save a text field                                         |
+| `Space` or `Enter`                   | click a switch             | Toggle a switch                                           |
+
+### Console
+
+| Key                                  | Mouse                      | Does                                                      |
+|--------------------------------------|----------------------------|-----------------------------------------------------------|
+| typing                               |                            | Opens a completion popup above the input: up to 8 matching commands or arguments with a short description |
+| `Up`, `Down`                         |                            | Move in the popup; with the popup closed, walk the history |
+| `Tab`, or `Enter` on a highlighted item | click a popup row       | Accept the item                                           |
+| `Enter` with no popup                |                            | Run the line                                              |
+| `Esc`                                |                            | Close the popup; with none open, clear the line           |
+
+### Chat
+
+| Key                                  | Mouse                      | Does                                                      |
+|--------------------------------------|----------------------------|-----------------------------------------------------------|
+| `Tab`, `Shift+Tab`                   |                            | Channels, then the message box, then the members          |
+| `Up`, `Down`, `Enter` on a channel   | click a channel            | Select it; `Enter` opens it and focuses the message box   |
+| `Enter` in the message box           |                            | Send                                                      |
+|                                      | click a member             | Open a direct message with the member                     |
+| `Ctrl+B`                             |                            | Show or hide the members                                  |
+| `Esc` or `Alt+Left`                  |                            | In a narrow terminal, back to the channel list           |
+
+The channel and member searches hide the sections that have no match.
 
 Graphs are drawn with braille characters (2 by 4 dots per cell) and coloured by value; a terminal narrower than 100
 columns hides the big graphs. The history is 15 minutes, one sample per second, and comes from the same sample as the
