@@ -7,7 +7,7 @@
 <sub><i>If [Akatsuki](https://github.com/osuAkatsuki/bancho.py) means dawn, then Basil is the sunflower that always
 faces the sun.</i></sub>
 
-**A lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) server for tournaments and multiplayer.**
+**A lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) backend platform specialized for multiplayer.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
 [![CodeFactor](https://www.codefactor.io/repository/github/thnhmai06/osubasil/badge/main?style=flat-square)](https://www.codefactor.io/repository/github/thnhmai06/osubasil/overview/main)
@@ -25,28 +25,33 @@ faces the sun.</i></sub>
 ([Akatsuki](https://github.com/osuAkatsuki)). The project name **"Basil"** was inspired by the character Basil
 from [OMORI](https://www.omori-game.com/), and the mascot artwork depicts the same character. This project is not
 affiliated with, endorsed by, or connected to OMORI or its developer, [OMOCAT](https://omocat.com/). All character
-rights belong to their respective owners.
+privileges belong to their respective owners.
 
 ## ✨ Key features
 
 Basil is designed around a simple principle: **keep the server self-contained and minimize external dependencies**.
 
-The server can operate entirely offline, keeping gameplay and tournament data under the operator's control without
+The server needs only a PostgreSQL database and can operate entirely offline, keeping gameplay and tournament data under the operator's control without
 requiring third-party online services.
 
 * **Multiplayer-first**: provides the [osu! stable multiplayer](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer)
   experience required for tournament operation, while deliberately excluding unrelated singleplayer and social features.
 * **Tournament support**: supports [osu!tourney](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney),
-  tournament-oriented `!mp` commands, live match state, and real-time reporting.
+  live match state, and real-time reporting.
 * **osu! ecosystem compatibility**:
-  supports [osu!direct](https://osu.ppy.sh/wiki/en/osu%21supporter#osu!direct), [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)
-  (as BasilBot), and [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat).
-* **Self-contained storage**: stores server data locally using SQLite; no external database server is required.
+  supports [osu!direct](https://osu.ppy.sh/wiki/en/osu%21supporter#osu!direct) and
+  [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat).
+* **A platform to build on**: features such as BasilBot (the [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)-style
+  `!mp` commands), tournament tools and overlays are separate clients that sign in as ordinary users. The server runs
+  the same with or without them.
+* **Privileges**: every account acts under its own identity and privileges, osu!-style silences
+  included; the privileges are the ones an osu! client sees.
+* **Live state in memory, durable in PostgreSQL**: live objects run in memory and records are stored in [PostgreSQL](https://www.postgresql.org/) (today written behind the scenes; target: awaited writes with cache-aside reads); stored files live in a local `Data/` directory.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
   external beatmap mirrors.
-* **Tournament HTTP API**: provides HTTP and SSE endpoints for tournament management, match reports, spectating, and
-  real-time multiplayer data, with an [OpenAPI](https://spec.openapis.org/oas/latest.html) specification and interactive
-  documentation through [Scalar](https://scalar.com/).
+* **User-centric HTTP API**: clients sign in as users and get HTTP and SSE endpoints for rooms, chat, match reports,
+  spectating, and real-time multiplayer events, with an [OpenAPI](https://spec.openapis.org/oas/latest.html)
+  specification and interactive documentation through [Scalar](https://scalar.com/).
 * **Stable-focused**: targets the osu! stable client and its multiplayer/tournament workflows rather than attempting to
   reproduce the complete osu! server.
 
@@ -58,13 +63,13 @@ For the complete supported and excluded feature set, see
 | Layer          | Choice                                                                                                                                                                   |
 |----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Runtime        | [.NET](https://dot.net/) 10 with [ASP.NET Core](https://asp.net/), distributed as self-contained executables and supported in [Docker](https://docker.com)               |
-| Database       | [SQLite](https://www.sqlite.org/), accessed through [Dapper](https://github.com/DapperLib/Dapper) and versioned with [DbUp](https://dbup.readthedocs.io/)                |
-| API            | Build-time [OpenAPI](https://spec.openapis.org/oas/latest.html) generation with interactive documentation powered by [Scalar](https://scalar.com/)                       |
+| Database       | [PostgreSQL](https://www.postgresql.org/), accessed through [Entity Framework Core](https://learn.microsoft.com/ef/core/) (Npgsql) with EF migrations |
+| API            | [OpenAPI](https://spec.openapis.org/oas/latest.html) generation with interactive documentation powered by [Scalar](https://scalar.com/)                       |
 | Star rating    | Official osu! difficulty and performance calculation algorithms from [osu!lazer](https://github.com/ppy/osu)                                                             |
 | Beatmap assets | Thumbnails processed with [ImageSharp](https://sixlabors.com/products/imagesharp/); audio previews generated with [FFMpegCore](https://github.com/rosenbjerg/FFMpegCore) |
 | Security       | Passwords hashed with [BCrypt.Net](https://github.com/BcryptNet/bcrypt.net)                                                                                              |
 | Logging        | Structured logging with [Serilog](https://serilog.net/)                                                                                                                  |
-| Testing        | [xUnit](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), and [NetArchTest](https://github.com/BenMorris/NetArchTest)                                  |
+| Testing        | [xUnit v3](https://xunit.net/), [NSubstitute](https://nsubstitute.github.io/), [NetArchTest](https://github.com/BenMorris/NetArchTest) and [Testcontainers](https://dotnet.testcontainers.org/) for PostgreSQL                                  |
 
 ## 📖 Getting Started
 
@@ -74,9 +79,9 @@ Basil's documentation is organized by audience.
 
 For connecting an osu! client or using Basil's HTTP/SSE interfaces:
 
-* Browse the interactive API and BasilBot documentation at `api.<domain>/docs/` on a running instance.
+* Browse the interactive API documentation at `api.<domain>/docs/v1` on a running instance, and the BasilBot and IRC guides at `api.<domain>/guides`.
 * Browse the published API documentation on [GitHub Pages](https://thnhmai06.github.io/osuBasil/).
-* See [`docs/for-client/bancho/getting-started.md`](docs/for-client/bancho/getting-started.md) for connecting an osu!
+* See [`docs/for-client/osu-stable/getting-started.md`](docs/for-client/osu-stable/getting-started.md) for connecting an osu!
   client.
 
 ### Server operator

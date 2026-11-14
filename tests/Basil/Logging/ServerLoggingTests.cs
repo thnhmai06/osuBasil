@@ -1,0 +1,73 @@
+using Basil.Host.Cli;
+using Basil.Logging;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Basil.Tests.Logging;
+
+/// <summary>The server's logger follows the <c>Logging:LogLevel</c> settings, and follows them again when they change.</summary>
+public sealed class ServerLoggingTests : IDisposable
+{
+	private readonly WebApplication _app;
+	private readonly MemoryConfigurationProvider _settings;
+
+	public ServerLoggingTests()
+	{
+		var builder = WebApplication.CreateBuilder();
+		builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+		{
+			["Logging:LogLevel:Default"] = "Information",
+			["Logging:LogLevel:Microsoft"] = "Warning",
+			["Logging:File:Location"] =
+				Path.Combine(Path.GetTempPath(), "basil-logging-test-" + Guid.NewGuid().ToString("N"))
+		});
+		_settings = ((IConfigurationRoot)builder.Configuration).Providers.OfType<MemoryConfigurationProvider>().Last();
+		// The clock of the log retention is the composition root's to give; a builder holding only the logging has none.
+		builder.Services.AddSingleton(TimeProvider.System);
+		ServerLogging.Add(builder, new CliOptions(ConsoleLevel.Full));
+		_app = builder.Build();
+	}
+
+	public void Dispose()
+	{
+		_app.DisposeAsync().AsTask().GetAwaiter().GetResult();
+	}
+
+	private ILogger Logger(string category)
+	{
+		return _app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(category);
+	}
+
+	[Fact]
+	public void DefaultLevel_AppliesNoEntry()
+	{
+		var logger = Logger("Basil.Logging.LoginLog");
+
+		Assert.True(logger.IsEnabled(LogLevel.Information));
+		Assert.False(logger.IsEnabled(LogLevel.Debug));
+	}
+
+	[Fact]
+	public void SourceWithEntry_OwnLevel()
+	{
+		var logger = Logger("Microsoft.AspNetCore.Hosting.Diagnostics");
+
+		Assert.False(logger.IsEnabled(LogLevel.Information));
+		Assert.True(logger.IsEnabled(LogLevel.Warning));
+	}
+
+	[Fact]
+	public void LevelChange_AppliesExistingLoggers()
+	{
+		var logger = Logger("Basil.Logging.LoginLog");
+		Assert.False(logger.IsEnabled(LogLevel.Debug));
+
+		_settings.Set("Logging:LogLevel:Default", "Debug");
+		((IConfigurationRoot)_app.Configuration).Reload();
+
+		Assert.True(logger.IsEnabled(LogLevel.Debug));
+	}
+}

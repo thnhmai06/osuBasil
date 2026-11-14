@@ -1,0 +1,166 @@
+using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Authentication;
+using Basil.Domain.Users;
+
+namespace Basil.Application.Users.Objects;
+
+/// <summary>Owns the state changes of one account.</summary>
+public sealed class User
+{
+	private readonly Lock _sync = new();
+
+	/// <summary>Creates the account object for a stored user.</summary>
+	/// <param name="record">The account to represent.</param>
+	/// <param name="context">The runtime context for account behaviour.</param>
+	internal User(UserRecord record, UserContext context)
+	{
+		Record = record;
+		Context = context;
+		Profile = new UserProfile(this);
+		Credentials = new UserCredentials(this);
+		Sessions = new UserSessions(this);
+		Grants = new UserGrants(this);
+		Silence = new UserSilence(this);
+		Relationships = new UserRelationships(this);
+	}
+
+	/// <summary>Gets the account this object represents.</summary>
+	public UserRecord Record { get; }
+
+	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
+	public string? AwayMessage => Profile.AwayMessage;
+
+	/// <summary>Gets a value that indicates whether the user accepts private messages only from their friends.</summary>
+	public bool PmPrivate => Profile.PmPrivate;
+
+	/// <summary>Gets a value that indicates whether this is the user's current online instance.</summary>
+	public bool IsOnline =>
+		Context.Registry.Online.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
+
+	/// <summary>Gets the silence of this account.</summary>
+	public UserSilence Silence { get; }
+
+	/// <summary>Gets the profile data and settings of this account.</summary>
+	public UserProfile Profile { get; }
+
+	/// <summary>Gets the password of this account.</summary>
+	public UserCredentials Credentials { get; }
+
+	/// <summary>Gets the live connections of this account.</summary>
+	public UserSessions Sessions { get; }
+
+	/// <summary>Gets the privileges granted to this account.</summary>
+	public UserGrants Grants { get; }
+
+	/// <summary>Gets the friends and blocks this account has set.</summary>
+	public UserRelationships Relationships { get; }
+
+	/// <summary>The runtime context for account behaviour.</summary>
+	internal UserContext Context { get; }
+
+	/// <summary>Gets the open connections of one kind.</summary>
+	/// <param name="type">The kind of connection.</param>
+	public IReadOnlySet<Connection> this[SessionType type] => Sessions[type];
+
+	/// <summary>Gets every open connection of the user.</summary>
+	public IEnumerable<Connection> Connections => Sessions.Connections;
+
+	/// <summary>Gets the user's osu! game client connection, if any.</summary>
+	public StableConnection? Stable => Sessions.Osu;
+
+	/// <summary>Gets one of the user's IRC connections, if any.</summary>
+	public IrcConnection? Irc => Sessions.Irc;
+
+	/// <summary>Gets the user's IRC connections.</summary>
+	public IEnumerable<IrcConnection> Ircs => Sessions.Ircs;
+
+	/// <summary>Gets the user's osu!tourney connections.</summary>
+	public IEnumerable<TourneyConnection> Tourneys => Sessions.Tourneys;
+
+	/// <summary>Scopes this account's behaviour to a connection and its authority.</summary>
+	/// <param name="actor">The connection acting on the account.</param>
+	/// <returns>A short-lived scope for this account and connection.</returns>
+	public ScopedUser ScopeTo(Connection actor)
+	{
+		return new ScopedUser(this, actor);
+	}
+
+	/// <summary>Gets the user's privileges that are in effect at a moment.</summary>
+	/// <param name="now">The moment to evaluate at.</param>
+	/// <returns>The granted privileges.</returns>
+	public UserPrivileges EffectivePrivileges(DateTimeOffset now)
+	{
+		return Grants.Effective(now);
+	}
+
+	/// <summary>Changes the account data, keeping the online user's copy of the record in step.</summary>
+	/// <param name="change">The change to apply to the data.</param>
+	internal void Change(Action<UserData> change)
+	{
+		change(Record.Value);
+		var online = Context.Registry.Online.GetValueOrDefault(Record);
+		if (online is not null && !ReferenceEquals(online.Record, Record))
+			change(online.Record.Value);
+	}
+
+	/// <summary>Stores the account data as a change would leave it, before the change is applied to the live record.</summary>
+	/// <param name="change">The change to apply to a copy of the data.</param>
+	/// <remarks>A refused write leaves the live record as it was; the caller applies the change once this returns.</remarks>
+	internal Task StoreChangeAsync(Action<UserData> change)
+	{
+		UserData copy;
+		using (Enter())
+		{
+			var current = Record.Value;
+			copy = new UserData
+			{
+				Name = current.Name,
+				Country = current.Country,
+				Privileges = current.Privileges,
+				SilencedUntil = current.SilencedUntil,
+				DeletedAt = current.DeletedAt
+			};
+		}
+
+		change(copy);
+		return Context.Users.UpdateAsync(new UserRecord { Id = Record.Id, Value = copy });
+	}
+
+	/// <summary>Deletes this account, keeping it out of sign-in and every listing while its record remains.</summary>
+	/// <returns>The outcome of deleting the account.</returns>
+	internal async Task<UserOutcome> DeleteAsync()
+	{
+		if (Record.Value.DeletedAt is not null) return UserOutcome.Ok;
+
+		var now = Context.Clock.GetUtcNow();
+		await StoreChangeAsync(data =>
+		{
+			data.DeletedAt = now;
+			data.Privileges = UserPrivileges.None;
+		});
+		Grants.MarkDeleted(now);
+		Context.Registry.CloseAll(Record, SessionEndReason.Deleted);
+		return UserOutcome.Ok;
+	}
+
+	/// <summary>Adds a connection.</summary>
+	internal void Add(Connection connection)
+	{
+		Sessions.Add(connection);
+	}
+
+	/// <summary>Removes a connection.</summary>
+	/// <returns><see langword="true" /> if the connection was held and has been removed.</returns>
+	internal bool Remove(Connection connection)
+	{
+		return Sessions.Remove(connection);
+	}
+
+	/// <summary>Enters the scope that synchronizes this account's parts.</summary>
+	/// <returns>A scope that must be disposed when the state change is complete.</returns>
+	internal Lock.Scope Enter()
+	{
+		return _sync.EnterScope();
+	}
+}

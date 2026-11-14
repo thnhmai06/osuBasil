@@ -1,0 +1,65 @@
+using Basil.Application.Servers.Objects;
+using Basil.Domain.Chat;
+using Basil.Domain.Users;
+using Basil.Testing;
+
+namespace Basil.Application.Chat.Tests.Registry;
+
+/// <summary>
+///     Which channels a connection may see in a listing: the ones it may read, hiding the hidden for those who cannot
+///     manage.
+/// </summary>
+public sealed class GeneralChannelRegistryTests
+{
+	private static async Task OpenAsync(TestApplication app, string name, UserPrivileges read = UserPrivileges.None,
+		bool visible = true)
+	{
+		var admin = await app.LoginAsync(await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password",
+			UserPrivilegesExtensions.All));
+		var record = new GeneralChannelRecord
+		{
+			Name = name, Value = new GeneralChannelData { ReadPrivileges = read, Visible = visible }
+		};
+		Assert.True(
+			await app.Server.ScopeTo(admin).Channels.CreateAsync(record) == ServerOutcome.Ok);
+	}
+
+	[Fact]
+	public async Task OrdinaryUser_ReadableVisibleOnly()
+	{
+		using var app = new TestApplication();
+		await OpenAsync(app, "#open");
+		await OpenAsync(app, "#staff", UserPrivileges.Moderator);
+		await OpenAsync(app, "#hidden", visible: false);
+		var player = await RoomFixture.PlayerAsync(app, "Lister");
+
+		var names = app.Channels.VisibleTo(player).Select(channel => channel.Name).ToList();
+
+		Assert.Equal(["#open"], names);
+	}
+
+	[Fact]
+	public async Task ChannelManager_SeesHiddenToo()
+	{
+		using var app = new TestApplication();
+		await OpenAsync(app, "#open2");
+		await OpenAsync(app, "#hidden2", visible: false);
+		var manager = await RoomFixture.PlayerAsync(app, "Manager",
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
+
+		var names = app.Channels.VisibleTo(manager).Select(channel => channel.Name).Order().ToList();
+
+		Assert.Equal(["#hidden2", "#open2"], names);
+	}
+
+	[Fact]
+	public async Task ModeratorWithoutOwner_CannotSee()
+	{
+		using var app = new TestApplication();
+		await OpenAsync(app, "#staff2", UserPrivileges.Owner, false);
+		var manager = await RoomFixture.PlayerAsync(app, "Manager2",
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
+
+		Assert.Empty(app.Channels.VisibleTo(manager));
+	}
+}

@@ -1,0 +1,220 @@
+using System.Xml.Linq;
+
+namespace Basil.ArchitectureTests;
+
+/// <summary>
+///     The project graph of the server: every module is a pair of projects whose
+///     references the compiler enforces, so this test reads the <c>ProjectReference</c> items of every project under
+///     <c>src</c> (except the hosts, which are migrated separately) and fails on an edge outside the allowed graph or on a
+///     cycle. Domain is shared by every project; the module Application projects follow
+///     <c>Users -&gt; Authentication, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
+///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c>,
+///     <c>Diagnostics -&gt; Users</c> and
+///     <c>Servers</c> on top of all of them, and <c>Bot</c> on top of <c>Servers</c>; a module Infrastructure project
+///     references only its own Application project
+///     and the Shared projects; <c>Basil</c> sits above every module and nothing references it.
+/// </summary>
+public class ModuleGraphTests
+{
+	private static readonly string[] Modules =
+	[
+		"Anticheat", "Authentication", "Beatmaps", "Bot", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores",
+		"Servers", "Users"
+	];
+
+	private static readonly Dictionary<string, string[]> ModuleDependencies = new()
+	{
+		["Authentication"] = [],
+		["Beatmaps"] = [],
+		["Content"] = [],
+		["Users"] = ["Authentication", "Content"],
+		["Anticheat"] = ["Users"],
+		["Scores"] = ["Users", "Beatmaps"],
+		["Multiplayer"] = ["Users", "Beatmaps", "Content", "Scores"],
+		["Chat"] = ["Users", "Multiplayer"],
+		["Diagnostics"] = ["Users"],
+		["Servers"] =
+		[
+			"Anticheat", "Authentication", "Beatmaps", "Chat", "Content", "Diagnostics", "Multiplayer", "Scores",
+			"Users"
+		],
+		["Bot"] = ["Anticheat", "Beatmaps", "Chat", "Multiplayer", "Scores", "Servers", "Users"]
+	};
+
+	[Fact]
+	public void ProjectReferences_AllInsideGraph()
+	{
+		var unexpected = ProjectEdges().Where(edge => !IsAllowed(edge.From, edge.To))
+			.Select(edge => $"{edge.From} -> {edge.To}");
+
+		Assert.Empty(unexpected);
+	}
+
+	[Fact]
+	public void ProjectGraph_NoProjectMissing()
+	{
+		var unknown = ProjectFiles().Select(Name).Where(name => !IsKnown(name));
+
+		Assert.Empty(unknown);
+	}
+
+	[Fact]
+	public void ProjectGraph_NoCycles()
+	{
+		Assert.Empty(FindCycles(ProjectEdges()));
+	}
+
+	[Fact]
+	public void GraphMeasure_SeesValidEdge()
+	{
+		Assert.Contains(("Basil.Infrastructure.Users", "Basil.Application.Users"), ProjectEdges());
+		Assert.Contains(("Basil.Application.Users", "Basil.Application.Authentication"), ProjectEdges());
+	}
+
+	[Fact]
+	public void GraphRules_RefuseBadEdge()
+	{
+		Assert.False(IsAllowed("Basil.Application.Authentication", "Basil.Application.Users"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
+		Assert.False(IsAllowed("Basil.Application.Users", "Basil"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Users", "Basil.Infrastructure.Persistence"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Shared", "Basil.Infrastructure.Persistence"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Persistence", "Basil.Application.Users"));
+		Assert.True(IsAllowed("Basil", "Basil.Infrastructure.Persistence"));
+		Assert.True(IsAllowed("Basil.Infrastructure.Persistence", "Basil.Infrastructure.Users"));
+		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Shared"));
+		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Shared"));
+		Assert.False(IsAllowed("Basil.Protocol.Irc", "Basil.Domain"));
+		Assert.False(IsAllowed("Basil.Gateway", "Basil.Domain"));
+		Assert.True(IsAllowed("Basil.Protocol.Stable", "Basil.Domain"));
+		Assert.True(IsAllowed("Basil.Application.Multiplayer", "Basil.Application.Scores"));
+		Assert.True(IsAllowed("Basil.Application.Diagnostics", "Basil.Application.Users"));
+		Assert.False(IsAllowed("Basil.Application.Diagnostics", "Basil.Application.Multiplayer"));
+		Assert.False(IsAllowed("Basil.Application.Users", "Basil.Application.Diagnostics"));
+		Assert.False(IsAllowed("Basil.Application.Chat", "Basil.Application.Diagnostics"));
+		Assert.True(IsAllowed("Basil.Application.Bot", "Basil.Application.Servers"));
+		Assert.False(IsAllowed("Basil.Application.Servers", "Basil.Application.Bot"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Bot", "Basil.Application.Chat"));
+	}
+
+	[Fact]
+	public void CycleScan_FindsCycle()
+	{
+		var edges = new[] { ("One", "Two"), ("Two", "Three"), ("Three", "One") };
+
+		Assert.NotEmpty(FindCycles(edges));
+	}
+
+	private static bool IsKnown(string name)
+	{
+		return name is "Basil.Domain" or "Basil.Application.Shared" or "Basil.Infrastructure.Shared"
+			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Protocol.Stable"
+			       or "Basil.Protocol.Irc"
+		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
+		                                name == $"Basil.Infrastructure.{module}");
+	}
+
+	private static bool IsAllowed(string from, string to)
+	{
+		if (from == "Basil.Domain") return false;
+		if (from == "Basil.Protocol.Irc") return false;
+		if (from == "Basil.Gateway") return false;
+		if (from == "Basil.Protocol.Stable") return to == "Basil.Domain";
+		if (to == "Basil.Domain") return true;
+		if (from == "Basil.Application.Shared") return false;
+		if (from == "Basil.Infrastructure.Shared") return to == "Basil.Application.Shared";
+		if (from == "Basil.Infrastructure.Persistence")
+			return to == "Basil.Infrastructure.Shared" ||
+			       (IsModuleProject(to) && to.StartsWith("Basil.Infrastructure.", StringComparison.Ordinal));
+		if (to == "Basil.Application.Shared") return true;
+		if (from == "Basil")
+			return IsModuleProject(to) || to is "Basil.Infrastructure.Shared" or "Basil.Infrastructure.Persistence";
+
+		var parts = from.Split('.');
+		if (parts.Length != 3) return false;
+		var module = parts[2];
+		if (!ModuleDependencies.TryGetValue(module, out var dependencies)) return false;
+		if (parts[1] == "Infrastructure")
+			return to == $"Basil.Application.{module}" || to == "Basil.Infrastructure.Shared";
+
+		return dependencies.Any(dependency => to == $"Basil.Application.{dependency}");
+	}
+
+	private static bool IsModuleProject(string name)
+	{
+		var parts = name.Split('.');
+		return parts.Length == 3 && Modules.Contains(parts[2]) && parts[1] is "Application" or "Infrastructure";
+	}
+
+	private static string[] ProjectFiles()
+	{
+		var source = Path.Combine(RepositoryRoot(), "src");
+		var hosts = Path.Combine(source, "Hosts");
+		var compositionRoot = Path.Combine(source, "Basil");
+
+		return Directory.GetFiles(source, "*.csproj", SearchOption.AllDirectories)
+			.Where(project => !IsUnder(project, hosts) && !IsUnder(project, compositionRoot) &&
+			                  !project.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+			.ToArray();
+	}
+
+	private static string Name(string project)
+	{
+		return Path.GetFileNameWithoutExtension(project);
+	}
+
+	private static (string From, string To)[] ProjectEdges()
+	{
+		return ProjectFiles().SelectMany(project =>
+				XDocument.Load(project).Descendants()
+					.Where(element => element.Name.LocalName == "ProjectReference")
+					.Select(element => (From: Name(project),
+						To: Path.GetFileNameWithoutExtension(
+							element.Attribute("Include")!.Value.Replace('\\', Path.DirectorySeparatorChar)))))
+			.ToArray();
+	}
+
+	private static string RepositoryRoot()
+	{
+		var directory = new DirectoryInfo(AppContext.BaseDirectory);
+		while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Basil.slnx")))
+			directory = directory.Parent;
+		return directory?.FullName ?? throw new DirectoryNotFoundException("Basil.slnx was not found.");
+	}
+
+	private static bool IsUnder(string path, string directory)
+	{
+		return !Path.GetRelativePath(directory, path).StartsWith("..", StringComparison.Ordinal);
+	}
+
+	/// <summary>Finds the cycles among a set of edges, each reported as the projects it passes through.</summary>
+	private static List<string> FindCycles(IEnumerable<(string From, string To)> edges)
+	{
+		var adjacency = edges.GroupBy(edge => edge.From)
+			.ToDictionary(group => group.Key, group => group.Select(edge => edge.To).ToArray());
+		var visited = new HashSet<string>();
+		var onPath = new List<string>();
+		var cycles = new List<string>();
+
+		foreach (var project in adjacency.Keys)
+			Visit(project);
+
+		return cycles;
+
+		void Visit(string project)
+		{
+			if (onPath.Contains(project))
+			{
+				cycles.Add(string.Join(" -> ", onPath[onPath.IndexOf(project)..].Append(project)));
+				return;
+			}
+
+			if (!visited.Add(project)) return;
+
+			onPath.Add(project);
+			foreach (var next in adjacency.GetValueOrDefault(project, []))
+				Visit(next);
+			onPath.RemoveAt(onPath.Count - 1);
+		}
+	}
+}

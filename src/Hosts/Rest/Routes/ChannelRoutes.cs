@@ -1,0 +1,106 @@
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Servers.Messages.Channels;
+using Basil.Application.Servers.Objects;
+using Basil.Domain.Chat;
+using Basil.Domain.Users;
+using Basil.Gateway.Limits;
+using Basil.Host.Rest.Http;
+using Basil.Host.Shared.Views;
+using Mediator;
+
+namespace Basil.Host.Rest.Routes;
+
+/// <summary>Management of the general channels; chat itself is not part of this API.</summary>
+internal static class ChannelRoutes
+{
+	/// <summary>Maps the Channels routes.</summary>
+	public static void MapChannels(this RouteGroupBuilder v1)
+	{
+		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
+		channels.MapGet("/", List).Admitted(WorkClass.Listing)
+			.WithSummary("List the general channels the caller may see.")
+			.WithDescription(
+				"Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
+		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.");
+		channels.MapPatch("/{name}", PatchAsync).WithSummary("Update a general channel.")
+			.WithDescription(
+				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
+		channels.MapDelete("/{name}", DeleteAsync).WithSummary("Delete a general channel.")
+			.WithDescription(
+				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
+	}
+
+	private static IResult List(HttpContext context, GeneralChannelRegistry registry)
+	{
+		return Api.Ok(registry.VisibleTo(context.Connection()).OrderBy(c => c.Name)
+			.Select(c => ChannelView.Of(c.Record)).ToList());
+	}
+
+	private static async Task<IResult> CreateAsync(HttpContext context, CreateChannelRequest request, ISender sender)
+	{
+		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
+
+		var read = (UserPrivileges)(request.ReadPrivileges ?? 0);
+		var write = (UserPrivileges)(request.WritePrivileges ?? 0);
+		if (!GeneralChannelRecord.IsValidName(request.Name) ||
+		    !GeneralChannelData.IsValidTopic(request.Topic ?? string.Empty) ||
+		    !GeneralChannelData.IsValidPrivileges(read) || !GeneralChannelData.IsValidPrivileges(write))
+			return Api.Invalid("The channel is not valid.");
+
+		var record = new GeneralChannelRecord
+		{
+			Name = request.Name,
+			Value = new GeneralChannelData
+			{
+				Topic = request.Topic ?? string.Empty,
+				ReadPrivileges = read,
+				WritePrivileges = write,
+				AutoJoin = request.AutoJoin ?? false,
+				Visible = request.Visible ?? true
+			}
+		};
+
+		var result = await sender.Send(new CreateGeneralChannel(context.Connection(), record), context.RequestAborted);
+		return result == ServerOutcome.Ok ? Api.Created(ChannelView.Of(record)) : result.Refusal();
+	}
+
+	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
+		ISender sender)
+	{
+		var change = new GeneralChannelChange(request.Topic,
+			(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
+			request.Visible);
+		if (!change.IsValid) return Api.Invalid("The change is not valid.");
+
+		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Connection(), name, change),
+			context.RequestAborted);
+		return result == ChannelOutcome.Ok
+			? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully")
+			: result.Refusal();
+	}
+
+	private static async Task<IResult> DeleteAsync(HttpContext context, string name, ISender sender)
+	{
+		var (result, _) = await sender.Send(new DeleteGeneralChannel(context.Connection(), name),
+			context.RequestAborted);
+		return result.Answer();
+	}
+
+	/// <summary>A new general channel.</summary>
+	public sealed record CreateChannelRequest(
+		string? Name,
+		string? Topic,
+		byte? ReadPrivileges,
+		byte? WritePrivileges,
+		bool? AutoJoin,
+		bool? Visible);
+
+	/// <summary>The fields of a channel that can change; absent fields stay as they are.</summary>
+	public sealed record PatchChannelRequest(
+		string? Topic,
+		byte? ReadPrivileges,
+		byte? WritePrivileges,
+		bool? AutoJoin,
+		bool? Visible);
+}

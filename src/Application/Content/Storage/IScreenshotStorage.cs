@@ -1,0 +1,29 @@
+using Basil.Domain.Content;
+
+namespace Basil.Application.Content.Storage;
+
+/// <summary>Stores the screenshots players upload.</summary>
+public interface IScreenshotStorage
+{
+	/// <summary>Lists the stored screenshots.</summary>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns>References to the stored screenshots.</returns>
+	Task<IEnumerable<ContentReference>> ListAsync(CancellationToken ct = default);
+
+	/// <summary>Stores a screenshot under a new unique name.</summary>
+	/// <param name="content">The image bytes.</param>
+	/// <param name="extension">The file extension of the image format, without the dot.</param>
+	/// <returns>The reference to the stored screenshot.</returns>
+	/// <exception cref="ArgumentException"><paramref name="extension" /> is not 1 to 8 ASCII letters or digits.</exception>
+	Task<ContentReference> SaveAsync(Stream content, string extension);
+
+	/// <summary>Opens a stored screenshot.</summary>
+	/// <param name="screenshot">The reference of the screenshot to open.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns>The image bytes, or <see langword="null" /> when the reference names no screenshot stored here.</returns>
+	Task<Stream?> OpenAsync(ContentReference screenshot, CancellationToken ct = default);
+
+	/// <summary>Deletes a stored screenshot; a reference to no screenshot stored here does nothing.</summary>
+	/// <param name="screenshot">The reference of the screenshot to delete.</param>
+	Task DeleteAsync(ContentReference screenshot);
+}

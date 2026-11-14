@@ -1,0 +1,400 @@
+# Console
+
+The console is the operator's entry point to a Basil server: a terminal dashboard with a command box, and the same
+commands from a shell. This page is the authoritative specification of the console commands, their output and their exit
+codes. The HTTP routes they mirror are described by the generated API reference, not here.
+
+## Why
+
+Whoever sits at the console owns the machine, so the console is the one entry point that skips the privilege checks.
+It is how the first administrator is created (the server never creates an account by itself), how an operator repairs a
+server whose accounts cannot sign in, and how a deployment script prepares the server before it starts. It is not a chat
+surface: BasilBot's chat commands are separate and keep checking the typist's privileges.
+
+## Modes
+
+| Level            | Argument                | Shows                                                          | Changes the server |
+|------------------|-------------------------|----------------------------------------------------------------|--------------------|
+| Full (default)   | `--console 1`           | dashboard and command box                                      | yes                |
+| View only        | `--console 2`           | dashboard to look at: no command box, no chat, no actions      | no                 |
+| Log only         | `--console 0`           | linear log lines on stdout, no dashboard                       | no                 |
+
+Two more arguments change how the dashboard looks:
+
+* `--nocolor` makes it monochrome with a fixed theme; the `theme` command is refused. The `NO_COLOR` environment variable
+  turns it on too.
+* `--ascii` draws with ASCII characters only (no box-drawing or braille).
+
+* The server switches to `--console 0` by itself when stdin or stdout is redirected (Docker, systemd) or `TERM` is `dumb`.
+* `--nogui` and `--noconsole` no longer exist; the server refuses them.
+* Ctrl+C: the first press clears the line being typed; with nothing typed (always, in `--console 2`) it warns and opens a
+  3 second window in which a second press starts the graceful shutdown. With `--console 0` the first press starts the graceful
+  shutdown. While shutting down nothing ends the process for 30 seconds; after that a warning appears and one more press
+  forces the exit (data loss may occur). `SIGTERM` starts the graceful shutdown at once, in every mode.
+
+## The dashboard
+
+The dashboard is a server-side admin view: ten tabs on one line, a line of key hints under them, and nothing else on
+screen. Keys and mouse are listed under [Keys and mouse](#keys-and-mouse).
+
+| Tab         | Shows                                                                                  |
+|-------------|----------------------------------------------------------------------------------------|
+| Console     | The log written straight on the screen and, at `--console 1`, the command box          |
+| Monitor     | CPU, memory, network and connections over the last 15 minutes, and each diagnostics category |
+| Users       | Accounts online and offline; the detail frame kicks, silences and lists sessions        |
+| Beatmaps    | Beatmaps grouped by set; actions apply to the whole set                                 |
+| Lobby       | Open rooms and the ones that ended; creators and referees manage a room from here       |
+| Chat        | Channels, their messages since the server started, and their members; messages are sent as BasilBot |
+| Scores      | Scores, newest first, searched with `user:<id or name> beatmap:<id or query>`           |
+| Connections | osu! stable, Tourney, IRC and the HTTP API: open count, events and durations            |
+| Settings    | One form per settings category, saved field by field, and the read-only configuration   |
+| About       | Version, licence and the update status, with a button to check now                      |
+
+Every action of every tab is a console command, so the level chosen with `--console` decides what the whole dashboard
+may change: at `--console 2` the command box, the chat box and the action buttons are absent.
+
+Lists search while you type, after the text has stood still for half a second. Their footer reads `show 1–50 in 150+`;
+the `+` means more items exist than were loaded, because the database does not count them. Lists are not refreshed on
+their own: `Ctrl+R` reloads the tab in view and keeps the selected item. `Ctrl+End` follows the end of the log or of a
+chat. A terminal smaller than the tab in view needs shows the size it has and the size it needs instead of the tab.
+
+## Running a command
+
+A command can be typed in the command box or given on the command line of the executable:
+
+```text
+Basil users create --username admin --password secret --privileges 1048575
+```
+
+Both use the same parser, print the same output and return the same exit code.
+
+| The server is...  | What happens                                                                                           |
+|-------------------|--------------------------------------------------------------------------------------------------------|
+| running           | the command is forwarded over the local socket `Data/basil.sock` and the output streams back           |
+| not running       | only commands with **P = yes** run, directly against the storage; any other command fails with code 3  |
+
+### The local socket
+
+* A Unix domain socket at `Data/basil.sock`, readable and writable by the account that runs the server only (mode `0600`).
+  It also works on Windows 10 and later.
+* It exists only while the server runs. On startup the server first tries to connect to an existing file: if something
+  answers, another server is running and this one refuses to start with a clear error; only if the connection is
+  refused is the leftover file of a crashed server deleted and replaced. A client treats a refused connection as "the
+  server is not running".
+* The path of a Unix socket is limited to about 108 bytes. If `Data/` is too deep the server logs a clear error and runs
+  without the socket (shell commands then fall back to offline mode, which is unsafe while the server runs, so keep the
+  data directory path short).
+* The protocol is one request and one streamed reply: the client sends the argument list as one UTF-8 line (a JSON array
+  of strings); the server runs it as the operator and streams the plain text output framed per line: every output line
+  is sent as `o <text>` and the reply ends with `x <exit code>`, so output can never be mistaken for the exit code.
+  The socket has no interactive questions: the confirmation of `shutdown` and `restart` is asked in the calling terminal
+  before the request is sent.
+* The command runs on the machine of the server only. Calling from another machine or container is not supported; in
+  Docker use `docker exec <container> Basil <command>`.
+
+### Running offline
+
+With the server stopped, a command with P = yes starts only the storage: the directories are created, the database is
+migrated (an empty database too), the stored data is loaded. The running state is not recovered and no listener is
+opened. A command waits for its changes to be stored, so a command that printed its confirmation has stored its change.
+
+> **Never run an offline command while another server uses the same database.** The offline process writes straight to
+> the database, and the running server's live state may disagree with it.
+
+### Exit codes of a command
+
+| Code | Meaning                                                                                  |
+|------|------------------------------------------------------------------------------------------|
+| 0    | success                                                                                  |
+| 1    | the operation was refused: not found, conflict, gone, locked, system account, forbidden  |
+| 2    | the input is not valid, or the command line cannot be understood                         |
+| 3    | the server is not running and the command needs it                                       |
+| 4    | the operator declined the confirmation                                                   |
+
+The refusal is printed as `error: <code>: <message>`, with the same camelCase code the HTTP API uses (`notFound`,
+`conflict`, `systemAccount`, `invalid`, ...). `privilegeDenied` never happens, because the console skips the checks, and
+`locked` never happens either, because the console passes a lock as a manager does.
+
+### Exit codes of the process
+
+| Code | Meaning                                                              |
+|------|----------------------------------------------------------------------|
+| 0    | the server shut down normally                                        |
+| 1    | the server stopped because of an error                               |
+| 75   | the server asks its manager to start it again (`restart`)            |
+
+The server is under a manager when the environment variable `INVOCATION_ID` (systemd) is set or
+`DOTNET_RUNNING_IN_CONTAINER` is `true`. Under a manager `restart` exits with 75 and does not start a second instance
+itself. Docker's restart policy
+`always` and `unless-stopped` start the container again after any exit code; `on-failure` only after a non-zero one, so
+75 restarts it and a normal shutdown (0) does not. Outside a manager, `restart` starts the same executable with the same
+arguments after the shutdown finishes; the new process retries to bind its ports for a few seconds, because the old one
+may still hold them.
+
+## The mapping rule
+
+Console commands mirror the HTTP API one to one. There is a single rule, not a syntax per command:
+
+| HTTP route                                       | Console command                                                 |
+|--------------------------------------------------|-----------------------------------------------------------------|
+| `GET /v1/x?a=1&b=2`                              | `x list --a 1 --b 2`                                            |
+| `GET /v1/x/{id}`                                 | `x <id>`                                                        |
+| `POST /v1/x` with body `{a, b}`                  | `x create --a 1 --b 2`                                          |
+| `PATCH /v1/x/{id}`                               | `x <id> set --a 1 ...` (only the given fields change)           |
+| `PUT /v1/x/{id}/y` with body `{value}`           | `x <id> y --value 1` (one option per body field)                |
+| `DELETE /v1/x/{id}`                              | `x <id> delete`                                                 |
+| `POST /v1/x/{id}/cmd`                            | `x <id> cmd --field 1`                                          |
+| `GET /v1/x/{id}/y`, `.../{yid}`, `DELETE`        | `x <id> y list`, `x <id> y <yid>`, `x <id> y <yid> delete`      |
+
+* Option names are the query parameter or body field names of the API, in camelCase (`--pmPrivate`, `--readPrivileges`).
+* Values have the API's types. **Flags enums are numeric bitmasks**, never names (`--privileges 1048575`, `--types 12`);
+  an ordinary enum is its camelCase name; a boolean is `true` or `false`; a duration is `30m`, `12h` or `7d`.
+* Every list takes `--offset` and `--limit` as the API does (default 0 and 25, at most 100).
+* A route that returns a file or a stream (replays, beatmap files, avatars, the live `/live` and match streams) and the
+  routes of one's own session (`/v1/auth/*`, `/v1/me`, `/v1/sessions`, the IRC key of the calling account) have no
+  command: the console is not signed in.
+
+## Output
+
+The output is for people and never JSON; there is no `--json` option.
+
+* One object is a list of aligned `label: value` lines.
+* A list is a table with a header row.
+* A bitmask is followed by its flag names: `privileges: 12 (ChatPost, ChatPostPrivate)`.
+* Times are shown in the operator's local time zone (injected, so the output of a test does not depend on the machine).
+* The result of an action is one confirmation line.
+* In the dashboard the output is coloured with the theme; from a shell, over the socket and with `--console 0` it is plain
+  text without colour.
+
+## Keys and mouse
+
+Every mouse action has a keyboard equivalent, so the dashboard works over a plain SSH session. `Alt+Left` does what `Esc`
+does everywhere, because some terminals delay or swallow `Esc`. A dialog takes the keys first; the tables below apply
+when none is open.
+
+### Global
+
+| Key                         | Mouse                | Does                                                                                   |
+|-----------------------------|----------------------|----------------------------------------------------------------------------------------|
+| `F1` to `F10`, `Alt+1` to `Alt+0` | click a tab title | Switch tab                                                                             |
+| `Ctrl+Left`, `Ctrl+Right`   |                      | Previous or next tab; inside a text box they move by word instead                      |
+| `Tab`, `Shift+Tab`          | click a pane         | Next or previous pane (search, list, detail actions)                                   |
+| `Ctrl+R`                    |                      | Reload the tab in view; the status line shows `Refreshed hh:mm:ss` for 2 seconds       |
+| `Ctrl+End`                  | click `Jump to End`  | Follow the newest line (Console, Chat)                                                 |
+| `Esc` or `Alt+Left`         | click `Close` or `[X]` | Close the top thing: dialog, detail, search text, search box, and in a narrow Chat the channel view |
+| `Ctrl+C`                    |                      | See [Modes](#modes)                                                                    |
+|                             | wheel                | Scroll the pane under the pointer                                                      |
+
+### Lists (Users, Beatmaps, Lobby, Scores, Chat channels and members)
+
+A list tab opens with the list focused, not the search box.
+
+| Key                                   | Mouse                                   | Does                                                       |
+|---------------------------------------|-----------------------------------------|------------------------------------------------------------|
+| `Up`, `Down`, `PageUp`, `PageDown`, `Home`, `End` | wheel                       | Move the selection                                         |
+|                                       | click a row                             | Select the row                                             |
+| `Enter`                               | double-click a row, or click the selected one | Open the detail                                      |
+| `/` or `Ctrl+F`                       | click the search box                    | Focus the search                                           |
+| `Down` in the search                  |                                         | Leave the search and select the first item                 |
+| `Up` on the first item                |                                         | Go to the search                                           |
+| `Esc` in the search                   |                                         | Clear the text; with no text, leave the search             |
+| `?` then `Enter` in the search        |                                         | Show the search syntax of the tab (`Esc`, `Enter` or `[X]` closes it) |
+| `Esc`, `x` or `Enter` with a detail open | click `Close`                        | Close the detail                                           |
+| `Left`, `Right`, `Tab` in a detail    | click an action                         | Move between actions; `Enter` runs the one in focus        |
+
+### Settings
+
+Two levels: the category strip, then the fields of the category.
+
+| Key                                  | Mouse                      | Does                                                      |
+|--------------------------------------|----------------------------|-----------------------------------------------------------|
+| `Left`, `Right` on the strip         | click a category           | Change category                                           |
+| `Down` or `Enter` on the strip       |                            | Enter the first field                                     |
+| `Up`, `Down` in the fields           | click a field              | Move between fields; `Up` on the first returns to the strip |
+| `Esc` or `Alt+Left` in the fields    |                            | Back to the strip, dropping an unsaved edit of the field  |
+| `Enter`                              |                            | Save a text field                                         |
+| `Space` or `Enter`                   | click a switch             | Toggle a switch                                           |
+
+### Console
+
+| Key                                  | Mouse                      | Does                                                      |
+|--------------------------------------|----------------------------|-----------------------------------------------------------|
+| typing                               |                            | Opens a completion popup above the input: up to 8 matching commands or arguments with a short description |
+| `Up`, `Down`                         |                            | Move in the popup; with the popup closed, walk the history |
+| `Tab`, or `Enter` on a highlighted item | click a popup row       | Accept the item                                           |
+| `Enter` with no popup                |                            | Run the line                                              |
+| `Esc`                                |                            | Close the popup; with none open, clear the line           |
+
+### Chat
+
+| Key                                  | Mouse                      | Does                                                      |
+|--------------------------------------|----------------------------|-----------------------------------------------------------|
+| `Tab`, `Shift+Tab`                   |                            | Channels, then the message box, then the members          |
+| `Up`, `Down`, `Enter` on a channel   | click a channel            | Select it; `Enter` opens it and focuses the message box   |
+| `Enter` in the message box           |                            | Send                                                      |
+|                                      | click a member             | Open a direct message with the member                     |
+| `Ctrl+B`                             |                            | Show or hide the members                                  |
+| `Esc` or `Alt+Left`                  |                            | In a narrow terminal, back to the channel list           |
+
+The channel and member searches hide the sections that have no match.
+
+Graphs are drawn with braille characters (2 by 4 dots per cell) and coloured by value; a terminal narrower than 100
+columns hides the big graphs. The history is 15 minutes, one sample per second, and comes from the same sample as the
+HTTP diagnostics. Per-core CPU is shown on Linux only.
+
+## Commands
+
+**P** says whether the command runs with the server stopped (**yes**) or needs it running (**no**).
+
+### Console only
+
+| Command                      | Description                                                                                            | P   |
+|------------------------------|--------------------------------------------------------------------------------------------------------|-----|
+| `help [<command>]`           | Lists the commands; with a command name shows its syntax, options and the API route it mirrors.        | yes |
+| `status`                     | Version, uptime, online connections by kind, rooms and rounds in progress.                             | no  |
+| `shutdown [--now]`           | Graceful shutdown. Without `--now` it asks for confirmation (in the calling terminal from a shell).    | no  |
+| `restart [--now]`            | Graceful shutdown that ends with the restart exit code. Asks for confirmation like `shutdown`.         | no  |
+| `theme ["<scheme>"]`         | Lists the colour schemes or changes the dashboard theme and saves it. Dashboard only. A name with spaces is written in quotes. | no  |
+
+### users
+
+| Command                                                                                             | API route                                                     | P   |
+|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------|-----|
+| `users list [--query <q>] [--offset] [--limit]`                                                     | `GET /v1/users`                                               | yes |
+| `users create --username <name> --password <pw> [--country <cc>] [--privileges <mask>] [--admin]`  | `POST /v1/users`                                              | yes |
+| `users <id>`                                                                                        | `GET /v1/users/{id}`                                          | yes |
+| `users <id> set [--username] [--country] [--away] [--pmPrivate] [--privileges <mask>] [--password <pw>]` | `PATCH /v1/users/{id}`; `--password` is `PUT .../password` | yes |
+| `users <id> avatar --file <path>`, `users <id> avatar delete`                                       | `PUT`, `DELETE /v1/users/{id}/avatar`                         | yes |
+| `users <id> friends list`                              | `GET /v1/users/{id}/friends`                              | yes |
+| `users <id> blocks list`                                 | `GET /v1/users/{id}/blocks`                               | yes |
+| `users <id> silence --duration <d> [--reason <text>]`                                               | `PUT /v1/users/{id}/silence`                                  | yes |
+| `users <id> unsilence`                                                                              | `DELETE /v1/users/{id}/silence`                               | yes |
+| `users <id> sessions list [--state all\|online\|offline] [--types <mask>]`                          | `GET /v1/users/{id}/sessions`                                 | yes |
+| `users <id> sessions <sid>`                                                                         | `GET /v1/users/{id}/sessions/{sid}`                           | yes |
+| `users <id> sessions <sid> connections`                                                             | `GET /v1/users/{id}/sessions/{sid}/connections`               | yes |
+| `users <id> sessions <sid> delete`                                                                  | `DELETE /v1/users/{id}/sessions/{sid}`                        | yes |
+| `users <id> sessions delete`                                                                        | `DELETE /v1/users/{id}/sessions` (none is kept)               | yes |
+| `users <id> delete`                                                                                 | `DELETE /v1/users/{id}`                                       | yes |
+
+`--password` is the plain password; the server hashes it as it does for the API. `--admin` is a convenience that gives the account every privilege (deployment scripts use it to create the first administrator); `-u` and `-p` are short names of `--username` and `--password`. `--duration` replaces the API's
+`endsAt`: the silence ends that long from now. `--password` and `--new` are masked
+in the log, in the history and in suggestions.
+
+### channels
+
+| Command                                                                                                           | API route                     | P   |
+|-------------------------------------------------------------------------------------------------------------------|-------------------------------|-----|
+| `channels list`                                                                                                   | `GET /v1/channels`            | yes |
+| `channels create --name <#name> [--topic] [--readPrivileges <mask>] [--writePrivileges <mask>] [--autoJoin] [--visible]` | `POST /v1/channels`     | yes |
+| `channels <name> set [--topic] [--readPrivileges <mask>] [--writePrivileges <mask>] [--autoJoin] [--visible]`      | `PATCH /v1/channels/{name}`   | yes |
+| `channels <name> delete`                                                                                          | `DELETE /v1/channels/{name}`  | yes |
+
+### rooms
+
+Rooms exist only while the server runs.
+
+| Command                                                          | API route                          | P  |
+|------------------------------------------------------------------|------------------------------------|----|
+| `rooms list [--offset] [--limit]`                                | `GET /v1/rooms`                    | no |
+| `rooms create --name <name> [--password] [--private]`            | `POST /v1/rooms`                   | no |
+| `rooms <id>`                                                     | `GET /v1/rooms/{id}`               | no |
+| `rooms <id> <command> [--field ...]`                             | `POST /v1/rooms/{id}/<command>`    | no |
+
+`<command>` is one of `close`, `lock`, `unlock`, `size`, `move`, `host`, `clearhost`, `set`, `start`, `abort`,
+`timer`, `aborttimer`, `team`, `map`, `mods`, `kick`, `ban`, `unban`, `invite`, `password`, `name`, `private`, `addref`,
+`removeref`; its options are the body fields of that route (`rooms 5 start --seconds 10`, `rooms 5 move --user 3 --slot 2`,
+`rooms 5 mods --mods HD,DT`). The console is the room's creator for the purposes of authority; it never becomes its host.
+
+### matches
+
+| Command                                    | API route                                                          | P   |
+|--------------------------------------------|--------------------------------------------------------------------|-----|
+| `matches list [--query] [--offset] [--limit]` | `GET /v1/matches`                                               | yes |
+| `matches <id>`                             | the first snapshot of `GET /v1/matches/{id}`; the live stream is not followed | yes |
+
+### beatmapsets and beatmaps
+
+| Command                                                                          | API route                           | P   |
+|----------------------------------------------------------------------------------|-------------------------------------|-----|
+| `beatmapsets list [--query <q>] [--offset] [--limit]`                            | `GET /v1/beatmapsets`               | yes |
+| `beatmapsets <id>`                                                               | `GET /v1/beatmapsets/{id}`          | yes |
+| `beatmapsets create --file <path.osz>`                                           | `POST /v1/beatmapsets`              | yes |
+| `beatmapsets <id> set [--status <status>] [--visible <bool>] [--locked <bool>]`  | `PATCH /v1/beatmapsets/{id}`        | yes |
+| `beatmapsets <id> delete`                                                        | `DELETE /v1/beatmapsets/{id}`       | yes |
+| `beatmapsets reload`                                                             | `POST /v1/beatmapsets/reload`       | no  |
+| `beatmaps <id>`                                                                  | `GET /v1/beatmaps/{id}`             | yes |
+
+`beatmapsets reload` recomputes the metadata of every stored beatmap, star rating included, with the rulesets in use. It
+runs in the background, one at a time, and logs its progress. Run it after `ruleset update` and a restart, because the
+star ratings stored before are those of the old rulesets. Changing a set's status can change how clients submit scores and replays; prefer a status that has a
+leaderboard (ranked, approved, qualified, loved).
+
+### version and rulesets
+
+| Command          | API route                            | P   |
+|------------------|--------------------------------------|-----|
+| `version`        | `GET /v1/version`                    | yes |
+| `ruleset version`| `GET /v1/settings/ruleset/version`   | yes |
+| `ruleset update` | `POST /v1/settings/ruleset/update`   | yes |
+
+The four osu! ruleset libraries compute the star rating. `ruleset update` downloads the newest stable version from the
+NuGet feed, checks it against the hash the feed publishes, and stages it under `<Storage>/Rulesets/<version>/`; nothing
+is kept when the check fails. A staged version takes effect after the next start (also when the command ran while the
+server was running); then run `beatmapsets reload`. The osu! game library that the rulesets build on is not updated. With
+`Basil:Updates:CheckOnStartup` on, the server logs a warning at startup when a newer ruleset version exists.
+
+### scores
+
+| Command                                                          | API route               | P   |
+|------------------------------------------------------------------|-------------------------|-----|
+| `scores list [--beatmap <id>] [--user <id>] [--offset] [--limit]` | `GET /v1/scores`       | yes |
+| `scores <id>`                                                    | `GET /v1/scores/{id}`   | yes |
+
+### menu, faqs, settings, announce, screenshots
+
+| Command                                                                                  | API route                           | P   |
+|------------------------------------------------------------------------------------------|-------------------------------------|-----|
+| `menu banners list`, `menu banners create --image <path> --url <url> [--begins] [--expires]`, `menu banners <image> delete` | `/v1/menu/banners` | yes |
+| `menu seasonals list`, `menu seasonals create --image <path>`, `menu seasonals <image> delete` | `/v1/menu/seasonals`          | yes |
+| `menu icon`, `menu icon set [--image <path>] [--url <url>]`, `menu icon delete`           | `/v1/menu/icon`                     | yes |
+| `faqs list`, `faqs <entry>`, `faqs <entry> set --file <path>`, `faqs <entry> delete`     | `/v1/faqs[/{entry}]`                | yes |
+| `settings`                                                                               | `GET /v1/settings`                  | yes |
+| `settings <category>`                                                                    | `GET /v1/settings/{category}`       | yes |
+| `settings <category> set --<field> <value> ...`                                          | `PATCH /v1/settings/{category}`     | yes |
+| `announce create --text <text> [--to <id,id,...>]`                                       | `POST /v1/announce`                 | no  |
+| `screenshots list [--user <id>] [--offset] [--limit]`                                    | `GET /v1/screenshots`               | yes |
+| `screenshots <id> delete`                                                                | `DELETE /v1/screenshots/{id}`       | yes |
+
+A nested settings field is written with dots: `settings rateLimits set --chat.count 5`. The locks category takes the
+four locks as booleans (`settings locks set --accounts true`): where the API shows a flags enum as booleans, so does the
+console; everywhere else flags are numeric bitmasks.
+
+### diagnostics
+
+There is no command that shows diagnostics; the dashboard shows them. There are the actions only.
+
+| Command                      | API route                                    | P   |
+|------------------------------|----------------------------------------------|-----|
+| `diagnostics gc collect`     | `POST /v1/diagnostics/gc/collect`            | no  |
+| `diagnostics caches clear`   | `POST /v1/diagnostics/caches/clear`          | yes |
+| `diagnostics exceptions reset` | `POST /v1/diagnostics/exceptions/reset`    | no  |
+
+## Shutdown and restart
+
+`shutdown` and `restart` have no HTTP route and no chat command. Both run the graceful shutdown of the server. Typed in
+the dashboard without `--now` they ask `y/N` in the command box. Given on the command line of a running server without
+`--now` the question is asked in the calling terminal before anything is sent; declining ends with code 4.
+
+## Design and invariants
+
+* Commands run as BasilBot with the operator's connection, which skips the privilege checks; this exists only on the
+  console path. BasilBot's own connections and the chat commands keep their normal limits.
+* Every command is built from the same Application behaviours as the HTTP route it mirrors, and prints the same record
+  view. A test requires a command for every route, except the ones listed under the mapping rule.
+* A password, a new password or a key never appears in the log, the history, the suggestions or the output.
+
+## Related code
+
+* `src/Hosts/Cli` - the dashboard, the command parser, the runner and the socket.
+* `src/Hosts/Shared` - the record views and the outcome table both HTTP and console use.
+* [`configuration.md`](configuration.md) - the data directory the socket lives in.

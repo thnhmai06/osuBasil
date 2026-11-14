@@ -1,0 +1,66 @@
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
+using Basil.Domain.Users;
+using Basil.Host.Irc.Session;
+using Basil.Host.Irc.Support;
+using Basil.Host.Irc.Transport;
+using Basil.Protocol.Irc.Models;
+using Mediator;
+using Microsoft.Extensions.Options;
+
+namespace Basil.Host.Irc.Delivery;
+
+/// <summary>Delivers a posted message to the IRC clients that may receive it, one line per line of text.</summary>
+internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> options)
+	: INotificationHandler<ChannelMessagePosted>
+{
+	/// <inheritdoc />
+	public async ValueTask Handle(ChannelMessagePosted notification, CancellationToken ct)
+	{
+		var prefix = IrcView.Mask(notification.Message.Author, options.Value.Domain).ToString();
+		var command = notification.Message.IsNotice ? "NOTICE" : "PRIVMSG";
+
+		await DeliverToRecipientsAsync(notification, command, prefix, ct);
+		EchoToPrivateSender(notification, command, prefix);
+		DeliverAwayReply(notification);
+	}
+
+	private async Task DeliverToRecipientsAsync(ChannelMessagePosted notification, string command, string prefix,
+		CancellationToken ct)
+	{
+		var (channel, message) = (notification.Channel, notification.Message);
+		foreach (var connection in await channel.RecipientsAsync(notification, ct))
+		{
+			if (clients.Find(connection) is not { } session) continue;
+			if (ReferenceEquals(connection, notification.Actor) && !session.Has("echo-message")) continue;
+
+			var target = channel is PmChannel pm ? IrcView.Nick(pm.Owner.Record) : channel.Name;
+			Send(session, command, prefix, target, message.Content, message.Timestamp, message.Author);
+		}
+	}
+
+	// The sender of a private message is not a member of the recipient's channel, so the echo is separate.
+	private void EchoToPrivateSender(ChannelMessagePosted notification, string command, string prefix)
+	{
+		var message = notification.Message;
+		if (notification is { Channel: PmChannel owner, Actor: { } actor } &&
+		    !ReferenceEquals(actor.User, owner.Owner) &&
+		    clients.Find(actor) is { } own && own.Has("echo-message"))
+			Send(own, command, prefix, IrcView.Nick(owner.Owner.Record), message.Content, message.Timestamp,
+				message.Author);
+	}
+
+	private void DeliverAwayReply(ChannelMessagePosted notification)
+	{
+		if (notification is { AwayReply: { } away, Actor: { } awayTo } && clients.Find(awayTo) is { } awaySession)
+			foreach (var line in IrcText.Lines(away.Content))
+				awaySession.Deliver(client => client.Numeric(IrcNumericReply.RplAway, IrcView.Nick(away.Author), line));
+	}
+
+	private static void Send(IrcSession session, string command, string prefix, string target, string text,
+		DateTimeOffset at, UserRecord author)
+	{
+		foreach (var line in IrcText.Lines(text))
+			session.Relay(new IrcMessage(command, prefix, target, line) { ForceTrailing = true }, author, at);
+	}
+}

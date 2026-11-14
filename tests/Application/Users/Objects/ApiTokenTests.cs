@@ -1,0 +1,243 @@
+using System.Net;
+using System.Text;
+using Basil.Application.Authentication.Persistence;
+using Basil.Application.Shared.Settings;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Persistence;
+using Basil.Domain.Authentication;
+using Basil.Domain.Cryptography;
+using Basil.Domain.Users;
+using Basil.Testing;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Basil.Application.Users.Tests.Objects;
+
+/// <summary>
+///     The HTTP API token: 256 random bits, stored only as a SHA-256 hash, renewed by use for the lifetime of the
+///     server settings, verified against the stored sessions the first time, then held by an open connection until it
+///     has been idle for 300 seconds.
+/// </summary>
+public sealed class ApiTokenTests
+{
+	private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);
+
+	private static CancellationToken Token => TestContext.Current.CancellationToken;
+
+	private static Task<LoginResult> OpenAsync(TestApplication app, string token,
+		SessionType type = SessionType.Api)
+	{
+		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, ct: Token);
+	}
+
+	[Fact]
+	public async Task IssuesToken_Random256Unique()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("TokenUser", "password");
+
+		var first = await app.LoginAsync(user);
+		var second = await app.LoginAsync(user);
+
+		Assert.Equal(32, Convert.FromBase64String(first.Token.Replace('-', '+').Replace('_', '/') + "=").Length);
+		Assert.NotEqual(first.Token, second.Token);
+	}
+
+	[Fact]
+	public async Task TokenStored_OnlySha256Hash()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("HashUser", "password");
+		var connection = await app.LoginAsync(user);
+		var sessions = app.Provider.GetRequiredService<ISessionRepository>();
+
+		var byHash = await sessions.FindByTokenAsync(SessionType.Api,
+			new Sha256(Encoding.UTF8.GetBytes(connection.Token)), app.Clock.GetUtcNow(), Token);
+
+		Assert.Equal(connection.Session.Id, byHash!.Id);
+	}
+
+	[Fact]
+	public async Task LifetimeFromSettings_ExpiresToken()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("DefaultLifetime", "password");
+
+		var connection = await app.LoginAsync(user);
+
+		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, connection.ExpiresAt);
+	}
+
+	[Fact]
+	public async Task Login_UsesConfiguredLifetime()
+	{
+		using var app = new TestApplication();
+		await app.SetSettingsAsync(new ServerSettings
+		{
+			Sessions = new ServerSettings.SessionSettings
+			{
+				ApiToken = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.FromHours(2) }
+			}
+		});
+		var user = await app.CreateUserAsync("ShortLifetime", "password");
+
+		var connection = await app.LoginAsync(user);
+
+		Assert.Equal(app.Clock.GetUtcNow() + TimeSpan.FromHours(2), connection.ExpiresAt);
+	}
+
+	[Fact]
+	public async Task Use_RenewsAndSaves()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("Sliding", "password");
+		var connection = await app.LoginAsync(user);
+		var issued = connection.ExpiresAt;
+
+		app.Clock.Advance(TimeSpan.FromDays(3));
+		app.Users.MarkActive(connection);
+
+		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, connection.ExpiresAt);
+		Assert.Equal(issued, app.TokenExpiryOf(connection.Session.Id));
+
+		await app.Users.FlushActivityAsync();
+
+		Assert.Equal(app.Clock.GetUtcNow() + DefaultLifetime, app.TokenExpiryOf(connection.Session.Id));
+	}
+
+	[Fact]
+	public async Task OpenConnection_OpensSameConnection()
+	{
+		using var app = new TestApplication();
+		var connection = await app.LoginAsync(await app.CreateUserAsync("OpenToken", "password"));
+
+		var result = await OpenAsync(app, connection.Token);
+
+		Assert.Same(connection, result.Connection);
+	}
+
+	[Fact]
+	public async Task IdleConnection_ReverifiedOpensNew()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("Evicted", "password");
+		var first = await app.LoginAsync(user);
+		app.Clock.Advance(TimeSpan.FromSeconds(301));
+		Assert.Equal(1, app.Users.CloseIdle());
+		Assert.Null(app.Users.Find(first.Token));
+		Assert.False(app.Users.Online.ContainsKey(user));
+
+		var result = await OpenAsync(app, first.Token);
+
+		Assert.True(result.Succeeded);
+		Assert.NotSame(first, result.Connection);
+		Assert.Equal(first.Session.Id, result.Connection!.Session.Id);
+		Assert.Same(result.Connection, app.Users.Find(first.Token));
+		Assert.True(app.Users.Online.ContainsKey(user));
+	}
+
+	[Fact]
+	public async Task IdleConnection_StaysValidSession()
+	{
+		using var app = new TestApplication();
+		var first = await app.LoginAsync(await app.CreateUserAsync("StillValid", "password"));
+		app.Clock.Advance(TimeSpan.FromSeconds(301));
+		app.Users.CloseIdle();
+
+		Assert.Null(app.StoredSessions.Single(entry => entry.Id == first.Session.Id).Value.End);
+	}
+
+	[Fact]
+	public async Task PastItsExpiry_OpensNothing()
+	{
+		using var app = new TestApplication();
+		var first = await app.LoginAsync(await app.CreateUserAsync("Expired", "password"));
+		app.Clock.Advance(TimeSpan.FromSeconds(301));
+		app.Users.CloseIdle();
+		app.Clock.Advance(DefaultLifetime);
+
+		var result = await OpenAsync(app, first.Token);
+
+		Assert.Equal(LoginFailure.InvalidToken, result.Failure);
+	}
+
+	[Fact]
+	public async Task ExpiredConnection_OpensNothingCloses()
+	{
+		using var app = new TestApplication();
+		await app.SetSettingsAsync(new ServerSettings
+		{
+			Sessions = new ServerSettings.SessionSettings
+			{
+				ApiToken = new ServerSettings.ApiTokenSettings { Lifetime = TimeSpan.FromSeconds(60) }
+			}
+		});
+		var connection = await app.LoginAsync(await app.CreateUserAsync("ShortToken", "password"));
+		app.Clock.Advance(TimeSpan.FromSeconds(61));
+
+		var result = await OpenAsync(app, connection.Token);
+
+		Assert.Equal(LoginFailure.InvalidToken, result.Failure);
+		Assert.False(connection.IsOpen);
+	}
+
+	[Fact]
+	public async Task NoMatchingSession_OpensNothing()
+	{
+		using var app = new TestApplication();
+
+		var result = await OpenAsync(app, "not-a-token");
+
+		Assert.Equal(LoginFailure.InvalidToken, result.Failure);
+	}
+
+	[Fact]
+	public async Task DeletedAccount_OpensNothing()
+	{
+		using var app = new TestApplication();
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
+		var user = await app.CreateUserAsync("Doomed", "password");
+		var connection = await app.LoginAsync(user);
+		app.Clock.Advance(TimeSpan.FromSeconds(301));
+		app.Users.CloseIdle();
+		Assert.True(await app.Users.Of(user).ScopeTo(admin).DeleteAsync() == UserOutcome.Ok);
+
+		var result = await OpenAsync(app, connection.Token);
+
+		Assert.False(result.Succeeded);
+	}
+
+	[Fact]
+	public async Task SilentApi_ClosedSpeakerKept()
+	{
+		using var app = new TestApplication();
+		var quiet = await app.LoginAsync(await app.CreateUserAsync("Quiet", "password"));
+		var active = await app.LoginAsync(await app.CreateUserAsync("Active", "password"));
+		app.Clock.Advance(TimeSpan.FromSeconds(299));
+		app.Users.MarkActive(active);
+		app.Clock.Advance(TimeSpan.FromSeconds(2));
+
+		app.Users.CloseIdle();
+
+		Assert.False(quiet.IsOpen);
+		Assert.True(active.IsOpen);
+	}
+
+	[Fact]
+	public async Task IrcKey_RefusedForToken()
+	{
+		using var app = new TestApplication();
+		var connection = await app.LoginAsync(await app.CreateUserAsync("Mixed", "password"));
+
+		var result = await OpenAsync(app, connection.Token, SessionType.Irc);
+
+		Assert.Equal(LoginFailure.InvalidToken, result.Failure);
+	}
+
+	[Fact]
+	public async Task OtherKinds_Throws()
+	{
+		using var app = new TestApplication();
+
+		await Assert.ThrowsAsync<ArgumentException>(() => OpenAsync(app, "token", SessionType.Stable));
+	}
+}

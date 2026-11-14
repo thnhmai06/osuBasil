@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Application.Bot</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Anticheat\Basil.Application.Anticheat.csproj"/>
+		<ProjectReference Include="..\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Users\Basil.Application.Users.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Bot"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Bot.Tests"/>
+		<InternalsVisibleTo Include="Basil.Application.Bot.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+	</ItemGroup>
+</Project>

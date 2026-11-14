@@ -2,12 +2,13 @@
 
 ## Overview
 
-Basil supports two beatmap serving modes, controlled by `Basil:Mirror`:
+Basil supports two beatmap serving modes, controlled by the mirror endpoints managed through
+`GET`/`PUT /settings/mirror`:
 
-* **Offline mode**: both `DownloadEndpoint` and `SearchEndpoint` are `null`. Beatmaps are served exclusively from the local `Mapsets/` directory.
+* **Offline mode**: both `DownloadEndpoint` and `SearchEndpoint` are `null`. Beatmaps are served exclusively from the local `Beatmapsets/` directory.
 * **Online mode**: one or both mirror endpoints are configured. Basil can use an external beatmap mirror for downloads and/or osu!direct search.
 
-Local beatmap ingestion is independent of the mirror configuration. Beatmaps placed in `Mapsets/` are always ingested, analyzed, and indexed by Basil regardless of whether the server is running in offline or online mode.
+Local beatmap ingestion is independent of the mirror configuration. Beatmaps placed in `Beatmapsets/` are always ingested, analyzed, and indexed by Basil regardless of whether the server is running in offline or online mode.
 
 This distinction is important:
 
@@ -17,31 +18,16 @@ A locally ingested beatmap can therefore exist in the database even when the ser
 
 ## Mirror modes
 
-The mirror configuration is under:
-
-```text
-Basil:Mirror:DownloadEndpoint
-Basil:Mirror:SearchEndpoint
-```
+The mirror endpoints (`downloadEndpoint`, `searchEndpoint`) are stored as mutable server settings, not
+`appsettings.json` values — see [`configuration.md`](../for-technicians/configuration.md#beatmap-mirror) for the
+`/settings/mirror` API.
 
 ### Offline mode
 
-Offline mode is enabled when both endpoints are `null`:
+Offline mode is the default: a fresh deployment has both endpoints unset until an operator sets them via
+`PUT /settings/mirror`. In this mode:
 
-```json
-{
-  "Basil": {
-    "Mirror": {
-      "DownloadEndpoint": null,
-      "SearchEndpoint": null
-    }
-  }
-}
-```
-
-In this mode:
-
-* beatmaps are obtained from the local `Mapsets/` directory;
+* beatmaps are obtained from the local `Beatmapsets/` directory;
 * locally ingested beatmaps can be served and downloaded;
 * osu!direct search/browse does not use an external mirror;
 * Basil has no dependency on an external beatmap service.
@@ -63,7 +49,7 @@ They are independent settings, so Basil can support configurations where only on
 
 Local ingestion continues to work in online mode.
 
-A beatmapset imported into `Mapsets/` is processed normally:
+A beatmapset imported into `Beatmapsets/` is processed normally:
 
 ```text
 .osz
@@ -92,7 +78,7 @@ The two concepts are therefore separate:
     Local ingestion          Mirror integration
           │                       │
           ▼                       ▼
-     Mapsets/                 SearchEndpoint
+     Beatmapsets/                 SearchEndpoint
           │                       │
           ▼                       ▼
    local database          osu!direct discovery
@@ -106,9 +92,9 @@ A map can therefore be **available locally and downloadable without being discov
 
 The ingestion pipeline accepts **beatmapsets**, not individual difficulty files.
 
-* A `.osz` placed in `Mapsets/` is automatically detected, extracted into its own directory, analyzed, and synchronized with the database. No restart or manual action is required.
-* A standalone `.osu` file placed directly in `Mapsets/` is ignored. Without the containing beatmapset, Basil cannot reliably determine its ownership and does not attempt to infer one.
-* `POST /beatmapsets` on the admin API accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
+* A `.osz` placed in `Beatmapsets/` is automatically detected, kept in place as the beatmapset's permanent storage, analyzed, and synchronized with the database. No restart or manual action is required.
+* A standalone `.osu` file placed directly in `Beatmapsets/` is ignored. Without the containing beatmapset, Basil cannot reliably determine its ownership and does not attempt to infer one.
+* `POST /v1/beatmapsets` accepts `.osz` files only and uses the same ingestion pipeline as filesystem ingestion.
 * Star rating, BPM, length, and object counts are calculated once during ingestion and persisted with the beatmap metadata.
 * Reading a beatmap never triggers difficulty recalculation.
 * Ingestion happens regardless of whether Basil is in offline or online mirror mode.
@@ -127,19 +113,19 @@ No other part of Basil depends on `ffmpeg`.
 
 ## Source of truth
 
-Each locally ingested beatmapset is represented on disk by its own directory:
+Each locally ingested beatmapset is represented on disk by its own permanent `.osz` archive,
+kept exactly as uploaded rather than extracted and discarded:
 
 ```text
-Mapsets/
-└── {id} Artist - Title/
-    ├── audio.mp3
-    ├── background.jpg
-    ├── video.mp4
-    ├── *.osu
-    └── *.osb
+Beatmapsets/
+└── {id} Artist - Title.osz
 ```
 
-The directory contains the original contents of the `.osz` archive.
+An individual asset (a `.osu` file, background, audio, video) is extracted from the archive on
+demand and cached — see "Derived media" below, which covers this the same way it covers
+generated thumbnails and previews.
+
+Only the `.osz` layout exists: a directory in `Beatmapsets/` is not a beatmapset and is ignored.
 
 The database mirrors this filesystem state:
 
@@ -155,41 +141,42 @@ This distinction is important when modifying the ingestion pipeline:
 
 > **For locally ingested beatmaps, the filesystem is authoritative and the database is its indexed representation.**
 
-Mirror-hosted beatmaps are a separate concern. They do not need to exist in `Mapsets/` merely to be discoverable or downloadable through the configured mirror.
+Mirror-hosted beatmaps are a separate concern. They do not need to exist in `Beatmapsets/` merely to be discoverable or downloadable through the configured mirror.
 
 ## Ingestion triggers
 
-Basil has two mechanisms for keeping the local beatmap database synchronized with `Mapsets/`.
+Basil has two mechanisms (the upload route is the third entry into the same pipeline) for keeping the local beatmap database synchronized with `Beatmapsets/`.
 
 ### Filesystem watcher
 
-`[BeatmapWatcherService](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs)` monitors the directory for changes.
+[`BeatmapsetStorageWatcher`](../../src/Infrastructure/Beatmaps/Workers/BeatmapsetStorageWatcher.cs) monitors the directory's top level, non-recursively, for a `.osz` archive appearing, changing, or disappearing.
 
 When a new `.osz` appears, the watcher schedules it for ingestion. Under normal conditions, the change becomes visible within a few seconds.
+
 
 ### Startup reconciliation
 
 The watcher cannot account for changes that happen while Basil is offline.
 
-Therefore, Basil performs a full reconciliation during startup. This discovers beatmapsets that were added, removed, or otherwise changed while the server was not running.
+Therefore, Basil performs a full scan during startup, which finishes before the server serves clients. This discovers beatmapsets that were added, removed, or otherwise changed while the server was not running.
 
-Both mechanisms eventually invoke the same ingestion service. There is no separate implementation for startup discovery, filesystem changes, or admin uploads.
+Every mechanism ends in the same importer and scanner of `Basil.Application.Beatmaps`. There is no separate implementation for startup discovery, filesystem changes, or uploads.
 
 ## Ingestion lifecycle
 
 ```text
 .osz
  │
- ├── Mapsets/ filesystem
+ ├── Beatmapsets/ filesystem
  │       │
- │       └── BeatmapWatcherService
+ │       └── BeatmapsetStorageWatcher
  │
  └── POST /beatmapsets
          │
          ▼
-BeatmapIngestionService
+BeatmapsetImporter / BeatmapsetScanner
          │
-         ├── extract archive
+         ├── keep archive in place as canonical storage
          │
          ├── analyze beatmaps
          │      ├── star rating
@@ -215,7 +202,7 @@ server startup
 filesystem reconciliation
       │
       ▼
-BeatmapIngestionService
+BeatmapsetScanner
 ```
 
 Mirror search/download does **not** replace this pipeline. It is an independent source of remote beatmap discovery and acquisition.
@@ -291,13 +278,17 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 ## Related code
 
-* [`Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs): shared local ingestion pipeline
-* [`Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs): filesystem change detection
-* [`Basil.Infrastructure/Performance/PpyOsuCalculator.cs`](../../src/Basil.Infrastructure/Performance/PpyOsuCalculator.cs): osu! ruleset difficulty calculations
-* [`Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs`](../../src/Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs): beatmap asset and preview routes
+* [`BeatmapsetImporter.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetImporter.cs): imports one uploaded `.osz`
+* [`BeatmapsetScanner.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetScanner.cs): scans the storage and reconciles it with the database
+* [`BeatmapsetPlanner.cs`](../../src/Infrastructure/Beatmaps/Logic/BeatmapsetPlanner.cs): decides what a changed archive means for the stored records
+* [`BeatmapsetStorageWatcher.cs`](../../src/Infrastructure/Beatmaps/Workers/BeatmapsetStorageWatcher.cs): startup scan and filesystem change detection
+* [`FileBeatmapsetStorage.cs`](../../src/Infrastructure/Beatmaps/Storage/FileBeatmapsetStorage.cs): the `Beatmapsets/` directory as storage
+* [`OsuBeatmapAnalyser.cs`](../../src/Infrastructure/Beatmaps/Adapters/OsuBeatmapAnalyser.cs): osu! ruleset difficulty calculations
+* [`BeatmapPreviewMaker.cs`](../../src/Infrastructure/Beatmaps/Adapters/BeatmapPreviewMaker.cs): audio previews with `ffmpeg`
+* [`BeatmapRoutes.cs`](../../src/Hosts/Rest/Routes/BeatmapRoutes.cs): beatmapset routes of the API host
 
 ## See also
 
 * [`database.md`](database.md): the `Beatmapsets`/`Beatmaps` schema synchronized by local ingestion
 * [`response-envelope.md`](response-envelope.md): how beatmap data is exposed through API responses
-* [`configuration.md`](../for-technicians/configuration.md): `Basil:Mirror` configuration and other server settings
+* [`configuration.md`](../for-technicians/configuration.md): the mirror endpoints and other server settings

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Application.Multiplayer</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Users\Basil.Application.Users.csproj"/>
+		<ProjectReference Include="..\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Scores\Basil.Application.Scores.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Multiplayer"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Multiplayer.Tests"/>
+		<InternalsVisibleTo Include="Basil.Application.Multiplayer.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+	</ItemGroup>
+</Project>

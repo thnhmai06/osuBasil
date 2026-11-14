@@ -48,13 +48,16 @@ jobs:
         run: dotnet restore
 
       - name: Publish
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        shell: bash
         run: >
-          dotnet publish src/Basil.Web
+          dotnet publish src/Basil
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
+          -p:Version=${TAG#v}
           -o publish/${{ matrix.rid }}
-          -p:OpenApiGenerateDocumentsOnBuild=true
 
       - name: Package
         env:
@@ -66,20 +69,48 @@ jobs:
 
           $version = $env:TAG -replace '^v', ''
           $source = "publish/$env:RID"
-          $destination = "dist/Basil-$version-$env:RID.zip"
-
           New-Item -ItemType Directory -Force -Path dist | Out-Null
 
-          Compress-Archive `
-            -Path "$source/*" `
-            -DestinationPath $destination
+          if ($env:RID -like 'win-*') {
+            Compress-Archive -Path "$source/*" -DestinationPath "dist/Basil-$version-$env:RID.zip"
+          } else {
+            # A zip drops the executable bit, so Basil would not start after unpacking; tar keeps it.
+            tar -czf "dist/Basil-$version-$env:RID.tar.gz" -C $source .
+            if ($LASTEXITCODE -ne 0) { throw 'tar failed' }
+          }
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          files: dist/Basil-*.zip
+          files: |
+            dist/Basil-*.zip
+            dist/Basil-*.tar.gz
           fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # The updater reads releases from the GitHub release. This runs after the archives are uploaded and may fail
+      # without taking them away.
+      - name: Package for the updater
+        continue-on-error: true
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          RID: ${{ matrix.rid }}
+        shell: bash
+        run: |
+          set -e
+          dotnet tool install -g vpk --version 1.2.0
+          main=Basil
+          case "$RID" in win-*) main=Basil.exe ;; esac
+          vpk pack --packId Basil --packVersion "${TAG#v}" --packDir "publish/$RID" --mainExe "$main" --outputDir dist/velopack
+
+      - name: Upload updater packages
+        continue-on-error: true
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: dist/velopack/*
         env:
           GITHUB_TOKEN: ${{ github.token }}
 

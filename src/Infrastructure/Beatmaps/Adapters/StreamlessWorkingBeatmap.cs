@@ -1,0 +1,45 @@
+using osu.Framework.Audio.Track;
+using osu.Framework.Graphics.Textures;
+using osu.Game.Beatmaps;
+using osu.Game.Skinning;
+using Beatmap = osu.Game.Beatmaps.Beatmap;
+
+namespace Basil.Infrastructure.Beatmaps.Adapters;
+
+/// <summary>
+///     A minimal <see cref="WorkingBeatmap" /> for headless difficulty calculation only: no
+///     osu!framework host, audio, or texture access is needed or provided.
+/// </summary>
+internal sealed class StreamlessWorkingBeatmap(Beatmap beatmap)
+	: WorkingBeatmap(beatmap.BeatmapInfo, null)
+{
+	/// <inheritdoc />
+	protected override IBeatmap GetBeatmap()
+	{
+		return beatmap;
+	}
+
+	/// <inheritdoc />
+	public override Texture? GetBackground()
+	{
+		return null;
+	}
+
+	/// <inheritdoc />
+	protected override Track? GetBeatmapTrack()
+	{
+		return null;
+	}
+
+	/// <inheritdoc />
+	protected override ISkin? GetSkin()
+	{
+		return null;
+	}
+
+	/// <inheritdoc />
+	public override Stream? GetStream(string storagePath)
+	{
+		return null;
+	}
+}

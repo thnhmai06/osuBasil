@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Infrastructure.Persistence</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Shared\Basil.Infrastructure.Shared.csproj"/>
+		<ProjectReference Include="..\Authentication\Basil.Infrastructure.Authentication.csproj"/>
+		<ProjectReference Include="..\Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Chat\Basil.Infrastructure.Chat.csproj"/>
+		<ProjectReference Include="..\Content\Basil.Infrastructure.Content.csproj"/>
+		<ProjectReference Include="..\Multiplayer\Basil.Infrastructure.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Scores\Basil.Infrastructure.Scores.csproj"/>
+		<ProjectReference Include="..\Users\Basil.Infrastructure.Users.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Npgsql"/>
+		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+		<PackageReference Include="MySql.EntityFrameworkCore"/>
+		<PackageReference Include="EFCore.NamingConventions"/>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+	</ItemGroup>
+</Project>

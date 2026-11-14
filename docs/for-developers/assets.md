@@ -14,7 +14,7 @@ request commands instead of custom logic for each image type.
 The host also owns the main-menu banner feature: `GET /menu-content.json`, the JSON manifest that the osu! stable client
 fetches during startup. This endpoint naturally belongs with the menu assets it describes.
 
-Write operations remain on `api.<domain>` and require an admin key. `assets.<domain>` is read-only. When an asset has
+Write operations remain on `api.<domain>` and require a token with the matching privilege. `assets.<domain>` is read-only. When an asset has
 moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to the new location.
 
 ## What
@@ -36,20 +36,20 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
 * `GET /menu/seasonals` — lists seasonal files by bare filename. `osu.<domain>/web/osu-getseasonal.php` uses this
   listing to construct its URLs.
 
-* `GET /beatmapsets/{mapsetId}/background` — beatmapset background.
+* `GET /beatmapsets/{beatmapsetId}/background` — beatmapset background.
 
 * `GET /beatmapsets/{beatmapId}/background` — beatmap background.
 
-* `GET /beatmapsets/{mapsetId}/covers/{variant}.jpg` — fixed-size cover variants: `cover`, `card`, `list`, and
+* `GET /beatmapsets/{beatmapsetId}/covers/{variant}.jpg` — fixed-size cover variants: `cover`, `card`, `list`, and
   `slimcover`.
 
-* `GET /beatmapsets/{mapsetId}/{audio,video,download,storyboard,audiopreview,...}` — non-image beatmapset files.
+* `GET /beatmapsets/{beatmapsetId}/{audio,video,download,storyboard,audiopreview,...}` — non-image beatmapset files.
 
   These files bypass ImageSharp.Web and are served directly with `Results.File` and `enableRangeProcessing: true`,
   allowing HTTP Range requests and `206 Partial Content` responses for large downloads.
 
 `b.<domain>` and `a.<domain>` also use ImageSharp.Web for beatmap thumbnails and avatars respectively. Their URLs remain
-unchanged because the real osu! stable client hardcodes these hosts and paths as part of the Bancho protocol. Only the
+unchanged because the real osu! stable client hardcodes these hosts and paths as part of the osu! (stable) protocol. Only the
 serving mechanism changed.
 
 ### Not covered
@@ -67,30 +67,29 @@ This follows the project's scope rules documented in [`working-scopes.md`](worki
 `UseImageSharp()` runs as normal middleware before the `RequireHost`-based endpoint routing.
 
 This means an `IImageProvider` cannot rely on the request path alone. The same path may exist on multiple hosts—for
-example, `/beatmapsets/{mapsetId}/background` exists both as a real asset route on `assets.<domain>` and as a redirect
+example, `/beatmapsets/{beatmapsetId}/background` exists both as a real asset route on `assets.<domain>` and as a redirect
 on `api.<domain>`.
 
-Every provider therefore checks the host before matching the path, using `AssetsHost.Matches` from
-`Basil.Infrastructure/Media/Assets/AssetsHost.cs`.
+Every provider therefore checks the host before matching the path, using the host helpers in
+`src/Hosts/Rest/Images/ImageHosts.cs`.
 
 ### Providers
 
-| Provider                       | Host      | Serves                                                    |
-|--------------------------------|-----------|-----------------------------------------------------------|
-| `MenuBannersProvider`          | `assets.` | `/menu/banners/{file}`                                    |
-| `MenuSeasonalsProvider`        | `assets.` | `/menu/seasonals/{file}`                                  |
-| `MenuIconProvider`             | `assets.` | `/menu/icon`, when an uploaded file exists                |
-| `BeatmapThumbnailProvider`     | `b.`      | `/thumb/{setId}.jpg`, `/thumb/{setId}l.jpg`               |
-| `AvatarProvider`               | `a.`      | `/{userId}`, when the user has uploaded an avatar         |
-| `BeatmapsetBackgroundProvider` | `assets.` | Beatmap/beatmapset backgrounds and `covers/{variant}.jpg` |
+| Provider                  | Host                | Serves                                                         |
+|---------------------------|---------------------|----------------------------------------------------------------|
+| `MenuImageProvider`       | `assets.`           | `/menu/banners/{file}`, `/menu/seasonals/{file}`, `/menu/icon` |
+| `BeatmapThumbnailProvider`| `b.`                | `/thumb/{setId}.jpg`, `/thumb/{setId}l.jpg`                    |
+| `AvatarProvider`          | `a.`                | `/{userId}`, when the user has uploaded an avatar              |
+| `ScreenshotProvider`      | `osu.`              | uploaded screenshots                                           |
+| `BeatmapImageProvider`    | `assets.`           | beatmap/beatmapset backgrounds and `covers/{variant}.jpg`      |
 
 Providers return no result when they cannot serve a request—for example, when a beatmapset is private, a local file does
 not exist, an icon points to an external URL, or a user has no uploaded avatar.
 
-The request then falls through to the corresponding minimal-API route on the same host. These routes preserve the
-behavior of the previous hand-written handlers, including private-resource checks and mirror fallbacks.
+The request then falls through to the corresponding minimal-API route on the same host. These routes keep the
+private-resource checks and the mirror fallbacks.
 
-The relevant behavior is documented in `AvatarRoutes`, `BeatmapAssetRoutes`, and `BeatmapsetAssetRoutes`.
+The routes are in `src/Hosts/Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `src/Hosts/Stable/Web/OsuWebRoutes.cs`.
 
 ### Fixed-size crops without query strings
 
@@ -130,31 +129,55 @@ when the source file's last-write time changes.
 Avatars use a shorter browser `Cache-Control` lifetime through `OnPrepareResponseAsync`, since users may replace their
 avatars. Menu and beatmap images are comparatively static.
 
+### Asset references
+
+The server refers to an asset by an `AssetReference` (Domain), never by a bare string or URI. A reference is one of:
+
+* the path of a file the server stores, relative to the data directory (`Menu/Banners/summer.png`), so it stays
+  valid when the installation moves to another machine;
+* the absolute `http`/`https` address of an asset hosted elsewhere, kept exactly as given; Basil never copies it.
+
+The value is canonical: `\` becomes `/`, empty and `.` segments are dropped, and a rooted path, a `..` segment, a
+drive or scheme (`file:`, `javascript:`), or a control character is rejected. A banner's image and the menu icon are
+stored in the database as the reference's text.
+
+### Storages and serving
+
+Each kind of stored asset has a storage contract (`IMenuBannerStorage`, `IMenuSeasonalsStorage`, `IMenuIconStorage`,
+`IScreenshotStorage`) with list, save, rename where it applies, and delete; each save returns the reference of the
+stored file. `OpenAsync` serves the server's own reads only. The storages keep no file content in memory and are not
+resident: the directory is the index and is read as it is when asked.
+
+Clients never read through the storages. The hosts serve stored files under a fixed public path per asset directory
+(for example `menu/banners/{name}` for `Data/Menu/Banners/{name}`), with a static file provider rooted at that asset
+directory and never at the whole `Data/` directory, which also holds replays, FAQs and the cache. A reference to an
+external address is handed to the client as it is.
+
+Screenshots are stored under a new UUIDv7 name with the upload's extension.
+
+An uploaded avatar is accepted only when its content is a PNG or JPEG picture of at most `Uploads.AvatarMaxSide` pixels
+per side and at most `Uploads.AvatarMaxSize` bytes; the file name is not consulted. A refused upload leaves the user's
+previous avatar in place.
+
 ### Data layout
 
 Menu assets use the following layout:
 
 * `Data/Menu/Banners/` — menu banners
 * `Data/Menu/Seasonals/` — seasonal images
-* `Data/Menu/Icon{ext}` — the current menu icon
+* `Data/Menu/Icon/` — the current menu icon, the only file there
+* `Data/Screenshots/` — uploaded screenshots
 
 `MenuBanners` stores banner metadata in the database; see [`database.md`](database.md).
 
 Seasonal images remain a plain file listing rather than a database-backed collection, preserving the existing design.
 
-Basil automatically migrates the old layout to the new one once at startup when the old paths are detected:
-
-* `Data/Seasonals/` → `Data/Menu/Seasonals/`
-* `Data/MenuIcon.{ext}` → `Data/Menu/Icon{ext}`
-
 See [`configuration.md`](../for-technicians/configuration.md) for the complete `Data/` directory layout.
 
 ## Related code
 
-* `src/Basil.Infrastructure/Media/Assets/` — `AssetsHost`, all `IImageProvider` implementations, and
-  `PhysicalImageResolver`.
-* `src/Basil.Web/Routing/Assets/` — `AssetsHostRoutes`, `MenuAssetRoutes`, `MenuContentRoutes`, and
-  `BeatmapsetAssetRoutes`.
-* `src/Basil.Web/Program.cs` — `ConfigureImageSharp`.
-* `src/Basil.Domain/Content/MenuBanner.cs` — banner metadata model.
-* `src/Basil.Application/Services/Content/MenuBannerService.cs` — banner metadata service.
+* `src/Hosts/Rest/Images/` — `ImageHosts` (the `a.` and `assets.` hosts, ImageSharp.Web pipeline) and the image providers.
+* `src/Hosts/Rest/Routes/MenuRoutes.cs` — menu banner, icon and seasonal routes.
+* `src/Application/Content/Storage/` — the storage ports for avatars, menu assets, screenshots and the FAQ.
+* `src/Infrastructure/Content/Storage/` — their file implementations.
+* `src/Domain/Content/MenuBanner.cs` — banner metadata model.

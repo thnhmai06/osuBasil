@@ -50,11 +50,17 @@ Follow that guide rather than creating an ad-hoc local setup.
 
 ```text
 src/
-    the five production projects
+    Domain/                      business model
+    Application/<Module>/        the module's ports and live objects
+    Infrastructure/<Module>/     the module's implementations
+    Protocol/{Stable,Irc}/       wire formats
+    Hosts/{Host,Shared,Stable,Irc,Rest,Cli}/
+                                 the entry point and the transports
+    Bot/                         BasilBot
 
 tests/
-    one test project per source project,
-    plus integration and architecture tests
+    one test project per source project, in the same folders,
+    plus Architecture/ and the shared fixtures in Support/
 
 docs/
     documentation split by audience:
@@ -64,10 +70,8 @@ docs/
     for-agents/
 ```
 
-The five `src/` projects form a layered monolith.
-
-`Basil.Web` sits at the outermost layer, while dependencies point inward toward the domain. The dependency direction is
-enforced by [`tests/Basil.ArchitectureTests`](tests/Basil.ArchitectureTests).
+Basil is a layered monolith split by module. `Basil` sits at the outermost layer, while dependencies point inward
+toward the domain. The dependency direction is enforced by [`tests/Architecture`](tests/Architecture).
 
 See [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) for the responsibilities of each
 project and guidance on where new code belongs.
@@ -77,9 +81,9 @@ project and guidance on where new code belongs.
 Do not introduce new conventions when an existing project convention already covers the case.
 
 * Formatting and analyzer rules are defined by the repository-level [`.editorconfig`](.editorconfig).
-* Development rules are collected in [`CLAUDE.md`](CLAUDE.md).
+* Development rules are collected in [`AGENTS.md`](AGENTS.md).
 * XML documentation rules, user-visible response strings, and testing conventions are covered by [
-  `CLAUDE.md`](CLAUDE.md).
+  `AGENTS.md`](AGENTS.md).
 * Public members should have XML documentation describing their observable behavior rather than their implementation.
 
 When in doubt, follow the existing architecture and the authoritative developer documentation before introducing a new
@@ -96,28 +100,17 @@ The basic rule is:
 
 See [`docs/for-developers/testing.md`](docs/for-developers/testing.md) for the complete testing policy.
 
-The six test projects are:
-
-```text
-Basil.Domain.Tests
-Basil.Protocol.Tests
-Basil.Application.Tests
-Basil.Infrastructure.Tests
-Basil.IntegrationTests
-Basil.ArchitectureTests
-```
+Every source project has a test project of its own, and the folders under `tests/` mirror the ones under `src/` (for
+example `tests/Application/Users` tests `src/Application/Users`).
 
 During development, run the smallest relevant test project first:
 
 ```bash
-dotnet test tests/Basil.Application.Tests
+dotnet test tests/Application/Users
 ```
 
-Run the complete suite before opening a pull request:
-
-```bash
-dotnet test
-```
+Before opening a pull request, run every test project listed in `Basil.slnx`, one at a time. Do not pass the solution to
+`dotnet test`: the projects that start a PostgreSQL container do not run reliably together.
 
 ## Documentation
 

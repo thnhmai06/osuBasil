@@ -1,0 +1,547 @@
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
+using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Domain.Authentication;
+using Basil.Domain.Chat;
+using Basil.Domain.Users;
+using Basil.Testing;
+
+namespace Basil.Application.Chat.Tests.Capabilities;
+
+/// <summary>
+///     Behaviour of a chat channel as a connection may use it. Expected values come from AGENTS.md and
+///     docs/for-agents/identity-privileges.md (privileges, privileges, blocks yielding to a higher privilege).
+/// </summary>
+public sealed class ScopedChannelTests
+{
+	private const string ChannelName = "#lobby";
+
+	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app,
+		UserPrivileges read = UserPrivileges.None,
+		UserPrivileges write = UserPrivileges.None)
+	{
+		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPrivilegesExtensions.All);
+		var actor = await app.LoginAsync(admin);
+		var record = new GeneralChannelRecord
+		{
+			Name = ChannelName,
+			Value = new GeneralChannelData { ReadPrivileges = read, WritePrivileges = write }
+		};
+		var created = await app.Server.ScopeTo(actor).Channels
+			.CreateAsync(record);
+		Assert.True(created == ServerOutcome.Ok);
+		return app.Channels.Find(ChannelName)!;
+	}
+
+	private static async Task<Connection> MemberOfAsync(TestApplication app, GeneralChannel channel, string name,
+		UserPrivileges? privileges = null)
+	{
+		var user = await app.CreateUserAsync(name, "password", privileges);
+		var connection = await app.LoginAsync(user);
+		Assert.True(channel.ScopeTo(connection).Join() == ChannelOutcome.Ok);
+		return connection;
+	}
+
+	#region Join and part
+
+	[Fact]
+	public async Task OpenChannel_MemberAdded()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var user = await app.CreateUserAsync("Joiner", "password");
+		var connection = await app.LoginAsync(user);
+
+		var result = channel.ScopeTo(connection).Join();
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+		Assert.Contains(connection, channel.Members);
+		var joined = Assert.IsType<ChannelMemberJoined>(app.ChannelEvents.Events[^1]);
+		Assert.Equal(connection, joined.Member);
+	}
+
+	[Fact]
+	public async Task AlreadyMember_ReturnsAlready()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Twice");
+
+		var result = channel.ScopeTo(connection).Join();
+
+		Assert.Equal(ChannelOutcome.AlreadyMember, result);
+		Assert.Single(channel.Members, member => member == connection);
+	}
+
+	[Fact]
+	public async Task ModeratorChannel_PlayerRefused()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
+		var user = await app.CreateUserAsync("PlainPlayer", "password");
+		var connection = await app.LoginAsync(user);
+
+		var result = channel.ScopeTo(connection).Join();
+
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
+		Assert.DoesNotContain(connection, channel.Members);
+	}
+
+	[Fact]
+	public async Task ModeratorChannel_ModeratorAccepted()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
+		var user = await app.CreateUserAsync("Moderator", "password",
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
+		var connection = await app.LoginAsync(user);
+
+		var result = channel.ScopeTo(connection).Join();
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+	}
+
+	[Fact]
+	public async Task ClosedChannel_Closed()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Closer", "password", UserPrivilegesExtensions.All));
+		await channel.ScopeTo(admin).General!.Value.DeleteAsync();
+		var connection = await app.LoginAsync(await app.CreateUserAsync("Latecomer", "password"));
+
+		var result = channel.ScopeTo(connection).Join();
+
+		Assert.Equal(ChannelOutcome.Closed, result);
+	}
+
+	[Fact]
+	public async Task PartMember_Removed()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Leaver");
+
+		var result = channel.ScopeTo(connection).Part();
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+		Assert.DoesNotContain(connection, channel.Members);
+		var parted = Assert.IsType<ChannelMemberParted>(app.ChannelEvents.Events[^1]);
+		Assert.Equal(connection, parted.Member);
+		Assert.False(parted.Kicked);
+	}
+
+	[Fact]
+	public async Task PartNonMember_NotMember()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await app.LoginAsync(await app.CreateUserAsync("Outsider", "password"));
+
+		var result = channel.ScopeTo(connection).Part();
+
+		Assert.Equal(ChannelOutcome.NotMember, result);
+	}
+
+	#endregion
+
+	#region Posting to a general channel
+
+	[Fact]
+	public async Task PostMember_Published()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Talker");
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("hello", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
+		Assert.Equal("hello", posted.Message.Content);
+		Assert.Equal(connection.Record, posted.Message.Author);
+		Assert.Equal(connection, posted.Actor);
+		Assert.False(posted.Truncated);
+	}
+
+	[Fact]
+	public async Task PostTooLong_CutFlagged()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Rambler");
+
+		await channel.ScopeTo(connection).PostAsync(new string('a', Channel.MaxMessageLength + 1),
+			ct: TestContext.Current.CancellationToken);
+
+		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
+		Assert.True(posted.Truncated);
+		Assert.Equal(Channel.MaxMessageLength, posted.Message.Content.Length);
+	}
+
+	[Fact]
+	public async Task PostEmpty_NothingPublished()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Mute");
+		var before = app.ChannelEvents.Events.Count;
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Empty, result);
+		Assert.Equal(before, app.ChannelEvents.Events.Count);
+	}
+
+	[Fact]
+	public async Task PostWhitespace_PostedAsIs()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Mute");
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("   ", ct: TestContext.Current.CancellationToken);
+
+		Assert.True(result == ChannelOutcome.Ok);
+		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
+		Assert.Equal("   ", posted.Message.Content);
+	}
+
+	[Fact]
+	public async Task PostNonMember_NotMember()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await app.LoginAsync(await app.CreateUserAsync("Lurker", "password"));
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.NotMember, result);
+	}
+
+	[Fact]
+	public async Task PostNoPrivilege_Denied()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection =
+			await MemberOfAsync(app, channel, "NoVoice", UserPrivilegesExtensions.Default & ~UserPrivileges.Player);
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.False(result == ChannelOutcome.Ok);
+		Assert.Equal(ChannelOutcome.Denied, result);
+	}
+
+	[Fact]
+	public async Task PostSilenced_Silenced()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var user = await app.CreateUserAsync("PostSilenced", "password");
+		app.Silence(user, app.Clock.GetUtcNow().AddHours(1));
+		var connection = await app.LoginAsync(user);
+		Assert.True(channel.ScopeTo(connection).Join() == ChannelOutcome.Ok);
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Silenced, result);
+	}
+
+	[Fact]
+	public async Task PostModeratorChannel_PlayerRefused()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app, write: UserPrivileges.Moderator);
+		var connection = await MemberOfAsync(app, channel, "ReadOnlyPlayer");
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
+	}
+
+	#endregion
+
+	#region Private messages
+
+	[Fact]
+	public async Task PostOnlineUser_Delivered()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("PmOwner", "password");
+		await app.LoginAsync(owner, SessionType.Irc);
+		var sender = await app.LoginAsync(await app.CreateUserAsync("PmSender", "password"));
+		var pm = app.PmChannels.Of(app.Users.Of(owner));
+
+		var result = await pm.ScopeTo(sender)
+			.PostAsync("psst", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
+		Assert.Same(pm, posted.Channel);
+		Assert.Equal("psst", posted.Message.Content);
+		Assert.Null(posted.AwayReply);
+	}
+
+	[Fact]
+	public async Task PostOfflineUser_Refused()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("OfflineOwner", "password");
+		var sender = await app.LoginAsync(await app.CreateUserAsync("OfflineSender", "password"));
+
+		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
+			.PostAsync("anyone?", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
+	}
+
+	[Theory]
+	[InlineData("a\0b")]
+	[InlineData("\e[0m")]
+	public async Task PostControl_InvalidText(string text)
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Ctrl");
+		var before = app.ChannelEvents.Events.Count;
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync(text, ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.InvalidText, result);
+		Assert.Equal(before, app.ChannelEvents.Events.Count);
+	}
+
+	[Fact]
+	public async Task PostAway_ReplyInEvent()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("AwayOwner", "password");
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
+		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAwayAsync("brb"));
+		var sender = await app.LoginAsync(await app.CreateUserAsync("AwaySender", "password"));
+
+		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
+			.PostAsync("hey", ct: TestContext.Current.CancellationToken);
+
+		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]);
+		Assert.Equal("brb", posted.AwayReply?.Content);
+		Assert.Equal(owner, posted.AwayReply?.Author);
+	}
+
+	[Fact]
+	public async Task NoticeToAway_NoReply()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("NoticeOwner", "password");
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
+		await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAwayAsync("brb");
+		var sender = await app.LoginAsync(await app.CreateUserAsync("NoticeSender", "password"));
+
+		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
+			.PostAsync("fyi", true, TestContext.Current.CancellationToken);
+
+		Assert.Null(Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events[^1]).AwayReply);
+	}
+
+	[Fact]
+	public async Task PostNoPrivate_Denied()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("DeniedOwner", "password");
+		await app.LoginAsync(owner, SessionType.Irc);
+		var sender = await app.LoginAsync(await app.CreateUserAsync("DeniedSender", "password",
+			UserPrivilegesExtensions.Default & ~UserPrivileges.Player));
+
+		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.False(result == ChannelOutcome.Ok);
+		Assert.Equal(ChannelOutcome.Denied, result);
+	}
+
+	[Fact]
+	public async Task PostBlocked_Blocked()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("Blocker", "password");
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
+		var senderRecord = await app.CreateUserAsync("Blocked", "password");
+		var sender = await app.LoginAsync(senderRecord);
+		await app.Users.Of(senderRecord).ScopeTo(ownerConnection).Relationships
+			.BlockAsync();
+
+		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Blocked, result);
+	}
+
+	[Fact]
+	public async Task PostBlockedAnyone_GetsThrough()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("BlockerOfStaff", "password");
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
+		var staffRecord = await app.CreateUserAsync("Staff", "password",
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
+		var staff = await app.LoginAsync(staffRecord);
+		await app.Users.Of(staffRecord).ScopeTo(ownerConnection).Relationships
+			.BlockAsync();
+
+		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(staff)
+			.PostAsync("notice", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+	}
+
+	[Fact]
+	public async Task PostFriendsOnly_FriendsAccepted()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("FriendsOnly", "password");
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
+		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
+		var friendRecord = await app.CreateUserAsync("TheFriend", "password");
+		var friend = await app.LoginAsync(friendRecord);
+		var stranger = await app.LoginAsync(await app.CreateUserAsync("TheStranger", "password"));
+		await app.Users.Of(friendRecord).ScopeTo(ownerConnection).Relationships
+			.AddFriendAsync();
+		var pm = app.PmChannels.Of(app.Users.Of(owner));
+
+		var fromFriend =
+			await pm.ScopeTo(friend).PostAsync("hi", ct: TestContext.Current.CancellationToken);
+		var fromStranger = await pm.ScopeTo(stranger)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Ok, fromFriend);
+		Assert.Equal(ChannelOutcome.Blocked, fromStranger);
+	}
+
+	[Fact]
+	public async Task PostRecipientSilenced_TargetSilenced()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("SilencedOwner", "password");
+		app.Silence(owner, app.Clock.GetUtcNow().AddHours(1));
+		await app.LoginAsync(owner, SessionType.Irc);
+		var sender = await app.LoginAsync(await app.CreateUserAsync("SilencedSender", "password"));
+
+		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
+			.PostAsync("hi", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.TargetSilenced, result);
+	}
+
+	[Fact]
+	public async Task PostToBot_Delivered()
+	{
+		using var app = new TestApplication();
+		await app.SeedBotAsync();
+		await app.Users.EnsureBotAsync(TestContext.Current.CancellationToken);
+		await app.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
+		var sender = await app.LoginAsync(await app.CreateUserAsync("BotAsker", "password"));
+
+		var result = await app.PmChannels.Of(app.Users.Of(app.Users.Online.Keys.Single(user => user.IsBasilBot())))
+			.ScopeTo(sender).PostAsync("!help", ct: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+	}
+
+	[Fact]
+	public async Task OtherPrivateChannel_Refused()
+	{
+		using var app = new TestApplication();
+		var owner = await app.CreateUserAsync("PmChannelOwner", "password");
+		await app.LoginAsync(owner, SessionType.Irc);
+		var intruder = await app.LoginAsync(await app.CreateUserAsync("Intruder", "password"));
+
+		var result = app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(intruder).Join();
+
+		Assert.Equal(ChannelOutcome.AccessDenied, result);
+	}
+
+	#endregion
+
+	#region General channel management
+
+	[Fact]
+	public async Task ConfigureNoManage_Denied()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await app.LoginAsync(await app.CreateUserAsync("NotAnAdmin", "password"));
+
+		var result = await channel.ScopeTo(connection).General!.Value.ConfigureAsync(new GeneralChannelChange("new"));
+
+		Assert.False(result == ChannelOutcome.Ok);
+		Assert.Equal(ChannelOutcome.Denied, result);
+		Assert.NotEqual("new", channel.Topic);
+	}
+
+	[Fact]
+	public async Task ConfigureRaiseRead_MembersRemoved()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var player = await MemberOfAsync(app, channel, "Demoted");
+		var moderator = await MemberOfAsync(app, channel, "Kept",
+			UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Configurer", "password",
+			UserPrivilegesExtensions.All));
+
+		var result = await channel.ScopeTo(admin).General!.Value.ConfigureAsync(
+			new GeneralChannelChange(ReadPrivileges: UserPrivileges.Moderator));
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+		Assert.DoesNotContain(player, channel.Members);
+		Assert.Contains(moderator, channel.Members);
+		var configured = Assert.IsType<ChannelConfigured>(app.ChannelEvents.Events[^1]);
+		Assert.Equal([player], configured.Removed);
+	}
+
+	[Fact]
+	public async Task DeleteNoManage_ChannelOpen()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await app.LoginAsync(await app.CreateUserAsync("NotAllowed", "password"));
+
+		var result =
+			await channel.ScopeTo(connection).General!.Value.DeleteAsync();
+
+		Assert.Equal(ChannelOutcome.Denied, result);
+		Assert.False(channel.IsClosed);
+		Assert.Same(channel, app.Channels.Find(ChannelName));
+	}
+
+	[Fact]
+	public async Task DeleteAllowed_Closed()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var member = await MemberOfAsync(app, channel, "Evicted");
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Deleter", "password",
+			UserPrivilegesExtensions.All));
+
+		var result = await channel.ScopeTo(admin).General!.Value.DeleteAsync();
+
+		Assert.Equal(ChannelOutcome.Ok, result);
+		Assert.True(channel.IsClosed);
+		Assert.Empty(channel.Members);
+		Assert.Null(app.Channels.Find(ChannelName));
+		var closed = Assert.IsType<ChannelClosed>(app.ChannelEvents.Events[^1]);
+		Assert.Equal([member], closed.Members);
+	}
+
+	#endregion
+}

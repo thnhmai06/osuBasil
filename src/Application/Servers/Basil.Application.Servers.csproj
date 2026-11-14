@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Application.Servers</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Shared\Basil.Application.Shared.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Authentication\Basil.Application.Authentication.csproj"/>
+		<ProjectReference Include="..\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Content\Basil.Application.Content.csproj"/>
+		<ProjectReference Include="..\Users\Basil.Application.Users.csproj"/>
+		<ProjectReference Include="..\Anticheat\Basil.Application.Anticheat.csproj"/>
+		<ProjectReference Include="..\Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Chat\Basil.Application.Chat.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Application.Servers.Tests"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Servers"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+	</ItemGroup>
+</Project>
