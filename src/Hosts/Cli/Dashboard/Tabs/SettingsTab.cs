@@ -276,6 +276,13 @@ internal sealed partial class SettingsTab : ITabView
 		// The editor takes Esc for itself and reports it as canceled.
 		if (field.Control is PromptEditor editor) editor.Canceled(() => Leave(field));
 		else Add("escape", new KeyGesture(TerminalKey.Escape), () => Leave(field));
+		// A switch only toggles on Enter by itself; Space does the same.
+		if (field.Control is Switch toggle)
+			Add("toggle", new KeyGesture(' '), () =>
+			{
+				toggle.IsOn = !toggle.IsOn;
+				Save(field);
+			});
 		Add("back", new KeyGesture(TerminalKey.Left, TerminalModifiers.Alt), () => Leave(field));
 	}
 

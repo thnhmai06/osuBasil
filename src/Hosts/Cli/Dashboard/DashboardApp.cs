@@ -251,7 +251,7 @@ public sealed class DashboardApp
 			Id = "decline", LabelMarkup = "Decline", Gesture = new KeyGesture(TerminalKey.Escape),
 			CanExecute = _ => _console.Asking, Execute = _ => _console.Decline()
 		});
-		app.AddGlobalCommand(new Command
+		var refresh = new Command
 		{
 			Id = "refresh", LabelMarkup = "Refresh", Gesture = new KeyGesture(TerminalChar.CtrlR, TerminalModifiers.Ctrl),
 			Execute = _ =>
@@ -260,7 +260,10 @@ public sealed class DashboardApp
 				_flashAt = _clock.GetTimestamp();
 				_flash.Value = $" Refreshed {_clock.GetLocalNow():HH:mm:ss}";
 			}
-		});
+		};
+		app.AddGlobalCommand(refresh);
+		// The command box takes Ctrl+R for itself, so it needs the command too.
+		_console.Prompt?.AddCommand(refresh);
 		foreach (var (id, key, step) in new[] { ("tab.previous", TerminalKey.Left, -1), ("tab.next", TerminalKey.Right, 1) })
 			app.AddGlobalCommand(new Command
 			{
