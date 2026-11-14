@@ -120,6 +120,7 @@ public sealed class DashboardApp
 			{
 				_lastActive = _selected.Value;
 				ActiveView()?.Activate();
+				if (Tab == DashboardTab.Console) _console.Activate();
 			}
 
 			_columns.Value = terminal.Size.Columns;
