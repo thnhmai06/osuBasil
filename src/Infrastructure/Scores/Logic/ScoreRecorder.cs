@@ -63,8 +63,10 @@ internal sealed class ScoreRecorder(
 	{
 		if (played.BeatmapHash is not { } hash) return null;
 
-		var best = await scores.ListAsync(new ScoreQuery(player, hash, BestPerPlayer: true), new PageRequest(0, 1));
-		return best.Items.FirstOrDefault(score => score.Value.IsPassed && score.Value.Mode == played.Mode);
+		var best = await scores.ListAsync(
+			new ScoreQuery(player, hash, BestPerPlayer: true, PassedOnly: true, Mode: played.Mode),
+			new PageRequest(0, 1));
+		return best.Items.FirstOrDefault();
 	}
 
 	/// <summary>

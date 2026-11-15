@@ -41,7 +41,8 @@ internal static class ScoreRoutes
 			ScoreListOutcome.NoBeatmap => Api.NotFound("No such beatmap."),
 			ScoreListOutcome.NoUser => Api.NotFound("No such user."),
 			_ => Api.Paged(
-				new Page<ScoreView>([.. listing.Scores!.Items.Select(ScoreView.Of)], listing.Scores.HasNext), page!)
+				new Page<ScoreView>([.. await ScoreView.DescribeAsync(sender, listing.Scores!.Items, context.RequestAborted)],
+					listing.Scores.HasNext), page!)
 		};
 	}
 
@@ -55,7 +56,7 @@ internal static class ScoreRoutes
 	private static async Task<IResult> GetAsync(HttpContext context, int id, ISender sender)
 	{
 		return await sender.Send(new GetScore(id), context.RequestAborted) is { } score
-			? Api.Ok(ScoreView.Of(score))
+			? Api.Ok((await ScoreView.DescribeAsync(sender, [score], context.RequestAborted))[0])
 			: Api.NotFound("No such score.");
 	}
 

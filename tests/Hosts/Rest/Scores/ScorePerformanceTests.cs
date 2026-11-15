@@ -1,5 +1,6 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Domain.Client;
+using Basil.Domain.Cryptography;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -11,12 +12,17 @@ namespace Basil.Host.Rest.Tests.Scores;
 [Collection("REST host")]
 public sealed class ScorePerformanceTests(RestHostFixture fixture)
 {
-	private async Task<ScoreRecord> StoreAsync(int userId, double? pp, bool passed = true)
+	private async Task<ScoreRecord> StoreAsync(int userId, double? pp, bool passed = true, Md5? beatmap = null)
 	{
 		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId,
-			null, GameMode.Standard, GameMods.NoMod,
+			beatmap, GameMode.Standard, GameMods.NoMod,
 			new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, true), Grade.S, passed,
 			new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)) { Pp = pp });
+	}
+
+	private async Task<Md5> ServerBeatmapAsync()
+	{
+		return (await fixture.Host.ImportSampleAsync("Sets/selene-ui-mania.osz")).First().Hash;
 	}
 
 	private async Task<System.Text.Json.Nodes.JsonNode> GetAsync(ScoreRecord score)
@@ -31,7 +37,7 @@ public sealed class ScorePerformanceTests(RestHostFixture fixture)
 	{
 		var user = await fixture.Host.CreateUserAsync("PpPending");
 
-		var data = await GetAsync(await StoreAsync(user.Id, null));
+		var data = await GetAsync(await StoreAsync(user.Id, null, beatmap: await ServerBeatmapAsync()));
 
 		Assert.Null(data["pp"]);
 		Assert.True((bool)data["ppPending"]!);
@@ -45,6 +51,17 @@ public sealed class ScorePerformanceTests(RestHostFixture fixture)
 		var data = await GetAsync(await StoreAsync(user.Id, 250.5));
 
 		Assert.Equal(250.5, (double)data["pp"]!);
+		Assert.False((bool)data["ppPending"]!);
+	}
+
+	[Fact]
+	public async Task ScoreOnBeatmapTheServerLacks_NullAndNeverPending()
+	{
+		var user = await fixture.Host.CreateUserAsync("PpUnknownMap");
+
+		var data = await GetAsync(await StoreAsync(user.Id, null, beatmap: new Md5(new string('a', 32))));
+
+		Assert.Null(data["pp"]);
 		Assert.False((bool)data["ppPending"]!);
 	}
 

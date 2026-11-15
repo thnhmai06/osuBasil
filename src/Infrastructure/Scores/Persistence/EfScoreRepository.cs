@@ -95,7 +95,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 	public Task SetPpAsync(int id, double pp)
 	{
 		return database.WriteAsync((ScoresDbContext context) => context.Scores.Where(score => score.Id == id)
-			.ExecuteUpdateAsync(setters => setters.SetProperty(score => score.Pp, (double?)pp)));
+			.ExecuteUpdateAsync(setters => setters.SetProperty(score => score.Pp, pp)));
 	}
 
 	/// <inheritdoc />
@@ -152,6 +152,12 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 			var values = hashes.Select(h => h.HashValue).ToList();
 			q = q.Where(s => s.BeatmapHash != null && values.Contains(s.BeatmapHash));
 		}
+
+		if (scoreQuery.PassedOnly)
+			q = q.Where(s => s.IsPassed);
+
+		if (scoreQuery.Mode is { } mode)
+			q = q.Where(s => s.Mode == (int)mode);
 
 		if (scoreQuery.BestPerPlayer)
 			q = q.Where(s => s.UserId != null);

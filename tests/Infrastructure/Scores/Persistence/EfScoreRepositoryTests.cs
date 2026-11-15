@@ -397,6 +397,35 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 	/// <param name="checksum">The checksum the client computed for the submission.</param>
 	/// <param name="mods">The mods applied to the play.</param>
 	/// <returns>The play.</returns>
+
+	[Fact]
+	public async Task BestPerPlayerPassedOnly_IgnoresHigherFailedPlay()
+	{
+		var player = await CreatePlayerAsync("best_passed");
+		var map = StoredScores.Hash("best_passed_map");
+		var passed = await CreateScoreAsync(player, map, 1000, First);
+		await Scores.CreateAsync(StoredScores.Data(player, map, 5000, Second) with { IsPassed = false });
+
+		var best = await Scores.ListAsync(new ScoreQuery(player, map, BestPerPlayer: true, PassedOnly: true),
+			new PageRequest(0, 1), TestContext.Current.CancellationToken);
+
+		Assert.Equal([passed.Id], best.Items.Select(score => score.Id));
+	}
+
+	[Fact]
+	public async Task ModeFilter_ListsOnlyThatMode()
+	{
+		var player = await CreatePlayerAsync("mode_filter");
+		var map = StoredScores.Hash("mode_filter_map");
+		await Scores.CreateAsync(StoredScores.Data(player, map, 9000, First, mode: GameMode.Taiko));
+		var standard = await CreateScoreAsync(player, map, 1000, Second);
+
+		var listed = await Scores.ListAsync(new ScoreQuery(player, map, Mode: GameMode.Standard),
+			new PageRequest(0, 10), TestContext.Current.CancellationToken);
+
+		Assert.Equal([standard.Id], listed.Items.Select(score => score.Id));
+	}
+
 	private async Task<ScoreRecord> CreateScoreAsync(UserRecord player, Md5 beatmapHash, int totalScore,
 		DateTimeOffset timestamp, Md5? checksum = null, GameMods mods = GameMods.NoMod)
 	{

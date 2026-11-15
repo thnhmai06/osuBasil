@@ -1,7 +1,6 @@
 using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Beatmaps;
 using Basil.Application.Beatmaps.Objects.Events;
-using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Bot;
 using Basil.Application.Chat;
 using Basil.Application.Chat.Objects.Events;
@@ -13,7 +12,6 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Servers;
 using Basil.Application.Shared;
 using Basil.Application.Shared.Events;
-using Basil.Application.Shared.Settings;
 using Basil.Application.Users;
 using Basil.Application.Users.Objects.Events;
 using Basil.Configuration;

@@ -5,7 +5,6 @@ using System.Text.Json.Serialization;
 using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
