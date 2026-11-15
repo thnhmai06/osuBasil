@@ -7,7 +7,7 @@ namespace Basil.Application.Beatmaps.Messages;
 /// <summary>Asks Beatmaps to open a file that belongs to a beatmap.</summary>
 /// <param name="Actor">The actor that asks, or <see langword="null" /> for a caller without a session.</param>
 /// <param name="BeatmapId">The id of the beatmap.</param>
-/// <param name="Type">Which file: the audio, the video or the background.</param>
+/// <param name="Type">Which file: the audio, the video, the background or the .osu file of the beatmap.</param>
 /// <remarks>
 ///     The answer is <see langword="null" /> when the beatmap does not exist, the actor may not see it or it has no
 ///     such file.

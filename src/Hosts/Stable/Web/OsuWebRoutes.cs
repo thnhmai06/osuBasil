@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Basil.Application.Anticheat.Services;
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
@@ -89,8 +91,13 @@ internal static class OsuWebRoutes
 		web.MapGet("/web/osu-search.php", SearchAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Search beatmapsets for osu!direct.")
-			.WithDescription(
-				"Query: `u`, `h`, `q` (the search). Needs the privilege to use osu!direct, otherwise 403.");
+			.WithDescription("""
+			                 Query: `u`, `h`, `q` (the search; `Newest`, `Top+Rated` and `Most+Played` search nothing), `r` (ranked
+			                 status, 0 to 8; 4 is every status), `m` (game mode; -1 is every mode) and `p` (the page, from 0).
+			                 Needs the privilege to use osu!direct, otherwise 403; a missing or invalid parameter is answered 400.
+			                 The first line is the number of beatmapsets found, or 101 when the page is full, which tells the client that
+			                 another page follows. Each next line is a beatmapset, 100 at most, with its difficulties ordered by stars.
+			                 """);
 		web.MapGet("/web/osu-search-set.php", SearchSetAsync)
 			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
 			.WithSummary("Look up one beatmapset for osu!direct.")
@@ -98,9 +105,32 @@ internal static class OsuWebRoutes
 		web.MapGet("/d/{setId}", DownloadAsync)
 			.WithSummary("Download a beatmapset archive.")
 			.WithDescription("""
-			                 Query: `u`, `h`. The id may end with `n` (without video). Answers the archive, or redirects to where it can
-			                 be downloaded; needs the privilege to use osu!direct, otherwise 403.
+			                 Query: `u`, `h`. The id may end with `n` (without video). Answers the archive, or 404 when the server does
+			                 not have it; needs the privilege to use osu!direct, otherwise 403.
 			                 """);
+		web.MapGet("/web/maps/{filename}", GetBeatmapFileAsync)
+			.WithMetadata(new AdmissionPolicyAttribute { Class = WorkClass.Listing })
+			.WithSummary("Download the .osu file of a beatmap by its file name.")
+			.WithDescription("The file name is the one osu! gives the difficulty. Answers the file, or 404 when the server does not have it.");
+		web.MapPost("/difficulty-rating", GetDifficultyRatingAsync)
+			.WithSummary("Get the star rating of a beatmap.")
+			.WithDescription("""
+			                 Query: `b` (beatmap id) and `mods` (the mods number). The answer is the JSON `{"beatmap_id", "mods", "rating"}`.
+			                 The rating is the star rating of the beatmap without mods. Answers 400 for a parameter that is not a
+			                 number and 404 when the server does not have the beatmap.
+			                 """);
+		web.MapGet("/web/osu-getfavourites.php", GetFavouritesAsync)
+			.WithSummary("List the ids of the player's favourite beatmapsets.")
+			.WithDescription("Query: `u`, `h`. Basil keeps no favourites, so the answer is empty.");
+		web.MapGet("/web/osu-addfavourite.php", AddFavouriteAsync)
+			.WithSummary("Add a beatmapset to the player's favourites.")
+			.WithDescription("Query: `u`, `h`, `a` (set id). Basil keeps no favourites, so nothing is added and the answer is empty.");
+		web.MapGet("/web/osu-rate.php", RateAsync)
+			.WithSummary("Rate a beatmap, or ask whether the player may.")
+			.WithDescription("Query: `u`, `p` (password hash), `c` (beatmap hash), `v` (the rating). Basil keeps no ratings: the answer is `not ranked`.");
+		web.MapPost("/web/osu-comment.php", CommentAsync)
+			.WithSummary("Read or write the comments of a beatmap.")
+			.WithDescription("A form with `u`, `p` and the comment fields. Basil keeps no comments, so the answer is empty.");
 		web.MapPost("/users", RegisterAsync)
 			.WithSummary("Register an account, or only check that the details are acceptable.")
 			.WithDescription("""
@@ -305,11 +335,65 @@ internal static class OsuWebRoutes
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
 			return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+		if (!int.TryParse(query["r"], out var status) || status is < 0 or > 8 ||
+		    !int.TryParse(query["m"], out var mode) || mode is < OsuWebReplies.DirectAllModes or > 3 ||
+		    !int.TryParse(query["p"], out var pageNumber) || pageNumber < 0 ||
+		    pageNumber > int.MaxValue / OsuWebReplies.DirectPageSize)
+			return Results.BadRequest();
+
+		var text = query["q"].ToString();
+		var filter = OsuWebReplies.DirectSortTabs.Contains(text.Replace(' ', '+'))
+			? new BeatmapQuery()
+			: BeatmapQuery.Parse(text);
+		filter = filter with
+		{
+			Mode = mode == OsuWebReplies.DirectAllModes ? filter.Mode : (GameMode)mode,
+			Status = status == OsuWebReplies.DirectAllStatuses
+				? filter.Status
+				: BeatmapsetStatusExtensions.FromOsuDirect(status)
+		};
 		var page = await sender.Send(
-			new SearchBeatmapsets(player, new BeatmapQuery(query["q"]), new PageRequest(0, 100)),
-			ct);
-		return Text(string.Join('\n', new[] { page.Items.Count.ToString(CultureInfo.InvariantCulture) }
-			.Concat(page.Items.Select(DirectLine))));
+			new SearchBeatmapsets(player,
+				filter,
+				new PageRequest(pageNumber * OsuWebReplies.DirectPageSize, OsuWebReplies.DirectPageSize)), ct);
+		var lines = new List<string>
+		{
+			(page.Items.Count == OsuWebReplies.DirectPageSize
+				? OsuWebReplies.DirectMorePages
+				: page.Items.Count).ToString(CultureInfo.InvariantCulture)
+		};
+		foreach (var set in page.Items)
+			if (await sender.Send(new GetBeatmapset(player, set.Id), ct) is { } detail)
+				lines.Add(SearchLine(detail));
+		return Text(string.Join('\n', lines));
+	}
+
+	/// <summary>Writes a beatmapset as osu!direct lists it: the set, then its difficulties from the easiest.</summary>
+	private static string SearchLine(BeatmapsetDetail detail)
+	{
+		var meta = detail.Set.Metadata;
+		var diffs = string.Join(',', detail.Beatmaps.OrderBy(map => map.Metadata.Difficulty.Star).Select(map =>
+		{
+			var d = map.Metadata.Difficulty;
+			return string.Create(CultureInfo.InvariantCulture,
+				$"[{d.Star:0.00}\u2b50] {DirectText(map.Metadata.Version)} {{cs: {Decimal(d.Cs)} / od: {Decimal(d.Od)} / ar: {Decimal(d.Ar)} / hp: {Decimal(d.Hp)}}}@{(int)d.Mode}");
+		}));
+		var hasVideo = detail.Beatmaps.Any(map => map.Assets.VideoFile is not null) ? 1 : 0;
+		return
+			$"{detail.Set.Id}.osz|{DirectText(meta.Artist)}|{DirectText(meta.Title)}|{meta.Creator}|{(int)detail.Set.Status}|10.0|{detail.Set.UpdatedAt:yyyy-MM-dd HH:mm:ss}|{detail.Set.Id}|0|{hasVideo}|0|0|0|{diffs}";
+	}
+
+	// The client splits the line at '|', so a difficulty or title cannot carry one; bancho.py writes 'I' instead.
+	private static string DirectText(string value)
+	{
+		return value.Replace('|', 'I');
+	}
+
+	// The client shows a stat with a decimal point even when it is whole: 4.0, not 4.
+	private static string Decimal(double value)
+	{
+		var text = value.ToString("R", CultureInfo.InvariantCulture);
+		return text.Contains('.') ? text : text + ".0";
 	}
 
 	private static async Task<IResult> SearchSetAsync(HttpContext context, WebAuthentication auth, ISender sender,
@@ -325,9 +409,9 @@ internal static class OsuWebRoutes
 		return Text(DirectLine(detail.Set));
 	}
 
-	/// <summary>Serves a beatmapset from local storage, else redirects to the configured mirror (osu!direct).</summary>
+	/// <summary>Serves a beatmapset from local storage (osu!direct), or answers 404 when the server does not have it.</summary>
 	private static async Task<IResult> DownloadAsync(HttpContext context, string setId, WebAuthentication auth,
-		ISender sender, IBeatmapsetMirror mirror, CancellationToken ct)
+		ISender sender, CancellationToken ct)
 	{
 		var query = context.Request.Query;
 		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player)
@@ -337,9 +421,67 @@ internal static class OsuWebRoutes
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
 		if (await sender.Send(new OpenBeatmapsetArchive(player, id, withVideo), ct) is { } archive)
 			return Results.File(archive, "application/x-osu-beatmap-archive", $"{id}.osz");
-		return await mirror.GetDownloadAddressAsync(id, withVideo, ct) is { } address
-			? Results.Redirect(address.ToString())
-			: Results.NotFound();
+		return Results.NotFound();
+	}
+
+	private static async Task<IResult> GetBeatmapFileAsync(string filename, ISender sender, CancellationToken ct)
+	{
+		if (await sender.Send(new FindBeatmapByFileName(filename), ct) is not { } map ||
+		    await sender.Send(new OpenBeatmapFile(null, map.Id, BeatmapsetFileType.Version), ct) is not { } file)
+			return Results.NotFound();
+		return Results.Stream(file.Content, "application/x-osu-beatmap");
+	}
+
+	private static async Task<IResult> GetDifficultyRatingAsync(HttpContext context, ISender sender,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		if (!int.TryParse(query["b"], out var id) || !int.TryParse(query["mods"], out var mods))
+			return Results.BadRequest();
+		if (await sender.Send(new GetBeatmap(null, id), ct) is not { } map) return Results.NotFound();
+		return Results.Text(
+			JsonSerializer.Serialize(new DifficultyRatingBody(map.Id, mods, map.Metadata.Difficulty.Star)),
+			"application/json");
+	}
+
+	private static async Task<IResult> GetFavouritesAsync(HttpContext context, WebAuthentication auth,
+		CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		return await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null
+			? Results.Unauthorized()
+			: Text(string.Empty);
+	}
+
+	private static async Task<IResult> AddFavouriteAsync(HttpContext context, WebAuthentication auth,
+		CancellationToken ct)
+	{
+		return await GetFavouritesAsync(context, auth, ct);
+	}
+
+	private static async Task<IResult> RateAsync(HttpContext context, WebAuthentication auth, CancellationToken ct)
+	{
+		var query = context.Request.Query;
+		return await auth.AuthenticateAsync(context, query["u"], query["p"], ct) is null
+			? Results.Unauthorized()
+			: Text(OsuWebReplies.NotRanked);
+	}
+
+	private static async Task<IResult> CommentAsync(HttpContext context, WebAuthentication auth, CancellationToken ct)
+	{
+		IFormCollection form;
+		try
+		{
+			form = await context.Request.ReadFormAsync(ct);
+		}
+		catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException)
+		{
+			return Results.BadRequest();
+		}
+
+		return await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is null
+			? Results.Unauthorized()
+			: Text(string.Empty);
 	}
 
 	private static string DirectLine(BeatmapsetRecord set)
@@ -391,6 +533,12 @@ internal static class OsuWebRoutes
 			: Results.Json(new { form_error = new { user = new { username = new[] { error.ToString() } } } },
 				statusCode: 400);
 	}
+
+	private sealed record DifficultyRatingBody(
+		[property: JsonPropertyName("beatmap_id")]
+		int BeatmapId,
+		[property: JsonPropertyName("mods")] int Mods,
+		[property: JsonPropertyName("rating")] double Rating);
 
 	private sealed record BeatmapInfoBody
 	{

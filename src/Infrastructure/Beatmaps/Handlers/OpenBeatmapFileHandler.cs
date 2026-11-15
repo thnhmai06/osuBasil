@@ -32,6 +32,7 @@ internal sealed class OpenBeatmapFileHandler(
 	{
 		return type switch
 		{
+			BeatmapsetFileType.Version => $"{map.Hash}.osu",
 			BeatmapsetFileType.Audio or BeatmapsetFileType.Preview => map.Assets.AudioFile,
 			BeatmapsetFileType.Video => map.Assets.VideoFile,
 			BeatmapsetFileType.Background => map.Assets.BackgroundFile,

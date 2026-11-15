@@ -180,6 +180,19 @@ public sealed class OsuClient : IDisposable
 		return (response.StatusCode, await response.Content.ReadAsStringAsync());
 	}
 
+	/// <summary>Calls POST with a form on the web host with the client's credentials added.</summary>
+	public async Task<(HttpStatusCode Status, string Text)> WebPostFormAsync(string path, string userKey,
+		string hashKey, params (string Key, string Value)[] form)
+	{
+		var fields = form.ToDictionary(field => field.Key, field => field.Value);
+		fields[userKey] = Name;
+		fields[hashKey] = PasswordMd5(Password);
+		using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = new FormUrlEncodedContent(fields) };
+		request.Headers.Host = _webHost;
+		using var response = await _http.SendAsync(request);
+		return (response.StatusCode, await response.Content.ReadAsStringAsync());
+	}
+
 	public Task<(HttpStatusCode Status, string Text)> GetScoresAsync(string beatmapMd5, int mode = 0, int mods = 0)
 	{
 		return WebGetAsync("/web/osu-osz2-getscores.php", "us", "ha", ("c", beatmapMd5), ("m", mode.ToString()),

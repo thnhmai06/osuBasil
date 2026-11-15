@@ -6,7 +6,7 @@ using SixLabors.ImageSharp.Web.DependencyInjection;
 
 namespace Basil.Host.Rest.Images;
 
-/// <summary>Registers and serves the image hosts: avatars, menu images, screenshots and beatmap images.</summary>
+/// <summary>Registers and serves the image hosts: avatars, menu images, screenshots and beatmap images (and the audio preview of a beatmapset).</summary>
 public static class ImageHosts
 {
 	/// <summary>Adds the image pipeline with its providers; the host names the folder of the file cache.</summary>
@@ -58,6 +58,7 @@ public static class ImageHosts
 	public static IApplicationBuilder UseRestImages(this IApplicationBuilder app)
 	{
 		app.UseMiddleware<ImageAdmissionMiddleware>();
+		app.UseMiddleware<BeatmapPreviewMiddleware>();
 		app.UseMiddleware<UndecodableImageMiddleware>();
 		return app.UseImageSharp();
 	}

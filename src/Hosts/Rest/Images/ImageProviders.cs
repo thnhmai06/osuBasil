@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Basil.Application.Beatmaps.Messages;
+using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Content.Messages;
 using Basil.Application.Users.Messages;
 using Mediator;
@@ -123,4 +124,40 @@ public sealed partial class BeatmapThumbnailProvider(ISender sender)
 
 	[GeneratedRegex(@"^/thumb/(?<id>\d+)(?<large>l)?\.jpg$")]
 	private static partial Regex ThumbPath();
+}
+
+/// <summary>Serves the 10-second audio preview of a visible beatmapset on <c>b.&lt;domain&gt;/preview/{id}.mp3</c>.</summary>
+/// <remarks>The preview is public like every picture of the beatmapset; a hidden set or one without a preview is 404.</remarks>
+internal sealed partial class BeatmapPreviewMiddleware(RequestDelegate next)
+{
+	/// <summary>Answers a preview request, and passes every other request on.</summary>
+	public async Task InvokeAsync(HttpContext context, ISender sender)
+	{
+		var match = PreviewPath().Match(context.Request.Path.Value ?? "");
+		if (!match.Success || !context.Request.Host.Host.StartsWith("b.", StringComparison.OrdinalIgnoreCase))
+		{
+			await next(context);
+			return;
+		}
+
+		var file = int.TryParse(match.Groups["id"].ValueSpan, out var id)
+			? await sender.Send(new OpenBeatmapsetFile(null, id, BeatmapsetFileType.Preview), context.RequestAborted)
+			: null;
+		if (file is null)
+		{
+			context.Response.StatusCode = StatusCodes.Status404NotFound;
+			return;
+		}
+
+		await using (file.Content)
+		{
+			context.Response.ContentType = "audio/mpeg";
+			context.Response.Headers.XContentTypeOptions = "nosniff";
+			context.Response.Headers.CacheControl = "public,max-age=300";
+			await file.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
+		}
+	}
+
+	[GeneratedRegex(@"^/preview/(?<id>\d+)\.mp3$")]
+	private static partial Regex PreviewPath();
 }

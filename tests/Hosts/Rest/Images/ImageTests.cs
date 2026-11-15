@@ -171,6 +171,29 @@ public sealed class ImageTests(RestHostFixture fixture)
 		}
 	}
 
+	[Fact]
+	public async Task BeatmapPreview_PublicAndHiddenIsNotFound()
+	{
+		var set = (await fixture.Host.ImportSampleAsync("Sets/padoru-standard.osz")).First().Beatmapset;
+		var (manager, _) = await fixture.SignInAsync("PreviewManager",
+			UserPrivilegesExtensions.Default | UserPrivileges.Tournament);
+		using (manager)
+		using (var anon = Anonymous())
+		{
+			using var preview = await anon.GetFromAsync("b", $"/preview/{set.Id}.mp3");
+			using var unknown = await anon.GetFromAsync("b", "/preview/2147483647.mp3");
+			await manager.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{set.Id}", new { visible = false });
+			using var hidden = await anon.GetFromAsync("b", $"/preview/{set.Id}.mp3");
+			await manager.CallAsync(HttpMethod.Patch, $"/v1/beatmapsets/{set.Id}", new { visible = true });
+
+			Assert.Equal(200, (int)preview.StatusCode);
+			Assert.Equal("audio/mpeg", preview.Content.Headers.ContentType!.MediaType);
+			Assert.NotEmpty(await preview.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+			Assert.Equal(404, (int)unknown.StatusCode);
+			Assert.Equal(404, (int)hidden.StatusCode);
+		}
+	}
+
 	private async Task<int> PutFileAsync(RestClient client, string path, byte[] content)
 	{
 		using var form = new MultipartFormDataContent();
