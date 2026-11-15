@@ -119,7 +119,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
   or resources is a public interface in a module's Ports folder (with the data it exchanges) that the module's Infrastructure project implements
-  (`IBeatmapAnalyser`, `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`, `IScreenshotInspector`), even
+  (`IBeatmapAnalyser`, `IBeatmapsetReader`, `IBeatmapAssets`, `IScreenshotInspector`), even
   when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks,
   OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
   and probe the content only when it is unknown or when its size is needed: an image with ImageSharp
@@ -280,15 +280,15 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   A change that has consequences (emits an event, changes other fields, checks authority, groups several
   fields into one event) is an operation on the object that owns the state. Such an operation is real behaviour, not a
   `Change*`/`Rename`/`With*` wrapper around a single field.
-* **Name a contract after the object it acts on.** The unit that is imported, stored, read and mirrored is
-  the beatmapset, so the root object is `Beatmapsets` and the contracts are `IBeatmapsetReader`, `IBeatmapsetStorage`,
-  `IBeatmapsetMirror` and `BeatmapsetImportResult`. A byte storage is `I{Owner}{Thing}Storage`
+* **Name a contract after the object it acts on.** The unit that is imported, stored and read is
+  the beatmapset, so the root object is `Beatmapsets` and the contracts are `IBeatmapsetReader`, `IBeatmapsetStorage`
+  and `BeatmapsetImportResult`. A byte storage is `I{Owner}{Thing}Storage`
   (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
   `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
 * **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its `{Enum}Groups`
   class (`StableFlagsGroups.CheatSigns`, `UserPrivilegesExtensions.Chat`) or of the owning type (`UserPrivilegesExtensions.Default`),
   never a combination member of the enum itself; a per-mode factory is a static member of its type
-  (`BeatmapObjects.NewFrom(mode)`);
+  (`BeatmapObjectCount.NewFrom(mode)`);
   services use them instead of keeping their own copies.
 * **One concept, one name.** Use the same name for the same concept in every model, parameter,
   event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a

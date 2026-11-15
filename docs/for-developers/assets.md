@@ -87,7 +87,7 @@ Providers return no result when they cannot serve a request—for example, when 
 not exist, an icon points to an external URL, or a user has no uploaded avatar.
 
 The request then falls through to the corresponding minimal-API route on the same host. These routes keep the
-private-resource checks and the mirror fallbacks.
+private-resource checks.
 
 The routes are in `src/Hosts/Rest/Routes/` (`MenuRoutes`, `BeatmapRoutes`, `UserRoutes`) and `src/Hosts/Stable/Web/OsuWebRoutes.cs`.
 

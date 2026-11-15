@@ -124,7 +124,7 @@ A player is in at most one room. A room's own check cannot see another room's se
 * Round numbers start at 1, and an aborted round keeps its number.
 * The latest round remains available until the next one starts; a score is taken for it by the player, the beatmap and the round's state, never by the score module.
 * A closed room's match history remains; a round's decision is stored when it is decided and reports read it.
-* Performance points do not affect multiplayer rules or match winners.
+* Performance points are display-only; they do not affect multiplayer rules or match winners.
 
 ## Related code
 

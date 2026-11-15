@@ -16,7 +16,7 @@ Basil separates settings by who owns them and when they may change:
 
 Deployment settings describe this machine: the domain, ports, certificate, database and log files. Policy describes
 how the running server behaves for users: locks, rate limits, upload limits, session lifetimes, the bot prefix, CORS
-and the beatmap mirror. Policy is edited through the generated API (`GET /v1/settings`, `GET`/`PATCH
+and the time allowed to calculate a score's pp. Policy is edited through the generated API (`GET /v1/settings`, `GET`/`PATCH
 /v1/settings/{category}`) or the console (`settings <category> show`, `settings <category> set --field value`) and needs
 no restart.
 

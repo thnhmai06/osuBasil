@@ -59,7 +59,8 @@ Basil ships a self-signed certificate for local development and private LAN test
 Configurations/basil.local.pfx
 ```
 
-It covers the required `basil.local` subdomains and declares `basicConstraints` `CA:TRUE`, so Linux clients can trust it
+It matches `basil.local` and its subdomains only: if you change `Domain`, you must issue a certificate of your own for the new
+domain (see below). It covers the required `basil.local` subdomains and declares `basicConstraints` `CA:TRUE`, so Linux clients can trust it
 through their system certificate store. The bundled `Configurations/appsettings.json` already points at it with the
 password `basil`, so a fresh local installation starts with HTTPS without generating anything.
 

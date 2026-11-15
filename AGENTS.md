@@ -10,7 +10,7 @@ multiplayer. The server provides the core capabilities (accounts and sessions, p
 beatmaps, events); specific features such as tournament tooling and overlays are clients built on top
 of it, each signing in as an ordinary user. The server works the same with or without any of them.
 
-It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, osu-web v1/v2 API compatibility, and other unrelated features are intentionally out of scope. Chat commands, announcements and room countdowns are in scope: they are BasilBot, a feature of the server.
+It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. clans, osu-web v1/v2 API compatibility, and other unrelated features are intentionally out of scope. Chat commands, announcements and room countdowns are in scope: they are BasilBot, a feature of the server.
 
 The identity, privileges and silence rules are in [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md); read
 them before touching users, sessions, privileges, rooms or chat.
@@ -451,7 +451,7 @@ publishes the events that are left to the handlers. **Registry/** holds what kee
 out (`UserRegistry`, `Lobby`, the channel registries) and owns the operations on what it holds. **Capabilities/**
 holds only the `Scoped*` views (the object's behaviour as one connection may do it). **Ports/** holds the ports to
 external computation (a capability with business meaning whose implementation needs external libraries: beatmapset
-reader, analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
+reader, analyser, assets, screenshot inspector; these interfaces and the data they exchange are the only public
 types). **Services/** holds the contracts of the services the system provides (`IAnticheatReporter`). **Persistence/** holds the
 repository ports and their query records, **Storage/** the file-storage ports. Application holds **no** handler, no
 object-free logic and no background run: the Mediator handlers (**Handlers/**, one `internal` class per message type),
@@ -568,11 +568,14 @@ Data reaches its consumer directly.
   writer), then the move is atomic. A replay is never copied through memory on its way to disk.
 * Large payloads (replays, `.osz` archives, images) never pass through a cache.
 
-#### No pp in gameplay
+#### pp is display-only
 
-Basil does not use performance points for scoring, leaderboards, or match win conditions.
+The server calculates performance points, and a score carries its pp. `null` means "not calculated yet": a score is
+recorded first and its pp is filled in afterwards, and a score that cannot be calculated (a failed play, a beatmap the
+server does not have) keeps `null`.
 
-Locally calculated difficulty/star-rating information is display-only.
+pp is display-only. It never decides a ranking, a leaderboard order, a player's standing or a match win condition,
+unless the project owner says otherwise.
 
 Do not introduce pp-dependent gameplay behavior.
 

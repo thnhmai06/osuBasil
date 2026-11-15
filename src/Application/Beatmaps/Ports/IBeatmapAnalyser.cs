@@ -8,8 +8,8 @@ namespace Basil.Application.Beatmaps.Ports;
 ///     beatmap file: mod- and mode-affected difficulty and per-mode hit-object counts.
 /// </summary>
 /// <remarks>
-///     Nothing in scoring, leaderboards, or match win conditions depends on these calculations: they
-///     feed star rating and difficulty display only.
+///     The results feed star rating, difficulty display and pp; none of them decides a ranking, a leaderboard
+///     or a match win condition.
 /// </remarks>
 public interface IBeatmapAnalyser
 {
@@ -24,4 +24,4 @@ public interface IBeatmapAnalyser
 /// <summary>The result of analyzing a beatmap under a specific mode and mod combination.</summary>
 /// <param name="Difficulty">The mod- and mode-affected gameplay stats.</param>
 /// <param name="Objects">The per-mode hit-object counts of the beatmap.</param>
-public sealed record BeatmapAnalysis(BeatmapDifficulty Difficulty, BeatmapObjects Objects);
+public sealed record BeatmapAnalysis(BeatmapDifficulty Difficulty, BeatmapObjectCount ObjectCount);

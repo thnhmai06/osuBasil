@@ -56,7 +56,7 @@ Beatmaps/      beatmap and beatmapset repositories, import and scan
                IBeatmapsetStorage                                       (Storage)
                Beatmapset, Beatmapsets, contexts, outcomes, events      (Objects)
                ScopedBeatmapset                                         (Capabilities)
-               the reader/analyser/mirror/assets ports and
+               the reader/analyser/assets ports and
                IBeatmapsetImporter, IBeatmapsetScanner (internal)       (Ports)
                the importer, scanner and planner                        (Infrastructure Logic)
 Scores/        score, stats repositories, submission inputs             (Persistence)

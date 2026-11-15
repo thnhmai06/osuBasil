@@ -48,7 +48,7 @@ requiring third-party online services.
   included; the privileges are the ones an osu! client sees.
 * **Live state in memory, durable in PostgreSQL**: live objects run in memory and records are stored in [PostgreSQL](https://www.postgresql.org/) (today written behind the scenes; target: awaited writes with cache-aside reads); stored files live in a local `Data/` directory.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
-  external beatmap mirrors.
+  any external beatmap source; beatmaps are served only from the local `Data/` directory.
 * **User-centric HTTP API**: clients sign in as users and get HTTP and SSE endpoints for rooms, chat, match reports,
   spectating, and real-time multiplayer events, with an [OpenAPI](https://spec.openapis.org/oas/latest.html)
   specification and interactive documentation through [Scalar](https://scalar.com/).

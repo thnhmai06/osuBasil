@@ -100,6 +100,6 @@ touching users, connections, privileges, silences or the bot.
   decides what the client can technically do (an osu! client takes a slot; a tourney client gets no private-message
   channel). BasilBot's two connections are never presented by a client, cannot be signed in as and are never
   closed by idle sweeps; transports skip them when delivering.
-* **No third party in the core.** Apart from the optional beatmap mirror, the server uses no third-party service.
+* **No third party in the core.** The server uses no third-party service.
   Country at registration comes from the host (a trusted proxy header or an offline GeoLite2 file); Domain and
   Application receive the country as an input.

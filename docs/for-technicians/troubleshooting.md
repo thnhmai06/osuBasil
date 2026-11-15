@@ -91,11 +91,7 @@ First check whether the beatmapset exists in:
 Data/Beatmapsets/
 ```
 
-Basil supports both local storage and optional external mirrors.
-
-### Local-only mode
-
-If `mirror.downloadEndpoint` of `GET /v1/settings/beatmaps` is unset, Basil uses local storage only.
+Basil serves beatmaps only from local storage, so a beatmapset the server does not hold answers 404.
 
 Check that:
 
@@ -104,13 +100,6 @@ Check that:
 * the beatmapset appears after restarting Basil if it was added while the server was offline.
 
 Basil watches the beatmapset directory while running and also performs a full reconciliation during startup.
-
-### Mirror mode
-
-If `mirror.downloadEndpoint` is set, Basil can redirect requests for missing beatmapsets to the configured mirror.
-
-If you do not want external downloads, clear it with `PATCH /v1/settings/beatmaps` (or the console command
-`settings beatmaps set`) — no restart required. See [`configuration.md`](configuration.md).
 
 ---
 

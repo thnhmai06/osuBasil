@@ -271,7 +271,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 * A capability lives for one request.
 * Only Users creates a `Connection`; every business message carries one.
 * Every entry point declares an admission policy **(target)**.
-* Performance points are not part of gameplay.
+* Performance points are display-only; they never affect ranking or gameplay.
 * User-visible reply strings are centralized in the production type that owns them.
 
 ## Related code

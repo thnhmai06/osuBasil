@@ -86,6 +86,28 @@ back.
 Screenshots uploaded by the osu! client (`osu-screenshot.php`) are in scope: the server stores them and hands back
 a link the client opens.
 
+### Beatmaps and pp
+
+Beatmaps are served only from the local `Data/` directory: there is no mirror, no osu! API source and no redirect to
+ppy. What the server does not hold answers 404. See [`beatmap-ingestion.md`](beatmap-ingestion.md).
+
+The server calculates performance points and a score carries its pp; `null` means "not calculated yet". pp is
+display-only: it never ranks, orders a leaderboard or decides a match win condition. Star rating is calculated with
+ppy's osu!lazer rulesets and is display-only as well.
+
+### osu! (stable) endpoints
+
+The client calls these hosts; names and response schemas follow bancho.py, the behaviour inside is Basil's own.
+The routes themselves are listed by the generated osu! (stable) reference, not here.
+
+| Host                     | What it serves                                                                                                       |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------|
+| `c.`, `ce.`, `c4.`-`c6.` | sign-in and the bancho packets                                                                                       |
+| `osu.`                   | scores, replays, local beatmap search and `.osu` files, archive download, difficulty rating, friends, screenshots, the compatibility stubs below |
+| `a.`                     | avatars                                                                                                              |
+| `b.`                     | beatmapset thumbnails and the preview clip                                                                           |
+| `assets.`                | menu images and covers                                                                                               |
+
 ### Account creation and operator console
 
 New accounts receive only the default privileges; being the first account grants no special privileges. The first
@@ -132,12 +154,11 @@ The following features are deliberately not part of Basil's supported surface.
 | Discord audit webhook                                                            | ❌ Out of scope | No current requirement exists for this integration.                                                                                                           |
 | Datadog / osu-stable metrics such as `osu-stable.online_players` and `osu-stable.login_time` | ❌ Out of scope | Basil does not use the corresponding Datadog integration.                                                                                                     |
 | `/matches` and `/online` debug HTML pages                                        | ❌ Out of scope | These pages are administrative/debug views that are not consumed by the game client.                                                                          |
-| pp calculation                                                                   | ❌ Out of scope | Performance points are deliberately absent. Star rating is display-only and follows ppy's osu!lazer ruleset rather than being used as a Basil scoring engine. |
 
 ## Compatibility stubs
 
-Some legacy client endpoints exist only because the osu! client may request them. They do not represent implemented
-features.
+Some legacy client endpoints (on `osu.<domain>`) exist only because the osu! client may request them. They do not
+represent implemented features, although they exist and authenticate the caller.
 
 | Endpoint                | Status  | Behavior                                                                                        |
 |-------------------------|---------|-------------------------------------------------------------------------------------------------|

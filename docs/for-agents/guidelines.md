@@ -140,13 +140,12 @@ Do not duplicate the same contract across multiple audience folders.
 
 ## Scope boundaries
 
-### No pp calculation
+### pp is display-only
 
-Basil does **not** calculate performance points.
+The server calculates performance points and a score carries its pp (`null` means "not calculated yet").
 
-Star rating and difficulty values are display-only and must not become gameplay-affecting dependencies.
-
-Do not introduce pp calculation, pp-based gameplay logic, or hidden dependencies on pp calculation.
+pp, star rating and difficulty values are display-only and must not become gameplay-affecting dependencies: never use
+them to rank, order a leaderboard or decide a match win condition.
 
 See [`working-scopes.md`](../for-developers/working-scopes.md) and [
 `beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
