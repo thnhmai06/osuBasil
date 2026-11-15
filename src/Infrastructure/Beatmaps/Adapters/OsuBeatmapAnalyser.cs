@@ -78,7 +78,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 	}
 
 	/// <summary>
-	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjects" /> subtype.
+	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjectCount" /> subtype.
 	/// </summary>
 	/// <remarks>
 	///     Standard, taiko, and mania count <paramref name="hitObjects" /> at the top level only:
@@ -87,7 +87,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 	///     <c>BananaShower</c> are containers whose children only exist in
 	///     <see cref="HitObject.NestedHitObjects" />, so counting recurses.
 	/// </remarks>
-	private static BeatmapObjects BuildObjectCounts(
+	private static BeatmapObjectCount BuildObjectCounts(
 		GameMode mode, IReadOnlyList<HitObject> hitObjects, int maxCombo)
 	{
 		switch (mode)
@@ -103,7 +103,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 						case Spinner: spinners++; break;
 					}
 
-				var counts = (OsuObjects)BeatmapObjects.Empty(mode);
+				var counts = (OsuObjectCount)BeatmapObjectCount.Empty(mode);
 				counts.Total = circles + sliders + spinners;
 				counts.MaxCombo = maxCombo;
 				counts.Circles = circles;
@@ -122,7 +122,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 						case Hit: hits++; break;
 					}
 
-				var counts = (TaikoObjects)BeatmapObjects.Empty(mode);
+				var counts = (TaikoObjectCount)BeatmapObjectCount.Empty(mode);
 				counts.Total = hits + drumRolls + dendens;
 				counts.MaxCombo = maxCombo;
 				counts.Hits = hits;
@@ -136,7 +136,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 				foreach (var hitObject in hitObjects)
 					CountCatchRecursive(hitObject, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 
-				var counts = (CatchObjects)BeatmapObjects.Empty(mode);
+				var counts = (CatchObjectCount)BeatmapObjectCount.Empty(mode);
 				counts.Total = fruits + droplets + tinyDroplets + bananas;
 				counts.MaxCombo = maxCombo;
 				counts.Fruits = fruits;
@@ -155,7 +155,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 						case Note: notes++; break;
 					}
 
-				var counts = (ManiaObjects)BeatmapObjects.Empty(mode);
+				var counts = (ManiaObjectCount)BeatmapObjectCount.Empty(mode);
 				counts.Total = notes + holdNotes;
 				counts.MaxCombo = maxCombo;
 				counts.Notes = notes;

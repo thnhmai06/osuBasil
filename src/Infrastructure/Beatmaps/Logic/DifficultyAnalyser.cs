@@ -19,7 +19,7 @@ internal sealed class DifficultyAnalyser(IBeatmapAnalyser analyser)
 		CancellationToken ct)
 	{
 		if (stored is { Metadata.Difficulty.Star: > 0 })
-			return new BeatmapAnalysis(stored.Metadata.Difficulty, stored.Metadata.Objects);
+			return new BeatmapAnalysis(stored.Metadata.Difficulty, stored.Metadata.ObjectCount);
 
 		try
 		{
@@ -39,7 +39,7 @@ internal sealed class DifficultyAnalyser(IBeatmapAnalyser analyser)
 	/// <param name="mode">The game mode.</param>
 	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
 	{
-		var objects = BeatmapObjects.Empty(mode);
+		var objects = BeatmapObjectCount.Empty(mode);
 		return new BeatmapAnalysis(new BeatmapDifficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), objects);
 	}
 }

@@ -52,7 +52,7 @@ public sealed class BeatmapReloaderTests
 			.Returns(new MemoryStream([1]));
 		var difficulty = beatmap.Metadata.Difficulty with { Star = NewStar };
 		_analyser.Analyze(Arg.Any<Stream>(), GameMode.Standard, GameMods.NoMod)
-			.Returns(new BeatmapAnalysis(difficulty, beatmap.Metadata.Objects));
+			.Returns(new BeatmapAnalysis(difficulty, beatmap.Metadata.ObjectCount));
 
 		var (done, failed) = await NewReloader().ReloadAllAsync(Token);
 

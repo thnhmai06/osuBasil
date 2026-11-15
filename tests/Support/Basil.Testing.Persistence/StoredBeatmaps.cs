@@ -47,7 +47,7 @@ public static class StoredBeatmaps
 				Version = "Primordial Nucleosynthesis",
 				Difficulty = new BeatmapDifficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0,
 					8.0, 5.0, 6.5),
-				Objects = new OsuObjects { MaxCombo = 500 }
+				ObjectCount = new OsuObjectCount { MaxCombo = 500 }
 			},
 			Assets = new BeatmapAssets(),
 			UpdatedAt = now,
@@ -96,16 +96,17 @@ public static class StoredBeatmaps
 	/// <param name="lengthSeconds">The length of the difficulty, in seconds.</param>
 	/// <param name="circles">The number of circles the difficulty has.</param>
 	/// <param name="sliders">The number of sliders the difficulty has.</param>
+	/// <param name="stars">The star rating of the difficulty.</param>
 	/// <returns>The difficulty's data, as a commit stores it.</returns>
 	public static BeatmapData Difficulty(int? onlineId, Md5 hash, string version,
 		GameMode mode = GameMode.Standard, double cs = 4, double ar = 9, double od = 8, double hp = 5,
-		double bpm = 180, int lengthSeconds = 120, int circles = 0, int sliders = 0)
+		double bpm = 180, int lengthSeconds = 120, int circles = 0, int sliders = 0, double stars = 5.0)
 	{
 		return new BeatmapData(onlineId, hash, new BeatmapMetadata
 		{
 			Version = version,
-			Difficulty = new BeatmapDifficulty(mode, bpm, TimeSpan.FromSeconds(lengthSeconds), cs, ar, od, hp, 5.0),
-			Objects = Objects(mode, circles, sliders)
+			Difficulty = new BeatmapDifficulty(mode, bpm, TimeSpan.FromSeconds(lengthSeconds), cs, ar, od, hp, stars),
+			ObjectCount = Objects(mode, circles, sliders)
 		}, new BeatmapAssets());
 	}
 
@@ -114,10 +115,10 @@ public static class StoredBeatmaps
 	/// <param name="circles">The number of circles the difficulty has.</param>
 	/// <param name="sliders">The number of sliders the difficulty has.</param>
 	/// <returns>The hit objects of the difficulty.</returns>
-	private static BeatmapObjects Objects(GameMode mode, int circles, int sliders)
+	private static BeatmapObjectCount Objects(GameMode mode, int circles, int sliders)
 	{
 		return mode == GameMode.Standard
-			? new OsuObjects { Circles = circles, Sliders = sliders }
-			: BeatmapObjects.Empty(mode);
+			? new OsuObjectCount { Circles = circles, Sliders = sliders }
+			: BeatmapObjectCount.Empty(mode);
 	}
 }

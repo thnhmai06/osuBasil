@@ -234,7 +234,7 @@ public sealed class MpMapAndModsTests
 				Version = "Hyper",
 				Difficulty = new BeatmapDifficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0,
 					5.0, 6.5),
-				Objects = new OsuObjects { MaxCombo = 500 }
+				ObjectCount = new OsuObjectCount { MaxCombo = 500 }
 			},
 			Assets = new BeatmapAssets(),
 			UpdatedAt = now,

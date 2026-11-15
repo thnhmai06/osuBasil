@@ -41,9 +41,9 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(analysis.Difficulty.Star > 0);
 		Assert.True(analysis.Difficulty.Bpm > 0);
 		Assert.True(analysis.Difficulty.Length > TimeSpan.Zero);
-		Assert.True(analysis.Objects.Total > 0);
-		Assert.True(analysis.Objects.MaxCombo > 0);
-		Assert.Equal(ExpectedType(mode), analysis.Objects.GetType());
+		Assert.True(analysis.ObjectCount.Total > 0);
+		Assert.True(analysis.ObjectCount.MaxCombo > 0);
+		Assert.Equal(ExpectedType(mode), analysis.ObjectCount.GetType());
 	}
 
 	/// <summary>Every difficulty of a real set gives usable numbers, and a speed-up never lowers its stars.</summary>
@@ -63,7 +63,7 @@ public sealed class OsuBeatmapAnalyserTests
 			Assert.True(double.IsFinite(normal.Difficulty.Star) && normal.Difficulty.Star > 0, entry.Name);
 			Assert.True(fast.Difficulty.Star >= normal.Difficulty.Star, entry.Name);
 			Assert.True(fast.Difficulty.Length < normal.Difficulty.Length, entry.Name);
-			Assert.True(normal.Objects.Total > 0, entry.Name);
+			Assert.True(normal.ObjectCount.Total > 0, entry.Name);
 		}
 	}
 
@@ -143,8 +143,8 @@ public sealed class OsuBeatmapAnalyserTests
 		var second = _analyser.Analyze(secondContent, GameMode.Standard, GameMods.Hidden | GameMods.DoubleTime);
 
 		Assert.Equal(first.Difficulty, second.Difficulty);
-		Assert.Equal(first.Objects.Total, second.Objects.Total);
-		Assert.Equal(first.Objects.MaxCombo, second.Objects.MaxCombo);
+		Assert.Equal(first.ObjectCount.Total, second.ObjectCount.Total);
+		Assert.Equal(first.ObjectCount.MaxCombo, second.ObjectCount.MaxCombo);
 	}
 
 	/// <summary>A standard difficulty is counted as circles, sliders and spinners.</summary>
@@ -155,7 +155,7 @@ public sealed class OsuBeatmapAnalyserTests
 
 		var analysis = _analyser.Analyze(content, GameMode.Standard, GameMods.NoMod);
 
-		var objects = Assert.IsType<OsuObjects>(analysis.Objects);
+		var objects = Assert.IsType<OsuObjectCount>(analysis.ObjectCount);
 		Assert.Equal(objects.Circles + objects.Sliders + objects.Spinners, objects.Total);
 		Assert.True(objects.Circles > 0);
 		Assert.True(objects.Sliders > 0);
@@ -169,7 +169,7 @@ public sealed class OsuBeatmapAnalyserTests
 
 		var analysis = _analyser.Analyze(content, GameMode.Catch, GameMods.NoMod);
 
-		var objects = Assert.IsType<CatchObjects>(analysis.Objects);
+		var objects = Assert.IsType<CatchObjectCount>(analysis.ObjectCount);
 		Assert.Equal(objects.Fruits + objects.Droplets + objects.TinyDroplets + objects.Bananas, objects.Total);
 		Assert.True(objects.Droplets + objects.TinyDroplets > 0);
 	}
@@ -182,7 +182,7 @@ public sealed class OsuBeatmapAnalyserTests
 
 		var analysis = _analyser.Analyze(content, GameMode.Mania, GameMods.NoMod);
 
-		var objects = Assert.IsType<ManiaObjects>(analysis.Objects);
+		var objects = Assert.IsType<ManiaObjectCount>(analysis.ObjectCount);
 		Assert.Equal(objects.Notes + objects.HoldNotes, objects.Total);
 		Assert.True(objects.Notes > 0);
 	}
@@ -194,10 +194,10 @@ public sealed class OsuBeatmapAnalyserTests
 	{
 		return mode switch
 		{
-			GameMode.Standard => typeof(OsuObjects),
-			GameMode.Taiko => typeof(TaikoObjects),
-			GameMode.Catch => typeof(CatchObjects),
-			GameMode.Mania => typeof(ManiaObjects),
+			GameMode.Standard => typeof(OsuObjectCount),
+			GameMode.Taiko => typeof(TaikoObjectCount),
+			GameMode.Catch => typeof(CatchObjectCount),
+			GameMode.Mania => typeof(ManiaObjectCount),
 			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
 		};
 	}

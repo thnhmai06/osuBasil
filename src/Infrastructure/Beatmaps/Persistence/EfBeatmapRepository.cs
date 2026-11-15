@@ -169,8 +169,8 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	/// <summary>Builds a beatmap from a stored row.</summary>
 	private static BeatmapRecord ToBeatmap(BeatmapRow row, BeatmapsetRecord set)
 	{
-		var objects = row.Objects.Deserialize<BeatmapObjects>(StoredJson)
-		              ?? BeatmapObjects.Empty((GameMode)row.Mode);
+		var objects = row.ObjectCount.Deserialize<BeatmapObjectCount>(StoredJson)
+		              ?? BeatmapObjectCount.Empty((GameMode)row.Mode);
 
 		return new BeatmapRecord
 		{
@@ -182,7 +182,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 				Version = row.Version,
 				Difficulty = new BeatmapDifficulty((GameMode)row.Mode, row.Bpm, TimeSpan.FromMilliseconds(row.Length),
 					row.Cs, row.Ar, row.Od, row.Hp, row.Star),
-				Objects = objects
+				ObjectCount = objects
 			},
 			Assets = new BeatmapAssets
 			{
@@ -217,9 +217,9 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			Ar = difficulty.Ar,
 			Od = difficulty.Od,
 			Hp = difficulty.Hp,
-			Objects = JsonSerializer.SerializeToElement(beatmap.Metadata.Objects, StoredJson),
-			Circles = (beatmap.Metadata.Objects as OsuObjects)?.Circles,
-			Sliders = (beatmap.Metadata.Objects as OsuObjects)?.Sliders,
+			ObjectCount = JsonSerializer.SerializeToElement(beatmap.Metadata.ObjectCount, StoredJson),
+			Circles = (beatmap.Metadata.ObjectCount as OsuObjectCount)?.Circles,
+			Sliders = (beatmap.Metadata.ObjectCount as OsuObjectCount)?.Sliders,
 			Background = beatmap.Assets.BackgroundFile,
 			Audio = beatmap.Assets.AudioFile,
 			Video = beatmap.Assets.VideoFile,
@@ -236,17 +236,17 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 	/// <param name="info">The type being described.</param>
 	private static void StoredObjects(JsonTypeInfo info)
 	{
-		if (info.Type != typeof(BeatmapObjects)) return;
+		if (info.Type != typeof(BeatmapObjectCount)) return;
 
 		info.PolymorphismOptions = new JsonPolymorphismOptions
 		{
 			TypeDiscriminatorPropertyName = "mode",
 			DerivedTypes =
 			{
-				new JsonDerivedType(typeof(OsuObjects), (int)GameMode.Standard),
-				new JsonDerivedType(typeof(TaikoObjects), (int)GameMode.Taiko),
-				new JsonDerivedType(typeof(CatchObjects), (int)GameMode.Catch),
-				new JsonDerivedType(typeof(ManiaObjects), (int)GameMode.Mania)
+				new JsonDerivedType(typeof(OsuObjectCount), (int)GameMode.Standard),
+				new JsonDerivedType(typeof(TaikoObjectCount), (int)GameMode.Taiko),
+				new JsonDerivedType(typeof(CatchObjectCount), (int)GameMode.Catch),
+				new JsonDerivedType(typeof(ManiaObjectCount), (int)GameMode.Mania)
 			}
 		};
 	}

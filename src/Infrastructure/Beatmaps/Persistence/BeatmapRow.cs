@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Basil.Infrastructure.Beatmaps.Persistence;
 
 /// <summary>
-///     A stored row of the <c>beatmaps</c> table. <see cref="Objects" /> is the JSON of a <c>BeatmapObjects</c> value;
+///     A stored row of the <c>beatmaps</c> table. <see cref="ObjectCount" /> is the JSON of a <c>BeatmapObjectCount</c> value;
 ///     <see cref="Length" /> and <see cref="PreviewTime" /> are in milliseconds.
 /// </summary>
 internal sealed class BeatmapRow
@@ -47,16 +47,16 @@ internal sealed class BeatmapRow
 	public double Hp { get; set; }
 
 	/// <summary>The hit objects counted by kind.</summary>
-	public JsonElement Objects { get; set; }
+	public JsonElement ObjectCount { get; set; }
 
 	/// <summary>
-	///     The number of circles in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing
+	///     The number of circles in <see cref="ObjectCount" /> (standard beatmaps only), kept as a column so that a listing
 	///     can filter by it.
 	/// </summary>
 	public int? Circles { get; set; }
 
 	/// <summary>
-	///     The number of sliders in <see cref="Objects" /> (standard beatmaps only), kept as a column so that a listing
+	///     The number of sliders in <see cref="ObjectCount" /> (standard beatmaps only), kept as a column so that a listing
 	///     can filter by it.
 	/// </summary>
 	public int? Sliders { get; set; }
@@ -100,7 +100,7 @@ internal sealed class BeatmapRowConfiguration : IEntityTypeConfiguration<Beatmap
 		builder.ToTable("beatmaps", table => table.HasCheckConstraint("beatmaps_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
 		builder.Property(row => row.Id).ValueGeneratedNever();
-		builder.Property(row => row.Objects).HasConversion(
+		builder.Property(row => row.ObjectCount).HasConversion(
 			objects => objects.GetRawText(),
 			json => JsonSerializer.Deserialize<JsonElement>(json, (JsonSerializerOptions?)null));
 		builder.Property(row => row.Hash).HasMaxLength(128);

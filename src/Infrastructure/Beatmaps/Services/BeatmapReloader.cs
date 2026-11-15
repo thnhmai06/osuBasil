@@ -104,7 +104,7 @@ internal sealed class BeatmapReloader(
 
 			beatmap.Metadata = new BeatmapMetadata
 			{
-				Version = beatmap.Metadata.Version, Difficulty = analysis.Difficulty, Objects = analysis.Objects
+				Version = beatmap.Metadata.Version, Difficulty = analysis.Difficulty, ObjectCount = analysis.ObjectCount
 			};
 			await beatmaps.UpdateAsync(beatmap);
 			return true;

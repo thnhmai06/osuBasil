@@ -589,7 +589,7 @@ public sealed class BeatmapsetWorld
 		public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
 		{
 			return new BeatmapAnalysis(new BeatmapDifficulty(mode, 120, TimeSpan.FromMinutes(1), 4, 5, 5, 5, 2.5),
-				BeatmapObjects.Empty(mode));
+				BeatmapObjectCount.Empty(mode));
 		}
 	}
 

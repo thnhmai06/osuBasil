@@ -98,7 +98,7 @@ internal sealed class BeatmapsetPlanner(
 			hash,
 			new BeatmapMetadata
 			{
-				Version = difficulty.Version, Difficulty = analysis.Difficulty, Objects = analysis.Objects
+				Version = difficulty.Version, Difficulty = analysis.Difficulty, ObjectCount = analysis.ObjectCount
 			},
 			new BeatmapAssets
 			{

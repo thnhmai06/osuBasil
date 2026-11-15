@@ -16,7 +16,7 @@ public class BeatmapMetadataTests
 		{
 			Version = version,
 			Difficulty = MakeDifficulty(),
-			Objects = new OsuObjects()
+			ObjectCount = new OsuObjectCount()
 		});
 	}
 
@@ -27,7 +27,7 @@ public class BeatmapMetadataTests
 		{
 			Version = "Hyper",
 			Difficulty = MakeDifficulty(),
-			Objects = new OsuObjects()
+			ObjectCount = new OsuObjectCount()
 		};
 
 		Assert.Equal("Hyper", metadata.Version);
