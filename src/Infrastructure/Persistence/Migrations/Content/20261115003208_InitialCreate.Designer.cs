@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Content
 {
     [DbContext(typeof(ContentDbContext))]
-    [Migration("20261111090100_SettingsMovedToShared")]
-    partial class SettingsMovedToShared
+    [Migration("20261115003208_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

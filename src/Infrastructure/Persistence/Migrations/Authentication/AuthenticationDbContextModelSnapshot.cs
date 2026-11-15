@@ -28,11 +28,11 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                     b.Property<string>("ClientInfo")
                         .HasColumnName("client_info");
 
-                    b.Property<DateTimeOffset?>("ClosedAt")
-                        .HasColumnName("closed_at");
-
                     b.Property<byte?>("CloseReason")
                         .HasColumnName("close_reason");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnName("closed_at");
 
                     b.Property<string>("Ip")
                         .IsRequired()

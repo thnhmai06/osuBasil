@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
 {
     [DbContext(typeof(MultiplayerDbContext))]
-    [Migration("20261104211350_InitialCreate")]
+    [Migration("20261115003232_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -22,33 +22,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.14");
 
-
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
-                {
-                    b.Property<string>("Name")
-                        .HasMaxLength(64)
-                        .HasColumnName("name");
-
-                    b.Property<long>("Next")
-                        .HasColumnName("next");
-
-                    b.HasKey("Name")
-                        .HasName("pk_multiplayer_id_counters");
-
-                    b.ToTable("multiplayer_id_counters", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Name = "match",
-                            Next = 1L
-                        },
-                        new
-                        {
-                            Name = "match_event",
-                            Next = 1L
-                        });
-                });
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Multiplayer.Persistence.MatchEventRow).FullName!, b =>
                 {
@@ -193,6 +166,33 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
                         .HasDatabaseName("ix_round_scores_match_id_round_number");
 
                     b.ToTable("round_scores", (string)null);
+                });
+
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnName("name");
+
+                    b.Property<long>("Next")
+                        .HasColumnName("next");
+
+                    b.HasKey("Name")
+                        .HasName("pk_multiplayer_id_counters");
+
+                    b.ToTable("multiplayer_id_counters", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Name = "match",
+                            Next = 1L
+                        },
+                        new
+                        {
+                            Name = "match_event",
+                            Next = 1L
+                        });
                 });
 
             modelBuilder.Entity(ContextModel.ScoresTable, b =>

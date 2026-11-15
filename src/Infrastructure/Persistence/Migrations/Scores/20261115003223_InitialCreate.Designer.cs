@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Scores
 {
     [DbContext(typeof(ScoresDbContext))]
-    [Migration("20261104211343_InitialCreate")]
+    [Migration("20261115003223_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -22,28 +22,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.14");
 
-
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
-                {
-                    b.Property<string>("Name")
-                        .HasMaxLength(64)
-                        .HasColumnName("name");
-
-                    b.Property<long>("Next")
-                        .HasColumnName("next");
-
-                    b.HasKey("Name")
-                        .HasName("pk_score_id_counters");
-
-                    b.ToTable("score_id_counters", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Name = "score",
-                            Next = 1L
-                        });
-                });
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Scores.Persistence.ScoreRow).FullName!, b =>
                 {
@@ -147,6 +125,28 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                         .HasName("pk_user_stats");
 
                     b.ToTable("user_stats", (string)null);
+                });
+
+            modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnName("name");
+
+                    b.Property<long>("Next")
+                        .HasColumnName("next");
+
+                    b.HasKey("Name")
+                        .HasName("pk_score_id_counters");
+
+                    b.ToTable("score_id_counters", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Name = "score",
+                            Next = 1L
+                        });
                 });
 
             modelBuilder.Entity(ContextModel.UsersTable, b =>

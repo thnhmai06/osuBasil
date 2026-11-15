@@ -103,12 +103,8 @@ At startup `DatabaseMigrator` applies the module migrations in foreign-key order
 the shared tables (Shared), Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. The id counters belong to the module that owns the table (the beatmap counters to Beatmaps, the user counter, where accounts start at 2 because id 1 is BasilBot, to Users), and the seeded channels to Chat. Persistence holds no SQL
 text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
 
-The `settings` table belongs to the shared context (`SharedDbContext`, history `__ef_migrations_shared`) but was created by
-the first migration of Content. That history stays as it is, a Content migration (`SettingsMovedToShared`) only drops the
-table from Content's model without touching it, and the Shared migration creates `settings` only when it does not exist (the
-one place with SQL text, because EF has no portable "if not exists"). So an existing database keeps its rows and the table
-name and columns never change; a new database gets the table from Content's first migration, and that is why the Shared
-migration runs after Content.
+The `settings` table belongs to the shared context (`SharedDbContext`, history `__ef_migrations_shared`) and is created only by
+the `InitialCreate` of Shared; no other module's migration mentions it.
 
 ### PostgreSQL provider and where the migrations live
 
@@ -138,9 +134,10 @@ file still contains `Npgsql`, `MySql`, `type:` or `.HasColumnType(`. Add a migra
 tools/add-migration.sh <Module> <Name>     # runs dotnet ef, moves the snapshot, normalizes the files
 ```
 
-To regenerate everything from scratch (development databases are recreated), delete
-`src/Infrastructure/Persistence/Migrations`, then run the script with `InitialCreate` for Users, Authentication, Beatmaps,
-Content, Scores, Multiplayer and Chat in that order. The runtime ignores `PendingModelChangesWarning`, because a neutral
+Each module has exactly one migration, `InitialCreate`, until a first release. To regenerate everything from scratch,
+delete `src/Infrastructure/Persistence/Migrations`, then run the script with `InitialCreate` for Users, Authentication,
+Beatmaps, Content, Shared, Scores, Multiplayer and Chat in that order. Every existing development database must then be
+dropped and recreated, because its `__ef_migrations_<module>` history names migrations that no longer exist. The runtime ignores `PendingModelChangesWarning`, because a neutral
 snapshot never equals a provider's model; `ModuleMigrationTests` checks the model against the migrations with the provider's
 own differ instead.
 

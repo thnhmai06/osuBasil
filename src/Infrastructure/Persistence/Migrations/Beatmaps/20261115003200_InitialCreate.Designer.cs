@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
 {
     [DbContext(typeof(BeatmapsDbContext))]
-    [Migration("20261105014636_InitialCreate")]
+    [Migration("20261115003200_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -68,9 +68,9 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<int>("Mode")
                         .HasColumnName("mode");
 
-                    b.Property<string>("Objects")
+                    b.Property<string>("ObjectCount")
                         .IsRequired()
-                        .HasColumnName("objects");
+                        .HasColumnName("object_count");
 
                     b.Property<double>("Od")
                         .HasColumnName("od");

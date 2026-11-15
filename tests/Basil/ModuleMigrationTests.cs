@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Tests;
 
-/// <summary>Checks the module migrations preserve table ownership, migration order and foreign keys.</summary>
+/// <summary>Checks every module has one InitialCreate that owns its tables and preserves, migration order and foreign keys.</summary>
 [Collection("Persistence")]
 public sealed class ModuleMigrationTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -20,9 +20,8 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		("Users", ["users", "moderation_log", "relationships", "user_id_counters"]),
 		("Authentication", ["credentials", "sessions", "connections", "connection_id_counters"]),
 		("Beatmaps", ["beatmapsets", "beatmaps", "beatmap_id_counters"]),
-		("Content", ["settings", "menu_banners"]),
-		// The settings table is adopted from Content, which still creates it in its first migration.
-		("Shared", []),
+		("Content", ["menu_banners"]),
+		("Shared", ["settings"]),
 		("Scores", ["scores", "user_stats", "score_id_counters"]),
 		("Multiplayer", ["matches", "rounds", "match_events", "round_scores", "multiplayer_id_counters"]),
 		("Chat", ["channels"])
@@ -39,7 +38,8 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 				.Where(type => typeof(Migration).IsAssignableFrom(type) && !type.IsAbstract)
 				.Where(type => type.GetCustomAttribute<DbContextAttribute>()?.ContextType == context)
 				.ToArray();
-			Assert.NotEmpty(migrations);
+			Assert.Single(migrations);
+			Assert.Equal("InitialCreate", migrations[0].Name);
 
 			var createdTables = migrations.SelectMany(type =>
 					((Migration)Activator.CreateInstance(type, true)!).UpOperations

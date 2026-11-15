@@ -65,9 +65,9 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
                     b.Property<int>("Mode")
                         .HasColumnName("mode");
 
-                    b.Property<string>("Objects")
+                    b.Property<string>("ObjectCount")
                         .IsRequired()
-                        .HasColumnName("objects");
+                        .HasColumnName("object_count");
 
                     b.Property<double>("Od")
                         .HasColumnName("od");

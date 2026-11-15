@@ -181,7 +181,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                         .IsRequired()
                         .HasConstraintName("fk_relationships_users_target_id");
                 });
-
 #pragma warning restore 612, 618
         }
     }
