@@ -301,7 +301,21 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task DifficultyRating_AnswersStarsOfTheBeatmap()
+	public async Task DifficultyRating_NoMods_AnswersStarsOfTheBeatmap()
+	{
+		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
+
+		var (status, body) = await OsuHostAsync(HttpMethod.Post, $"/difficulty-rating?b={map.Id}&mods=0");
+
+		using var json = JsonDocument.Parse(body);
+		Assert.Equal(HttpStatusCode.OK, status);
+		Assert.Equal(map.Id, json.RootElement.GetProperty("beatmap_id").GetInt32());
+		Assert.Equal(0, json.RootElement.GetProperty("mods").GetInt32());
+		Assert.Equal(map.Metadata.Difficulty.Star, json.RootElement.GetProperty("rating").GetDouble());
+	}
+
+	[Fact]
+	public async Task DifficultyRating_DoubleTime_AnswersMoreStarsThanNoMod()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 
@@ -309,9 +323,8 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 
 		using var json = JsonDocument.Parse(body);
 		Assert.Equal(HttpStatusCode.OK, status);
-		Assert.Equal(map.Id, json.RootElement.GetProperty("beatmap_id").GetInt32());
 		Assert.Equal(64, json.RootElement.GetProperty("mods").GetInt32());
-		Assert.Equal(map.Metadata.Difficulty.Star, json.RootElement.GetProperty("rating").GetDouble());
+		Assert.True(json.RootElement.GetProperty("rating").GetDouble() > map.Metadata.Difficulty.Star);
 	}
 
 	[Theory]

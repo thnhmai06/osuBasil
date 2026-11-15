@@ -209,6 +209,20 @@ public static class ModsExtensions
 			return result;
 		}
 
+		/// <summary>Reduces the mods to the ones that change the difficulty of a beatmap in a game mode.</summary>
+		/// <param name="mode">The game mode the beatmap is played in.</param>
+		/// <returns>
+		///     The difficulty-changing mods of the legal combination, with Nightcore as DoubleTime because both play at the same
+		///     rate; two plays with the same result have the same difficulty.
+		/// </returns>
+		public GameMods ReduceToDifficulty(GameMode mode)
+		{
+			var reduced = gameMods.RemoveInvalidMods(mode) & GameModsGroups.Difficulty;
+			return (reduced & GameMods.Nightcore) == GameMods.NoMod
+				? reduced
+				: (reduced & ~GameMods.Nightcore) | GameMods.DoubleTime;
+		}
+
 		/// <summary>Determines whether the mods can be used together in a game mode.</summary>
 		/// <param name="mode">The game mode.</param>
 		/// <returns><see langword="true" /> when removing the mods invalid for the mode would change nothing.</returns>
@@ -394,4 +408,9 @@ public static class GameModsGroups
 
 	/// <summary>The mods that only apply to osu!mania.</summary>
 	public const GameMods ManiaSpecific = GameMods.Mirror | GameMods.Random | GameMods.FadeIn | GameMods.KeyCoop | Key;
+
+	/// <summary>The mods that change the difficulty of a beatmap, and so its star rating and pp.</summary>
+	public const GameMods Difficulty = GameMods.Easy | GameMods.HardRock | GameMods.DoubleTime | GameMods.Nightcore |
+	                                   GameMods.HalfTime | GameMods.Flashlight | GameMods.Hidden |
+	                                   GameMods.TouchScreen | GameMods.KeyCoop | Key;
 }

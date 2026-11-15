@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Text;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Cryptography;
+using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
@@ -21,6 +23,9 @@ internal static class FileBeatmapsetNames
 	internal const string BackgroundFolder = "backgrounds";
 	internal const string AudioFolder = "audio";
 	internal const string VideoFolder = "video";
+
+	/// <summary>The folder of a set that holds the calculated difficulty attributes of its beatmaps.</summary>
+	internal const string AttributesFolder = "attributes";
 
 	/// <summary>The name of a set's archive, stored byte for byte as it was given.</summary>
 	internal const string ArchiveName = "archive.osz";
@@ -105,6 +110,19 @@ internal static class FileBeatmapsetNames
 			builder.Append(character);
 
 		return FileNames.Fitted(builder.ToString().TrimEnd('.', ' '), MaxFolderNameBytes);
+	}
+
+	/// <summary>Builds the path of the difficulty attributes of a beatmap under a mode and the mods that change its difficulty.</summary>
+	/// <param name="setFolder">The set folder's full path.</param>
+	/// <param name="hash">The MD5 of the beatmap's file.</param>
+	/// <param name="mode">The game mode the beatmap is played in.</param>
+	/// <param name="mask">The reduced mods; see <see cref="GameModsGroups.Difficulty" />.</param>
+	/// <returns>The file's full path.</returns>
+	internal static string AttributesPath(string setFolder, Md5 hash, GameMode mode, GameMods mask)
+	{
+		return Path.Combine(setFolder, AttributesFolder, hash.HashValue,
+			((int)mode).ToString(CultureInfo.InvariantCulture),
+			$"{(int)mask}.json");
 	}
 
 	/// <summary>Builds the path of one file made from a set's archive.</summary>

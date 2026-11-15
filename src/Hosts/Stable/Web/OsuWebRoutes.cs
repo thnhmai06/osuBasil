@@ -116,8 +116,8 @@ internal static class OsuWebRoutes
 			.WithSummary("Get the star rating of a beatmap.")
 			.WithDescription("""
 			                 Query: `b` (beatmap id) and `mods` (the mods number). The answer is the JSON `{"beatmap_id", "mods", "rating"}`.
-			                 The rating is the star rating of the beatmap without mods. Answers 400 for a parameter that is not a
-			                 number and 404 when the server does not have the beatmap.
+			                 The rating is the star rating of the beatmap under the mods, rounded to two decimals. Answers 400 for a
+			                 parameter that is not a number and 404 when the server does not have the beatmap or cannot rate it.
 			                 """);
 		web.MapGet("/web/osu-getfavourites.php", GetFavouritesAsync)
 			.WithSummary("List the ids of the player's favourite beatmapsets.")
@@ -438,9 +438,11 @@ internal static class OsuWebRoutes
 		var query = context.Request.Query;
 		if (!int.TryParse(query["b"], out var id) || !int.TryParse(query["mods"], out var mods))
 			return Results.BadRequest();
-		if (await sender.Send(new GetBeatmap(null, id), ct) is not { } map) return Results.NotFound();
+		if (await sender.Send(new GetBeatmap(null, id), ct) is not { } map ||
+		    await sender.Send(new GetBeatmapStars(map, (GameMods)mods), ct) is not { } stars)
+			return Results.NotFound();
 		return Results.Text(
-			JsonSerializer.Serialize(new DifficultyRatingBody(map.Id, mods, map.Metadata.Difficulty.Star)),
+			JsonSerializer.Serialize(new DifficultyRatingBody(map.Id, mods, Math.Round(stars, 2))),
 			"application/json");
 	}
 

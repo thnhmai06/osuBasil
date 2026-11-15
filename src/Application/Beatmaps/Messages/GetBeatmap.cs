@@ -1,5 +1,6 @@
 using Basil.Application.Shared.Actors;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Mechanics;
 using Mediator;
 
 namespace Basil.Application.Beatmaps.Messages;
@@ -14,3 +15,12 @@ public sealed record GetBeatmap(IActor? Actor, int BeatmapId) : IRequest<Beatmap
 /// <param name="BeatmapId">The id of the beatmap.</param>
 /// <remarks>The answer is <see langword="null" /> when no beatmap has the id.</remarks>
 public sealed record FindBeatmap(int BeatmapId) : IRequest<BeatmapRecord?>;
+
+/// <summary>Asks Beatmaps for the star rating of a beatmap under some mods, for work the server does for itself.</summary>
+/// <param name="Beatmap">The beatmap.</param>
+/// <param name="Mods">The mods of the play.</param>
+/// <remarks>
+///     The rating is for the game mode the beatmap is made for. The answer is <see langword="null" /> when the rating cannot
+///     be calculated, for example when the beatmap's file is missing.
+/// </remarks>
+public sealed record GetBeatmapStars(BeatmapRecord Beatmap, GameMods Mods) : IRequest<double?>;

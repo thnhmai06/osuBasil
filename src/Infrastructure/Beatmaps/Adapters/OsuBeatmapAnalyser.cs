@@ -39,7 +39,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 	}
 
 	/// <summary>Decodes the content of a <c>.osu</c> file.</summary>
-	private static LazerBeatmap Decode(Stream content)
+	internal static LazerBeatmap Decode(Stream content)
 	{
 		using var reader = new LineBufferedReader(content, true);
 		return Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
@@ -184,7 +184,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 	}
 
 	/// <summary>Creates the osu!lazer ruleset instance for the given game mode.</summary>
-	private static Ruleset CreateRuleset(GameMode mode)
+	internal static Ruleset CreateRuleset(GameMode mode)
 	{
 		return mode switch
 		{

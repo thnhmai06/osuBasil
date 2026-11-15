@@ -3,6 +3,8 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
+using Basil.Domain.Cryptography;
+using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Logging;
 using static Basil.Infrastructure.Beatmaps.Storage.FileBeatmapsetEntryReader;
@@ -160,6 +162,71 @@ internal sealed class FileBeatmapsetStorage(
 			DeleteDirectoryIfExists(Path.Combine(folder, BackgroundFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, AudioFolder));
 			DeleteDirectoryIfExists(Path.Combine(folder, VideoFolder));
+			DeleteDirectoryIfExists(Path.Combine(folder, AttributesFolder));
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	/// <summary>Reads the stored difficulty attributes of a beatmap.</summary>
+	/// <param name="set">The beatmapset of the beatmap.</param>
+	/// <param name="hash">The MD5 of the beatmap's file.</param>
+	/// <param name="mode">The game mode the beatmap is played in.</param>
+	/// <param name="mask">The mods reduced to the ones that change the difficulty.</param>
+	/// <param name="ct">A token that cancels the read.</param>
+	/// <returns>The stored text, or <see langword="null" /> when there is none.</returns>
+	internal async Task<string?> ReadAttributesAsync(BeatmapsetRecord set, Md5 hash, GameMode mode, GameMods mask,
+		CancellationToken ct = default)
+	{
+		var folder = FindFolder(set.Id, FolderName(set));
+		if (folder is null) return null;
+
+		try
+		{
+			return await File.ReadAllTextAsync(AttributesPath(folder, hash, mode, mask), ct);
+		}
+		catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+		{
+			return null;
+		}
+	}
+
+	/// <summary>Stores the difficulty attributes of a beatmap, replacing the ones stored before.</summary>
+	/// <param name="set">The beatmapset of the beatmap.</param>
+	/// <param name="hash">The MD5 of the beatmap's file.</param>
+	/// <param name="mode">The game mode the beatmap is played in.</param>
+	/// <param name="mask">The mods reduced to the ones that change the difficulty.</param>
+	/// <param name="content">The text to store.</param>
+	/// <returns>
+	///     <see langword="false" /> when the set has no folder any more, as when it was deleted meanwhile: nothing is written
+	///     and the folder is not created again.
+	/// </returns>
+	internal async Task<bool> WriteAttributesAsync(BeatmapsetRecord set, Md5 hash, GameMode mode, GameMods mask,
+		string content)
+	{
+		var gate = await LockAsync(set.Id);
+		try
+		{
+			var folder = FindFolder(set.Id, FolderName(set));
+			if (folder is null || !IsSetFolder(folder)) return false;
+
+			var path = AttributesPath(folder, hash, mode, mask);
+			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+			var temporary = Incoming(".tmp");
+			try
+			{
+				await File.WriteAllTextAsync(temporary, content);
+				File.Move(temporary, path, true);
+			}
+			finally
+			{
+				DeleteFileIfExists(temporary);
+			}
+
+			return true;
 		}
 		finally
 		{

@@ -33,6 +33,7 @@ public static class DependencyInjection
 		services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
 		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
+		services.AddSingleton<IBeatmapCalculator, OsuBeatmapCalculator>();
 		services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
 		services.AddSingleton<RulesetStore>();
 		services.AddSingleton<IRulesetUpdater>(provider => new RulesetUpdater(
