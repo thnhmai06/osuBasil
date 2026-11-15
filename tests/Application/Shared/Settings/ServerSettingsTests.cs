@@ -57,29 +57,13 @@ public class ServerSettingsTests
 		});
 	}
 
-	[Fact]
-	public void FtpScheme_Throws()
+	[Theory]
+	[InlineData(0)]
+	[InlineData(-1)]
+	public void PerformanceTimeout_NotPositive_Throws(int seconds)
 	{
-		Assert.Throws<ArgumentException>(() => new ServerSettings
-		{
-			Beatmaps = new ServerSettings.BeatmapSettings
-			{
-				Mirror = new ServerSettings.BeatmapMirrorSettings { DownloadEndpoint = new Uri("ftp://example.test/d") }
-			}
-		});
-	}
-
-	[Fact]
-	public void Relative_Throws()
-	{
-		Assert.Throws<ArgumentException>(() => new ServerSettings
-		{
-			Beatmaps = new ServerSettings.BeatmapSettings
-			{
-				Mirror = new ServerSettings.BeatmapMirrorSettings
-					{ SearchEndpoint = new Uri("/search", UriKind.Relative) }
-			}
-		});
+		Assert.Throws<ArgumentOutOfRangeException>(() => new ServerSettings.BeatmapSettings
+			{ PerformanceTimeout = TimeSpan.FromSeconds(seconds) });
 	}
 
 	[Fact]
@@ -87,19 +71,10 @@ public class ServerSettingsTests
 	{
 		var settings = new ServerSettings
 		{
-			MenuIcon = new ServerSettings.MenuIconSettings { Url = new Uri("https://example.test/icon.png") },
-			Beatmaps = new ServerSettings.BeatmapSettings
-			{
-				Mirror = new ServerSettings.BeatmapMirrorSettings
-				{
-					DownloadEndpoint = new Uri("https://example.test/download"),
-					SearchEndpoint = new Uri("https://example.test/search")
-				}
-			}
+			MenuIcon = new ServerSettings.MenuIconSettings { Url = new Uri("https://example.test/icon.png") }
 		};
 
-		Assert.Equal(new Uri("https://example.test/download"), settings.Beatmaps.Mirror.DownloadEndpoint);
-		Assert.Equal(new Uri("https://example.test/search"), settings.Beatmaps.Mirror.SearchEndpoint);
+		Assert.Equal(new Uri("https://example.test/icon.png"), settings.MenuIcon.Url);
 	}
 
 	[Fact]
@@ -107,6 +82,7 @@ public class ServerSettingsTests
 	{
 		var settings = new ServerSettings();
 
+		Assert.Equal(TimeSpan.FromSeconds(30), settings.Beatmaps.PerformanceTimeout);
 		Assert.Equal(TimeSpan.FromDays(7), settings.Sessions.ApiToken.Lifetime);
 		Assert.Equal(TimeSpan.FromSeconds(10), settings.Multiplayer.Rounds.ScoreWait);
 		Assert.Equal(new ServerSettings.Limit(1, TimeSpan.FromHours(24)), settings.RateLimits.Registration.PerIp);

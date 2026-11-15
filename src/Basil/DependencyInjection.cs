@@ -58,7 +58,6 @@ public static class DependencyInjection
 		services.AddMultiplayerBackgroundWork();
 		services.AddBotInfrastructure();
 		services.AddBeatmapsBackgroundWork();
-		services.AddBeatmapMirrorSettings();
 		services.AddGatewayLimits();
 		return services.AddBasilApplication();
 	}
@@ -118,13 +117,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Registers the reading of the beatmap mirror endpoints from the server settings.</summary>
-	internal static IServiceCollection AddBeatmapMirrorSettings(this IServiceCollection services)
-	{
-		services.AddSingleton<IBeatmapMirrorSettings, BeatmapMirrorSettingsReader>();
-		return services;
-	}
-
 	/// <summary>
 	///     Registers the publishing of events: every category is published by the one publisher, and the handlers
 	///     found in the modules observe the events they name.
@@ -156,16 +148,5 @@ public static class DependencyInjection
 	private static void AddCategory<T>(IServiceCollection services) where T : Event
 	{
 		services.AddSingleton<IEventPublisher<T>>(sp => sp.GetRequiredService<EventPublisher>());
-	}
-
-	private sealed class BeatmapMirrorSettingsReader(ISettingsRepository settings) : IBeatmapMirrorSettings
-	{
-		/// <summary>Reads the configured beatmap mirror endpoints, or <see langword="null" /> for one that is not set.</summary>
-		public async Task<(Uri? SearchEndpoint, Uri? DownloadEndpoint)> GetAsync(
-			CancellationToken ct = default)
-		{
-			var mirror = (await settings.GetAsync(ct)).Beatmaps.Mirror;
-			return (mirror.SearchEndpoint, mirror.DownloadEndpoint);
-		}
 	}
 }

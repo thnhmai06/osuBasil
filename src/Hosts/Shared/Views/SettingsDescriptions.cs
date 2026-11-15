@@ -99,10 +99,8 @@ public static class SettingsDescriptions
 			"The largest avatar accepted. Bytes, at least 1. Default: 5242880 (5 MiB).",
 		["uploads.avatarMaxSide"] =
 			"The largest side of an avatar. Pixels, at least 1. Default: 4096.",
-		["beatmaps.mirror.downloadEndpoint"] =
-			"The address beatmapset downloads are sent to. Absolute http or https address; empty for no download mirror. Default: none.",
-		["beatmaps.mirror.searchEndpoint"] =
-			"The address beatmap searches are sent to. Absolute http or https address; empty for no search mirror. Default: none.",
+		["beatmaps.performanceTimeout"] =
+			"How long the server spends calculating the performance of one score before giving up on it. Duration as [d.]hh:mm:ss, more than zero. Default: 00:00:30 (30 seconds).",
 		["multiplayer.rounds.scoreWait"] =
 			"How long the scores of a finished round are waited for. Duration as [d.]hh:mm:ss. Default: 00:00:10 (10 seconds).",
 		["bot.commandPrefix"] =

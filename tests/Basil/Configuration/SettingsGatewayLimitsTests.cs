@@ -24,7 +24,7 @@ public sealed class SettingsGatewayLimitsTests
 	}
 
 	[Fact]
-	public void Limits_MirrorSettings()
+	public void Limits_FollowSettings()
 	{
 		var settings = Substitute.For<ISettingsRepository>();
 		settings.Current.Returns(WithRequests(7));

@@ -34,7 +34,6 @@ public static class DependencyInjection
 		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
 		services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
-		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
 		services.AddSingleton<RulesetStore>();
 		services.AddSingleton<IRulesetUpdater>(provider => new RulesetUpdater(
 			provider.GetRequiredService<RulesetStore>(), new HttpClient { Timeout = TimeSpan.FromMinutes(5) },

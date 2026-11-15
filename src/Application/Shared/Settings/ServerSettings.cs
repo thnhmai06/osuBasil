@@ -418,13 +418,12 @@ public sealed record ServerSettings
 	/// <summary>The beatmap settings.</summary>
 	public sealed record BeatmapSettings
 	{
-		/// <summary>Gets the beatmap mirror that beatmapset downloads and beatmap searches are sent to.</summary>
-		/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
-		public BeatmapMirrorSettings Mirror
+		/// <summary>Gets how long the server spends calculating the performance of one score before giving up on it.</summary>
+		public TimeSpan PerformanceTimeout
 		{
 			get;
-			init => field = value ?? throw new ArgumentNullException(nameof(value));
-		} = new();
+			init => field = Positive(value);
+		} = TimeSpan.FromSeconds(30);
 	}
 
 	/// <summary>The multiplayer settings.</summary>
@@ -490,31 +489,5 @@ public sealed record ServerSettings
 
 		/// <summary>Gets the image of the icon, or <see langword="null" /> for none.</summary>
 		public ContentReference? Image { get; init; }
-	}
-
-	/// <summary>The beatmap mirror the server sends beatmapset downloads and beatmap searches to.</summary>
-	public sealed record BeatmapMirrorSettings
-	{
-		/// <summary>
-		///     Gets the address beatmapset downloads are sent to, or <see langword="null" /> when the server has no
-		///     download mirror.
-		/// </summary>
-		/// <exception cref="ArgumentException">The value is not absolute with an http or https scheme.</exception>
-		public Uri? DownloadEndpoint
-		{
-			get;
-			init => field = value?.ThrowIfHttp();
-		}
-
-		/// <summary>
-		///     Gets the address beatmap searches are sent to, or <see langword="null" /> when the server has no search
-		///     mirror.
-		/// </summary>
-		/// <exception cref="ArgumentException">The value is not absolute with an http or https scheme.</exception>
-		public Uri? SearchEndpoint
-		{
-			get;
-			init => field = value?.ThrowIfHttp();
-		}
 	}
 }

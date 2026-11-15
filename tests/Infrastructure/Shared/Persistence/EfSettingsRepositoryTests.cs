@@ -51,11 +51,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 			},
 			Beatmaps = new ServerSettings.BeatmapSettings
 			{
-				Mirror = new ServerSettings.BeatmapMirrorSettings
-				{
-					DownloadEndpoint = new Uri("https://example.com/download"),
-					SearchEndpoint = new Uri("https://example.com/search")
-				}
+				PerformanceTimeout = TimeSpan.FromSeconds(12)
 			}
 		};
 		await Settings.CreateOrUpdateAsync(settings);
@@ -71,17 +67,27 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 		var settings = new ServerSettings
 		{
 			General = new ServerSettings.GeneralSettings { Motd = null },
-			MenuIcon = new ServerSettings.MenuIconSettings { Url = null, Image = null },
-			Beatmaps = new ServerSettings.BeatmapSettings
-			{
-				Mirror = new ServerSettings.BeatmapMirrorSettings { DownloadEndpoint = null, SearchEndpoint = null }
-			}
+			MenuIcon = new ServerSettings.MenuIconSettings { Url = null, Image = null }
 		};
 		await Settings.CreateOrUpdateAsync(settings);
 
 		var reloaded = await ReloadAsync();
 
 		Assert.Equal(settings, reloaded);
+	}
+
+	[Theory]
+	[InlineData("mirror", "{\"DownloadEndpoint\":\"https://example.com/d\",\"SearchEndpoint\":null}")]
+	[InlineData("beatmaps", "{\"Mirror\":{\"DownloadEndpoint\":\"https://example.com/d\"}}")]
+	public async Task LegacyMirrorSettings_AreIgnored(string name, string value)
+	{
+		await StoredRows.InsertAsync(ConnectionString, "settings", [
+			new Dictionary<string, object?> { ["name"] = name, ["value"] = value }
+		], TestContext.Current.CancellationToken);
+
+		var reloaded = await ReloadAsync();
+
+		Assert.Equal(new ServerSettings(), reloaded);
 	}
 
 	[Fact]
@@ -138,7 +144,7 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 	[InlineData("locks", "\"not a flag\"")]
 	[InlineData("menu_icon", "{\"Url\":\"relative/path\"}")]
 	[InlineData("menu_icon", "{\"Image\":\"../outside.png\"}")]
-	[InlineData("beatmaps", "{\"Mirror\":{\"DownloadEndpoint\":\"::\"}}")]
+	[InlineData("beatmaps", "{\"PerformanceTimeout\":\"00:00:00\"}")]
 	[InlineData("sessions", "not json")]
 	[InlineData("multiplayer", "{\"Rounds\":{\"ScoreWait\":\"00:00:00\"}}")]
 	[InlineData("rate_limits", "{\"Chat\":{\"Count\":0,\"Window\":\"00:00:05\"}}")]
