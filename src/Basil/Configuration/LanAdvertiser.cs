@@ -12,7 +12,7 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 	: IHostedService, IDisposable
 {
 	/// <summary>The sub-domains the server serves; the <c>ppy.sh</c> hosts are never advertised.</summary>
-	internal static readonly string[] Labels = ["c", "ce", "c4", "c5", "c6", "osu", "b", "a", "api", "assets"];
+	internal static readonly string[] Labels = ["c", "ce", "c4", "c5", "c6", "osu", "b", "a", "api", "assets", "irc"];
 
 	private MulticastService? _service;
 

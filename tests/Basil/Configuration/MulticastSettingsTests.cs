@@ -1,4 +1,5 @@
 using Basil.Configuration;
+using Basil.Host.Irc.Transport;
 
 namespace Basil.Tests.Configuration;
 
@@ -36,5 +37,13 @@ public sealed class MulticastSettingsTests
 
 		Assert.True(service.UseIpv4);
 		Assert.False(service.UseIpv6);
+	}
+
+	[Fact]
+	public void Names_IncludeIrcServer()
+	{
+		var irc = new IrcOptions { Domain = "basil.local" };
+
+		Assert.Contains(irc.ServerName, LanAdvertiser.Names(irc.Domain));
 	}
 }
