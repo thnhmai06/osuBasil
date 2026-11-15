@@ -2,6 +2,7 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Scores.Messages;
+using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
@@ -10,6 +11,13 @@ using Basil.Host.Shared.Views;
 using Mediator;
 
 namespace Basil.Host.Cli.Commands;
+
+/// <summary>What the <c>scores</c> commands say.</summary>
+public static class ScoreReplies
+{
+	/// <summary>Printed after the calculation of pp was started.</summary>
+	public const string RecalculationStarted = "Calculating the pp of scores in the background.";
+}
 
 /// <summary>The <c>beatmapsets</c>, <c>beatmaps</c> and <c>scores</c> commands.</summary>
 internal static class BeatmapScoreCommands
@@ -72,6 +80,13 @@ internal static class BeatmapScoreCommands
 				new OptionDef("user", "A user id.", OptionKind.Int), .. CommandHelpers.Paging
 			],
 			Run = ListScoresAsync
+		};
+		yield return new CommandDef
+		{
+			Pattern = "scores recalculate", Route = "POST /v1/scores/performance/recalculate",
+			Summary = "Calculates the pp of stored scores in the background.",
+			Options = [new OptionDef("all", "Calculate every passed score, not only the ones without pp.", OptionKind.Bool)],
+			Run = RecalculateScoresAsync
 		};
 		yield return new CommandDef
 		{
@@ -184,6 +199,14 @@ internal static class BeatmapScoreCommands
 		call.PrintPage(new Page<ScoreView>([.. listing.Scores!.Items.Select(ScoreView.Of)], listing.Scores.HasNext),
 			page);
 		return ExitCodes.Success;
+	}
+
+	private static async Task<int> RecalculateScoresAsync(CommandCall call)
+	{
+		var scope = call.Bool("all") == true ? ScorePerformanceScope.All : ScorePerformanceScope.Missing;
+		return call.Report(
+			await call.Get<ISender>().Send(new RecalculateScorePerformance(await call.ByAsync(), scope),
+				call.CancellationToken), ScoreReplies.RecalculationStarted);
 	}
 
 	private static async Task<int> ShowScoreAsync(CommandCall call)

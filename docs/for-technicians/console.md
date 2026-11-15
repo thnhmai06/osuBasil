@@ -349,6 +349,11 @@ server was running); then run `beatmapsets reload`. The osu! game library that t
 |------------------------------------------------------------------|-------------------------|-----|
 | `scores list [--beatmap <id>] [--user <id>] [--offset] [--limit]` | `GET /v1/scores`       | yes |
 | `scores <id>`                                                    | `GET /v1/scores/{id}`   | yes |
+| `scores recalculate [--all]`                                     | `POST /v1/scores/performance/recalculate` | no |
+
+`scores recalculate` calculates the pp of the passed scores that have none (every passed score with `--all`) in the
+background, one run at a time, and logs its progress. A score whose beatmap or difficulty file is missing keeps the pp it
+has. It needs `Developer` and runs by itself at startup for the scores without pp.
 
 ### menu, faqs, settings, announce, screenshots
 

@@ -166,6 +166,32 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task PassedScore_AnsweredWithBeatmapAndOverallCharts()
+	{
+		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
+		using var client = await OnlineAsync("ChartReader");
+
+		var (_, text) = await client.SubmitScoreAsync(map.Hash.ToString(), 4321);
+
+		Assert.StartsWith($"beatmapId:{map.Id}|beatmapSetId:{map.Beatmapset.Id}|", text);
+		Assert.Contains("|\n|chartId:beatmap|", text);
+		Assert.Contains("|totalScoreBefore:|totalScoreAfter:4321|", text);
+		Assert.Contains("|\n|chartId:overall|", text);
+		Assert.EndsWith("|achievements-new:", text);
+	}
+
+	[Fact]
+	public async Task FailedScore_AnsweredNo()
+	{
+		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
+		using var client = await OnlineAsync("FailedChart");
+
+		var (_, text) = await client.SubmitScoreAsync(map.Hash.ToString(), 100, false, grade: "F");
+
+		Assert.Equal(OsuWebReplies.SubmissionRefused, text);
+	}
+
+	[Fact]
 	public async Task WrongChecksum_Rejected()
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();

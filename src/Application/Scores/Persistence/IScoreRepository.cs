@@ -23,6 +23,20 @@ public interface IScoreRepository
 	/// <exception cref="AlreadyExistsException">A score with the same <see cref="ScoreData.Checksum" /> is already stored.</exception>
 	Task<(ScoreRecord Score, UserStats Stats)> CreateWithPlayAsync(ScoreData data, long rankedScore);
 
+	/// <summary>Stores the performance points of a score.</summary>
+	/// <param name="id">The score id; nothing happens when no score has it.</param>
+	/// <param name="pp">The performance points: finite and at least zero.</param>
+	Task SetPpAsync(int id, double pp);
+
+	/// <summary>Lists passed scores in ascending order of id, for calculating their performance points.</summary>
+	/// <param name="afterId">Only scores with a greater id are listed.</param>
+	/// <param name="onlyMissing">Whether to list only the scores whose performance points are not calculated.</param>
+	/// <param name="limit">The most scores to list.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns>The scores; fewer than <paramref name="limit" /> when no more exist.</returns>
+	Task<IReadOnlyList<ScoreRecord>> ListForPpAsync(int afterId, bool onlyMissing, int limit,
+		CancellationToken ct = default);
+
 	/// <summary>Gets a score by id.</summary>
 	/// <param name="id">The score id.</param>
 	/// <param name="ct">A token that cancels the operation.</param>

@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Chat
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20261115003240_InitialCreate")]
+    [Migration("20261115010755_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

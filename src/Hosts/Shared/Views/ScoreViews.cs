@@ -4,6 +4,10 @@ using Basil.Domain.Scores;
 namespace Basil.Host.Shared.Views;
 
 /// <summary>A score as the API shows it.</summary>
+/// <remarks>
+///     <c>Pp</c> is <see langword="null" /> until it is calculated; <c>PpPending</c> says whether it is still expected
+///     (a failed score never has pp).
+/// </remarks>
 public sealed record ScoreView(
 	int Id,
 	int? UserId,
@@ -16,7 +20,9 @@ public sealed record ScoreView(
 	Grade Grade,
 	bool Passed,
 	bool FullCombo,
-	DateTimeOffset Timestamp)
+	DateTimeOffset Timestamp,
+	double? Pp,
+	bool PpPending)
 {
 	/// <summary>Describes a score.</summary>
 	public static ScoreView Of(ScoreRecord score)
@@ -24,6 +30,7 @@ public sealed record ScoreView(
 		var v = score.Value;
 		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods.ToString(),
 			v.LastState.TotalScore,
-			v.LastState.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.LastState.IsFullCombo, v.Timestamp);
+			v.LastState.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.LastState.IsFullCombo, v.Timestamp,
+			v.Pp, v.IsPassed && v.Pp is null);
 	}
 }

@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Shared
 {
     [DbContext(typeof(SharedDbContext))]
-    [Migration("20261115003215_InitialCreate")]
+    [Migration("20261115010733_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

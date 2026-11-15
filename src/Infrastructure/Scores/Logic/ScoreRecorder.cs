@@ -5,6 +5,7 @@ using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Shared.Exceptions;
+using Basil.Application.Shared.Paging;
 using Basil.Domain.Client;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Scores;
@@ -35,6 +36,8 @@ internal sealed class ScoreRecorder(
 		if (Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client) is { } rejection)
 			return new ScoreOutcome(rejection, null, null);
 
+		var previousBest = submission.Score.IsPassed ? await PreviousBestAsync(player, submission.Score) : null;
+
 		// Every passed score counts toward ranked score, whatever status the beatmapset is reported with.
 		ScoreRecord score;
 		UserStats current;
@@ -52,7 +55,16 @@ internal sealed class ScoreRecorder(
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
 			await replays.SaveAsync(score, loginClient.Version, replay);
 
-		return new ScoreOutcome(null, score, current);
+		return new ScoreOutcome(null, score, current, previousBest);
+	}
+
+	/// <summary>Finds the best passed score the player set on the beatmap in the same mode.</summary>
+	private async Task<ScoreRecord?> PreviousBestAsync(UserRecord player, ScoreData played)
+	{
+		if (played.BeatmapHash is not { } hash) return null;
+
+		var best = await scores.ListAsync(new ScoreQuery(player, hash, BestPerPlayer: true), new PageRequest(0, 1));
+		return best.Items.FirstOrDefault(score => score.Value.IsPassed && score.Value.Mode == played.Mode);
 	}
 
 	/// <summary>

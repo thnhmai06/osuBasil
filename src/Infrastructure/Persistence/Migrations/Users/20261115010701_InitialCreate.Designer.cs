@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Users
 {
     [DbContext(typeof(UsersDbContext))]
-    [Migration("20261115003145_InitialCreate")]
+    [Migration("20261115010701_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

@@ -58,6 +58,7 @@ public static class DependencyInjection
 		services.AddMultiplayerBackgroundWork();
 		services.AddBotInfrastructure();
 		services.AddBeatmapsBackgroundWork();
+		services.AddScoresBackgroundWork();
 		services.AddGatewayLimits();
 		return services.AddBasilApplication();
 	}

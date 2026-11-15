@@ -91,6 +91,25 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), hasNext);
 	}
 
+	/// <inheritdoc />
+	public Task SetPpAsync(int id, double pp)
+	{
+		return database.WriteAsync((ScoresDbContext context) => context.Scores.Where(score => score.Id == id)
+			.ExecuteUpdateAsync(setters => setters.SetProperty(score => score.Pp, (double?)pp)));
+	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<ScoreRecord>> ListForPpAsync(int afterId, bool onlyMissing, int limit,
+		CancellationToken ct = default)
+	{
+		var rows = await database.ReadAsync((ScoresDbContext context) => context.Scores
+			.Where(score => score.Id > afterId && score.IsPassed && (!onlyMissing || score.Pp == null))
+			.OrderBy(score => score.Id)
+			.Take(limit)
+			.ToListAsync(ct), ct);
+		return [.. rows.Select(ToScore)];
+	}
+
 	private async Task<(ScoreRecord Score, UserStats Stats)> StoreAsync(ScoreData data, long rankedScore)
 	{
 		var row = ToRow(0, data);
@@ -163,7 +182,8 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 			IsPassed = data.IsPassed,
 			IsFullCombo = data.LastState.IsFullCombo,
 			Timestamp = data.Timestamp.ToUniversalTime(),
-			Checksum = data.Checksum?.HashValue
+			Checksum = data.Checksum?.HashValue,
+			Pp = data.Pp
 		};
 	}
 
@@ -186,7 +206,8 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 				row.Timestamp)
 			with
 			{
-				Checksum = row.Checksum is { } checksum ? new Md5(checksum) : (Md5?)null
+				Checksum = row.Checksum is { } checksum ? new Md5(checksum) : (Md5?)null,
+				Pp = row.Pp
 			};
 	}
 }

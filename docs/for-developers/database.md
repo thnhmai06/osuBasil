@@ -31,7 +31,7 @@ earlier SQLite file to write in parallel, so a deployment needs a database serve
 | Server       | `settings` (one row per setting, shared context), `channels`, `menu_banners` | resident: loaded at startup, never released                           |
 | Beatmaps     | `beatmapsets`, `beatmaps`, counters `local_beatmapset`, `local_beatmap` | mirror the stored beatmapset files; local ids start at 1 000 000 000 |
 | Multiplayer  | `matches`, `rounds`, `match_events`, `round_scores`                         | `match_events` is append-only history                                 |
-| Scores       | `scores`, `user_stats`                                                      | a score belongs to its player                                         |
+| Scores       | `scores`, `user_stats`                                                      | a score belongs to its player; `scores.pp` is null until calculated   |
 
 Conventions: snake_case names, every time is `timestamptz` in UTC (the presentation converts it to local time), MD5
 values are lowercase hex text, an asset is stored as the canonical text of its `AssetReference`.

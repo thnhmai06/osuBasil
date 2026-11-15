@@ -18,7 +18,7 @@ the wire value. Nothing is derived, translated or configured in between.
 | `Supporter` | Downloading beatmapsets from the game client; osu!tourney also needs it |
 | `Tournament` | Managing any room, viewing private matches, creating rooms past the creation limit, posting in any room's chat, watching rooms (osu!tourney), managing and viewing hidden beatmapsets |
 | `Moderator` | Silencing accounts, adding notes, reading sessions and login history, messaging anyone, sending announcements, managing chat channels, managing screenshots |
-| `Developer` | Changing the server settings and reading diagnostics |
+| `Developer` | Changing the server settings, reading diagnostics, reloading beatmaps and calculating the pp of stored scores |
 | `Owner` | Managing accounts (create, delete, view deleted), setting privileges, managing server content |
 
 A check asks for the privilege that owns the action: `Lacks(UserPrivileges.Moderator)`. A check requires every bit it

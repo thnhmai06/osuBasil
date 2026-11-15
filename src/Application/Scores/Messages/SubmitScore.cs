@@ -15,11 +15,14 @@ namespace Basil.Application.Scores.Messages;
 ///     The seekable replay stream at its start, left open by the answer, or <see langword="null" /> for a
 ///     failed play.
 /// </param>
-/// <remarks>The answer is ok when the score was stored; otherwise rejected with the reason, or denied.</remarks>
+/// <remarks>
+///     The answer is ok when the score was stored, with what the player is told about it; otherwise rejected with the
+///     reason, or denied.
+/// </remarks>
 public sealed record SubmitScore(
 	StableConnection Actor,
 	Submission Submission,
 	BeatmapChecksums? Beatmap,
 	SubmittedClient Client,
 	Stream? Replay)
-	: IRequest<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection)>;
+	: IRequest<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection, ScoreReceipt? Receipt)>;

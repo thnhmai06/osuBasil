@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Scores
 {
     [DbContext(typeof(ScoresDbContext))]
-    [Migration("20261115003223_InitialCreate")]
+    [Migration("20261115010740_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -74,6 +74,9 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
 
                     b.Property<int>("NumMiss")
                         .HasColumnName("num_miss");
+
+                    b.Property<double?>("Pp")
+                        .HasColumnName("pp");
 
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnName("timestamp");

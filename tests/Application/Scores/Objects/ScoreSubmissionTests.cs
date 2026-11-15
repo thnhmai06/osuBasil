@@ -29,7 +29,7 @@ public sealed class ScoreSubmissionTests
 
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
-	private static Task<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection)> SubmitAsync(
+	private static Task<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection, ScoreReceipt? Receipt)> SubmitAsync(
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{
@@ -74,7 +74,7 @@ public sealed class ScoreSubmissionTests
 			await ScoreSubmissionFixture.CreateAsync(privileges: UserPrivilegesExtensions.Default &
 			                                                     ~UserPrivileges.Player);
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
 		Assert.False(result == ScoreSubmissionOutcome.Ok);
 		Assert.Equal(ScoreSubmissionOutcome.Denied, result);
@@ -99,7 +99,7 @@ public sealed class ScoreSubmissionTests
 			HashByClient = new Md5("cc362f4892f70954e6f38d1c967ba2b1")
 		};
 
-		var (result, rejection) = await SubmitAsync(f, submission);
+		var (result, rejection, _) = await SubmitAsync(f, submission);
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Null(rejection);
@@ -132,7 +132,7 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient() with { VersionDate = "20250101" };
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.VersionMismatch, rejection);
@@ -149,7 +149,7 @@ public sealed class ScoreSubmissionTests
 			Fingerprint = genuine.Fingerprint with { PathHash = new Md5("ffffffffffffffffffffffffffffffff") }
 		};
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.ClientHashMismatch, rejection);
@@ -162,7 +162,7 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient() with { UninstallId = "someone-else" };
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.UninstallerHashMismatch, rejection);
@@ -175,7 +175,7 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient() with { DiskSignature = "another-disk" };
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.DiskSignatureHashMismatch, rejection);
@@ -190,7 +190,7 @@ public sealed class ScoreSubmissionTests
 		var submission = new Submission
 			{ Score = score, Flags = OsuFlags.Clean, HashByClient = new Md5("00000000000000000000000000000000") };
 
-		var (result, rejection) = await SubmitAsync(f, submission);
+		var (result, rejection, _) = await SubmitAsync(f, submission);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, rejection);
@@ -207,7 +207,7 @@ public sealed class ScoreSubmissionTests
 			Score = genuine.Score with { LastState = genuine.Score.LastState with { TotalScore = 999_999 } }
 		};
 
-		var (_, rejection) = await SubmitAsync(f, tampered);
+		var (_, rejection, _) = await SubmitAsync(f, tampered);
 
 		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, rejection);
 	}
@@ -218,7 +218,7 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var client = ScoreSubmissionFixture.GenuineClient(new Md5("11111111111111111111111111111111"));
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.BeatmapHashMismatch, rejection);
@@ -230,7 +230,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
@@ -283,7 +283,7 @@ public sealed class ScoreSubmissionTests
 		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
 		Assert.Equal(ScoreSubmissionOutcome.Ok, (await SubmitAsync(f, submission)).Result);
 
-		var (result, rejection) = await SubmitAsync(f, submission, replay: Replay(100));
+		var (result, rejection, _) = await SubmitAsync(f, submission, replay: Replay(100));
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
 		Assert.Equal(ScoreRejectionReason.Duplicate, rejection);
@@ -326,7 +326,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Null(rejection);
@@ -363,12 +363,68 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
+	public async Task StoredScore_PpNotCalculatedYet()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+
+		var (result, _, receipt) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
+
+		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
+		Assert.Null(receipt!.Score.Value.Pp);
+		Assert.Null(Assert.Single(f.Scores).Value.Pp);
+	}
+
+	[Fact]
+	public async Task FirstPlay_ReceiptHasNoPreviousBestAndZeroTotalsBefore()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+
+		var (_, _, receipt) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
+
+		Assert.Null(receipt!.PreviousBest);
+		Assert.Equal(0, receipt.TotalScoreBefore);
+		Assert.Equal(0, receipt.RankedScoreBefore);
+		Assert.Equal(1000, receipt.Stats.TotalScore);
+	}
+
+	[Fact]
+	public async Task SecondPlayOfBeatmap_ReceiptNamesFirstAsPreviousBest()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+		var first = ScoreSubmissionFixture.PassedScore();
+		await SubmitAsync(f, f.Genuine(first));
+		var better = first with
+		{
+			LastState = first.LastState with { TotalScore = 1500 }, Timestamp = first.Timestamp.AddMinutes(5)
+		};
+
+		var (_, _, receipt) = await SubmitAsync(f, f.Genuine(better));
+
+		Assert.Equal(1, receipt!.PreviousBest!.Id);
+		Assert.Equal(1000, receipt.TotalScoreBefore);
+		Assert.Equal(1000, receipt.RankedScoreBefore);
+	}
+
+	[Fact]
+	public async Task FailedPlay_ReceiptRankedScoreUnchanged()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+		var failed = ScoreSubmissionFixture.PassedScore() with { IsPassed = false, Grade = Grade.F };
+
+		var (_, _, receipt) = await SubmitAsync(f, f.Genuine(failed));
+
+		Assert.Null(receipt!.Score.Value.Pp);
+		Assert.Equal(0, receipt.RankedScoreBefore);
+		Assert.Equal(0, receipt.Stats.RankedScore);
+	}
+
+	[Fact]
 	public async Task FailedPlay_TotalNoRank()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var failed = ScoreSubmissionFixture.PassedScore() with { IsPassed = false, Grade = Grade.F };
 
-		var (result, _) = await SubmitAsync(f, f.Genuine(failed));
+		var (result, _, _) = await SubmitAsync(f, f.Genuine(failed));
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		var stats = f.StatsOf(GameMode.Standard)!;
@@ -434,7 +490,7 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		using var replay = Replay(length);
 
-		var (result, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), replay: replay);
+		var (result, _, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), replay: replay);
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Single(f.Scores);
@@ -458,7 +514,7 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 
-		var (result, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
+		var (result, _, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
 		Assert.Empty(f.Replays);
@@ -498,7 +554,7 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		await StartRoundAsync(f);
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
@@ -535,7 +591,7 @@ public sealed class ScoreSubmissionTests
 		Assert.True(await room.ScopeTo(f.Client).Rounds.CompleteAsync() == RoomOutcome.Ok);
 		Assert.True(await room.ScopeTo(f.Client).Members.LeaveAsync() == RoomOutcome.Ok);
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, result);
@@ -550,7 +606,7 @@ public sealed class ScoreSubmissionTests
 		Assert.True(await room.ScopeTo(f.Client).Rounds.CompleteAsync() == RoomOutcome.Ok);
 		f.App.Clock.Advance(ScoreWait);
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);
@@ -564,7 +620,7 @@ public sealed class ScoreSubmissionTests
 		await StartRoundAsync(f);
 		var other = new Md5("11111111111111111111111111111111");
 
-		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
+		var (result, rejection, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			ScoreSubmissionFixture.GenuineClient(other), unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);

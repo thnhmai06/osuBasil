@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
 {
     [DbContext(typeof(MultiplayerDbContext))]
-    [Migration("20261115003232_InitialCreate")]
+    [Migration("20261115010748_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

@@ -94,6 +94,15 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
+	public async Task ScoresRecalculate_StartsCalculation()
+	{
+		var (code, text) = await fixture.RunAsync("scores recalculate");
+
+		Assert.Equal(0, code);
+		Assert.Contains(ScoreReplies.RecalculationStarted, text);
+	}
+
+	[Fact]
 	public async Task Version_AppRulesetOnly()
 	{
 		var (code, text) = await fixture.RunAsync("version");

@@ -111,6 +111,19 @@ public sealed record ScoreData(
 	public Md5? Checksum { get; init; }
 
 	/// <summary>
+	///     Gets the performance points of the play, or <see langword="null" /> when they have not been calculated
+	///     (a failed play never has them). They are for display and never rank or decide anything.
+	/// </summary>
+	/// <exception cref="ArgumentOutOfRangeException">The value is not finite or is negative.</exception>
+	public double? Pp
+	{
+		get;
+		init => field = value is { } pp && !(double.IsFinite(pp) && pp >= 0)
+			? throw new ArgumentOutOfRangeException(nameof(value), value, "Performance points must be finite and not negative.")
+			: value;
+	}
+
+	/// <summary>
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>
 	public double Accuracy => LastState.HitCounts.CalculateAccuracy(Mode, Mods);

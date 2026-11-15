@@ -82,4 +82,30 @@ public class ScoreDataTests
 
 		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { Grade = (Grade)200 });
 	}
+
+	[Fact]
+	public void NewScore_PpNotCalculated()
+	{
+		Assert.Null(Make().Pp);
+	}
+
+	[Theory]
+	[InlineData(0d)]
+	[InlineData(123.45)]
+	public void FiniteNonNegativePp_Accepted(double pp)
+	{
+		Assert.Equal(pp, (Make() with { Pp = pp }).Pp);
+	}
+
+	[Theory]
+	[InlineData(-0.01)]
+	[InlineData(double.NaN)]
+	[InlineData(double.PositiveInfinity)]
+	[InlineData(double.NegativeInfinity)]
+	public void InvalidPp_Throws(double pp)
+	{
+		var score = Make();
+
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { Pp = pp });
+	}
 }

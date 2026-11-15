@@ -1,0 +1,81 @@
+using Basil.Application.Scores.Persistence;
+using Basil.Domain.Client;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Basil.Host.Rest.Tests.Scores;
+
+/// <summary>How the API shows the pp of a score, and who may start calculating it.</summary>
+[Collection("REST host")]
+public sealed class ScorePerformanceTests(RestHostFixture fixture)
+{
+	private async Task<ScoreRecord> StoreAsync(int userId, double? pp, bool passed = true)
+	{
+		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId,
+			null, GameMode.Standard, GameMods.NoMod,
+			new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, true), Grade.S, passed,
+			new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)) { Pp = pp });
+	}
+
+	private async Task<System.Text.Json.Nodes.JsonNode> GetAsync(ScoreRecord score)
+	{
+		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
+		var (_, envelope) = await client.CallAsync(HttpMethod.Get, $"/v1/scores/{score.Id}");
+		return envelope!["data"]!;
+	}
+
+	[Fact]
+	public async Task PassedScoreWithoutPp_NullAndPending()
+	{
+		var user = await fixture.Host.CreateUserAsync("PpPending");
+
+		var data = await GetAsync(await StoreAsync(user.Id, null));
+
+		Assert.Null(data["pp"]);
+		Assert.True((bool)data["ppPending"]!);
+	}
+
+	[Fact]
+	public async Task ScoreWithPp_ShowsItNotPending()
+	{
+		var user = await fixture.Host.CreateUserAsync("PpDone");
+
+		var data = await GetAsync(await StoreAsync(user.Id, 250.5));
+
+		Assert.Equal(250.5, (double)data["pp"]!);
+		Assert.False((bool)data["ppPending"]!);
+	}
+
+	[Fact]
+	public async Task FailedScore_NullAndNeverPending()
+	{
+		var user = await fixture.Host.CreateUserAsync("PpFailed");
+
+		var data = await GetAsync(await StoreAsync(user.Id, null, false));
+
+		Assert.Null(data["pp"]);
+		Assert.False((bool)data["ppPending"]!);
+	}
+
+	[Fact]
+	public async Task Recalculate_DeveloperOnly()
+	{
+		var (developer, _) = await fixture.SignInAsync("PpDeveloper",
+			UserPrivilegesExtensions.Default | UserPrivileges.Developer);
+		var (plain, _) = await fixture.SignInAsync("PpPlain");
+		using (developer)
+		using (plain)
+		using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
+		{
+			var (unauthorized, _) = await anon.CallAsync(HttpMethod.Post, "/v1/scores/performance/recalculate");
+			var (denied, _) = await plain.CallAsync(HttpMethod.Post, "/v1/scores/performance/recalculate");
+			var (accepted, _) = await developer.CallAsync(HttpMethod.Post, "/v1/scores/performance/recalculate");
+
+			Assert.Equal(401, unauthorized);
+			Assert.Equal(403, denied);
+			Assert.Equal(202, accepted);
+		}
+	}
+}

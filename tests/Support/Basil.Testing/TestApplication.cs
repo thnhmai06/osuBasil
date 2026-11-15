@@ -14,8 +14,10 @@ using Basil.Application.Content.Storage;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Services;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
@@ -120,6 +122,7 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IMatchEventRepository>(matchEvents);
 		services.AddSingleton<IRulesetUpdater, NoRulesets>();
 		services.AddSingleton<IBeatmapReloader, NoReload>();
+		services.AddSingleton<IScorePerformanceRecalculator, NoRecalculation>();
 		configure?.Invoke(services);
 		services.AddUsersLogic();
 		services.AddScoresLogic();
@@ -458,6 +461,17 @@ public sealed class TestApplication : IDisposable
 		public bool Running => false;
 
 		public bool TryStart()
+		{
+			return true;
+		}
+	}
+
+	/// <summary>Stands in for the calculation of pp, which reads the stored scores and beatmaps.</summary>
+	private sealed class NoRecalculation : IScorePerformanceRecalculator
+	{
+		public bool Running => false;
+
+		public bool TryStart(ScorePerformanceScope scope)
 		{
 			return true;
 		}

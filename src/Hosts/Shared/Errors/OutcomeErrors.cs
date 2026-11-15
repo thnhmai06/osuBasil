@@ -2,6 +2,7 @@ using System.Globalization;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -110,7 +111,7 @@ public static class OutcomeErrors
 			BeatmapsetOutcome beatmapset => beatmapset == BeatmapsetOutcome.NotFound
 				? ErrorKind.NotFound
 				: ErrorKind.Locked,
-			RulesetOutcome => ErrorKind.Conflict,
+			RulesetOutcome or ScorePerformanceOutcome => ErrorKind.Conflict,
 			ConnectionOutcome connection => connection == ConnectionOutcome.Rejected
 				? ErrorKind.Invalid
 				: ErrorKind.Conflict,

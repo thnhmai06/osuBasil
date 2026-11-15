@@ -41,7 +41,7 @@ public sealed class ScopedScoreSubmitterTests
 		var user = await app.CreateUserAsync("UnknownMap", "password");
 		var client = Assert.IsType<StableConnection>(await app.LoginAsync(user, SessionType.Stable));
 
-		var (result, rejection) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
+		var (result, rejection, _) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
 			.SubmitAsync(Submission(), null, Client(), null, TestContext.Current.CancellationToken);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result);

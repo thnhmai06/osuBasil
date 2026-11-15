@@ -63,6 +63,9 @@ internal sealed class ScoreRow
 
 	/// <summary>The submission checksum that identifies the play and prevents it from being stored twice.</summary>
 	public string? Checksum { get; set; }
+
+	/// <summary>The performance points of the play, or <see langword="null" /> when they are not calculated.</summary>
+	public double? Pp { get; set; }
 }
 
 internal sealed class ScoreRowConfiguration : IEntityTypeConfiguration<ScoreRow>

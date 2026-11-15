@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Content
 {
     [DbContext(typeof(ContentDbContext))]
-    [Migration("20261115003208_InitialCreate")]
+    [Migration("20261115010725_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

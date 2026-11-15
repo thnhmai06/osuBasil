@@ -243,11 +243,11 @@ internal static class OsuWebRoutes
 			var submission = ToSubmission(data, beatmapHash);
 			anticheat.Report(client, submission.Flags);
 			await using var replay = OpenReplay(context);
-			var (result, _) = await sender.Send(new SubmitScore(client, submission,
+			var (result, _, receipt) = await sender.Send(new SubmitScore(client, submission,
 				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay), ct);
-			return Text(result == ScoreSubmissionOutcome.Ok
-				? "beatmapId:0|beatmapSetId:0|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:\n"
-				: "error: no");
+			return Text(result == ScoreSubmissionOutcome.Ok && submission.Score.IsPassed
+				? SubmissionCharts.Build(receipt!, known, $"{context.Request.Scheme}://{context.Request.Host}")
+				: OsuWebReplies.SubmissionRefused);
 		}
 		catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidDataException
 			                           or OverflowException or InvalidOperationException)

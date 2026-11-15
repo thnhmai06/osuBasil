@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
 {
     [DbContext(typeof(BeatmapsDbContext))]
-    [Migration("20261115003200_InitialCreate")]
+    [Migration("20261115010717_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

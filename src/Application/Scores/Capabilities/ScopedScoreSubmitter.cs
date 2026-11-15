@@ -46,7 +46,7 @@ public readonly struct ScopedScoreSubmitter
 	/// </param>
 	/// <param name="ct">A token that cancels the submission.</param>
 	/// <returns>
-	///     Ok when the score was stored; otherwise Rejected with the rejection, or the privileges the client lacks.
+	///     Ok with the receipt when the score was stored; otherwise Rejected with the rejection, or Denied.
 	/// </returns>
 	/// <remarks>
 	///     Needs <see cref="UserPrivileges.Player" />. A score on a beatmap the server does not have is taken only
@@ -55,7 +55,7 @@ public readonly struct ScopedScoreSubmitter
 	///     recorded login. A submission whose checksum was already stored is refused. Only a passed play keeps its
 	///     replay, and only when the replay is at least 24 bytes long.
 	/// </remarks>
-	public async Task<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection)> SubmitAsync(
+	public async Task<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection, ScoreReceipt? Receipt)> SubmitAsync(
 		Submission submission,
 		BeatmapChecksums? beatmap,
 		SubmittedClient client,
@@ -63,7 +63,7 @@ public readonly struct ScopedScoreSubmitter
 		CancellationToken ct = default)
 	{
 		if (Lacks(UserPrivileges.Player))
-			return (ScoreSubmissionOutcome.Denied, null);
+			return (ScoreSubmissionOutcome.Denied, null, null);
 
 		return await _submitter.SubmitAsync(Actor, submission, beatmap, client, replay, ct);
 	}

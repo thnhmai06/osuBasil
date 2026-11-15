@@ -6,6 +6,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Shared.Exceptions;
+using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
@@ -80,6 +81,17 @@ public sealed class ScoreSubmissionFixture : IDisposable
 				known.TotalScore += data.LastState.TotalScore;
 				known.RankedScore += call.ArgAt<long>(1);
 				return Task.FromResult((record, known));
+			});
+
+		provider.GetRequiredService<IScoreRepository>()
+			.ListAsync(Arg.Any<ScoreQuery>(), Arg.Any<PageRequest>(), Arg.Any<CancellationToken>())
+			.Returns(call =>
+			{
+				var query = call.Arg<ScoreQuery>();
+				var best = _scores.Where(score => score.Value.UserId == query.Player?.Id &&
+				                                  score.Value.BeatmapHash == query.BeatmapHash)
+					.OrderByDescending(score => score.Value.LastState.TotalScore).Take(1).ToList();
+				return Task.FromResult(new Page<ScoreRecord>(best, false));
 			});
 
 		provider.GetRequiredService<IRoundScoreRepository>()

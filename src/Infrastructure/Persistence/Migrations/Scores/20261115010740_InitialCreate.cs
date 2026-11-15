@@ -45,7 +45,8 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                     is_passed = table.Column<bool>(nullable: false),
                     is_full_combo = table.Column<bool>(nullable: false),
                     timestamp = table.Column<DateTimeOffset>(nullable: false),
-                    checksum = table.Column<string>(maxLength: 128, nullable: true)
+                    checksum = table.Column<string>(maxLength: 128, nullable: true),
+                    pp = table.Column<double>(nullable: true)
                 },
                 constraints: table =>
                 {

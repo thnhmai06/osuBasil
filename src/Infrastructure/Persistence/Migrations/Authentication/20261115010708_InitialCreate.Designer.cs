@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Basil.Infrastructure.Persistence.Migrations.Authentication
 {
     [DbContext(typeof(AuthenticationDbContext))]
-    [Migration("20261115003153_InitialCreate")]
+    [Migration("20261115010708_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

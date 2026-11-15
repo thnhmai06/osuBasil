@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects;
+using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
@@ -78,6 +79,7 @@ public sealed class OutcomeErrorsTests
 		foreach (var (k, v) in Channels) rows.Add("Channel:" + k, v.ToString());
 		foreach (var (k, v) in Servers) rows.Add("Server:" + k, v.ToString());
 		foreach (var (k, v) in Connections) rows.Add("Connection:" + k, v.ToString());
+		rows.Add("ScorePerformance:Busy", Conflict.ToString());
 		rows.Add("Beatmapset:Locked", Locked.ToString());
 		rows.Add("Beatmapset:NotFound", NotFound.ToString());
 		return rows;
@@ -95,6 +97,7 @@ public sealed class OutcomeErrorsTests
 			"Channel" => OutcomeErrors.Describe(Enum.Parse<ChannelOutcome>(name)),
 			"Server" => OutcomeErrors.Describe(Enum.Parse<ServerOutcome>(name)),
 			"Connection" => OutcomeErrors.Describe(Enum.Parse<ConnectionOutcome>(name)),
+			"ScorePerformance" => OutcomeErrors.Describe(Enum.Parse<ScorePerformanceOutcome>(name)),
 			_ => OutcomeErrors.Describe(Enum.Parse<BeatmapsetOutcome>(name))
 		};
 

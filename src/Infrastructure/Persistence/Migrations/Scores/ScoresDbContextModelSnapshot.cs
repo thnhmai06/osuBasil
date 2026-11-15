@@ -72,6 +72,9 @@ namespace Basil.Infrastructure.Persistence.Migrations.Scores
                     b.Property<int>("NumMiss")
                         .HasColumnName("num_miss");
 
+                    b.Property<double?>("Pp")
+                        .HasColumnName("pp");
+
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnName("timestamp");
 
