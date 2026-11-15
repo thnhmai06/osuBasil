@@ -33,47 +33,43 @@ public sealed class ScorePerformanceTests(RestHostFixture fixture)
 	}
 
 	[Fact]
-	public async Task PassedScoreWithoutPp_NullAndPending()
+	public async Task ScoreWithoutPp_ShowsNull()
 	{
 		var user = await fixture.Host.CreateUserAsync("PpPending");
 
 		var data = await GetAsync(await StoreAsync(user.Id, null, beatmap: await ServerBeatmapAsync()));
 
 		Assert.Null(data["pp"]);
-		Assert.True((bool)data["ppPending"]!);
 	}
 
 	[Fact]
-	public async Task ScoreWithPp_ShowsItNotPending()
+	public async Task ScoreWithPp_ShowsIt()
 	{
 		var user = await fixture.Host.CreateUserAsync("PpDone");
 
 		var data = await GetAsync(await StoreAsync(user.Id, 250.5));
 
 		Assert.Equal(250.5, (double)data["pp"]!);
-		Assert.False((bool)data["ppPending"]!);
 	}
 
 	[Fact]
-	public async Task ScoreOnBeatmapTheServerLacks_NullAndNeverPending()
+	public async Task ScoreOnBeatmapTheServerLacks_ShowsNull()
 	{
 		var user = await fixture.Host.CreateUserAsync("PpUnknownMap");
 
 		var data = await GetAsync(await StoreAsync(user.Id, null, beatmap: new Md5(new string('a', 32))));
 
 		Assert.Null(data["pp"]);
-		Assert.False((bool)data["ppPending"]!);
 	}
 
 	[Fact]
-	public async Task FailedScore_NullAndNeverPending()
+	public async Task FailedScore_ShowsNull()
 	{
 		var user = await fixture.Host.CreateUserAsync("PpFailed");
 
 		var data = await GetAsync(await StoreAsync(user.Id, null, false));
 
 		Assert.Null(data["pp"]);
-		Assert.False((bool)data["ppPending"]!);
 	}
 
 	[Fact]

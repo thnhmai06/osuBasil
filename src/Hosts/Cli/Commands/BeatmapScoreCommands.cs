@@ -198,7 +198,7 @@ internal static class BeatmapScoreCommands
 
 		call.PrintPage(
 			new Page<ScoreView>(
-				[.. await ScoreView.DescribeAsync(call.Get<ISender>(), listing.Scores!.Items, call.CancellationToken)],
+				[.. listing.Scores!.Items.Select(ScoreView.Of)],
 				listing.Scores.HasNext), page);
 		return ExitCodes.Success;
 	}
@@ -217,7 +217,7 @@ internal static class BeatmapScoreCommands
 			return call.NotFound("score");
 
 		call.Formatter.Print(call.Output,
-			(await ScoreView.DescribeAsync(call.Get<ISender>(), [score], call.CancellationToken))[0]);
+			ScoreView.Of(score));
 		return ExitCodes.Success;
 	}
 }
