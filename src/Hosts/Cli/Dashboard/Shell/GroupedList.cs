@@ -116,11 +116,8 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		return (first, last);
 	}
 
-	/// <summary>Occurs when the operator opens the selected item with Enter, a double click or the mouse.</summary>
+	/// <summary>Occurs when the operator opens the selected item with Enter or a double click.</summary>
 	public event Action<T>? Activated;
-
-	/// <summary>Gets or sets whether a single click on an item opens it, instead of the second click.</summary>
-	public bool ActivateOnClick { get; init; }
 
 	/// <summary>Gets the column that the last activation hit, or -1 when it came from the keyboard.</summary>
 	public int ActivatedColumn { get; private set; } = -1;
@@ -158,6 +155,15 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		if (_selected < 0) _selected = _rows.Count > 0 ? 0 : -1;
 		Settle();
 		Revision++;
+	}
+
+	/// <summary>Finds a listed item by its id, whether or not its group is open.</summary>
+	/// <param name="id">The id read by the key function.</param>
+	/// <param name="item">The item, when it is listed.</param>
+	public bool TryFind(string id, out T item)
+	{
+		item = _sections.SelectMany(section => section.Items).FirstOrDefault(candidate => _key(candidate) == id)!;
+		return item is not null;
 	}
 
 	/// <summary>Selects the first item.</summary>
@@ -325,9 +331,9 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			return;
 		}
 
-		var again = index == _selected;
+		// A click selects; a double click opens.
 		MoveTo(index);
-		if (again || ActivateOnClick || e.ClickCount >= 2)
+		if (e.ClickCount >= 2)
 		{
 			ActivatedColumn = ColumnAt(e.LocalX);
 			Activated?.Invoke(_rows[index].Item!);

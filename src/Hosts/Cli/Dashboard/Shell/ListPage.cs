@@ -39,6 +39,8 @@ internal sealed class ListPage<T>
 	private const int CompactWidth = 100;
 	private readonly TimeProvider _clock;
 	private readonly Func<T, DetailView> _detailOf;
+	private readonly Func<T, string> _keyOf;
+	private string? _shownKey;
 	private readonly DetailPanel _detail;
 	private readonly Dialogs _dialogs;
 	private readonly ToastTray _toasts;
@@ -63,6 +65,7 @@ internal sealed class ListPage<T>
 	private string? _pendingSelect;
 	private bool _focusList;
 	private bool _stripSlash;
+	private readonly SearchBox _searchBox;
 	private TextBox? _search;
 	private TerminalApp? _app;
 
@@ -77,25 +80,30 @@ internal sealed class ListPage<T>
 		_detailOf = detail;
 		_dialogs = kit.Dialogs;
 		_toasts = kit.Toasts;
-		_detail = new DetailPanel(title, glyphs, new Palette(noColor), kit.Dialogs, kit.Toasts, post);
+		_detail = new DetailPanel(title, glyphs, new Palette(noColor), kit.Dialogs, kit.Toasts, post, kit.Changes);
+		_keyOf = key;
+		kit.Changes.Occurred += OnChanged;
 		_detail.Closed += () => _app?.Focus(_list);
 		_glyphs = glyphs;
 		_noColor = noColor;
 		_clock = clock;
 		_post = post;
 		_logger = logger;
-		_list = new GroupedList<T>(columns, key, glyphs, noColor, clock) { ActivateOnClick = true };
+		_list = new GroupedList<T>(columns, key, glyphs, noColor, clock);
 		_list.Activated += _ => Activate(columns);
 		_list.NearEnd += LoadMore;
 		_list.KeyHook = OnListKey;
 		_list.Moved += () =>
 		{
-			if (_detail.IsOpen && _list.HasSelection) _detail.Show(_detailOf(_list.Selected!));
+			if (!_detail.IsOpen || !_list.HasSelection) return;
+
+			_shownKey = _keyOf(_list.Selected!);
+			_detail.Show(_detailOf(_list.Selected!));
 		};
-		_search = new TextBox().Text(_query).Placeholder("search (? for help)");
+		_searchBox = new SearchBox(_query, "search (? for help)", glyphs);
+		_search = _searchBox.Box;
 		_search.KeyDown((_, e) => OnSearchKey(e));
-		var searchRow = new HStack(new TextBlock($"{(glyphs.Ascii ? "?" : "⌕")} "), _search.Stretch());
-		var body = new VStack(searchRow, new ScrollViewer(_list).Stretch()).Spacing(0);
+		var body = new VStack(_searchBox.Row, new ScrollViewer(_list).Stretch()).Spacing(0);
 		var frame = new Group(title).Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0)).Content(body)
 			.BottomLeftText(() => _footer.Value).Stretch();
 		// The detail frame stands under the page, across its whole width, directly above the status bar.
@@ -132,6 +140,7 @@ internal sealed class ListPage<T>
 	/// <summary>Lets time pass: starts the search once the text stood still long enough.</summary>
 	public void Tick()
 	{
+		_searchBox.Tick();
 		if (_app is { } host && View.Bounds.Width > 0) _detail.Fit(host.Root.Bounds.Width, host.Root.Bounds.Height);
 		if (_focusList && _app is not null && View.Bounds.Width > 0)
 		{
@@ -184,6 +193,12 @@ internal sealed class ListPage<T>
 	{
 		_pendingSelect = id;
 		if (_list.Select(id)) _pendingSelect = null;
+	}
+
+	// An action changed the server: the list reads again once it has been loaded, which also refreshes the detail.
+	private void OnChanged()
+	{
+		if (_version > 0) Start();
 	}
 
 	private void LoadMore()
@@ -239,8 +254,11 @@ internal sealed class ListPage<T>
 		var total = data.Sum(section => section.Items.Count);
 		var (first, last) = _list.VisibleItems();
 		_footer.Value = total == 0 ? "no items" : $"show {first}–{last} in {total}{(_more ? "+" : string.Empty)}";
-		if (_detail.IsOpen && _list.HasSelection) _detail.Update(_detailOf(_list.Selected!));
-		else if (_detail.IsOpen) _detail.Close();
+		if (!_detail.IsOpen || _shownKey is not { } shown) return;
+
+		// What the detail shows was removed (a closed session, a deleted account): the detail closes with it.
+		if (_list.TryFind(shown, out var item)) _detail.Update(_detailOf(item));
+		else _detail.Close();
 	}
 
 	private bool OnListKey(KeyEventArgs e)
@@ -324,8 +342,16 @@ internal sealed class ListPage<T>
 		{
 			var at = _list.ActivatedColumn;
 			var link = at >= 0 && at < columns.Count ? columns[at].Link?.Invoke(_list.Selected!) : null;
-			if (link is { } read) _detail.ShowAsync(read.Title, read.Read);
-			else _detail.Show(_detailOf(_list.Selected!));
+			if (link is { } read)
+			{
+				_shownKey = null;
+				_detail.ShowAsync(read.Title, read.Read);
+			}
+			else
+			{
+				_shownKey = _keyOf(_list.Selected!);
+				_detail.Show(_detailOf(_list.Selected!));
+			}
 		}
 		catch (Exception exception)
 		{

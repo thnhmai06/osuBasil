@@ -16,7 +16,7 @@ public sealed class DetailPanelTests
 		var palette = new Palette(false);
 		post ??= action => action();
 		var toasts = new ToastTray(glyphs, palette, new FakeTimeProvider(), post);
-		return new DetailPanel("Users", glyphs, palette, new Dialogs(), toasts, post);
+		return new DetailPanel("Users", glyphs, palette, new Dialogs(), toasts, post, new Changes());
 	}
 
 	private static List<Button> Buttons(DetailPanel panel)

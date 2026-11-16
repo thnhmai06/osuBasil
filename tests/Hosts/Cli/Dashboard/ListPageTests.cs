@@ -24,7 +24,7 @@ public sealed class ListPageTests
 		var source = new Source();
 		var page = new ListPage<string>("T", "help", [new Column<string>("X", 0, s => s)], s => s, source,
 			_ => new DetailView(string.Empty, [], []), new Glyphs(false),
-			new ShellKit(new Dialogs(), new Basil.Host.Cli.Dashboard.Shell.Toasts.ToastTray(new Glyphs(false), new Palette(false), clock, action => action())),
+			new ShellKit(new Dialogs(), new Basil.Host.Cli.Dashboard.Shell.Toasts.ToastTray(new Glyphs(false), new Palette(false), clock, action => action()), new Changes()),
 			false, clock, action => action(), NullLogger.Instance);
 		return (page, source, clock);
 	}

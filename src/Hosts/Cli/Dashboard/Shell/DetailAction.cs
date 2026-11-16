@@ -12,6 +12,17 @@ internal sealed record DetailAction(string Label, Action Run, DetailActionKind K
 	/// <summary>Gets what the frame shows when this action is a step whose view must be read first; the frame shows a loading state meanwhile.</summary>
 	public Func<Task<DetailView>>? NextAsync { get; init; }
 
+	/// <summary>Gets the actions this one opens in a dialog, or <see langword="null" /> when it is not a menu.</summary>
+	public IReadOnlyList<DetailAction>? Children { get; init; }
+
+	/// <summary>Makes an action that opens a dialog with more actions.</summary>
+	/// <param name="label">The button text.</param>
+	/// <param name="children">The actions in the dialog.</param>
+	public static DetailAction Menu(string label, IReadOnlyList<DetailAction> children)
+	{
+		return new DetailAction(label, () => { }) { Children = children };
+	}
+
 	/// <summary>Makes an action that opens the detail or the list of another tab inside the frame.</summary>
 	/// <param name="tab">The name of the other tab; the button reads <c>tab…</c>.</param>
 	/// <param name="next">Builds what the frame shows next.</param>

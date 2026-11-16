@@ -27,8 +27,10 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// <param name="Open">Whether the room is open now, so it can be changed.</param>
 /// <param name="Locked">Whether nobody else can join.</param>
 /// <param name="Slots">The seated players: slot number, name, whether host, and the slot's status.</param>
+/// <param name="Rules">The settings of an open room; <see langword="null" /> for a closed one.</param>
 internal sealed record RoomItem(int Id, string Name, int Players, int Size, string State, string Host,
-	string Creator, string Referees, ulong HostMask, ulong CreatorMask, bool Open, bool Locked, IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots);
+	string Creator, string Referees, ulong HostMask, ulong CreatorMask, bool Open, bool Locked, IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots,
+	RoomRules? Rules = null);
 
 /// <summary>Reads the rooms: the open ones from memory, the closed ones from the match history.</summary>
 internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomItem>
@@ -55,7 +57,11 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 						.. room.Slots.Where(slot => slot.Player is not null).Select(slot => (slot.Index,
 							slot.Player!.Record.Value.Name, ReferenceEquals(host, slot.Player.User),
 							slot.Status?.ToString() ?? "open"))
-					]);
+					],
+					new RoomRules(room.Settings.IsPrivate, room.Settings.Password.Length > 0,
+						room.Settings.Beatmap?.Name ?? string.Empty, room.Settings.MatchSettings.Mode.ToString(),
+						room.Settings.MatchSettings.Mods.ToString(), room.Settings.MatchSettings.Freemods,
+						room.Settings.MatchSettings.TeamType.ToString(), room.Settings.MatchSettings.WinCondition.ToString()));
 			}).ToList();
 		var openIds = open.Select(room => room.Id).ToHashSet();
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync(ct);
@@ -85,9 +91,10 @@ internal sealed class LobbyTab : ITabView, ISearchable
 	private bool _opened;
 
 	/// <summary>Creates the tab.</summary>
-	public LobbyTab(IServiceProvider services, UserDetails users, ConsoleTab console, Action<string> openChat, CliOptions options,
+	public LobbyTab(IServiceProvider services, UserDetails users, CommandActions actions, Action<string> openChat, CliOptions options,
 		Glyphs glyphs, ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
+		var details = new RoomDetails(users, actions, openChat, kit.Dialogs);
 		_page = new ListPage<RoomItem>("Lobby", Help,
 		[
 			new Column<RoomItem>("ID", 8, r => r.Id.ToString()) { Right = true },
@@ -102,7 +109,7 @@ internal sealed class LobbyTab : ITabView, ISearchable
 			{
 				Link = r => (r.Creator, () => users.OfAsync(UserReference.ByName(r.Creator)))
 			}
-		], r => r.Id.ToString(), new LobbySource(services), room => Detail(room, users, console, openChat, options, kit.Dialogs),
+		], r => r.Id.ToString(), new LobbySource(services), details.Of,
 			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
@@ -149,7 +156,7 @@ internal sealed class LobbyTab : ITabView, ISearchable
 		_page.ShowHelp();
 	}
 
-	private static Ink State(RoomItem room)
+	internal static Ink State(RoomItem room)
 	{
 		return room.State switch
 		{
@@ -158,63 +165,5 @@ internal sealed class LobbyTab : ITabView, ISearchable
 			"closed" => Ink.RoomClosed,
 			_ => Ink.RoomOpen
 		};
-	}
-
-	private static DetailView Detail(RoomItem room, UserDetails users, ConsoleTab console, Action<string> openChat, CliOptions options,
-		Dialogs dialogs)
-	{
-		var fields = new List<(string, string, Ink)>
-		{
-			("ID", room.Id.ToString(), Ink.Text), ("Name", room.Name, Ink.Text), ("State", room.State, State(room)),
-			("Creator", room.Creator, UserInk.Of((UserPrivileges)room.CreatorMask)), ("Referees", room.Referees.Length == 0 ? "-" : room.Referees, Ink.Text)
-		};
-		fields.AddRange(room.Slots.Select(slot =>
-			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)));
-		var actions = new List<DetailAction>();
-		if (room.Host.Length > 0) actions.Add(DetailAction.OpenAsync("Host", () => users.OfAsync(UserReference.ByName(room.Host))));
-		actions.Add(DetailAction.OpenAsync("Creator", () => users.OfAsync(UserReference.ByName(room.Creator))));
-		if (room.Slots.Count > 0) actions.Add(DetailAction.Open("Players", () => Players(room, users)));
-		if (!room.Open) return new DetailView($"#{room.Id}", fields, actions);
-
-		var id = room.Id;
-		actions.Add(new DetailAction("Chat…", () => openChat($"#mp_{id}"), DetailActionKind.Navigate));
-		if (!options.Editable) return new DetailView($"#{room.Id}", fields, actions);
-
-		actions.AddRange(new DetailAction[]
-		{
-			room.Locked
-				? new DetailAction("Unlock", () => Run(console, $"rooms {id} unlock"))
-				: new DetailAction("Lock", () => Run(console, $"rooms {id} lock")),
-			new("Kick", () => AskUser(console, dialogs, "Kick", id, "kick"), DetailActionKind.Destructive),
-			new("Ban", () => AskUser(console, dialogs, "Ban", id, "ban"), DetailActionKind.Destructive),
-			new("Set host", () => AskUser(console, dialogs, "Set host", id, "host")),
-			new("Add referee", () => AskUser(console, dialogs, "Add referee", id, "addref")),
-			new("Remove referee", () => AskUser(console, dialogs, "Remove referee", id, "removeref")),
-			new("Close room", () => Run(console, $"rooms {id} close"), DetailActionKind.Destructive)
-		});
-		return new DetailView($"#{room.Id}", fields, actions);
-	}
-
-	// One navigation button per seated player, each opening that player's detail.
-	private static DetailView Players(RoomItem room, UserDetails users)
-	{
-		var fields = room.Slots.Select(slot =>
-			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)).ToList();
-		var actions = room.Slots.Select(slot => DetailAction.OpenAsync(slot.Player,
-			() => users.OfAsync(UserReference.ByName(slot.Player)))).ToList();
-		return new DetailView("Players", fields, actions);
-	}
-
-	private static void Run(ConsoleTab console, string line)
-	{
-		console.RunCommand(line);
-	}
-
-	private static void AskUser(ConsoleTab console, Dialogs dialogs, string title, int room, string verb)
-	{
-		dialogs.Form(title, [("User id", string.Empty)], values =>
-		{
-			if (int.TryParse(values[0], out var user)) console.RunCommand($"rooms {room} {verb} --user {user}");
-		});
 	}
 }

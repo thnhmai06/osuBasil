@@ -23,8 +23,9 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// <param name="Managed">The rooms it created or referees.</param>
 /// <param name="Activity">What the osu! client reports it is doing, or empty.</param>
 /// <param name="Silenced">Whether it is silenced now.</param>
+/// <param name="Granted">The privilege flags stored on the account, as a number; the ones in force now may be fewer.</param>
 internal sealed record UserItem(int Id, string Name, string Country, string Privileges, ulong Mask,
-	string Connections, string Room, string Managed, string Activity, bool Silenced);
+	string Connections, string Room, string Managed, string Activity, bool Silenced, ulong Granted);
 
 /// <summary>Reads the accounts: the ones online from memory, the others from the database.</summary>
 internal sealed class UsersSource(IServiceProvider services, TimeProvider clock) : IListSource<UserItem>
@@ -80,7 +81,8 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 			user is null
 				? string.Empty
 				: string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
-			room, managed, user?.Stable?.Status.Activity.ToString() ?? string.Empty, record.Value.IsSilenced(now));
+			room, managed, user?.Stable?.Status.Activity.ToString() ?? string.Empty, record.Value.IsSilenced(now),
+			(ulong)record.Value.Privileges);
 	}
 }
 

@@ -8,22 +8,23 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
+using Basil.Host.Shared.Views;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using XenoAtom.Terminal.UI;
-using XenoAtom.Terminal.UI.Controls;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
 /// <summary>
-///     Builds the detail of an account and of a session, the ones every tab shows when the operator clicks a user's
-///     name or a session; the navigation buttons open the related views inside the same frame.
+///     Builds the detail of an account and of a session, the ones every tab shows when the operator opens a user's name
+///     or a session; the navigation buttons open the related views inside the same frame, and every console command that
+///     applies to an account or a session has a button.
 /// </summary>
 /// <remarks>The reads run off the interface thread; the frame shows a loading state until they end.</remarks>
-internal sealed class UserDetails(IServiceProvider services, ConsoleTab console, CliOptions options, Dialogs dialogs,
-	Glyphs glyphs, TimeProvider clock, Action<string> openChat)
+internal sealed class UserDetails(IServiceProvider services, CommandActions actions, BeatmapDetails beatmaps,
+	CliOptions options, Dialogs dialogs, Glyphs glyphs, TimeProvider clock, Action<string> openChat)
 {
-	private const int SessionsShown = 20;
+	private const int RowsShown = 20;
 
 	/// <summary>Reads an account and builds its detail.</summary>
 	/// <param name="reference">The account, by id or name.</param>
@@ -32,10 +33,9 @@ internal sealed class UserDetails(IServiceProvider services, ConsoleTab console,
 		var record = await services.GetRequiredService<ISender>().Send(new GetUser(reference));
 		if (record is null)
 			return new DetailView(reference.Name ?? reference.Id?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-				[("User", "not found", Ink.Warning)], []);
+				[("User", "does not exist", Ink.Warning)], []);
 
-		services.GetRequiredService<UserRegistry>().Online.TryGetValue(record, out var online);
-		return Of(UsersSource.Item(services.GetRequiredService<Lobby>(), record, online, clock.GetUtcNow()));
+		return Of(ItemOf(record));
 	}
 
 	/// <summary>Builds the detail of an account that is already read.</summary>
@@ -45,25 +45,48 @@ internal sealed class UserDetails(IServiceProvider services, ConsoleTab console,
 		var room = user.Room.Length == 0 ? "-" : user.Room;
 		var managed = user.Managed.Length == 0 ? string.Empty : $" ({user.Managed})";
 		var ink = UserInk.Of((UserPrivileges)user.Mask);
+		var online = user.Connections.Length > 0;
 		var fields = new List<(string, string, Ink)>
 		{
-			("ID", user.Id.ToString(), Ink.Text), ("Name", user.Name, ink), ("Country", user.Country, Ink.Text),
-			("Privileges", $"{user.Privileges} ({user.Mask})", ink),
-			("Connections", user.Connections.Length == 0 ? "offline" : user.Connections, Ink.Info),
-			("Room", room + managed, Ink.Text), ("Activity", user.Activity.Length == 0 ? "-" : user.Activity, Ink.Text)
+			("ID", user.Id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("Name", user.Name, ink),
+			("Country", user.Country, Ink.Text), ("Privileges", $"{user.Privileges} ({user.Mask})", ink),
+			("Connections", online ? user.Connections : "offline", Ink.Info), ("Room", room + managed, Ink.Text),
+			("Activity", user.Activity.Length == 0 ? "-" : user.Activity, Ink.Text)
 		};
-		var actions = new List<DetailAction> { DetailAction.OpenAsync("Sessions", () => SessionsAsync(user)) };
-		// The bot is a system account: its sessions can be read, nothing can be done to it.
-		if (!options.Editable || user.Id == BasilBot.Id) return new DetailView(user.Name, fields, actions);
+		if (user.Silenced) fields.Add(("Silenced", "yes", Ink.Warning));
+		var reload = () => OfAsync(UserReference.ById(user.Id));
+		var list = new List<DetailAction>
+		{
+			DetailAction.OpenAsync("Sessions", () => SessionsAsync(user)),
+			DetailAction.OpenAsync("Scores", () => ScoresAsync(user)),
+			DetailAction.OpenAsync("Friends", () => RelationsAsync(user, true)),
+			DetailAction.OpenAsync("Blocks", () => RelationsAsync(user, false))
+		};
+		// The bot is a system account: what it has can be read, nothing can be done to it.
+		if (user.Id == BasilBot.Id) return new DetailView(user.Name, fields, list) { Reload = reload };
 
 		var id = user.Id;
-		if (user.Connections.Length > 0) actions.Add(new DetailAction("Send message", () => openChat(user.Name)));
-		actions.Add(user.Silenced
-			? new DetailAction("Unsilence", () => console.RunCommand($"users {id} unsilence"))
+		if (online) list.Add(new DetailAction("Send message", () => openChat(user.Name)));
+		list.Add(new DetailAction("Edit profile", () => EditProfile(user)));
+		list.Add(new DetailAction("Change password", () => AskPassword(user)));
+		list.Add(new DetailAction("Privileges", () => AskPrivileges(user)));
+		list.Add(user.Silenced
+			? new DetailAction("Unsilence", () => actions.Run($"users {id} unsilence"))
 			: new DetailAction("Silence", () => AskSilence(id)));
-		actions.Add(new DetailAction("Kick", () => console.RunCommand($"users {id} sessions delete"),
-			DetailActionKind.Destructive));
-		return new DetailView(user.Name, fields, actions);
+		list.Add(new DetailAction("Set avatar", () => AskAvatar(user)));
+		list.Add(new DetailAction("Remove avatar", () => dialogs.Confirm("Remove avatar",
+			$"Remove the avatar of {user.Name} (id {id})? The default image is shown instead.", "Remove",
+			() => actions.Run($"users {id} avatar delete")), DetailActionKind.Destructive));
+		if (online)
+			list.Add(new DetailAction("Kick", () => dialogs.Confirm("Kick",
+				$"Close every session of {user.Name} (id {id})? Their clients are disconnected, and API tokens and IRC keys " +
+				"stop working. They can sign in again with their password.", "Kick",
+				() => actions.Run($"users {id} sessions delete")), DetailActionKind.Destructive));
+		list.Add(new DetailAction("Delete account", () => dialogs.Confirm("Delete account",
+			$"Delete user {user.Name} (id {id})? The account is hidden from sign-in and every listing, its privileges are " +
+			"cleared and every session is closed, which disconnects the client. Its scores are kept.", "Delete",
+			() => actions.Run($"users {id} delete")), DetailActionKind.Destructive));
+		return new DetailView(user.Name, fields, list) { Reload = reload };
 	}
 
 	/// <summary>Builds the detail of a session.</summary>
@@ -79,15 +102,36 @@ internal sealed class UserDetails(IServiceProvider services, ConsoleTab console,
 			("Client", session.Client.Length == 0 ? "-" : session.Client, Ink.Text)
 		};
 		if (session.EndReason.Length > 0) fields.Add(("Ended", session.EndReason, Ink.Text));
-		var actions = new List<DetailAction>
+		var actionList = new List<DetailAction>
 		{
-			DetailAction.OpenAsync("User", () => OfAsync(UserReference.ById(session.UserId)))
+			DetailAction.OpenAsync("User", () => OfAsync(UserReference.ById(session.UserId))),
+			DetailAction.OpenAsync("Connections", () => ConnectionsAsync(session))
 		};
-		if (options.Editable && session.Live)
-			actions.Add(new DetailAction("Close session",
-				() => console.RunCommand($"users {session.UserId} sessions {session.Id} delete"),
-				DetailActionKind.Destructive));
-		return new DetailView(session.Id.ToString(CultureInfo.InvariantCulture), fields, actions);
+		if (session.Live)
+			actionList.Add(new DetailAction("Close session", () => dialogs.Confirm("Close session",
+				$"Close session {session.Id} of {session.UserName}? The client is disconnected; the API token or IRC key of " +
+				"this session stops working. The account can sign in again with its password.", "Close session",
+				() => actions.Run($"users {session.UserId} sessions {session.Id} delete")), DetailActionKind.Destructive));
+		return new DetailView(session.Id.ToString(CultureInfo.InvariantCulture), fields, actionList)
+		{
+			Reload = () => SessionAsync(session.UserId, session.Id)
+		};
+	}
+
+	private UserItem ItemOf(UserRecord record)
+	{
+		services.GetRequiredService<UserRegistry>().Online.TryGetValue(record, out var online);
+		return UsersSource.Item(services.GetRequiredService<Lobby>(), record, online, clock.GetUtcNow());
+	}
+
+	private async Task<DetailView> SessionAsync(int userId, long id)
+	{
+		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var (outcome, record) = await services.GetRequiredService<ISender>()
+			.Send(new GetUserSession(actor, UserReference.ById(userId), id));
+		return outcome == UserOutcome.Ok && record is not null
+			? Of(SessionItem.Of(record, clock.GetUtcNow()))
+			: new DetailView(id.ToString(CultureInfo.InvariantCulture), [("Session", "does not exist", Ink.Warning)], []);
 	}
 
 	// The newest sessions of the account, read once as the console command does, shown as the table of the Sessions tab.
@@ -95,22 +139,74 @@ internal sealed class UserDetails(IServiceProvider services, ConsoleTab console,
 	{
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
 		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListUserSessions(actor,
-			UserReference.ById(user.Id), new PageRequest(0, SessionsShown), SessionState.Any, null));
+			UserReference.ById(user.Id), new PageRequest(0, RowsShown), SessionState.Any, null));
 		if (outcome != UserOutcome.Ok || page is null)
 			return new DetailView("Sessions", [("Sessions", "not available", Ink.Warning)], []);
 
 		var now = clock.GetUtcNow();
 		var items = page.Items.Select(record => SessionItem.Of(record, now)).ToList();
-		return new DetailView("Sessions", [], [], push => Table(items, push));
+		return new DetailView("Sessions", [], [], push => NestedTable.Of(SessionColumns.Of(null),
+			session => session.Id.ToString(CultureInfo.InvariantCulture),
+			[.. SessionItem.Kinds.Select(kind => GroupOf(kind, items))], glyphs, options.NoColor, clock,
+			session => push(Of(session)))) { Reload = () => SessionsAsync(user) };
 	}
 
-	private Visual Table(IReadOnlyList<SessionItem> items, Action<DetailView> push)
+	private async Task<DetailView> ConnectionsAsync(SessionItem session)
 	{
-		var list = new GroupedList<SessionItem>(SessionColumns.Of(null), session => session.Id.ToString(CultureInfo.InvariantCulture),
-			glyphs, options.NoColor, clock) { ActivateOnClick = true };
-		list.SetSections([.. SessionItem.Kinds.Select(kind => GroupOf(kind, items))]);
-		list.Activated += session => push(Of(session));
-		return new ScrollViewer(list).Stretch();
+		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListSessionConnections(actor,
+			UserReference.ById(session.UserId), session.Id, new PageRequest(0, RowsShown)));
+		if (outcome != UserOutcome.Ok || page is null)
+			return new DetailView("Connections", [("Connections", "not available", Ink.Warning)], []);
+
+		var items = page.Items.Select(ConnectionView.Of).ToList();
+		IReadOnlyList<Column<ConnectionView>> columns =
+		[
+			new Column<ConnectionView>("Opened", 17, c => SessionItem.Time(c.OpenedAt), _ => Ink.Muted),
+			new Column<ConnectionView>("Last seen", 17, c => SessionItem.Time(c.LastActiveAt), _ => Ink.Muted),
+			new Column<ConnectionView>("Ended", 0, c => c.CloseReason?.ToString() ?? "open", c => c.CloseReason is null ? Ink.Success : Ink.Text),
+			new Column<ConnectionView>("Client / IP", 0, c => $"{c.ClientInfo} {c.Ip}".Trim()) { Weight = 2 }
+		];
+		return new DetailView("Connections", [], [], _ => NestedTable.Of(columns,
+			c => c.OpenedAt.ToString("O", CultureInfo.InvariantCulture),
+			[new Section<ConnectionView>("Connections", items.Count.ToString(CultureInfo.InvariantCulture), items)], glyphs,
+			options.NoColor, clock, _ => { })) { Reload = () => ConnectionsAsync(session) };
+	}
+
+	private async Task<DetailView> ScoresAsync(UserItem user)
+	{
+		var sections = await new ScoresSource(services).LoadAsync($"user:{user.Id}", RowsShown, CancellationToken.None);
+		return new DetailView("Scores", [], [], push => NestedTable.Of(ScoresTab.Columns(null), score =>
+				score.Id.ToString(CultureInfo.InvariantCulture),
+				[.. sections.Select(section => new Section<ScoreItem>(section.Title,
+					section.Items.Count.ToString(CultureInfo.InvariantCulture), section.Items))], glyphs, options.NoColor, clock,
+			score => push(ScoresTab.Detail(score, this, beatmaps)))) { Reload = () => ScoresAsync(user) };
+	}
+
+	// The accounts this one has as friends or has blocked.
+	private async Task<DetailView> RelationsAsync(UserItem user, bool friends)
+	{
+		var title = friends ? "Friends" : "Blocks";
+		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var sender = services.GetRequiredService<ISender>();
+		var target = UserReference.ById(user.Id);
+		var (outcome, records) = friends
+			? await sender.Send(new ListFriends(actor, target))
+			: await sender.Send(new ListBlocks(actor, target));
+		if (outcome != UserOutcome.Ok)
+			return new DetailView(title, [(title, "not available", Ink.Warning)], []);
+
+		var items = records.Select(ItemOf).ToList();
+		IReadOnlyList<Column<UserItem>> columns =
+		[
+			new Column<UserItem>("ID", 8, u => u.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
+			new Column<UserItem>("Name", 0, u => u.Name, u => UserInk.Of((UserPrivileges)u.Mask)),
+			new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
+			new Column<UserItem>("Connections", 14, u => u.Connections, _ => Ink.Info)
+		];
+		return new DetailView(title, [], [], push => NestedTable.Of(columns, u => u.Id.ToString(CultureInfo.InvariantCulture),
+			[new Section<UserItem>(title, items.Count.ToString(CultureInfo.InvariantCulture), items)], glyphs, options.NoColor,
+			clock, u => push(Of(u)))) { Reload = () => RelationsAsync(user, friends) };
 	}
 
 	private static Section<SessionItem> GroupOf(SessionType kind, IReadOnlyList<SessionItem> items)
@@ -121,10 +217,53 @@ internal sealed class UserDetails(IServiceProvider services, ConsoleTab console,
 
 	private void AskSilence(int id)
 	{
-		dialogs.Form("Silence", [("Duration", "30m"), ("Reason", string.Empty)], values =>
+		dialogs.Form("Silence", [new FormField("Duration", "30m"), new FormField("Reason")], values =>
 		{
-			var reason = values[1].Length == 0 ? string.Empty : $" --reason \"{values[1].Replace("\"", "'")}\"";
-			console.RunCommand($"users {id} silence --duration {values[0]}{reason}");
+			var reason = values[1].Length == 0 ? string.Empty : $" --reason {CommandActions.Quote(values[1])}";
+			actions.Run($"users {id} silence --duration {CommandActions.Quote(values[0])}{reason}");
 		});
+	}
+
+	// Only what the operator changed is sent; an empty away message or private-message answer leaves it as it is.
+	private void EditProfile(UserItem user)
+	{
+		dialogs.Form($"Edit {user.Name}",
+			[new FormField("Name", user.Name), new FormField("Country", user.Country), new FormField("Away message"),
+				new FormField("Block PMs (yes/no)")], values =>
+			{
+				var line = $"users {user.Id} set";
+				if (values[0].Length > 0 && values[0] != user.Name) line += $" --username {CommandActions.Quote(values[0])}";
+				if (values[1].Length > 0 && !values[1].Equals(user.Country, StringComparison.OrdinalIgnoreCase))
+					line += $" --country {CommandActions.Quote(values[1])}";
+				if (values[2].Length > 0) line += $" --away {CommandActions.Quote(values[2])}";
+				if (values[3].Length > 0) line += $" --pmPrivate {(values[3].StartsWith('y') ? "true" : "false")}";
+				if (line == $"users {user.Id} set") actions.Notify("Nothing was changed.");
+				else actions.Run(line);
+			});
+	}
+
+	private void AskPassword(UserItem user)
+	{
+		dialogs.Form($"Password of {user.Name}", [new FormField("New password", Secret: true)], values =>
+		{
+			if (values[0].Length == 0) actions.Notify("The password is empty.");
+			else actions.Run($"users {user.Id} set --password {CommandActions.Quote(values[0])}");
+		});
+	}
+
+	private void AskAvatar(UserItem user)
+	{
+		dialogs.Form($"Avatar of {user.Name}", [new FormField("Image file")], values =>
+		{
+			if (values[0].Length == 0) actions.Notify("No file was given.");
+			else actions.Run($"users {user.Id} avatar --file {CommandActions.Quote(values[0])}");
+		});
+	}
+
+	// Each privilege flag is a box; the account then holds exactly the ones ticked.
+	private void AskPrivileges(UserItem user)
+	{
+		dialogs.Privileges($"Privileges of {user.Name}", (UserPrivileges)user.Granted,
+			granted => actions.Run($"users {user.Id} set --privileges {(byte)granted}"));
 	}
 }
