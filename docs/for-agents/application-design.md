@@ -22,7 +22,8 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   `UserOutcome`, `BeatmapsetOutcome`, …), with a tuple such as `(UserOutcome Outcome, T? Data)` when it also returns data.
   Each enum has `Denied = 0` (the refusal for lack of privileges, which does not say which privileges are lacking, and
   which a default value can never confuse with success) and `Ok = 1`; the other members are `NotFound` and the object's
-  own reasons. There is no shared result wrapper. There is no
+  own reasons. An operation on something that does not exist (an account, a session already closed, a silence nobody
+  imposed, a file never stored) answers `NotFound`, never `Ok`; the console exits with 1 and the API answers 404. There is no shared result wrapper. There is no
   `NotAuthorized`, `Restricted`, `NoPermission` or `NotPermitted` member and no `bool` or `*Failure`
   stand-in. Callers compare with `XOutcome.Ok` or `XOutcome.Denied`.
 * **Granting uses the actor's privileges, ranking uses the granted ones.** An actor can grant only privileges they hold;

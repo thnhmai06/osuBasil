@@ -469,6 +469,7 @@ internal static class MpReplies
 			RoomOutcome.NotBanned => TargetNotBanned,
 			RoomOutcome.TargetOffline => TargetNotOnline,
 			RoomOutcome.Blocked => CannotInvite,
+			RoomOutcome.NotFound => UserNotFound,
 			RoomOutcome.AlreadyInRoom => UserAlreadyInRoom,
 			RoomOutcome.TooManyReferees => RefereeLimitReached,
 			RoomOutcome.AlreadyReferee => TargetAlreadyReferee,
