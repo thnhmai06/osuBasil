@@ -16,6 +16,7 @@ namespace Basil.Host.Cli.Dashboard.Data;
 public sealed class DashboardSampler(IServiceProvider services, DashboardModel model, TimeProvider clock)
 {
 	private readonly CoreUsage _cores = new();
+	private readonly ExceptionWindow _exceptions = new();
 
 	/// <summary>Takes one sample and updates the model.</summary>
 	public void Sample()
@@ -53,10 +54,21 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 
 		var lines = new List<(string, string)>();
 		foreach (var (category, value) in json) Flatten(lines, category, value);
+		// The latest types are replaced by the count of the last minute, which the monitor shows as one measurement.
+		lines.RemoveAll(line => line.Item1 == "exceptions.recent");
+		model.ExceptionsLastMinute = _exceptions.Update((long)Number(json, "exceptions", "total"), RecentExceptions(json),
+			clock.GetUtcNow());
 		model.Diagnostics = lines;
 
 		model.Users = UserRows(registry, lobby, clock.GetUtcNow());
 		model.RoomList = RoomRows(lobby);
+	}
+
+	private static string[] RecentExceptions(JsonObject json)
+	{
+		return json["exceptions"] is JsonObject { } section && section["recent"] is JsonArray recent
+			? [.. recent.Select(item => item?.GetValue<string>() ?? string.Empty)]
+			: [];
 	}
 
 	private static double RequestsPerSecond(JsonObject json)

@@ -68,8 +68,7 @@ public sealed class DashboardApp
 		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, _console, mode, _glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, kit, mode, clock, Post, logger);
 		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), Post, logger);
-		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
-		_views[DashboardTab.Connections] = new ConnectionsTab(model, themes, _glyphs, mode);
+		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value), clock);
 		_views[DashboardTab.Chat] = new ChatTab(services, model.Chat, mode, _glyphs, new Palette(mode.NoColor),
 			() => (_columns.Value, _rows.Value), clock, logger);
 		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs, Post, logger);
