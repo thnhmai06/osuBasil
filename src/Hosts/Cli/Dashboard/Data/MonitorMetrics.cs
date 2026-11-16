@@ -62,11 +62,21 @@ internal static class MonitorMetrics
 		["gc.heapBytes"] = new("Managed heap", MetricUnit.Bytes,
 			"Memory the garbage collector manages, as of its last run. It rises while the server works and falls after a collection."),
 		["gc.generations"] = new("Generations", MetricUnit.Bytes,
-			"Size of each part of the heap after the last collection: young objects first, then older ones, then large objects. A big last part means long-lived data.",
-			true),
+			"Size of each part of the heap after the last collection.",
+			[
+				new("Gen 0", "Newly created objects that have not survived a collection yet. It is small after every collection."),
+				new("Gen 1", "Objects that survived one collection; a buffer between short-lived and long-lived data."),
+				new("Gen 2", "Long-lived objects. A size that keeps growing points to a leak."),
+				new("Large objects", "Objects of 85 KB or more, collected together with generation 2. Many of them fragment memory."),
+				new("Pinned objects", "Objects the runtime may not move, such as buffers handed to the operating system.")
+			]),
 		["gc.collections"] = new("Collections", MetricUnit.Count,
-			"How many times generation 0, 1 and 2 were collected since the server started. Many full collections (the last number) mean memory pressure.",
-			true),
+			"How many times each generation was collected since the server started.",
+			[
+				new("Gen 0 collections", "How many times generation 0 was collected. It is the cheap, frequent kind and grows fast on a busy server."),
+				new("Gen 1 collections", "How many times generation 1 was collected."),
+				new("Gen 2 collections", "How many full collections ran. Many of them mean memory pressure.")
+			]),
 		["gc.pauseMilliseconds"] = new("GC pause total", MetricUnit.Milliseconds,
 			"Total time the server stood still for garbage collection since it started. A fast-growing value makes the server feel slow."),
 		["gc.allocatedBytesPerSecond"] = new("Allocation rate", MetricUnit.Bytes,
@@ -198,6 +208,13 @@ internal static class MonitorMetrics
 	/// <returns>The name inside its group, the unit and the explanation.</returns>
 	public static MetricInfo Of(string key)
 	{
+		if (key.LastIndexOf('#') is var cut and > 0 && int.TryParse(key[(cut + 1)..], out var index))
+		{
+			var whole = Of(key[..cut]);
+			var part = whole.Parts is { } list && index < list.Count ? list[index] : new MetricPart($"Part {index}", whole.Description);
+			return whole with { Label = part.Label, Description = part.Description, Parts = null };
+		}
+
 		var (generic, data) = Generic(key);
 		if (All.TryGetValue(generic, out var known)) return known with { Label = known.Label.Replace("{0}", data) };
 
@@ -215,10 +232,6 @@ internal static class MonitorMetrics
 	/// <param name="ascii">Whether the dashboard stays in ASCII.</param>
 	public static string Show(MetricInfo info, string value, bool ascii)
 	{
-		if (info.List)
-			return string.Join(info.Unit == MetricUnit.Bytes ? " " : " / ",
-				value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(part => Show(info with { List = false }, part, ascii)));
-
 		if (info.Unit == MetricUnit.Text || !double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
 			return value;
 

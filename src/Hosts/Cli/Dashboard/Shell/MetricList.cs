@@ -47,11 +47,8 @@ internal sealed partial class MetricList : Visual, IScrollable
 	/// <inheritdoc />
 	public ScrollModel Scroll => _scroll;
 
-	/// <summary>Occurs when the operator picks a measurement; the flag tells whether it was by Enter or a click.</summary>
-	public event Action<string, bool>? Picked;
-
-	/// <summary>Occurs when the operator presses Escape in the list.</summary>
-	public event Action? Dismissed;
+	/// <summary>Occurs when the operator picks a measurement.</summary>
+	public event Action<string>? Picked;
 
 	/// <summary>Sets which measurement is highlighted, or <see langword="null" /> for none of this list.</summary>
 	/// <param name="key">The key of the selected measurement.</param>
@@ -176,7 +173,7 @@ internal sealed partial class MetricList : Visual, IScrollable
 		if (label.Length > labelRoom) label = label[..Math.Max(labelRoom - 1, 0)] + "…";
 
 		var labelStyle = Muted(theme);
-		var valueStyle = InkStyle(theme, line.Ink);
+		var valueStyle = InkStyles.Of(theme, line.Ink, _noColor);
 		var markStyle = Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite);
 		if (selected)
 		{
@@ -204,8 +201,7 @@ internal sealed partial class MetricList : Visual, IScrollable
 			case TerminalKey.Home: MoveTo(0); break;
 			case TerminalKey.End: MoveTo(_rows.Count - 1); break;
 			case TerminalKey.Enter when OnTitle: Fold(_cursor, null); break;
-			case TerminalKey.Enter when _cursor >= 0 && _cursor < _rows.Count: Picked?.Invoke(_rows[_cursor].Line!.Key, true); break;
-			case TerminalKey.Escape: Dismissed?.Invoke(); break;
+			case TerminalKey.Enter when _cursor >= 0 && _cursor < _rows.Count: Picked?.Invoke(_rows[_cursor].Line!.Key); break;
 			case TerminalKey.Left when OnTitle: Fold(_cursor, false); break;
 			case TerminalKey.Right when OnTitle: Fold(_cursor, true); break;
 			default: handled = false; break;
@@ -227,7 +223,7 @@ internal sealed partial class MetricList : Visual, IScrollable
 		_cursor = index;
 		e.Handled = true;
 		if (_rows[index].IsTitle) Fold(index, null);
-		else Picked?.Invoke(_rows[index].Line!.Key, true);
+		else Picked?.Invoke(_rows[index].Line!.Key);
 		Revision++;
 	}
 
@@ -255,7 +251,7 @@ internal sealed partial class MetricList : Visual, IScrollable
 		_cursor = index;
 		Settle();
 		Revision++;
-		if (_rows[index].Line is { } line) Picked?.Invoke(line.Key, false);
+		if (_rows[index].Line is { } line) Picked?.Invoke(line.Key);
 	}
 
 	private void Settle()
@@ -282,30 +278,6 @@ internal sealed partial class MetricList : Visual, IScrollable
 		return _noColor
 			? Style.None.WithTextStyle(TextStyle.Dim)
 			: Style.None.WithForeground(theme.Muted ?? Colors.TerminalBrightBlack);
-	}
-
-	private Style InkStyle(Theme theme, Ink kind)
-	{
-		var ink = InkTable.Basic(kind);
-		if (_noColor)
-			return ink switch
-			{
-				Ink.Muted => Style.None.WithTextStyle(TextStyle.Dim),
-				Ink.Accent or Ink.Error => Style.None.WithTextStyle(TextStyle.Bold),
-				_ => Style.None
-			};
-
-		var color = ink switch
-		{
-			Ink.Muted => theme.Muted,
-			Ink.Accent => theme.Accent ?? theme.Primary,
-			Ink.Success => theme.Success,
-			Ink.Warning => theme.Warning,
-			Ink.Error => theme.Error,
-			Ink.Info => theme.Primary,
-			_ => theme.Foreground
-		};
-		return Style.None.WithForeground(color ?? theme.Foreground ?? Colors.TerminalWhite);
 	}
 
 	private readonly record struct Row(bool IsTitle, string Group, int Count, bool Open, MetricLine? Line);

@@ -4,6 +4,7 @@ using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
+using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
@@ -35,14 +36,14 @@ internal sealed class MonitorTab : ITabView
 	private readonly List<Box> _boxes = [];
 	private readonly Dictionary<string, (string Category, MetricLine Line)> _known = [];
 	private readonly State<bool> _detailOpen = new(false);
-	private readonly State<int> _detailHeight = new(6);
+	private readonly State<int> _detailHeight = new(4);
+	private readonly State<int> _graphHeight = new(MinimumGraphHeight);
 	private readonly State<string> _detailTitle = new(string.Empty);
 	private readonly State<string> _detailText = new(string.Empty);
 	private readonly Group _detail;
 	private readonly ScrollViewer _scroll;
 	private (int Width, int Across, int GraphHeight, int Boxes)? _arranged;
 	private string? _selected;
-	private bool _toEnd;
 	private object? _seen;
 
 	/// <summary>Creates the tab.</summary>
@@ -76,7 +77,7 @@ internal sealed class MonitorTab : ITabView
 		};
 		foreach (var graph in graphs)
 		{
-			var cell = new GridCell(graph.View);
+			var cell = new GridCell(graph.View.MinHeight(() => _graphHeight.Value));
 			_graphCells.Add(cell);
 			_page.Cells.Add(cell);
 		}
@@ -87,10 +88,16 @@ internal sealed class MonitorTab : ITabView
 		_detail = new Group(new Markup(() => _detailTitle.Value)).Style(style).Padding(new Thickness(1, 0, 1, 0))
 			.Content(new ScrollViewer(new Markup(() => _detailText.Value).Wrap(true)).Stretch()).IsVisible(_detailOpen)
 			.MinHeight(() => _detailHeight.Value).MaxHeight(() => _detailHeight.Value).HorizontalAlignment(Align.Stretch);
-		_scroll = new ScrollViewer(new VStack(_page, _detail).Spacing(0)).Stretch();
+		_scroll = new ScrollViewer(_page).Stretch();
 		_scroll.HorizontalScrollEnabled(false);
 		Arrange();
-		View = _scroll;
+		// The explanation is docked under the page, outside what scrolls, like the frame of the list tabs.
+		View = new Grid()
+			.Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
+			.Cell(_scroll, 0, 0)
+			.Cell(_detail, 1, 0)
+			.Stretch();
 	}
 
 	/// <inheritdoc />
@@ -112,12 +119,6 @@ internal sealed class MonitorTab : ITabView
 	{
 		Arrange();
 		if (!ReferenceEquals(_seen, _model.Diagnostics)) Update();
-		if (_toEnd && _detail.Bounds.Height > 0)
-		{
-			_toEnd = false;
-			var extent = _scroll.Content?.Bounds.Height ?? 0;
-			_scroll.VerticalOffset = Math.Max(extent - _scroll.ViewportHeight, 0);
-		}
 	}
 
 	/// <inheritdoc />
@@ -132,7 +133,8 @@ internal sealed class MonitorTab : ITabView
 		var (columns, rows) = _size();
 		var across = columns >= Layout.WideSize.Width ? 4 : 2;
 		var graphHeight = Math.Max(MinimumGraphHeight, rows / 3);
-		_detailHeight.Value = Math.Max(rows / 3, 5);
+		_detailHeight.Value = Math.Max(rows / 3, 4);
+		_graphHeight.Value = graphHeight;
 		// The page and the scroll bar take three columns; the rest is shared exactly, the first columns taking the remainder.
 		var width = Math.Max(columns - 3, across);
 		if (_arranged == (width, across, graphHeight, _boxes.Count)) return;
@@ -186,8 +188,12 @@ internal sealed class MonitorTab : ITabView
 	private void AddBox(string category)
 	{
 		var list = new MetricList(_glyphs, _noColor);
-		list.Picked += (key, explicitly) => Pick(key, explicitly);
-		list.Dismissed += () => _detailOpen.Value = false;
+		list.Picked += Pick;
+		list.AddCommand(new Command
+		{
+			Id = "monitor.close", LabelMarkup = "Close", Gesture = new KeyGesture(TerminalKey.Escape),
+			CanExecute = _ => _detailOpen.Value, Execute = _ => _detailOpen.Value = false
+		});
 		var inner = new ScrollViewer(list).Stretch();
 		// A box that cannot scroll further in the direction of the wheel lets the page take the notch.
 		inner.PointerWheelRouted += (_, e) =>
@@ -208,19 +214,14 @@ internal sealed class MonitorTab : ITabView
 		_boxes.Add(new Box(category, list, cell));
 	}
 
-	private void Pick(string key, bool explicitly)
+	private void Pick(string key)
 	{
 		if (key.Length == 0 || !_known.ContainsKey(key)) return;
 
 		_selected = key;
 		foreach (var box in _boxes) box.List.Select(key);
 
-		if (!_detailOpen.Value)
-		{
-			_detailOpen.Value = true;
-			_toEnd = explicitly;
-		}
-
+		_detailOpen.Value = true;
 		FillDetail(key);
 	}
 
@@ -232,6 +233,19 @@ internal sealed class MonitorTab : ITabView
 			if (name == "database.connectionsMeasured") continue;
 
 			var info = MonitorMetrics.Of(name);
+			if (info.Parts is not null)
+			{
+				var numbers = value.Split(',', StringSplitOptions.RemoveEmptyEntries);
+				for (var i = 0; i < numbers.Length; i++)
+				{
+					var key = $"{name}#{i}";
+					var part = MonitorMetrics.Of(key);
+					lines.Add(new MetricLine(key, string.Empty, part.Label, MonitorMetrics.Show(part, numbers[i], _glyphs.Ascii), Ink.Text));
+				}
+
+				continue;
+			}
+
 			var parts = name.Split('.');
 			var group = parts.Length >= 3 ? MonitorMetrics.GroupTitle(parts[1]) : string.Empty;
 			var alarm = info.Alarm && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && number > 0;
