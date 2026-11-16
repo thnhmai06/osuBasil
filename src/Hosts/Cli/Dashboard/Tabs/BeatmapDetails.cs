@@ -9,8 +9,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
 /// <summary>Builds the detail of a beatmap, the one the Beatmaps tab and a score show.</summary>
-internal sealed class BeatmapDetails(IServiceProvider services, ConsoleTab console, CliOptions options)
+internal sealed class BeatmapDetails(IServiceProvider services, CommandActions actions, Dialogs dialogs)
 {
+	// The statuses an operator can give a set; the others describe sets the server does not publish.
+	private static readonly string[] Statuses =
+		[nameof(BeatmapsetStatus.Pending), nameof(BeatmapsetStatus.Ranked), nameof(BeatmapsetStatus.Approved),
+			nameof(BeatmapsetStatus.Qualified), nameof(BeatmapsetStatus.Loved)];
+
 	/// <summary>Writes a date without its time.</summary>
 	public static string Date(DateTimeOffset time)
 	{
@@ -60,15 +65,19 @@ internal sealed class BeatmapDetails(IServiceProvider services, ConsoleTab conso
 			("Locked", map.Locked ? "yes" : "no", map.Locked ? Ink.Warning : Ink.Text),
 			("Versions", map.Versions.ToString(), Ink.Text)
 		};
-		if (!options.Editable) return new DetailView(map.Id.ToString(), fields, []);
-
 		var set = map.SetId;
-		return new DetailView(map.Id.ToString(), fields,
-		[
-			new DetailAction(map.Private ? "Set public" : "Set private",
-				() => console.RunCommand($"beatmapsets {set} set --visible {(map.Private ? "true" : "false")}")),
-			new DetailAction(map.Locked ? "Unlock" : "Set locked",
-				() => console.RunCommand($"beatmapsets {set} set --locked {(map.Locked ? "false" : "true")}"))
-		]);
+		var actionList = new List<DetailAction>
+		{
+			new("Set status", () => dialogs.Choose($"Status of beatmapset {set}", Statuses,
+				map.Status.ToString(), status => actions.Run($"beatmapsets {set} set --status {status}"))),
+			new(map.Private ? "Set public" : "Set private",
+				() => actions.Run($"beatmapsets {set} set --visible {(map.Private ? "true" : "false")}")),
+			new(map.Locked ? "Unlock" : "Lock", () => actions.Run($"beatmapsets {set} set --locked {(map.Locked ? "false" : "true")}")),
+			new("Delete beatmapset", () => dialogs.Confirm("Delete beatmapset",
+				$"Delete beatmapset {set} with its {map.Versions} difficulties? The set and its files are removed from the server " +
+				"and cannot be restored; scores keep their record. A locked set cannot be deleted.", "Delete",
+				() => actions.Run($"beatmapsets {set} delete")), DetailActionKind.Destructive)
+		};
+		return new DetailView(map.Id.ToString(), fields, actionList) { Reload = () => OfAsync(map.Id) };
 	}
 }

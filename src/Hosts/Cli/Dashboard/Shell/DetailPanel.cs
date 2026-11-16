@@ -39,8 +39,11 @@ internal sealed class DetailPanel
 	/// <param name="dialogs">Shows the dialog that holds the actions in a narrow terminal.</param>
 	/// <param name="toasts">Tells the operator when an action failed.</param>
 	/// <param name="post">Runs an action on the thread of the interface.</param>
-	public DetailPanel(string root, Glyphs glyphs, Palette palette, Dialogs dialogs, ToastTray toasts, Action<Action> post)
+	/// <param name="changes">Tells the frame to read its steps again when an action changed something.</param>
+	public DetailPanel(string root, Glyphs glyphs, Palette palette, Dialogs dialogs, ToastTray toasts, Action<Action> post,
+		Changes changes)
 	{
+		changes.Occurred += Reload;
 		_root = root;
 		_glyphs = glyphs;
 		_palette = palette;
@@ -131,6 +134,25 @@ internal sealed class DetailPanel
 		if (_open.Value) Fill();
 	}
 
+	// Reads every step that knows how again, so that what an action changed shows up in the frame, nested steps included.
+	// A step that cannot be read now stays as it was.
+	private void Reload()
+	{
+		foreach (var step in _steps.Where(step => step.Reload is not null).ToList())
+			_ = Task.Run(async () =>
+			{
+				try
+				{
+					var view = await step.Reload!();
+					_post(() => Replace(step, view));
+				}
+				catch (Exception)
+				{
+					// The stale step stays.
+				}
+			});
+	}
+
 	// Pushes a loading step of the frame's size, reads off the interface thread, and posts the result back.
 	// A result for a step the operator already left is dropped.
 	private void Load(string title, Func<Task<DetailView>> read)
@@ -196,7 +218,7 @@ internal sealed class DetailPanel
 		}
 		var buttons = new List<Button>();
 		if (_steps.Count > 1) buttons.Add(new Button($"[{_glyphs.Back} Back]").Click(Back));
-		var ordered = view.Actions.OrderBy(action => action.Kind).ToList();
+		var ordered = view.Actions.Append(new DetailAction("Close", Close, DetailActionKind.Close)).OrderBy(action => action.Kind).ToList();
 		if (_compact && ordered.Count > 0)
 			buttons.Add(new Button("[Actions]").Click(() => ShowActions(ordered)));
 		else
@@ -226,7 +248,11 @@ internal sealed class DetailPanel
 		{
 			try
 			{
-				if (action.NextAsync is { } read)
+				if (action.Children is { } children)
+				{
+					ShowActions(children, action.Label.TrimEnd('…', '›', '>', ' '));
+				}
+				else if (action.NextAsync is { } read)
 				{
 					Load(action.Label.TrimEnd('…'), read);
 				}
@@ -267,9 +293,9 @@ internal sealed class DetailPanel
 		e.Handled = true;
 	}
 
-	private void ShowActions(IReadOnlyList<DetailAction> actions)
+	private void ShowActions(IReadOnlyList<DetailAction> actions, string title = "Actions")
 	{
-		var dialog = new Dialog().Title("Actions");
+		var dialog = new Dialog().Title(title);
 		var rows = new VStack().Spacing(0);
 		foreach (var action in actions)
 		{
@@ -281,8 +307,8 @@ internal sealed class DetailPanel
 			rows.Add(action.Kind == DetailActionKind.Destructive ? button.Tone(ControlTone.Error) : button);
 		}
 
-		rows.Add(Dialogs.Buttons(new Button("Cancel").Click(dialog.Close)));
-		dialog.Content(Dialogs.EscapeCloses(dialog, rows));
+		var list = new ScrollViewer(rows).MinWidth(24).MaxHeight(Math.Max(_height.Value, 6));
+		dialog.Content(Dialogs.EscapeCloses(dialog, new VStack(list, Dialogs.Buttons(new Button("Cancel").Click(dialog.Close)))));
 		_dialogs.Show(dialog);
 	}
 }

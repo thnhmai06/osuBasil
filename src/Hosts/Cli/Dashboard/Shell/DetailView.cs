@@ -11,4 +11,8 @@ namespace Basil.Host.Cli.Dashboard.Shell;
 ///     next step of the frame. It runs on the thread of the interface.
 /// </param>
 internal sealed record DetailView(string Title, IReadOnlyList<(string Label, string Value, Ink Kind)> Fields,
-	IReadOnlyList<DetailAction> Actions, Func<Action<DetailView>, Visual>? Body = null);
+	IReadOnlyList<DetailAction> Actions, Func<Action<DetailView>, Visual>? Body = null)
+{
+	/// <summary>Gets how to read the item again, so that the frame can show what an action changed; <see langword="null" /> when it has nothing to read.</summary>
+	public Func<Task<DetailView>>? Reload { get; init; }
+}

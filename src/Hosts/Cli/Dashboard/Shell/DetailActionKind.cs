@@ -10,5 +10,8 @@ internal enum DetailActionKind : byte
 	Normal,
 
 	/// <summary>Ends something; its button comes last, in the error colour.</summary>
-	Destructive
+	Destructive,
+
+	/// <summary>Closes the detail; its button is the last one.</summary>
+	Close
 }

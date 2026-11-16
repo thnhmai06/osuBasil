@@ -117,21 +117,8 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		public ScoresTab(IServiceProvider services, UserDetails users, BeatmapDetails beatmaps, Glyphs glyphs,
 		ShellKit kit, CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
-		_page = new ListPage<ScoreItem>("Scores", Help,
-		[
-			new Column<ScoreItem>("ID", 8, s => s.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
-			new Column<ScoreItem>("Player", 0, s => s.Player, s => UserInk.Of((UserPrivileges)s.Mask))
-			{
-				Link = s => s.UserId is { } id ? (s.Player, () => users.OfAsync(UserReference.ById(id))) : null
-			},
-			new Column<ScoreItem>("Beatmap", 0, s => s.Beatmap) { Weight = 3 },
-			new Column<ScoreItem>("Mods", 12, s => s.Mods, _ => Ink.Info),
-			new Column<ScoreItem>("Score", 12, s => s.Score.ToString("N0", CultureInfo.InvariantCulture)) { Right = true },
-			new Column<ScoreItem>("Acc", 8, s => $"{s.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%") { Right = true },
-			new Column<ScoreItem>("Grade", 6, s => GradeText(s.Grade), s => Rank(s.Grade)),
-			new Column<ScoreItem>("Time", 17, s => s.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm",
-				CultureInfo.InvariantCulture), _ => Ink.Muted)
-		], s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, users, beatmaps),
+		_page = new ListPage<ScoreItem>("Scores", Help, Columns(users),
+			s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, users, beatmaps),
 			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
@@ -178,6 +165,27 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		_page.ShowHelp();
 	}
 
+	/// <summary>Makes the columns of a table of scores.</summary>
+	/// <param name="users">Opens the player's detail when the name is opened; <see langword="null" /> for none.</param>
+	internal static IReadOnlyList<Column<ScoreItem>> Columns(UserDetails? users)
+	{
+		return
+		[
+			new Column<ScoreItem>("ID", 8, s => s.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
+			new Column<ScoreItem>("Player", 0, s => s.Player, s => UserInk.Of((UserPrivileges)s.Mask))
+			{
+				Link = users is null ? null : s => s.UserId is { } id ? (s.Player, () => users.OfAsync(UserReference.ById(id))) : null
+			},
+			new Column<ScoreItem>("Beatmap", 0, s => s.Beatmap) { Weight = 3 },
+			new Column<ScoreItem>("Mods", 12, s => s.Mods, _ => Ink.Info),
+			new Column<ScoreItem>("Score", 12, s => s.Score.ToString("N0", CultureInfo.InvariantCulture)) { Right = true },
+			new Column<ScoreItem>("Acc", 8, s => $"{s.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%") { Right = true },
+			new Column<ScoreItem>("Grade", 6, s => GradeText(s.Grade), s => Rank(s.Grade)),
+			new Column<ScoreItem>("Time", 17, s => s.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm",
+				CultureInfo.InvariantCulture), _ => Ink.Muted)
+		];
+	}
+
 	private static string GradeText(Grade grade)
 	{
 		return grade switch { Grade.Sh => "SH", Grade.Xh => "SSH", Grade.X => "SS", _ => grade.ToString() };
@@ -196,7 +204,7 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		};
 	}
 
-	private static DetailView Detail(ScoreItem score, UserDetails users, BeatmapDetails beatmaps)
+	internal static DetailView Detail(ScoreItem score, UserDetails users, BeatmapDetails beatmaps)
 	{
 		var fields = new List<(string, string, Ink)>
 		{

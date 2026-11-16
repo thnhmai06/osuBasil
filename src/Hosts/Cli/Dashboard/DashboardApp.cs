@@ -59,20 +59,21 @@ public sealed class DashboardApp
 		_glyphs = new Glyphs(mode.Ascii);
 		_palette = new Palette(mode.NoColor);
 		_toasts = new ToastTray(_glyphs, _palette, clock, Post);
-		var kit = new ShellKit(_dialogs, _toasts);
+		var kit = new ShellKit(_dialogs, _toasts, new Changes());
 		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), _dialogs, clock,
 			logger);
-		var users = new UserDetails(services, _console, mode, _dialogs, _glyphs, clock, name => OpenIn(DashboardTab.Chat, name));
-		var beatmaps = new BeatmapDetails(services, _console, mode);
+		var actions = new CommandActions(services, _console, _toasts, kit.Changes, Post);
+		var beatmaps = new BeatmapDetails(services, actions, _dialogs);
+		var users = new UserDetails(services, actions, beatmaps, mode, _dialogs, _glyphs, clock, name => OpenIn(DashboardTab.Chat, name));
 		_views[DashboardTab.Users] = new UsersTab(services, users, mode, _glyphs, kit, clock, Post, logger);
-		_views[DashboardTab.Lobby] = new LobbyTab(services, users, _console, name => OpenIn(DashboardTab.Chat, name), mode,
+		_views[DashboardTab.Lobby] = new LobbyTab(services, users, actions, name => OpenIn(DashboardTab.Chat, name), mode,
 			_glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, beatmaps, mode, _glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Scores] = new ScoresTab(services, users, beatmaps, _glyphs, kit, mode, clock, Post, logger);
 		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), Post, logger);
 		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value), clock);
 		_views[DashboardTab.Sessions] = new SessionsTab(services, users, mode, _glyphs, kit, clock, Post, logger);
-		_views[DashboardTab.Chat] = new ChatTab(services, users, model.Chat, mode, _glyphs, kit,
+		_views[DashboardTab.Chat] = new ChatTab(services, users, new ChannelDetails(services, actions, _dialogs), model.Chat, mode, _glyphs, kit,
 			new Palette(mode.NoColor), () => (_columns.Value, _rows.Value), clock, Post, logger);
 		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs, kit, clock, Post, logger);
 	}
