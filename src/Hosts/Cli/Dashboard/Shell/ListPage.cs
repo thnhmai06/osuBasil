@@ -62,6 +62,7 @@ internal sealed class ListPage<T>
 	private bool _loading;
 	private string? _pendingSelect;
 	private bool _focusList;
+	private bool _stripSlash;
 	private TextBox? _search;
 	private TerminalApp? _app;
 
@@ -136,6 +137,12 @@ internal sealed class ListPage<T>
 		{
 			_focusList = false;
 			_app.Focus(_list);
+		}
+
+		if (_stripSlash)
+		{
+			_stripSlash = false;
+			if (_query.Value.StartsWith('/')) _query.Value = _query.Value[1..];
 		}
 
 		var text = _query.Value;
@@ -240,6 +247,8 @@ internal sealed class ListPage<T>
 	{
 		if (e.Char == '/' || e.Char == TerminalChar.CtrlF)
 		{
+			// The slash is also delivered as text to the box that takes the focus; Tick removes it.
+			_stripSlash = e.Char == '/';
 			FocusSearch();
 			return true;
 		}
