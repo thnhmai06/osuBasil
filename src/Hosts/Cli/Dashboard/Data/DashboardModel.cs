@@ -159,6 +159,9 @@ public sealed class DashboardModel
 	/// <summary>Gets the latest value of every diagnostics category, flattened to dotted names.</summary>
 	public IReadOnlyList<(string Name, string Value)> Diagnostics { get; set; } = [];
 
+	/// <summary>Gets the most frequent exception types of the last minute, the most frequent first.</summary>
+	public IReadOnlyList<ExceptionCount> ExceptionsLastMinute { get; set; } = [];
+
 	/// <summary>Gets the accounts online.</summary>
 	public IReadOnlyList<UserRow> Users { get; set; } = [];
 

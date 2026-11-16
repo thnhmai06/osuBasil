@@ -69,7 +69,7 @@ public sealed class DashboardApp
 		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, beatmaps, mode, _glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Scores] = new ScoresTab(services, users, beatmaps, _glyphs, kit, mode, clock, Post, logger);
 		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), Post, logger);
-		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
+		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value), clock);
 		_views[DashboardTab.Sessions] = new SessionsTab(services, users, mode, _glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Chat] = new ChatTab(services, users, model.Chat, mode, _glyphs, kit,
 			new Palette(mode.NoColor), () => (_columns.Value, _rows.Value), clock, Post, logger);
@@ -95,7 +95,7 @@ public sealed class DashboardApp
 		var main = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
-			.Cell(_toasts.Over(_tabs), 0, 0)
+			.Cell(new ZStack(_toasts.Over(_tabs), StripRefresh()), 0, 0)
 			.Cell(status, 1, 0);
 		var small = new Center(new Group("Terminal too small").Style(GroupStyle.Rounded).Padding(1)
 				.Content(new VStack(new Markup(() => SmallLine(0)), new Markup(() => SmallLine(1)),
@@ -239,7 +239,19 @@ public sealed class DashboardApp
 
 		var button = new Button($"[{_glyphs.Refresh} Refresh]").Click(RefreshView).IsTabStop(false)
 			.HorizontalAlignment(Align.End).VerticalAlignment(Align.Start).Margin(new Thickness(0, 0, 2, 0));
-		return tab == DashboardTab.Chat ? content : new ZStack(content, button);
+		return tab == DashboardTab.Chat || Frameless(tab) ? content : new ZStack(content, button);
+	}
+
+	// A page without a frame has no border to carry the Refresh button, so it stands at the right end of the tab strip.
+	private static bool Frameless(DashboardTab tab)
+	{
+		return tab is DashboardTab.Monitor or DashboardTab.About;
+	}
+
+	private Visual StripRefresh()
+	{
+		return new Button($"[{_glyphs.Refresh} Refresh]").Click(RefreshView).IsTabStop(false)
+			.HorizontalAlignment(Align.End).VerticalAlignment(Align.Start).IsVisible(() => Frameless(Tab));
 	}
 
 	private void RefreshView()
