@@ -7,6 +7,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
@@ -20,6 +21,7 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// <param name="Id">The score id.</param>
 /// <param name="UserId">The id of the player, when known.</param>
 /// <param name="Player">The name of the player, or the id when the account is gone.</param>
+/// <param name="Mask">The privilege flags of the player as a number, which colour the name.</param>
 /// <param name="BeatmapId">The id of the beatmap played, when the server knows it.</param>
 /// <param name="Beatmap">The name of the beatmap played, or its hash when the server does not know it.</param>
 /// <param name="Mods">The mods, as text.</param>
@@ -27,7 +29,7 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// <param name="Accuracy">The accuracy, as a percentage.</param>
 /// <param name="Grade">The grade earned.</param>
 /// <param name="Time">When the play happened.</param>
-internal sealed record ScoreItem(int Id, int? UserId, string Player, int? BeatmapId, string Beatmap, string Mods,
+internal sealed record ScoreItem(int Id, int? UserId, string Player, ulong Mask, int? BeatmapId, string Beatmap, string Mods,
 	int Score, double Accuracy, Grade Grade, DateTimeOffset Time);
 
 /// <summary>Reads the newest scores that match <c>user:&lt;id|name&gt; beatmap:&lt;id|query&gt;</c>.</summary>
@@ -42,17 +44,18 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 		var listing = await sender.Send(new SearchScores(user, beatmapId, beatmaps, new PageRequest(0, limit)), ct);
 		if (listing.Scores is not { } page) return [new SectionData<ScoreItem>("Scores", [], false)];
 
-		var players = new Dictionary<int, string>();
+		var players = new Dictionary<int, (string Name, ulong Mask)>();
 		var maps = new Dictionary<string, (int? Id, string Name)>();
 		var items = new List<ScoreItem>();
 		foreach (var score in page.Items)
 		{
 			var data = score.Value;
-			var player = "-";
+			var player = ("-", 0UL);
 			if (data.UserId is { } id && !players.TryGetValue(id, out player))
 			{
 				var found = await sender.Send(new GetUser(UserReference.ById(id)), ct);
-				players[id] = player = found?.Value.Name ?? id.ToString(CultureInfo.InvariantCulture);
+				players[id] = player = (found?.Value.Name ?? id.ToString(CultureInfo.InvariantCulture),
+					found is null ? 0UL : (ulong)found.Value.Privileges);
 			}
 
 			var map = (Id: (int?)null, Name: "-");
@@ -62,7 +65,7 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 				maps[hash.HashValue] = map = found is null ? (null, hash.HashValue) : (found.Id, found.Name);
 			}
 
-			items.Add(new ScoreItem(score.Id, data.UserId, player!, map.Id, map.Name, data.Mods.ToString(),
+			items.Add(new ScoreItem(score.Id, data.UserId, player.Item1, player.Item2, map.Id, map.Name, data.Mods.ToString(),
 				data.LastState.TotalScore, data.Accuracy, data.Grade, data.Timestamp));
 		}
 
@@ -112,21 +115,24 @@ internal sealed class ScoresTab : ITabView, ISearchable
 
 	/// <summary>Creates the tab.</summary>
 	/// <param name="openIn">Jumps to a tab and selects the item with the given id there.</param>
-	public ScoresTab(IServiceProvider services, Action<DashboardTab, string> openIn, Glyphs glyphs,
+	public ScoresTab(IServiceProvider services, UserDetails users, Action<DashboardTab, string> openIn, Glyphs glyphs,
 		ShellKit kit, CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<ScoreItem>("Scores", Help,
 		[
-			new Column<ScoreItem>("ID", 8, s => s.Id.ToString(CultureInfo.InvariantCulture)),
-			new Column<ScoreItem>("Player", 18, s => s.Player),
-			new Column<ScoreItem>("Beatmap", 0, s => s.Beatmap),
+			new Column<ScoreItem>("ID", 8, s => s.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
+			new Column<ScoreItem>("Player", 0, s => s.Player, s => UserInk.Of((UserPrivileges)s.Mask))
+			{
+				Link = s => s.UserId is { } id ? users.Of(UserReference.ById(id)) : null
+			},
+			new Column<ScoreItem>("Beatmap", 0, s => s.Beatmap) { Weight = 3 },
 			new Column<ScoreItem>("Mods", 12, s => s.Mods, _ => Ink.Info),
-			new Column<ScoreItem>("Score", 12, s => s.Score.ToString("N0", CultureInfo.InvariantCulture)),
-			new Column<ScoreItem>("Acc", 8, s => $"{s.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%"),
+			new Column<ScoreItem>("Score", 12, s => s.Score.ToString("N0", CultureInfo.InvariantCulture)) { Right = true },
+			new Column<ScoreItem>("Acc", 8, s => $"{s.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%") { Right = true },
 			new Column<ScoreItem>("Grade", 6, s => GradeText(s.Grade), s => Rank(s.Grade)),
 			new Column<ScoreItem>("Time", 17, s => s.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm",
 				CultureInfo.InvariantCulture), _ => Ink.Muted)
-		], s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, openIn),
+		], s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, users, openIn),
 			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
@@ -191,21 +197,20 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		};
 	}
 
-	private static DetailView Detail(ScoreItem score, Action<DashboardTab, string> openIn)
+	private static DetailView Detail(ScoreItem score, UserDetails users, Action<DashboardTab, string> openIn)
 	{
 		var fields = new List<(string, string, Ink)>
 		{
-			("ID", score.Id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("Player", score.Player, Ink.Text),
+			("ID", score.Id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("Player", score.Player, UserInk.Of((UserPrivileges)score.Mask)),
 			("Beatmap", score.Beatmap, Ink.Text), ("Mods", score.Mods, Ink.Info),
 			("Score", score.Score.ToString("N0", CultureInfo.InvariantCulture), Ink.Text),
 			("Accuracy", $"{score.Accuracy.ToString("0.00", CultureInfo.InvariantCulture)}%", Ink.Text),
 			("Grade", GradeText(score.Grade), Rank(score.Grade))
 		};
 		var actions = new List<DetailAction>();
+		if (score.UserId is { } user) actions.Add(DetailAction.Open("User", () => users.Of(UserReference.ById(user))));
 		if (score.BeatmapId is { } map)
 			actions.Add(new DetailAction("Beatmap…", () => Open(openIn, DashboardTab.Beatmaps, map), DetailActionKind.Navigate));
-		if (score.UserId is { } user)
-			actions.Add(new DetailAction("User…", () => Open(openIn, DashboardTab.Users, user), DetailActionKind.Navigate));
 		return new DetailView(score.Id.ToString(CultureInfo.InvariantCulture), fields, actions);
 	}
 

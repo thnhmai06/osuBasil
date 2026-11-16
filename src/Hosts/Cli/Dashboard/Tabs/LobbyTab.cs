@@ -2,7 +2,9 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,11 +22,13 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// <param name="Host">The host, or empty.</param>
 /// <param name="Creator">The creator, or empty.</param>
 /// <param name="Referees">The referees, as names.</param>
+/// <param name="HostMask">The privilege flags of the host as a number, which colour its name.</param>
+/// <param name="CreatorMask">The privilege flags of the creator as a number, which colour its name.</param>
 /// <param name="Open">Whether the room is open now, so it can be changed.</param>
 /// <param name="Locked">Whether nobody else can join.</param>
 /// <param name="Slots">The seated players: slot number, name, whether host, and the slot's status.</param>
 internal sealed record RoomItem(int Id, string Name, int Players, int Size, string State, string Host,
-	string Creator, string Referees, bool Open, bool Locked, IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots);
+	string Creator, string Referees, ulong HostMask, ulong CreatorMask, bool Open, bool Locked, IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots);
 
 /// <summary>Reads the rooms: the open ones from memory, the closed ones from the match history.</summary>
 internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomItem>
@@ -44,7 +48,8 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 					room.Slots.Count(slot => !slot.Locked),
 					room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
 					host?.Record.Value.Name ?? string.Empty, room.Authority.Creator.Value.Name,
-					string.Join(", ", room.Authority.Referees.Select(referee => referee.Value.Name)), true,
+					string.Join(", ", room.Authority.Referees.Select(referee => referee.Value.Name)),
+					host is null ? 0UL : (ulong)host.Record.Value.Privileges, (ulong)room.Authority.Creator.Value.Privileges, true,
 					room.Slots.Locked,
 					[
 						.. room.Slots.Where(slot => slot.Player is not null).Select(slot => (slot.Index,
@@ -60,7 +65,7 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 			? []
 			: found.Items.Where(match => !openIds.Contains(match.Id) && Matches(match.Value.Name, match.Id))
 				.Select(match => new RoomItem(match.Id, match.Value.Name, 0, 0, "closed", string.Empty,
-					match.Value.Creator.Value.Name, string.Empty, false, false, [])).ToList();
+					match.Value.Creator.Value.Name, string.Empty, 0, (ulong)match.Value.Creator.Value.Privileges, false, false, [])).ToList();
 		return
 		[
 			new SectionData<RoomItem>("Open", open, false),
@@ -80,18 +85,24 @@ internal sealed class LobbyTab : ITabView, ISearchable
 	private bool _opened;
 
 	/// <summary>Creates the tab.</summary>
-	public LobbyTab(IServiceProvider services, ConsoleTab console, Action<string> openChat, CliOptions options,
+	public LobbyTab(IServiceProvider services, UserDetails users, ConsoleTab console, Action<string> openChat, CliOptions options,
 		Glyphs glyphs, ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<RoomItem>("Lobby", Help,
 		[
-			new Column<RoomItem>("ID", 8, r => r.Id.ToString()),
-			new Column<RoomItem>("Name", 0, r => r.Name),
-			new Column<RoomItem>("Players", 9, r => r.Open ? $"{r.Players}/{r.Size}" : "-"),
+			new Column<RoomItem>("ID", 8, r => r.Id.ToString()) { Right = true },
+			new Column<RoomItem>("Name", 0, r => r.Name) { Weight = 3 },
+			new Column<RoomItem>("Players", 9, r => r.Open ? $"{r.Players}/{r.Size}" : "-") { Right = true },
 			new Column<RoomItem>("State", 9, r => r.State, State),
-			new Column<RoomItem>("Host", 16, r => r.Host),
-			new Column<RoomItem>("Creator", 16, r => r.Creator, _ => Ink.Muted)
-		], r => r.Id.ToString(), new LobbySource(services), room => Detail(room, console, openChat, options, kit.Dialogs),
+			new Column<RoomItem>("Host", 0, r => r.Host, r => UserInk.Of((UserPrivileges)r.HostMask))
+			{
+				Link = r => r.Host.Length == 0 ? null : users.Of(UserReference.ByName(r.Host))
+			},
+			new Column<RoomItem>("Creator", 0, r => r.Creator, r => UserInk.Of((UserPrivileges)r.CreatorMask))
+			{
+				Link = r => users.Of(UserReference.ByName(r.Creator))
+			}
+		], r => r.Id.ToString(), new LobbySource(services), room => Detail(room, users, console, openChat, options, kit.Dialogs),
 			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
@@ -149,33 +160,49 @@ internal sealed class LobbyTab : ITabView, ISearchable
 		};
 	}
 
-	private static DetailView Detail(RoomItem room, ConsoleTab console, Action<string> openChat, CliOptions options,
+	private static DetailView Detail(RoomItem room, UserDetails users, ConsoleTab console, Action<string> openChat, CliOptions options,
 		Dialogs dialogs)
 	{
 		var fields = new List<(string, string, Ink)>
 		{
 			("ID", room.Id.ToString(), Ink.Text), ("Name", room.Name, Ink.Text), ("State", room.State, State(room)),
-			("Creator", room.Creator, Ink.Text), ("Referees", room.Referees.Length == 0 ? "-" : room.Referees, Ink.Text)
+			("Creator", room.Creator, UserInk.Of((UserPrivileges)room.CreatorMask)), ("Referees", room.Referees.Length == 0 ? "-" : room.Referees, Ink.Text)
 		};
 		fields.AddRange(room.Slots.Select(slot =>
 			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)));
-		if (!options.Editable || !room.Open) return new DetailView($"#{room.Id}", fields, []);
+		var actions = new List<DetailAction>();
+		if (room.Host.Length > 0) actions.Add(DetailAction.Open("Host", () => users.Of(UserReference.ByName(room.Host))));
+		actions.Add(DetailAction.Open("Creator", () => users.Of(UserReference.ByName(room.Creator))));
+		if (room.Slots.Count > 0) actions.Add(DetailAction.Open("Players", () => Players(room, users)));
+		if (!room.Open) return new DetailView($"#{room.Id}", fields, actions);
 
 		var id = room.Id;
-		var actions = new List<DetailAction>
+		actions.Add(new DetailAction("Chat…", () => openChat($"#mp_{id}"), DetailActionKind.Navigate));
+		if (!options.Editable) return new DetailView($"#{room.Id}", fields, actions);
+
+		actions.AddRange(new DetailAction[]
 		{
-			new("Chat…", () => openChat($"#mp_{id}"), DetailActionKind.Navigate),
 			room.Locked
 				? new DetailAction("Unlock", () => Run(console, $"rooms {id} unlock"))
 				: new DetailAction("Lock", () => Run(console, $"rooms {id} lock")),
-			new("Kick…", () => AskUser(console, dialogs, "Kick", id, "kick"), DetailActionKind.Destructive),
-			new("Ban…", () => AskUser(console, dialogs, "Ban", id, "ban"), DetailActionKind.Destructive),
-			new("Set host…", () => AskUser(console, dialogs, "Set host", id, "host")),
-			new("Add referee…", () => AskUser(console, dialogs, "Add referee", id, "addref")),
-			new("Remove referee…", () => AskUser(console, dialogs, "Remove referee", id, "removeref")),
+			new("Kick", () => AskUser(console, dialogs, "Kick", id, "kick"), DetailActionKind.Destructive),
+			new("Ban", () => AskUser(console, dialogs, "Ban", id, "ban"), DetailActionKind.Destructive),
+			new("Set host", () => AskUser(console, dialogs, "Set host", id, "host")),
+			new("Add referee", () => AskUser(console, dialogs, "Add referee", id, "addref")),
+			new("Remove referee", () => AskUser(console, dialogs, "Remove referee", id, "removeref")),
 			new("Close room", () => Run(console, $"rooms {id} close"), DetailActionKind.Destructive)
-		};
+		});
 		return new DetailView($"#{room.Id}", fields, actions);
+	}
+
+	// One navigation button per seated player, each opening that player's detail.
+	private static DetailView Players(RoomItem room, UserDetails users)
+	{
+		var fields = room.Slots.Select(slot =>
+			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)).ToList();
+		var actions = room.Slots.Select(slot => DetailAction.Open(slot.Player,
+			() => users.Of(UserReference.ByName(slot.Player)))).ToList();
+		return new DetailView("Players", fields, actions);
 	}
 
 	private static void Run(ConsoleTab console, string line)

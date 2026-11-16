@@ -73,8 +73,8 @@ public enum DashboardTab : byte
 	/// <summary>The scores.</summary>
 	Scores,
 
-	/// <summary>The connections by kind.</summary>
-	Connections,
+	/// <summary>The sessions by kind of client.</summary>
+	Sessions,
 
 	/// <summary>The server settings.</summary>
 	Settings,

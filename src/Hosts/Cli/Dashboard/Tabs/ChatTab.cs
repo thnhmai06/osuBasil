@@ -2,9 +2,12 @@ using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;
+using Basil.Host.Cli.Dashboard.Shell.Toasts;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,7 +29,8 @@ internal sealed record ChannelItem(string Name, int Members);
 /// <summary>One entry of the member list.</summary>
 /// <param name="Name">The user name.</param>
 /// <param name="Mark">The mark after the name: <c>(H)</c> for the host, <c>(P)</c> for a player in a round.</param>
-internal sealed record MemberItem(string Name, string Mark);
+/// <param name="Mask">The privilege flags of the user as a number, which colour the name.</param>
+internal sealed record MemberItem(string Name, string Mark, ulong Mask);
 
 /// <summary>A tab whose scrolling view can be sent back to its newest line.</summary>
 internal interface IJumpable
@@ -42,6 +46,9 @@ internal interface IJumpable
 internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 {
 	private readonly Palette _palette;
+	private readonly DetailPanel _detail;
+	private readonly UserDetails _users;
+	private readonly ShellKit _kit;
 	private readonly GroupedList<ChannelItem> _channels;
 	private readonly ChatFeed _feed;
 	private readonly Glyphs _glyphs;
@@ -79,10 +86,15 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private TerminalApp? _app;
 
 	/// <summary>Creates the tab.</summary>
-	public ChatTab(IServiceProvider services, ChatFeed feed, CliOptions options, Glyphs glyphs, Palette palette,
-		Func<(int Columns, int Rows)> size, TimeProvider clock, ILogger logger)
+	public ChatTab(IServiceProvider services, UserDetails users, ChatFeed feed, CliOptions options, Glyphs glyphs,
+		ShellKit kit, Palette palette, Func<(int Columns, int Rows)> size, TimeProvider clock, Action<Action> post,
+		ILogger logger)
 	{
 		_services = services;
+		_users = users;
+		_kit = kit;
+		_detail = new DetailPanel("Chat", glyphs, palette, kit.Dialogs, kit.Toasts, post);
+		_detail.Closed += FocusInput;
 		_feed = feed;
 		_options = options;
 		_glyphs = glyphs;
@@ -93,7 +105,8 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			[new Column<ChannelItem>("Channel", 0, c => c.Name), new Column<ChannelItem>("Users", 5, c => c.Members < 0 ? string.Empty : $"({c.Members})", _ => Ink.Muted)],
 			c => c.Name, glyphs, options.NoColor, clock) { ActivateOnClick = true };
 		_members = new GroupedList<MemberItem>(
-			[new Column<MemberItem>("Member", 0, m => m.Name), new Column<MemberItem>("", 4, m => m.Mark, _ => Ink.Accent)],
+			[new Column<MemberItem>("Member", 0, m => m.Name, m => UserInk.Of((UserPrivileges)m.Mask)),
+				new Column<MemberItem>("", 4, m => m.Mark, _ => Ink.Accent)],
 			m => m.Name, glyphs, options.NoColor, clock) { ActivateOnClick = true };
 		_channelSearch = new TextBox().Text(_channelQuery).Placeholder("search");
 		_memberSearch = new TextBox().Text(_memberQuery).Placeholder("search");
@@ -124,11 +137,22 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				new ColumnDefinition { Width = GridLength.Star(3) })
 			.Rows(new RowDefinition { Height = GridLength.Star() })
 			.Cell(left, 0, 0).Cell(center, 0, 1).Cell(right, 0, 2);
-		View = _grid;
+		// The detail frame stands under the three panes, across the whole width, directly above the status bar.
+		View = new Grid()
+			.Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
+			.Cell(_grid, 0, 0)
+			.Cell(_detail.View, 1, 0);
+		foreach (var gesture in Dialogs.BackGestures)
+			View.AddCommand(new Command
+			{
+				Id = $"chat.detail.back.{gesture}", LabelMarkup = "Back", Gesture = gesture,
+				CanExecute = _ => _detail.IsOpen, Execute = _ => _detail.Back()
+			});
 		_channels.KeyHook = e => ListKey(e, _channelSearch, _channels.Selected?.Name, _firstChannel);
 		_members.KeyHook = e => ListKey(e, _memberSearch, _members.Selected?.Name, _firstMember) || MemberKey(e);
 		_channels.Activated += _ => OpenSelected();
-		_members.Activated += OpenDirectMessage;
+		_members.Activated += ShowUser;
 		WheelScroll.Accelerate(_log, clock);
 		AddSearchKeys(_channelSearch, _channelQuery, _channels);
 		AddSearchKeys(_memberSearch, _memberQuery, _members);
@@ -141,9 +165,10 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	public void Attach(TerminalApp app)
 	{
 		_app = app;
+		_detail.Attach(app);
 		app.AddGlobalCommand(new Command
 		{
-			Id = "chat.back", LabelMarkup = "Back", Gesture = new KeyGesture(TerminalKey.Escape),
+			Id = "chat.back",LabelMarkup = "Back", Gesture = new KeyGesture(TerminalKey.Escape),
 			CanExecute = _ => Narrow && _open && Active, Execute = _ => Back()
 		});
 		app.AddGlobalCommand(new Command
@@ -181,6 +206,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	public void Tick()
 	{
 		_lastTick = Environment.TickCount64;
+		_detail.Fit(_size().Columns, _size().Rows);
 		if (_feed.Revision != _feedRevision || _channelQuery.Value != _channelSeen) Safely(Refresh);
 		if (_stripSlash)
 		{
@@ -246,6 +272,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	public void Select(string id)
 	{
 		if (!id.StartsWith('#')) _openedDms.Add(id);
+		_detail.Close();
 		_channelQuery.Value = string.Empty;
 		Safely(Refresh);
 		_channels.Select(id);
@@ -311,16 +338,16 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		FocusInput();
 	}
 
-	private void OpenDirectMessage(MemberItem member)
+	// A click on a member shows that user's detail; its Send message button opens the conversation.
+	private void ShowUser(MemberItem member)
 	{
-		if (member.Name.Equals("BasilBot", StringComparison.OrdinalIgnoreCase)) return;
-
-		Select(member.Name);
-		if (Narrow)
+		try
 		{
-			_open = true;
-			_membersShown = false;
-			Arrange();
+			_detail.Show(_users.Of(UserReference.ByName(member.Name)));
+		}
+		catch (Exception exception)
+		{
+			_kit.Toasts.Show(exception.Message, ToastKind.Error);
 		}
 	}
 
@@ -347,7 +374,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	{
 		if (e.Key != TerminalKey.Enter || _members.Selected is not { } member) return false;
 
-		OpenDirectMessage(member);
+		ShowUser(member);
 		return true;
 	}
 
@@ -404,9 +431,19 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 
 	private string Format(ChatLine line)
 	{
-		var ink = line.Author.Equals("BasilBot", StringComparison.OrdinalIgnoreCase) ? Ink.ChatBot : Ink.Text;
+		var ink = AuthorInk(line.Author);
 		return $"{_palette.Wrap(Ink.Muted, line.Time.ToLocalTime().ToString("H:mm"))} " +
 		       $"{_palette.Wrap(ink, line.Author + ":")} {_palette.Wrap(Ink.Text, line.Text)}";
+	}
+
+	// The bot has its own colour; an author who is online has the colour of the highest privilege.
+	private Ink AuthorInk(string author)
+	{
+		if (author.Equals("BasilBot", StringComparison.OrdinalIgnoreCase)) return Ink.ChatBot;
+
+		var user = _services.GetRequiredService<UserRegistry>().Online.Keys
+			.FirstOrDefault(record => record.Value.Name.Equals(author, StringComparison.OrdinalIgnoreCase));
+		return user is null ? Ink.Text : UserInk.Of(user.Value.Privileges);
 	}
 
 	private void Members()
@@ -419,20 +456,24 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		    _services.GetRequiredService<Lobby>().Rooms.TryGetValue(id, out var room))
 		{
 			var host = room.Authority.Host;
-			referees.Add(new MemberItem(room.Authority.Creator.Value.Name, string.Empty));
-			referees.AddRange(room.Authority.Referees.ToArray().Select(r => new MemberItem(r.Value.Name, string.Empty)));
+			referees.Add(new MemberItem(room.Authority.Creator.Value.Name, string.Empty,
+				(ulong)room.Authority.Creator.Value.Privileges));
+			referees.AddRange(room.Authority.Referees.ToArray()
+				.Select(r => new MemberItem(r.Value.Name, string.Empty, (ulong)r.Value.Privileges)));
 			foreach (var slot in room.Slots)
 			{
 				var player = slot.Player;
 				if (player is null) continue;
 
 				players.Add(new MemberItem(player.Record.Value.Name,
-					ReferenceEquals(host, player) ? "(H)" : room.Rounds.InProgress ? "(P)" : string.Empty));
+					ReferenceEquals(host, player) ? "(H)" : room.Rounds.InProgress ? "(P)" : string.Empty,
+					(ulong)player.Record.Value.Privileges));
 			}
 		}
 		else if (_services.GetRequiredService<GeneralChannelRegistry>().Find(_current) is { } channel)
 		{
-			others.AddRange(channel.Members.ToArray().Select(c => new MemberItem(c.User.Record.Value.Name, string.Empty))
+			others.AddRange(channel.Members.ToArray().Select(c => new MemberItem(c.User.Record.Value.Name, string.Empty,
+					(ulong)c.User.Record.Value.Privileges))
 				.DistinctBy(m => m.Name).OrderBy(m => m.Name));
 		}
 

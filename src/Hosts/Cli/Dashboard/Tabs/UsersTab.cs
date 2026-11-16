@@ -62,7 +62,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 		        countries.Any(c => string.Equals(c.ToAcronym(), country, StringComparison.OrdinalIgnoreCase)));
 	}
 
-	private static UserItem Item(Lobby lobby, UserRecord record, Basil.Application.Users.Objects.User? user,
+	internal static UserItem Item(Lobby lobby, UserRecord record, Basil.Application.Users.Objects.User? user,
 		DateTimeOffset now)
 	{
 		var mask = user is null ? (ulong)record.Value.Privileges : (ulong)user.EffectivePrivileges(now);
@@ -99,19 +99,19 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 	private bool _opened;
 
 	/// <summary>Creates the tab.</summary>
-	public UsersTab(IServiceProvider services, ConsoleTab console, Action showConsole, CliOptions options,
-		Glyphs glyphs, ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
+	public UsersTab(IServiceProvider services, UserDetails users, CliOptions options, Glyphs glyphs, ShellKit kit,
+		TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		var colours = options.NoColor;
 		_page = new ListPage<UserItem>("Users", Help,
 		[
-			new Column<UserItem>("ID", 8, u => u.Id.ToString()),
-			new Column<UserItem>("Name", 0, u => u.Name),
+			new Column<UserItem>("ID", 8, u => u.Id.ToString()) { Right = true },
+			new Column<UserItem>("Name", 0, u => u.Name, u => Role(u.Mask)),
 			new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
-			new Column<UserItem>("Privileges", 18, u => u.Privileges, u => Role(u.Mask)),
+			new Column<UserItem>("Privileges", 0, u => u.Privileges, u => Role(u.Mask)) { Weight = 3 },
 			new Column<UserItem>("Connections", 14, u => u.Connections, _ => Ink.Info)
 		], u => u.Id.ToString(), new UsersSource(services, clock),
-			user => Detail(user, console, showConsole, options, kit.Dialogs), glyphs, kit, colours, clock, post, logger);
+			users.Of, glyphs, kit, colours, clock, post, logger);
 	}
 
 	/// <inheritdoc />
@@ -166,49 +166,5 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 	private static Ink Role(ulong mask)
 	{
 		return UserInk.Of((UserPrivileges)mask);
-	}
-
-	private static DetailView Detail(UserItem user, ConsoleTab console, Action showConsole, CliOptions options,
-		Dialogs dialogs)
-	{
-		var room = user.Room.Length == 0 ? "-" : user.Room;
-		var managed = user.Managed.Length == 0 ? string.Empty : $" ({user.Managed})";
-		var fields = new List<(string, string, Ink)>
-		{
-			("ID", user.Id.ToString(), Ink.Text), ("Name", user.Name, Ink.Text), ("Country", user.Country, Ink.Text),
-			("Privileges", $"{user.Privileges} ({user.Mask})", Role(user.Mask)),
-			("Connections", user.Connections.Length == 0 ? "offline" : user.Connections, Ink.Info),
-			("Room", room + managed, Ink.Text), ("Activity", user.Activity.Length == 0 ? "-" : user.Activity, Ink.Text)
-		};
-		if (!options.Editable) return new DetailView(user.Name, fields, []);
-
-		var id = user.Id;
-		var actions = new List<DetailAction>
-		{
-			new("Kick user", () => Run(console, $"users {id} sessions delete"), DetailActionKind.Destructive),
-			user.Silenced
-				? new DetailAction("Unsilence", () => Run(console, $"users {id} unsilence"))
-				: new DetailAction("Silence…", () => Ask(console, dialogs, "Silence", id)),
-			new("Sessions…", () =>
-			{
-				showConsole();
-				Run(console, $"users {id} sessions list");
-			}, DetailActionKind.Navigate)
-		};
-		return new DetailView(user.Name, fields, actions);
-	}
-
-	private static void Run(ConsoleTab console, string line)
-	{
-		console.RunCommand(line);
-	}
-
-	private static void Ask(ConsoleTab console, Dialogs dialogs, string title, int id)
-	{
-		dialogs.Form(title, [("Duration", "30m"), ("Reason", string.Empty)], values =>
-		{
-			var reason = values[1].Length == 0 ? string.Empty : $" --reason \"{values[1].Replace("\"", "'")}\"";
-			console.RunCommand($"users {id} silence --duration {values[0]}{reason}");
-		});
 	}
 }

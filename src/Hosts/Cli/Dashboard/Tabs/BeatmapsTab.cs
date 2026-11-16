@@ -91,17 +91,17 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 	{
 		_page = new ListPage<BeatmapItem>("Beatmaps", Help,
 		[
-			new Column<BeatmapItem>("ID", 10, b => b.Id.ToString()),
+			new Column<BeatmapItem>("ID", 10, b => b.Id.ToString()) { Right = true },
 			new Column<BeatmapItem>("Version", 0, b => b.Version),
 			new Column<BeatmapItem>("Status", 10, b => b.Status.ToString(), b => Status(b.Status)),
 			new Column<BeatmapItem>("Local", 6, b => b.Local ? glyphs.Yes : glyphs.No, _ => Ink.Muted),
 			new Column<BeatmapItem>("Modified", 12, b => Date(b.Modified), _ => Ink.Muted),
 			new Column<BeatmapItem>("Uploaded", 12, b => Date(b.Uploaded), _ => Ink.Muted),
-			new Column<BeatmapItem>("CS", 5, b => Number(b.Cs)),
-			new Column<BeatmapItem>("AR", 5, b => Number(b.Ar)),
-			new Column<BeatmapItem>("OD", 5, b => Number(b.Od)),
-			new Column<BeatmapItem>("HP", 5, b => Number(b.Hp)),
-			new Column<BeatmapItem>("SR", 6, b => Number(b.Stars), _ => Ink.Accent)
+			new Column<BeatmapItem>("CS", 5, b => Number(b.Cs)) { Right = true },
+			new Column<BeatmapItem>("AR", 5, b => Number(b.Ar)) { Right = true },
+			new Column<BeatmapItem>("OD", 5, b => Number(b.Od)) { Right = true },
+			new Column<BeatmapItem>("HP", 5, b => Number(b.Hp)) { Right = true },
+			new Column<BeatmapItem>("SR", 6, b => Number(b.Stars), _ => Ink.Accent) { Right = true }
 		], b => b.Id.ToString(), new BeatmapsSource(services), b => Detail(b, console, options), glyphs,
 			kit, options.NoColor, clock, post, logger);
 	}

@@ -12,10 +12,20 @@ namespace Basil.Host.Cli.Dashboard.Shell;
 
 /// <summary>One column of a table.</summary>
 /// <param name="Header">The title in the header row.</param>
-/// <param name="Width">The width in cells; 0 takes what the other columns leave.</param>
+/// <param name="Width">The width in cells; 0 shares what the fixed columns leave, by <see cref="Weight" />.</param>
 /// <param name="Text">Reads the cell of an item.</param>
 /// <param name="Kind">Tells what kind of text the cell holds, which decides its colour.</param>
-internal sealed record Column<T>(string Header, int Width, Func<T, string> Text, Func<T, Ink>? Kind = null);
+internal sealed record Column<T>(string Header, int Width, Func<T, string> Text, Func<T, Ink>? Kind = null)
+{
+	/// <summary>Gets how many parts of the shared room a column of width 0 takes.</summary>
+	public int Weight { get; init; } = 1;
+
+	/// <summary>Gets whether the cell and its header stand against the right edge, as numbers do.</summary>
+	public bool Right { get; init; }
+
+	/// <summary>Gets what a click on the cell of an item shows instead of the item's own detail, or <see langword="null" />.</summary>
+	public Func<T, DetailView?>? Link { get; init; }
+}
 
 /// <summary>A titled group of items in a table.</summary>
 /// <param name="Title">The name of the group, such as <c>Online</c>.</param>
@@ -32,6 +42,8 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <summary>Counts the changes of the content, which the framework tracks to redraw the table.</summary>
 	[Bindable] public partial int Revision { get; set; }
 
+	// A shared-width column is worth showing only from this width; a narrower table drops its last columns instead.
+	private const int MinShared = 10;
 	private readonly IReadOnlyList<Column<T>> _columns;
 	private readonly Glyphs _glyphs;
 	private readonly Func<T, string> _key;
@@ -109,6 +121,9 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 	/// <summary>Gets or sets whether a single click on an item opens it, instead of the second click.</summary>
 	public bool ActivateOnClick { get; init; }
+
+	/// <summary>Gets the column that the last activation hit, or -1 when it came from the keyboard.</summary>
+	public int ActivatedColumn { get; private set; } = -1;
 
 	/// <summary>Gets or sets a hook that sees every key first and returns whether it used the key.</summary>
 	public Func<KeyEventArgs, bool>? KeyHook { get; set; }
@@ -280,7 +295,10 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			case TerminalKey.PageDown: Move(Math.Max(_bodyHeight - 1, 1)); break;
 			case TerminalKey.Home: MoveTo(0); break;
 			case TerminalKey.End: MoveTo(_rows.Count - 1); break;
-			case TerminalKey.Enter when HasSelection: Activated?.Invoke(_rows[_selected].Item!); break;
+			case TerminalKey.Enter when HasSelection:
+				ActivatedColumn = -1;
+				Activated?.Invoke(_rows[_selected].Item!);
+				break;
 			case TerminalKey.Enter when OnTitle: Fold(_selected); break;
 			case TerminalKey.Left when OnTitle: Fold(_selected, false); break;
 			case TerminalKey.Right when OnTitle: Fold(_selected, true); break;
@@ -309,7 +327,11 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 		var again = index == _selected;
 		MoveTo(index);
-		if (again || ActivateOnClick || e.ClickCount >= 2) Activated?.Invoke(_rows[index].Item!);
+		if (again || ActivateOnClick || e.ClickCount >= 2)
+		{
+			ActivatedColumn = ColumnAt(e.LocalX);
+			Activated?.Invoke(_rows[index].Item!);
+		}
 		e.Handled = true;
 	}
 
@@ -368,15 +390,41 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		if (offset != _scroll.OffsetY) _scroll.SetOffset(0, offset);
 	}
 
+	private int ColumnAt(int localX)
+	{
+		var x = 1;
+		var widths = Widths(Bounds.Width);
+		for (var i = 0; i < widths.Length; i++)
+		{
+			if (localX < x + widths[i]) return i;
+
+			x += widths[i] + 2;
+		}
+
+		return -1;
+	}
+
+	// The columns of width 0 share what the fixed ones leave, each by its weight, so no long text starves the others.
 	private int[] Widths(int total)
 	{
 		var shown = _columns.Count;
-		int Needed(int count) => _columns.Take(count).Sum(c => c.Width) + 2 * Math.Max(count - 1, 0) + 1;
+		int Fixed(int count) => _columns.Take(count).Sum(c => c.Width) + 2 * Math.Max(count - 1, 0) + 1;
+		int Needed(int count) => Fixed(count) + MinShared * _columns.Take(count).Count(c => c.Width == 0);
 		while (shown > 2 && Needed(shown) > total) shown--;
 
 		var widths = _columns.Take(shown).Select(c => c.Width).ToArray();
-		var star = Array.IndexOf(widths, 0);
-		if (star >= 0) widths[star] = Math.Max(total - (Needed(shown) - 1) - 1, 4);
+		var stars = Enumerable.Range(0, shown).Where(i => widths[i] == 0).ToList();
+		if (stars.Count == 0) return widths;
+
+		var pool = Math.Max(total - Fixed(shown), 4 * stars.Count);
+		var weights = stars.Sum(i => _columns[i].Weight);
+		var left = pool;
+		foreach (var i in stars)
+		{
+			widths[i] = i == stars[^1] ? Math.Max(left, 4) : Math.Max(pool * _columns[i].Weight / weights, 4);
+			left -= widths[i];
+		}
+
 		return widths;
 	}
 
@@ -385,7 +433,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		var builder = new StringBuilder(" ");
 		for (var i = 0; i < widths.Length; i++)
 		{
-			builder.Append(Fit(read(_columns[i]), widths[i]));
+			builder.Append(Fit(read(_columns[i]), widths[i], _columns[i].Right));
 			if (i < widths.Length - 1) builder.Append("  ");
 		}
 
@@ -448,7 +496,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		{
 			var column = _columns[i];
 			var style = column.Kind is null || selected ? rowStyle : InkStyle(theme, column.Kind(item));
-			buffer.WriteText(x, y, Fit(column.Text(item), widths[i]), style);
+			buffer.WriteText(x, y, Fit(column.Text(item), widths[i], column.Right), style);
 			x += widths[i] + 2;
 		}
 	}
@@ -485,12 +533,14 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		return Style.None.WithForeground(color ?? theme.Foreground ?? Colors.TerminalWhite);
 	}
 
-	private static string Fit(string text, int width)
+	private static string Fit(string text, int width, bool right = false)
 	{
 		text = Palette.Plain(text);
 		if (width <= 0) return string.Empty;
 
-		return text.Length <= width ? text.PadRight(width) : text[..Math.Max(width - 1, 0)] + "…";
+		if (text.Length > width) return text[..Math.Max(width - 1, 0)] + "…";
+
+		return right ? text.PadLeft(width) : text.PadRight(width);
 	}
 
 	private readonly record struct Row(bool IsHeader, string Title, string Count, bool Open, T? Item);

@@ -1,3 +1,4 @@
+using Basil.Host.Cli.Dashboard.Shell.Toasts;
 using Microsoft.Extensions.Logging;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
@@ -40,6 +41,7 @@ internal sealed class ListPage<T>
 	private readonly Func<T, DetailView> _detailOf;
 	private readonly DetailPanel _detail;
 	private readonly Dialogs _dialogs;
+	private readonly ToastTray _toasts;
 	private readonly Glyphs _glyphs;
 	private readonly string _help;
 	private readonly string _title;
@@ -73,6 +75,7 @@ internal sealed class ListPage<T>
 		_source = source;
 		_detailOf = detail;
 		_dialogs = kit.Dialogs;
+		_toasts = kit.Toasts;
 		_detail = new DetailPanel(title, glyphs, new Palette(noColor), kit.Dialogs, kit.Toasts, post);
 		_detail.Closed += () => _app?.Focus(_list);
 		_glyphs = glyphs;
@@ -80,8 +83,8 @@ internal sealed class ListPage<T>
 		_clock = clock;
 		_post = post;
 		_logger = logger;
-		_list = new GroupedList<T>(columns, key, glyphs, noColor, clock);
-		_list.Activated += _ => ToggleDetail(true);
+		_list = new GroupedList<T>(columns, key, glyphs, noColor, clock) { ActivateOnClick = true };
+		_list.Activated += _ => Activate(columns);
 		_list.NearEnd += LoadMore;
 		_list.KeyHook = OnListKey;
 		_list.Moved += () =>
@@ -299,9 +302,24 @@ internal sealed class ListPage<T>
 		_app?.Focus(_list);
 	}
 
-	private void ToggleDetail(bool open)
+	// A click on a cell that links to another item (a player's name) shows that item; any other opens the row's own detail.
+	private void Activate(IReadOnlyList<Column<T>> columns)
 	{
-		if (open && _list.HasSelection) _detail.Show(_detailOf(_list.Selected!));
-		else _detail.Close();
+		if (!_list.HasSelection)
+		{
+			_detail.Close();
+			return;
+		}
+
+		try
+		{
+			var at = _list.ActivatedColumn;
+			var link = at >= 0 && at < columns.Count ? columns[at].Link?.Invoke(_list.Selected!) : null;
+			_detail.Show(link ?? _detailOf(_list.Selected!));
+		}
+		catch (Exception exception)
+		{
+			_toasts.Show(exception.Message, ToastKind.Error);
+		}
 	}
 }
