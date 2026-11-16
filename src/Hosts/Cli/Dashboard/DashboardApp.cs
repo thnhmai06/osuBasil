@@ -73,7 +73,7 @@ public sealed class DashboardApp
 		_views[DashboardTab.Sessions] = new SessionsTab(services, users, mode, _glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Chat] = new ChatTab(services, users, model.Chat, mode, _glyphs, kit,
 			new Palette(mode.NoColor), () => (_columns.Value, _rows.Value), clock, Post, logger);
-		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs, Post, logger);
+		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs, kit, clock, Post, logger);
 	}
 
 	private void Post(Action action)
