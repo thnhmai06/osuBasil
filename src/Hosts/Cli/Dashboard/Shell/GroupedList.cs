@@ -442,43 +442,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 	private void DrawHeader(CellBuffer buffer, Rectangle rect, int y, Row row, bool selected, Theme theme)
 	{
-		var rule = _glyphs.Rule;
-		var arrow = row.Open ? _glyphs.Open : _glyphs.Folded;
-		var title = Palette.Plain(row.Title);
-		if (title.Length > 0) title = char.ToUpperInvariant(title[0]) + title[1..];
-		var muted = Muted(theme);
-		var bold = (_noColor ? Style.None : Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite))
-			.WithTextStyle(TextStyle.Bold);
-		if (selected)
-		{
-			muted = Select(muted, theme);
-			bold = Select(bold, theme);
-			buffer.WriteText(rect.X, y, new string(' ', rect.Width), muted);
-		}
-
-		var x = rect.X;
-
-		void Put(string text, Style style)
-		{
-			var room = rect.X + rect.Width - x;
-			if (room <= 0) return;
-
-			var shown = text.Length > room ? text[..room] : text;
-			buffer.WriteText(x, y, shown, style);
-			x += shown.Length;
-		}
-
-		Put($"{arrow} {rule}{rule} ", muted);
-		Put(title, bold);
-		Put($" ({row.Count}) ", muted);
-		Put(new string(rule, Math.Max(rect.X + rect.Width - x, 0)), muted);
-	}
-
-	private Style Select(Style style, Theme theme)
-	{
-		return _noColor
-			? style.WithTextStyle(TextStyle.Invert)
-			: style.WithBackground(theme.Selection ?? Colors.TerminalBlue);
+		GroupTitle.Draw(buffer, rect, y, _glyphs, _noColor, theme, row.Title, row.Count, row.Open, selected);
 	}
 
 	private void DrawItem(CellBuffer buffer, Rectangle rect, int y, T item, int[] widths, bool selected, Theme theme)

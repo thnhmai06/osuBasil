@@ -202,7 +202,7 @@ public sealed class DashboardApp
 				items.AddRange([("Tab pane", null), ("Ctrl+B members", null), ("Esc/Alt+← back", null)]);
 				break;
 			case DashboardTab.Settings:
-				items.AddRange([("←→ category", null), ("↓/Enter fields", null), ("↑/Esc back", null), ("Enter save", null)]);
+				items.AddRange([("←→ category", null), ("↓ search", null), ("↑↓ select", null), ("←→ fold", null), ("Enter save", null), ("Esc back", null)]);
 				break;
 			case DashboardTab.Console:
 				if (_mode.Editable) items.AddRange([("Enter run", null), ("Tab/↑↓ complete", null), ("Esc close", null)]);

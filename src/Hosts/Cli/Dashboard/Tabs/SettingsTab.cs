@@ -80,7 +80,7 @@ internal sealed partial class SettingsTab : ITabView
 		_logger = logger;
 		_palette = new Palette(options.NoColor);
 		_categories = [.. SettingsCategories.Names, Configuration];
-		_strip = new TabControl(_categories.Select(name => new TabPage(Capitalize(name), new TextBlock(string.Empty))).ToArray())
+		_strip = new TabControl(_categories.Select(name => new TabPage(Words.Humanise(name), new TextBlock(string.Empty))).ToArray())
 			.Style(options.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder).SelectedIndex(_selected);
 		_strip.AddCommand(new Command
 		{
@@ -189,7 +189,7 @@ internal sealed partial class SettingsTab : ITabView
 		if (title is not null)
 		{
 			anyFocused = true;
-			_title.Value = Capitalize(title.Name);
+			_title.Value = Words.Humanise(title.Name);
 			_path.Value = string.Empty;
 			_description.Value = "Enter, Left and Right open and fold the group.";
 		}
@@ -207,16 +207,11 @@ internal sealed partial class SettingsTab : ITabView
 
 	private void ShowStripHelp()
 	{
-		_title.Value = Capitalize(Category);
+		_title.Value = Words.Humanise(Category);
 		_path.Value = string.Empty;
 		_description.Value = Category == Configuration
 			? "Read from Configurations/appsettings.json; edit the file and restart."
 			: StripHelp;
-	}
-
-	private static string Capitalize(string name)
-	{
-		return name.Length > 0 ? char.ToUpperInvariant(name[0]) + name[1..] : name;
 	}
 
 	private void FocusNav(int index)
@@ -297,7 +292,7 @@ internal sealed partial class SettingsTab : ITabView
 					var section = _sections.Find(s => s.Name == group);
 					if (section is null)
 					{
-						var title = new FoldTitle(group, _glyphs, _options.NoColor);
+						var title = new FoldTitle(Words.Humanise(group), _glyphs, _options.NoColor);
 						var created = new Section(group, title);
 						title.Folding += open => Fold(created, open);
 						AddKeys(title, $"settings.{category}.{group}");
@@ -328,7 +323,7 @@ internal sealed partial class SettingsTab : ITabView
 					}
 
 					// Every label has the width of the label column, so every row of every group lines up.
-					field.LabelBox = new TextBlock(Palette.Plain(label)).Trimming(TextTrimming.EndEllipsis)
+					field.LabelBox = new TextBlock(Palette.Plain(Relative(label, group, category))).Trimming(TextTrimming.EndEllipsis)
 						.Margin(new XenoAtom.Terminal.UI.Geometry.Thickness(0, 0, 1, 0));
 					field.Row = new HStack(field.LabelBox, control.Stretch()).Spacing(0);
 					section.Fields.Add(field);
@@ -358,6 +353,21 @@ internal sealed partial class SettingsTab : ITabView
 		foreach (var section in _sections)
 			foreach (var field in section.Fields)
 				field.LabelBox!.MinWidth(width).MaxWidth(width);
+	}
+
+	// A label that begins with the name of its own group or category ("Login: attempt window") drops it.
+	private static string Relative(string label, string group, string category)
+	{
+		var colon = label.IndexOf(':');
+		if (colon <= 0) return label;
+
+		var head = label[..colon];
+		if (!head.Equals(Words.Humanise(group), StringComparison.OrdinalIgnoreCase) &&
+		    !head.Equals(Words.Humanise(category), StringComparison.OrdinalIgnoreCase))
+			return label;
+
+		var rest = label[(colon + 1)..].TrimStart();
+		return rest.Length > 0 ? char.ToUpperInvariant(rest[0]) + rest[1..] : label;
 	}
 
 	// Splits a key of the configuration at its first colon: the section it belongs to and the rest of its name.
@@ -475,9 +485,13 @@ internal sealed partial class SettingsTab : ITabView
 		var json = ToJson(field.Kind, text);
 		if (json is null)
 		{
-			_kit.Toasts.Show(NotNumber, ToastKind.Error);
+			// Leaving the same wrong value again does not repeat the message.
+			if (field.Rejected != text) _kit.Toasts.Show(NotNumber, ToastKind.Error);
+			field.Rejected = text;
 			return;
 		}
+
+		field.Rejected = null;
 
 		field.Original = text;
 		_saving++;
@@ -615,6 +629,8 @@ internal sealed partial class SettingsTab : ITabView
 		public Visual Control { get; } = control;
 
 		public bool Editable { get; set; }
+
+		public string? Rejected { get; set; }
 
 		public Visual? Row { get; set; }
 

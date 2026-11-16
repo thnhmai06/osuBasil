@@ -24,7 +24,7 @@ internal sealed partial class FoldTitle : Visual
 	/// <param name="noColor">Whether the title is monochrome.</param>
 	public FoldTitle(string name, Glyphs glyphs, bool noColor)
 	{
-		_name = name.Length > 0 ? char.ToUpperInvariant(name[0]) + name[1..] : name;
+		_name = name;
 		_glyphs = glyphs;
 		_noColor = noColor;
 		Focusable = true;
@@ -53,38 +53,7 @@ internal sealed partial class FoldTitle : Visual
 		var rect = Bounds;
 		if (rect.Width <= 0 || rect.Height <= 0) return;
 
-		var open = Open;
-		var count = Count;
-		var theme = GetTheme();
-		var rule = _glyphs.Rule;
-		var muted = _noColor
-			? Style.None.WithTextStyle(TextStyle.Dim)
-			: Style.None.WithForeground(theme.Muted ?? Colors.TerminalBrightBlack);
-		var bold = (_noColor ? Style.None : Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite))
-			.WithTextStyle(TextStyle.Bold);
-		if (HasFocus)
-		{
-			muted = Select(muted, theme);
-			bold = Select(bold, theme);
-			buffer.WriteText(rect.X, rect.Y, new string(' ', rect.Width), muted);
-		}
-
-		var x = rect.X;
-
-		void Put(string text, Style style)
-		{
-			var room = rect.X + rect.Width - x;
-			if (room <= 0) return;
-
-			var shown = text.Length > room ? text[..room] : text;
-			buffer.WriteText(x, rect.Y, shown, style);
-			x += shown.Length;
-		}
-
-		Put($"{(open ? _glyphs.Open : _glyphs.Folded)} {rule}{rule} ", muted);
-		Put(_name, bold);
-		Put($" ({count}) ", muted);
-		Put(new string(rule, Math.Max(rect.X + rect.Width - x, 0)), muted);
+		GroupTitle.Draw(buffer, rect, rect.Y, _glyphs, _noColor, GetTheme(), _name, Count.ToString(), Open, HasFocus);
 	}
 
 	/// <inheritdoc />
@@ -108,12 +77,5 @@ internal sealed partial class FoldTitle : Visual
 
 		Folding?.Invoke(!Open);
 		e.Handled = true;
-	}
-
-	private Style Select(Style style, Theme theme)
-	{
-		return _noColor
-			? style.WithTextStyle(TextStyle.Invert)
-			: style.WithBackground(theme.Selection ?? Colors.TerminalBlue);
 	}
 }
