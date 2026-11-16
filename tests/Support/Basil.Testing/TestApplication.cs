@@ -118,13 +118,10 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IModerationLogRepository>(_moderationLog);
 		services.AddSingleton<ISettingsRepository>(_settings);
 		// The diagnostics handler of the shared infrastructure reads the database, which this fixture never connects to.
-		services.AddSingleton(_ =>
-		{
-			var provider = Substitute.For<IDatabaseProvider>();
-			provider.CreateSource(Arg.Any<string>(), Arg.Any<int>()).Returns(Substitute.For<IDatabaseSource>());
-			return new Database(new DatabaseProviders(provider, provider),
-				Options.Create(new DatabaseOptions { WriteConnectionString = "unused" }));
-		});
+		var databaseProvider = Substitute.For<IDatabaseProvider>();
+		databaseProvider.CreateSource(Arg.Any<string>(), Arg.Any<int>()).Returns(Substitute.For<IDatabaseSource>());
+		services.AddSingleton(new Database(new DatabaseProviders(databaseProvider, databaseProvider),
+			Options.Create(new DatabaseOptions { WriteConnectionString = "unused" })));
 		var matchEvents = new InMemoryMatchEventRepository();
 		services.AddSingleton<IMatchRepository>(new InMemoryMatchRepository(matchEvents));
 		services.AddSingleton<IRoundRepository>(new InMemoryRoundRepository());
