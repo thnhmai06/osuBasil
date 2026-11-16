@@ -41,35 +41,35 @@ public readonly struct ScopedRoomMembers
 
 	/// <summary>Removes a player from the room.</summary>
 	/// <param name="player">The user to remove, named by id or name.</param>
-	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom or RoomClosed; a user who does not exist is not in the room.</returns>
+	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom, NotFound for a user who does not exist, or RoomClosed.</returns>
 	public async Task<RoomOutcome> KickAsync(UserReference player)
 	{
 		if (_scoped.Require(RoomPrivileges.MembersKick) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Kick(_scoped.Actor.Record, record)
-			: RoomOutcome.NotInRoom;
+			: RoomOutcome.NotFound;
 	}
 
 	/// <summary>Bans a user from the room and removes them if seated.</summary>
 	/// <param name="player">The user to ban, named by id or name.</param>
-	/// <returns>Ok, NotAuthorized, Silenced, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
+	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotFound or RoomClosed; banning a banned user again returns Ok.</returns>
 	public async Task<RoomOutcome> BanAsync(UserReference player)
 	{
 		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Ban(_scoped.Actor.Record, record)
-			: RoomOutcome.NotInRoom;
+			: RoomOutcome.NotFound;
 	}
 
 	/// <summary>Lifts a user's ban from the room.</summary>
 	/// <param name="player">The user to unban, named by id or name.</param>
-	/// <returns>Ok, NotAuthorized, Silenced, NotBanned, NotInRoom for a user who does not exist, or RoomClosed.</returns>
+	/// <returns>Ok, NotAuthorized, Silenced, NotBanned, NotFound for a user who does not exist, or RoomClosed.</returns>
 	public async Task<RoomOutcome> UnbanAsync(UserReference player)
 	{
 		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Unban(record)
-			: RoomOutcome.NotInRoom;
+			: RoomOutcome.NotFound;
 	}
 
 	/// <summary>Invites an online user to the room.</summary>

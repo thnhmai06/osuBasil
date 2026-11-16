@@ -180,12 +180,14 @@ internal static class UserRoutes
 	private static async Task<IResult?> PatchSelfAndPrivilegesAsync(HttpContext context, UserReference target,
 		PatchUserRequest request, CancellationToken ct)
 	{
-		if (request.Away is not null && !await context.Sender().Send(
-			    new SetUserAway(context.Connection(), target, request.Away.Length == 0 ? null : request.Away), ct))
-			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
+		if (request.Away is not null && await context.Sender().Send(
+			    new SetUserAway(context.Connection(), target, request.Away.Length == 0 ? null : request.Away), ct) is
+			    var away and not UserOutcome.Ok)
+			return NotSelf(away);
 		if (request.PmPrivate is { } pm &&
-		    !await context.Sender().Send(new SetUserPmPrivate(context.Connection(), target, pm), ct))
-			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
+		    await context.Sender().Send(new SetUserPmPrivate(context.Connection(), target, pm), ct) is
+			    var pmPrivate and not UserOutcome.Ok)
+			return NotSelf(pmPrivate);
 		if (request.Privileges is { } privileges &&
 		    await context.Sender()
 				    .Send(new SetUserPrivileges(context.Connection(), target, privileges), ct) is
@@ -193,6 +195,14 @@ internal static class UserRoutes
 			return set.Refusal();
 
 		return null;
+	}
+
+	/// <summary>Answers a refused away or private-message change: Denied means the caller is not the account itself.</summary>
+	private static IResult NotSelf(UserOutcome refused)
+	{
+		return refused == UserOutcome.Denied
+			? Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.")
+			: refused.Refusal();
 	}
 
 	private static async Task<IResult> PasswordAsync(HttpContext context, int id, PasswordRequest request)

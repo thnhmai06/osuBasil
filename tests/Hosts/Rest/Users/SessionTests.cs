@@ -36,6 +36,25 @@ public sealed class SessionTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task CloseAgain_Answers404()
+	{
+		var (first, id) = await fixture.SignInAsync("SesTwice");
+		using var second = await SecondClientAsync("SesTwice");
+		using (first)
+		{
+			var (_, session) = await second.CallAsync(HttpMethod.Get, "/v1/auth/session");
+			var sid = (long)session!["data"]!["sessionId"]!;
+
+			var (closed, _) = await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions/{sid}");
+			var (again, error) = await first.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/sessions/{sid}");
+
+			Assert.Equal(200, closed);
+			Assert.Equal(404, again);
+			Assert.Equal("notFound", (string)error!["errors"]!["code"]!);
+		}
+	}
+
+	[Fact]
 	public async Task ConnectionsOwn_Listed()
 	{
 		var (client, id) = await fixture.SignInAsync("SesTrail");

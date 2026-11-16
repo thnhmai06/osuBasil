@@ -45,10 +45,14 @@ public readonly struct ServerFaq
 
 	/// <summary>Deletes a FAQ entry.</summary>
 	/// <param name="entry">The entry name.</param>
-	/// <returns>Ok; deleting an entry that does not exist is ok.</returns>
+	/// <returns>Ok, or NotFound when no such entry exists.</returns>
 	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
 	internal async Task<ServerOutcome> DeleteAsync(string entry)
 	{
+		using (var stored = await _server.Context.Faqs.ReadAsync(entry))
+			if (stored is null)
+				return ServerOutcome.NotFound;
+
 		await _server.Context.Faqs.DeleteAsync(entry);
 		return ServerOutcome.Ok;
 	}
@@ -101,9 +105,11 @@ public readonly struct ServerBanners
 
 	/// <summary>Deletes a main-menu banner and its image.</summary>
 	/// <param name="banner">The banner.</param>
-	/// <returns>Ok.</returns>
+	/// <returns>Ok, or NotFound when the banner does not exist.</returns>
 	internal async Task<ServerOutcome> DeleteAsync(MenuBanner banner)
 	{
+		if (await _server.Context.Banners.GetAsync(banner.Image) is null) return ServerOutcome.NotFound;
+
 		await _server.Context.Banners.DeleteAsync(banner);
 		await _server.Context.BannerImages.DeleteAsync(banner.Image);
 		return ServerOutcome.Ok;
@@ -134,9 +140,11 @@ public readonly struct ServerSeasonals
 
 	/// <summary>Deletes a seasonal background.</summary>
 	/// <param name="image">The reference of the image.</param>
-	/// <returns>Ok.</returns>
+	/// <returns>Ok, or NotFound when the background does not exist.</returns>
 	internal async Task<ServerOutcome> DeleteAsync(ContentReference image)
 	{
+		if (!(await _server.Context.Seasonals.ListAsync()).Contains(image)) return ServerOutcome.NotFound;
+
 		await _server.Context.Seasonals.DeleteAsync(image);
 		return ServerOutcome.Ok;
 	}
@@ -172,11 +180,13 @@ public readonly struct ServerIcon
 	}
 
 	/// <summary>Removes the main-menu icon.</summary>
-	/// <returns>Ok.</returns>
+	/// <returns>Ok, or NotFound when the server has no icon.</returns>
 	internal async Task<ServerOutcome> DeleteAsync()
 	{
-		await _server.Context.Icon.DeleteAsync();
 		var settings = await _server.Context.Settings.GetAsync();
+		if (settings.MenuIcon is { Image: null, Url: null }) return ServerOutcome.NotFound;
+
+		await _server.Context.Icon.DeleteAsync();
 		await _server.Context.Settings.CreateOrUpdateAsync(settings with
 		{
 			MenuIcon = new ServerSettings.MenuIconSettings()

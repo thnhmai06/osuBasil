@@ -115,5 +115,8 @@ public enum RoomOutcome : byte
 	RoomClosed,
 
 	/// <summary>The invited user blocks the inviter.</summary>
-	Blocked
+	Blocked,
+
+	/// <summary>The user the operation names has no account.</summary>
+	NotFound
 }

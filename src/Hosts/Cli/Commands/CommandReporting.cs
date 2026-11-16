@@ -10,8 +10,10 @@ public static class CommandReporting
 	/// <param name="call">The running command.</param>
 	/// <param name="result">What the behaviour returned.</param>
 	/// <param name="confirmation">The line to print on success.</param>
+	/// <param name="missing">What the command acts on, named in the refusal when it does not exist.</param>
 	/// <returns>The exit code.</returns>
-	public static int Report<TOutcome>(this CommandCall call, TOutcome result, string confirmation)
+	public static int Report<TOutcome>(this CommandCall call, TOutcome result, string confirmation,
+		string? missing = null)
 		where TOutcome : struct, Enum
 	{
 		if (OutcomeErrors.IsOk(result))
@@ -20,7 +22,9 @@ public static class CommandReporting
 			return ExitCodes.Success;
 		}
 
-		return call.Refuse(result);
+		return missing is not null && OutcomeErrors.Describe(result).Kind == ErrorKind.NotFound
+			? call.NotFound(missing)
+			: call.Refuse(result);
 	}
 
 	/// <summary>Prints the refusal in a result that is not ok.</summary>

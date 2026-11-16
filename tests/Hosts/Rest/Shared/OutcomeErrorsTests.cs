@@ -44,7 +44,7 @@ public sealed class OutcomeErrorsTests
 		[RoomOutcome.NotPlaying] = Conflict,
 		[RoomOutcome.NotInProgress] = Conflict,
 		[RoomOutcome.RoundMismatch] = Conflict,
-		[RoomOutcome.RoomClosed] = Gone, [RoomOutcome.Blocked] = Forbidden
+		[RoomOutcome.RoomClosed] = Gone, [RoomOutcome.Blocked] = Forbidden, [RoomOutcome.NotFound] = NotFound
 	};
 
 	private static readonly Dictionary<ChannelOutcome, ErrorKind> Channels = new()
@@ -61,7 +61,8 @@ public sealed class OutcomeErrorsTests
 	{
 		[ServerOutcome.NameTaken] = Conflict, [ServerOutcome.TooLarge] = Invalid,
 		[ServerOutcome.InvalidImage] = Invalid,
-		[ServerOutcome.DimensionsTooLarge] = Invalid, [ServerOutcome.Locked] = Locked
+		[ServerOutcome.DimensionsTooLarge] = Invalid, [ServerOutcome.Locked] = Locked,
+		[ServerOutcome.NotFound] = NotFound
 	};
 
 	private static readonly Dictionary<ConnectionOutcome, ErrorKind> Connections = new()

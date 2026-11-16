@@ -28,6 +28,7 @@ public sealed class MenuTests(RestHostFixture fixture)
 			var (missing, _) = await anon.CallAsync(HttpMethod.Get, "/v1/faqs/nothing");
 			var (invalid, _) = await manager.CallAsync(HttpMethod.Put, "/v1/faqs/a::b", new { text = "x" });
 			var (deleted, _) = await manager.CallAsync(HttpMethod.Delete, "/v1/faqs/rules");
+			var (deletedAgain, _) = await manager.CallAsync(HttpMethod.Delete, "/v1/faqs/rules");
 			var (gone, _) = await anon.CallAsync(HttpMethod.Get, "/v1/faqs/rules");
 
 			Assert.Equal(403, denied);
@@ -39,6 +40,7 @@ public sealed class MenuTests(RestHostFixture fixture)
 			Assert.Equal(404, missing);
 			Assert.Equal(422, invalid);
 			Assert.Equal(200, deleted);
+			Assert.Equal(404, deletedAgain);
 			Assert.Equal(404, gone);
 		}
 	}
@@ -92,6 +94,7 @@ public sealed class MenuTests(RestHostFixture fixture)
 				("url", "https://example.org"));
 			var (icon, view) = await anon.CallAsync(HttpMethod.Get, "/v1/menu/icon");
 			var (iconCleared, _) = await manager.CallAsync(HttpMethod.Delete, "/v1/menu/icon");
+			var (iconClearedAgain, _) = await manager.CallAsync(HttpMethod.Delete, "/v1/menu/icon");
 
 			Assert.Equal(403, denied);
 			Assert.Equal(201, created);
@@ -103,6 +106,7 @@ public sealed class MenuTests(RestHostFixture fixture)
 			Assert.Equal(200, icon);
 			Assert.Equal("https://example.org/", (string)view!["data"]!["url"]!);
 			Assert.Equal(200, iconCleared);
+			Assert.Equal(404, iconClearedAgain);
 		}
 	}
 }

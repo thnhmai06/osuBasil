@@ -42,12 +42,14 @@ public sealed class UserRelationships
 	/// <summary>Removes a relationship of one kind toward another user, if it exists.</summary>
 	/// <param name="target">The other user.</param>
 	/// <param name="type">The kind of relationship.</param>
-	internal async Task RemoveAsync(UserRecord target, RelationshipType type)
+	internal async Task<bool> RemoveAsync(UserRecord target, RelationshipType type)
 	{
 		var existing = (await ListAsync(type)).FirstOrDefault(relationship =>
 			relationship.Target.Equals(target));
-		if (existing is not null)
-			await _user.Context.Relationships.DeleteAsync(existing);
+		if (existing is null) return false;
+
+		await _user.Context.Relationships.DeleteAsync(existing);
+		return true;
 	}
 
 	/// <summary>Adds another user as a friend.</summary>
@@ -65,14 +67,13 @@ public sealed class UserRelationships
 
 	/// <summary>Removes another user as a friend.</summary>
 	/// <param name="target">The other user.</param>
-	/// <returns>The outcome of removing the friend.</returns>
+	/// <returns>The outcome of removing the friend; NotFound when the other user is not a friend.</returns>
 	internal async Task<UserOutcome> RemoveFriendAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
 		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
 
-		await RemoveAsync(target, RelationshipType.Friend);
-		return UserOutcome.Ok;
+		return await RemoveAsync(target, RelationshipType.Friend) ? UserOutcome.Ok : UserOutcome.NotFound;
 	}
 
 	/// <summary>Blocks another user.</summary>
@@ -90,14 +91,13 @@ public sealed class UserRelationships
 
 	/// <summary>Removes a block on another user.</summary>
 	/// <param name="target">The other user.</param>
-	/// <returns>The outcome of removing the block.</returns>
+	/// <returns>The outcome of removing the block; NotFound when the other user is not blocked.</returns>
 	internal async Task<UserOutcome> UnblockAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
-		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
+		if (target.IsFriendOfEveryone()) return UserOutcome.NotFound;
 
-		await RemoveAsync(target, RelationshipType.Block);
-		return UserOutcome.Ok;
+		return await RemoveAsync(target, RelationshipType.Block) ? UserOutcome.Ok : UserOutcome.NotFound;
 	}
 
 	/// <summary>Lists the users this account has set a relationship toward, of one kind.</summary>

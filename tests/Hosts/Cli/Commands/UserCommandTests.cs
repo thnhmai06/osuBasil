@@ -94,6 +94,32 @@ public sealed class UserCommandTests(CliFixture fixture)
 		Assert.Equal("error: notFound: No such user.", text);
 	}
 
+	[Theory]
+	[InlineData("users 999999 set --away brb", "error: notFound: Not found.")]
+	[InlineData("users 999999 set --pmPrivate true", "error: notFound: Not found.")]
+	[InlineData("users 999999 delete", "error: notFound: No such user.")]
+	[InlineData("users 999999 sessions delete", "error: notFound: Not found.")]
+	[InlineData("users 999999 unsilence", "error: notFound: Not found.")]
+	[InlineData("users 999999 avatar delete", "error: notFound: Not found.")]
+	public async Task ChangeOfUnknownAccount_NotFound(string command, string expected)
+	{
+		var (code, text) = await fixture.RunAsync(command);
+
+		Assert.Equal(1, code);
+		Assert.Equal(expected, text);
+	}
+
+	[Fact]
+	public async Task UnsilenceWhoIsNotSilenced_NotFound()
+	{
+		var user = await NewAsync("unsil");
+
+		var (code, text) = await fixture.RunAsync($"users {user.Id} unsilence");
+
+		Assert.Equal(1, code);
+		Assert.Equal("error: notFound: Not found.", text);
+	}
+
 	[Fact]
 	public async Task ListSearch_PrintsPositionedTable()
 	{
@@ -261,12 +287,15 @@ public sealed class UserCommandTests(CliFixture fixture)
 			.First(word => long.TryParse(word, out _));
 		var (shown, shownText) = await fixture.RunAsync($"users {id} sessions {sessionId}");
 		var (closed, _) = await fixture.RunAsync($"users {id} sessions {sessionId} delete");
+		var (closedAgain, againText) = await fixture.RunAsync($"users {id} sessions {sessionId} delete");
 		var (status, _) = await client.CallAsync(HttpMethod.Get, "/v1/auth/session");
 
 		Assert.Contains("api", listed);
 		Assert.Equal(0, shown);
 		Assert.Contains("startedAt", shownText);
 		Assert.Equal(0, closed);
+		Assert.Equal(1, closedAgain);
+		Assert.Equal("error: notFound: No such session.", againText);
 		Assert.Equal(401, status);
 	}
 

@@ -170,14 +170,14 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
-	public async Task UnknownUser_Conflict()
+	public async Task UnknownUser_NotFound()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("ghost"));
 
 		var (code, text) = await fixture.RunAsync($"rooms {id} kick --user 999999");
 
 		Assert.Equal(1, code);
-		Assert.Contains("notInRoom", text);
+		Assert.Contains("notFound", text);
 	}
 
 	[Fact]

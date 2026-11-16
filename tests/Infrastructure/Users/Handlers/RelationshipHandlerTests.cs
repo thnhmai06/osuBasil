@@ -41,6 +41,30 @@ public sealed class RelationshipHandlerTests
 	}
 
 	[Fact]
+	public async Task RemoveFriendWhoIsNoFriend_NotFound()
+	{
+		using var app = new TestApplication();
+		var (actor, target) = await TwoAsync(app);
+
+		var result = await new RemoveFriendHandler(app.Users).Handle(
+			new RemoveFriend(actor, UserReference.ById(target.Record.Id)), Token);
+
+		Assert.Equal(UserOutcome.NotFound, result);
+	}
+
+	[Fact]
+	public async Task UnblockWhoIsNotBlocked_NotFound()
+	{
+		using var app = new TestApplication();
+		var (actor, target) = await TwoAsync(app);
+
+		var result = await new UnblockUserHandler(app.Users).Handle(
+			new UnblockUser(actor, UserReference.ById(target.Record.Id)), Token);
+
+		Assert.Equal(UserOutcome.NotFound, result);
+	}
+
+	[Fact]
 	public async Task BlockUser_TargetBlocked()
 	{
 		using var app = new TestApplication();

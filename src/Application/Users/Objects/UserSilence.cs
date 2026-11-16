@@ -47,11 +47,11 @@ public sealed class UserSilence
 	/// <summary>Ends the silence of the account now.</summary>
 	/// <param name="reason">Why the silence is lifted, if known.</param>
 	/// <param name="actor">The account lifting the silence.</param>
-	/// <returns>The outcome of lifting the silence.</returns>
+	/// <returns>The outcome of lifting the silence; NotFound when the account is not silenced.</returns>
 	internal async Task<UserOutcome> LiftAsync(string? reason, UserRecord actor)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
-		if (!_user.Record.Value.IsSilenced(now)) return UserOutcome.Ok;
+		if (!_user.Record.Value.IsSilenced(now)) return UserOutcome.NotFound;
 
 		await _user.StoreChangeAsync(data => data.SilencedUntil = null);
 		_user.Change(data => data.SilencedUntil = null);

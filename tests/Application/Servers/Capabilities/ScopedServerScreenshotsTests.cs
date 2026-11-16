@@ -354,11 +354,25 @@ public sealed class ScopedServerScreenshotsTests
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
+		f.Storage.ListAsync(Arg.Any<CancellationToken>()).Returns(new[] { Stored });
 
 		var result = await screenshots.DeleteAsync(Stored);
 
 		Assert.Equal(ServerOutcome.Ok, result);
 		await f.Storage.Received(1).DeleteAsync(Stored);
+	}
+
+	[Fact]
+	public async Task DeleteMissing_NotFound()
+	{
+		using var f = new Fixture();
+		var screenshots = await f.ScreenshotsOfAsync(UserPrivilegesExtensions.Default | UserPrivileges.Moderator);
+		f.Storage.ListAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<ContentReference>());
+
+		var result = await screenshots.DeleteAsync(Stored);
+
+		Assert.Equal(ServerOutcome.NotFound, result);
+		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default);
 	}
 
 	[Fact]

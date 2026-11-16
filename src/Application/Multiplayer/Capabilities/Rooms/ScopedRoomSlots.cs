@@ -32,14 +32,14 @@ public readonly struct ScopedRoomSlots
 	/// <summary>Moves a player to an empty, unlocked slot.</summary>
 	/// <param name="player">The user to act on, named by id or name.</param>
 	/// <param name="index">The slot number, from 1 to 16.</param>
-	/// <returns>Ok, NotAuthorized, NotInRoom, SlotNotOpen or RoomClosed when the room has closed.</returns>
+	/// <returns>Ok, NotAuthorized, NotInRoom, NotFound, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
 	public async Task<RoomOutcome> MoveAsync(UserReference player, int index)
 	{
 		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.MovePlayer(record, index)
-			: RoomOutcome.NotInRoom;
+			: RoomOutcome.NotFound;
 	}
 
 	/// <summary>Arranges every slot of a room at once.</summary>
@@ -91,13 +91,13 @@ public readonly struct ScopedRoomSlots
 	/// <summary>Puts a player on a team.</summary>
 	/// <param name="player">The user to act on, named by id or name.</param>
 	/// <param name="team">The team to assign.</param>
-	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom or RoomClosed when the room has closed.</returns>
+	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom, NotFound or RoomClosed when the room has closed.</returns>
 	public async Task<RoomOutcome> SetTeamAsync(UserReference player, GameTeam team)
 	{
 		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.SetTeam(record, team)
-			: RoomOutcome.NotInRoom;
+			: RoomOutcome.NotFound;
 	}
 
 	/// <summary>Chooses the caller's own mods while freemod is on.</summary>

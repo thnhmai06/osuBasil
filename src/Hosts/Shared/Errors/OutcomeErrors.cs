@@ -88,6 +88,7 @@ public static class OutcomeErrors
 			{
 				RoomOutcome.RoleDenied or RoomOutcome.IsManager or RoomOutcome.Blocked => ErrorKind.Forbidden,
 				RoomOutcome.WrongPassword => ErrorKind.WrongPassword,
+				RoomOutcome.NotFound => ErrorKind.NotFound,
 				RoomOutcome.RoomClosed => ErrorKind.Gone,
 				RoomOutcome.Locked => ErrorKind.Locked,
 				RoomOutcome.InvalidMods or RoomOutcome.InvalidSettings or RoomOutcome.SpeedModNotAllowed
@@ -105,6 +106,7 @@ public static class OutcomeErrors
 			ServerOutcome server => server switch
 			{
 				ServerOutcome.Locked => ErrorKind.Locked,
+				ServerOutcome.NotFound => ErrorKind.NotFound,
 				ServerOutcome.NameTaken => ErrorKind.Conflict,
 				_ => ErrorKind.Invalid
 			},

@@ -86,6 +86,45 @@ public sealed class SessionHandlerTests
 	}
 
 	[Fact]
+	public async Task SessionClosedTwice_SecondNotFound()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("Twice", "password");
+		var closing = await app.LoginAsync(user, SessionType.Stable);
+		var actor = await app.LoginAsync(user);
+		var handler = new CloseUserSessionHandler(app.Users);
+		var close = new CloseUserSession(actor, UserReference.ById(user.Id), closing.Session.Id);
+		Assert.Equal(UserOutcome.Ok, await handler.Handle(close, Token));
+
+		Assert.Equal(UserOutcome.NotFound, await handler.Handle(close, Token));
+	}
+
+	[Fact]
+	public async Task NoSuchSessionClose_NotFound()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("Nothing", "password");
+		var actor = await app.LoginAsync(user);
+
+		var result = await new CloseUserSessionHandler(app.Users)
+			.Handle(new CloseUserSession(actor, UserReference.ById(user.Id), long.MaxValue), Token);
+
+		Assert.Equal(UserOutcome.NotFound, result);
+	}
+
+	[Fact]
+	public async Task NoSuchUserClose_NotFound()
+	{
+		using var app = new TestApplication();
+		var actor = await app.Users.OperateAsync(Token);
+
+		var result = await new CloseUserSessionHandler(app.Users)
+			.Handle(new CloseUserSession(actor, UserReference.ById(int.MaxValue), 1), Token);
+
+		Assert.Equal(UserOutcome.NotFound, result);
+	}
+
+	[Fact]
 	public async Task UnauthorizedForeignClose_Refused()
 	{
 		using var app = new TestApplication();

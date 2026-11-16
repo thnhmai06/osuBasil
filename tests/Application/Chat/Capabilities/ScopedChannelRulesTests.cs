@@ -3,6 +3,7 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
@@ -312,7 +313,7 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOwner", "password");
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
-		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
+		Assert.Equal(UserOutcome.Ok, await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
 		var staff = await app.LoginAsync(await app.CreateUserAsync("StaffSender", "password",
 			UserPrivilegesExtensions.Default | UserPrivileges.Moderator));
 

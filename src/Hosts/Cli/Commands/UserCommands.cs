@@ -216,9 +216,15 @@ internal static class UserCommands
 				return call.Refuse(changed);
 		}
 
-		if (call.Text("away") is { } away)
-			await sender.Send(new SetUserAway(actor, target, away.Length == 0 ? null : away), ct);
-		if (call.Bool("pmPrivate") is { } pm) await sender.Send(new SetUserPmPrivate(actor, target, pm), ct);
+		if (call.Text("away") is { } away &&
+		    await sender.Send(new SetUserAway(actor, target, away.Length == 0 ? null : away), ct) is
+			    var awaySet and not UserOutcome.Ok)
+			return call.Refuse(awaySet);
+
+		if (call.Bool("pmPrivate") is { } pm &&
+		    await sender.Send(new SetUserPmPrivate(actor, target, pm), ct) is var pmSet and not UserOutcome.Ok)
+			return call.Refuse(pmSet);
+
 		return null;
 	}
 
@@ -341,7 +347,7 @@ internal static class UserCommands
 				.Send(new CloseUserSession(await call.ByAsync(), call.UserOf(),
 						long.Parse(call.Word("sid"), CultureInfo.InvariantCulture)),
 					call.CancellationToken),
-			"Session closed.");
+			"Session closed.", "session");
 	}
 
 	private static async Task<int> CloseSessionsAsync(CommandCall call)
@@ -355,6 +361,6 @@ internal static class UserCommands
 	{
 		return call.Report(
 			await call.Get<ISender>().Send(new DeleteUser(await call.ByAsync(), call.UserOf()), call.CancellationToken),
-			"User deleted.");
+			"User deleted.", NoUser);
 	}
 }

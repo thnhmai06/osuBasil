@@ -11,31 +11,31 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 	/// <summary>Sets or clears the away message other users see.</summary>
 	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>
 	/// <returns>
-	///     <see langword="true" /> if this connection belongs to this user (or is the operator's), the user exists
-	///     and the message was set.
+	///     Ok when the message was set; Denied unless this connection belongs to this user (or is the operator's);
+	///     NotFound when the account does not exist.
 	/// </returns>
-	public async Task<bool> SetAwayAsync(string? message)
+	public async Task<UserOutcome> SetAwayAsync(string? message)
 	{
-		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return false;
-		if (await scoped.ResolveAsync() is not { } user) return false;
+		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return UserOutcome.Denied;
+		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
 
 		user.Profile.SetAway(message);
-		return true;
+		return UserOutcome.Ok;
 	}
 
 	/// <summary>Sets whether this user accepts private messages only from their friends.</summary>
 	/// <param name="pmPrivate"><see langword="true" /> to accept private messages only from friends.</param>
 	/// <returns>
-	///     <see langword="true" /> if this connection belongs to this user (or is the operator's), the user exists
-	///     and the setting was set.
+	///     Ok when the setting was set; Denied unless this connection belongs to this user (or is the operator's);
+	///     NotFound when the account does not exist.
 	/// </returns>
-	public async Task<bool> SetPmPrivateAsync(bool pmPrivate)
+	public async Task<UserOutcome> SetPmPrivateAsync(bool pmPrivate)
 	{
-		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return false;
-		if (await scoped.ResolveAsync() is not { } user) return false;
+		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return UserOutcome.Denied;
+		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
 
 		user.Profile.SetPmPrivate(pmPrivate);
-		return true;
+		return UserOutcome.Ok;
 	}
 
 	/// <summary>Gives this account a new name.</summary>

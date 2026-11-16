@@ -22,5 +22,8 @@ public enum ServerOutcome : byte
 	DimensionsTooLarge,
 
 	/// <summary>The area is locked and the caller does not manage it.</summary>
-	Locked
+	Locked,
+
+	/// <summary>The thing the operation names (a FAQ entry, a banner, a background, the icon, a screenshot) does not exist.</summary>
+	NotFound
 }

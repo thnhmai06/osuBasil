@@ -146,14 +146,14 @@ public sealed class UserSessions
 	/// <remarks>
 	///     A closed session cannot sign in again with what it stored: an API token and an IRC key stop working. An
 	///     osu! client is disconnected but can sign in again with its password. A session that does not belong to this
-	///     account is not found.
+	///     account, or that has already ended, is not found.
 	/// </remarks>
 	internal async Task<UserOutcome> CloseAsync(long id)
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
 		if (!Connections.Any(connection => connection.Session.Id == id) &&
-		    await _user.Context.Sessions.GetAsync(_user.Record, id) is null)
+		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Value.End: null })
 			return UserOutcome.NotFound;
 
 		await CloseAsync(id, null, SessionEndReason.Revoked);

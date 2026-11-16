@@ -1,6 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Servers.Objects;
+using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
 using Basil.Domain.Chat;
@@ -327,7 +328,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("AwayOwner", "password");
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
-		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAwayAsync("brb"));
+		Assert.Equal(UserOutcome.Ok, await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAwayAsync("brb"));
 		var sender = await app.LoginAsync(await app.CreateUserAsync("AwaySender", "password"));
 
 		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
@@ -410,7 +411,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOnly", "password");
 		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
-		Assert.True(await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
+		Assert.Equal(UserOutcome.Ok, await app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivateAsync(true));
 		var friendRecord = await app.CreateUserAsync("TheFriend", "password");
 		var friend = await app.LoginAsync(friendRecord);
 		var stranger = await app.LoginAsync(await app.CreateUserAsync("TheStranger", "password"));

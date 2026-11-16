@@ -63,9 +63,11 @@ public readonly struct ServerScreenshots
 
 	/// <summary>Deletes a stored screenshot.</summary>
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
-	/// <returns>Ok, even when none is stored under the reference.</returns>
+	/// <returns>Ok, or NotFound when none is stored under the reference.</returns>
 	internal async Task<ServerOutcome> DeleteAsync(ContentReference screenshot)
 	{
+		if (!(await _server.Context.Screenshots.ListAsync()).Contains(screenshot)) return ServerOutcome.NotFound;
+
 		await _server.Context.Screenshots.DeleteAsync(screenshot);
 		return ServerOutcome.Ok;
 	}

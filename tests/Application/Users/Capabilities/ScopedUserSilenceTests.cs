@@ -105,7 +105,7 @@ public sealed class ScopedUserSilenceTests
 	}
 
 	[Fact]
-	public async Task NotSilenced_OkRecordsNothing()
+	public async Task NotSilenced_NotFoundRecordsNothing()
 	{
 		using var app = new TestApplication();
 		var actor = await app.LoginAsync(await app.CreateUserAsync("LiftMod", "password", Staff));
@@ -114,7 +114,7 @@ public sealed class ScopedUserSilenceTests
 		var result = await app.Users.Of(target).ScopeTo(actor).Silence.LiftAsync(
 		);
 
-		Assert.Equal(UserOutcome.Ok, result);
+		Assert.Equal(UserOutcome.NotFound, result);
 		Assert.Empty(app.ModerationEntries);
 	}
 

@@ -105,7 +105,7 @@ public sealed class AccountHandlerTests
 		var done = await new SetUserAwayHandler(app.Users).Handle(
 			new SetUserAway(actor, UserReference.ById(actor.Record.Id), "brb"), Token);
 
-		Assert.True(done);
+		Assert.Equal(UserOutcome.Ok, done);
 		Assert.Equal("brb", actor.User.Profile.AwayMessage);
 	}
 
@@ -119,7 +119,7 @@ public sealed class AccountHandlerTests
 		var done = await new SetUserAwayHandler(app.Users).Handle(
 			new SetUserAway(actor, UserReference.ById(other.Record.Id), "brb"), Token);
 
-		Assert.False(done);
+		Assert.Equal(UserOutcome.Denied, done);
 		Assert.Null(other.User.Profile.AwayMessage);
 	}
 
@@ -132,7 +132,7 @@ public sealed class AccountHandlerTests
 		var done = await new SetUserPmPrivateHandler(app.Users)
 			.Handle(new SetUserPmPrivate(actor, UserReference.ById(actor.Record.Id), true), Token);
 
-		Assert.True(done);
+		Assert.Equal(UserOutcome.Ok, done);
 		Assert.True(actor.User.Profile.PmPrivate);
 	}
 
@@ -146,7 +146,7 @@ public sealed class AccountHandlerTests
 		var done = await new SetUserPmPrivateHandler(app.Users)
 			.Handle(new SetUserPmPrivate(actor, UserReference.ById(other.Record.Id), true), Token);
 
-		Assert.False(done);
+		Assert.Equal(UserOutcome.Denied, done);
 		Assert.False(other.User.Profile.PmPrivate);
 	}
 
@@ -231,6 +231,40 @@ public sealed class AccountHandlerTests
 			await new DeleteUserHandler(app.Users).Handle(new DeleteUser(actor, UserReference.ById(target.Id)), Token);
 
 		Assert.Equal(UserOutcome.Denied, result);
+	}
+
+	[Fact]
+	public async Task RemoveAvatarNoneStored_NotFound()
+	{
+		using var app = new TestApplication();
+		var actor = await app.LoginAsync(await app.CreateUserAsync("Bare", "password"));
+
+		var result =
+			await new RemoveUserAvatarHandler(app.Users).Handle(
+				new RemoveUserAvatar(actor, UserReference.ById(actor.Record.Id)), Token);
+
+		Assert.Equal(UserOutcome.NotFound, result);
+	}
+
+	[Fact]
+	public async Task NoSuchUser_EveryAccountChangeNotFound()
+	{
+		using var app = new TestApplication();
+		var actor = await app.Users.OperateAsync(Token);
+		var missing = UserReference.ById(int.MaxValue);
+
+		Assert.Equal(UserOutcome.NotFound,
+			await new SetUserAwayHandler(app.Users).Handle(new SetUserAway(actor, missing, "brb"), Token));
+		Assert.Equal(UserOutcome.NotFound,
+			await new SetUserPmPrivateHandler(app.Users).Handle(new SetUserPmPrivate(actor, missing, true), Token));
+		Assert.Equal(UserOutcome.NotFound,
+			await new RemoveUserAvatarHandler(app.Users).Handle(new RemoveUserAvatar(actor, missing), Token));
+		Assert.Equal(UserOutcome.NotFound,
+			await new DeleteUserHandler(app.Users).Handle(new DeleteUser(actor, missing), Token));
+		Assert.Equal(UserOutcome.NotFound,
+			await new UnsilenceUserHandler(app.Users).Handle(new UnsilenceUser(actor, missing, null), Token));
+		Assert.Equal(UserOutcome.NotFound,
+			await new CloseUserSessionsHandler(app.Users).Handle(new CloseUserSessions(actor, missing, false), Token));
 	}
 
 	[Fact]

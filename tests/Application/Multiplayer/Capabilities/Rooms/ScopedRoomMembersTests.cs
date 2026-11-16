@@ -5,6 +5,7 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -386,14 +387,30 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
-	public async Task NoAccountUser_NotInRoom()
+	public async Task NoAccountUser_NotFound()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Members.KickAsync(UserReference.ById(int.MaxValue));
 
-		Assert.Equal(RoomOutcome.NotInRoom, result);
+		Assert.Equal(RoomOutcome.NotFound, result);
+	}
+
+	[Fact]
+	public async Task NoAccountUser_EveryTargetedOperationNotFound()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		var creator = setup.Room.ScopeTo(setup.Creator);
+		var missing = UserReference.ById(int.MaxValue);
+
+		Assert.Equal(RoomOutcome.NotFound, await creator.Members.BanAsync(missing));
+		Assert.Equal(RoomOutcome.NotFound, await creator.Members.UnbanAsync(missing));
+		Assert.Equal(RoomOutcome.NotFound, await creator.Authority.AddRefereeAsync(missing));
+		Assert.Equal(RoomOutcome.NotFound, await creator.Authority.RemoveRefereeAsync(missing));
+		Assert.Equal(RoomOutcome.NotFound, await creator.Slots.MoveAsync(missing, 5));
+		Assert.Equal(RoomOutcome.NotFound, await creator.Slots.SetTeamAsync(missing, GameTeam.Red));
 	}
 
 	[Fact]

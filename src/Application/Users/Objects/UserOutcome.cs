@@ -33,7 +33,7 @@ public enum UserOutcome : byte
 	/// <summary>Another account already has the name.</summary>
 	NameTaken,
 
-	/// <summary>The thing the operation names does not belong to this account.</summary>
+	/// <summary>The account, or the thing the operation names (a session, a silence, a friend, a block, an avatar), does not exist.</summary>
 	NotFound,
 
 	/// <summary>The area is locked and the caller does not manage it.</summary>

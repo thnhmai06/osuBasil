@@ -127,7 +127,8 @@ public sealed class OperatorRelationshipTests
 		var actor = await app.Users.OperateAsync(Token);
 		var adminConnection = await app.LoginAsync(admin);
 
-		Assert.True(await app.Users.Of(target).ScopeTo(actor).Profile.SetAwayAsync("back soon"));
-		Assert.False(await app.Users.Of(target).ScopeTo(adminConnection).Profile.SetAwayAsync("back soon"));
+		Assert.Equal(UserOutcome.Ok, await app.Users.Of(target).ScopeTo(actor).Profile.SetAwayAsync("back soon"));
+		Assert.Equal(UserOutcome.Denied,
+			await app.Users.Of(target).ScopeTo(adminConnection).Profile.SetAwayAsync("back soon"));
 	}
 }

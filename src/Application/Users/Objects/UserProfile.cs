@@ -116,9 +116,13 @@ public sealed class UserProfile
 	}
 
 	/// <summary>Removes the avatar image, so the default avatar shows.</summary>
-	/// <returns>The outcome of removing the avatar.</returns>
+	/// <returns>The outcome of removing the avatar; NotFound when the account has no avatar.</returns>
 	internal async Task<UserOutcome> RemoveAvatarAsync()
 	{
+		await using (var stored = await _user.Context.Avatars.OpenAsync(_user.Record))
+			if (stored is null)
+				return UserOutcome.NotFound;
+
 		await _user.Context.Avatars.DeleteAsync(_user.Record);
 		return UserOutcome.Ok;
 	}

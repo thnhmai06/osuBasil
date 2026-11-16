@@ -261,6 +261,32 @@ public sealed class UserTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task UnsilenceWhoIsNotSilenced_Answers404()
+	{
+		var (staff, _) = await fixture.SignInAsync("UnsilenceStaff", RestHostFixture.StaffPrivileges);
+		var target = await fixture.Host.CreateUserAsync("UnsilenceFree");
+		using (staff)
+		{
+			var (status, _) = await staff.CallAsync(HttpMethod.Delete, $"/v1/users/{target.Id}/silence");
+
+			Assert.Equal(404, status);
+		}
+	}
+
+	[Fact]
+	public async Task RemoveFriendWhoIsNoFriend_Answers404()
+	{
+		var (client, id) = await fixture.SignInAsync("NoFriendMaker");
+		var other = await fixture.Host.CreateUserAsync("NoFriendOther");
+		using (client)
+		{
+			var (status, _) = await client.CallAsync(HttpMethod.Delete, $"/v1/users/{id}/friends/{other.Id}");
+
+			Assert.Equal(404, status);
+		}
+	}
+
+	[Fact]
 	public async Task StaffSilence_ShownThenLifted()
 	{
 		var (staff, _) = await fixture.SignInAsync("SilenceStaff", RestHostFixture.StaffPrivileges);

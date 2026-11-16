@@ -235,6 +235,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 			var (shown, shownText) = await fixture.RunAsync($"faqs {entry}");
 			var (_, listed) = await fixture.RunAsync("faqs list");
 			var (deleted, _) = await fixture.RunAsync($"faqs {entry} delete");
+			var (deletedAgain, _) = await fixture.RunAsync($"faqs {entry} delete");
 			var (after, _) = await fixture.RunAsync($"faqs {entry}");
 
 			Assert.Equal(0, set);
@@ -242,6 +243,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 			Assert.Contains("How to play?", shownText);
 			Assert.Contains(entry, listed);
 			Assert.Equal(0, deleted);
+			Assert.Equal(1, deletedAgain);
 			Assert.Equal(1, after);
 		}
 		finally
