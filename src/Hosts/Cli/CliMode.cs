@@ -7,10 +7,7 @@ public enum ConsoleLevel : byte
 	Log = 0,
 
 	/// <summary>The dashboard and the command box (<c>--console 1</c>, the default).</summary>
-	Full = 1,
-
-	/// <summary>The dashboard to look at only: nothing in it changes the server (<c>--console 2</c>).</summary>
-	ViewOnly = 2
+	Full = 1
 }
 
 /// <summary>How the server shows itself in its terminal.</summary>
@@ -22,8 +19,8 @@ public sealed record CliOptions(ConsoleLevel Console, bool NoColor = false, bool
 	/// <summary>Gets whether the dashboard is shown.</summary>
 	public bool HasDashboard => Console != ConsoleLevel.Log;
 
-	/// <summary>Gets whether the dashboard may change the server: the command box, chat and the actions.</summary>
-	public bool Editable => Console == ConsoleLevel.Full;
+	/// <summary>Gets whether the dashboard may change the server; always true while the dashboard has no view-only mode.</summary>
+	public bool Editable => true;
 }
 
 /// <summary>Thrown when a display argument is not one the server knows.</summary>
@@ -59,7 +56,7 @@ public static class CliModes
 			switch (arg)
 			{
 				case "--nogui" or "--noconsole":
-					throw new CliOptionException($"{list[i]} was removed; use --console 0 (log only) or --console 2 (view only).");
+					throw new CliOptionException($"{list[i]} was removed; use --console 0 (log only) or --console 1 (dashboard).");
 				case "--nocolor":
 					noColor = true;
 					break;
@@ -117,13 +114,12 @@ public static class CliModes
 		{
 			"0" => ConsoleLevel.Log,
 			"1" => ConsoleLevel.Full,
-			"2" => ConsoleLevel.ViewOnly,
-			_ => throw new CliOptionException($"--console takes 0, 1 or 2, not '{value}'.")
+			_ => throw new CliOptionException($"--console takes 0 or 1, not '{value}'.")
 		};
 	}
 
 	private static CliOptionException Missing()
 	{
-		return new CliOptionException("--console needs a value: 0, 1 or 2.");
+		return new CliOptionException("--console needs a value: 0 or 1.");
 	}
 }

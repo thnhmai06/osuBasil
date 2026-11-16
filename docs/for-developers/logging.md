@@ -27,7 +27,7 @@ Nothing logs each osu! (stable) packet, IRC line or REST request. Those are coun
   (age, count and total size; swept at startup and every six hours; the newest file is always kept); `Logging:File:Enabled`
   switches the file off;
 * a console sink only with `--console 0`, plain text without colour;
-* a dashboard log panel, a fixed ring buffer, in the full and `--console 2` modes;
+* a dashboard log panel, a fixed ring buffer, in the full mode (`--console 1`);
 * optional OpenTelemetry log export when `OpenTelemetry:Logs` is on and an endpoint is set.
 
 Every sink is written by one background thread behind a bounded queue (`Logging:QueueCapacity`, 10 000 by default).

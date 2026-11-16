@@ -60,7 +60,7 @@ touching users, connections, privileges, silences or the bot.
   itself says (a message with no actor) and what its own osu! and IRC connections post are never parsed as commands, so
   no reply can start a command. It
   is the **one entry point that skips privilege checks**, because whoever sits at the console owns the machine; BasilBot
-  itself still has no privileges. `--console 2` turns the command box off.
+  itself still has no privileges.
 * **Locks freeze an area for everyone but its manager.** `ServerSettings.Locks` is one flags enum: `Accounts`
   (registration; `Owner`), `Rooms` (creation; `Tournament`), `Beatmapsets` (upload and delete on every entry
   point; `Tournament`, while the file watcher keeps running) and `Profiles` (a user changing their own username,

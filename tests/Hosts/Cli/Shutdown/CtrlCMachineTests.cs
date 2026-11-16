@@ -34,14 +34,6 @@ public sealed class CtrlCMachineTests
 	}
 
 	[Fact]
-	public void NoConsoleMode_FirstPressWarns()
-	{
-		var (machine, _) = Create(ConsoleLevel.ViewOnly);
-
-		Assert.Equal(CtrlCAction.WarnConfirm, machine.Press(true));
-	}
-
-	[Fact]
 	public void SecondPressWindow_StartsShutdown()
 	{
 		var (machine, clock) = Create(ConsoleLevel.Full);
@@ -95,7 +87,6 @@ public sealed class CtrlCMachineTests
 
 	[Theory]
 	[InlineData(ConsoleLevel.Full)]
-	[InlineData(ConsoleLevel.ViewOnly)]
 	[InlineData(ConsoleLevel.Log)]
 	public void Terminate_StopsEveryMode(ConsoleLevel mode)
 	{
@@ -124,7 +115,6 @@ public sealed class CtrlCMachineTests
 
 	[Theory]
 	[InlineData(ConsoleLevel.Full)]
-	[InlineData(ConsoleLevel.ViewOnly)]
 	[InlineData(ConsoleLevel.Log)]
 	public void EarlyPresses_Ignored(ConsoleLevel mode)
 	{

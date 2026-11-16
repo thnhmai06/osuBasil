@@ -56,6 +56,7 @@ public sealed class DiagnosticsTests(RestHostFixture fixture)
 					         "stable", "irc", "events", "sessions"
 				         })
 					Assert.NotNull(snapshot[category]);
+				Assert.Null(snapshot["machine"]);
 				var application =
 					JsonNode.Parse((await oneReader!.ReadAsync(TestContext.Current.CancellationToken))!.Value.Data)!;
 				Assert.NotNull(application["usersOnline"]);

@@ -57,28 +57,12 @@ public sealed class RuntimeSamplerTests
 		Assert.True(Number(window, "p50Milliseconds") <= Number(window, "p99Milliseconds"));
 	}
 
-	[Theory]
-	[InlineData("totalMemoryBytes")]
-	[InlineData("usedMemoryBytes")]
-	[InlineData("networkSentBytesPerSecond")]
-	[InlineData("networkReceivedBytesPerSecond")]
-	public void MachineCategory_HasNonNegative(string key)
-	{
-		using var sampler = new RuntimeSampler(new FakeTimeProvider());
-
-		var machine = Sampled(sampler, "machine");
-
-		Assert.True(Number(machine, key) >= 0);
-	}
-
 	[Fact]
-	public void MachineCategory_UsedMemoryWithinTotal()
+	public void Sample_HasNoMachineWideCategory()
 	{
 		using var sampler = new RuntimeSampler(new FakeTimeProvider());
 
-		var machine = Sampled(sampler, "machine");
-
-		Assert.True(Number(machine, "usedMemoryBytes") <= Number(machine, "totalMemoryBytes"));
+		Assert.Null(JsonSerializer.SerializeToNode(sampler.Sample())!["machine"]);
 	}
 
 	private static JsonNode Sampled(RuntimeSampler sampler, string category)

@@ -101,13 +101,11 @@ public sealed class ShutdownControllerTests
 	[Theory]
 	[InlineData(new[] { "--console", "0" }, false, false, false, false, ConsoleLevel.Log)]
 	[InlineData(new[] { "--console", "1" }, false, false, false, false, ConsoleLevel.Full)]
-	[InlineData(new[] { "--console", "2" }, false, false, false, false, ConsoleLevel.ViewOnly)]
-	[InlineData(new[] { "--console=2" }, false, false, false, false, ConsoleLevel.ViewOnly)]
 	[InlineData(new string[0], false, false, false, false, ConsoleLevel.Full)]
 	[InlineData(new string[0], true, false, false, false, ConsoleLevel.Log)]
 	[InlineData(new string[0], false, true, false, false, ConsoleLevel.Log)]
 	[InlineData(new string[0], false, false, true, false, ConsoleLevel.Log)]
-	[InlineData(new[] { "--console", "2" }, false, true, false, false, ConsoleLevel.Log)]
+	[InlineData(new[] { "--console", "1" }, false, true, false, false, ConsoleLevel.Log)]
 	[InlineData(new string[0], false, false, false, true, ConsoleLevel.Full)]
 	public void The_console_level_follows_the_arguments_and_the_terminal(string[] args, bool inRedirected,
 		bool outRedirected, bool termDumb, bool noColorEnvironment, ConsoleLevel expected)
@@ -142,6 +140,7 @@ public sealed class ShutdownControllerTests
 	[InlineData("--nogui")]
 	[InlineData("--noconsole")]
 	[InlineData("--console")]
+	[InlineData("--console=2")]
 	[InlineData("--console=3")]
 	public void RemovedFlagsAndBadValues_AreRefused(string arg)
 	{
@@ -149,17 +148,16 @@ public sealed class ShutdownControllerTests
 	}
 
 	[Fact]
-	public void ViewOnly_IsNotEditable()
+	public void ConsoleMode2_IsRefused()
 	{
-		Assert.False(new CliOptions(ConsoleLevel.ViewOnly).Editable);
-		Assert.True(new CliOptions(ConsoleLevel.Full).Editable);
+		Assert.Throws<CliOptionException>(() => CliModes.Choose(["--console", "2"], false, false, false, false));
 	}
 
 	[Fact]
 	public void DisplayArguments_NotInConfiguration()
 	{
 		Assert.Equal(["--urls", "http://x"],
-			CliModes.Strip(["--console", "0", "--urls", "http://x", "--ascii", "--nocolor", "--console=2"]));
+			CliModes.Strip(["--console", "0", "--urls", "http://x", "--ascii", "--nocolor", "--console=1"]));
 	}
 
 	private sealed class Lifetime : IHostApplicationLifetime

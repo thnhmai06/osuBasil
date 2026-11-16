@@ -19,7 +19,6 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 	private readonly ConcurrentDictionary<string, HostWindow> _hosts = new();
 	private readonly HostWindow _irc = new();
 	private readonly MeterListener _listener = new();
-	private readonly MachineSampler _machine = new();
 	private readonly HostWindow _stable = new();
 	private readonly ConcurrentQueue<string> _recent = new();
 	private readonly DateTimeOffset _started;
@@ -121,8 +120,7 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 				},
 				["http"] = _hosts.OrderBy(h => h.Key).ToDictionary(h => h.Key, h => (object)h.Value.Snapshot(elapsed)),
 				["stable"] = _stable.Snapshot(elapsed, false),
-				["irc"] = _irc.Snapshot(elapsed, false),
-				["machine"] = _machine.Sample(elapsed)
+				["irc"] = _irc.Snapshot(elapsed, false)
 			};
 			_lastCpu = cpu;
 			_lastAllocated = allocated;

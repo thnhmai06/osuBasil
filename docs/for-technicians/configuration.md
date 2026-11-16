@@ -87,7 +87,7 @@ No rebuild is required.
 
 ```text
 Basil                 start the server
-Basil --console 2     dashboard to look at only, without the command box
+Basil --console 1     dashboard and command box (the default)
 Basil --console 0     plain log lines, no dashboard
 Basil --nocolor       monochrome dashboard (also when NO_COLOR is set)
 Basil --ascii         dashboard in ASCII characters only
