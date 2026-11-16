@@ -71,6 +71,7 @@ public sealed class PostgresDatabaseProvider : IDatabaseProvider
 	private sealed class Source : IDatabaseSource
 	{
 		private readonly MeterListener _listener = new();
+		private readonly Lock _measuring = new();
 		private readonly string _name = Guid.NewGuid().ToString("N");
 		private int _idle;
 		private int _inUse;
@@ -94,7 +95,7 @@ public sealed class PostgresDatabaseProvider : IDatabaseProvider
 		{
 			get
 			{
-				lock (_listener)
+				lock (_measuring)
 				{
 					_idle = _inUse = 0;
 					_listener.RecordObservableInstruments();

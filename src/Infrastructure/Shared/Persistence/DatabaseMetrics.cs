@@ -13,7 +13,13 @@ public sealed class DatabaseMetrics : DbCommandInterceptor
 	private long _failed;
 
 	/// <summary>Gets how many commands have run since the server started, failed ones included.</summary>
-	public long Commands => Interlocked.Read(ref _commands);
+	public long Commands
+	{
+		get
+		{
+			lock (_lock) return _commands;
+		}
+	}
 
 	/// <summary>Gets how many commands failed since the server started.</summary>
 	public long Failed => Interlocked.Read(ref _failed);
