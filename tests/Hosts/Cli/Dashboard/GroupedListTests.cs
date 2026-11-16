@@ -2,7 +2,7 @@ using Basil.Host.Cli.Dashboard.Shell;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The selection of a table: it starts on the first item, and can return to it.</summary>
+/// <summary>The selection of a table: it starts on the first item, below the selectable title of its group, and can return to it.</summary>
 public sealed class GroupedListTests
 {
 	private static GroupedList<string> Create()
@@ -14,11 +14,11 @@ public sealed class GroupedListTests
 	}
 
 	[Fact]
-	public void NewList_SelectsTheFirstItem()
+	public void NewList_SelectsTheFirstItem_NotTheTitleAboveIt()
 	{
 		var list = Create();
 
-		Assert.True(list.AtFirst);
+		Assert.False(list.AtFirst);
 		Assert.Equal("a", list.Selected);
 	}
 

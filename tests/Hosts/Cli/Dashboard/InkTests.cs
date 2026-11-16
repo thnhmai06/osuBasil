@@ -4,7 +4,7 @@ namespace Basil.Host.Cli.Tests.Dashboard;
 
 public sealed class InkTests
 {
-	private static readonly Ink[] Basics = [Ink.Text, Ink.Muted, Ink.Accent, Ink.Success, Ink.Warning, Ink.Error, Ink.Info];
+	private static readonly Ink[] Basics = [Ink.Text, Ink.Muted, Ink.Accent, Ink.Success, Ink.Warning, Ink.Error, Ink.Info, Ink.Bright];
 
 	[Fact]
 	public void EveryKind_IsShownAsABasicKind()
@@ -13,7 +13,9 @@ public sealed class InkTests
 	}
 
 	[Theory]
-	[InlineData("RoleRestricted", "Error")]
+	[InlineData("RoleRestricted", "Muted")]
+	[InlineData("RolePlayer", "Bright")]
+	[InlineData("RoleModerator", "Error")]
 	[InlineData("GradeD", "Error")]
 	[InlineData("RoomClosed", "Muted")]
 	[InlineData("MapRanked", "Success")]
