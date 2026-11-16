@@ -3,12 +3,14 @@ using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
 using XenoAtom.Terminal.UI.Input;
+using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
 /// <summary>The small modal forms of the dashboard, and the dim behind them while one is open.</summary>
 internal sealed class Dialogs
 {
+	private const int FieldWidth = 30;
 	private readonly List<Dialog> _shown = [];
 	private readonly State<int> _open = new(0);
 
@@ -54,6 +56,13 @@ internal sealed class Dialogs
 		return content;
 	}
 
+	/// <summary>Puts buttons in one row, centred in the dialog.</summary>
+	/// <param name="buttons">The buttons, left to right.</param>
+	public static Visual Buttons(params Button[] buttons)
+	{
+		return new HStack(buttons).Spacing(2).HorizontalAlignment(Align.Center);
+	}
+
 	/// <summary>Esc, and Alt+Left for terminals that delay or swallow Esc: the gestures that mean "back".</summary>
 	public static readonly KeyGesture[] BackGestures =
 		[new(TerminalKey.Escape), new(TerminalKey.Left, TerminalModifiers.Alt)];
@@ -66,7 +75,7 @@ internal sealed class Dialogs
 		var dialog = new Dialog().Title(title);
 		var rows = new VStack();
 		foreach (var line in lines) rows.Add(new TextBlock(line));
-		rows.Add(new Button("Close").Click(dialog.Close));
+		rows.Add(Buttons(new Button("Close").Click(dialog.Close)));
 		dialog.Content(EscapeCloses(dialog, rows).KeyDown((_, e) =>
 		{
 			if (e.Key != TerminalKey.Enter) return;
@@ -85,14 +94,17 @@ internal sealed class Dialogs
 	{
 		var dialog = new Dialog().Title(title);
 		var boxes = fields.Select(field => new TextBox().Text(field.Start)).ToList();
+		var width = fields.Max(field => field.Label.Length) + 1;
 		var rows = new VStack();
+		// Each box sits in its own frame, so that an empty one is still a visible field.
 		for (var i = 0; i < fields.Count; i++)
-			rows.Add(new HStack(new TextBlock($"{fields[i].Label,-10}"), boxes[i]));
-		rows.Add(new HStack(new Button("OK").Click(() =>
+			rows.Add(new HStack(new TextBlock(fields[i].Label.PadRight(width)).VerticalAlignment(Align.Center),
+				new Group().Style(GroupStyle.Single).Content(boxes[i]).MinWidth(FieldWidth)));
+		rows.Add(Buttons(new Button("OK").Click(() =>
 		{
 			dialog.Close();
 			submit([.. boxes.Select(box => box.Text ?? string.Empty)]);
-		}), new Button("Cancel").Click(dialog.Close)).Spacing(2));
+		}), new Button("Cancel").Click(dialog.Close)));
 		dialog.Content(EscapeCloses(dialog, rows));
 		Show(dialog);
 	}

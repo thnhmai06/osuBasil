@@ -244,7 +244,7 @@ public sealed class DashboardApp
 	private void RefreshView()
 	{
 		ActiveView()?.Refresh();
-		_toasts.Show($"Refreshed {_clock.GetLocalNow():HH:mm:ss}");
+		_toasts.Show("Refreshed");
 	}
 
 	private void StartSample()

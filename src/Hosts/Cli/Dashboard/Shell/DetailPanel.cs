@@ -17,6 +17,7 @@ internal sealed class DetailPanel
 {
 	private const int CompactWidth = 100;
 	private const int ButtonColumn = 22;
+	private const int CompactButtonColumn = 14;
 	private readonly Glyphs _glyphs;
 	private readonly Dialogs _dialogs;
 	private readonly Group _box;
@@ -144,7 +145,7 @@ internal sealed class DetailPanel
 		foreach (var button in buttons) column.Add(button);
 		var body = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() },
-				new ColumnDefinition { Width = GridLength.Fixed(ButtonColumn) })
+				new ColumnDefinition { Width = GridLength.Fixed(_compact ? CompactButtonColumn : ButtonColumn) })
 			.Rows(new RowDefinition { Height = GridLength.Star() })
 			.Cell(new ScrollViewer(fields).Stretch(), 0, 0)
 			.Cell(new ScrollViewer(column).Stretch(), 0, 1);
@@ -212,11 +213,11 @@ internal sealed class DetailPanel
 			{
 				dialog.Close();
 				Run(action);
-			});
+			}).HorizontalAlignment(Align.Stretch);
 			rows.Add(action.Kind == DetailActionKind.Destructive ? button.Tone(ControlTone.Error) : button);
 		}
 
-		rows.Add(new Button("Cancel").Click(dialog.Close));
+		rows.Add(Dialogs.Buttons(new Button("Cancel").Click(dialog.Close)));
 		dialog.Content(Dialogs.EscapeCloses(dialog, rows));
 		_dialogs.Show(dialog);
 	}
