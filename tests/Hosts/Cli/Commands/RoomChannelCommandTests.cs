@@ -78,6 +78,21 @@ public sealed class RoomChannelCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
+	public async Task RoomsList_QueryFilters()
+	{
+		var tag = CliFixture.Name("find");
+		var id = await OpenRoomAsync(tag + "-open");
+		await fixture.RunAsync($"rooms create --name {tag}-secret --password pw");
+
+		var (code, text) = await fixture.RunAsync($"rooms list --query \"{tag} password:no\"");
+
+		Assert.Equal(0, code);
+		Assert.Contains(tag + "-open", text);
+		Assert.DoesNotContain(tag + "-secret", text);
+		Assert.True(Lobby.Rooms.ContainsKey(id));
+	}
+
+	[Fact]
 	public async Task RoomLockUnlock_Changed()
 	{
 		var id = await OpenRoomAsync(CliFixture.Name("lock"));

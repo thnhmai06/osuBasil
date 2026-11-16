@@ -24,6 +24,29 @@ public sealed class RoomTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task List_QueryFiltersAndPages()
+	{
+		var (client, _) = await fixture.SignInAsync("RoomSearcher");
+		using (client)
+		{
+			var tag = CliTag();
+			var open = await OpenAsync(client, $"{tag} open");
+			await client.CallAsync(HttpMethod.Post, "/v1/rooms", new { name = $"{tag} secret", password = "pw" });
+
+			var (status, envelope) = await client.CallAsync(HttpMethod.Get,
+				$"/v1/rooms?query={Uri.EscapeDataString($"{tag} password:no")}&limit=1");
+
+			Assert.Equal(200, status);
+			Assert.Equal(open, (int)Assert.Single(envelope!["data"]!.AsArray())!["id"]!);
+		}
+	}
+
+	private static string CliTag()
+	{
+		return "q" + Guid.NewGuid().ToString("N")[..8];
+	}
+
+	[Fact]
 	public async Task ThenGet_CreatorNoPassword()
 	{
 		var (client, id) = await fixture.SignInAsync("RoomMaker");

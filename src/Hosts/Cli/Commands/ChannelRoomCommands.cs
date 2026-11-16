@@ -54,8 +54,8 @@ internal static class ChannelRoomCommands
 
 		yield return new CommandDef
 		{
-			Pattern = "rooms list", Route = "GET /v1/rooms", Summary = "Lists the open rooms.",
-			Options = CommandHelpers.Paging,
+			Pattern = "rooms list", Route = "GET /v1/rooms", Summary = "Searches the open rooms.",
+			Options = [new OptionDef("query", "The room search syntax."), .. CommandHelpers.Paging],
 			Run = ListRoomsAsync
 		};
 		yield return new CommandDef
@@ -202,15 +202,14 @@ internal static class ChannelRoomCommands
 				call.CancellationToken)).Result, "Channel deleted.");
 	}
 
-	private static Task<int> ListRoomsAsync(CommandCall call)
+	private static async Task<int> ListRoomsAsync(CommandCall call)
 	{
 		var page = call.Page();
-		var rooms = call.Get<Lobby>().Rooms.Values.OrderBy(room => room.Id).ToList();
-		call.PrintPage(new Page<RoomView>(
-				[.. rooms.Skip(page.Offset).Take(page.Limit).Select(RoomView.Of)],
-				page.Offset + page.Limit < rooms.Count),
-			page);
-		return Task.FromResult(ExitCodes.Success);
+		var found = await call.Get<ISender>().Send(
+			new ListRooms(await call.ByAsync(), RoomQuery.Parse(call.Text("query") ?? string.Empty), page),
+			call.CancellationToken);
+		call.PrintPage(new Page<RoomView>([.. found.Items.Select(RoomView.Of)], found.HasNext), page);
+		return ExitCodes.Success;
 	}
 
 	private static async Task<int> CreateRoomAsync(CommandCall call)

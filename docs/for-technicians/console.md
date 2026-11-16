@@ -16,7 +16,6 @@ surface: BasilBot's chat commands are separate and keep checking the typist's pr
 | Level            | Argument                | Shows                                                          | Changes the server |
 |------------------|-------------------------|----------------------------------------------------------------|--------------------|
 | Full (default)   | `--console 1`           | dashboard and command box                                      | yes                |
-| View only        | `--console 2`           | dashboard to look at: no command box, no chat, no actions      | no                 |
 | Log only         | `--console 0`           | linear log lines on stdout, no dashboard                       | no                 |
 
 Two more arguments change how the dashboard looks:
@@ -27,7 +26,7 @@ Two more arguments change how the dashboard looks:
 
 * The server switches to `--console 0` by itself when stdin or stdout is redirected (Docker, systemd) or `TERM` is `dumb`.
 * `--nogui` and `--noconsole` no longer exist; the server refuses them.
-* Ctrl+C: the first press clears the line being typed; with nothing typed (always, in `--console 2`) it warns and opens a
+* Ctrl+C: the first press clears the line being typed; with nothing typed it warns and opens a
   3 second window in which a second press starts the graceful shutdown. With `--console 0` the first press starts the graceful
   shutdown. While shutting down nothing ends the process for 30 seconds; after that a warning appears and one more press
   forces the exit (data loss may occur). `SIGTERM` starts the graceful shutdown at once, in every mode.
@@ -52,8 +51,7 @@ are listed under [Keys and mouse](#keys-and-mouse).
 | About    | Version, licence and the update status, with a button to check now                                        |
 
 Sessions replaces the former Connections tab; the graphs of the connections moved to Monitor. Every action of every tab
-is a console command, so the level chosen with `--console` decides what the whole dashboard may change: at `--console 2`
-the command box, the chat box and the action buttons are absent.
+is a console command.
 
 ### Tabs and layout
 
@@ -350,11 +348,12 @@ in the log, in the history and in suggestions.
 
 ### rooms
 
-Rooms exist only while the server runs.
+Rooms exist only while the server runs. The room search syntax: free text matches the name; `host:`, `creator:` and
+`player:` take an account name or id; `status:open|locked|playing`; `mode:0` to `3`; `password:yes|no`.
 
 | Command                                                          | API route                          | P  |
 |------------------------------------------------------------------|------------------------------------|----|
-| `rooms list [--offset] [--limit]`                                | `GET /v1/rooms`                    | no |
+| `rooms list [--query <q>] [--offset] [--limit]`                  | `GET /v1/rooms`                    | no |
 | `rooms create --name <name> [--password] [--private]`            | `POST /v1/rooms`                   | no |
 | `rooms <id>`                                                     | `GET /v1/rooms/{id}`               | no |
 | `rooms <id> <command> [--field ...]`                             | `POST /v1/rooms/{id}/<command>`    | no |

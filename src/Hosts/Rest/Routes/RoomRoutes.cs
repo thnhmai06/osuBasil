@@ -21,7 +21,9 @@ internal static class RoomRoutes
 		var rooms = v1.MapGroup("/rooms").WithTags("Rooms").RequireToken();
 
 		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List rooms.")
-			.WithDescription("Private rooms are listed only for those who may view them.");
+			.WithDescription("""
+			                 `query` uses the room search syntax: free text matches the room's name; `host:`, `creator:` and `player:` take an account name or id; `status:` takes `open`, `locked` or `playing`; `mode:` takes `0` to `3`; `password:` takes `yes` or `no`. Rooms are ordered by id. Private rooms are listed only for those who may view them.
+			                 """);
 		rooms.MapPost("/", CreateAsync).WithSummary("Create a room.")
 			.WithDescription("""
 			                 The caller becomes the creator of the room, and its host when their game client is online and in no room. While room creation is locked, only room managers can create one.
@@ -73,19 +75,16 @@ internal static class RoomRoutes
 			: null;
 	}
 
-	private static async Task<IResult> ListAsync(HttpContext context, Lobby lobby, ISender sender, int? offset,
+	private static async Task<IResult> ListAsync(HttpContext context, ISender sender, string? query, int? offset,
 		int? limit)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var visible = new List<Room>();
-		foreach (var room in lobby.Rooms.Values.OrderBy(room => room.Id))
-			if (await sender.Send(new CanViewMatch(context.Connection(), room.Match.Id), context.RequestAborted))
-				visible.Add(room);
-
-		return Api.Paged(new Page<RoomView>([.. visible.Skip(page!.Offset).Take(page.Limit).Select(RoomView.Of)],
-			page.Offset + page.Limit < visible.Count), page);
+		var found = await sender.Send(
+			new ListRooms(context.Connection(), RoomQuery.Parse(query ?? string.Empty), page!),
+			context.RequestAborted);
+		return Api.Paged(new Page<RoomView>([.. found.Items.Select(RoomView.Of)], found.HasNext), page);
 	}
 
 	private static async Task<IResult> GetAsync(HttpContext context, Lobby lobby, ISender sender, int id)

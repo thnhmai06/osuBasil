@@ -152,14 +152,34 @@ public readonly struct ScopedLobby
 
 		// An open room is judged by its live privacy: the copy of the flag in a caller's record or in the store can lag
 		// behind a change. Participants who left an open room see it again once it closes.
-		if (Lobby.OpenRoomOf(match) is { } room)
-			return !room.Settings.IsPrivate
-			       || !Lacks(UserPrivileges.Tournament)
-			       || room.Involves(Actor.Record);
+		if (Lobby.OpenRoomOf(match) is { } room) return CanView(room);
 
 		return !match.Value.IsPrivate
 		       || !Lacks(UserPrivileges.Tournament)
 		       || await Lobby.Context.Matches.IsVisibleToAsync(match, Actor.Record, ct);
+	}
+
+	/// <summary>Lists the open rooms the scoped connection may view and a query includes.</summary>
+	/// <param name="query">Which rooms to include.</param>
+	/// <param name="page">Which part of the listing to return.</param>
+	/// <returns>One part of the rooms, ordered by id; a private room is left out unless the actor may view it.</returns>
+	public Page<Room> SearchRooms(RoomQuery query, PageRequest page)
+	{
+		ArgumentNullException.ThrowIfNull(query);
+		ArgumentNullException.ThrowIfNull(page);
+
+		var scope = this;
+		IReadOnlyList<Room> found = [.. Lobby.Rooms.Values.Where(room => !room.IsClosed && scope.CanView(room) && query.Includes(room))
+			.OrderBy(room => room.Id).Skip(page.Offset).Take(page.Fetch)];
+		var (items, hasNext) = page.Slice(found);
+		return new Page<Room>(items, hasNext);
+	}
+
+	private bool CanView(Room room)
+	{
+		return !room.Settings.IsPrivate
+		       || !Lacks(UserPrivileges.Tournament)
+		       || room.Involves(Actor.Record);
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>
