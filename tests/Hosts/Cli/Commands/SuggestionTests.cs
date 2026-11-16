@@ -36,6 +36,15 @@ public sealed class SuggestionTests
 	}
 
 	[Fact]
+	public void IdPosition_NothingTyped_NamesTheParameter()
+	{
+		var (words, _, _) = Suggestions.Suggest("users ");
+
+		Assert.Contains("<id:int>", words);
+		Assert.DoesNotContain("1", words);
+	}
+
+	[Fact]
 	public void ChannelPosition_OffersNames()
 	{
 		var (words, _, _) = Suggestions.Suggest("channels #o");
@@ -81,7 +90,7 @@ public sealed class SuggestionTests
 	{
 		var (items, _, _) = Suggestions.SuggestDescribed("rooms ");
 
-		Assert.Contains(("5", Catalog.All.First(c => c.Pattern == "rooms <id:int>").Summary), items);
+		Assert.Contains(("<id:int>", Catalog.All.First(c => c.Pattern == "rooms <id:int>").Summary), items);
 	}
 
 	[Fact]

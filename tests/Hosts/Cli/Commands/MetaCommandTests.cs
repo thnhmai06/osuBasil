@@ -103,6 +103,14 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
+	public async Task Help_TableHasNoOfflineColumn()
+	{
+		var (_, all) = await fixture.RunAsync("help");
+
+		Assert.DoesNotContain("offline", all.Split('\n')[0]);
+	}
+
+	[Fact]
 	public async Task Status_VersionUptimeCounts()
 	{
 		var (code, text) = await fixture.RunAsync("status");

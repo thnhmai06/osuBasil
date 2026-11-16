@@ -157,6 +157,10 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 			return catalog.All.FirstOrDefault(command => Fits(command, positional))?.Options
 				.FirstOrDefault(option => $"--{option.Name}" == word)?.Description ?? string.Empty;
 
+		if (CommandDef.IsParameter(word))
+			return catalog.Starting(positional).FirstOrDefault(command =>
+				command.Words.Length == positional.Count + 1 && command.Words[positional.Count] == word)?.Summary ?? string.Empty;
+
 		var typed = new List<string>(positional) { word };
 		var candidates = catalog.Starting(typed).ToList();
 		return candidates.FirstOrDefault(command => Fits(command, typed))?.Summary ??
