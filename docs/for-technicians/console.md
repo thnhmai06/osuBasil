@@ -34,29 +34,88 @@ Two more arguments change how the dashboard looks:
 
 ## The dashboard
 
-The dashboard is a server-side admin view: ten tabs on one line, a line of key hints under them, and nothing else on
-screen. Keys and mouse are listed under [Keys and mouse](#keys-and-mouse).
+The dashboard is a server-side admin view built so that an operator can look at the server and act on it without
+leaving the terminal. It shows ten tabs on one line, the page of the tab in view, and a line of key hints. Keys and mouse
+are listed under [Keys and mouse](#keys-and-mouse).
 
-| Tab         | Shows                                                                                  |
-|-------------|----------------------------------------------------------------------------------------|
-| Console     | The log written straight on the screen and, at `--console 1`, the command box          |
-| Monitor     | CPU, memory, network and connections over the last 15 minutes, and each diagnostics category |
-| Users       | Accounts online and offline; the detail frame kicks, silences and lists sessions        |
-| Beatmaps    | Beatmaps grouped by set; actions apply to the whole set                                 |
-| Lobby       | Open rooms and the ones that ended; creators and referees manage a room from here       |
-| Chat        | Channels, their messages since the server started, and their members; messages are sent as BasilBot |
-| Scores      | Scores, newest first, searched with `user:<id or name> beatmap:<id or query>`           |
-| Connections | osu! stable, Tourney, IRC and the HTTP API: open count, events and durations            |
-| Settings    | One form per settings category, saved field by field, and the read-only configuration   |
-| About       | Version, licence and the update status, with a button to check now                      |
+| Tab      | Shows                                                                                                     |
+|----------|-----------------------------------------------------------------------------------------------------------|
+| Console  | The log written straight on the screen and, at `--console 1`, the command box                             |
+| Monitor  | CPU, memory, network and the connection graphs, then one cell per diagnostics category                    |
+| Users    | Accounts online and offline                                                                               |
+| Beatmaps | Beatmaps grouped by set; actions apply to the whole set                                                   |
+| Lobby    | Open rooms and the ones that ended; creators and referees manage a room from here                         |
+| Chat     | Channels, their messages since the server started, and their members; messages are sent as BasilBot       |
+| Scores   | Scores, newest first, searched with `user:<id or name> beatmap:<id or query>`                             |
+| Sessions | The open sessions of osu! stable, Tourney, IRC and the HTTP API, one group per kind                       |
+| Settings | One form per settings category, saved field by field, and the read-only configuration                     |
+| About    | Version, licence and the update status, with a button to check now                                        |
 
-Every action of every tab is a console command, so the level chosen with `--console` decides what the whole dashboard
-may change: at `--console 2` the command box, the chat box and the action buttons are absent.
+Sessions replaces the former Connections tab; the graphs of the connections moved to Monitor. Every action of every tab
+is a console command, so the level chosen with `--console` decides what the whole dashboard may change: at `--console 2`
+the command box, the chat box and the action buttons are absent.
 
-Lists search while you type, after the text has stood still for half a second. Their footer reads `show 1–50 in 150+`;
-the `+` means more items exist than were loaded, because the database does not count them. Lists are not refreshed on
-their own: `Ctrl+R` reloads the tab in view and keeps the selected item. `Ctrl+End` follows the end of the log or of a
-chat. A terminal smaller than the tab in view needs shows the size it has and the size it needs instead of the tab.
+### Tabs and layout
+
+Every frame keeps its size and place whatever it holds; long content scrolls inside the frame, so nothing jumps while the
+data changes. When the row is wide enough, the tab strips spread over the full row with the same space around every
+label; when it is too narrow, they keep a tight fit and scroll with `◀` and `▶`. A terminal smaller than the tab in view
+needs shows the size it has and the size it needs instead of the tab. A dialog dims the page behind it; with no dialog
+open, the dim never takes the mouse.
+
+### Lists, groups and search
+
+Lists show their items in titled groups, `▾ ── Online (70) ───`. A title is a row like any other: Enter, the arrow keys
+or a click fold and open its group, and a folded group shows `▸`. Groups start open.
+
+Lists search while you type, after the text has stood still for half a second. During a search a group with no match is
+hidden, a group with matches is open whether or not it was folded, and clearing the search brings back the folds from
+before. The footer reads `show 1–50 in 150+`; the `+` means more items exist than were loaded, because the database
+does not count them. The Sessions search only filters the open sessions (by name, id, address, client or kind) and never
+reads history. Names of accounts are coloured as the osu! chat console does, by the highest privilege: cyan for an
+owner or developer, red for a moderator, yellow for a supporter, light yellow for a player, grey for a restricted
+account.
+
+The Refresh button, `[↻ Refresh]` on the right of the frame border, reloads the tab and keeps the selected item. Only the
+list tabs have it: Monitor and About have nothing to reload, Chat updates itself, and Settings reads its values whenever
+it opens. `Ctrl+R` does the same from the keyboard. The log and the chats follow their newest line until you scroll up;
+`Jump to End` appears then, and following starts again when you reach the end.
+
+### The detail panel
+
+A click on an item opens its detail under the list, above the key hints. Clicking an account anywhere (Users, Chat,
+Lobby, Scores, Sessions) opens the detail of that account; clicking a channel opens it directly. The panel is a third of
+the terminal high whatever it shows. The fields stand in two columns on the left and scroll when long; the actions are
+buttons in a column of fixed width on the right. There is no Close button: `Esc` or `x` closes the panel.
+
+Buttons that lead to another tab come first and are named after it with an ellipsis (`User…`, `Sessions…`), actions that
+change something follow, and the ones that end something (kick, close session) come last, in red. A button with an
+ellipsis replaces the panel in place with the detail or list of the other tab, and the breadcrumb on the frame border
+shows the way (`Users › peppy › Sessions`). `[← Back]` or `Esc` returns one step, and the steps can go as deep as the
+operator likes. A result that arrives after the operator already went back or closed the panel is dropped. In a terminal
+narrower than 100 columns the buttons fold into one `[Actions]` button that opens them in a dialog. An action that fails
+reports it with a toast.
+
+### Toasts
+
+A toast tells how something ended. It stands at the bottom right, above the key hints, 40 columns by 3 rows, with `✓` in
+green for success, `!` in yellow for a warning and `✗` in red for a failure; a long text is cut with `…`. A success stays
+5 seconds and a failure 10. A message that is already on screen is not shown twice: the toast shows `×2`, `×3` and so
+on, and its time starts again. At most four toasts show; a click or `Esc` closes one.
+
+### Settings, Monitor and the mouse wheel
+
+Settings has a one-line search above the fields that filters inside the category in view. Fields are grouped by the
+object they belong to, with names relative to the group (`Lockout time` under `Login`, not `Login: lockout time`), and a
+fixed frame explains the field in focus.
+
+Monitor holds the whole page in one scrolling view: four graphs on the first row (CPU, memory, network, connections), the
+four connection graphs (Stable, Tourney, IRC, API) on the second, then a grid of categories whose cells are all 8 rows
+high and scroll inside. Choosing a metric shows its explanation in a fixed frame at the bottom. The exceptions of the last
+minute are one metric: up to ten types, the most frequent first, equal types merged as `Type ×N`.
+
+The mouse wheel accelerates: notches that follow each other quickly move more rows each, and a pause starts again from
+one notch per step. Scroll bars can be dragged and clicked.
 
 ## Running a command
 
@@ -179,9 +238,9 @@ when none is open.
 | `F1` to `F10`, `Alt+1` to `Alt+0` | click a tab title | Switch tab                                                                             |
 | `Ctrl+Left`, `Ctrl+Right`   |                      | Previous or next tab; inside a text box they move by word instead                      |
 | `Tab`, `Shift+Tab`          | click a pane         | Next or previous pane (search, list, detail actions)                                   |
-| `Ctrl+R`                    |                      | Reload the tab in view; the status line shows `Refreshed hh:mm:ss` for 2 seconds       |
+| `Ctrl+R`                    | click `[↻ Refresh]`  | Reload the tab in view (list tabs and Settings)                                        |
 | `Ctrl+End`                  | click `Jump to End`  | Follow the newest line (Console, Chat)                                                 |
-| `Esc` or `Alt+Left`         | click `Close` or `[X]` | Close the top thing: dialog, detail, search text, search box, and in a narrow Chat the channel view |
+| `Esc` or `Alt+Left`         | click `[X]`          | Close the top thing: dialog, detail, search text, search box, and in a narrow Chat the channel view |
 | `Ctrl+C`                    |                      | See [Modes](#modes)                                                                    |
 |                             | wheel                | Scroll the pane under the pointer                                                      |
 
@@ -193,13 +252,13 @@ A list tab opens with the list focused, not the search box.
 |---------------------------------------|-----------------------------------------|------------------------------------------------------------|
 | `Up`, `Down`, `PageUp`, `PageDown`, `Home`, `End` | wheel                       | Move the selection                                         |
 |                                       | click a row                             | Select the row                                             |
-| `Enter`                               | double-click a row, or click the selected one | Open the detail                                      |
+| `Enter`                               | click a row                             | Open the detail; on a group title, fold or open the group  |
 | `/` or `Ctrl+F`                       | click the search box                    | Focus the search                                           |
 | `Down` in the search                  |                                         | Leave the search and select the first item                 |
 | `Up` on the first item                |                                         | Go to the search                                           |
 | `Esc` in the search                   |                                         | Clear the text; with no text, leave the search             |
 | `?` then `Enter` in the search        |                                         | Show the search syntax of the tab (`Esc`, `Enter` or `[X]` closes it) |
-| `Esc`, `x` or `Enter` with a detail open | click `Close`                        | Close the detail                                           |
+| `Esc` or `x` with a detail open       | `[← Back]` inside a nested detail       | Go back one step, or close the detail                      |
 | `Left`, `Right`, `Tab` in a detail    | click an action                         | Move between actions; `Enter` runs the one in focus        |
 
 ### Settings
