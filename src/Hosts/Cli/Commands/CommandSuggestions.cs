@@ -168,7 +168,12 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		foreach (var command in catalog.Starting(positional).Where(command => command.Words.Length > positional.Count))
 		{
 			var word = command.Words[positional.Count];
-			if (CommandDef.IsParameter(word))
+			if (CommandDef.IsParameter(word) && partial.Length == 0)
+			{
+				// Nothing typed yet: name the parameter instead of guessing a value.
+				result.Add(word);
+			}
+			else if (CommandDef.IsParameter(word))
 			{
 				var resource = positional.Count > 0 ? positional[^1] : string.Empty;
 				foreach (var id in source.Ids(resource)

@@ -96,10 +96,9 @@ internal static class MetaCommands
 
 		if (topic.Count == 0)
 		{
-			call.Output.Table(["command", "description", "offline"],
+			call.Output.Table(["command", "description"],
 			[
-				.. catalog.All.Select(command => (IReadOnlyList<string>)
-					[command.Pattern, command.Summary, command.Offline ? "yes" : "no"])
+				.. catalog.All.Select(command => (IReadOnlyList<string>)[command.Pattern, command.Summary])
 			]);
 			return Task.FromResult(ExitCodes.Success);
 		}
