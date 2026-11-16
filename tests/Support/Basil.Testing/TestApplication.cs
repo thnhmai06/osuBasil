@@ -37,6 +37,7 @@ using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Scores;
+using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Users;
 using Basil.Infrastructure.Users.Handlers;
@@ -116,6 +117,14 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IRelationshipRepository>(relationships);
 		services.AddSingleton<IModerationLogRepository>(_moderationLog);
 		services.AddSingleton<ISettingsRepository>(_settings);
+		// The diagnostics handler of the shared infrastructure reads the database, which this fixture never connects to.
+		services.AddSingleton(_ =>
+		{
+			var provider = Substitute.For<IDatabaseProvider>();
+			provider.CreateSource(Arg.Any<string>(), Arg.Any<int>()).Returns(Substitute.For<IDatabaseSource>());
+			return new Database(new DatabaseProviders(provider, provider),
+				Options.Create(new DatabaseOptions { WriteConnectionString = "unused" }));
+		});
 		var matchEvents = new InMemoryMatchEventRepository();
 		services.AddSingleton<IMatchRepository>(new InMemoryMatchRepository(matchEvents));
 		services.AddSingleton<IRoundRepository>(new InMemoryRoundRepository());
