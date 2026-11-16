@@ -26,6 +26,19 @@ public sealed class Database : IAsyncDisposable
 		_synchronousSource = providers.Write.CreateSource(write, settings.WritePoolSize);
 	}
 
+	/// <summary>Gets what the commands sent to the database measured.</summary>
+	public DatabaseMetrics Metrics { get; } = new();
+
+	/// <summary>Gets the connections in use and idle across both endpoints, or <see langword="null" /> when the engine does not tell.</summary>
+	public ConnectionStats? Connections
+	{
+		get
+		{
+			if (_readSource.Connections is not { } read || _synchronousSource.Connections is not { } write) return null;
+			return new ConnectionStats(read.InUse + write.InUse, read.Idle + write.Idle);
+		}
+	}
+
 	/// <inheritdoc />
 	public async ValueTask DisposeAsync()
 	{
@@ -72,6 +85,6 @@ public sealed class Database : IAsyncDisposable
 		// No retrying execution strategy: DatabaseSession retries only the opening of the connection.
 		var builder = new DbContextOptionsBuilder<TContext>();
 		provider.Configure(builder, source, TContext.HistoryTable);
-		return builder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking).Options;
+		return builder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking).AddInterceptors(Metrics).Options;
 	}
 }

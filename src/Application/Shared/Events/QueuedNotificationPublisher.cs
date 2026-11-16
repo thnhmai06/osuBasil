@@ -13,14 +13,15 @@ public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<Queued
 	public ValueTask Publish<TNotification>(NotificationHandlers<TNotification> handlers,
 		TNotification notification, CancellationToken ct) where TNotification : INotification
 	{
-		queue.Enqueue(new Delivery<TNotification>(handlers, notification, logger));
+		queue.Enqueue(new Delivery<TNotification>(handlers, notification, logger, queue));
 		return ValueTask.CompletedTask;
 	}
 
 	private sealed class Delivery<TNotification>(
 		NotificationHandlers<TNotification> handlers,
 		TNotification notification,
-		ILogger logger) : IEventDelivery where TNotification : INotification
+		ILogger logger,
+		EventQueue queue) : IEventDelivery where TNotification : INotification
 	{
 		/// <inheritdoc />
 		public async ValueTask DeliverAsync(CancellationToken ct)
@@ -36,6 +37,7 @@ public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<Queued
 				}
 				catch (Exception exception)
 				{
+					queue.CountFailure();
 					logger.LogError(exception, "A handler of {Event} failed", typeof(TNotification).Name);
 				}
 		}

@@ -54,6 +54,21 @@ public sealed class EventQueueTests
 	}
 
 	[Fact]
+	public async Task Counts_PublishedAndFailedDeliveries()
+	{
+		var queue = NewQueue();
+
+		queue.Enqueue(new ThrowingDelivery());
+		queue.Enqueue(new ThrowingDelivery());
+		queue.Enqueue(new RecordingDelivery("ok", Channel.CreateUnbounded<string>()));
+		await queue.DrainAsync(Token);
+
+		Assert.Equal(3, queue.Published);
+		Assert.Equal(2, queue.Failures);
+		Assert.Equal(0, queue.Outstanding);
+	}
+
+	[Fact]
 	public async Task AfterThrow_KeepsRunning()
 	{
 		var done = Channel.CreateUnbounded<string>();

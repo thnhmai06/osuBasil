@@ -16,11 +16,7 @@ internal sealed class DiagnosticsIntake(
 		var question = new CollectDiagnostics(reported);
 		foreach (var module in modules) await module.Handle(question, ct);
 
-		var values = new Dictionary<string, object>(runtime.Sample())
-		{
-			["database"] = new { available = false },
-			["events"] = new { available = false }
-		};
+		var values = new Dictionary<string, object>(runtime.Sample());
 		foreach (var category in reported.Counts.GroupBy(count => count.Key.Category))
 		{
 			// A protocol category carries the durations the host measured and the counts the modules report.

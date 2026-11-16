@@ -51,6 +51,8 @@ public sealed class MySqlDatabaseProvider : IDatabaseProvider
 	{
 		public string ConnectionString { get; } = connectionString;
 
+		public ConnectionStats? Connections => null;
+
 		public ValueTask DisposeAsync()
 		{
 			return ValueTask.CompletedTask;

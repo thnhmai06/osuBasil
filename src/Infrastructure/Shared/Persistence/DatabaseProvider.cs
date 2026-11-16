@@ -3,7 +3,16 @@ using Microsoft.EntityFrameworkCore;
 namespace Basil.Infrastructure.Shared.Persistence;
 
 /// <summary>A pool of connections to the database, created by the provider and released when the server stops.</summary>
-public interface IDatabaseSource : IAsyncDisposable;
+public interface IDatabaseSource : IAsyncDisposable
+{
+	/// <summary>Gets how many connections of the pool are in use and idle, or <see langword="null" /> when the engine does not tell.</summary>
+	ConnectionStats? Connections { get; }
+}
+
+/// <summary>How many connections of a pool are serving a command and how many wait for one.</summary>
+/// <param name="InUse">The connections serving a command now.</param>
+/// <param name="Idle">The open connections waiting for a command.</param>
+public readonly record struct ConnectionStats(int InUse, int Idle);
 
 /// <summary>The engines of the two endpoints: the one that serves reads and the one that stores changes and migrates.</summary>
 /// <param name="Read">The engine the read endpoint reaches.</param>

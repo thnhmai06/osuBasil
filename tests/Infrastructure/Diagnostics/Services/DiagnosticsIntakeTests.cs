@@ -39,14 +39,21 @@ public sealed class DiagnosticsIntakeTests
 	}
 
 	[Fact]
-	public async Task ProcessCategories_UnmeasuredUnavailable()
+	public async Task ProcessCategories_Present()
 	{
 		var sample = await TakeAsync();
 
 		foreach (var category in new[] { "process", "gc", "threadpool", "runtime", "exceptions", "http" })
 			Assert.True(sample.All.ContainsKey(category), category);
-		foreach (var category in new[] { "database", "events" })
-			Assert.Equal(false, sample[category].GetType().GetProperty("available")!.GetValue(sample[category]));
+	}
+
+	[Fact]
+	public async Task DatabaseAndEvents_NoPlaceholder()
+	{
+		var sample = await TakeAsync();
+
+		Assert.DoesNotContain("database", sample.All.Keys);
+		Assert.DoesNotContain("events", sample.All.Keys);
 	}
 
 	[Fact]

@@ -18,6 +18,8 @@ public sealed class EventQueue
 
 	private readonly ILogger<EventQueue> _logger;
 	private int _outstanding;
+	private long _published;
+	private long _failures;
 
 	/// <summary>Creates an empty queue.</summary>
 	/// <param name="logger">The logger that reports a delivery that failed.</param>
@@ -29,11 +31,24 @@ public sealed class EventQueue
 	/// <summary>Gets how many deliveries are queued or being delivered.</summary>
 	public int Outstanding => Volatile.Read(ref _outstanding);
 
+	/// <summary>Gets how many events have been published since the server started.</summary>
+	public long Published => Interlocked.Read(ref _published);
+
+	/// <summary>Gets how many times a handler or a whole delivery failed since the server started.</summary>
+	public long Failures => Interlocked.Read(ref _failures);
+
+	/// <summary>Counts a handler that failed; the queue keeps delivering.</summary>
+	public void CountFailure()
+	{
+		Interlocked.Increment(ref _failures);
+	}
+
 	/// <summary>Adds a delivery behind the ones already waiting; returns at once and never waits.</summary>
 	/// <param name="delivery">The delivery to run.</param>
 	public void Enqueue(IEventDelivery delivery)
 	{
 		Interlocked.Increment(ref _outstanding);
+		Interlocked.Increment(ref _published);
 		_deliveries.Writer.TryWrite(delivery);
 	}
 
@@ -77,6 +92,7 @@ public sealed class EventQueue
 		}
 		catch (Exception exception)
 		{
+			CountFailure();
 			_logger.LogError(exception, "An event could not be delivered");
 		}
 		finally

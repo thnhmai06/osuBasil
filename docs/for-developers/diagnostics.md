@@ -40,7 +40,12 @@ The categories are:
 | `connections` | running totals since the server started, by type and event (`<type>.opened`, `.closed`, `.timeout`, `.errors`, `.rejected`) |
 | `machine` | memory used and in total of the whole machine, and bytes sent and received per second over its network interfaces (loopback excluded) |
 | `stable`, `irc` | open connections of that protocol, and the time to handle one poll (stable) or one line (IRC): `requestsPerSecond`, `p50Milliseconds`, `p95Milliseconds`, `p99Milliseconds` |
-| `database`, `events` | not measured yet: they answer `available: false` |
+| `database` | `commandsTotal`, `commandsFailedTotal`, `recentCommandP50Microseconds` and `recentCommandP95Microseconds` (the last 256 commands), and the pool: `connectionsInUse`, `connectionsIdle` |
+| `events` | `publishedTotal` events since start, `pending` (queued or being delivered) and `handlerFailuresTotal` |
+
+Every number is a count or a duration since start or over a recent window; rates are for the reader to derive. An engine
+that cannot tell its pool (MySQL) reports `connectionsMeasured` as 0 and leaves the two connection numbers out instead of
+reporting zeros; `connectionsMeasured` is 1 when they are there.
 
 ## Why a shared sample
 
@@ -73,6 +78,11 @@ Application.Shared so every module can contribute without referencing Diagnostic
 use (`DiagnosticsSample`, `IClearTally`, `ICacheCleaner`, `HostLabels`, `DiagnosticsMetrics`) lives in
 Application.Diagnostics. `CollectDiagnostics` is a question, not an event: the intake hands it directly to the handlers (each module
 has one) and waits for the answers, so it never goes through the event queue.
+
+The `database` and `events` categories belong to Infrastructure.Shared, which answers `CollectDiagnostics` itself (the
+meter rule below does not apply to it). The database counts its commands with an EF Core command interceptor installed on
+every context, so it is the same for any engine; the pool sizes come from the engine's own statistics, which is why they
+can be absent. The event queue counts what it publishes and what fails, including each handler that throws.
 
 Every module's Infrastructure project that has handlers owns a `Meter` named `Basil.<Module>` and a handler for
 `CollectDiagnostics`; an architecture test fails when one is missing. Users reports the users online and the open

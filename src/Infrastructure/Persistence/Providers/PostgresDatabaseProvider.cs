@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Net.Sockets;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +21,7 @@ public sealed class PostgresDatabaseProvider : IDatabaseProvider
 		var builder = new NpgsqlConnectionStringBuilder(connectionString);
 		if (poolSize > 0) builder.MaxPoolSize = poolSize;
 		builder.Options = string.IsNullOrEmpty(builder.Options) ? ServerOption : $"{builder.Options} {ServerOption}";
-		return new Source(NpgsqlDataSource.Create(builder.ConnectionString));
+		return new Source(builder.ConnectionString);
 	}
 
 	/// <inheritdoc />
@@ -67,13 +68,58 @@ public sealed class PostgresDatabaseProvider : IDatabaseProvider
 			yield return current;
 	}
 
-	private sealed class Source(NpgsqlDataSource dataSource) : IDatabaseSource
+	private sealed class Source : IDatabaseSource
 	{
-		public NpgsqlDataSource DataSource { get; } = dataSource;
+		private readonly MeterListener _listener = new();
+		private readonly string _name = Guid.NewGuid().ToString("N");
+		private int _idle;
+		private int _inUse;
+
+		public Source(string connectionString)
+		{
+			DataSource = new NpgsqlDataSourceBuilder(connectionString) { Name = _name }.Build();
+			// Npgsql 10 publishes its pool sizes only as the observable instrument of its meter.
+			_listener.InstrumentPublished = (instrument, listener) =>
+			{
+				if (instrument.Meter.Name == "Npgsql" && instrument.Name == "db.client.connection.count")
+					listener.EnableMeasurementEvents(instrument);
+			};
+			_listener.SetMeasurementEventCallback<int>(OnCount);
+			_listener.Start();
+		}
+
+		public NpgsqlDataSource DataSource { get; }
+
+		public ConnectionStats? Connections
+		{
+			get
+			{
+				lock (_listener)
+				{
+					_idle = _inUse = 0;
+					_listener.RecordObservableInstruments();
+					return new ConnectionStats(_inUse, _idle);
+				}
+			}
+		}
 
 		public ValueTask DisposeAsync()
 		{
+			_listener.Dispose();
 			return DataSource.DisposeAsync();
+		}
+
+		private void OnCount(Instrument instrument, int value, ReadOnlySpan<KeyValuePair<string, object?>> tags,
+			object? state)
+		{
+			string? pool = null, kind = null;
+			foreach (var tag in tags)
+				if (tag.Key == "db.client.connection.pool.name") pool = tag.Value as string;
+				else if (tag.Key == "db.client.connection.state") kind = tag.Value as string;
+
+			if (pool != _name) return;
+			if (kind == "idle") _idle += value;
+			else if (kind == "used") _inUse += value;
 		}
 	}
 }
