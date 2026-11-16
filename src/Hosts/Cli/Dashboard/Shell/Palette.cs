@@ -24,8 +24,17 @@ internal enum Ink : byte
 	/// <summary>Information.</summary>
 	Info,
 
+	/// <summary>Text lighter than the ordinary kind, such as the name of a player.</summary>
+	Bright,
+
 	/// <summary>An account that owns or develops the server.</summary>
 	RoleStaff,
+
+	/// <summary>An account that moderates the server.</summary>
+	RoleModerator,
+
+	/// <summary>An account that supports the server.</summary>
+	RoleSupporter,
 
 	/// <summary>An ordinary player account.</summary>
 	RolePlayer,
@@ -81,14 +90,16 @@ internal static class InkTable
 {
 	/// <summary>Gets the basic kind a named kind is shown as.</summary>
 	/// <param name="ink">The kind of text.</param>
-	/// <returns>One of <see cref="Ink.Text" />, <see cref="Ink.Muted" />, <see cref="Ink.Accent" />, <see cref="Ink.Success" />, <see cref="Ink.Warning" />, <see cref="Ink.Error" /> or <see cref="Ink.Info" />.</returns>
+	/// <returns>One of <see cref="Ink.Text" />, <see cref="Ink.Muted" />, <see cref="Ink.Accent" />, <see cref="Ink.Success" />, <see cref="Ink.Warning" />, <see cref="Ink.Error" />, <see cref="Ink.Info" /> or <see cref="Ink.Bright" />.</returns>
 	public static Ink Basic(Ink ink)
 	{
 		return ink switch
 		{
 			Ink.RoleStaff or Ink.MapLoved or Ink.GradeTop or Ink.ChatBot => Ink.Accent,
-			Ink.RolePlayer => Ink.Text,
-			Ink.RoleRestricted or Ink.GradeD => Ink.Error,
+			Ink.RoleModerator or Ink.GradeD => Ink.Error,
+			Ink.RoleSupporter => Ink.Warning,
+			Ink.RolePlayer => Ink.Bright,
+			Ink.RoleRestricted => Ink.Muted,
 			Ink.MapRanked or Ink.GradeA or Ink.RoomPlaying => Ink.Success,
 			Ink.MapQualified or Ink.GradeB or Ink.RoomOpen => Ink.Info,
 			Ink.GradeC or Ink.RoomLocked => Ink.Warning,
@@ -107,9 +118,16 @@ internal sealed record Palette(bool NoColor)
 	/// <param name="text">The plain text; it is escaped here.</param>
 	public string Wrap(Ink token, string text)
 	{
-		var escaped = XenoAtom.Ansi.AnsiMarkup.Escape(Plain(text));
+		var escaped = Escape(text);
 		var tag = Tag(token);
 		return tag.Length == 0 ? escaped : $"[{tag}]{escaped}[/]";
+	}
+
+	/// <summary>Makes plain text safe to put in markup: control characters are replaced and the markup characters escaped, once.</summary>
+	/// <param name="text">The plain text, such as a user name; it must not be escaped already.</param>
+	public static string Escape(string text)
+	{
+		return XenoAtom.Ansi.AnsiMarkup.Escape(Plain(text));
 	}
 
 	/// <summary>Replaces the control characters of untrusted text, so that it cannot send escape sequences to the terminal.</summary>
@@ -141,6 +159,7 @@ internal sealed record Palette(bool NoColor)
 			Ink.Warning => "yellow",
 			Ink.Error => "red",
 			Ink.Info => "blue",
+			Ink.Bright => "brightyellow",
 			_ => string.Empty
 		};
 	}

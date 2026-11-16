@@ -25,7 +25,7 @@ internal sealed record Section<T>(string Title, string Count, IReadOnlyList<T> I
 
 /// <summary>
 ///     A table of items in titled groups: a header row that stays on top, the title of the group in view that stays
-///     under it, a selected row, and a scroll bar when it is inside a <see cref="XenoAtom.Terminal.UI.Controls.ScrollViewer" />.
+///     under it, a selected row (a title can be selected, and folds or opens its group), and a scroll bar when it is inside a <see cref="XenoAtom.Terminal.UI.Controls.ScrollViewer" />.
 /// </summary>
 internal sealed partial class GroupedList<T> : Visual, IScrollable
 {
@@ -37,7 +37,12 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	private readonly Func<T, string> _key;
 	private readonly bool _noColor;
 	private readonly ScrollModel _scroll;
+	private readonly WheelAcceleration _wheel;
+	private readonly HashSet<string> _closed = [];
+	private readonly HashSet<string> _searchClosed = [];
+	private IReadOnlyList<Section<T>> _sections = [];
 	private List<Row> _rows = [];
+	private bool _searching;
 	private int _selected = -1;
 	private int _bodyHeight;
 
@@ -46,8 +51,11 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <param name="key">Reads the id of an item, which keeps the selection when the items are replaced.</param>
 	/// <param name="glyphs">The characters to draw with.</param>
 	/// <param name="noColor">Whether the table is monochrome.</param>
-	public GroupedList(IReadOnlyList<Column<T>> columns, Func<T, string> key, Glyphs glyphs, bool noColor)
+	/// <param name="clock">Measures the time between the notches of the mouse wheel.</param>
+	public GroupedList(IReadOnlyList<Column<T>> columns, Func<T, string> key, Glyphs glyphs, bool noColor,
+		TimeProvider clock)
 	{
+		_wheel = new WheelAcceleration(clock, 3);
 		_columns = columns;
 		_key = key;
 		_glyphs = glyphs;
@@ -63,13 +71,13 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	public ScrollModel Scroll => _scroll;
 
 	/// <summary>Gets the selected item, or the default when nothing is selected.</summary>
-	public T? Selected => _selected >= 0 && _selected < _rows.Count ? _rows[_selected].Item : default;
+	public T? Selected => HasSelection ? _rows[_selected].Item : default;
 
-	/// <summary>Gets whether an item is selected.</summary>
-	public bool HasSelection => _selected >= 0 && _selected < _rows.Count;
+	/// <summary>Gets whether an item is selected; the selection can also sit on the title of a group.</summary>
+	public bool HasSelection => _selected >= 0 && _selected < _rows.Count && !_rows[_selected].IsHeader;
 
-	/// <summary>Gets whether the selection is on the first item, or there is nothing to select.</summary>
-	public bool AtFirst => _selected <= _rows.FindIndex(row => !row.IsHeader);
+	/// <summary>Gets whether the selection is on the first row, or there is nothing to select.</summary>
+	public bool AtFirst => _selected <= 0;
 
 	/// <summary>Gets how many items there are in all groups.</summary>
 	public int ItemCount => _rows.Count(row => !row.IsHeader);
@@ -99,6 +107,9 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <summary>Occurs when the operator opens the selected item with Enter, a double click or the mouse.</summary>
 	public event Action<T>? Activated;
 
+	/// <summary>Gets or sets whether a single click on an item opens it, instead of the second click.</summary>
+	public bool ActivateOnClick { get; init; }
+
 	/// <summary>Gets or sets a hook that sees every key first and returns whether it used the key.</summary>
 	public Func<KeyEventArgs, bool>? KeyHook { get; set; }
 
@@ -108,21 +119,28 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <summary>Occurs when the selection reaches the last rows, so that the next page can be loaded.</summary>
 	public event Action? NearEnd;
 
-	/// <summary>Replaces the groups, keeping the selected item when it is still there.</summary>
+	/// <summary>Replaces the groups, keeping the selected row when it is still there.</summary>
 	/// <param name="sections">The groups; an empty one still shows its title.</param>
-	public void SetSections(IReadOnlyList<Section<T>> sections)
+	/// <param name="searching">
+	///     Whether the items are the result of a search: groups with items are open and groups without are hidden,
+	///     and what the operator folded before is back when the search ends.
+	/// </param>
+	public void SetSections(IReadOnlyList<Section<T>> sections, bool searching = false)
 	{
-		var keep = HasSelection ? _key(_rows[_selected].Item!) : null;
-		var rows = new List<Row>();
-		foreach (var section in sections)
+		var keepItem = HasSelection ? _key(_rows[_selected].Item!) : null;
+		var keepGroup = _selected >= 0 && _selected < _rows.Count ? _rows[_selected].Title : null;
+		if (searching != _searching)
 		{
-			rows.Add(new Row(true, $"{section.Title} ({section.Count})", default));
-			rows.AddRange(section.Items.Select(item => new Row(false, string.Empty, item)));
+			_searching = searching;
+			_searchClosed.Clear();
 		}
 
-		_rows = rows;
-		_selected = keep is null ? -1 : rows.FindIndex(row => !row.IsHeader && _key(row.Item!) == keep);
-		if (_selected < 0) _selected = rows.FindIndex(row => !row.IsHeader);
+		_sections = sections;
+		Rebuild();
+		_selected = keepItem is null ? -1 : _rows.FindIndex(row => !row.IsHeader && _key(row.Item!) == keepItem);
+		if (_selected < 0 && keepGroup is not null) _selected = _rows.FindIndex(row => row.IsHeader && row.Title == keepGroup);
+		if (_selected < 0) _selected = _rows.FindIndex(row => !row.IsHeader);
+		if (_selected < 0) _selected = _rows.Count > 0 ? 0 : -1;
 		Settle();
 		Revision++;
 	}
@@ -130,21 +148,56 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	/// <summary>Selects the first item.</summary>
 	public void SelectFirst()
 	{
-		MoveTo(_rows.FindIndex(row => !row.IsHeader));
+		var first = _rows.FindIndex(row => !row.IsHeader);
+		MoveTo(first < 0 ? 0 : first);
 	}
 
-	/// <summary>Selects the item with an id, when it is in the table.</summary>
+	/// <summary>Selects the item with an id, opening its group when it is folded.</summary>
 	/// <param name="id">The id read by the key function.</param>
 	/// <returns>Whether the item is in the table.</returns>
 	public bool Select(string id)
 	{
-		var index = _rows.FindIndex(row => !row.IsHeader && _key(row.Item!) == id);
-		if (index < 0) return false;
+		var owner = _sections.FirstOrDefault(section => section.Items.Any(item => _key(item) == id));
+		if (owner is null) return false;
 
-		_selected = index;
+		if (Folded.Remove(owner.Title)) Rebuild();
+		_selected = _rows.FindIndex(row => !row.IsHeader && _key(row.Item!) == id);
 		Settle();
 		Revision++;
 		return true;
+	}
+
+	private HashSet<string> Folded => _searching ? _searchClosed : _closed;
+
+	private void Rebuild()
+	{
+		var rows = new List<Row>();
+		foreach (var section in _sections)
+		{
+			if (_searching && section.Items.Count == 0) continue;
+
+			var open = !Folded.Contains(section.Title);
+			rows.Add(new Row(true, section.Title, section.Count, open, default));
+			if (open) rows.AddRange(section.Items.Select(item => new Row(false, string.Empty, string.Empty, true, item)));
+		}
+
+		_rows = rows;
+	}
+
+	/// <summary>Opens or folds the group whose title is at a row, keeping that title selected.</summary>
+	/// <param name="index">The row of the title.</param>
+	/// <param name="open">Whether the group should end open; <see langword="null" /> flips it.</param>
+	private void Fold(int index, bool? open = null)
+	{
+		var row = _rows[index];
+		if (open is { } wanted && wanted == row.Open) return;
+
+		if (!Folded.Remove(row.Title)) Folded.Add(row.Title);
+		Rebuild();
+		_selected = _rows.FindIndex(r => r.IsHeader && r.Title == row.Title);
+		Settle();
+		Revision++;
+		Moved?.Invoke();
 	}
 
 	/// <inheritdoc />
@@ -167,7 +220,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	protected override void RenderOverride(CellBuffer buffer)
 	{
 		var rect = Bounds;
-		if (rect.Width <= 0 || rect.Height <= 0 || false) return;
+		if (rect.Width <= 0 || rect.Height <= 0) return;
 
 		_ = Revision;
 		var theme = GetTheme();
@@ -189,7 +242,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		else
 		{
 			var owner = _rows.FindLastIndex(offset, row => row.IsHeader);
-			if (owner >= 0) DrawHeader(buffer, rect, y0, _rows[owner].Title, theme);
+			if (owner >= 0) DrawHeader(buffer, rect, y0, _rows[owner], owner == _selected, theme);
 			y0++;
 		}
 
@@ -201,7 +254,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			var y = y0 + i;
 			if (row.IsHeader)
 			{
-				DrawHeader(buffer, rect, y, row.Title, theme);
+				DrawHeader(buffer, rect, y, row, index == _selected, theme);
 				continue;
 			}
 
@@ -225,14 +278,19 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			case TerminalKey.Down: Move(1); break;
 			case TerminalKey.PageUp: Move(-Math.Max(_bodyHeight - 1, 1)); break;
 			case TerminalKey.PageDown: Move(Math.Max(_bodyHeight - 1, 1)); break;
-			case TerminalKey.Home: MoveTo(_rows.FindIndex(row => !row.IsHeader)); break;
-			case TerminalKey.End: MoveTo(_rows.FindLastIndex(row => !row.IsHeader)); break;
+			case TerminalKey.Home: MoveTo(0); break;
+			case TerminalKey.End: MoveTo(_rows.Count - 1); break;
 			case TerminalKey.Enter when HasSelection: Activated?.Invoke(_rows[_selected].Item!); break;
+			case TerminalKey.Enter when OnTitle: Fold(_selected); break;
+			case TerminalKey.Left when OnTitle: Fold(_selected, false); break;
+			case TerminalKey.Right when OnTitle: Fold(_selected, true); break;
 			default: handled = false; break;
 		}
 
 		if (handled) e.Handled = true;
 	}
+
+	private bool OnTitle => _selected >= 0 && _selected < _rows.Count && _rows[_selected].IsHeader;
 
 	/// <inheritdoc />
 	protected override void OnPointerPressed(PointerEventArgs e)
@@ -240,11 +298,18 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.Button != TerminalMouseButton.Left) return;
 
 		var index = RowAt(e.LocalY);
-		if (index < 0 || _rows[index].IsHeader) return;
+		if (index < 0) return;
+
+		if (_rows[index].IsHeader)
+		{
+			Fold(index);
+			e.Handled = true;
+			return;
+		}
 
 		var again = index == _selected;
 		MoveTo(index);
-		if (again || e.ClickCount >= 2) Activated?.Invoke(_rows[index].Item!);
+		if (again || ActivateOnClick || e.ClickCount >= 2) Activated?.Invoke(_rows[index].Item!);
 		e.Handled = true;
 	}
 
@@ -253,7 +318,8 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	{
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.WheelDelta == 0) return;
 
-		Move(e.WheelDelta > 0 ? -3 : 3);
+		var step = _wheel.Step();
+		Move(e.WheelDelta > 0 ? -step : step);
 		e.Handled = true;
 	}
 
@@ -263,6 +329,8 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 		var offset = Math.Clamp(_scroll.OffsetY, 0, _rows.Count - 1);
 		var stuck = !_rows[offset].IsHeader;
+		if (stuck && localY == 1) return _rows.FindLastIndex(offset, row => row.IsHeader);
+
 		var line = localY - 1 - (stuck ? 1 : 0);
 		if (line < 0) return -1;
 
@@ -272,22 +340,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 	private void Move(int delta)
 	{
-		if (_rows.Count == 0) return;
-
-		var step = Math.Sign(delta);
-		var target = _selected < 0 ? 0 : _selected;
-		var remaining = Math.Abs(delta);
-		while (remaining > 0)
-		{
-			var next = target + step;
-			while (next >= 0 && next < _rows.Count && _rows[next].IsHeader) next += step;
-			if (next < 0 || next >= _rows.Count) break;
-
-			target = next;
-			remaining--;
-		}
-
-		MoveTo(target);
+		if (_rows.Count > 0) MoveTo(Math.Clamp((_selected < 0 ? 0 : _selected) + delta, 0, _rows.Count - 1));
 	}
 
 	private void MoveTo(int index)
@@ -339,12 +392,45 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		return builder.ToString();
 	}
 
-	private void DrawHeader(CellBuffer buffer, Rectangle rect, int y, string title, Theme theme)
+	private void DrawHeader(CellBuffer buffer, Rectangle rect, int y, Row row, bool selected, Theme theme)
 	{
-		var rule = _glyphs.Ascii ? '-' : '─';
-		var text = $"{rule}{rule} {Palette.Plain(title)} ";
-		var line = text + new string(rule, Math.Max(rect.Width - text.Length, 0));
-		buffer.WriteText(rect.X, y, line.Length > rect.Width ? line[..rect.Width] : line, Muted(theme));
+		var rule = _glyphs.Rule;
+		var arrow = row.Open ? _glyphs.Open : _glyphs.Folded;
+		var title = Palette.Plain(row.Title);
+		if (title.Length > 0) title = char.ToUpperInvariant(title[0]) + title[1..];
+		var muted = Muted(theme);
+		var bold = (_noColor ? Style.None : Style.None.WithForeground(theme.Foreground ?? Colors.TerminalWhite))
+			.WithTextStyle(TextStyle.Bold);
+		if (selected)
+		{
+			muted = Select(muted, theme);
+			bold = Select(bold, theme);
+			buffer.WriteText(rect.X, y, new string(' ', rect.Width), muted);
+		}
+
+		var x = rect.X;
+
+		void Put(string text, Style style)
+		{
+			var room = rect.X + rect.Width - x;
+			if (room <= 0) return;
+
+			var shown = text.Length > room ? text[..room] : text;
+			buffer.WriteText(x, y, shown, style);
+			x += shown.Length;
+		}
+
+		Put($"{arrow} {rule}{rule} ", muted);
+		Put(title, bold);
+		Put($" ({row.Count}) ", muted);
+		Put(new string(rule, Math.Max(rect.X + rect.Width - x, 0)), muted);
+	}
+
+	private Style Select(Style style, Theme theme)
+	{
+		return _noColor
+			? style.WithTextStyle(TextStyle.Invert)
+			: style.WithBackground(theme.Selection ?? Colors.TerminalBlue);
 	}
 
 	private void DrawItem(CellBuffer buffer, Rectangle rect, int y, T item, int[] widths, bool selected, Theme theme)
@@ -393,6 +479,7 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 			Ink.Warning => theme.Warning,
 			Ink.Error => theme.Error,
 			Ink.Info => theme.Primary,
+			Ink.Bright => Colors.TerminalBrightYellow,
 			_ => theme.Foreground
 		};
 		return Style.None.WithForeground(color ?? theme.Foreground ?? Colors.TerminalWhite);
@@ -406,5 +493,5 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		return text.Length <= width ? text.PadRight(width) : text[..Math.Max(width - 1, 0)] + "…";
 	}
 
-	private readonly record struct Row(bool IsHeader, string Title, T? Item);
+	private readonly record struct Row(bool IsHeader, string Title, string Count, bool Open, T? Item);
 }

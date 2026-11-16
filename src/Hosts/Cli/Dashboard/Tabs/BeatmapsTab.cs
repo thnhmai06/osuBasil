@@ -70,7 +70,7 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 }
 
 /// <summary>The beatmaps: each beatmapset with its difficulties, and what can be done to the set.</summary>
-internal sealed class BeatmapsTab : ITabView, ISelectable
+internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 {
 	private const string Help = """
 		Words match the artist, title, creator and difficulty; "quoted" keeps spaces.
@@ -87,7 +87,7 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 
 	/// <summary>Creates the tab.</summary>
 	public BeatmapsTab(IServiceProvider services, ConsoleTab console, CliOptions options, Glyphs glyphs,
-		TimeProvider clock, Action<Action> post, ILogger logger)
+		ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<BeatmapItem>("Beatmaps", Help,
 		[
@@ -103,7 +103,7 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 			new Column<BeatmapItem>("HP", 5, b => Number(b.Hp)),
 			new Column<BeatmapItem>("SR", 6, b => Number(b.Stars), _ => Ink.Accent)
 		], b => b.Id.ToString(), new BeatmapsSource(services), b => Detail(b, console, options), glyphs,
-			options.NoColor, clock, post, logger);
+			kit, options.NoColor, clock, post, logger);
 	}
 
 	/// <inheritdoc />
@@ -135,6 +135,18 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 	public void Refresh()
 	{
 		_page.Refresh();
+	}
+
+	/// <inheritdoc />
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	/// <inheritdoc />
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
 	}
 
 	/// <summary>Selects a beatmap by its id when it is in the list.</summary>
@@ -175,10 +187,10 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 			("Locked", map.Locked ? "yes" : "no", map.Locked ? Ink.Warning : Ink.Text),
 			("Versions", map.Versions.ToString(), Ink.Text)
 		};
-		if (!options.Editable) return new DetailView(fields, []);
+		if (!options.Editable) return new DetailView(map.Id.ToString(), fields, []);
 
 		var set = map.SetId;
-		return new DetailView(fields,
+		return new DetailView(map.Id.ToString(), fields,
 		[
 			new DetailAction(map.Private ? "Set public" : "Set private",
 				() => Run(console, $"beatmapsets {set} set --visible {(map.Private ? "true" : "false")}")),
@@ -187,9 +199,8 @@ internal sealed class BeatmapsTab : ITabView, ISelectable
 		]);
 	}
 
-	private static Task Run(ConsoleTab console, string line)
+	private static void Run(ConsoleTab console, string line)
 	{
 		console.RunCommand(line);
-		return Task.CompletedTask;
 	}
 }

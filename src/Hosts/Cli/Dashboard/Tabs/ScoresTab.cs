@@ -98,7 +98,7 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 }
 
 /// <summary>The scores, newest first, with a jump to the beatmap or the player of each.</summary>
-internal sealed class ScoresTab : ITabView
+internal sealed class ScoresTab : ITabView, ISearchable
 {
 	private const string Help = """
 		user:name or user:id          only this player's scores
@@ -113,7 +113,7 @@ internal sealed class ScoresTab : ITabView
 	/// <summary>Creates the tab.</summary>
 	/// <param name="openIn">Jumps to a tab and selects the item with the given id there.</param>
 	public ScoresTab(IServiceProvider services, Action<DashboardTab, string> openIn, Glyphs glyphs,
-		CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
+		ShellKit kit, CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<ScoreItem>("Scores", Help,
 		[
@@ -127,7 +127,7 @@ internal sealed class ScoresTab : ITabView
 			new Column<ScoreItem>("Time", 17, s => s.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm",
 				CultureInfo.InvariantCulture), _ => Ink.Muted)
 		], s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, openIn),
-			glyphs, options.NoColor, clock, post, logger);
+			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
 	/// <inheritdoc />
@@ -161,6 +161,18 @@ internal sealed class ScoresTab : ITabView
 		_page.Refresh();
 	}
 
+	/// <inheritdoc />
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	/// <inheritdoc />
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
+	}
+
 	private static string GradeText(Grade grade)
 	{
 		return grade switch { Grade.Sh => "SH", Grade.Xh => "SSH", Grade.X => "SS", _ => grade.ToString() };
@@ -191,15 +203,14 @@ internal sealed class ScoresTab : ITabView
 		};
 		var actions = new List<DetailAction>();
 		if (score.BeatmapId is { } map)
-			actions.Add(new DetailAction("Open beatmap", () => Open(openIn, DashboardTab.Beatmaps, map)));
+			actions.Add(new DetailAction("Beatmap…", () => Open(openIn, DashboardTab.Beatmaps, map), DetailActionKind.Navigate));
 		if (score.UserId is { } user)
-			actions.Add(new DetailAction("Open user", () => Open(openIn, DashboardTab.Users, user)));
-		return new DetailView(fields, actions);
+			actions.Add(new DetailAction("User…", () => Open(openIn, DashboardTab.Users, user), DetailActionKind.Navigate));
+		return new DetailView(score.Id.ToString(CultureInfo.InvariantCulture), fields, actions);
 	}
 
-	private static Task Open(Action<DashboardTab, string> openIn, DashboardTab tab, int id)
+	private static void Open(Action<DashboardTab, string> openIn, DashboardTab tab, int id)
 	{
 		openIn(tab, id.ToString(CultureInfo.InvariantCulture));
-		return Task.CompletedTask;
 	}
 }

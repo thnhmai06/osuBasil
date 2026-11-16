@@ -70,7 +70,7 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 }
 
 /// <summary>The rooms: the open ones with what the creator and the referees can do, and the ones that ended.</summary>
-internal sealed class LobbyTab : ITabView
+internal sealed class LobbyTab : ITabView, ISearchable
 {
 	private const string Help = """
 		Type part of the room name (ignoring case) or the exact room id.
@@ -81,7 +81,7 @@ internal sealed class LobbyTab : ITabView
 
 	/// <summary>Creates the tab.</summary>
 	public LobbyTab(IServiceProvider services, ConsoleTab console, Action<string> openChat, CliOptions options,
-		Glyphs glyphs, TimeProvider clock, Action<Action> post, ILogger logger)
+		Glyphs glyphs, ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<RoomItem>("Lobby", Help,
 		[
@@ -91,8 +91,8 @@ internal sealed class LobbyTab : ITabView
 			new Column<RoomItem>("State", 9, r => r.State, State),
 			new Column<RoomItem>("Host", 16, r => r.Host),
 			new Column<RoomItem>("Creator", 16, r => r.Creator, _ => Ink.Muted)
-		], r => r.Id.ToString(), new LobbySource(services), room => Detail(room, console, openChat, options),
-			glyphs, options.NoColor, clock, post, logger);
+		], r => r.Id.ToString(), new LobbySource(services), room => Detail(room, console, openChat, options, kit.Dialogs),
+			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
 	/// <inheritdoc />
@@ -126,6 +126,18 @@ internal sealed class LobbyTab : ITabView
 		_page.Refresh();
 	}
 
+	/// <inheritdoc />
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	/// <inheritdoc />
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
+	}
+
 	private static Ink State(RoomItem room)
 	{
 		return room.State switch
@@ -137,7 +149,8 @@ internal sealed class LobbyTab : ITabView
 		};
 	}
 
-	private static DetailView Detail(RoomItem room, ConsoleTab console, Action<string> openChat, CliOptions options)
+	private static DetailView Detail(RoomItem room, ConsoleTab console, Action<string> openChat, CliOptions options,
+		Dialogs dialogs)
 	{
 		var fields = new List<(string, string, Ink)>
 		{
@@ -146,41 +159,35 @@ internal sealed class LobbyTab : ITabView
 		};
 		fields.AddRange(room.Slots.Select(slot =>
 			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)));
-		if (!options.Editable || !room.Open) return new DetailView(fields, []);
+		if (!options.Editable || !room.Open) return new DetailView($"#{room.Id}", fields, []);
 
 		var id = room.Id;
 		var actions = new List<DetailAction>
 		{
-			new("Open chat", () =>
-			{
-				openChat($"#mp_{id}");
-				return Task.CompletedTask;
-			}),
+			new("Chat…", () => openChat($"#mp_{id}"), DetailActionKind.Navigate),
 			room.Locked
 				? new DetailAction("Unlock", () => Run(console, $"rooms {id} unlock"))
 				: new DetailAction("Lock", () => Run(console, $"rooms {id} lock")),
-			new("Kick…", () => AskUser(console, "Kick", id, "kick"), true),
-			new("Ban…", () => AskUser(console, "Ban", id, "ban"), true),
-			new("Set host…", () => AskUser(console, "Set host", id, "host")),
-			new("Add referee…", () => AskUser(console, "Add referee", id, "addref")),
-			new("Remove referee…", () => AskUser(console, "Remove referee", id, "removeref")),
-			new("Close room", () => Run(console, $"rooms {id} close"), true)
+			new("Kick…", () => AskUser(console, dialogs, "Kick", id, "kick"), DetailActionKind.Destructive),
+			new("Ban…", () => AskUser(console, dialogs, "Ban", id, "ban"), DetailActionKind.Destructive),
+			new("Set host…", () => AskUser(console, dialogs, "Set host", id, "host")),
+			new("Add referee…", () => AskUser(console, dialogs, "Add referee", id, "addref")),
+			new("Remove referee…", () => AskUser(console, dialogs, "Remove referee", id, "removeref")),
+			new("Close room", () => Run(console, $"rooms {id} close"), DetailActionKind.Destructive)
 		};
-		return new DetailView(fields, actions);
+		return new DetailView($"#{room.Id}", fields, actions);
 	}
 
-	private static Task Run(ConsoleTab console, string line)
+	private static void Run(ConsoleTab console, string line)
 	{
 		console.RunCommand(line);
-		return Task.CompletedTask;
 	}
 
-	private static Task AskUser(ConsoleTab console, string title, int room, string verb)
+	private static void AskUser(ConsoleTab console, Dialogs dialogs, string title, int room, string verb)
 	{
-		Dialogs.Form(title, [("User id", string.Empty)], values =>
+		dialogs.Form(title, [("User id", string.Empty)], values =>
 		{
 			if (int.TryParse(values[0], out var user)) console.RunCommand($"rooms {room} {verb} --user {user}");
 		});
-		return Task.CompletedTask;
 	}
 }

@@ -25,18 +25,6 @@ internal interface IListSource<T>
 	Task<IReadOnlyList<SectionData<T>>> LoadAsync(string query, int limit, CancellationToken ct);
 }
 
-/// <summary>One action of the detail frame.</summary>
-/// <param name="Label">The button text.</param>
-/// <param name="Run">Does the action; it is a console command, so it runs through the command runner.</param>
-/// <param name="Destructive">Whether it ends something, which shows in the error colour.</param>
-internal sealed record DetailAction(string Label, Func<Task> Run, bool Destructive = false);
-
-/// <summary>What the detail frame shows for an item.</summary>
-/// <param name="Fields">The label and value pairs, shown left to right in two columns.</param>
-/// <param name="Actions">The actions on the right; empty when the console is view only.</param>
-internal sealed record DetailView(IReadOnlyList<(string Label, string Value, Ink Kind)> Fields,
-	IReadOnlyList<DetailAction> Actions);
-
 /// <summary>
 ///     A page that lists the items of a table with a search box on top, groups that keep their title, a footer with the
 ///     range in view, and a detail frame under the list; every table tab builds on it.
@@ -49,8 +37,9 @@ internal sealed class ListPage<T>
 	private const int PageSize = 100;
 	private const int CompactWidth = 100;
 	private readonly TimeProvider _clock;
-	private readonly Func<T, DetailView> _detail;
-	private readonly Group _detailBox = new();
+	private readonly Func<T, DetailView> _detailOf;
+	private readonly DetailPanel _detail;
+	private readonly Dialogs _dialogs;
 	private readonly Glyphs _glyphs;
 	private readonly string _help;
 	private readonly string _title;
@@ -61,7 +50,6 @@ internal sealed class ListPage<T>
 	private readonly State<string> _query = new(string.Empty);
 	private readonly IListSource<T> _source;
 	private readonly State<string> _footer = new(string.Empty);
-	private readonly State<bool> _detailOpen = new(false);
 	private CancellationTokenSource _load = new();
 	private string _loadedQuery = string.Empty;
 	private long _changedAt;
@@ -74,38 +62,44 @@ internal sealed class ListPage<T>
 	private bool _focusList;
 	private TextBox? _search;
 	private TerminalApp? _app;
-	private bool _compact;
-	private int _cap = int.MaxValue;
-	private DetailView? _view;
 
 	/// <summary>Creates the page.</summary>
 	public ListPage(string title, string help, IReadOnlyList<Column<T>> columns, Func<T, string> key, IListSource<T> source,
-		Func<T, DetailView> detail, Glyphs glyphs, bool noColor, TimeProvider clock, Action<Action> post,
-		ILogger logger)
+		Func<T, DetailView> detail, Glyphs glyphs, ShellKit kit, bool noColor, TimeProvider clock,
+		Action<Action> post, ILogger logger)
 	{
 		_title = title;
 		_help = help;
 		_source = source;
-		_detail = detail;
+		_detailOf = detail;
+		_dialogs = kit.Dialogs;
+		_detail = new DetailPanel(title, glyphs, new Palette(noColor), kit.Dialogs, kit.Toasts, post);
+		_detail.Closed += () => _app?.Focus(_list);
 		_glyphs = glyphs;
 		_noColor = noColor;
 		_clock = clock;
 		_post = post;
 		_logger = logger;
-		_list = new GroupedList<T>(columns, key, glyphs, noColor);
+		_list = new GroupedList<T>(columns, key, glyphs, noColor, clock);
 		_list.Activated += _ => ToggleDetail(true);
 		_list.NearEnd += LoadMore;
 		_list.KeyHook = OnListKey;
 		_list.Moved += () =>
 		{
-			if (_detailOpen.Value && _list.HasSelection) FillDetail(_list.Selected!);
+			if (_detail.IsOpen && _list.HasSelection) _detail.Show(_detailOf(_list.Selected!));
 		};
 		_search = new TextBox().Text(_query).Placeholder("search (? for help)");
 		_search.KeyDown((_, e) => OnSearchKey(e));
 		var searchRow = new HStack(new TextBlock($"{(glyphs.Ascii ? "?" : "⌕")} "), _search.Stretch());
-		var body = new VStack(searchRow, new ScrollViewer(_list).Stretch(), _detailBox.Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Single).Stretch().IsVisible(_detailOpen)).Spacing(0);
-		View = new Group(title).Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0)).Content(body)
+		var body = new VStack(searchRow, new ScrollViewer(_list).Stretch()).Spacing(0);
+		var frame = new Group(title).Style(GroupStyle.Rounded).Padding(new Thickness(1, 0, 1, 0)).Content(body)
 			.BottomLeftText(() => _footer.Value).Stretch();
+		// The detail frame stands under the page, across its whole width, directly above the status bar.
+		View = new Grid()
+			.Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
+			.Cell(frame, 0, 0)
+			.Cell(_detail.View, 1, 0);
 		foreach (var gesture in Dialogs.BackGestures)
 			View.AddCommand(new Command
 			{
@@ -121,6 +115,7 @@ internal sealed class ListPage<T>
 	public void Attach(TerminalApp app)
 	{
 		_app = app;
+		_detail.Attach(app);
 	}
 
 	/// <summary>Loads the first page; call it when the tab opens and when the operator refreshes.</summary>
@@ -133,7 +128,7 @@ internal sealed class ListPage<T>
 	/// <summary>Lets time pass: starts the search once the text stood still long enough.</summary>
 	public void Tick()
 	{
-		FitDetail();
+		if (_app is { } host && View.Bounds.Width > 0) _detail.Fit(host.Root.Bounds.Width, host.Root.Bounds.Height);
 		if (_focusList && _app is not null && View.Bounds.Width > 0)
 		{
 			_focusList = false;
@@ -154,6 +149,12 @@ internal sealed class ListPage<T>
 			_pages = 1;
 			Start();
 		}
+	}
+
+	/// <summary>Opens the help of the search box in a dialog.</summary>
+	public void ShowHelp()
+	{
+		_dialogs.Info($"{_title}: search", _help.Split('\n'));
 	}
 
 	/// <summary>Focuses the search box.</summary>
@@ -222,13 +223,14 @@ internal sealed class ListPage<T>
 		_loading = false;
 		_more = data.Any(section => section.HasMore);
 		_list.SetSections([.. data.Select(section => new Section<T>(section.Title,
-			section.HasMore ? $"{section.Items.Count}+" : section.Items.Count.ToString(), section.Items))]);
+			section.HasMore ? $"{section.Items.Count}+" : section.Items.Count.ToString(), section.Items))],
+			_loadedQuery.Trim().Length > 0);
 		if (_pendingSelect is not null && _list.Select(_pendingSelect)) _pendingSelect = null;
 		var total = data.Sum(section => section.Items.Count);
 		var (first, last) = _list.VisibleItems();
 		_footer.Value = total == 0 ? "no items" : $"show {first}–{last} in {total}{(_more ? "+" : string.Empty)}";
-		if (_detailOpen.Value && _list.HasSelection) FillDetail(_list.Selected!);
-		else if (_detailOpen.Value) ToggleDetail(false);
+		if (_detail.IsOpen && _list.HasSelection) _detail.Update(_detailOf(_list.Selected!));
+		else if (_detail.IsOpen) _detail.Close();
 	}
 
 	private bool OnListKey(KeyEventArgs e)
@@ -251,11 +253,11 @@ internal sealed class ListPage<T>
 			return true;
 		}
 
-		if (!_detailOpen.Value) return false;
+		if (!_detail.IsOpen) return false;
 
-		if (e.Key == TerminalKey.Enter || e.Char == 'x')
+		if (e.Key == TerminalKey.Enter && _list.HasSelection || e.Char == 'x')
 		{
-			ToggleDetail(false);
+			_detail.Close();
 			return true;
 		}
 
@@ -281,15 +283,15 @@ internal sealed class ListPage<T>
 		e.Handled = true;
 	}
 
-	/// <summary>Esc and Alt+Left: closes the detail, else clears the search, else leaves the search box.</summary>
+	/// <summary>Esc and Alt+Left: goes back in the detail or closes it, else clears the search, else leaves the search box.</summary>
 	private void Back()
 	{
-		if (_detailOpen.Value) CloseDetail();
+		if (_detail.IsOpen) _detail.Back();
 		else if (_query.Value.Length > 0) _query.Value = string.Empty;
 		else LeaveSearch();
 	}
 
-	private bool CanBack => _detailOpen.Value || _query.Value.Length > 0 || ReferenceEquals(_app?.FocusedElement, _search);
+	private bool CanBack => _detail.IsOpen || _query.Value.Length > 0 || ReferenceEquals(_app?.FocusedElement, _search);
 
 	private void LeaveSearch()
 	{
@@ -297,98 +299,9 @@ internal sealed class ListPage<T>
 		_app?.Focus(_list);
 	}
 
-	private void ShowHelp()
-	{
-		Dialogs.Info($"{_title}: search", _help.Split('\n'));
-	}
-
 	private void ToggleDetail(bool open)
 	{
-		_detailOpen.Value = open && _list.HasSelection;
-		if (_detailOpen.Value) FillDetail(_list.Selected!);
-	}
-
-	/// <summary>Keeps the detail frame to a third of the page when the page is short, and folds its actions below 100 columns.</summary>
-	private void FitDetail()
-	{
-		var (width, height) = (View.Bounds.Width, View.Bounds.Height);
-		if (width <= 0 || height <= 0) return;
-
-		var cap = height < Layout.WideSize.Height ? Math.Max(height / 3, 3) : int.MaxValue;
-		if (cap != _cap)
-		{
-			_cap = cap;
-			_detailBox.MaxHeight(cap);
-		}
-
-		var compact = width < CompactWidth;
-		if (compact == _compact) return;
-
-		_compact = compact;
-		if (_detailOpen.Value && _view is not null) Fill(_view);
-	}
-
-	private void FillDetail(T item)
-	{
-		Fill(_view = _detail(item));
-	}
-
-	private void Fill(DetailView view)
-	{
-		var fields = new VStack().Spacing(0);
-		foreach (var (label, value, _) in view.Fields)
-			fields.Add(new TextBlock($"{label,-12} {Palette.Plain(value)}"));
-		var actions = new VStack().Spacing(0);
-		var buttons = new List<Button>();
-		if (_compact && view.Actions.Count > 0)
-			buttons.Add(new Button("[Actions]").Click(() => ShowActions(view.Actions)));
-		else
-			buttons.AddRange(view.Actions.Select(action => new Button(action.Label).Click(() => _ = Task.Run(action.Run))));
-		foreach (var button in buttons) actions.Add(button);
-		var close = new Button("Close").Click(CloseDetail);
-		buttons.Add(close);
-		var top = new HStack(fields.Stretch(), actions);
-		_detailBox.Content(new VStack(top, close).KeyDown((_, e) => OnDetailKey(e, buttons)));
-	}
-
-	private void OnDetailKey(KeyEventArgs e, List<Button> buttons)
-	{
-		if (e.Char == 'x')
-		{
-			CloseDetail();
-		}
-		else if (e.Key is TerminalKey.Left or TerminalKey.Right or TerminalKey.Up or TerminalKey.Down)
-		{
-			var at = buttons.FindIndex(button => ReferenceEquals(button, _app?.FocusedElement));
-			var step = e.Key is TerminalKey.Left or TerminalKey.Up ? -1 : 1;
-			_app?.Focus(buttons[Math.Clamp(at + step, 0, buttons.Count - 1)]);
-		}
-		else
-		{
-			return;
-		}
-
-		e.Handled = true;
-	}
-
-	private void CloseDetail()
-	{
-		ToggleDetail(false);
-		_app?.Focus(_list);
-	}
-
-	private static void ShowActions(IReadOnlyList<DetailAction> actions)
-	{
-		var dialog = new Dialog().Title("Actions");
-		var rows = new VStack().Spacing(0);
-		foreach (var action in actions)
-			rows.Add(new Button(action.Label).Click(() =>
-			{
-				dialog.Close();
-				_ = Task.Run(action.Run);
-			}));
-		rows.Add(new Button("Cancel").Click(dialog.Close));
-		dialog.Content(Dialogs.EscapeCloses(dialog, rows));
-		dialog.Show();
+		if (open && _list.HasSelection) _detail.Show(_detailOf(_list.Selected!));
+		else _detail.Close();
 	}
 }

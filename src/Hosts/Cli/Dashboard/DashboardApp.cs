@@ -1,6 +1,7 @@
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;
+using Basil.Host.Cli.Dashboard.Shell.Toasts;
 using Basil.Host.Cli.Dashboard.Tabs;
 using Basil.Host.Cli.Shutdown;
 using Microsoft.Extensions.Logging;
@@ -27,8 +28,8 @@ public sealed class DashboardApp
 	private readonly State<int> _rows = new(40);
 	private readonly ILogger<DashboardApp> _logger;
 	private readonly CliOptions _mode;
-	private readonly State<string> _flash = new(string.Empty);
-	private readonly State<string> _notice = new(string.Empty);
+	private readonly Dialogs _dialogs = new();
+	private readonly ToastTray _toasts;
 	private readonly Palette _palette;
 	private readonly DashboardSampler _sampler;
 	private readonly ShutdownController _shutdown;
@@ -38,7 +39,6 @@ public sealed class DashboardApp
 	private int _lastActive = -1;
 	private readonly ThemeStore _themes;
 	private TerminalApp? _app;
-	private long _flashAt;
 	private long _lastSample;
 	private int _sampling;
 	private TabControl? _tabs;
@@ -57,22 +57,27 @@ public sealed class DashboardApp
 		_logger = logger;
 		_glyphs = new Glyphs(mode.Ascii);
 		_palette = new Palette(mode.NoColor);
-		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), logger);
+		_toasts = new ToastTray(_glyphs, _palette, clock, Post);
+		var kit = new ShellKit(_dialogs, _toasts);
+		_console = new ConsoleTab(model.Log, runner, suggestions, mode, _glyphs, new Palette(mode.NoColor), _dialogs, clock,
+			logger);
 		_views[DashboardTab.Users] = new UsersTab(services, _console, () => _selected.Value = (int)DashboardTab.Console,
-			mode, _glyphs, clock, action => _app?.Post(action), logger);
+			mode, _glyphs, kit, clock, Post, logger);
 		_views[DashboardTab.Lobby] = new LobbyTab(services, _console, name => OpenIn(DashboardTab.Chat, name), mode,
-			_glyphs, clock, action => _app?.Post(action), logger);
-		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, _console, mode, _glyphs, clock,
-			action => _app?.Post(action), logger);
-		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, mode, clock,
-			action => _app?.Post(action), logger);
-		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), action => _app?.Post(action), logger);
+			_glyphs, kit, clock, Post, logger);
+		_views[DashboardTab.Beatmaps] = new BeatmapsTab(services, _console, mode, _glyphs, kit, clock, Post, logger);
+		_views[DashboardTab.Scores] = new ScoresTab(services, OpenIn, _glyphs, kit, mode, clock, Post, logger);
+		_views[DashboardTab.About] = new AboutTab(services, _glyphs, mode, () => (_columns.Value, _rows.Value), Post, logger);
 		_views[DashboardTab.Monitor] = new MonitorTab(model, themes, _glyphs, mode, () => (_columns.Value, _rows.Value));
 		_views[DashboardTab.Connections] = new ConnectionsTab(model, themes, _glyphs, mode);
 		_views[DashboardTab.Chat] = new ChatTab(services, model.Chat, mode, _glyphs, new Palette(mode.NoColor),
-			() => (_columns.Value, _rows.Value), logger);
-		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs,
-			action => _app?.Post(action), logger);
+			() => (_columns.Value, _rows.Value), clock, logger);
+		_views[DashboardTab.Settings] = new SettingsTab(services, _console, mode, _glyphs, Post, logger);
+	}
+
+	private void Post(Action action)
+	{
+		_app?.Post(action);
 	}
 
 	private DashboardTab Tab => (DashboardTab)Math.Clamp(_selected.Value, 0, Enum.GetValues<DashboardTab>().Length - 1);
@@ -82,19 +87,19 @@ public sealed class DashboardApp
 	{
 		var pages = Enum.GetValues<DashboardTab>().Select(tab => new TabPage(
 			new Markup(Header(tab)),
-			new Padder(Content(tab)).Padding(new Thickness(1, 0, 1, 0)).Stretch())).ToArray();
+			new Padder(WithRefresh(tab)).Padding(new Thickness(1, 0, 1, 0)).Stretch())).ToArray();
 		var strip = (_mode.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder) with { TabPadding = new Thickness(0, 0, 1, 0) };
 		_tabs = new TabControl(pages).Style(strip).SelectedIndex(_selected);
-		var status = new TextBlock(() => _notice.Value.Length > 0 ? _notice.Value : _flash.Value.Length > 0 ? _flash.Value : Hints());
+		var status = new ComputedVisual(StatusBar);
 		var main = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
-			.Cell(_tabs, 0, 0)
+			.Cell(_toasts.Over(_tabs), 0, 0)
 			.Cell(status, 1, 0);
 		var small = new Center(new Group("Terminal too small").Style(GroupStyle.Rounded).Padding(1)
 				.Content(new VStack(new Markup(() => SmallLine(0)), new Markup(() => SmallLine(1)),
 					new TextBlock("Enlarge the window or zoom out."))));
-		return new Padder(() => TooSmall() ? small : main).Stretch();
+		return _dialogs.Dim(new Padder(() => TooSmall() ? small : main).Stretch());
 	}
 
 	/// <summary>Runs the dashboard until the server stops.</summary>
@@ -103,8 +108,8 @@ public sealed class DashboardApp
 	public void Run(TerminalInstance terminal, CancellationToken stopped)
 	{
 		var root = Build();
-		root.SetStyle(Theme.Key, _themes.Theme);
-		_themes.Changed += theme => _app?.Post(() => _app.Root.SetStyle(Theme.Key, theme));
+		ButtonHover.Apply(root, _themes.Theme);
+		_themes.Changed += theme => _app?.Post(() => ButtonHover.Apply(_app.Root, theme));
 		_shutdown.Message += OnShutdownMessage;
 		terminal.Run(root, context =>
 		{
@@ -127,9 +132,9 @@ public sealed class DashboardApp
 			_columns.Value = terminal.Size.Columns;
 			_rows.Value = terminal.Size.Rows;
 			_console.Pump();
+			_dialogs.Settle();
+			_toasts.Tick();
 			var now = _clock.GetTimestamp();
-			if (_flash.Value.Length > 0 && _clock.GetElapsedTime(_flashAt, now) >= TimeSpan.FromSeconds(2))
-				_flash.Value = string.Empty;
 
 			if (_clock.GetElapsedTime(_lastSample, now) >= TimeSpan.FromSeconds(1))
 			{
@@ -184,22 +189,62 @@ public sealed class DashboardApp
 			: $"Needed  : {width} × {height}  ({Tab})";
 	}
 
-	private string Hints()
+	// The key reminders of the tab in view; the ones with an action can be clicked.
+	private Visual StatusBar()
 	{
-		var dot = $" {_glyphs.Dot} ";
-		string[] hints = Tab switch
+		var items = new List<(string Text, Action? Click)>();
+		var searchable = ActiveView() as ISearchable;
+		switch (Tab)
 		{
-			DashboardTab.Chat => _mode.Editable
-				? ["Enter send", "Tab pane", "Ctrl+B members", "Esc/Alt+← back", "Ctrl+End follow"]
-				: ["Tab pane", "Ctrl+B members", "Esc/Alt+← back", "Ctrl+End follow"],
-			DashboardTab.Settings => ["←→ category", "↓/Enter fields", "↑/Esc back", "Enter save"],
-			DashboardTab.Console => _mode.Editable
-				? ["Enter run", "Tab/↑↓ complete", "Esc close", "Ctrl+End follow"]
-				: ["Ctrl+End follow"],
-			DashboardTab.Monitor or DashboardTab.Connections or DashboardTab.About => ["Ctrl+R refresh"],
-			_ => ["↑↓ select", "Enter open", "/ search", "? help", "Ctrl+R refresh"]
-		};
-		return " " + string.Join(dot, _mode.Editable ? hints : [.. hints, "view only"]);
+			case DashboardTab.Chat:
+				if (_mode.Editable) items.Add(("Enter send", null));
+				items.AddRange([("Tab pane", null), ("Ctrl+B members", null), ("Esc/Alt+← back", null)]);
+				break;
+			case DashboardTab.Settings:
+				items.AddRange([("←→ category", null), ("↓/Enter fields", null), ("↑/Esc back", null), ("Enter save", null)]);
+				break;
+			case DashboardTab.Console:
+				if (_mode.Editable) items.AddRange([("Enter run", null), ("Tab/↑↓ complete", null), ("Esc close", null)]);
+				break;
+			default:
+				if (searchable is not null)
+					items.AddRange([("↑↓ select", null), ("Enter open", null), ("/ search", searchable.FocusSearch),
+						("? help", searchable.ShowHelp)]);
+				break;
+		}
+
+		if (!_mode.Editable) items.Add(("view only", null));
+		var bar = new HStack().Spacing(0);
+		bar.Add(new HoverLabel(" ", null));
+		for (var i = 0; i < items.Count; i++)
+		{
+			if (i > 0) bar.Add(new HoverLabel($" {_glyphs.Dot} ", null));
+			bar.Add(new HoverLabel(items[i].Text, items[i].Click));
+		}
+
+		return bar;
+	}
+
+	// The page of a tab, with the Refresh button on the right of its top border for the tabs that load their data (the chat updates itself).
+	private Visual WithRefresh(DashboardTab tab)
+	{
+		var content = Content(tab);
+		if (!_views.TryGetValue(tab, out var view)) return content;
+
+		// A page of plain content scrolls with the accelerated wheel; the lists and logs do it themselves.
+		if (view is not ISearchable && tab != DashboardTab.Chat)
+			WheelScroll.Accelerate(content,
+				() => content.EnumerateVisualsDepthFirst().OfType<ScrollViewer>().FirstOrDefault(), _clock);
+
+		var button = new Button($"[{_glyphs.Refresh} Refresh]").Click(RefreshView).IsTabStop(false)
+			.HorizontalAlignment(Align.End).VerticalAlignment(Align.Start).Margin(new Thickness(0, 0, 2, 0));
+		return tab == DashboardTab.Chat ? content : new ZStack(content, button);
+	}
+
+	private void RefreshView()
+	{
+		ActiveView()?.Refresh();
+		_toasts.Show($"Refreshed {_clock.GetLocalNow():HH:mm:ss}");
 	}
 
 	private void StartSample()
@@ -248,18 +293,18 @@ public sealed class DashboardApp
 		});
 		app.AddGlobalCommand(new Command
 		{
+			Id = "toast.dismiss", LabelMarkup = "Dismiss", Gesture = new KeyGesture(TerminalKey.Escape),
+			CanExecute = _ => _toasts.Any, Execute = _ => _toasts.DismissAll()
+		});
+		app.AddGlobalCommand(new Command
+		{
 			Id = "decline", LabelMarkup = "Decline", Gesture = new KeyGesture(TerminalKey.Escape),
 			CanExecute = _ => _console.Asking, Execute = _ => _console.Decline()
 		});
 		var refresh = new Command
 		{
 			Id = "refresh", LabelMarkup = "Refresh", Gesture = new KeyGesture(TerminalChar.CtrlR, TerminalModifiers.Ctrl),
-			Execute = _ =>
-			{
-				ActiveView()?.Refresh();
-				_flashAt = _clock.GetTimestamp();
-				_flash.Value = $" Refreshed {_clock.GetLocalNow():HH:mm:ss}";
-			}
+			Execute = _ => RefreshView()
 		};
 		app.AddGlobalCommand(refresh);
 		// The command box takes Ctrl+R for itself, so it needs the command too.
@@ -287,11 +332,11 @@ public sealed class DashboardApp
 				case ShutdownMessageKind.ClearLine:
 					_console.ClearPrompt();
 					break;
-				case ShutdownMessageKind.Warning or ShutdownMessageKind.Progress:
-					_notice.Value = message.Text;
+				case ShutdownMessageKind.Warning:
+					_toasts.Show(message.Text, ToastKind.Warning);
 					break;
-				case ShutdownMessageKind.Clear:
-					_notice.Value = string.Empty;
+				case ShutdownMessageKind.Progress:
+					_toasts.Show(message.Text);
 					break;
 			}
 		});

@@ -27,3 +27,13 @@ internal interface ISelectable
 	/// <summary>Selects the item with the id, when it is listed.</summary>
 	void Select(string id);
 }
+
+/// <summary>A tab with a search box, which the status bar can send the operator to.</summary>
+internal interface ISearchable
+{
+	/// <summary>Moves the focus to the search box.</summary>
+	void FocusSearch();
+
+	/// <summary>Shows how to write a search.</summary>
+	void ShowHelp();
+}

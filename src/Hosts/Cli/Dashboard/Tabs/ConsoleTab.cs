@@ -23,6 +23,7 @@ internal sealed class ConsoleTab
 	private const int WordWidth = 30;
 
 	private readonly CancellationTokenSource _cancel = new();
+	private readonly Dialogs _dialogs;
 	private readonly Glyphs _glyphs;
 	private readonly LogBuffer _logBuffer;
 	private readonly ILogger _logger;
@@ -48,25 +49,26 @@ internal sealed class ConsoleTab
 
 	/// <summary>Creates the tab.</summary>
 	public ConsoleTab(LogBuffer logBuffer, CommandRunner runner, CommandSuggestions suggestions, CliOptions options,
-		Glyphs glyphs, Palette tokens, ILogger logger)
+		Glyphs glyphs, Palette tokens, Dialogs dialogs, TimeProvider clock, ILogger logger)
 	{
+		_dialogs = dialogs;
 		_logBuffer = logBuffer;
 		_runner = runner;
 		_suggestions = suggestions;
 		_glyphs = glyphs;
 		_tokens = tokens;
 		_logger = logger;
-		_log = new LogControl { MaxCapacity = 500 }.WrapText(true);
+		_log = WheelScroll.Accelerate(new LogControl { MaxCapacity = 500 }.WrapText(true), clock);
+		var follow = JumpToEndButton.Over(_log, glyphs, JumpToEnd);
 		if (!options.Editable)
 		{
-			View = _log;
+			View = follow;
 			return;
 		}
 
 		Prompt = new PromptEditor()
 			.LineMode(PromptEditorLineMode.SingleLine)
 			.PromptMarkup($"[cyan]{XenoAtom.Ansi.AnsiMarkup.Escape(glyphs.Prompt)}[/] ")
-			.Placeholder("Type a command (Tab completes, help lists them)")
 			.CompletionPresentation(PromptEditorCompletionPresentation.None)
 			.EnableGhostCompletion(false)
 			.Highlighter(Highlight)
@@ -86,7 +88,7 @@ internal sealed class ConsoleTab
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto },
 				new RowDefinition { Height = GridLength.Auto })
-			.Cell(_log, 0, 0)
+			.Cell(follow, 0, 0)
 			.Cell(popup, 1, 0)
 			.Cell(Prompt, 2, 0);
 	}
@@ -255,7 +257,7 @@ internal sealed class ConsoleTab
 				e.Handled = true;
 				Answer(e.Char is 'y' or 'Y');
 			}), () => Answer(false)));
-			dialog.Show();
+			_dialogs.Show(dialog);
 		});
 		return source.Task;
 	}
@@ -321,9 +323,9 @@ internal sealed class ConsoleTab
 
 			var (word, description) = _items[_top + i];
 			var cell = Palette.Plain(word.Length > WordWidth ? word[..(WordWidth - 1)] + "…" : word).PadRight(width);
-			var row = XenoAtom.Ansi.AnsiMarkup.Escape($" {cell}  ") + _tokens.Wrap(Ink.Muted, description);
+			var row = Palette.Escape($" {cell}  ") + _tokens.Wrap(Ink.Muted, description);
 			_popupText[i].Value = _top + i == _selected
-				? $"[invert]{XenoAtom.Ansi.AnsiMarkup.Escape($" {cell}  ")}[/]{_tokens.Wrap(Ink.Muted, description)}"
+				? $"[invert]{Palette.Escape($" {cell}  ")}[/]{_tokens.Wrap(Ink.Muted, description)}"
 				: row;
 		}
 

@@ -85,7 +85,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 }
 
 /// <summary>The accounts: who is online and who is not, with what can be done to each.</summary>
-internal sealed class UsersTab : ITabView, ISelectable
+internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 {
 	private const string Help = """
 		Words match the name (ignoring case) or the exact id.
@@ -100,7 +100,7 @@ internal sealed class UsersTab : ITabView, ISelectable
 
 	/// <summary>Creates the tab.</summary>
 	public UsersTab(IServiceProvider services, ConsoleTab console, Action showConsole, CliOptions options,
-		Glyphs glyphs, TimeProvider clock, Action<Action> post, ILogger logger)
+		Glyphs glyphs, ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		var colours = options.NoColor;
 		_page = new ListPage<UserItem>("Users", Help,
@@ -111,7 +111,7 @@ internal sealed class UsersTab : ITabView, ISelectable
 			new Column<UserItem>("Privileges", 18, u => u.Privileges, u => Role(u.Mask)),
 			new Column<UserItem>("Connections", 14, u => u.Connections, _ => Ink.Info)
 		], u => u.Id.ToString(), new UsersSource(services, clock),
-			user => Detail(user, console, showConsole, options, glyphs), glyphs, colours, clock, post, logger);
+			user => Detail(user, console, showConsole, options, kit.Dialogs), glyphs, kit, colours, clock, post, logger);
 	}
 
 	/// <inheritdoc />
@@ -146,6 +146,18 @@ internal sealed class UsersTab : ITabView, ISelectable
 	}
 
 	/// <inheritdoc />
+	public void FocusSearch()
+	{
+		_page.FocusSearch();
+	}
+
+	/// <inheritdoc />
+	public void ShowHelp()
+	{
+		_page.ShowHelp();
+	}
+
+	/// <inheritdoc />
 	public void Select(string id)
 	{
 		_page.Select(id);
@@ -153,14 +165,11 @@ internal sealed class UsersTab : ITabView, ISelectable
 
 	private static Ink Role(ulong mask)
 	{
-		var privileges = (UserPrivileges)mask;
-		return privileges.HasFlag(UserPrivileges.Developer) || privileges.HasFlag(UserPrivileges.Owner)
-			? Ink.RoleStaff
-			: privileges.HasFlag(UserPrivileges.Player) ? Ink.RolePlayer : Ink.RoleRestricted;
+		return UserInk.Of((UserPrivileges)mask);
 	}
 
 	private static DetailView Detail(UserItem user, ConsoleTab console, Action showConsole, CliOptions options,
-		Glyphs glyphs)
+		Dialogs dialogs)
 	{
 		var room = user.Room.Length == 0 ? "-" : user.Room;
 		var managed = user.Managed.Length == 0 ? string.Empty : $" ({user.Managed})";
@@ -171,37 +180,35 @@ internal sealed class UsersTab : ITabView, ISelectable
 			("Connections", user.Connections.Length == 0 ? "offline" : user.Connections, Ink.Info),
 			("Room", room + managed, Ink.Text), ("Activity", user.Activity.Length == 0 ? "-" : user.Activity, Ink.Text)
 		};
-		if (!options.Editable) return new DetailView(fields, []);
+		if (!options.Editable) return new DetailView(user.Name, fields, []);
 
 		var id = user.Id;
 		var actions = new List<DetailAction>
 		{
-			new("Kick user", () => Run(console, $"users {id} sessions delete"), true),
+			new("Kick user", () => Run(console, $"users {id} sessions delete"), DetailActionKind.Destructive),
 			user.Silenced
 				? new DetailAction("Unsilence", () => Run(console, $"users {id} unsilence"))
-				: new DetailAction("Silence…", () => Ask(console, "Silence", id)),
-			new("Sessions", () =>
+				: new DetailAction("Silence…", () => Ask(console, dialogs, "Silence", id)),
+			new("Sessions…", () =>
 			{
 				showConsole();
-				return Run(console, $"users {id} sessions list");
-			})
+				Run(console, $"users {id} sessions list");
+			}, DetailActionKind.Navigate)
 		};
-		return new DetailView(fields, actions);
+		return new DetailView(user.Name, fields, actions);
 	}
 
-	private static Task Run(ConsoleTab console, string line)
+	private static void Run(ConsoleTab console, string line)
 	{
 		console.RunCommand(line);
-		return Task.CompletedTask;
 	}
 
-	private static Task Ask(ConsoleTab console, string title, int id)
+	private static void Ask(ConsoleTab console, Dialogs dialogs, string title, int id)
 	{
-		Dialogs.Form(title, [("Duration", "30m"), ("Reason", string.Empty)], values =>
+		dialogs.Form(title, [("Duration", "30m"), ("Reason", string.Empty)], values =>
 		{
 			var reason = values[1].Length == 0 ? string.Empty : $" --reason \"{values[1].Replace("\"", "'")}\"";
 			console.RunCommand($"users {id} silence --duration {values[0]}{reason}");
 		});
-		return Task.CompletedTask;
 	}
 }

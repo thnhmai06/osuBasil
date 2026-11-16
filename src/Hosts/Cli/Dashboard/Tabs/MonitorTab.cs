@@ -153,10 +153,10 @@ internal sealed class MonitorTab : ITabView
 
 	private string Legend(string primary, string? secondary)
 	{
-		var first = $"{_palette.Wrap(Ink.Accent, GraphPanel.PrimaryMark(_glyphs))} {primary}";
+		var first = $"{_palette.Wrap(Ink.Accent, GraphPanel.PrimaryMark(_glyphs))} {Palette.Escape(primary)}";
 		return secondary is null
 			? first
-			: $"{first}   {_palette.Wrap(Ink.Accent, GraphPanel.SecondaryMark(_glyphs))} {secondary}";
+			: $"{first}   {_palette.Wrap(Ink.Accent, GraphPanel.SecondaryMark(_glyphs))} {Palette.Escape(secondary)}";
 	}
 
 	private string Stamped(Func<string> text)
@@ -205,7 +205,7 @@ internal sealed class MonitorTab : ITabView
 		var filled = (int)Math.Round(Math.Clamp(machine, 0, 100) / 100 * MeterWidth);
 		var (full, empty, left, right) = _glyphs.Ascii ? ('#', '-', '[', ']') : ('█', '░', '▕', '▏');
 		var bar = new string(full, filled) + new string(empty, MeterWidth - filled);
-		return $"{_palette.Wrap(Ink.Muted, label.PadRight(4))}{left}{_palette.Wrap(Threshold(machine), bar)}{right} " +
+		return $"{_palette.Wrap(Ink.Muted, label.PadRight(4))}{Palette.Escape(left.ToString())}{_palette.Wrap(Threshold(machine), bar)}{Palette.Escape(right.ToString())} " +
 		       $"{Percent(machine)} / {Percent(process)}";
 	}
 

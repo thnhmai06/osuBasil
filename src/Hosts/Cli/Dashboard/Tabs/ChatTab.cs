@@ -62,8 +62,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private readonly State<bool> _showCenter = new(true);
 	private readonly State<bool> _showRight = new(true);
 	private readonly HashSet<string> _openedDms = new(StringComparer.OrdinalIgnoreCase);
-	private List<bool> _channelRows = [];
-	private List<bool> _memberRows = [];
 	private string _firstChannel = string.Empty;
 	private string _firstMember = string.Empty;
 	private string _channelSeen = string.Empty;
@@ -82,7 +80,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 
 	/// <summary>Creates the tab.</summary>
 	public ChatTab(IServiceProvider services, ChatFeed feed, CliOptions options, Glyphs glyphs, Palette palette,
-		Func<(int Columns, int Rows)> size, ILogger logger)
+		Func<(int Columns, int Rows)> size, TimeProvider clock, ILogger logger)
 	{
 		_services = services;
 		_feed = feed;
@@ -93,16 +91,16 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_logger = logger;
 		_channels = new GroupedList<ChannelItem>(
 			[new Column<ChannelItem>("Channel", 0, c => c.Name), new Column<ChannelItem>("Users", 5, c => c.Members < 0 ? string.Empty : $"({c.Members})", _ => Ink.Muted)],
-			c => c.Name, glyphs, options.NoColor);
+			c => c.Name, glyphs, options.NoColor, clock) { ActivateOnClick = true };
 		_members = new GroupedList<MemberItem>(
 			[new Column<MemberItem>("Member", 0, m => m.Name), new Column<MemberItem>("", 4, m => m.Mark, _ => Ink.Accent)],
-			m => m.Name, glyphs, options.NoColor);
+			m => m.Name, glyphs, options.NoColor, clock) { ActivateOnClick = true };
 		_channelSearch = new TextBox().Text(_channelQuery).Placeholder("search");
 		_memberSearch = new TextBox().Text(_memberQuery).Placeholder("search");
 		_channelSearch.IsTabStop = false;
 		_memberSearch.IsTabStop = false;
 		var left = new Group("Channels").Style(GroupStyle.Rounded)
-			.Content(new VStack(SearchRow(_channelSearch), new ScrollViewer(_channels).IsTabStop(false).PointerPressed((_, e) => OnListClick(e, true)).Stretch()).Spacing(0)).Stretch();
+			.Content(new VStack(SearchRow(_channelSearch), new ScrollViewer(_channels).IsTabStop(false).Stretch()).Spacing(0)).Stretch();
 		var rows = new List<RowDefinition> { new() { Height = GridLength.Star() } };
 		var middle = new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() });
 		if (options.Editable)
@@ -112,16 +110,12 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			rows.Add(new RowDefinition { Height = GridLength.Auto });
 		}
 
-		rows.Insert(1, new RowDefinition { Height = GridLength.Auto });
-		var jump = new Button((glyphs.Ascii ? "v" : "↓") + " Jump to End (Ctrl+End)").Click(JumpToEnd)
-			.IsVisible(() => !_log.FollowTail);
-		jump.IsTabStop = false;
 		_log.IsTabStop = false;
-		middle.Rows([.. rows]).Cell(_log, 0, 0).Cell(jump, 1, 0);
-		if (_input is not null) middle.Cell(_input, 2, 0);
+		middle.Rows([.. rows]).Cell(JumpToEndButton.Over(_log, glyphs, JumpToEnd), 0, 0);
+		if (_input is not null) middle.Cell(_input, 1, 0);
 		var center = new Group().Style(GroupStyle.Rounded).Content(middle).TopLeftText(() => _title.Value).Stretch();
 		var right = new Group("Members").Style(GroupStyle.Rounded)
-			.Content(new VStack(SearchRow(_memberSearch), new ScrollViewer(_members).IsTabStop(false).PointerPressed((_, e) => OnListClick(e, false)).Stretch()).Spacing(0)).Stretch()
+			.Content(new VStack(SearchRow(_memberSearch), new ScrollViewer(_members).IsTabStop(false).Stretch()).Spacing(0)).Stretch()
 			.IsVisible(_showRight);
 		left.IsVisible(_showLeft);
 		center.IsVisible(_showCenter);
@@ -134,6 +128,8 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_channels.KeyHook = e => ListKey(e, _channelSearch, _channels.Selected?.Name, _firstChannel);
 		_members.KeyHook = e => ListKey(e, _memberSearch, _members.Selected?.Name, _firstMember) || MemberKey(e);
 		_channels.Activated += _ => OpenSelected();
+		_members.Activated += OpenDirectMessage;
+		WheelScroll.Accelerate(_log, clock);
 		AddSearchKeys(_channelSearch, _channelQuery, _channels);
 		AddSearchKeys(_memberSearch, _memberQuery, _members);
 	}
@@ -242,8 +238,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		Add("Multiplayer", n => n.StartsWith("#mp_"));
 		Add("DMs", n => !n.StartsWith('#'));
 		_firstChannel = sections.FirstOrDefault(s => s.Items.Count > 0)?.Items[0].Name ?? string.Empty;
-		_channelRows = Rows(sections);
-		_channels.SetSections(sections);
+		_channels.SetSections(sections, query.Length > 0);
 		Members();
 	}
 
@@ -327,37 +322,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			_membersShown = false;
 			Arrange();
 		}
-	}
-
-	// A click on an item opens it: a channel is shown and the message box takes the focus; a member opens a message with them.
-	private void OnListClick(PointerEventArgs e, bool channels)
-	{
-		if (e.Button != TerminalMouseButton.Left) return;
-
-		var onItem = channels
-			? IsItemRow(_channelRows, _channels.Scroll.OffsetY, e.LocalY)
-			: IsItemRow(_memberRows, _members.Scroll.OffsetY, e.LocalY);
-		if (!onItem) return;
-
-		if (channels) _app?.Post(OpenSelected);
-		else if (_members.Selected is { } member) _app?.Post(() => OpenDirectMessage(member));
-	}
-
-	// The rows of a list, true for a group title, to tell where a click landed.
-	private static List<bool> Rows<T>(List<Section<T>> sections)
-	{
-		return [.. sections.SelectMany(section => new[] { true }.Concat(section.Items.Select(_ => false)))];
-	}
-
-	// Mirrors the list: a header line, the title of the group in view when the first row in view is an item, then the rows.
-	private static bool IsItemRow(List<bool> rows, int offsetY, int localY)
-	{
-		if (rows.Count == 0 || localY < 1) return false;
-
-		var offset = Math.Clamp(offsetY, 0, rows.Count - 1);
-		var line = localY - 1 - (rows[offset] ? 0 : 1);
-		var index = offset + line;
-		return line >= 0 && index < rows.Count && !rows[index];
 	}
 
 	private bool ListKey(KeyEventArgs e, TextBox search, string? selected, string first)
@@ -485,8 +449,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				.Select(group => new Section<MemberItem>(group.Item1, group.Item2.Count.ToString(), group.Item2))
 		];
 		_firstMember = sections.FirstOrDefault()?.Items[0].Name ?? string.Empty;
-		_memberRows = Rows(sections);
-		_members.SetSections(sections);
+		_members.SetSections(sections, query.Length > 0);
 	}
 
 	private Task<OperatorConnection> Operator()

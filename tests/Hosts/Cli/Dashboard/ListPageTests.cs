@@ -23,8 +23,9 @@ public sealed class ListPageTests
 		var clock = new FakeTimeProvider();
 		var source = new Source();
 		var page = new ListPage<string>("T", "help", [new Column<string>("X", 0, s => s)], s => s, source,
-			_ => new DetailView([], []), new Glyphs(false), false, clock, action => action(),
-			NullLogger.Instance);
+			_ => new DetailView(string.Empty, [], []), new Glyphs(false),
+			new ShellKit(new Dialogs(), new Basil.Host.Cli.Dashboard.Shell.Toasts.ToastTray(new Glyphs(false), new Palette(false), clock, action => action())),
+			false, clock, action => action(), NullLogger.Instance);
 		return (page, source, clock);
 	}
 

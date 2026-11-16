@@ -7,7 +7,8 @@ public sealed class GroupedListTests
 {
 	private static GroupedList<string> Create()
 	{
-		var list = new GroupedList<string>([new Column<string>("X", 0, s => s)], s => s, new Glyphs(false), false);
+		var list = new GroupedList<string>([new Column<string>("X", 0, s => s)], s => s, new Glyphs(false), false,
+			new Microsoft.Extensions.Time.Testing.FakeTimeProvider());
 		list.SetSections([new Section<string>("All", "3", ["a", "b", "c"])]);
 		return list;
 	}
