@@ -75,6 +75,16 @@ internal sealed class DetailPanel
 		_open.Value = true;
 	}
 
+	/// <summary>Opens the frame on a view that is read first, dropping the steps taken before; a loading state stands meanwhile.</summary>
+	/// <param name="title">The name of the item, shown while it loads.</param>
+	/// <param name="read">Reads and builds the view off the interface thread.</param>
+	public void ShowAsync(string title, Func<Task<DetailView>> read)
+	{
+		_steps.Clear();
+		_open.Value = true;
+		Load(title, read);
+	}
+
 	/// <summary>Shows fresh data of the item the frame stands on, without leaving the step the operator is in.</summary>
 	public void Update(DetailView view)
 	{
@@ -121,6 +131,56 @@ internal sealed class DetailPanel
 		if (_open.Value) Fill();
 	}
 
+	// Pushes a loading step of the frame's size, reads off the interface thread, and posts the result back.
+	// A result for a step the operator already left is dropped.
+	private void Load(string title, Func<Task<DetailView>> read)
+	{
+		var pending = new DetailView(title, [("Status", "Loading…", Ink.Muted)], []);
+		_steps.Add(pending);
+		Fill();
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				var view = await read();
+				_post(() => Replace(pending, view));
+			}
+			catch (Exception exception)
+			{
+				_post(() => Drop(pending, title, exception));
+			}
+		});
+	}
+
+	private void Replace(DetailView pending, DetailView view)
+	{
+		var at = _steps.FindIndex(step => ReferenceEquals(step, pending));
+		if (at < 0) return;
+
+		_steps[at] = view;
+		if (at == _steps.Count - 1) Fill();
+	}
+
+	private void Drop(DetailView pending, string title, Exception exception)
+	{
+		var at = _steps.FindIndex(step => ReferenceEquals(step, pending));
+		if (at < 0) return;
+
+		_toasts.Show($"{title}: {exception.Message}", ToastKind.Error);
+		_steps.RemoveAt(at);
+		if (_steps.Count == 0) Close();
+		else if (at == _steps.Count) Fill();
+	}
+
+	private void Push(DetailView view)
+	{
+		_post(() =>
+		{
+			_steps.Add(view);
+			Fill();
+		});
+	}
+
 	private void Fill()
 	{
 		var view = _steps[^1];
@@ -147,7 +207,7 @@ internal sealed class DetailPanel
 			.Columns(new ColumnDefinition { Width = GridLength.Star() },
 				new ColumnDefinition { Width = GridLength.Fixed(_compact ? CompactButtonColumn : ButtonColumn) })
 			.Rows(new RowDefinition { Height = GridLength.Star() })
-			.Cell(new ScrollViewer(fields).Stretch(), 0, 0)
+			.Cell(view.Body is { } table ? table(Push) : new ScrollViewer(fields).Stretch(), 0, 0)
 			.Cell(new ScrollViewer(column).Stretch(), 0, 1);
 		_box.Content(body.KeyDown((_, e) => OnKey(e, buttons)));
 	}
@@ -166,7 +226,11 @@ internal sealed class DetailPanel
 		{
 			try
 			{
-				if (action.Next is { } next)
+				if (action.NextAsync is { } read)
+				{
+					Load(action.Label.TrimEnd('…'), read);
+				}
+				else if (action.Next is { } next)
 				{
 					_steps.Add(next());
 					Fill();

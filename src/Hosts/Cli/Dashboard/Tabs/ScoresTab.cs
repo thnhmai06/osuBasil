@@ -114,8 +114,7 @@ internal sealed class ScoresTab : ITabView, ISearchable
 	private bool _opened;
 
 	/// <summary>Creates the tab.</summary>
-	/// <param name="openIn">Jumps to a tab and selects the item with the given id there.</param>
-	public ScoresTab(IServiceProvider services, UserDetails users, Action<DashboardTab, string> openIn, Glyphs glyphs,
+		public ScoresTab(IServiceProvider services, UserDetails users, BeatmapDetails beatmaps, Glyphs glyphs,
 		ShellKit kit, CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<ScoreItem>("Scores", Help,
@@ -123,7 +122,7 @@ internal sealed class ScoresTab : ITabView, ISearchable
 			new Column<ScoreItem>("ID", 8, s => s.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
 			new Column<ScoreItem>("Player", 0, s => s.Player, s => UserInk.Of((UserPrivileges)s.Mask))
 			{
-				Link = s => s.UserId is { } id ? users.Of(UserReference.ById(id)) : null
+				Link = s => s.UserId is { } id ? (s.Player, () => users.OfAsync(UserReference.ById(id))) : null
 			},
 			new Column<ScoreItem>("Beatmap", 0, s => s.Beatmap) { Weight = 3 },
 			new Column<ScoreItem>("Mods", 12, s => s.Mods, _ => Ink.Info),
@@ -132,7 +131,7 @@ internal sealed class ScoresTab : ITabView, ISearchable
 			new Column<ScoreItem>("Grade", 6, s => GradeText(s.Grade), s => Rank(s.Grade)),
 			new Column<ScoreItem>("Time", 17, s => s.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm",
 				CultureInfo.InvariantCulture), _ => Ink.Muted)
-		], s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, users, openIn),
+		], s => s.Id.ToString(CultureInfo.InvariantCulture), new ScoresSource(services), s => Detail(s, users, beatmaps),
 			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
@@ -197,7 +196,7 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		};
 	}
 
-	private static DetailView Detail(ScoreItem score, UserDetails users, Action<DashboardTab, string> openIn)
+	private static DetailView Detail(ScoreItem score, UserDetails users, BeatmapDetails beatmaps)
 	{
 		var fields = new List<(string, string, Ink)>
 		{
@@ -208,14 +207,9 @@ internal sealed class ScoresTab : ITabView, ISearchable
 			("Grade", GradeText(score.Grade), Rank(score.Grade))
 		};
 		var actions = new List<DetailAction>();
-		if (score.UserId is { } user) actions.Add(DetailAction.Open("User", () => users.Of(UserReference.ById(user))));
-		if (score.BeatmapId is { } map)
-			actions.Add(new DetailAction("Beatmap…", () => Open(openIn, DashboardTab.Beatmaps, map), DetailActionKind.Navigate));
+		if (score.UserId is { } user)
+			actions.Add(DetailAction.OpenAsync("User", () => users.OfAsync(UserReference.ById(user))));
+		if (score.BeatmapId is { } map) actions.Add(DetailAction.OpenAsync("Beatmap", () => beatmaps.OfAsync(map)));
 		return new DetailView(score.Id.ToString(CultureInfo.InvariantCulture), fields, actions);
-	}
-
-	private static void Open(Action<DashboardTab, string> openIn, DashboardTab tab, int id)
-	{
-		openIn(tab, id.ToString(CultureInfo.InvariantCulture));
 	}
 }

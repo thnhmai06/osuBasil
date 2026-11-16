@@ -23,8 +23,8 @@ internal sealed record Column<T>(string Header, int Width, Func<T, string> Text,
 	/// <summary>Gets whether the cell and its header stand against the right edge, as numbers do.</summary>
 	public bool Right { get; init; }
 
-	/// <summary>Gets what a click on the cell of an item shows instead of the item's own detail, or <see langword="null" />.</summary>
-	public Func<T, DetailView?>? Link { get; init; }
+	/// <summary>Gets the view a click on the cell of an item reads instead of the item's own detail, or <see langword="null" />.</summary>
+	public Func<T, (string Title, Func<Task<DetailView>> Read)?>? Link { get; init; }
 }
 
 /// <summary>A titled group of items in a table.</summary>

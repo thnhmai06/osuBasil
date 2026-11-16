@@ -96,11 +96,11 @@ internal sealed class LobbyTab : ITabView, ISearchable
 			new Column<RoomItem>("State", 9, r => r.State, State),
 			new Column<RoomItem>("Host", 0, r => r.Host, r => UserInk.Of((UserPrivileges)r.HostMask))
 			{
-				Link = r => r.Host.Length == 0 ? null : users.Of(UserReference.ByName(r.Host))
+				Link = r => r.Host.Length == 0 ? null : (r.Host, () => users.OfAsync(UserReference.ByName(r.Host)))
 			},
 			new Column<RoomItem>("Creator", 0, r => r.Creator, r => UserInk.Of((UserPrivileges)r.CreatorMask))
 			{
-				Link = r => users.Of(UserReference.ByName(r.Creator))
+				Link = r => (r.Creator, () => users.OfAsync(UserReference.ByName(r.Creator)))
 			}
 		], r => r.Id.ToString(), new LobbySource(services), room => Detail(room, users, console, openChat, options, kit.Dialogs),
 			glyphs, kit, options.NoColor, clock, post, logger);
@@ -171,8 +171,8 @@ internal sealed class LobbyTab : ITabView, ISearchable
 		fields.AddRange(room.Slots.Select(slot =>
 			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)));
 		var actions = new List<DetailAction>();
-		if (room.Host.Length > 0) actions.Add(DetailAction.Open("Host", () => users.Of(UserReference.ByName(room.Host))));
-		actions.Add(DetailAction.Open("Creator", () => users.Of(UserReference.ByName(room.Creator))));
+		if (room.Host.Length > 0) actions.Add(DetailAction.OpenAsync("Host", () => users.OfAsync(UserReference.ByName(room.Host))));
+		actions.Add(DetailAction.OpenAsync("Creator", () => users.OfAsync(UserReference.ByName(room.Creator))));
 		if (room.Slots.Count > 0) actions.Add(DetailAction.Open("Players", () => Players(room, users)));
 		if (!room.Open) return new DetailView($"#{room.Id}", fields, actions);
 
@@ -200,8 +200,8 @@ internal sealed class LobbyTab : ITabView, ISearchable
 	{
 		var fields = room.Slots.Select(slot =>
 			($"Slot {slot.Index + 1}", $"{slot.Player}{(slot.Host ? " (H)" : string.Empty)}  {slot.Status}", Ink.Text)).ToList();
-		var actions = room.Slots.Select(slot => DetailAction.Open(slot.Player,
-			() => users.Of(UserReference.ByName(slot.Player)))).ToList();
+		var actions = room.Slots.Select(slot => DetailAction.OpenAsync(slot.Player,
+			() => users.OfAsync(UserReference.ByName(slot.Player)))).ToList();
 		return new DetailView("Players", fields, actions);
 	}
 

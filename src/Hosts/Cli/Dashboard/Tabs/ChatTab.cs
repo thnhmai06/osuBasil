@@ -7,7 +7,6 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Host.Cli.Dashboard.Shell;
-using Basil.Host.Cli.Dashboard.Shell.Toasts;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -48,7 +47,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private readonly Palette _palette;
 	private readonly DetailPanel _detail;
 	private readonly UserDetails _users;
-	private readonly ShellKit _kit;
 	private readonly GroupedList<ChannelItem> _channels;
 	private readonly ChatFeed _feed;
 	private readonly Glyphs _glyphs;
@@ -92,7 +90,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	{
 		_services = services;
 		_users = users;
-		_kit = kit;
 		_detail = new DetailPanel("Chat", glyphs, palette, kit.Dialogs, kit.Toasts, post);
 		_detail.Closed += FocusInput;
 		_feed = feed;
@@ -341,14 +338,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	// A click on a member shows that user's detail; its Send message button opens the conversation.
 	private void ShowUser(MemberItem member)
 	{
-		try
-		{
-			_detail.Show(_users.Of(UserReference.ByName(member.Name)));
-		}
-		catch (Exception exception)
-		{
-			_kit.Toasts.Show(exception.Message, ToastKind.Error);
-		}
+		_detail.ShowAsync(member.Name, () => _users.OfAsync(UserReference.ByName(member.Name)));
 	}
 
 	private bool ListKey(KeyEventArgs e, TextBox search, string? selected, string first)

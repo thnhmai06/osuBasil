@@ -5,6 +5,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Beatmaps;
 using Basil.Host.Cli.Dashboard.Shell;
+using static Basil.Host.Cli.Dashboard.Tabs.BeatmapDetails;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -60,7 +61,7 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 			: sections;
 	}
 
-	private static BeatmapItem Item(BeatmapRecord map, BeatmapsetRecord set, int versions)
+	internal static BeatmapItem Item(BeatmapRecord map, BeatmapsetRecord set, int versions)
 	{
 		var d = map.Metadata.Difficulty;
 		return new BeatmapItem(map.Id, set.Id, map.Metadata.Version, set.Status, map.IsLocallyIngested,
@@ -86,7 +87,7 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 	private bool _opened;
 
 	/// <summary>Creates the tab.</summary>
-	public BeatmapsTab(IServiceProvider services, ConsoleTab console, CliOptions options, Glyphs glyphs,
+	public BeatmapsTab(IServiceProvider services, BeatmapDetails details, CliOptions options, Glyphs glyphs,
 		ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
 		_page = new ListPage<BeatmapItem>("Beatmaps", Help,
@@ -102,7 +103,7 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 			new Column<BeatmapItem>("OD", 5, b => Number(b.Od)) { Right = true },
 			new Column<BeatmapItem>("HP", 5, b => Number(b.Hp)) { Right = true },
 			new Column<BeatmapItem>("SR", 6, b => Number(b.Stars), _ => Ink.Accent) { Right = true }
-		], b => b.Id.ToString(), new BeatmapsSource(services), b => Detail(b, console, options), glyphs,
+		], b => b.Id.ToString(), new BeatmapsSource(services), details.Of, glyphs,
 			kit, options.NoColor, clock, post, logger);
 	}
 
@@ -154,53 +155,5 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 	public void Select(string id)
 	{
 		_page.Select(id);
-	}
-
-	private static string Date(DateTimeOffset time)
-	{
-		return time.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-	}
-
-	private static string Number(double value)
-	{
-		return value.ToString("0.##", CultureInfo.InvariantCulture);
-	}
-
-	private static Ink Status(BeatmapsetStatus status)
-	{
-		return status is BeatmapsetStatus.Ranked or BeatmapsetStatus.Approved ? Ink.MapRanked
-			: status is BeatmapsetStatus.Loved ? Ink.MapLoved
-			: status is BeatmapsetStatus.Qualified ? Ink.MapQualified
-			: Ink.MapPending;
-	}
-
-	private static DetailView Detail(BeatmapItem map, ConsoleTab console, CliOptions options)
-	{
-		var fields = new List<(string, string, Ink)>
-		{
-			("Beatmap", $"{map.Id} {map.Version}", Ink.Text),
-			("CS/AR/OD/HP", $"{Number(map.Cs)} / {Number(map.Ar)} / {Number(map.Od)} / {Number(map.Hp)}", Ink.Text),
-			("SR", Number(map.Stars), Ink.Accent), ("Length", map.Length.ToString(@"m\:ss"), Ink.Text),
-			("Modified", Date(map.Modified), Ink.Text), ("Beatmapset", map.SetId.ToString(), Ink.Text),
-			("Status", map.Status.ToString(), Status(map.Status)),
-			("Private", map.Private ? "yes" : "no", map.Private ? Ink.Warning : Ink.Text),
-			("Locked", map.Locked ? "yes" : "no", map.Locked ? Ink.Warning : Ink.Text),
-			("Versions", map.Versions.ToString(), Ink.Text)
-		};
-		if (!options.Editable) return new DetailView(map.Id.ToString(), fields, []);
-
-		var set = map.SetId;
-		return new DetailView(map.Id.ToString(), fields,
-		[
-			new DetailAction(map.Private ? "Set public" : "Set private",
-				() => Run(console, $"beatmapsets {set} set --visible {(map.Private ? "true" : "false")}")),
-			new DetailAction(map.Locked ? "Unlock" : "Set locked",
-				() => Run(console, $"beatmapsets {set} set --locked {(map.Locked ? "false" : "true")}"))
-		]);
-	}
-
-	private static void Run(ConsoleTab console, string line)
-	{
-		console.RunCommand(line);
 	}
 }

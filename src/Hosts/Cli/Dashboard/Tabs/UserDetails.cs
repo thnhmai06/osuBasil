@@ -1,33 +1,37 @@
+using System.Globalization;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using XenoAtom.Terminal.UI;
+using XenoAtom.Terminal.UI.Controls;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
 /// <summary>
-///     Builds the detail of an account, the one every tab shows when the operator clicks a user's name; its
-///     navigation buttons open the sessions of the account inside the same frame.
+///     Builds the detail of an account and of a session, the ones every tab shows when the operator clicks a user's
+///     name or a session; the navigation buttons open the related views inside the same frame.
 /// </summary>
-/// <remarks>The account and its sessions are read while the frame opens, one row each, on the thread of the interface.</remarks>
+/// <remarks>The reads run off the interface thread; the frame shows a loading state until they end.</remarks>
 internal sealed class UserDetails(IServiceProvider services, ConsoleTab console, CliOptions options, Dialogs dialogs,
-	TimeProvider clock, Action<string> openChat)
+	Glyphs glyphs, TimeProvider clock, Action<string> openChat)
 {
 	private const int SessionsShown = 20;
 
 	/// <summary>Reads an account and builds its detail.</summary>
 	/// <param name="reference">The account, by id or name.</param>
-	public DetailView Of(UserReference reference)
+	public async Task<DetailView> OfAsync(UserReference reference)
 	{
-		var record = Read(() => services.GetRequiredService<ISender>().Send(new GetUser(reference)).AsTask());
+		var record = await services.GetRequiredService<ISender>().Send(new GetUser(reference));
 		if (record is null)
-			return new DetailView(reference.Name ?? reference.Id.ToString() ?? string.Empty,
+			return new DetailView(reference.Name ?? reference.Id?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
 				[("User", "not found", Ink.Warning)], []);
 
 		services.GetRequiredService<UserRegistry>().Online.TryGetValue(record, out var online);
@@ -48,7 +52,7 @@ internal sealed class UserDetails(IServiceProvider services, ConsoleTab console,
 			("Connections", user.Connections.Length == 0 ? "offline" : user.Connections, Ink.Info),
 			("Room", room + managed, Ink.Text), ("Activity", user.Activity.Length == 0 ? "-" : user.Activity, Ink.Text)
 		};
-		var actions = new List<DetailAction> { DetailAction.Open("Sessions", () => Sessions(user)) };
+		var actions = new List<DetailAction> { DetailAction.OpenAsync("Sessions", () => SessionsAsync(user)) };
 		// The bot is a system account: its sessions can be read, nothing can be done to it.
 		if (!options.Editable || user.Id == BasilBot.Id) return new DetailView(user.Name, fields, actions);
 
@@ -62,44 +66,57 @@ internal sealed class UserDetails(IServiceProvider services, ConsoleTab console,
 		return new DetailView(user.Name, fields, actions);
 	}
 
-	// The newest sessions of the account, live ones first in time; each live one can be closed.
-	private DetailView Sessions(UserItem user)
+	/// <summary>Builds the detail of a session.</summary>
+	/// <param name="session">The session.</param>
+	public DetailView Of(SessionItem session)
 	{
-		var sender = services.GetRequiredService<ISender>();
-		var (outcome, page) = Read(async () =>
+		var fields = new List<(string, string, Ink)>
 		{
-			var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
-			return await sender.Send(new ListUserSessions(actor, UserReference.ById(user.Id),
-				new PageRequest(0, SessionsShown), SessionState.Any, null));
-		});
+			("Session", session.Id.ToString(CultureInfo.InvariantCulture), Ink.Text),
+			("User", session.UserName, UserInk.Of((UserPrivileges)session.Mask)), ("Kind", session.Kind, Ink.Text),
+			("Last seen", session.LastSeen, session.Live ? Ink.Success : Ink.Text),
+			("Since", SessionItem.Time(session.Started), Ink.Text), ("IP", session.Ip, Ink.Text),
+			("Client", session.Client.Length == 0 ? "-" : session.Client, Ink.Text)
+		};
+		if (session.EndReason.Length > 0) fields.Add(("Ended", session.EndReason, Ink.Text));
+		var actions = new List<DetailAction>
+		{
+			DetailAction.OpenAsync("User", () => OfAsync(UserReference.ById(session.UserId)))
+		};
+		if (options.Editable && session.Live)
+			actions.Add(new DetailAction("Close session",
+				() => console.RunCommand($"users {session.UserId} sessions {session.Id} delete"),
+				DetailActionKind.Destructive));
+		return new DetailView(session.Id.ToString(CultureInfo.InvariantCulture), fields, actions);
+	}
+
+	// The newest sessions of the account, read once as the console command does, shown as the table of the Sessions tab.
+	private async Task<DetailView> SessionsAsync(UserItem user)
+	{
+		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
+		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListUserSessions(actor,
+			UserReference.ById(user.Id), new PageRequest(0, SessionsShown), SessionState.Any, null));
 		if (outcome != UserOutcome.Ok || page is null)
 			return new DetailView("Sessions", [("Sessions", "not available", Ink.Warning)], []);
 
 		var now = clock.GetUtcNow();
-		var fields = new List<(string, string, Ink)>();
-		var actions = new List<DetailAction>();
-		var number = 0;
-		foreach (var session in page.Items.Select(record => SessionItem.Of(record, now)))
-		{
-			number++;
-			fields.Add(($"#{number} {session.Kind}",
-				$"{session.LastSeen}  since {SessionItem.Time(session.Started)}  {session.Where}",
-				session.Live ? Ink.Success : Ink.Text));
-			var sid = session.Id;
-			if (options.Editable && session.Live)
-				actions.Add(new DetailAction($"Close #{number}",
-					() => console.RunCommand($"users {user.Id} sessions {sid} delete"), DetailActionKind.Destructive));
-		}
-
-		if (fields.Count == 0) fields.Add(("Sessions", "none", Ink.Muted));
-		return new DetailView("Sessions", fields, actions);
+		var items = page.Items.Select(record => SessionItem.Of(record, now)).ToList();
+		return new DetailView("Sessions", [], [], push => Table(items, push));
 	}
 
-	// The frame needs the data at once. The read runs off the interface thread, because its continuations would
-	// otherwise wait for the thread that is waiting for them.
-	private static T Read<T>(Func<Task<T>> read)
+	private Visual Table(IReadOnlyList<SessionItem> items, Action<DetailView> push)
 	{
-		return Task.Run(read).GetAwaiter().GetResult();
+		var list = new GroupedList<SessionItem>(SessionColumns.Of(null), session => session.Id.ToString(CultureInfo.InvariantCulture),
+			glyphs, options.NoColor, clock) { ActivateOnClick = true };
+		list.SetSections([.. SessionItem.Kinds.Select(kind => GroupOf(kind, items))]);
+		list.Activated += session => push(Of(session));
+		return new ScrollViewer(list).Stretch();
+	}
+
+	private static Section<SessionItem> GroupOf(SessionType kind, IReadOnlyList<SessionItem> items)
+	{
+		var of = items.Where(item => item.Type == kind).ToList();
+		return new Section<SessionItem>(SessionItem.KindName(kind), of.Count.ToString(CultureInfo.InvariantCulture), of);
 	}
 
 	private void AskSilence(int id)

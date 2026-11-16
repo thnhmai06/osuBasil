@@ -315,7 +315,8 @@ internal sealed class ListPage<T>
 		{
 			var at = _list.ActivatedColumn;
 			var link = at >= 0 && at < columns.Count ? columns[at].Link?.Invoke(_list.Selected!) : null;
-			_detail.Show(link ?? _detailOf(_list.Selected!));
+			if (link is { } read) _detail.ShowAsync(read.Title, read.Read);
+			else _detail.Show(_detailOf(_list.Selected!));
 		}
 		catch (Exception exception)
 		{
