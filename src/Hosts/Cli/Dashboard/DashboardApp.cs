@@ -239,7 +239,8 @@ public sealed class DashboardApp
 
 		var button = new Button($"[{_glyphs.Refresh} Refresh]").Click(RefreshView).IsTabStop(false)
 			.HorizontalAlignment(Align.End).VerticalAlignment(Align.Start).Margin(new Thickness(0, 0, 2, 0));
-		return Refreshes(tab) ? new ZStack(content, button) : content;
+		// The Settings page starts with its category strip, not a frame border, and reads its values again whenever it opens.
+		return Refreshes(tab) && tab != DashboardTab.Settings ? new ZStack(content, button) : content;
 	}
 
 	// The chat and the Monitor update themselves and the About page holds nothing to reload, so they have no Refresh.

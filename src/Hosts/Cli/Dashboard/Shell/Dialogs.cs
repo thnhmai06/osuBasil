@@ -2,6 +2,7 @@ using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;
 using XenoAtom.Terminal.UI.Controls;
+using XenoAtom.Terminal.UI.Geometry;
 using XenoAtom.Terminal.UI.Input;
 using XenoAtom.Terminal.UI.Styling;
 
@@ -25,7 +26,8 @@ internal sealed class Dialogs
 	/// <param name="dialog">The dialog to show.</param>
 	public void Show(Dialog dialog)
 	{
-		dialog.Show();
+		// One column of space between the border and the content, as every frame of the dashboard has.
+		dialog.Padding(new Thickness(1, 0, 1, 0)).Show();
 		_shown.Add(dialog);
 		_open.Value = _shown.Count;
 	}
