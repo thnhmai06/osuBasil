@@ -60,6 +60,7 @@ internal sealed partial class SettingsTab : ITabView
 	private readonly State<int> _selected = new(0);
 	private readonly string[] _categories;
 	private readonly TabControl _strip;
+	private readonly TabSpread _spread;
 	private TerminalApp? _app;
 	private int _loaded = -1;
 	private int _labelWidth;
@@ -80,8 +81,10 @@ internal sealed partial class SettingsTab : ITabView
 		_logger = logger;
 		_palette = new Palette(options.NoColor);
 		_categories = [.. SettingsCategories.Names, Configuration];
+		var stripStyle = options.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder;
 		_strip = new TabControl(_categories.Select(name => new TabPage(Words.Humanise(name), new TextBlock(string.Empty))).ToArray())
-			.Style(options.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder).SelectedIndex(_selected);
+			.Style(stripStyle).SelectedIndex(_selected);
+		_spread = new TabSpread(_strip, stripStyle, _categories.Select(Words.Humanise));
 		_strip.AddCommand(new Command
 		{
 			Id = "settings.strip.down", LabelMarkup = "Search", Gesture = new KeyGesture(TerminalKey.Down),
@@ -156,6 +159,7 @@ internal sealed partial class SettingsTab : ITabView
 	/// <inheritdoc />
 	public void Tick()
 	{
+		_spread.Fit(View.Bounds.Width);
 		if (_selected.Value != _loaded) Load();
 
 		SizeLabels();

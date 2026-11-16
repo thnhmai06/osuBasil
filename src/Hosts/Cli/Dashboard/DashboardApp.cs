@@ -42,6 +42,7 @@ public sealed class DashboardApp
 	private long _lastSample;
 	private int _sampling;
 	private TabControl? _tabs;
+	private TabSpread? _spread;
 
 	/// <summary>Creates the dashboard.</summary>
 	public DashboardApp(IServiceProvider services, DashboardModel model, DashboardSampler sampler, CommandRunner runner,
@@ -91,6 +92,7 @@ public sealed class DashboardApp
 			new Padder(WithRefresh(tab)).Padding(new Thickness(1, 0, 1, 0)).Stretch())).ToArray();
 		var strip = (_mode.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder) with { TabPadding = new Thickness(0, 0, 1, 0) };
 		_tabs = new TabControl(pages).Style(strip).SelectedIndex(_selected);
+		_spread = new TabSpread(_tabs, strip, Enum.GetValues<DashboardTab>().Select(tab => $"F{(int)tab + 1} {tab}"));
 		var status = new ComputedVisual(StatusBar);
 		var main = new Grid()
 			.Columns(new ColumnDefinition { Width = GridLength.Star() })
@@ -131,6 +133,7 @@ public sealed class DashboardApp
 			}
 
 			_columns.Value = terminal.Size.Columns;
+			_spread?.Fit(terminal.Size.Columns);
 			_rows.Value = terminal.Size.Rows;
 			_console.Pump();
 			_dialogs.Settle();
