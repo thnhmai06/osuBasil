@@ -23,21 +23,21 @@ internal static class DiagnosticsRoutes
 		diagnostics.MapGet("/",
 				(HttpContext c, ISender sender, IDiagnosticsIntake intake) => StreamAsync(c, sender, intake, null))
 			.Sse()
-			.WithSummary("Stream every diagnostics category.")
+			.WithSummary("Stream the diagnostics.")
 			.WithDescription("""
-			                 The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample. Data is up to about one second old.
+			                 The response is streamed using Server-Sent Events. The first event is a full sample; after that a bundle arrives every second with the newest sample.
 			                 """);
 		diagnostics.MapGet("/{category}",
 				(HttpContext c, string category, ISender sender, IDiagnosticsIntake intake) =>
 					StreamAsync(c, sender, intake, category)).Sse()
-			.WithSummary("Stream one diagnostics category.")
+			.WithSummary("Stream a diagnostics category.")
 			.WithDescription("""
 			                 The categories are process, gc, threadpool, runtime, exceptions, http, application, database, stable, irc, events, sessions, connections and machine. Streamed like the full diagnostics.
 			                 """);
 		diagnostics.MapPost("/{category}/{**action}", ActionAsync)
-			.WithSummary("Create a run of a maintenance action.")
+			.WithSummary("Create a maintenance run.")
 			.WithDescription(
-				"The actions are `gc/collect`, `caches/clear` and `exceptions/reset`. `gc/collect` can run once every 30 seconds; a request sooner is answered with 429.");
+				"The actions are `gc/collect`, `caches/clear` and `exceptions/reset`; any other is answered with 404. `gc/collect` can run once every 30 seconds, and a request sooner is answered with 429.");
 	}
 
 	private static async Task<object> SampleAsync(IDiagnosticsIntake intake, string? category,

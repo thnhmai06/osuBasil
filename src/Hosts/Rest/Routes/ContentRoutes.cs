@@ -19,20 +19,21 @@ internal static class ContentRoutes
 	public static void MapContent(this RouteGroupBuilder v1)
 	{
 		var settings = v1.MapGroup("/settings").WithTags("Settings").RequireToken();
-		settings.MapGet("/", GetAllAsync).WithSummary("Get every category of the server settings.");
-		settings.MapGet("/{category}", GetCategoryAsync).WithSummary("Get one category of the server settings.");
+		settings.MapGet("/", GetAllAsync).WithSummary("Get the server settings.");
+		settings.MapGet("/{category}", GetCategoryAsync).WithSummary("Get a settings category.");
 		settings.MapPatch("/{category}", PatchCategoryAsync)
-			.WithSummary("Update the given fields of one settings category.")
+			.WithSummary("Update a settings category.")
 			.WithDescription(
-				"The body holds only the fields to change; nested objects are merged. The change applies at once. Rate limit partitions that already exist keep their old limit until they expire.");
+				"The body holds only the fields to change; nested objects are merged. The change applies at once, except that rate limits already counting a caller keep their old limit until they expire.");
 
 		v1.MapPost("/announce", AnnounceAsync).RequireToken().WithTags("Announcements")
-			.WithSummary("Create an announcement for some users or for everyone online.")
-			.WithDescription("An empty or absent `to` announces to everyone online.");
+			.WithSummary("Create an announcement.")
+			.WithDescription(
+				"The text in `text` goes to the users listed in `to`, or to everyone online when `to` is empty or absent. The answer counts the users it reached. A user in `to` that does not exist is answered with 404.");
 
 		var screenshots = v1.MapGroup("/screenshots").WithTags("Screenshots").RequireToken();
 		screenshots.MapGet("/", ListScreenshotsAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List the stored screenshots.");
+			.WithSummary("List screenshots.");
 		screenshots.MapDelete("/{id}", DeleteScreenshotAsync).WithSummary("Delete a screenshot.");
 	}
 

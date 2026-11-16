@@ -39,33 +39,40 @@ internal static class BeatmapRoutes
 
 		sets.MapGet("/", SearchAsync).Admitted(WorkClass.Listing).RequireToken().WithSummary("Search beatmapsets.")
 			.WithDescription(
-				"`query` uses the beatmap search syntax. Hidden sets are listed only for those who manage them. Paged with `offset` and `limit`.");
-		sets.MapGet("/{id:int}", GetSetAsync).WithSummary("Get a beatmapset with its beatmaps.");
-		maps.MapGet("/{id:int}", GetBeatmapAsync).WithSummary("Get a beatmap with its beatmapset.");
+				"`query` uses the beatmap search syntax. Hidden sets are listed only for those who manage them.");
+		sets.MapGet("/{id:int}", GetSetAsync).WithSummary("Get a beatmapset.")
+			.WithDescription("Includes its beatmaps.");
+		maps.MapGet("/{id:int}", GetBeatmapAsync).WithSummary("Get a beatmap.")
+			.WithDescription("Includes its beatmapset.");
 		sets.MapPost("/", UploadAsync).Admitted(WorkClass.Upload).RequireToken().DisableAntiforgery()
-			.WithSummary("Upload a beatmapset as an .osz archive in the `file` field.")
-			.WithDescription(
-				"A set that already exists is refused; the content of a set is never replaced. While the beatmapsets area is locked only managers can upload.");
+			.WithSummary("Upload a beatmapset.")
+			.WithDescription("""
+			                 The multipart form carries the `.osz` archive in `file`. The content of a set is never replaced: a set that already exists is refused with 409, and an archive that is not a readable beatmapset with 422.
+
+			                 While the beatmapsets area is locked only managers can upload.
+			                 """);
 		sets.MapDelete("/{id:int}", DeleteAsync).RequireToken().WithSummary("Delete a beatmapset.");
 		sets.MapPatch("/{id:int}", PatchAsync).RequireToken()
-			.WithSummary("Update the status, visibility or lock of a beatmapset.")
+			.WithSummary("Update a beatmapset.")
 			.WithDescription(
-				"Changing the status can change how clients submit scores and replays; use a status with a leaderboard (ranked, approved, qualified, loved) so those functions keep working.");
+				"Changes the status, the visibility or the lock of the set; its content never changes. Changing the status can change how clients submit scores and replays; use a status with a leaderboard (ranked, approved, qualified, loved) so those functions keep working.");
 
 		sets.MapGet("/{id:int}/audiopreview", (HttpContext c, int id, ISender s) =>
 				SetFileAsync(c, id, s, BeatmapsetFileType.Preview))
-			.WithSummary("Get the preview clip of a beatmapset.");
+			.WithSummary("Download the audio preview of a beatmapset.");
 		sets.MapGet("/{id:int}/storyboard", (HttpContext c, int id, ISender s) =>
 				SetFileAsync(c, id, s, BeatmapsetFileType.Storyboard)).RequireToken()
 			.WithSummary("Download the storyboard of a beatmapset.");
 		sets.MapGet("/{id:int}/download", DownloadAsync).RequireToken()
-			.WithSummary("Download a beatmapset as an .osz archive.")
-			.WithDescription("`noVideo=1` leaves the video out.");
+			.WithSummary("Download a beatmapset.")
+			.WithDescription("The archive is an `.osz` file; `noVideo=1` leaves the video out of it.");
 		foreach (var (name, token) in new[] { ("audio", true), ("video", true), ("background", false) })
 		{
 			var route = sets.MapGet("/{id:int}/" + name,
 					(HttpContext c, int id, ISender s) => RedirectToLowestAsync(c, id, name, s))
-				.WithSummary($"Get the {name} of the lowest beatmap of the set.");
+				.WithSummary($"Download the {name} of a beatmapset.")
+				.WithDescription(
+					$"Redirects with 307 to the {name} of the lowest beatmap of the set; 404 when the set has no beatmaps.");
 			if (token) route.RequireToken();
 		}
 

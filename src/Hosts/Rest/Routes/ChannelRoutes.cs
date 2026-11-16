@@ -19,10 +19,12 @@ internal static class ChannelRoutes
 	{
 		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
 		channels.MapGet("/", List).Admitted(WorkClass.Listing)
-			.WithSummary("List the general channels the caller may see.")
+			.WithSummary("List general channels.")
 			.WithDescription(
 				"Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
-		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.");
+		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.")
+			.WithDescription(
+				"For those who manage channels. A channel whose name is already in use is refused with 409.");
 		channels.MapPatch("/{name}", PatchAsync).WithSummary("Update a general channel.")
 			.WithDescription(
 				"A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");

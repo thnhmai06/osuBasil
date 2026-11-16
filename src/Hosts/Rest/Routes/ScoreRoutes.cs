@@ -17,16 +17,17 @@ internal static class ScoreRoutes
 		var scores = v1.MapGroup("/scores").WithTags("Scores");
 		scores.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List scores.")
 			.WithDescription(
-				"Filter by `beatmap` (a beatmap id) and `user` (a user id). Newest first, paged with `offset` and `limit`.");
+				"Filter by `beatmap` and `user`, both ids. Newest first. A beatmap or user that does not exist is answered with 404.");
 		scores.MapPost("/performance/recalculate", RecalculateAsync).RequireToken()
-			.WithSummary("Start calculating the pp of stored scores.")
+			.WithSummary("Update the pp of stored scores.")
 			.WithDescription("""
-			                 Calculates the pp of the passed scores that have none, or of every passed score when `all` is `true`. It runs in the background and the call answers 202 at once; only one calculation runs at a time and a second request is refused with 409.
+			                 Calculates the pp of the passed scores that have none, or of every passed score when `all` is `true`. The call answers 202 at once and the work goes on; only one calculation runs at a time, and a second request is refused with 409.
 
-			                 A score whose beatmap or difficulty file the server does not have keeps the pp it has, and the calculation goes on. Running it again gives the same result.
+			                 A score whose beatmap or difficulty file the server does not have keeps the pp it has. Running it again gives the same result.
 			                 """);
 		scores.MapGet("/{id:int}", GetAsync).WithSummary("Get a score.");
-		scores.MapGet("/{id:int}/replay", ReplayAsync).RequireToken().WithSummary("Download the replay of a score.");
+		scores.MapGet("/{id:int}/replay", ReplayAsync).RequireToken().WithSummary("Download a replay.")
+			.WithDescription("A score without a replay is answered with 404.");
 	}
 
 	private static async Task<IResult> ListAsync(HttpContext context, int? beatmap, int? user, int? offset, int? limit,

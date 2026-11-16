@@ -13,25 +13,26 @@ internal static class RulesetRoutes
 	public static void MapRulesets(this RouteGroupBuilder v1)
 	{
 		v1.MapGet("/version", VersionAsync).WithTags("Version")
-			.WithSummary("Get the application version and the active ruleset version.");
+			.WithSummary("Get the application and ruleset versions.");
 
 		var ruleset = v1.MapGroup("/settings/ruleset").WithTags("Settings").RequireToken();
 		ruleset.MapGet("/version", RulesetVersionAsync)
-			.WithSummary("Get the active ruleset version and the version waiting for a restart.");
+			.WithSummary("Get the ruleset versions.")
+			.WithDescription("Reports the active version and the one waiting for a restart.");
 		ruleset.MapPost("/update", UpdateAsync)
-			.WithSummary("Download the newest ruleset version and stage it for the next restart.")
+			.WithSummary("Update the ruleset version.")
 			.WithDescription("""
-			                 The newest stable version is downloaded and checked against the hash its feed publishes; nothing is kept when the check fails. A staged version takes effect after the server restarts, and the star ratings already stored stay as they were until beatmaps are reloaded.
+			                 Stages the newest stable version for the next restart, after checking it against the hash its feed publishes; nothing is kept when the check fails. The star ratings already stored stay as they were until the beatmaps are reloaded with `POST /v1/beatmapsets/reload`.
 
 			                 When no newer version exists, `staged` is `false` and nothing needs to be done.
 
-			                 Related: `POST /v1/beatmapsets/reload` recomputes the stored beatmaps. An unreachable feed or a package that fails the check is answered with 502.
+			                 An unreachable feed, or a package that fails the check, is answered with 502.
 			                 """);
 
 		v1.MapPost("/beatmapsets/reload", ReloadAsync).RequireToken().WithTags("Beatmapsets")
-			.WithSummary("Update the metadata of every beatmap with the rulesets in use.")
+			.WithSummary("Update the stored beatmaps.")
 			.WithDescription("""
-			                 Recomputes every stored beatmap, star rating included. It runs in the background and the call answers 202 at once; only one reload runs at a time and a second request is refused with 409.
+			                 Recomputes every stored beatmap, star rating included, with the rulesets in use. The call answers 202 at once and the work goes on; only one reload runs at a time, and a second request is refused with 409.
 			                 """);
 	}
 

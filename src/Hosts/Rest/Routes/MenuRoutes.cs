@@ -24,28 +24,40 @@ internal static class MenuRoutes
 		faqs.MapGet("/",
 				async (ISender sender, CancellationToken ct) => Api.Ok(await sender.Send(new ListFaqs(), ct)))
 			.Admitted(WorkClass.Listing)
-			.WithSummary("List the FAQ entries.")
-			.WithDescription("A folder inside the entry names is written with `:`.");
+			.WithSummary("List FAQ entries.")
+			.WithDescription("An entry in a folder has the folder in its name, separated by `:`.");
 		faqs.MapGet("/{entry}", GetFaqAsync).WithSummary("Get a FAQ entry.");
-		faqs.MapPut("/{entry}", SaveFaqAsync).RequireToken().WithSummary("Create or replace a FAQ entry.");
+		faqs.MapPut("/{entry}", SaveFaqAsync).RequireToken().WithSummary("Replace a FAQ entry.")
+			.WithDescription("Creates the entry when no entry has the name.");
 		faqs.MapDelete("/{entry}", DeleteFaqAsync).RequireToken().WithSummary("Delete a FAQ entry.");
 
 		var menu = v1.MapGroup("/menu").WithTags("Menu");
 		menu.MapGet("/banners", ListBannersAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List the main-menu banners.");
+			.WithSummary("List main-menu banners.")
+			.WithDescription("Each banner says whether it is current.");
 		menu.MapPost("/banners", AddBannerAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
-			.WithSummary("Create a main-menu banner from an image in the `image` field and the address in `url`.")
-			.WithDescription(
-				"`begins` and `expires` are optional ISO 8601 times; a banner without them is always current.");
-		menu.MapDelete("/banners/{image}", DeleteBannerAsync).RequireToken().WithSummary("Delete a main-menu banner.");
+			.WithSummary("Create a main-menu banner.")
+			.WithDescription("""
+			                 The multipart form carries the picture in `image` and the HTTP or HTTPS address it opens in `url`. `begins` and `expires` are optional ISO 8601 times; a banner without them is always current.
+
+			                 An image over 10 MB is refused with 422 and the error code `tooLarge`.
+			                 """);
+		menu.MapDelete("/banners/{image}", DeleteBannerAsync).RequireToken().WithSummary("Delete a main-menu banner.")
+			.WithDescription("The banner is named by the file name of its `image`.");
 		menu.MapGet("/seasonals", async (ISender sender, CancellationToken ct) =>
 				Api.Ok((await sender.Send(new ListSeasonals(), ct)).Select(r => Path.GetFileName(r.Value)).ToList()))
 			.Admitted(WorkClass.Listing)
-			.WithSummary("List the seasonal backgrounds.");
+			.WithSummary("List seasonal backgrounds.");
 		menu.MapPost("/seasonals", AddSeasonalAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
-			.WithSummary("Create a seasonal background from an image in the `image` field.");
+			.WithSummary("Create a seasonal background.")
+			.WithDescription("""
+			                 The multipart form carries the picture in `image`.
+
+			                 An image over 10 MB is refused with 422 and the error code `tooLarge`.
+			                 """);
 		menu.MapDelete("/seasonals/{image}", DeleteSeasonalAsync).RequireToken()
-			.WithSummary("Delete a seasonal background.");
+			.WithSummary("Delete a seasonal background.")
+			.WithDescription("The background is named by its file name.");
 		menu.MapGet("/icon", async (ISender sender, CancellationToken ct) =>
 		{
 			var icon = (await sender.Send(new ReadSettings(), ct)).MenuIcon;
@@ -53,8 +65,12 @@ internal static class MenuRoutes
 				icon.Url?.AbsoluteUri));
 		}).WithSummary("Get the main-menu icon.");
 		menu.MapPut("/icon", SetIconAsync).Admitted(WorkClass.Upload).DisableAntiforgery().RequireToken()
-			.WithSummary(
-				"Replace the main-menu icon from an optional image in the `image` field and an optional address in `url`.");
+			.WithSummary("Replace the main-menu icon.")
+			.WithDescription("""
+			                 The multipart form carries an optional picture in `image` and an optional HTTP or HTTPS address in `url`. Without `image` the current picture stays; without `url` the icon has no link.
+
+			                 An image over 10 MB is refused with 422 and the error code `tooLarge`.
+			                 """);
 		menu.MapDelete("/icon", async (HttpContext context, ISender sender) =>
 				(await sender.Send(new ClearMenuIcon(context.Connection()), context.RequestAborted)).Answer())
 			.RequireToken().WithSummary("Delete the main-menu icon.");

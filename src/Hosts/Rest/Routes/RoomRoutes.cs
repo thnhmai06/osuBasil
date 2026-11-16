@@ -20,15 +20,17 @@ internal static class RoomRoutes
 	{
 		var rooms = v1.MapGroup("/rooms").WithTags("Rooms").RequireToken();
 
-		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List the open rooms the caller may see.")
+		rooms.MapGet("/", ListAsync).Admitted(WorkClass.Listing).WithSummary("List rooms.")
 			.WithDescription("Private rooms are listed only for those who may view them.");
 		rooms.MapPost("/", CreateAsync).WithSummary("Create a room.")
-			.WithDescription(
-				"The caller becomes its creator. While room creation is locked, only room managers can open one.");
-		rooms.MapGet("/{id:int}", GetAsync).WithSummary("Get a room with its slots, referees and bans.");
-		rooms.MapGet("/{id:int}/live", LiveAsync).Sse().WithSummary("Stream a room change.")
 			.WithDescription("""
-			                 The response is streamed using Server-Sent Events. The first event is the room as `GET /v1/rooms/{id}` returns it; after that a bundle arrives every second in which the room changed, carrying the room as it is then. The stream ends when the room closes. It carries no gameplay or scores. Data is up to about one second old.
+			                 The caller becomes the creator of the room, and its host when their game client is online and in no room. While room creation is locked, only room managers can create one.
+			                 """);
+		rooms.MapGet("/{id:int}", GetAsync).WithSummary("Get a room.")
+			.WithDescription("Includes its slots, referees and bans. A private room the caller may not view is answered with 404.");
+		rooms.MapGet("/{id:int}/live", LiveAsync).Sse().WithSummary("Stream a room.")
+			.WithDescription("""
+			                 The response is streamed using Server-Sent Events. The first event is the room as `GET /v1/rooms/{id}` returns it; after that a bundle arrives every second in which the room changed, carrying the room as it is then. The stream ends when the room closes and carries no gameplay or scores.
 			                 """);
 
 		foreach (var command in RoomCommands.All) Command(rooms, command);
