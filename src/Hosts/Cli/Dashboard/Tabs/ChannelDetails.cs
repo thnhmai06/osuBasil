@@ -48,7 +48,7 @@ internal sealed class ChannelDetails(IServiceProvider services, CommandActions a
 
 	private void AskNew()
 	{
-		dialogs.Form("New channel", [new FormField("Name (#...)", "#"), new FormField("Topic")], values =>
+		dialogs.Form("New channel", [new FormField("Name (start with #)"), new FormField("Topic")], values =>
 			actions.Run($"channels create --name {CommandActions.Quote(values[0])}" +
 			            (values[1].Length > 0 ? $" --topic {CommandActions.Quote(values[1])}" : string.Empty)));
 	}

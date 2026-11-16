@@ -307,7 +307,7 @@ internal sealed class DetailPanel
 			rows.Add(action.Kind == DetailActionKind.Destructive ? button.Tone(ControlTone.Error) : button);
 		}
 
-		var list = new ScrollViewer(rows).MaxHeight(Math.Max(_height.Value, 6));
+		var list = new ScrollViewer(rows).MinWidth(24).MaxHeight(Math.Max(_height.Value, 6));
 		dialog.Content(Dialogs.EscapeCloses(dialog, new VStack(list, Dialogs.Buttons(new Button("Cancel").Click(dialog.Close)))));
 		_dialogs.Show(dialog);
 	}

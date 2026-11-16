@@ -35,7 +35,7 @@ public sealed class DetailPanelTests
 	}
 
 	[Fact]
-	public void Actions_StandNavigateFirstNormalInTheMiddleDestructiveLast_WhateverTheInputOrder()
+	public void Actions_StandNavigateFirstNormalInTheMiddleDestructiveLast_WhateverTheInputOrder_AndCloseEndsTheList()
 	{
 		var panel = Create();
 
@@ -45,7 +45,7 @@ public sealed class DetailPanelTests
 			DetailAction.Open("Scores", () => new DetailView("Scores", [], []))
 		]));
 
-		Assert.Equal(["Scores…", "Kick", "Close session"], Buttons(panel).Select(Label));
+		Assert.Equal(["Scores…", "Kick", "Close session", "Close"], Buttons(panel).Select(Label));
 	}
 
 	[Fact]
