@@ -20,8 +20,14 @@ internal sealed class SearchBox
 	{
 		Query = query;
 		var narrow = placeholder.Length + Margin;
-		Box = new TextBox().Text(query).Placeholder(placeholder).MaxWidth(() => _wide.Value ? int.MaxValue : narrow);
-		Row = new HStack(new TextBlock($"{(glyphs.Ascii ? "?" : "⌕")} "), Box.Stretch());
+		Box = new TextBox().Text(query).Placeholder(placeholder).MaxWidth(() => _wide.Value ? int.MaxValue : narrow)
+			.HorizontalAlignment(() => _wide.Value ? Align.Stretch : Align.Start);
+		// A stack gives the box only the width it asks for; the star column of a grid gives it the rest of the row.
+		Row = new Grid()
+			.Columns(new ColumnDefinition { Width = GridLength.Auto }, new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Auto })
+			.Cell(new TextBlock($"{(glyphs.Ascii ? "?" : "⌕")} "), 0, 0)
+			.Cell(Box, 0, 1);
 	}
 
 	/// <summary>Gets the text of the box.</summary>
