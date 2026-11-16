@@ -5,6 +5,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Cryptography;
 using Basil.Domain.Users;
+using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;
@@ -32,6 +33,16 @@ public sealed class UserCommandTests(CliFixture fixture)
 		Assert.Equal($"Created {name} with id {user.Id}.", text);
 		Assert.Equal(UserPrivilegesExtensions.Default, user.Value.Privileges);
 		Assert.True(await CanSignInAsync(name, "pw1"));
+	}
+
+	[Fact]
+	public async Task Create_InvalidName_ReasonWithoutParameterName()
+	{
+		var (code, text) = await fixture.RunAsync("users create --username ab --password pw1");
+
+		Assert.Equal(ExitCodes.Invalid, code);
+		Assert.Contains("Username must be between 3 and 15 characters.", text);
+		Assert.DoesNotContain("(Parameter", text);
 	}
 
 	[Fact]
