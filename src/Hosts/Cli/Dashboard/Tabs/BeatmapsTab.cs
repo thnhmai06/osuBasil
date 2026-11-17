@@ -30,9 +30,10 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// <param name="Private">Whether the beatmapset is hidden.</param>
 /// <param name="Locked">Whether the beatmapset is write-locked.</param>
 /// <param name="Versions">How many difficulties the beatmapset has.</param>
+/// <param name="Name">The full name, <c>Artist - Title [Version]</c>, or empty when not known.</param>
 internal sealed record BeatmapItem(int Id, int SetId, string Version, BeatmapsetStatus Status, bool Local,
 	DateTimeOffset Modified, DateTimeOffset Uploaded, double Cs, double Ar, double Od, double Hp, double Stars,
-	TimeSpan Length, bool Private, bool Locked, int Versions);
+	TimeSpan Length, bool Private, bool Locked, int Versions, string Name = "");
 
 /// <summary>Reads the beatmapsets a search finds, with their difficulties.</summary>
 internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<BeatmapItem>
@@ -66,7 +67,7 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 		var d = map.Metadata.Difficulty;
 		return new BeatmapItem(map.Id, set.Id, map.Metadata.Version, set.Status, map.IsLocallyIngested,
 			map.UpdatedAt, map.CreatedAt, d.Cs, d.Ar, d.Od, d.Hp, d.Star, d.Length, !set.Visible, set.Locked,
-			versions);
+			versions, $"{set.Metadata.Artist} - {set.Metadata.Title} [{map.Metadata.Version}]");
 	}
 }
 

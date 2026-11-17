@@ -78,6 +78,6 @@ internal sealed class BeatmapDetails(IServiceProvider services, CommandActions a
 				"and cannot be restored; scores keep their record. A locked set cannot be deleted.", "Delete",
 				() => actions.Run($"beatmapsets {set} delete")), DetailActionKind.Destructive)
 		};
-		return new DetailView(map.Id.ToString(), fields, actionList) { Reload = () => OfAsync(map.Id) };
+		return new DetailView(map.Name.Length > 0 ? map.Name : map.Version, fields, actionList) { Reload = () => OfAsync(map.Id) };
 	}
 }

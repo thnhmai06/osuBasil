@@ -23,6 +23,7 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 		{
 			("ID", id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("Name", room.Name, Ink.Text),
 			("State", room.State, LobbyTab.State(room)),
+			("Players", $"{room.Players}/{room.Size}", Ink.Text),
 			("Creator", room.Creator, UserInk.Of((UserPrivileges)room.CreatorMask)),
 			("Referees", room.Referees.Length == 0 ? "-" : room.Referees, Ink.Text)
 		};
@@ -43,17 +44,18 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 			list.Add(DetailAction.OpenAsync("Host", () => users.OfAsync(UserReference.ByName(room.Host))));
 		list.Add(DetailAction.OpenAsync("Creator", () => users.OfAsync(UserReference.ByName(room.Creator))));
 		if (room.Slots.Count > 0) list.Add(DetailAction.Open("Players", () => Players(room)));
-		if (!room.Open) return new DetailView($"#{id}", fields, list);
+		if (!room.Open) return new DetailView(room.Name, fields, list);
 
 		list.Add(new DetailAction("Chat…", () => openChat($"#mp_{id}"), DetailActionKind.Navigate));
 		if (room.State == "playing")
 			list.Add(new DetailAction("Abort round", () => dialogs.Confirm("Abort round",
 				$"Abort the round in progress in room {id} ({room.Name})? The round ends for every player and is marked aborted.",
 				"Abort", () => Run(id, "abort")), DetailActionKind.Destructive));
-		else
+		else if (room.CanStartRound)
 			list.Add(new DetailAction("Start round", () => AskSeconds(id, "Start round", "start", "0")));
-		list.Add(new DetailAction("Start timer", () => AskSeconds(id, "Start timer", "timer", "30")));
-		list.Add(new DetailAction("Abort timer", () => Run(id, "aborttimer")));
+		if (room.CanStartTimer)
+			list.Add(new DetailAction("Start timer", () => AskSeconds(id, "Start timer", "timer", "30")));
+		if (room.CanAbortTimer) list.Add(new DetailAction("Abort timer", () => Run(id, "aborttimer")));
 		list.Add(room.Locked
 			? new DetailAction("Unlock", () => Run(id, "unlock"))
 			: new DetailAction("Lock", () => Run(id, "lock")));
@@ -62,7 +64,7 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 		list.Add(new DetailAction("Close room", () => dialogs.Confirm("Close room",
 			$"Close room {id} ({room.Name})? The room ends and its {room.Players} player(s) are removed from it. " +
 			"It cannot be reopened.", "Close room", () => Run(id, "close")), DetailActionKind.Destructive));
-		return new DetailView($"#{id}", fields, list);
+		return new DetailView(room.Name, fields, list);
 	}
 
 	private List<DetailAction> SettingsOf(RoomItem room)

@@ -99,15 +99,31 @@ internal sealed class Dialogs
 		var boxes = fields.Select(field => new TextBox().Text(field.Start).IsPassword(field.Secret)).ToList();
 		var width = fields.Max(field => field.Label.Length) + 1;
 		var rows = new VStack();
+		var done = false;
+
+		void Ok()
+		{
+			if (done) return;
+
+			done = true;
+			dialog.Close();
+			submit([.. boxes.Select(box => box.Text ?? string.Empty)]);
+		}
+
+		// Enter in a box submits, like a web form.
+		foreach (var box in boxes)
+			box.KeyDown((_, e) =>
+			{
+				if (e.Key != TerminalKey.Enter) return;
+				e.Handled = true;
+				Ok();
+			});
+
 		// Each box sits in its own frame, so that an empty one is still a visible field.
 		for (var i = 0; i < fields.Count; i++)
 			rows.Add(new HStack(new TextBlock(fields[i].Label.PadRight(width)).VerticalAlignment(Align.Center),
 				new Group().Style(GroupStyle.Single).Content(boxes[i]).MinWidth(FieldWidth)));
-		rows.Add(Buttons(new Button("OK").Click(() =>
-		{
-			dialog.Close();
-			submit([.. boxes.Select(box => box.Text ?? string.Empty)]);
-		}), new Button("Cancel").Click(dialog.Close)));
+		rows.Add(Buttons(new Button("OK").Click(Ok), new Button("Cancel").Click(dialog.Close)));
 		dialog.Content(EscapeCloses(dialog, rows));
 		Show(dialog);
 	}
