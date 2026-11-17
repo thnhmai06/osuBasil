@@ -218,6 +218,6 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		if (score.UserId is { } user)
 			actions.Add(DetailAction.OpenAsync("User", () => users.OfAsync(UserReference.ById(user))));
 		if (score.BeatmapId is { } map) actions.Add(DetailAction.OpenAsync("Beatmap", () => beatmaps.OfAsync(map)));
-		return new DetailView(score.Id.ToString(CultureInfo.InvariantCulture), fields, actions);
+		return new DetailView($"{score.Player} on {score.Beatmap}", fields, actions);
 	}
 }

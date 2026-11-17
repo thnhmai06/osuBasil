@@ -1,3 +1,4 @@
+using System.Globalization;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Registry;
@@ -28,9 +29,20 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// <param name="Locked">Whether nobody else can join.</param>
 /// <param name="Slots">The seated players: slot number, name, whether host, and the slot's status.</param>
 /// <param name="Rules">The settings of an open room; <see langword="null" /> for a closed one.</param>
+/// <param name="Countdown">Whether a countdown is running in the room.</param>
 internal sealed record RoomItem(int Id, string Name, int Players, int Size, string State, string Host,
 	string Creator, string Referees, ulong HostMask, ulong CreatorMask, bool Open, bool Locked, IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots,
-	RoomRules? Rules = null);
+	RoomRules? Rules = null, bool Countdown = false)
+{
+	/// <summary>Gets whether a round can start now: the room is open and idle, has a beatmap and at least one player.</summary>
+	public bool CanStartRound => Open && State != "playing" && Players > 0 && Rules is { Map.Length: > 0 };
+
+	/// <summary>Gets whether a countdown can start now: none runs and a round could start.</summary>
+	public bool CanStartTimer => !Countdown && CanStartRound;
+
+	/// <summary>Gets whether there is a countdown to abort.</summary>
+	public bool CanAbortTimer => Open && Countdown;
+}
 
 /// <summary>Reads the rooms: the open ones from memory, the closed ones from the match history.</summary>
 internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomItem>
@@ -38,45 +50,57 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<SectionData<RoomItem>>> LoadAsync(string query, int limit, CancellationToken ct)
 	{
-		var lobby = services.GetRequiredService<Lobby>();
-		var text = query.Trim();
-		bool Matches(string name, int id) => text.Length == 0 || name.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-		                                     text == id.ToString();
-		var open = lobby.Rooms.Values.Where(room => Matches(room.Settings.Name, room.Id)).OrderBy(room => room.Id)
-			.Select(room =>
-			{
-				var host = room.Authority.Host;
-				return new RoomItem(room.Id, room.Settings.Name, room.Slots.Count(slot => slot.Player is not null),
-					room.Slots.Count(slot => !slot.Locked),
-					room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
-					host?.Record.Value.Name ?? string.Empty, room.Authority.Creator.Value.Name,
-					string.Join(", ", room.Authority.Referees.Select(referee => referee.Value.Name)),
-					host is null ? 0UL : (ulong)host.Record.Value.Privileges, (ulong)room.Authority.Creator.Value.Privileges, true,
-					room.Slots.Locked,
-					[
-						.. room.Slots.Where(slot => slot.Player is not null).Select(slot => (slot.Index,
-							slot.Player!.Record.Value.Name, ReferenceEquals(host, slot.Player.User),
-							slot.Status?.ToString() ?? "open"))
-					],
-					new RoomRules(room.Settings.IsPrivate, room.Settings.Password.Length > 0,
-						room.Settings.Beatmap?.Name ?? string.Empty, room.Settings.MatchSettings.Mode.ToString(),
-						room.Settings.MatchSettings.Mods.ToString(), room.Settings.MatchSettings.Freemods,
-						room.Settings.MatchSettings.TeamType.ToString(), room.Settings.MatchSettings.WinCondition.ToString()));
-			}).ToList();
+		var registry = services.GetRequiredService<UserRegistry>();
+		var sender = services.GetRequiredService<ISender>();
+		var parsed = RoomQuery.Parse(query);
+		var actor = await registry.OperateAsync(ct);
+		var found = await sender.Send(new ListRooms(actor, parsed, new PageRequest(0, limit)), ct);
+		var open = new List<RoomItem>();
+		foreach (var room in found.Items)
+		{
+			var host = room.Authority.Host;
+			open.Add(new RoomItem(room.Id, room.Settings.Name, room.Slots.Count(slot => slot.Player is not null),
+				room.Slots.Count(slot => !slot.Locked),
+				room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
+				host?.Record.Value.Name ?? string.Empty, room.Authority.Creator.Value.Name,
+				string.Join(", ", room.Authority.Referees.Select(referee => referee.Value.Name)),
+				host is null ? 0UL : (ulong)host.Record.Value.Privileges, (ulong)room.Authority.Creator.Value.Privileges, true,
+				room.Slots.Locked,
+				[
+					.. room.Slots.Where(slot => slot.Player is not null).Select(slot => (slot.Index,
+						slot.Player!.Record.Value.Name, ReferenceEquals(host, slot.Player.User),
+						slot.Status?.ToString() ?? "open"))
+				],
+				new RoomRules(room.Settings.IsPrivate, room.Settings.Password.Length > 0,
+					room.Settings.Beatmap?.Name ?? string.Empty, room.Settings.MatchSettings.Mode.ToString(),
+					room.Settings.MatchSettings.Mods.ToString(), room.Settings.MatchSettings.Freemods,
+					room.Settings.MatchSettings.TeamType.ToString(), room.Settings.MatchSettings.WinCondition.ToString()),
+				await sender.Send(new HasRoomCountdown(actor, room), ct)));
+		}
+
 		var openIds = open.Select(room => room.Id).ToHashSet();
-		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync(ct);
-		var (result, found) = await services.GetRequiredService<ISender>()
-			.Send(new ListMatches(actor, new MatchQuery(true), new PageRequest(0, limit)), ct);
-		var closed = found is null
+		// A closed room has no host, players, status, mode or password any more, so only the name and the creator can match.
+		var (_, closedFound) = await sender.Send(new ListMatches(actor, new MatchQuery(true), new PageRequest(0, limit)), ct);
+		var closed = closedFound is null || parsed.Host is not null || parsed.Player is not null || parsed.Status is not null ||
+		             parsed.Mode is not null || parsed.Password is not null
 			? []
-			: found.Items.Where(match => !openIds.Contains(match.Id) && Matches(match.Value.Name, match.Id))
+			: closedFound.Items.Where(match => !openIds.Contains(match.Id) && Matches(parsed, match.Id, match.Value.Name,
+					match.Value.Creator))
 				.Select(match => new RoomItem(match.Id, match.Value.Name, 0, 0, "closed", string.Empty,
 					match.Value.Creator.Value.Name, string.Empty, 0, (ulong)match.Value.Creator.Value.Privileges, false, false, [])).ToList();
 		return
 		[
-			new SectionData<RoomItem>("Open", open, false),
-			new SectionData<RoomItem>("Closed", closed, found?.HasNext ?? false)
+			new SectionData<RoomItem>("Open", open, found.HasNext),
+			new SectionData<RoomItem>("Closed", closed, closedFound?.HasNext ?? false)
 		];
+	}
+
+	private static bool Matches(RoomQuery query, int id, string name, UserRecord creator)
+	{
+		return (query.Text is not { Length: > 0 } text || name.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+		        text == id.ToString(CultureInfo.InvariantCulture)) &&
+		       (query.Creator is not { Length: > 0 } who || creator.Value.Name.Contains(who, StringComparison.OrdinalIgnoreCase) ||
+		        who == creator.Id.ToString(CultureInfo.InvariantCulture));
 	}
 }
 
@@ -84,7 +108,15 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 internal sealed class LobbyTab : ITabView, ISearchable
 {
 	private const string Help = """
-		Type part of the room name (ignoring case) or the exact room id.
+		Words match the room name (ignoring case) or the exact room id.
+		host:bob         the host, by name or id
+		creator:bob      the creator, by name or id
+		player:bob       a player seated in it, by name or id
+		status:open      open, locked or playing
+		mode:0           the game mode, 0 to 3
+		password:yes|no  with or without a password
+		Example: status:open mode:0 cup
+		Filters apply to open rooms; closed rooms match the words and creator:.
 		""";
 
 	private readonly ListPage<RoomItem> _page;
