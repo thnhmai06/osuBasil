@@ -40,7 +40,7 @@ are listed under [Keys and mouse](#keys-and-mouse).
 | Tab      | Shows                                                                                                     |
 |----------|-----------------------------------------------------------------------------------------------------------|
 | Console  | The log written straight on the screen and, at `--console 1`, the command box                             |
-| Monitor  | The server's own CPU, memory, heap and connection graphs, then one cell per diagnostics category           |
+| Monitor  | The server's own CPU, memory and connection graphs, then one cell per diagnostics category                |
 | Users    | Accounts online and offline                                                                               |
 | Beatmaps | Beatmaps grouped by set; actions apply to the whole set                                                   |
 | Lobby    | Open rooms and the ones that ended; creators and referees manage a room from here                         |
@@ -111,11 +111,12 @@ inside the tab in view. Fields are grouped by the
 object they belong to, with names relative to the group (`Lockout time` under `Login`, not `Login: lockout time`), and a
 fixed frame explains the field in focus.
 
-Monitor reports the server only, not the machine. It holds the whole page in one scrolling view: four graphs on the first
-row (CPU, RAM, heap, connections), the four connection graphs (Stable, Tourney, IRC, API) on the second, then a grid of
+Monitor reports the server only, not the machine. It holds the whole page in one scrolling view: three graphs on the first
+row (CPU, RAM, connections), the four connection graphs (Stable, Tourney, IRC, API) on the second, then a grid of
 categories whose cells are all 8 rows high and scroll inside. Every graph shows its current values on its first lines and
 its legend on the last one, inside the box; the measurements a graph shows (clients, polls per second, p50/p95/p99,
-requests per second, process CPU and memory) are not repeated in the grid. Choosing a metric shows its explanation in a fixed frame at the bottom. The exceptions of the last
+process CPU and memory) are not repeated in the grid. The API graph shows the total of every HTTP host, and the HTTP cell
+of the grid keeps the requests per second and response times of each host. Choosing a metric shows its explanation in a fixed frame at the bottom. The exceptions of the last
 minute are one metric: up to ten types, the most frequent first, equal types merged as `Type ×N`.
 
 The mouse wheel accelerates: notches that follow each other quickly move more rows each, and a pause starts again from

@@ -113,9 +113,6 @@ public sealed class DashboardModel
 	/// <summary>Gets the HTTP requests per second of every host together.</summary>
 	public Series Requests { get; } = new(HistorySeconds);
 
-	/// <summary>Gets the managed heap, in megabytes.</summary>
-	public Series Heap { get; } = new(HistorySeconds);
-
 	/// <summary>Gets the allocation rate, in megabytes per second.</summary>
 	public Series Allocations { get; } = new(HistorySeconds);
 

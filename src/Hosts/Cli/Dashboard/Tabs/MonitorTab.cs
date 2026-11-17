@@ -28,12 +28,9 @@ internal sealed class MonitorTab : ITabView
 	// The measurements that stand inside a graph and so are left out of the boxes.
 	private static readonly string[] GraphMeasurements =
 	[
-		"process.cpuPercent", "process.workingSetBytes", "process.privateMemoryBytes", "process.threads", "gc.heapBytes",
-		"gc.allocatedBytesPerSecond"
+		"process.cpuPercent", "process.workingSetBytes", "process.privateMemoryBytes", "process.threads"
 	];
 
-	private static readonly string[] GraphHttpSuffixes =
-		[".requestsPerSecond", ".p50Milliseconds", ".p95Milliseconds", ".p99Milliseconds"];
 	private const int BoxHeight = 8;
 	private const int MinimumGraphHeight = 10;
 	private readonly WheelAcceleration _wheel;
@@ -85,9 +82,6 @@ internal sealed class MonitorTab : ITabView
 			Panel("RAM", model.Memory, null, () => Math.Max(model.Memory.Max() * 1.1, 1),
 				[() => Pair("In use", Measure("process.workingSetBytes")), () => Pair("Private", Measure("process.privateMemoryBytes"))],
 				Legend("Process", null)),
-			Panel("Heap", model.Heap, null, () => Math.Max(model.Heap.Max() * 1.1, 1),
-				[() => Pair("Heap", Measure("gc.heapBytes")), () => Pair("Allocated", $"{Measure("gc.allocatedBytesPerSecond")}/s")],
-				Legend("Managed heap", null)),
 			Panel("Connections", model.ConnectionsOpen, null, () => Math.Max(model.ConnectionsOpen.Max() * 1.1, 1),
 				[() => Pair("Open", Plain(model.ConnectionsOpen.Latest)),
 					() => $"{Pair("Stable", Plain(Open("stable")))}  {Pair("Tourney", Plain(Open("stabletourney")))}",
@@ -167,7 +161,7 @@ internal sealed class MonitorTab : ITabView
 			.. Enumerable.Range(0, across).Select(i => new ColumnDefinition
 				{ Width = GridLength.Fixed(width / across + (i < width % across ? 1 : 0)) })
 		]);
-		var graphRows = _graphCells.Count / across;
+		var graphRows = (_graphCells.Count + across - 1) / across;
 		var boxRows = (_boxes.Count + across - 1) / across;
 		_page.Rows([
 			.. Enumerable.Range(0, graphRows).Select(_ => new RowDefinition { Height = GridLength.Fixed(graphHeight) }),
@@ -361,8 +355,7 @@ internal sealed class MonitorTab : ITabView
 	private static bool InGraph(string name)
 	{
 		return GraphMeasurements.Contains(name) || name.StartsWith("sessions.", StringComparison.Ordinal) ||
-		       name.StartsWith("stable.", StringComparison.Ordinal) || name.StartsWith("irc.", StringComparison.Ordinal) ||
-		       name.StartsWith("http.", StringComparison.Ordinal) && GraphHttpSuffixes.Any(name.EndsWith);
+		       name.StartsWith("stable.", StringComparison.Ordinal) || name.StartsWith("irc.", StringComparison.Ordinal);
 	}
 
 	private double Number(string key)

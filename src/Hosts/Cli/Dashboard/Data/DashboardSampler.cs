@@ -30,7 +30,6 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		model.Version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown";
 		model.Cpu.Add(Number(json, "process", "cpuPercent"));
 		model.Memory.Add(Number(json, "process", "workingSetBytes") / 1_048_576);
-		model.Heap.Add(Number(json, "gc", "heapBytes") / 1_048_576);
 		model.Allocations.Add(Number(json, "gc", "allocatedBytesPerSecond") / 1_048_576);
 		model.UsersOnline.Add(Number(json, "application", "usersOnline"));
 		model.Rooms.Add(Number(json, "application", "rooms"));
