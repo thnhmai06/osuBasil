@@ -30,7 +30,7 @@ namespace Basil.Host.Cli.Dashboard.Tabs;
 /// </summary>
 internal sealed class SettingsTab : ITabView
 {
-	private const string StripHelp = "Down or Enter goes to the settings of the category; Left and Right change the category.";
+	private const string StripHelp = "Down or Enter goes to the settings of the tab; Left and Right change the tab.";
 	private const string NotNumber = "Enter a number.";
 
 	private readonly Group _content = new();

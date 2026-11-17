@@ -55,7 +55,7 @@ public enum DashboardTab : byte
 	/// <summary>The log and the command box.</summary>
 	Console,
 
-	/// <summary>The graphs of the machine and the server.</summary>
+	/// <summary>The graphs of the server.</summary>
 	Monitor,
 
 	/// <summary>The accounts.</summary>
@@ -119,24 +119,6 @@ public sealed class DashboardModel
 	/// <summary>Gets the allocation rate, in megabytes per second.</summary>
 	public Series Allocations { get; } = new(HistorySeconds);
 
-	/// <summary>Gets the CPU use of the whole machine, in percent of all cores.</summary>
-	public Series MachineCpu { get; } = new(HistorySeconds);
-
-	/// <summary>Gets the memory used on the whole machine, in gigabytes.</summary>
-	public Series MachineMemory { get; } = new(HistorySeconds);
-
-	/// <summary>Gets the working set of the process, in gigabytes.</summary>
-	public Series ProcessMemory { get; } = new(HistorySeconds);
-
-	/// <summary>Gets the memory of the whole machine, in gigabytes.</summary>
-	public double MachineMemoryTotal { get; set; }
-
-	/// <summary>Gets the network traffic sent by the machine, in megabytes per second.</summary>
-	public Series NetworkSent { get; } = new(HistorySeconds);
-
-	/// <summary>Gets the network traffic received by the machine, in megabytes per second.</summary>
-	public Series NetworkReceived { get; } = new(HistorySeconds);
-
 	/// <summary>Gets the connections open, of every kind together.</summary>
 	public Series ConnectionsOpen { get; } = new(HistorySeconds);
 
@@ -149,9 +131,6 @@ public sealed class DashboardModel
 
 	/// <summary>Gets how long a poll or an IRC line takes, by protocol (<c>stable</c>, <c>irc</c>, <c>api</c>).</summary>
 	public IReadOnlyDictionary<string, Latency> Latencies { get; set; } = new Dictionary<string, Latency>();
-
-	/// <summary>Gets the busy part of each core, from 0 to 100.</summary>
-	public double[] Cores { get; set; } = [];
 
 	/// <summary>Gets the connections online by kind.</summary>
 	public IReadOnlyDictionary<string, int> Sessions { get; set; } = new Dictionary<string, int>();

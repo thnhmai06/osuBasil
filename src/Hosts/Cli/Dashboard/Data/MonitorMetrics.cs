@@ -29,8 +29,7 @@ internal static class MonitorMetrics
 		["irc"] = "IRC",
 		["events"] = "Event queue",
 		["sessions"] = "Sessions",
-		["connections"] = "Connections",
-		["machine"] = "Machine"
+		["connections"] = "Connections"
 	};
 
 	private static readonly IReadOnlyDictionary<string, string> Groups = new Dictionary<string, string>
@@ -179,14 +178,7 @@ internal static class MonitorMetrics
 			"How many connections of this kind were closed because the client sent nothing for too long.", Alarm: true),
 		["connections.*.errors"] = new("Lost", MetricUnit.Count,
 			"How many connections of this kind were closed because the transport was lost, such as a dropped network.",
-			Alarm: true),
-		["machine.totalMemoryBytes"] = new("Memory total", MetricUnit.Bytes, "Memory of the whole machine."),
-		["machine.usedMemoryBytes"] = new("Memory used", MetricUnit.Bytes,
-			"Memory in use on the whole machine, every program counted. Near the total means the machine may start to swap."),
-		["machine.networkSentBytesPerSecond"] = new("Network sent", MetricUnit.Bytes,
-			"Data the machine sent over the network over the last second, loopback excluded."),
-		["machine.networkReceivedBytesPerSecond"] = new("Network received", MetricUnit.Bytes,
-			"Data the machine received over the network over the last second, loopback excluded.")
+			Alarm: true)
 	};
 
 	/// <summary>Gets the title of a category.</summary>

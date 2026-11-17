@@ -15,7 +15,6 @@ namespace Basil.Host.Cli.Dashboard.Data;
 /// <summary>Reads the server once a second into the dashboard's model, from the same sample the HTTP diagnostics stream.</summary>
 public sealed class DashboardSampler(IServiceProvider services, DashboardModel model, TimeProvider clock)
 {
-	private readonly CoreUsage _cores = new();
 	private readonly ExceptionWindow _exceptions = new();
 
 	/// <summary>Takes one sample and updates the model.</summary>
@@ -36,14 +35,6 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		model.UsersOnline.Add(Number(json, "application", "usersOnline"));
 		model.Rooms.Add(Number(json, "application", "rooms"));
 		model.Requests.Add(RequestsPerSecond(json));
-		model.Cores = _cores.Read();
-		model.MachineCpu.Add(model.Cores.Length == 0 ? 0 : model.Cores.Average());
-		const double gigabyte = 1_073_741_824;
-		model.MachineMemory.Add(Number(json, "machine", "usedMemoryBytes") / gigabyte);
-		model.ProcessMemory.Add(Number(json, "process", "workingSetBytes") / gigabyte);
-		model.MachineMemoryTotal = Number(json, "machine", "totalMemoryBytes") / gigabyte;
-		model.NetworkSent.Add(Number(json, "machine", "networkSentBytesPerSecond") / 1_048_576);
-		model.NetworkReceived.Add(Number(json, "machine", "networkReceivedBytesPerSecond") / 1_048_576);
 		model.Sessions = SessionCounts(json);
 		model.ConnectionsOpen.Add(model.Sessions.Values.Sum());
 		foreach (var kind in DashboardModel.ConnectionKinds)
@@ -176,48 +167,6 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 					? Math.Round(number, 2).ToString(CultureInfo.InvariantCulture)
 					: node?.ToJsonString().Trim('"') ?? "-"));
 				break;
-		}
-	}
-}
-
-/// <summary>
-///     Reads the busy part of each core of the machine; only Linux publishes it (<c>/proc/stat</c>), elsewhere there
-///     is no list.
-/// </summary>
-public sealed class CoreUsage
-{
-	private (long Busy, long Total)[] _last = [];
-
-	/// <summary>Reads the busy part of each core since the last reading, from 0 to 100.</summary>
-	public double[] Read()
-	{
-		if (!OperatingSystem.IsLinux() || !File.Exists("/proc/stat")) return [];
-
-		try
-		{
-			var current = File.ReadLines("/proc/stat").Where(line =>
-					line.StartsWith("cpu", StringComparison.Ordinal) && line.Length > 3 && char.IsDigit(line[3]))
-				.Select(line =>
-				{
-					var fields = line.Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(long.Parse)
-						.ToArray();
-					var total = fields.Sum();
-					var idle = fields[3] + (fields.Length > 4 ? fields[4] : 0);
-					return (Busy: total - idle, Total: total);
-				}).ToArray();
-			var result = current.Select((core, index) =>
-			{
-				if (index >= _last.Length) return 0d;
-
-				var total = core.Total - _last[index].Total;
-				return total <= 0 ? 0d : 100d * (core.Busy - _last[index].Busy) / total;
-			}).ToArray();
-			_last = current;
-			return result;
-		}
-		catch (Exception exception) when (exception is IOException or FormatException or UnauthorizedAccessException)
-		{
-			return [];
 		}
 	}
 }

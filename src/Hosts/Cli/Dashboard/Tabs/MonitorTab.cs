@@ -13,16 +13,29 @@ using XenoAtom.Terminal.UI.Styling;
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
 /// <summary>
-///     The machine and the server: eight graphs over the last fifteen minutes, a box of measurements for each category
-///     under them, and at the end of the page the explanation of the measurement that is selected. The whole page
+///     The server: eight graphs over the last fifteen minutes with their current values inside, a box of the other
+///     measurements for each category under them, and at the end of the page the explanation of the measurement that is selected. The whole page
 ///     scrolls; the graphs and the boxes stand in the same columns.
 /// </summary>
 internal sealed class MonitorTab : ITabView
 {
 	private const int WarningPercent = 70;
 	private const int ErrorPercent = 90;
+
+	// The categories whose measurements all stand inside the graphs, so they get no box.
+	private static readonly string[] GraphCategories = ["stable", "irc", "sessions"];
+
+	// The measurements that stand inside a graph and so are left out of the boxes.
+	private static readonly string[] GraphMeasurements =
+	[
+		"process.cpuPercent", "process.workingSetBytes", "process.privateMemoryBytes", "process.threads", "gc.heapBytes",
+		"gc.allocatedBytesPerSecond"
+	];
+
+	private static readonly string[] GraphHttpSuffixes =
+		[".requestsPerSecond", ".p50Milliseconds", ".p95Milliseconds", ".p99Milliseconds"];
 	private const int BoxHeight = 8;
-	private const int MinimumGraphHeight = 6;
+	private const int MinimumGraphHeight = 10;
 	private readonly WheelAcceleration _wheel;
 	private readonly Glyphs _glyphs;
 	private readonly DashboardModel _model;
@@ -35,6 +48,7 @@ internal sealed class MonitorTab : ITabView
 	private readonly List<GridCell> _graphCells = [];
 	private readonly List<Box> _boxes = [];
 	private readonly Dictionary<string, (string Category, MetricLine Line)> _known = [];
+	private readonly Dictionary<string, double> _numbers = [];
 	private readonly State<bool> _detailOpen = new(false);
 	private readonly State<int> _detailHeight = new(4);
 	private readonly State<int> _graphHeight = new(MinimumGraphHeight);
@@ -63,17 +77,26 @@ internal sealed class MonitorTab : ITabView
 		_noColor = options.NoColor;
 		_palette = new Palette(options.NoColor);
 		_theme = () => themes.Theme;
-		var cpu = Panel("CPU", model.MachineCpu, model.Cpu, () => 100,
-			() => $"{Percent(model.MachineCpu.Latest)} / {Percent(model.Cpu.Latest)}", Legend("Machine", "Process"));
-		var ram = Panel("RAM", model.MachineMemory, model.ProcessMemory, Total, RamHeadline, Legend("Used", "Process"));
-		var network = Panel("Network", model.NetworkReceived, model.NetworkSent,
-			() => Math.Max(Math.Max(model.NetworkReceived.Max(), model.NetworkSent.Max()) * 1.1, 0.1), NetworkHeadline,
-			Legend("Receive", "Send"));
-		var open = Open("Connections", model.ConnectionsOpen);
 		var graphs = new List<GraphPanel>
 		{
-			cpu, ram, network, open, Open("Stable", model.OpenByKind["stable"]), Open("Tourney", model.OpenByKind["stabletourney"]),
-			Open("IRC", model.OpenByKind["irc"]), Open("API", model.OpenByKind["api"])
+			Panel("CPU", model.Cpu, null, () => 100,
+				[() => Pair("Use", Percent(model.Cpu.Latest)), () => Pair("Threads", Plain(Number("process.threads")))],
+				Legend("Process", null)),
+			Panel("RAM", model.Memory, null, () => Math.Max(model.Memory.Max() * 1.1, 1),
+				[() => Pair("In use", Measure("process.workingSetBytes")), () => Pair("Private", Measure("process.privateMemoryBytes"))],
+				Legend("Process", null)),
+			Panel("Heap", model.Heap, null, () => Math.Max(model.Heap.Max() * 1.1, 1),
+				[() => Pair("Heap", Measure("gc.heapBytes")), () => Pair("Allocated", $"{Measure("gc.allocatedBytesPerSecond")}/s")],
+				Legend("Managed heap", null)),
+			Panel("Connections", model.ConnectionsOpen, null, () => Math.Max(model.ConnectionsOpen.Max() * 1.1, 1),
+				[() => Pair("Open", Plain(model.ConnectionsOpen.Latest)),
+					() => $"{Pair("Stable", Plain(Open("stable")))}  {Pair("Tourney", Plain(Open("stabletourney")))}",
+					() => $"{Pair("IRC", Plain(Open("irc")))}  {Pair("API", Plain(Open("api")))}"], Legend("Open", null)),
+			Protocol("Stable", "stable", "polls", () => Number("stable.requestsPerSecond"), "stable"),
+			Panel("Tourney", model.OpenByKind["stabletourney"], null, () => Math.Max(model.OpenByKind["stabletourney"].Max() * 1.1, 1),
+				[() => Pair("Clients", Plain(Open("stabletourney")))], Legend("Clients", null)),
+			Protocol("IRC", "irc", "lines", () => Number("irc.requestsPerSecond"), "irc"),
+			Protocol("API", "api", "requests", () => model.Requests.Latest, "api")
 		};
 		foreach (var graph in graphs)
 		{
@@ -82,7 +105,7 @@ internal sealed class MonitorTab : ITabView
 			_page.Cells.Add(cell);
 		}
 
-		foreach (var category in DiagnosticsSample.Categories) AddBox(category);
+		foreach (var category in DiagnosticsSample.Categories.Where(category => !GraphCategories.Contains(category))) AddBox(category);
 
 		var style = glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Single;
 		_detail = new Group(new Markup(() => _detailTitle.Value)).Style(style).Padding(new Thickness(1, 0, 1, 0))
@@ -167,7 +190,11 @@ internal sealed class MonitorTab : ITabView
 	{
 		_seen = _model.Diagnostics;
 		foreach (var panel in _panels) panel.Refresh();
-		var items = _model.Diagnostics.ToLookup(line => line.Name.Split('.')[0]);
+		_numbers.Clear();
+		foreach (var (name, value) in _model.Diagnostics)
+			if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) _numbers[name] = number;
+
+		var items = _model.Diagnostics.Where(line => !InGraph(line.Name)).ToLookup(line => line.Name.Split('.')[0]);
 		foreach (var category in items.Select(group => group.Key).Where(key => _boxes.All(box => box.Category != key)))
 			AddBox(category);
 
@@ -303,18 +330,23 @@ internal sealed class MonitorTab : ITabView
 		_detailText.Value = string.Join('\n', lines);
 	}
 
-	private GraphPanel Panel(string title, Series primary, Series? secondary, Func<double> ceiling, Func<string> headline,
-		string legend)
+	private GraphPanel Panel(string title, Series primary, Series? secondary, Func<double> ceiling,
+		IReadOnlyList<Func<string>> info, string legend)
 	{
-		var panel = new GraphPanel(title, primary, secondary, ceiling, headline, legend, _theme, _glyphs, _noColor);
+		var panel = new GraphPanel(title, primary, secondary, ceiling, info, legend, _theme, _glyphs, _noColor);
 		_panels.Add(panel);
 		return panel;
 	}
 
-	private GraphPanel Open(string title, Series series)
+	// A graph of the clients of one protocol: how many, how busy, and how long a request takes.
+	private GraphPanel Protocol(string title, string kind, string unit, Func<double> rate, string latency)
 	{
+		var series = _model.OpenByKind[kind];
+		var times = () => _model.Latencies.GetValueOrDefault(latency);
 		return Panel(title, series, null, () => Math.Max(series.Max() * 1.1, 1),
-			() => _palette.Wrap(Ink.Accent, series.Latest.ToString("0", CultureInfo.InvariantCulture)), Legend("Open", null));
+			[() => $"{Pair("Clients", Plain(series.Latest))}  {Pair(unit, $"{rate():0.#}/s")}",
+				() => $"{Pair("p50", Time(times().P50))}  {Pair("p95", Time(times().P95))}",
+				() => Pair("p99", Time(times().P99))], Legend("Clients", null));
 	}
 
 	private string Legend(string primary, string? secondary)
@@ -325,14 +357,43 @@ internal sealed class MonitorTab : ITabView
 			: $"{first}   {_palette.Wrap(Ink.Accent, GraphPanel.SecondaryMark(_glyphs))} {Palette.Escape(secondary)}";
 	}
 
-	private double Total()
+	// A measurement that a graph shows is not listed again in the box of its category.
+	private static bool InGraph(string name)
 	{
-		return _model.MachineMemoryTotal > 0 ? _model.MachineMemoryTotal : Math.Max(_model.MachineMemory.Max(), 1);
+		return GraphMeasurements.Contains(name) || name.StartsWith("sessions.", StringComparison.Ordinal) ||
+		       name.StartsWith("stable.", StringComparison.Ordinal) || name.StartsWith("irc.", StringComparison.Ordinal) ||
+		       name.StartsWith("http.", StringComparison.Ordinal) && GraphHttpSuffixes.Any(name.EndsWith);
 	}
 
-	private static double Fraction(double value, double total)
+	private double Number(string key)
 	{
-		return total <= 0 ? 0 : Math.Clamp(value / total, 0, 1);
+		return _numbers.GetValueOrDefault(key);
+	}
+
+	private double Open(string kind)
+	{
+		return _model.OpenByKind[kind].Latest;
+	}
+
+	private string Measure(string key)
+	{
+		return MonitorMetrics.Show(MonitorMetrics.Of(key), Number(key).ToString(CultureInfo.InvariantCulture), _glyphs.Ascii);
+	}
+
+	private static string Time(double milliseconds)
+	{
+		return milliseconds < 10 ? $"{milliseconds:0.0} ms" : $"{milliseconds:0} ms";
+	}
+
+	private string Plain(double value)
+	{
+		return _palette.Wrap(Ink.Accent, value.ToString("0", CultureInfo.InvariantCulture));
+	}
+
+	// A label in muted text followed by its value.
+	private string Pair(string label, string value)
+	{
+		return $"{_palette.Wrap(Ink.Muted, Palette.Escape(label))} {value}";
 	}
 
 	private static Ink Threshold(double percent)
@@ -343,20 +404,6 @@ internal sealed class MonitorTab : ITabView
 	private string Percent(double value)
 	{
 		return _palette.Wrap(Threshold(value), $"{value:0} %");
-	}
-
-	private string RamHeadline()
-	{
-		var used = _model.MachineMemory.Latest;
-		var colour = Threshold(Fraction(used, Total()) * 100);
-		return $"{_palette.Wrap(colour, $"{used:0.0}")} / {_model.ProcessMemory.Latest:0.0} / {Total():0} GB";
-	}
-
-	private string NetworkHeadline()
-	{
-		var down = _glyphs.Ascii ? "v" : "↓";
-		var up = _glyphs.Ascii ? "^" : "↑";
-		return $"{down} {_model.NetworkReceived.Latest:0.0} {up} {_model.NetworkSent.Latest:0.0} MB/s";
 	}
 
 	private sealed record Box(string Category, MetricList List, GridCell Cell);

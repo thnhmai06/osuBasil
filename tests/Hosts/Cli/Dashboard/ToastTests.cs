@@ -7,6 +7,7 @@ using XenoAtom.Terminal.UI.Controls;
 namespace Basil.Host.Cli.Tests.Dashboard;
 
 /// <summary>The toasts: the same message on screen is counted, not shown twice, and no more than four show at once.</summary>
+[Collection(HostedTerminalCollection.Name)]
 public sealed class ToastTests
 {
 	private static (ToastTray Tray, Func<List<string>> Shown) Create()

@@ -4,7 +4,7 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>Every test that opens the process-wide terminal runs in this collection, one at a time.</summary>
+/// <summary>Every test that opens the process-wide terminal or builds a terminal UI tree runs in this collection, one at a time.</summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
 public sealed class HostedTerminalCollection
 {

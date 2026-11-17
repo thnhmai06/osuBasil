@@ -3,6 +3,7 @@ using Basil.Host.Cli.Dashboard.Shell;
 namespace Basil.Host.Cli.Tests.Dashboard;
 
 /// <summary>The selection of a table: it starts on the first item, below the selectable title of its group, and can return to it.</summary>
+[Collection(HostedTerminalCollection.Name)]
 public sealed class GroupedListTests
 {
 	private static GroupedList<string> Create()

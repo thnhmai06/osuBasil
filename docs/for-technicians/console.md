@@ -40,14 +40,14 @@ are listed under [Keys and mouse](#keys-and-mouse).
 | Tab      | Shows                                                                                                     |
 |----------|-----------------------------------------------------------------------------------------------------------|
 | Console  | The log written straight on the screen and, at `--console 1`, the command box                             |
-| Monitor  | CPU, memory, network and the connection graphs, then one cell per diagnostics category                    |
+| Monitor  | The server's own CPU, memory, heap and connection graphs, then one cell per diagnostics category           |
 | Users    | Accounts online and offline                                                                               |
 | Beatmaps | Beatmaps grouped by set; actions apply to the whole set                                                   |
 | Lobby    | Open rooms and the ones that ended; creators and referees manage a room from here                         |
 | Chat     | Channels, their messages since the server started, and their members; messages are sent as BasilBot       |
 | Scores   | Scores, newest first, searched with `user:<id or name> beatmap:<id or query>`                             |
 | Sessions | The open sessions of osu! stable, Tourney, IRC and the HTTP API, one group per kind                       |
-| Settings | One form per settings category, saved field by field, and the read-only configuration                     |
+| Settings | Server, Accounts and Gameplay forms saved field by field, and the read-only configuration                 |
 | About    | Version, licence and the update status, with a button to check now                                        |
 
 Sessions replaces the former Connections tab; the graphs of the connections moved to Monitor. Every action of every tab
@@ -103,13 +103,19 @@ on, and its time starts again. At most four toasts show; a click or `Esc` closes
 
 ### Settings, Monitor and the mouse wheel
 
-Settings has a one-line search above the fields that filters inside the category in view. Fields are grouped by the
+Settings has four tabs: Server (General, Cors, Uploads), Accounts (Accounts, Locks, Sessions, Rate limits), Gameplay
+(Beatmaps, Multiplayer, Bot) and Configuration. Each settings category is a foldable group inside its tab. Configuration
+lists the application configuration grouped by section, then the environment variables in one last group (sub-grouped by
+the `DOTNET_` and `ASPNETCORE_` prefixes); values of secrets are hidden. A one-line search above the fields filters
+inside the tab in view. Fields are grouped by the
 object they belong to, with names relative to the group (`Lockout time` under `Login`, not `Login: lockout time`), and a
 fixed frame explains the field in focus.
 
-Monitor holds the whole page in one scrolling view: four graphs on the first row (CPU, memory, network, connections), the
-four connection graphs (Stable, Tourney, IRC, API) on the second, then a grid of categories whose cells are all 8 rows
-high and scroll inside. Choosing a metric shows its explanation in a fixed frame at the bottom. The exceptions of the last
+Monitor reports the server only, not the machine. It holds the whole page in one scrolling view: four graphs on the first
+row (CPU, RAM, heap, connections), the four connection graphs (Stable, Tourney, IRC, API) on the second, then a grid of
+categories whose cells are all 8 rows high and scroll inside. Every graph shows its current values on its first lines and
+its legend on the last one, inside the box; the measurements a graph shows (clients, polls per second, p50/p95/p99,
+requests per second, process CPU and memory) are not repeated in the grid. Choosing a metric shows its explanation in a fixed frame at the bottom. The exceptions of the last
 minute are one metric: up to ten types, the most frequent first, equal types merged as `Type ×N`.
 
 The mouse wheel accelerates: notches that follow each other quickly move more rows each, and a pause starts again from

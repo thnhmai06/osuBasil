@@ -8,11 +8,14 @@ using XenoAtom.Terminal.UI.Styling;
 namespace Basil.Host.Cli.Dashboard.Shell;
 
 /// <summary>
-///     A rounded panel that shows the graph of one or two series with the current value and a legend on its border; the
-///     graph is drawn again for the size the panel has now.
+///     A rounded panel that shows the graph of one or two series: the current values on the first lines inside the
+///     border, then the graph, then the legend on the last line; the graph is drawn again for the size the panel has now.
 /// </summary>
 internal sealed class GraphPanel
 {
+	/// <summary>How many lines of current values every panel reserves, so that all panels have the same size.</summary>
+	public const int InfoLines = 3;
+
 	private static readonly int[,] DotBits = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
 
 	private readonly Func<double> _ceiling;
@@ -28,14 +31,13 @@ internal sealed class GraphPanel
 	/// <param name="primary">The series drawn as a filled area.</param>
 	/// <param name="secondary">The series drawn as a dotted line over it, or <see langword="null" />.</param>
 	/// <param name="ceiling">The value that reaches the top of the graph.</param>
-	/// <param name="headline">The big current value, as markup.</param>
-	/// <param name="legend">The legend line, as markup; empty for none.</param>
+	/// <param name="info">The lines of current values, as markup, at most <see cref="InfoLines" />.</param>
+	/// <param name="legend">The legend line, as markup.</param>
 	/// <param name="theme">The theme that colours the graph.</param>
 	/// <param name="glyphs">Tells whether the graph stays in ASCII.</param>
 	/// <param name="noColor">Whether the graph is monochrome.</param>
-	/// <param name="framed">Whether the panel has its own border; without it the panel goes inside another frame.</param>
-	public GraphPanel(string title, Series primary, Series? secondary, Func<double> ceiling, Func<string> headline,
-		string legend, Func<Theme> theme, Glyphs glyphs, bool noColor, bool framed = true)
+	public GraphPanel(string title, Series primary, Series? secondary, Func<double> ceiling,
+		IReadOnlyList<Func<string>> info, string legend, Func<Theme> theme, Glyphs glyphs, bool noColor)
 	{
 		_primary = primary;
 		_secondary = secondary;
@@ -48,29 +50,24 @@ internal sealed class GraphPanel
 			_ = _version.Value;
 			return new Delegator<Action<CanvasContext>>(Paint);
 		}).Stretch();
-		var headlineText = new Markup(() =>
+		var grid = new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() });
+		var rows = new List<RowDefinition>();
+		for (var i = 0; i < InfoLines; i++)
 		{
-			_ = _version.Value;
-			return headline();
-		});
-		var legendText = new Markup(legend);
-		if (framed)
-		{
-			// The headline and the legend sit on the border, so that the whole inside is the graph.
-			View = new Group(title).Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
-				.TopRightText(headlineText).BottomLeftText(legendText)
-				.Padding(new Thickness(1, 0, 1, 0)).Content(canvas).Stretch();
-			return;
+			var read = i < info.Count ? info[i] : () => string.Empty;
+			grid.Cell(new Markup(() =>
+			{
+				_ = _version.Value;
+				return read();
+			}).MaxHeight(1), i, 0);
+			rows.Add(new RowDefinition { Height = GridLength.Fixed(1) });
 		}
 
-		View = new Grid()
-			.Columns(new ColumnDefinition { Width = GridLength.Star() })
-			.Rows(new RowDefinition { Height = GridLength.Auto }, new RowDefinition { Height = GridLength.Star() },
-				new RowDefinition { Height = GridLength.Auto })
-			.Cell(headlineText.HorizontalAlignment(Align.End), 0, 0)
-			.Cell(canvas, 1, 0)
-			.Cell(legendText, 2, 0)
-			.Stretch();
+		grid.Cell(canvas, InfoLines, 0).Cell(new Markup(legend).MaxHeight(1), InfoLines + 1, 0);
+		rows.Add(new RowDefinition { Height = GridLength.Star() });
+		rows.Add(new RowDefinition { Height = GridLength.Fixed(1) });
+		View = new Group(title).Style(glyphs.Ascii ? GroupStyle.Ascii : GroupStyle.Rounded)
+			.Padding(new Thickness(1, 0, 1, 0)).Content(grid.Rows([.. rows])).Stretch();
 	}
 
 	/// <summary>Gets the panel.</summary>
