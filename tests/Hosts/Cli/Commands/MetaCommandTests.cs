@@ -111,6 +111,24 @@ public sealed class MetaCommandTests(CliFixture fixture)
 	}
 
 	[Fact]
+	public async Task HelpSubcommand_ShowsOnlyThatCommand()
+	{
+		var (code, text) = await fixture.RunAsync("help rooms create");
+
+		Assert.Equal(0, code);
+		Assert.Contains("rooms create", text);
+		Assert.DoesNotContain("rooms list", text);
+	}
+
+	[Fact]
+	public async Task HelpTopic_DoesNotTellWhetherTheServerMustRun()
+	{
+		var (_, text) = await fixture.RunAsync("help rooms");
+
+		Assert.DoesNotContain("server stopped", text);
+	}
+
+	[Fact]
 	public async Task Status_VersionUptimeCounts()
 	{
 		var (code, text) = await fixture.RunAsync("status");

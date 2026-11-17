@@ -54,6 +54,12 @@ internal static class MetaCommands
 		};
 		yield return new CommandDef
 		{
+			Pattern = "help <topic> <command>", Offline = true, NeedsStorage = false,
+			Summary = "Shows the syntax, options and API route of the commands that start with these words.",
+			Run = call => HelpAsync(call, catalog(), [call.Word("topic"), call.Word("command")])
+		};
+		yield return new CommandDef
+		{
 			Pattern = "status", Summary = "Shows the version, the uptime, the connections online and the rooms.",
 			Run = StatusAsync
 		};
@@ -87,10 +93,10 @@ internal static class MetaCommands
 	{
 		var commands = topic.Count == 0
 			? catalog.All
-			: [.. catalog.All.Where(command => command.Words[0].Equals(topic[0], StringComparison.OrdinalIgnoreCase))];
+			: [.. catalog.All.Where(command => Starts(command, topic))];
 		if (commands.Count == 0)
 		{
-			call.Output.Error("notFound", $"No such command: {topic[0]}.");
+			call.Output.Error("notFound", $"No such command: {string.Join(' ', topic)}.");
 			return Task.FromResult(ExitCodes.Refused);
 		}
 
@@ -110,11 +116,17 @@ internal static class MetaCommands
 			call.Output.Line($"{command.Pattern}{options}");
 			call.Output.Line($"  {command.Summary}");
 			if (command.AllRoutes.Any()) call.Output.Line($"  api: {string.Join(", ", command.AllRoutes)}");
-			call.Output.Line($"  runs with the server stopped: {(command.Offline ? "yes" : "no")}");
 			foreach (var option in command.Options) call.Output.Line($"  --{option.Name}  {option.Description}");
 		}
 
 		return Task.FromResult(ExitCodes.Success);
+	}
+
+	// A word of the topic matches the same word of the command, or any value where the command takes a parameter.
+	private static bool Starts(CommandDef command, IReadOnlyList<string> topic)
+	{
+		return command.Words.Length >= topic.Count && topic.Select((word, i) => CommandDef.IsParameter(command.Words[i]) ||
+			command.Words[i].Equals(word, StringComparison.OrdinalIgnoreCase)).All(match => match);
 	}
 
 	private static Task<int> StatusAsync(CommandCall call)
