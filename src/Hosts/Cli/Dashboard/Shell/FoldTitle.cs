@@ -17,14 +17,17 @@ internal sealed partial class FoldTitle : Visual
 	private readonly Glyphs _glyphs;
 	private readonly bool _noColor;
 	private readonly string _name;
+	private readonly int _indent;
 
 	/// <summary>Creates the title.</summary>
 	/// <param name="name">The name of the group; its first letter is shown in capital.</param>
 	/// <param name="glyphs">The characters to draw with.</param>
 	/// <param name="noColor">Whether the title is monochrome.</param>
-	public FoldTitle(string name, Glyphs glyphs, bool noColor)
+	/// <param name="indent">How many columns the title is moved to the right, for a group inside a group.</param>
+	public FoldTitle(string name, Glyphs glyphs, bool noColor, int indent = 0)
 	{
 		_name = name;
+		_indent = indent;
 		_glyphs = glyphs;
 		_noColor = noColor;
 		Focusable = true;
@@ -53,6 +56,7 @@ internal sealed partial class FoldTitle : Visual
 		var rect = Bounds;
 		if (rect.Width <= 0 || rect.Height <= 0) return;
 
+		if (_indent > 0) rect = new Rectangle(rect.X + _indent, rect.Y, Math.Max(rect.Width - _indent, 0), rect.Height);
 		GroupTitle.Draw(buffer, rect, rect.Y, _glyphs, _noColor, GetTheme(), _name, Count.ToString(), Open, HasFocus);
 	}
 

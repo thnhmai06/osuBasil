@@ -18,9 +18,6 @@ public sealed record CliOptions(ConsoleLevel Console, bool NoColor = false, bool
 {
 	/// <summary>Gets whether the dashboard is shown.</summary>
 	public bool HasDashboard => Console != ConsoleLevel.Log;
-
-	/// <summary>Gets whether the dashboard may change the server; always true while the dashboard has no view-only mode.</summary>
-	public bool Editable => true;
 }
 
 /// <summary>Thrown when a display argument is not one the server knows.</summary>

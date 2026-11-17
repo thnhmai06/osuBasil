@@ -60,12 +60,6 @@ internal sealed class ConsoleTab
 		_logger = logger;
 		_log = WheelScroll.Accelerate(new LogControl { MaxCapacity = 500 }.WrapText(true), clock);
 		var follow = JumpToEndButton.Over(_log, glyphs, JumpToEnd);
-		if (!options.Editable)
-		{
-			View = follow;
-			return;
-		}
-
 		Prompt = new PromptEditor()
 			.LineMode(PromptEditorLineMode.SingleLine)
 			.PromptMarkup($"[cyan]{XenoAtom.Ansi.AnsiMarkup.Escape(glyphs.Prompt)}[/] ")
@@ -96,8 +90,8 @@ internal sealed class ConsoleTab
 	/// <summary>Gets what the tab shows.</summary>
 	public Visual View { get; }
 
-	/// <summary>Gets the command box, or <see langword="null" /> when the console cannot change the server.</summary>
-	public PromptEditor? Prompt { get; }
+	/// <summary>Gets the command box.</summary>
+	public PromptEditor Prompt { get; }
 
 	/// <summary>Connects the tab to the running application.</summary>
 	public void Attach(TerminalApp app)
@@ -109,7 +103,7 @@ internal sealed class ConsoleTab
 	/// <summary>Gives the focus to the command box; call it when the tab comes into view.</summary>
 	public void Activate()
 	{
-		if (Prompt is not null) _app?.Focus(Prompt);
+		_app?.Focus(Prompt);
 	}
 
 	/// <summary>Stops the commands the tab still runs.</summary>
@@ -121,12 +115,12 @@ internal sealed class ConsoleTab
 	/// <summary>Moves the lines logged since the last call into the log control.</summary>
 	public void Pump()
 	{
-		if (Prompt is not null && (Prompt.Text ?? string.Empty) is var text && text != _lastText)
+		if ((Prompt.Text ?? string.Empty) is var text && text != _lastText)
 		{
 			_lastText = text;
 			Suggest(false);
 		}
-		else if (Prompt is not null && Prompt.CaretIndex != _lastCaret && _popupOpen.Value)
+		else if (Prompt.CaretIndex != _lastCaret && _popupOpen.Value)
 		{
 			Suggest(false);
 		}
@@ -145,7 +139,7 @@ internal sealed class ConsoleTab
 	/// <summary>Clears the command box.</summary>
 	public void ClearPrompt()
 	{
-		Prompt?.Text = string.Empty;
+		Prompt.Text = string.Empty;
 	}
 
 	private string Format(LogLine line)
@@ -195,8 +189,8 @@ internal sealed class ConsoleTab
 			return;
 		}
 
-		var line = Prompt?.Text?.Trim() ?? string.Empty;
-		Prompt?.Text = string.Empty;
+		var line = Prompt.Text?.Trim() ?? string.Empty;
+		Prompt.Text = string.Empty;
 		if (line.Length == 0) return;
 
 		var shown = Redactor.Redact(_runner.Catalog, line);
@@ -265,8 +259,8 @@ internal sealed class ConsoleTab
 	// The popup above the command box: the words that fit the end of the typed line, with what each does.
 	private void Suggest(bool force)
 	{
-		var text = Prompt?.Text ?? string.Empty;
-		_lastCaret = Prompt?.CaretIndex ?? 0;
+		var text = Prompt.Text ?? string.Empty;
+		_lastCaret = Prompt.CaretIndex;
 		var before = text[..Math.Clamp(_lastCaret, 0, text.Length)];
 		if (before.Length == 0 || (!force && (text == _closedAt || _past.Contains(text))))
 		{
@@ -303,7 +297,7 @@ internal sealed class ConsoleTab
 	{
 		_items = [];
 		_popupOpen.Value = false;
-		_closedAt = Prompt?.Text ?? string.Empty;
+		_closedAt = Prompt.Text ?? string.Empty;
 	}
 
 	private void ShowPopup()
@@ -341,7 +335,7 @@ internal sealed class ConsoleTab
 
 	private void AcceptAt(int index)
 	{
-		if (Prompt is null || index < 0 || index >= _items.Count) return;
+		if (index < 0 || index >= _items.Count) return;
 
 		var text = Prompt.Text ?? string.Empty;
 		var head = text[.._replaceStart];
@@ -401,8 +395,6 @@ internal sealed class ConsoleTab
 	// Up and Down with the popup closed walk through the commands run before.
 	private void Recall(int delta)
 	{
-		if (Prompt is null) return;
-
 		_pastIndex = Math.Clamp(_pastIndex + delta, 0, _past.Count);
 		var text = _pastIndex < _past.Count ? _past[_pastIndex] : string.Empty;
 		_closedAt = text;
@@ -414,7 +406,7 @@ internal sealed class ConsoleTab
 
 	private bool EndsWith(string word)
 	{
-		var text = Prompt?.Text ?? string.Empty;
+		var text = Prompt.Text ?? string.Empty;
 		return text.EndsWith(word, StringComparison.OrdinalIgnoreCase) && _replaceStart + word.Length == text.Length;
 	}
 

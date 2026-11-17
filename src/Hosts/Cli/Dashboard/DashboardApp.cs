@@ -202,14 +202,14 @@ public sealed class DashboardApp
 		switch (Tab)
 		{
 			case DashboardTab.Chat:
-				if (_mode.Editable) items.Add(("Enter send", null));
+				items.Add(("Enter send", null));
 				items.AddRange([("Tab pane", null), ("Ctrl+B members", null), ("Esc/Alt+← back", null)]);
 				break;
 			case DashboardTab.Settings:
 				items.AddRange([("←→ category", null), ("↓ search", null), ("↑↓ select", null), ("←→ fold", null), ("Enter save", null), ("Esc back", null)]);
 				break;
 			case DashboardTab.Console:
-				if (_mode.Editable) items.AddRange([("Enter run", null), ("Tab/↑↓ complete", null), ("Esc close", null)]);
+				items.AddRange([("Enter run", null), ("Tab/↑↓ complete", null), ("Esc close", null)]);
 				break;
 			default:
 				if (searchable is not null)
@@ -218,7 +218,6 @@ public sealed class DashboardApp
 				break;
 		}
 
-		if (!_mode.Editable) items.Add(("view only", null));
 		var bar = new HStack().Spacing(0);
 		bar.Add(new HoverLabel(" ", null));
 		for (var i = 0; i < items.Count; i++)
@@ -301,7 +300,7 @@ public sealed class DashboardApp
 		app.AddGlobalCommand(new Command
 		{
 			Id = "interrupt", LabelMarkup = "Interrupt", Gesture = new KeyGesture(TerminalChar.CtrlC, TerminalModifiers.Ctrl),
-			Execute = _ => _shutdown.Interrupt(!string.IsNullOrEmpty(_console.Prompt?.Text))
+			Execute = _ => _shutdown.Interrupt(!string.IsNullOrEmpty(_console.Prompt.Text))
 		});
 		app.AddGlobalCommand(new Command
 		{
@@ -320,7 +319,7 @@ public sealed class DashboardApp
 		};
 		app.AddGlobalCommand(refresh);
 		// The command box takes Ctrl+R for itself, so it needs the command too.
-		_console.Prompt?.AddCommand(refresh);
+		_console.Prompt.AddCommand(refresh);
 		foreach (var (id, key, step) in new[] { ("tab.previous", TerminalKey.Left, -1), ("tab.next", TerminalKey.Right, 1) })
 			app.AddGlobalCommand(new Command
 			{

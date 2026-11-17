@@ -55,7 +55,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private readonly ILogger _logger;
 	private readonly GroupedList<MemberItem> _members;
 	private readonly CliOptions _options;
-	private readonly PromptEditor? _input;
+	private readonly PromptEditor _input;
 	private readonly IServiceProvider _services;
 	private readonly State<string> _title = new("Chat");
 	private readonly Func<(int Columns, int Rows)> _size;
@@ -119,18 +119,12 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_memberSearch.IsTabStop = false;
 		var left = new Group("Channels").Style(GroupStyle.Rounded)
 			.Content(new VStack(_channelSearchBox.Row, new ScrollViewer(_channels).IsTabStop(false).Stretch()).Spacing(0)).Stretch();
-		var rows = new List<RowDefinition> { new() { Height = GridLength.Star() } };
-		var middle = new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() });
-		if (options.Editable)
-		{
-			_input = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
-				.Placeholder("Chatting as BasilBot").Accepted(Send);
-			rows.Add(new RowDefinition { Height = GridLength.Auto });
-		}
-
+		_input = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
+			.Placeholder("Chatting as BasilBot").Accepted(Send);
 		_log.IsTabStop = false;
-		middle.Rows([.. rows]).Cell(JumpToEndButton.Over(_log, glyphs, JumpToEnd), 0, 0);
-		if (_input is not null) middle.Cell(_input, 1, 0);
+		var middle = new Grid().Columns(new ColumnDefinition { Width = GridLength.Star() })
+			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
+			.Cell(JumpToEndButton.Over(_log, glyphs, JumpToEnd), 0, 0).Cell(_input, 1, 0);
 		var center = new Group().Style(GroupStyle.Rounded).Content(middle).TopLeftText(() => _title.Value).Stretch();
 		var right = new Group("Members").Style(GroupStyle.Rounded)
 			.Content(new VStack(_memberSearchBox.Row, new ScrollViewer(_members).IsTabStop(false).Stretch()).Spacing(0)).Stretch()
@@ -329,8 +323,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	{
 		if (_app is null) return;
 
-		if (_input is not null) _app.Focus(_input);
-		else _app.Focus(_channels);
+		_app.Focus(_input);
 	}
 
 	private void FocusDefault()
@@ -429,7 +422,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			new ColumnDefinition { Width = Width(members, narrow ? 1 : 3) });
 		if (_app is null) return;
 
-		if (center && _input is not null) _app.Focus(_input);
+		if (center) _app.Focus(_input);
 		else if (left) _app.Focus(_channels);
 	}
 
@@ -509,7 +502,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 
 	private void Send()
 	{
-		var text = _input?.Text?.Trim() ?? string.Empty;
+		var text = _input.Text?.Trim() ?? string.Empty;
 		if (text.Length == 0 || _current.Length == 0) return;
 
 		var channel = _current;
@@ -551,7 +544,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				Report(channel, "The message could not be sent; see the log.");
 			}
 		});
-		_input?.Text = string.Empty;
+		_input.Text = string.Empty;
 	}
 
 	// Tells the operator in the conversation that a message did not go out; it is not part of the chat itself.

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
+using System.Collections;
 using Group = XenoAtom.Terminal.UI.Controls.Group;
 using Basil.Application.Servers.Messages;
 using Basil.Application.Users.Registry;
@@ -24,17 +24,14 @@ using XenoAtom.Terminal.UI.Styling;
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
 /// <summary>
-///     The server settings: a strip of categories, one form per category with a search box and fields grouped under
-///     foldable titles that saves each field when the operator presses Enter or leaves it, the description of the field
-///     in focus beside it, and a read-only page of the configuration files.
+///     The server settings: a strip of pages, one form per page with a search box and the categories of the page as
+///     foldable groups (their own groups inside them) that saves each field when the operator presses Enter or leaves
+///     it, the description of the field in focus beside it, and a read-only page of the configuration.
 /// </summary>
-internal sealed partial class SettingsTab : ITabView
+internal sealed class SettingsTab : ITabView
 {
-	private const string Configuration = "Configuration";
 	private const string StripHelp = "Down or Enter goes to the settings of the category; Left and Right change the category.";
 	private const string NotNumber = "Enter a number.";
-
-	private static readonly Regex Secret = SecretPattern();
 
 	private readonly Group _content = new();
 	private readonly ConsoleTab _console;
@@ -58,7 +55,7 @@ internal sealed partial class SettingsTab : ITabView
 	private readonly Action<Action> _post;
 	private readonly IServiceProvider _services;
 	private readonly State<int> _selected = new(0);
-	private readonly string[] _categories;
+	private readonly IReadOnlyList<(string Name, string[] Categories)> _pages = SettingsPages.All;
 	private readonly TabControl _strip;
 	private readonly TabSpread _spread;
 	private TerminalApp? _app;
@@ -80,11 +77,10 @@ internal sealed partial class SettingsTab : ITabView
 		_post = post;
 		_logger = logger;
 		_palette = new Palette(options.NoColor);
-		_categories = [.. SettingsCategories.Names, Configuration];
 		var stripStyle = options.Ascii ? TabControlStyle.Ascii : TabControlStyle.NoBorder;
-		_strip = new TabControl(_categories.Select(name => new TabPage(Words.Humanise(name), new TextBlock(string.Empty))).ToArray())
+		_strip = new TabControl(_pages.Select(page => new TabPage(page.Name, new TextBlock(string.Empty))).ToArray())
 			.Style(stripStyle).SelectedIndex(_selected);
-		_spread = new TabSpread(_strip, stripStyle, _categories.Select(Words.Humanise));
+		_spread = new TabSpread(_strip, stripStyle, _pages.Select(page => page.Name));
 		_strip.AddCommand(new Command
 		{
 			Id = "settings.strip.down", LabelMarkup = "Search", Gesture = new KeyGesture(TerminalKey.Down),
@@ -178,7 +174,7 @@ internal sealed partial class SettingsTab : ITabView
 			{
 				anyFocused = true;
 				_title.Value = field.Label;
-				_path.Value = _palette.Wrap(Ink.Muted, $"{Category}.{field.Path}");
+				_path.Value = _palette.Wrap(Ink.Muted, $"{field.Category}.{field.Path}");
 				_description.Value = field.Description;
 			}
 			else if (field.Focused)
@@ -193,7 +189,7 @@ internal sealed partial class SettingsTab : ITabView
 		if (title is not null)
 		{
 			anyFocused = true;
-			_title.Value = Words.Humanise(title.Name);
+			_title.Value = title.Display;
 			_path.Value = string.Empty;
 			_description.Value = "Enter, Left and Right open and fold the group.";
 		}
@@ -207,14 +203,14 @@ internal sealed partial class SettingsTab : ITabView
 		Load();
 	}
 
-	private string Category => _categories[Math.Clamp(_selected.Value, 0, _categories.Length - 1)];
+	private (string Name, string[] Categories) Page => _pages[Math.Clamp(_selected.Value, 0, _pages.Count - 1)];
 
 	private void ShowStripHelp()
 	{
-		_title.Value = Words.Humanise(Category);
+		_title.Value = Page.Name;
 		_path.Value = string.Empty;
-		_description.Value = Category == Configuration
-			? "Read from Configurations/appsettings.json; edit the file and restart."
+		_description.Value = Page.Name == SettingsPages.Configuration
+			? "Read from the configuration of the server; edit its files and restart."
 			: StripHelp;
 	}
 
@@ -248,11 +244,13 @@ internal sealed partial class SettingsTab : ITabView
 
 		_loaded = _selected.Value;
 		_query.Value = string.Empty;
-		var category = Category;
+		var page = Page;
 		var version = Interlocked.Increment(ref _version);
-		if (category == Configuration)
+		if (page.Name == SettingsPages.Configuration)
 		{
-			Show(version, category, ConfigurationRows());
+			var environment = Environment.GetEnvironmentVariables().Cast<DictionaryEntry>()
+				.ToDictionary(entry => (string)entry.Key, entry => entry.Value?.ToString() ?? string.Empty);
+			Show(version, page.Name, ConfigurationRows.Of(_services.GetRequiredService<IConfiguration>(), environment));
 			return;
 		}
 
@@ -265,10 +263,20 @@ internal sealed partial class SettingsTab : ITabView
 				var (_, settings) = await _services.GetRequiredService<ISender>().Send(new GetSettings(actor));
 				if (settings is null) return;
 
-				var node = JsonSerializer.SerializeToNode(SettingsCategories.Get(category, settings), ApiJson.Options);
-				var rows = new List<Row>();
-				Flatten(rows, string.Empty, node);
-				Show(version, category, rows);
+				var rows = new List<SettingsRow>();
+				foreach (var category in page.Categories)
+				{
+					var flat = new List<(string Path, string Value, SettingsFieldKind Kind)>();
+					Flatten(flat, string.Empty, JsonSerializer.SerializeToNode(SettingsCategories.Get(category, settings), ApiJson.Options));
+					rows.AddRange(flat.Select(row =>
+					{
+						var dot = row.Path.IndexOf('.');
+						return new SettingsRow(category, dot < 0 ? null : row.Path[..dot], row.Path,
+							SettingsLabels.Of($"{category}.{row.Path}") ?? row.Path, row.Value, row.Kind);
+					}));
+				}
+
+				Show(version, page.Name, rows);
 			}
 			catch (Exception exception)
 			{
@@ -277,7 +285,7 @@ internal sealed partial class SettingsTab : ITabView
 		});
 	}
 
-	private void Show(int version, string category, IReadOnlyList<Row> rows)
+	private void Show(int version, string page, IReadOnlyList<SettingsRow> rows)
 	{
 		_post(() =>
 		{
@@ -287,51 +295,46 @@ internal sealed partial class SettingsTab : ITabView
 			{
 				_fields.Clear();
 				_sections.Clear();
-				var list = new VStack().Spacing(0);
-				var readOnly = category == Configuration || !_options.Editable;
-				foreach (var (path, value, kind) in rows)
+				var readOnly = page == SettingsPages.Configuration;
+				foreach (var row in rows)
 				{
-					var (group, label) = category == Configuration ? Split(path) : (GroupOf(category, path),
-						SettingsLabels.Of($"{category}.{path}") ?? path);
-					var section = _sections.Find(s => s.Name == group);
-					if (section is null)
-					{
-						var title = new FoldTitle(Words.Humanise(group), _glyphs, _options.NoColor);
-						var created = new Section(group, title);
-						title.Folding += open => Fold(created, open);
-						AddKeys(title, $"settings.{category}.{group}");
-						_sections.Add(section = created);
-						list.Add(title);
-					}
-
+					var section = SectionOf(row);
+					var value = row.Value;
 					Visual control;
 					if (readOnly)
 						control = new TextBlock(Palette.Plain(value)).Trimming(TextTrimming.EndEllipsis);
-					else if (kind == FieldKind.Bool)
+					else if (row.Kind == SettingsFieldKind.Bool)
 						control = new Switch().IsOn(value == "true");
 					else
 						control = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
 							.Text(value);
 
-					var full = $"{category}.{path}";
-					var field = new Field(category, path, label, SettingsDescriptions.Of(full) ?? string.Empty, value, kind,
-						control);
+					var field = new Field(row.Category, row.Path, row.Label,
+						SettingsDescriptions.Of($"{row.Category}.{row.Path}") ?? string.Empty, value, row.Kind, control);
 					if (!readOnly)
 					{
 						if (control is PromptEditor editor) editor.Accepted(() => Save(field));
 						else if (control is Switch toggle) toggle.Toggled(() => Save(field));
-						AddKeys(control, $"settings.{category}.{path}");
+						AddKeys(control, $"settings.{row.Category}.{row.Path}");
 						AddEscape(field);
 						field.Editable = true;
 						_fields.Add(field);
 					}
 
 					// Every label has the width of the label column, so every row of every group lines up.
-					field.LabelBox = new TextBlock(Palette.Plain(Relative(label, group, category))).Trimming(TextTrimming.EndEllipsis)
+					var shown = row.Raw ? row.Label : Relative(row.Label, row.Group ?? row.Category, row.Category);
+					field.LabelBox = new TextBlock(Palette.Plain(shown)).Trimming(TextTrimming.EndEllipsis)
 						.Margin(new XenoAtom.Terminal.UI.Geometry.Thickness(0, 0, 1, 0));
 					field.Row = new HStack(field.LabelBox, control.Stretch()).Spacing(0);
 					section.Fields.Add(field);
-					list.Add(field.Row);
+				}
+
+				// The tree in the order it is shown: a category, its own settings, then its groups.
+				var list = new VStack().Spacing(0);
+				foreach (var section in _sections.Where(s => s.Parent is null).SelectMany(s => s.Subtree()))
+				{
+					list.Add(section.Title);
+					foreach (var field in section.Fields) list.Add(field.Row!);
 				}
 
 				_labelWidth = 0;
@@ -345,6 +348,30 @@ internal sealed partial class SettingsTab : ITabView
 				_logger.LogWarning(exception, "The settings could not be shown");
 			}
 		});
+	}
+
+	// The group of a row: its category, or a group inside the category.
+	private Section SectionOf(SettingsRow row)
+	{
+		var top = Find(row, null);
+		return row.Group is null ? top : Find(row, top);
+	}
+
+	private Section Find(SettingsRow row, Section? parent)
+	{
+		var name = parent is null ? row.Category : row.Group!;
+		var key = parent is null ? row.Category : $"{row.Category}.{row.Group}";
+		var found = _sections.Find(s => s.Key == key);
+		if (found is not null) return found;
+
+		var display = row.Raw ? name : Words.Humanise(name);
+		var title = new FoldTitle(display, _glyphs, _options.NoColor, parent is null ? 0 : 2);
+		var section = new Section(key, display, title, parent);
+		title.Folding += open => Fold(section, open);
+		AddKeys(title, $"settings.{key}");
+		parent?.Children.Add(section);
+		_sections.Add(section);
+		return section;
 	}
 
 	// The label column takes a little over half of the room of the fields, whatever the size of the terminal.
@@ -374,26 +401,11 @@ internal sealed partial class SettingsTab : ITabView
 		return rest.Length > 0 ? char.ToUpperInvariant(rest[0]) + rest[1..] : label;
 	}
 
-	// Splits a key of the configuration at its first colon: the section it belongs to and the rest of its name.
-	private static (string Group, string Label) Split(string key)
-	{
-		var colon = key.IndexOf(':');
-		return colon < 0 ? (Configuration, key) : (key[..colon], key[(colon + 1)..]);
-	}
-
-	// A setting under a nested object belongs to the group of that object; one on the category itself, to the category.
-	private static string GroupOf(string category, string path)
-	{
-		var dot = path.IndexOf('.');
-		return dot < 0 ? category : path[..dot];
-	}
-
 	private void Fold(Section section, bool open)
 	{
 		var folded = _applied.Trim().Length > 0 ? _searchClosed : _closed;
-		var key = $"{Category}.{section.Name}";
-		if (open) folded.Remove(key);
-		else folded.Add(key);
+		if (open) folded.Remove(section.Key);
+		else folded.Add(section.Key);
 		Rebuild();
 	}
 
@@ -407,20 +419,26 @@ internal sealed partial class SettingsTab : ITabView
 		var folded = searching ? _searchClosed : _closed;
 		_nav.Clear();
 		foreach (var section in _sections)
+			section.Matching = section.Fields.Where(field => !searching || field.Matches(query)).ToList();
+		foreach (var section in _sections.Where(s => s.Parent is null)) Place(section, true, folded);
+	}
+
+	private void Place(Section section, bool parentOpen, HashSet<string> folded)
+	{
+		var open = !folded.Contains(section.Key);
+		var total = section.Subtree().Sum(member => member.Matching.Count);
+		section.Title.Open = open;
+		section.Title.Count = total;
+		section.Title.IsVisible = parentOpen && total > 0;
+		if (section.Title.IsVisible) _nav.Add(section.Title);
+		foreach (var field in section.Fields)
 		{
-			var matches = section.Fields.Where(field => !searching || field.Matches(query)).ToList();
-			var open = !folded.Contains($"{Category}.{section.Name}");
-			section.Title.Open = open;
-			section.Title.Count = matches.Count;
-			section.Title.IsVisible = matches.Count > 0;
-			if (matches.Count > 0) _nav.Add(section.Title);
-			foreach (var field in section.Fields)
-			{
-				var shown = open && matches.Contains(field);
-				field.Row!.IsVisible = shown;
-				if (shown && field.Editable) _nav.Add(field.Control);
-			}
+			var shown = parentOpen && open && section.Matching.Contains(field);
+			field.Row!.IsVisible = shown;
+			if (shown && field.Editable) _nav.Add(field.Control);
 		}
+
+		foreach (var child in section.Children) Place(child, parentOpen && open, folded);
 	}
 
 	// Up and Down move between the titles and the fields, Up on the first one goes to the search box.
@@ -510,20 +528,20 @@ internal sealed partial class SettingsTab : ITabView
 	}
 
 	/// <summary>Writes what the operator typed as the JSON the command reads, or <see langword="null" /> when it is not valid for the kind.</summary>
-	private static string? ToJson(FieldKind kind, string text)
+	private static string? ToJson(SettingsFieldKind kind, string text)
 	{
 		switch (kind)
 		{
-			case FieldKind.Bool:
+			case SettingsFieldKind.Bool:
 				return text;
-			case FieldKind.Number:
+			case SettingsFieldKind.Number:
 				return decimal.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)
 					? number.ToString(CultureInfo.InvariantCulture)
 					: null;
-			case FieldKind.List:
+			case SettingsFieldKind.List:
 				return new JsonArray([.. text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 					.Select(item => (JsonNode?)JsonValue.Create(item))]).ToJsonString();
-			case FieldKind.Optional when text.Length == 0:
+			case SettingsFieldKind.Optional when text.Length == 0:
 				return "null";
 			default:
 				return JsonValue.Create(text).ToJsonString();
@@ -548,17 +566,7 @@ internal sealed partial class SettingsTab : ITabView
 		if (kind is { } shown) _kit.Toasts.Show(line.Text.Split('\n')[0].TrimEnd('\r'), shown);
 	}
 
-	private IReadOnlyList<Row> ConfigurationRows()
-	{
-		var configuration = _services.GetRequiredService<IConfiguration>();
-		return
-		[
-			.. configuration.AsEnumerable().Where(pair => pair.Value is not null).OrderBy(pair => pair.Key)
-				.Select(pair => new Row(pair.Key, Secret.IsMatch(pair.Key) ? "••••" : pair.Value!, FieldKind.Text))
-		];
-	}
-
-	private static void Flatten(List<Row> rows, string prefix, JsonNode? node)
+	private static void Flatten(List<(string Path, string Value, SettingsFieldKind Kind)> rows, string prefix, JsonNode? node)
 	{
 		switch (node)
 		{
@@ -566,57 +574,48 @@ internal sealed partial class SettingsTab : ITabView
 				foreach (var (key, value) in obj) Flatten(rows, prefix.Length == 0 ? key : $"{prefix}.{key}", value);
 				break;
 			case JsonValue value:
-				rows.Add(new Row(prefix, value.ToString(), value.GetValueKind() switch
+				rows.Add((prefix, value.ToString(), value.GetValueKind() switch
 				{
-					JsonValueKind.True or JsonValueKind.False => FieldKind.Bool,
-					JsonValueKind.Number => FieldKind.Number,
-					_ => FieldKind.Text
+					JsonValueKind.True or JsonValueKind.False => SettingsFieldKind.Bool,
+					JsonValueKind.Number => SettingsFieldKind.Number,
+					_ => SettingsFieldKind.Text
 				}));
 				break;
 			case null when prefix.Length > 0:
-				rows.Add(new Row(prefix, string.Empty, FieldKind.Optional));
+				rows.Add((prefix, string.Empty, SettingsFieldKind.Optional));
 				break;
 			case JsonArray array:
-				rows.Add(new Row(prefix, string.Join(", ", array.Select(item => item?.ToString())), FieldKind.List));
+				rows.Add((prefix, string.Join(", ", array.Select(item => item?.ToString())), SettingsFieldKind.List));
 				break;
 		}
 	}
 
-	[GeneratedRegex("password|secret|token|key|connectionstring|cert", RegexOptions.IgnoreCase)]
-	private static partial Regex SecretPattern();
-
-	/// <summary>What a setting holds, which decides how its text is written back.</summary>
-	private enum FieldKind : byte
+	private sealed class Section(string key, string display, FoldTitle title, Section? parent)
 	{
-		/// <summary>Text.</summary>
-		Text,
+		public string Key { get; } = key;
 
-		/// <summary>A number.</summary>
-		Number,
-
-		/// <summary>On or off.</summary>
-		Bool,
-
-		/// <summary>Comma-separated text that is a list.</summary>
-		List,
-
-		/// <summary>Text, or nothing.</summary>
-		Optional
-	}
-
-	private sealed record Row(string Path, string Value, FieldKind Kind);
-
-	private sealed class Section(string name, FoldTitle title)
-	{
-		public string Name { get; } = name;
+		public string Display { get; } = display;
 
 		public FoldTitle Title { get; } = title;
 
+		public Section? Parent { get; } = parent;
+
 		public List<Field> Fields { get; } = [];
+
+		public List<Section> Children { get; } = [];
+
+		public List<Field> Matching { get; set; } = [];
+
+		// This group, then each group inside it.
+		public IEnumerable<Section> Subtree()
+		{
+			yield return this;
+			foreach (var member in Children.SelectMany(child => child.Subtree())) yield return member;
+		}
 	}
 
 	private sealed class Field(string category, string path, string label, string description, string original,
-		FieldKind kind, Visual control)
+		SettingsFieldKind kind, Visual control)
 	{
 		public string Category { get; } = category;
 
@@ -626,7 +625,7 @@ internal sealed partial class SettingsTab : ITabView
 
 		public string Description { get; } = description;
 
-		public FieldKind Kind { get; } = kind;
+		public SettingsFieldKind Kind { get; } = kind;
 
 		public string Original { get; set; } = original;
 
