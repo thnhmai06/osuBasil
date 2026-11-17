@@ -9,7 +9,7 @@ internal static partial class ConfigurationRows
 	/// <summary>The name of the group that holds the environment variables.</summary>
 	public const string Environment = "Environment variables";
 
-	private const string Root = "Root";
+	private const string Root = "General";
 	private const string Hidden = "••••";
 
 	private static readonly string[] EnvironmentPrefixes = ["DOTNET_", "ASPNETCORE_"];

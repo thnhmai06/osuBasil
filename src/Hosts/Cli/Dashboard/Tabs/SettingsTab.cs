@@ -32,6 +32,7 @@ internal sealed class SettingsTab : ITabView
 {
 	private const string StripHelp = "Down or Enter goes to the settings of the tab; Left and Right change the tab.";
 	private const string NotNumber = "Enter a number.";
+	private const int NestedIndent = 2;
 
 	private readonly Group _content = new();
 	private readonly ConsoleTab _console;
@@ -323,8 +324,10 @@ internal sealed class SettingsTab : ITabView
 
 					// Every label has the width of the label column, so every row of every group lines up.
 					var shown = row.Raw ? row.Label : Relative(row.Label, row.Group ?? row.Category, row.Category);
+					// A row of a group inside a group is moved right with its title; its label is as much shorter, so the
+					// values still line up in one column.
 					field.LabelBox = new TextBlock(Palette.Plain(shown)).Trimming(TextTrimming.EndEllipsis)
-						.Margin(new XenoAtom.Terminal.UI.Geometry.Thickness(0, 0, 1, 0));
+						.Margin(new XenoAtom.Terminal.UI.Geometry.Thickness(Indent(section), 0, 1, 0));
 					field.Row = new HStack(field.LabelBox, control.Stretch()).Spacing(0);
 					section.Fields.Add(field);
 				}
@@ -365,7 +368,7 @@ internal sealed class SettingsTab : ITabView
 		if (found is not null) return found;
 
 		var display = row.Raw ? name : Words.Humanise(name);
-		var title = new FoldTitle(display, _glyphs, _options.NoColor, parent is null ? 0 : 2);
+		var title = new FoldTitle(display, _glyphs, _options.NoColor, parent is null ? 0 : NestedIndent);
 		var section = new Section(key, display, title, parent);
 		title.Folding += open => Fold(section, open);
 		AddKeys(title, $"settings.{key}");
@@ -375,6 +378,11 @@ internal sealed class SettingsTab : ITabView
 	}
 
 	// The label column takes a little over half of the room of the fields, whatever the size of the terminal.
+	private static int Indent(Section section)
+	{
+		return section.Parent is null ? 0 : NestedIndent;
+	}
+
 	private void SizeLabels()
 	{
 		var width = Math.Clamp(_scroll.Bounds.Width * 5 / 9, 12, SettingsLabels.MaxLength);
@@ -383,7 +391,7 @@ internal sealed class SettingsTab : ITabView
 		_labelWidth = width;
 		foreach (var section in _sections)
 			foreach (var field in section.Fields)
-				field.LabelBox!.MinWidth(width).MaxWidth(width);
+				field.LabelBox!.MinWidth(width - Indent(section)).MaxWidth(width - Indent(section));
 	}
 
 	// A label that begins with the name of its own group or category ("Login: attempt window") drops it.
