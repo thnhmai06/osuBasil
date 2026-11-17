@@ -40,6 +40,19 @@ internal sealed class CommandActions(IServiceProvider services, ConsoleTab conso
 		toasts.Show(text, ToastKind.Warning);
 	}
 
+	/// <summary>Runs <paramref name="then" /> when a check holds, and otherwise tells the operator why not.</summary>
+	/// <param name="check">Reads whether the action can go on.</param>
+	/// <param name="otherwise">What to say when it cannot.</param>
+	/// <param name="then">The action.</param>
+	public void When(Func<Task<bool>> check, string otherwise, Action then)
+	{
+		_ = check().ContinueWith(task => post(() =>
+		{
+			if (task.IsCompletedSuccessfully && task.Result) then();
+			else toasts.Show(otherwise, ToastKind.Warning);
+		}), TaskScheduler.Default);
+	}
+
 	/// <summary>Runs a command line that names an account the operator typed, by id or by name.</summary>
 	/// <param name="template">The command line, with <c>{0}</c> where the account id goes.</param>
 	/// <param name="who">The id or the name of the account.</param>

@@ -5,6 +5,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
+using Basil.Application.Users.Storage;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
@@ -74,9 +75,10 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 			? new DetailAction("Unsilence", () => actions.Run($"users {id} unsilence"))
 			: new DetailAction("Silence", () => AskSilence(id)));
 		list.Add(new DetailAction("Set avatar", () => AskAvatar(user)));
-		list.Add(new DetailAction("Remove avatar", () => dialogs.Confirm("Remove avatar",
-			$"Remove the avatar of {user.Name} (id {id})? The default image is shown instead.", "Remove",
-			() => actions.Run($"users {id} avatar delete")), DetailActionKind.Destructive));
+		list.Add(new DetailAction("Remove avatar", () => actions.When(() => HasAvatarAsync(id), "No avatar to remove.",
+			() => dialogs.Confirm("Remove avatar",
+				$"Remove the avatar of {user.Name} (id {id})? The default image is shown instead.", "Remove",
+				() => actions.Run($"users {id} avatar delete"))), DetailActionKind.Destructive));
 		if (online)
 			list.Add(new DetailAction("Kick", () => dialogs.Confirm("Kick",
 				$"Close every session of {user.Name} (id {id})? Their clients are disconnected, and API tokens and IRC keys " +
@@ -112,7 +114,8 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 				$"Close session {session.Id} of {session.UserName}? The client is disconnected; the API token or IRC key of " +
 				"this session stops working. The account can sign in again with its password.", "Close session",
 				() => actions.Run($"users {session.UserId} sessions {session.Id} delete")), DetailActionKind.Destructive));
-		return new DetailView(session.Id.ToString(CultureInfo.InvariantCulture), fields, actionList)
+		var id = session.Id.ToString(CultureInfo.InvariantCulture);
+		return new DetailView($"{session.Kind} session {(id.Length > 6 ? id[..4] + "…" : id)}", fields, actionList)
 		{
 			Reload = () => SessionAsync(session.UserId, session.Id)
 		};
@@ -249,6 +252,15 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 			if (values[0].Length == 0) actions.Notify("The password is empty.");
 			else actions.Run($"users {user.Id} set --password {CommandActions.Quote(values[0])}");
 		});
+	}
+
+	private async Task<bool> HasAvatarAsync(int id)
+	{
+		var record = await services.GetRequiredService<ISender>().Send(new GetUser(UserReference.ById(id)));
+		if (record is null) return false;
+
+		await using var stored = await services.GetRequiredService<IUserAvatarStorage>().OpenAsync(record);
+		return stored is not null;
 	}
 
 	private void AskAvatar(UserItem user)

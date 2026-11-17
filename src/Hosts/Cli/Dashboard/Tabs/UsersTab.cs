@@ -35,7 +35,9 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 	{
 		var registry = services.GetRequiredService<UserRegistry>();
 		var lobby = services.GetRequiredService<Lobby>();
+		// The table hides deleted accounts, as the delete dialog promises, unless the search asks for them.
 		var parsed = UserQuery.Parse(query);
+		if (!query.Contains("deleted", StringComparison.OrdinalIgnoreCase)) parsed = parsed with { Deleted = false };
 		var now = clock.GetUtcNow();
 		var online = registry.Online.Values.Where(user => !user.Record.IsBasilBot())
 			.Where(user => Matches(parsed, user.Record.Id, user.Record.Value.Name,
@@ -93,7 +95,7 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 		Words match the name (ignoring case) or the exact id.
 		country=usvn     only these countries (two-letter codes, joined)
 		privilege=4      only accounts granted all these privilege flags (number)
-		deleted=1|0|*    only deleted, only existing, or both (owner only)
+		deleted=1|0|*    only deleted, only existing (the default), or both (owner only)
 		Example: country=vn privilege=4 bob
 		""";
 
@@ -108,10 +110,10 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 		_page = new ListPage<UserItem>("Users", Help,
 		[
 			new Column<UserItem>("ID", 8, u => u.Id.ToString()) { Right = true },
-			new Column<UserItem>("Name", 0, u => u.Name, u => Role(u.Mask)),
+			new Column<UserItem>("Name", 16, u => u.Name, u => Role(u.Mask)),
 			new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
-			new Column<UserItem>("Privileges", 0, u => u.Privileges, u => Role(u.Mask)) { Weight = 3 },
-			new Column<UserItem>("Connections", 14, u => u.Connections, _ => Ink.Info)
+			new Column<UserItem>("Privileges", 0, u => u.Privileges, u => Role(u.Mask)),
+			new Column<UserItem>("Connections", 11, u => u.Connections, _ => Ink.Info)
 		], u => u.Id.ToString(), new UsersSource(services, clock),
 			users.Of, glyphs, kit, colours, clock, post, logger);
 	}

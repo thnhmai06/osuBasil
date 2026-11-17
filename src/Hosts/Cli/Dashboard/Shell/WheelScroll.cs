@@ -62,6 +62,13 @@ internal static class WheelScroll
 			});
 	}
 
+	/// <summary>Tells whether a viewer shows the end of its content, which is also the case when the content fits.</summary>
+	/// <param name="viewer">The viewer.</param>
+	public static bool AtEnd(ScrollViewer viewer)
+	{
+		return viewer.VerticalOffset >= Max(viewer);
+	}
+
 	private static int Max(ScrollViewer viewer)
 	{
 		var model = viewer.ContentScrollable?.Scroll;

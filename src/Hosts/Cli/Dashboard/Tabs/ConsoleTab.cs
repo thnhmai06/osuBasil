@@ -128,6 +128,7 @@ internal sealed class ConsoleTab
 		var fresh = _logBuffer.Since(_seen, out var total);
 		foreach (var line in fresh.Where(line => line.Level >= LogLevel.Information)) _log.AppendMarkupLine(Format(line));
 		_seen = total;
+		JumpToEndButton.Sync(_log);
 	}
 
 	/// <summary>Follows the newest line again.</summary>

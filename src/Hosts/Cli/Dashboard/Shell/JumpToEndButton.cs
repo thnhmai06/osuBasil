@@ -17,4 +17,14 @@ internal static class JumpToEndButton
 		button.IsTabStop = false;
 		return new ZStack(log, button);
 	}
+
+	/// <summary>Makes the log follow its newest line again when it already shows it, so the button is hidden at the end whatever brought the log there.</summary>
+	/// <param name="log">The log.</param>
+	public static void Sync(LogControl log)
+	{
+		if (log.FollowTail || log.HasSelection || log.Bounds.Height <= 0) return;
+
+		if (log.EnumerateVisualsDepthFirst().OfType<ScrollViewer>().FirstOrDefault() is { } viewer && WheelScroll.AtEnd(viewer))
+			log.FollowTail = true;
+	}
 }

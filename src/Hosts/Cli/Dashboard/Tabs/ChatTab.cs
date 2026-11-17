@@ -105,7 +105,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_size = size;
 		_logger = logger;
 		_channels = new GroupedList<ChannelItem>(
-			[new Column<ChannelItem>("Channel", 0, c => c.Name), new Column<ChannelItem>("Users", 5, c => c.Members < 0 ? string.Empty : $"({c.Members})", _ => Ink.Muted)],
+			[new Column<ChannelItem>("Channel", 0, c => c.Name), new Column<ChannelItem>("Users", 5, c => c.Members < 0 ? string.Empty : $"({c.Members})", _ => Ink.Muted) { Right = true }],
 			c => c.Name, glyphs, options.NoColor, clock);
 		_members = new GroupedList<MemberItem>(
 			[new Column<MemberItem>("Member", 0, m => m.Name, m => UserInk.Of((UserPrivileges)m.Mask)),
@@ -117,7 +117,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_memberSearch = _memberSearchBox.Box;
 		_channelSearch.IsTabStop = false;
 		_memberSearch.IsTabStop = false;
-		var left = new Group("Channels").Style(GroupStyle.Rounded)
+		var left = new Group("Channels").Style(GroupStyle.Rounded).Padding(new Thickness(0, 0, 1, 0))
 			.Content(new VStack(_channelSearchBox.Row, new ScrollViewer(_channels).IsTabStop(false).Stretch()).Spacing(0)).Stretch();
 		_input = new PromptEditor().LineMode(PromptEditorLineMode.SingleLine).PromptMarkup(string.Empty)
 			.Placeholder("Chatting as BasilBot").Accepted(Send);
@@ -126,7 +126,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 			.Rows(new RowDefinition { Height = GridLength.Star() }, new RowDefinition { Height = GridLength.Auto })
 			.Cell(JumpToEndButton.Over(_log, glyphs, JumpToEnd), 0, 0).Cell(_input, 1, 0);
 		var center = new Group().Style(GroupStyle.Rounded).Content(middle).TopLeftText(() => _title.Value).Stretch();
-		var right = new Group("Members").Style(GroupStyle.Rounded)
+		var right = new Group("Members").Style(GroupStyle.Rounded).Padding(new Thickness(0, 0, 1, 0))
 			.Content(new VStack(_memberSearchBox.Row, new ScrollViewer(_members).IsTabStop(false).Stretch()).Spacing(0)).Stretch()
 			.IsVisible(_showRight);
 		// The settings of the channel in view, from the right of the top border of its pane.
@@ -211,6 +211,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_channelSearchBox.Tick();
 		_memberSearchBox.Tick();
 		_detail.Fit(_size().Columns, _size().Rows);
+		JumpToEndButton.Sync(_log);
 		// Joins and leaves do not reach the feed, so the counts are read again every two seconds.
 		if (_feed.Revision != _feedRevision || _channelQuery.Value != _channelSeen || _lastTick - _refreshedAt >= 2000)
 		{
