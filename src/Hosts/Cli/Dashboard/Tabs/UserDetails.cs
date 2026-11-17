@@ -5,7 +5,6 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
-using Basil.Application.Users.Storage;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Host.Cli.Dashboard.Shell;
@@ -256,10 +255,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 
 	private async Task<bool> HasAvatarAsync(int id)
 	{
-		var record = await services.GetRequiredService<ISender>().Send(new GetUser(UserReference.ById(id)));
-		if (record is null) return false;
-
-		await using var stored = await services.GetRequiredService<IUserAvatarStorage>().OpenAsync(record);
+		await using var stored = await services.GetRequiredService<ISender>().Send(new OpenUserAvatar(id));
 		return stored is not null;
 	}
 
