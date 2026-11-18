@@ -2,6 +2,7 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Authentication;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Users;
 using Basil.Domain.Multiplayer;
@@ -9,6 +10,7 @@ using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Domain.Users;
 using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Stable.Support;
 

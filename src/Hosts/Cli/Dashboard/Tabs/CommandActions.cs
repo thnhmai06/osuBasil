@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using System.Collections.Concurrent;
 using System.Globalization;
 using Basil.Application.Users.Messages;

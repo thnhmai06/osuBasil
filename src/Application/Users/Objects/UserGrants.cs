@@ -13,24 +13,16 @@ public sealed class UserGrants
 		_user = user;
 	}
 
-	public UserPrivileges Granted
-	{
-		get
-		{
-			using var scope = _user.Enter();
-			return _user.Record.Value.Privileges;
-		}
-	}
+	public UserPrivileges Granted => _user.State.Grants.Granted;
 
 	public UserPrivileges Effective(DateTimeOffset now)
 	{
-		return Granted;
+		return _user.State.Grants.Effective(now);
 	}
 
 	internal void Replace(UserPrivileges privileges)
 	{
-		using var scope = _user.Enter();
-		_user.Change(data => data.Privileges = privileges);
+		_user.Apply(user => user.Grants.Replace(privileges));
 	}
 
 	internal async Task<UserOutcome> SetAsync(UserPrivileges privileges)
@@ -46,11 +38,6 @@ public sealed class UserGrants
 
 	internal void MarkDeleted(DateTimeOffset at)
 	{
-		using var scope = _user.Enter();
-		_user.Change(data =>
-		{
-			data.DeletedAt = at;
-			data.Privileges = UserPrivileges.None;
-		});
+		_user.Apply(user => user.Grants.MarkDeleted(at));
 	}
 }

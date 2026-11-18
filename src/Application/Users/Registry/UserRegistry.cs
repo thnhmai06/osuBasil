@@ -22,6 +22,7 @@ using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Utilities;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Application.Users.Registry;
 

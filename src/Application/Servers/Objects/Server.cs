@@ -5,6 +5,7 @@ using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Application.Servers.Objects;
 

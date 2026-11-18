@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using System.Text;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;

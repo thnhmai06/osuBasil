@@ -6,6 +6,7 @@ using Basil.Domain.Game.Users;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc.Models;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Irc.Commands;
 

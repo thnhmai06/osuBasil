@@ -1,4 +1,4 @@
-namespace Basil.Application.Users.Objects;
+namespace Basil.Domain.Users;
 
 public enum UserOutcome : byte
 {

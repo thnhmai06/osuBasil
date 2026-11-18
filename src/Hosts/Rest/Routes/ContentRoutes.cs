@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Servers.Messages;

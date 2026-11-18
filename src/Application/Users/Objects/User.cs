@@ -4,16 +4,15 @@ using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using DomainUser = Basil.Domain.Users.User;
 
 namespace Basil.Application.Users.Objects;
 
 public sealed class User
 {
-	private readonly Lock _sync = new();
-
 	internal User(UserRecord record, UserContext context)
 	{
-		Record = record;
+		State = new DomainUser(record);
 		Context = context;
 		Profile = new UserProfile(this);
 		Credentials = new UserCredentials(this);
@@ -23,7 +22,9 @@ public sealed class User
 		Relationships = new UserRelationships(this);
 	}
 
-	public UserRecord Record { get; }
+	public DomainUser State { get; }
+
+	public UserRecord Record => State.Record;
 
 	public string? AwayMessage => Profile.AwayMessage;
 
@@ -68,12 +69,12 @@ public sealed class User
 		return Grants.Effective(now);
 	}
 
-	internal void Change(Action<UserData> change)
+	internal void Apply(Action<DomainUser> rule)
 	{
-		change(Record.Value);
+		rule(State);
 		var online = Context.Registry.Online.GetValueOrDefault(Record);
 		if (online is not null && !ReferenceEquals(online.Record, Record))
-			change(online.Record.Value);
+			rule(new DomainUser(online.Record));
 	}
 
 	internal Task StoreChangeAsync(Action<UserData> change)
@@ -123,6 +124,6 @@ public sealed class User
 
 	internal Lock.Scope Enter()
 	{
-		return _sync.EnterScope();
+		return State.Enter();
 	}
 }

@@ -3,6 +3,7 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Authentication;
 using Basil.Domain.Game.Client;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Spectating;

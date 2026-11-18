@@ -18,6 +18,7 @@ using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Domain.Users;
 using Mediator;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Stable.Packets;
 

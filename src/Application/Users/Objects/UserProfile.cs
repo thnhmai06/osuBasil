@@ -1,58 +1,40 @@
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using DomainProfile = Basil.Domain.Users.UserProfile;
 
 namespace Basil.Application.Users.Objects;
 
 public sealed class UserProfile
 {
 	private readonly User _user;
-	private string? _awayMessage;
-	private bool _pmPrivate;
 
 	internal UserProfile(User user)
 	{
 		_user = user;
 	}
 
-	public string? AwayMessage
-	{
-		get
-		{
-			using var scope = _user.Enter();
-			return _awayMessage;
-		}
-	}
+	public string? AwayMessage => _user.State.Profile.AwayMessage;
 
-	public bool PmPrivate
-	{
-		get
-		{
-			using var scope = _user.Enter();
-			return _pmPrivate;
-		}
-	}
+	public bool PmPrivate => _user.State.Profile.PmPrivate;
 
 	internal void SetCountry(Country country)
 	{
-		using var scope = _user.Enter();
-		_user.Change(data => data.Country = country);
+		_user.Apply(user => user.Profile.SetCountry(country));
 	}
 
 	internal void SetAway(string? message)
 	{
-		using var scope = _user.Enter();
-		_awayMessage = string.IsNullOrWhiteSpace(message) ? null : message;
+		_user.State.Profile.SetAway(message);
 	}
 
 	internal void SetPmPrivate(bool pmPrivate)
 	{
-		using var scope = _user.Enter();
-		_pmPrivate = pmPrivate;
+		_user.State.Profile.SetPmPrivate(pmPrivate);
 	}
 
 	internal async Task<UserOutcome> RenameAsync(string name)
 	{
-		if (!UserData.IsValidName(name)) return UserOutcome.InvalidName;
+		if (DomainProfile.ValidateName(name) is var invalid and not UserOutcome.Ok) return invalid;
 
 		return await _user.Context.Users.RenameAsync(_user.Record, name)
 			? UserOutcome.Ok
@@ -61,7 +43,7 @@ public sealed class UserProfile
 
 	internal async Task<UserOutcome> SetCountryAsync(Country country)
 	{
-		if (!Enum.IsDefined(country)) return UserOutcome.InvalidCountry;
+		if (DomainProfile.ValidateCountry(country) is var invalid and not UserOutcome.Ok) return invalid;
 
 		await _user.StoreChangeAsync(data => data.Country = country);
 		SetCountry(country);

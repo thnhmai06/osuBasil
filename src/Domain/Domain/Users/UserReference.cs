@@ -1,6 +1,4 @@
-using Basil.Domain.Users;
-
-namespace Basil.Application.Users.Objects;
+namespace Basil.Domain.Users;
 
 public readonly record struct UserReference
 {

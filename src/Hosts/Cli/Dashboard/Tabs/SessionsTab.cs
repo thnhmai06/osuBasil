@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using System.Globalization;
 using Basil.Application.Users.Objects;
 using Basil.Host.Cli.Dashboard.Shell;

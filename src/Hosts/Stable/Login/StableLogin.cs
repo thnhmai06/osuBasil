@@ -19,6 +19,7 @@ using Basil.Protocol.Game.Stable.Models.Authentication;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Domain.Users;
 using Mediator;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Host.Stable.Login;
 

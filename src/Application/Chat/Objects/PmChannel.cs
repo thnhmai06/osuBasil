@@ -4,6 +4,7 @@ using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using User = Basil.Application.Users.Objects.User;
 
 namespace Basil.Application.Chat.Objects;
 
