@@ -6,6 +6,8 @@ A `Room` is the live multiplayer state. It owns its slots, current round, settin
 
 This separation keeps current play state in one place while retaining the facts needed to understand completed matches.
 
+The room has two halves with the same name. The Domain `Room` (`Basil.Domain.Multiplayer`) holds the rules of the room on its own: slots, settings, authority, rounds and bans, as synchronous methods that answer `RoomOutcome` and identify players by `UserRecord`. The Application `Room` holds that state in `State` and keeps the live half: it takes the room's one lock (`State.Enter()`), calls the rule, publishes the event inside the lock, and does the steps that touch other objects (sessions, lobby, the score-wait timer, settings reads). It keeps the map from each seated `UserRecord` to its live `StableSession`.
+
 ## Room behavior and authority
 
 ### Room-scoped actions
@@ -132,7 +134,8 @@ A player is in at most one room. A room's own check cannot see another room's se
 * [`ScopedRoom.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoom.cs): caller, role and room-privilege scope
 * [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Capabilities/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
 * [`Lobby.cs`](../../src/Application/Multiplayer/Registry/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs): system-owned room operations
-* [`RoomPrivileges.cs`](../../src/Domain/Multiplayer/RoomPrivileges.cs): room privileges and the role groups
+* [`Room.cs`](../../src/Domain/Domain/Multiplayer/Room/Room.cs): the rules of the room on its own (the Domain half)
+* [`RoomPrivileges.cs`](../../src/Domain/Domain/Multiplayer/Room/RoomPrivileges.cs): room privileges and the role groups
 * [`CheckRoundStart.cs`](../../src/Application/Multiplayer/Messages/CheckRoundStart.cs): asks whether a connection may start rounds, without starting one
 * [`StartRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/StartRoomCountdown.cs), [`CancelRoomCountdown.cs`](../../src/Application/Multiplayer/Messages/CancelRoomCountdown.cs): the countdown requests, answered by BasilBot
 * [`RoomCountdowns.cs`](../../src/Infrastructure/Bot/Workers/RoomCountdowns.cs), [`RoomCountdown.cs`](../../src/Application/Bot/Objects/RoomCountdown.cs): the countdown timers and their marks

@@ -351,7 +351,8 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 
 ```text
 Basil.Domain                     the system at rest: durable models and the      -> (nothing)
-                                 rules that stay true offline
+                                 rules of one object on its own (its state,
+                                 invariants and transitions)
 
 Basil.Application.Shared         shared contracts, events, Mediator        -> Domain, Mediator.Abstractions
                                  messages
@@ -505,6 +506,13 @@ each module puts in which folder, is in [`docs/for-agents/module-layout.md`](doc
 same folders under `tests/`.
 
 ### Domain and Application
+
+Domain holds the rules of **one object on its own**: its state, invariants and transitions that touch only itself,
+synchronous, with no repository, no event publishing and no live object of another module (a seat holds a `UserRecord`,
+never a `Session`). Application keeps the capabilities (`Scoped*`), the contracts and every coordination between objects
+(Room with Session, Room with Lobby, publishing, timers, settings reads). The live type and its rule type share a name and
+are told apart by namespace (`Basil.Application.Multiplayer.Objects.Rooms.Room` holds `State`, a
+`Basil.Domain.Multiplayer.Room`). Test: if the member needs another object, an event or the clock's timers, it is Application.
 
 The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 

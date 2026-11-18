@@ -16,7 +16,7 @@ wire), Hosts (translate and dispatch), Gateway (admission control) and the Serve
 
 | Layer | Is | Holds | Does not hold |
 |---|---|---|---|
-| Domain | the system at rest | durable models (what is stored) and the rules that stay true while the system is offline: validity of data, constants and enums of the rules, pure computation | runtime state, time, connections, I/O |
+| Domain | the system at rest | durable models (what is stored) and the rules of one object on its own: validity of data, its state, invariants and transitions that touch only itself, constants and enums of the rules, pure computation | repositories, events, timers, live objects of another module, connections, I/O |
 | Application | contracts plus the running system | runtime objects (`User`, `Session`, `Room`, channels), registries, capabilities, Mediator messages, and the contracts of services, ports, repositories and storages | implementations, third-party libraries |
 | Infrastructure | the implementations of those contracts | EF rows, handlers, service implementations, adapters, workers | contracts other layers depend on |
 
@@ -264,7 +264,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 ## Invariants
 
 * Dependencies point down; `tests/Architecture/` enforces the module and host graphs.
-* Domain is dependency-free and holds nothing that exists only while the system runs.
+* Domain is dependency-free and holds the rules of one object on its own; coordination between objects stays in Application.
 * The acted-on object stores the relation and emits the event.
 * A notification is never awaited under a lock; objects enqueue, a dispatcher publishes.
 * A capability lives for one request.

@@ -12,7 +12,7 @@ Every module uses these folders, and creates only the ones it needs:
 
 | Folder | Holds |
 |---|---|
-| `Objects/` | The module's live objects, their parts and contexts, each object's outcome enum, and its event records (`Objects/Events/`) |
+| `Objects/` | The module's live objects, their parts and contexts, and their event records (`Objects/Events/`); the part of an object that touches only itself, with its outcome enum, is in Domain under the same name |
 | `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries); one of the three stores with Repository (`Persistence/`, awaited, cache-aside) and Storage (`Storage/`) |
 | `Capabilities/` | The `Scoped*` views only |
 | `Ports/` | The ports to external computation and the data they exchange |

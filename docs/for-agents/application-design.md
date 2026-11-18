@@ -34,6 +34,15 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 
 ### Domain and Application
 
+* **Domain also holds the rules of one object on its own.** The Implementation Test: if the member touches only the
+  object's own state (no repository, no event, no live object of another module, no timer), it is a synchronous
+  Domain rule that answers with the object's outcome enum (plus the data its event needs); the Application object of the
+  same name keeps a `State` of that Domain type, calls the rule under its lock, then publishes the event and does the
+  cross-object step. Examples: `Room.ChangeSlot`, `Room.Configure`, `Room.Kick` (Domain) against `Room.Join`,
+  `Room.Close`, the score-wait timer (Application); `UserGrants.Replace`, `UserSilence.ValidateImpose` (Domain) against
+  `UserSilence.ImposeAsync` (Application); `RoomChannelName`, `CountdownMarks`, `GeneralChannelChange.ApplyTo` (Domain).
+  Players are `UserRecord` in Domain; the Application object keeps the map to the live sessions.
+
 * **Domain** is the system at rest: the durable models (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, …) and the rules that stay true while the system is offline. A model guarantees that **it is valid**: field values
   in range, its own text format, values derived purely from its own data. No runtime-only state, no time, connection or
