@@ -17,23 +17,26 @@ public static class Targets
 		return (new PageRequest(o, l), null);
 	}
 
-	public static ISender Sender(this HttpContext context)
+	extension(HttpContext context)
 	{
-		return context.RequestServices.GetRequiredService<ISender>();
-	}
-
-	public static async Task<(T? Body, IResult? Refusal)> OptionalBodyAsync<T>(this HttpContext context)
-		where T : class
-	{
-		if (!context.Request.HasJsonContentType()) return (null, null);
-
-		try
+		public ISender Sender()
 		{
-			return (await context.Request.ReadFromJsonAsync<T>(Api.Json, context.RequestAborted), null);
+			return context.RequestServices.GetRequiredService<ISender>();
 		}
-		catch (JsonException)
+
+		public async Task<(T? Body, IResult? Refusal)> OptionalBodyAsync<T>()
+			where T : class
 		{
-			return (null, Api.Invalid("The body is not valid JSON."));
+			if (!context.Request.HasJsonContentType()) return (null, null);
+
+			try
+			{
+				return (await context.Request.ReadFromJsonAsync<T>(Api.Json, context.RequestAborted), null);
+			}
+			catch (JsonException)
+			{
+				return (null, Api.Invalid("The body is not valid JSON."));
+			}
 		}
 	}
 

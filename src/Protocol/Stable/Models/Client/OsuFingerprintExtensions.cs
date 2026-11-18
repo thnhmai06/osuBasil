@@ -1,8 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Client;
-using Basil.Domain.Cryptography;
+using Basil.Domain.Game.Client;
+using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Protocol.Stable.Models.Client;
+
+namespace Basil.Protocol.Game.Stable.Models.Client;
 
 public static class OsuFingerprintExtensions
 {
@@ -23,8 +24,8 @@ public static class OsuFingerprintExtensions
 
 		try
 		{
-			fingerprint = new OsuFingerprint(new Md5(parts[0]), new Md5(parts[3]), new Md5(parts[4]),
-				new NetworkAdapters { Adapters = parts[1], Hash = new Md5(parts[2]) });
+			fingerprint = new OsuFingerprint(new Md5Hash(parts[0]), new Md5Hash(parts[3]), new Md5Hash(parts[4]),
+				new NetworkAdapters { Adapters = parts[1], Hash = new Md5Hash(parts[2]) });
 			return true;
 		}
 		catch (Exception ex) when (ex is ArgumentException or FormatException)

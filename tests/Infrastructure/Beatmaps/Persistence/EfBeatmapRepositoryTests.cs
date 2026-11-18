@@ -1,9 +1,8 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Game.Mechanics;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;

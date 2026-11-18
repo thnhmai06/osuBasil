@@ -6,7 +6,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Moderation;
-using Basil.Domain.Shared;
+
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects;

@@ -1,7 +1,6 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Scores;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Scores.Tests.Persistence;
@@ -17,7 +16,7 @@ public sealed class EfScorePerformanceTests(PersistenceFixture container) : Data
 	{
 		var player = await Get<IUserRepository>().CreateAsync(new UserData { Name = name });
 		return await Scores.CreateAsync(
-			StoredScores.Data(player, StoredScores.Hash(name), 1000, When) with { Pp = pp, IsPassed = passed });
+			StoredScores.Data(player, StoredScores.Hash(name), 1000, When) with { PerformancePoints = pp, IsPassed = passed });
 	}
 
 	[Fact]
@@ -25,7 +24,7 @@ public sealed class EfScorePerformanceTests(PersistenceFixture container) : Data
 	{
 		var score = await StoreAsync("pp_none");
 
-		Assert.Null((await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.Pp);
+		Assert.Null((await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.PerformancePoints);
 	}
 
 	[Fact]
@@ -33,7 +32,7 @@ public sealed class EfScorePerformanceTests(PersistenceFixture container) : Data
 	{
 		var score = await StoreAsync("pp_given", 321.5);
 
-		Assert.Equal(321.5, (await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.Pp);
+		Assert.Equal(321.5, (await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.PerformancePoints);
 	}
 
 	[Fact]
@@ -44,7 +43,7 @@ public sealed class EfScorePerformanceTests(PersistenceFixture container) : Data
 		await Scores.SetPpAsync(score.Id, 77.25);
 		await Scores.SetPpAsync(score.Id, 88.5);
 
-		Assert.Equal(88.5, (await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.Pp);
+		Assert.Equal(88.5, (await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.PerformancePoints);
 	}
 
 	[Fact]
@@ -55,7 +54,7 @@ public sealed class EfScorePerformanceTests(PersistenceFixture container) : Data
 
 		await Scores.SetPpAsync(target.Id, 10);
 
-		Assert.Null((await Scores.GetAsync(other.Id, TestContext.Current.CancellationToken))!.Value.Pp);
+		Assert.Null((await Scores.GetAsync(other.Id, TestContext.Current.CancellationToken))!.Value.PerformancePoints);
 	}
 
 	[Fact]

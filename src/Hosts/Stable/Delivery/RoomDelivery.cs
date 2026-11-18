@@ -4,7 +4,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Host.Stable.Support;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 using Mediator;
 
 namespace Basil.Host.Stable.Delivery;

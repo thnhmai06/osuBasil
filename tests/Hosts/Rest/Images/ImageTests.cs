@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using Basil.Application.Content.Storage;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Images;

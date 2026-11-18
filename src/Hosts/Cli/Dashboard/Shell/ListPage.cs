@@ -254,7 +254,7 @@ internal sealed class ListPage<T>
 			return true;
 		}
 
-		if (e.Key == TerminalKey.Up && e.Modifiers == TerminalModifiers.None && _list.AtFirst)
+		if (e is { Key: TerminalKey.Up, Modifiers: TerminalModifiers.None } && _list.AtFirst)
 		{
 			FocusSearch();
 			return true;

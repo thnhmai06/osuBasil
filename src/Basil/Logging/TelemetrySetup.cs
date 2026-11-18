@@ -17,7 +17,7 @@ public static class TelemetrySetup
 			return false;
 
 		var telemetry = builder.Services.AddOpenTelemetry().ConfigureResource(resource =>
-			resource.AddService(builder.Configuration["Basil:Server:Name"] ?? "Basil"));
+			resource.AddService(builder.Configuration["Basil:Server:FullName"] ?? "Basil"));
 		if (options.Metrics)
 			telemetry.WithMetrics(metrics => metrics.AddMeter("Basil.*").AddAspNetCoreInstrumentation()
 				.AddRuntimeInstrumentation().AddOtlpExporter(exporter => exporter.Endpoint = endpoint));

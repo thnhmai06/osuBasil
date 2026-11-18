@@ -15,7 +15,7 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 		var id = room.Id;
 		var fields = new List<(string, string, Ink)>
 		{
-			("ID", id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("Name", room.Name, Ink.Text),
+			("ID", id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("FullName", room.Name, Ink.Text),
 			("State", room.State, LobbyTab.State(room)),
 			("Players", $"{room.Players}/{room.Size}", Ink.Text),
 			("Creator", room.Creator, UserInk.Of((UserPrivileges)room.CreatorMask)),
@@ -67,7 +67,7 @@ internal sealed class RoomDetails(UserDetails users, CommandActions actions, Act
 		var rules = room.Rules!;
 		return
 		[
-			new("Rename", () => dialogs.Form("Rename room", [new FormField("Name", room.Name)],
+			new("Rename", () => dialogs.Form("Rename room", [new FormField("FullName", room.Name)],
 				values => Run(id, "name", $"--name {CommandActions.Quote(values[0])}"))),
 			new("Size", () => dialogs.Form("Room size", [new FormField("Slots (1-16)", room.Size.ToString(CultureInfo.InvariantCulture))],
 				values => Run(id, "size", $"--size {CommandActions.Quote(values[0])}"))),

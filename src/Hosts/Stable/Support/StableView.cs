@@ -2,10 +2,10 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
-using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Users;
+using Basil.Protocol.Game.Stable.Models.Multiplayer;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Support;
 

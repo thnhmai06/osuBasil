@@ -1,6 +1,6 @@
 using Basil.Application.Content.Storage;
 using Basil.Application.Shared.Settings;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Content;

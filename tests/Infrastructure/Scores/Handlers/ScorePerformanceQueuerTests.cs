@@ -1,10 +1,9 @@
-using Basil.Domain.Users;
 using Basil.Application.Scores.Objects.Events;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Scores.Handlers;
 using Basil.Infrastructure.Scores.Workers;
 using Basil.Testing.Persistence;
-using Basil.Domain.Scores;
-using Basil.Domain.Mechanics;
 
 namespace Basil.Infrastructure.Scores.Tests.Handlers;
 

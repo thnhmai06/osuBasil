@@ -1,6 +1,6 @@
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;

@@ -1,4 +1,4 @@
-namespace Basil.Protocol.Stable.Models.Authentication;
+namespace Basil.Protocol.Game.Stable.Models.Authentication;
 
 public enum LoginFailureReason : sbyte
 {

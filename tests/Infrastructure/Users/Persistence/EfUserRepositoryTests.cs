@@ -1,7 +1,7 @@
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Users.Tests.Persistence;
@@ -44,7 +44,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		await Users.CreateAsync(new UserData { Name = "some_name" });
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
-			Users.CreateAsync(new UserData { Name = "Some Name" }));
+			Users.CreateAsync(new UserData { Name = "Some FullName" }));
 	}
 
 	[Fact]
@@ -62,7 +62,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "some_name" });
 
-		var found = await Users.GetByNameAsync("Some Name", TestContext.Current.CancellationToken);
+		var found = await Users.GetByNameAsync("Some FullName", TestContext.Current.CancellationToken);
 
 		Assert.NotNull(found);
 		Assert.Equal(user.Id, found.Id);
@@ -178,7 +178,7 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		await Users.CreateAsync(new UserData { Name = "name_in_use" });
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() => Users.ReplaceAsync(BasilBot.Id,
-			new UserData { Name = "Name In Use" }));
+			new UserData { Name = "FullName In Use" }));
 	}
 
 	[Fact]

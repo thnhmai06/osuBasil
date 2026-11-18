@@ -3,7 +3,7 @@ using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;
 

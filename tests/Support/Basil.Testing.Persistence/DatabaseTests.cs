@@ -1,7 +1,6 @@
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Storage;
 using Microsoft.EntityFrameworkCore;

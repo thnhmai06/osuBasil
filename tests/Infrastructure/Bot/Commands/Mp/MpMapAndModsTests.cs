@@ -1,10 +1,8 @@
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;
 using NSubstitute;
@@ -206,7 +204,7 @@ public sealed class MpMapAndModsTests
 			Beatmapset = new BeatmapsetRecord
 			{
 				Id = 100,
-				Fingerprint = new ContentFingerprint(new ContentStamp(0, now),
+				Content = new ContentIdentifier(new ContentMetadata(0, now),
 					new Md5("00000000000000000000000000000000")),
 				Metadata = new BeatmapsetMetadata
 				{

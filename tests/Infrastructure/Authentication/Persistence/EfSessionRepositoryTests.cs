@@ -3,9 +3,7 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-using Basil.Domain.Client;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Client;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;

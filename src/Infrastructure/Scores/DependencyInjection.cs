@@ -14,28 +14,31 @@ namespace Basil.Infrastructure.Scores;
 
 public static class DependencyInjection
 {
-	public static IServiceCollection AddScoresInfrastructure(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services.AddSingleton<IModuleMigration, ModuleMigration<ScoresDbContext>>();
-		services.AddSingleton<IScoreRepository, EfScoreRepository>();
-		services.AddSingleton<IUserStatsRepository, EfUserStatsRepository>();
-		services.AddSingleton<IReplayStorage, FileReplayStorage>();
-		services.AddSingleton<ScorePerformanceCalculator>();
-		services.AddSingleton<IScorePerformanceRecalculator, ScorePerformanceRecalculator>();
-		services.AddScoresLogic();
-		return services;
-	}
+		public IServiceCollection AddScoresInfrastructure()
+		{
+			services.AddSingleton<IModuleMigration, ModuleMigration<ScoresDbContext>>();
+			services.AddSingleton<IScoreRepository, EfScoreRepository>();
+			services.AddSingleton<IUserStatsRepository, EfUserStatsRepository>();
+			services.AddSingleton<IReplayStorage, FileReplayStorage>();
+			services.AddSingleton<ScorePerformanceCalculator>();
+			services.AddSingleton<IScorePerformanceRecalculator, ScorePerformanceRecalculator>();
+			services.AddScoresLogic();
+			return services;
+		}
 
-	public static IServiceCollection AddScoresLogic(this IServiceCollection services)
-	{
-		services.AddSingleton<IScoreRecorder, ScoreRecorder>();
-		services.AddSingleton<ScorePerformanceQueue>();
-		return services;
-	}
+		public IServiceCollection AddScoresLogic()
+		{
+			services.AddSingleton<IScoreRecorder, ScoreRecorder>();
+			services.AddSingleton<ScorePerformanceQueue>();
+			return services;
+		}
 
-	public static IServiceCollection AddScoresBackgroundWork(this IServiceCollection services)
-	{
-		services.AddHostedService<ScorePerformanceWorker>();
-		return services;
+		public IServiceCollection AddScoresBackgroundWork()
+		{
+			services.AddHostedService<ScorePerformanceWorker>();
+			return services;
+		}
 	}
 }

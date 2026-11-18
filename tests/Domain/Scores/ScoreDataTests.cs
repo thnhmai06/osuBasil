@@ -85,7 +85,7 @@ public class ScoreDataTests
 	[Fact]
 	public void NewScore_PpNotCalculated()
 	{
-		Assert.Null(Make().Pp);
+		Assert.Null(Make().PerformancePoints);
 	}
 
 	[Theory]
@@ -93,7 +93,7 @@ public class ScoreDataTests
 	[InlineData(123.45)]
 	public void FiniteNonNegativePp_Accepted(double pp)
 	{
-		Assert.Equal(pp, (Make() with { Pp = pp }).Pp);
+		Assert.Equal(pp, (Make() with { PerformancePoints = pp }).PerformancePoints);
 	}
 
 	[Theory]
@@ -105,6 +105,6 @@ public class ScoreDataTests
 	{
 		var score = Make();
 
-		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { Pp = pp });
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { PerformancePoints = pp });
 	}
 }

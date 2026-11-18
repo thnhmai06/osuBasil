@@ -20,14 +20,14 @@ namespace Basil.Infrastructure.Persistence.Migrations.Shared
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.SettingRow).FullName!, b =>
                 {
-                    b.Property<string>("Name")
+                    b.Property<string>("FullName")
                         .HasMaxLength(255)
                         .HasColumnName("name");
 
                     b.Property<string>("Value")
                         .HasColumnName("value");
 
-                    b.HasKey("Name")
+                    b.HasKey("FullName")
                         .HasName("pk_settings");
 
                     b.ToTable("settings", (string)null);

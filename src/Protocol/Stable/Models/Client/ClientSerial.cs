@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace Basil.Protocol.Stable.Models.Client;
+namespace Basil.Protocol.Game.Stable.Models.Client;
 
 public sealed record ClientSerial(string UninstallId, string DiskSignature)
 {

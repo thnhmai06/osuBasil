@@ -1,4 +1,4 @@
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 
@@ -25,6 +25,6 @@ public sealed record ScoreView(
 		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods.ToString(),
 			v.LastState.TotalScore,
 			v.LastState.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.LastState.IsFullCombo, v.Timestamp,
-			v.Pp);
+			v.PerformancePoints);
 	}
 }

@@ -1,6 +1,6 @@
 using System.Text;
 using Basil.Host.Shared.Documentation;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Routes;
 

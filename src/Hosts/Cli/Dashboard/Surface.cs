@@ -59,31 +59,34 @@ public interface IPaintSurface
 
 public static class SurfaceExtensions
 {
-	public static int Text(this IPaintSurface surface, Area area, int column, int row, string text,
-		Tone tone = Tone.Text)
+	extension(IPaintSurface surface)
 	{
-		if (row < 0 || row >= area.Height) return area.X + column;
-
-		var x = area.X + column;
-		foreach (var character in text)
+		public int Text(Area area, int column, int row, string text,
+			Tone tone = Tone.Text)
 		{
-			if (x >= area.Right) break;
+			if (row < 0 || row >= area.Height) return area.X + column;
 
-			if (x >= area.X) surface.Put(x, area.Y + row, character, tone);
-			x++;
+			var x = area.X + column;
+			foreach (var character in text)
+			{
+				if (x >= area.Right) break;
+
+				if (x >= area.X) surface.Put(x, area.Y + row, character, tone);
+				x++;
+			}
+
+			return x;
 		}
 
-		return x;
-	}
+		public void Rule(Area area, int row, char character, Tone tone = Tone.Muted)
+		{
+			for (var x = 0; x < area.Width; x++) surface.Put(area.X + x, area.Y + row, character, tone);
+		}
 
-	public static void Rule(this IPaintSurface surface, Area area, int row, char character, Tone tone = Tone.Muted)
-	{
-		for (var x = 0; x < area.Width; x++) surface.Put(area.X + x, area.Y + row, character, tone);
-	}
-
-	public static void Title(this IPaintSurface surface, Area area, string title)
-	{
-		surface.Text(area, 0, 0, title, Tone.Accent);
+		public void Title(Area area, string title)
+		{
+			surface.Text(area, 0, 0, title, Tone.Accent);
+		}
 	}
 
 	public static string Fit(this string text, int width)

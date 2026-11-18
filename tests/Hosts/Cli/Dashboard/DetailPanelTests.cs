@@ -70,7 +70,7 @@ public sealed class DetailPanelTests
 	public void ColouredField_IsShownWithoutMarkupTags()
 	{
 		var panel = Create();
-		panel.Show(new DetailView("peppy", [("Name", "peppy", Ink.RoleStaff), ("Status", "Banned", Ink.Error)], []));
+		panel.Show(new DetailView("peppy", [("FullName", "peppy", Ink.RoleStaff), ("Status", "Banned", Ink.Error)], []));
 
 		var screen = HostedTerminal.Run(panel.View, []);
 

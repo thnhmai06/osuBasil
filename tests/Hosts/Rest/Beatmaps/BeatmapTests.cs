@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 

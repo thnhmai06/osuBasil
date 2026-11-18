@@ -20,7 +20,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Chat
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Chat.Persistence.ChannelRow).FullName!, b =>
                 {
-                    b.Property<string>("Name")
+                    b.Property<string>("FullName")
                         .HasMaxLength(255)
                         .HasColumnName("name");
 
@@ -40,7 +40,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Chat
                     b.Property<int>("WritePrivileges")
                         .HasColumnName("write_privileges");
 
-                    b.HasKey("Name")
+                    b.HasKey("FullName")
                         .HasName("pk_channels");
 
                     b.ToTable("channels", (string)null);

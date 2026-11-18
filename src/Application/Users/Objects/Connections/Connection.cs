@@ -3,7 +3,7 @@ using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
-using Basil.Domain.Shared;
+
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects.Connections;

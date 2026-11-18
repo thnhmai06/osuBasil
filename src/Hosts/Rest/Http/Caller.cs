@@ -11,45 +11,48 @@ public static class Caller
 {
 	private const string ConnectionKey = "basil.connection";
 
-	public static ApiConnection Connection(this HttpContext context)
+	extension(HttpContext context)
 	{
-		return (ApiConnection)context.Items[ConnectionKey]!;
-	}
+		public ApiConnection Connection()
+		{
+			return (ApiConnection)context.Items[ConnectionKey]!;
+		}
 
-	public static ApiConnection? ConnectionOrNull(this HttpContext context)
-	{
-		return context.Items.TryGetValue(ConnectionKey, out var value) ? value as ApiConnection : null;
-	}
+		public ApiConnection? ConnectionOrNull()
+		{
+			return context.Items.TryGetValue(ConnectionKey, out var value) ? value as ApiConnection : null;
+		}
 
-	public static IPAddress Ip(this HttpContext context)
-	{
-		var headers = context.Request.Headers;
-		foreach (var candidate in new[]
-		         {
-			         headers["CF-Connecting-IP"].ToString(),
-			         headers["X-Forwarded-For"].ToString().Split(',')[0].Trim(),
-			         headers["X-Real-IP"].ToString()
-		         })
-			if (IPAddress.TryParse(candidate, out var address))
-				return address;
+		public IPAddress Ip()
+		{
+			var headers = context.Request.Headers;
+			foreach (var candidate in new[]
+			         {
+				         headers["CF-Connecting-IP"].ToString(),
+				         headers["X-Forwarded-For"].ToString().Split(',')[0].Trim(),
+				         headers["X-Real-IP"].ToString()
+			         })
+				if (IPAddress.TryParse(candidate, out var address))
+					return address;
 
-		return context.Connection.RemoteIpAddress ?? IPAddress.Loopback;
-	}
+			return context.Connection.RemoteIpAddress ?? IPAddress.Loopback;
+		}
 
-	public static async Task<bool> AuthenticateAsync(this HttpContext context, UserRegistry registry)
-	{
-		var header = context.Request.Headers.Authorization.ToString();
-		if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return false;
+		public async Task<bool> AuthenticateAsync(UserRegistry registry)
+		{
+			var header = context.Request.Headers.Authorization.ToString();
+			if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return false;
 
-		var token = header["Bearer ".Length..].Trim();
-		if (token.Length == 0) return false;
+			var token = header["Bearer ".Length..].Trim();
+			if (token.Length == 0) return false;
 
-		var result = await registry.LoginWithTokenAsync(SessionType.Api, token, context.Ip(), null,
-			context.RequestAborted);
-		if (result.Connection is not ApiConnection connection) return false;
+			var result = await registry.LoginWithTokenAsync(SessionType.Api, token, context.Ip(), null,
+				context.RequestAborted);
+			if (result.Connection is not ApiConnection connection) return false;
 
-		context.Items[ConnectionKey] = connection;
-		return true;
+			context.Items[ConnectionKey] = connection;
+			return true;
+		}
 	}
 }
 

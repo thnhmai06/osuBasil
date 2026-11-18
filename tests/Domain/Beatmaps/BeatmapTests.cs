@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests.Beatmaps;
@@ -13,7 +13,7 @@ public class BeatmapTests
 		var beatmapset = new BeatmapsetRecord
 		{
 			Id = 100,
-			Fingerprint = new ContentFingerprint(new ContentStamp(0, now), new Md5("00000000000000000000000000000000")),
+			Fingerprint = new ContentFingerprint(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
 			Metadata = new BeatmapsetMetadata
 			{
 				Artist = "Camellia",
@@ -47,6 +47,6 @@ public class BeatmapTests
 	{
 		var bmap = MakeBeatmap();
 
-		Assert.Equal("Camellia - Exit This Earth's Atomosphere [Hyper]", bmap.Name);
+		Assert.Equal("Camellia - Exit This Earth's Atomosphere [Hyper]", bmap.FullName);
 	}
 }

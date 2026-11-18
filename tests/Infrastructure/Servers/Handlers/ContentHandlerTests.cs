@@ -5,7 +5,7 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Content;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Servers.Handlers;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;

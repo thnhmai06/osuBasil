@@ -91,7 +91,7 @@ internal sealed class BeatmapsetScanner(
 					if (folder.Id is { } id)
 						stored = await beatmapsets.GetAsync(id, ct);
 
-					if (stored is not null && stored.Fingerprint.Stamp == archive.Stamp)
+					if (stored is not null && stored.Fingerprint.Metadata == archive.Metadata)
 					{
 						seen.Add(stored.Id);
 						unchanged.Add(stored);

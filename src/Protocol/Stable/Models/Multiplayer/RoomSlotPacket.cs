@@ -1,4 +1,4 @@
-﻿namespace Basil.Protocol.Stable.Models.Multiplayer;
+﻿namespace Basil.Protocol.Game.Stable.Models.Multiplayer;
 
 public sealed record RoomSlotPacket(int Status, int Team, int Mods, int? PlayerId)
 {

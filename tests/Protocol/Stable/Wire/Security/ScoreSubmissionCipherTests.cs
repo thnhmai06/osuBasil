@@ -1,5 +1,5 @@
 using System.Text;
-using Basil.Protocol.Stable.Wire.Security;
+using Basil.Protocol.Game.Stable.Wire.Security;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;

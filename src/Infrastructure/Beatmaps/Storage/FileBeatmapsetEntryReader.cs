@@ -9,7 +9,7 @@ internal static class FileBeatmapsetEntryReader
 	{
 		var info = new FileInfo(path);
 		return new FileBeatmapsetArchive(path, name,
-			new ContentStamp(info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
+			new ContentMetadata(info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
 	}
 
 	internal static BeatmapsetSource? EntryOf(string root, string name,

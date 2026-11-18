@@ -1,4 +1,4 @@
-using Basil.Protocol.Stable.Models.Client;
+using Basil.Protocol.Game.Stable.Models.Client;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 

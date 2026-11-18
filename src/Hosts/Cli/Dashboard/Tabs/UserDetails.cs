@@ -38,7 +38,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		var online = user.Connections.Length > 0;
 		var fields = new List<(string, string, Ink)>
 		{
-			("ID", user.Id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("Name", user.Name, ink),
+			("ID", user.Id.ToString(CultureInfo.InvariantCulture), Ink.Text), ("FullName", user.Name, ink),
 			("Country", user.Country, Ink.Text), ("Privileges", $"{user.Privileges} ({user.Mask})", ink),
 			("Connections", online ? user.Connections : "offline", Ink.Info), ("Room", room + managed, Ink.Text),
 			("Activity", user.Activity.Length == 0 ? "-" : user.Activity, Ink.Text)
@@ -190,7 +190,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		IReadOnlyList<Column<UserItem>> columns =
 		[
 			new Column<UserItem>("ID", 8, u => u.Id.ToString(CultureInfo.InvariantCulture)) { Right = true },
-			new Column<UserItem>("Name", 0, u => u.Name, u => UserInk.Of((UserPrivileges)u.Mask)),
+			new Column<UserItem>("FullName", 0, u => u.Name, u => UserInk.Of((UserPrivileges)u.Mask)),
 			new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
 			new Column<UserItem>("Connections", 14, u => u.Connections, _ => Ink.Info)
 		];
@@ -218,7 +218,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 	private void EditProfile(UserItem user)
 	{
 		dialogs.Form($"Edit {user.Name}",
-			[new FormField("Name", user.Name), new FormField("Country", user.Country), new FormField("Away message"),
+			[new FormField("FullName", user.Name), new FormField("Country", user.Country), new FormField("Away message"),
 				new FormField("Block PMs (yes/no)")], values =>
 			{
 				var line = $"users {user.Id} set";

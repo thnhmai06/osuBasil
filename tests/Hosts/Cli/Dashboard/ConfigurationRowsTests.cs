@@ -14,7 +14,7 @@ public sealed class ConfigurationRowsTests
 	[Fact]
 	public void EnvironmentVariables_AreTheLastGroup()
 	{
-		var rows = Rows(new() { ["Basil:Server:Name"] = "Basil", ["Zeta:Key"] = "v" }, new() { ["HOME"] = "/home/x" });
+		var rows = Rows(new() { ["Basil:Server:FullName"] = "Basil", ["Zeta:Key"] = "v" }, new() { ["HOME"] = "/home/x" });
 
 		Assert.Equal(ConfigurationRows.Environment, rows[^1].Category);
 		Assert.DoesNotContain(rows.Take(rows.Count - 1), row => row.Category == ConfigurationRows.Environment);
@@ -33,10 +33,10 @@ public sealed class ConfigurationRowsTests
 	[Fact]
 	public void ConfigurationKey_TakenFromTheEnvironment_IsNotListedAsApplicationConfiguration()
 	{
-		var rows = Rows(new() { ["Basil:Server:Name"] = "from env", ["Kestrel:Port"] = "1" },
+		var rows = Rows(new() { ["Basil:Server:FullName"] = "from env", ["Kestrel:Port"] = "1" },
 			new() { ["Basil__Server__Name"] = "from env" });
 
-		Assert.DoesNotContain(rows, row => row.Path == "Basil:Server:Name");
+		Assert.DoesNotContain(rows, row => row.Path == "Basil:Server:FullName");
 		Assert.Contains(rows, row => row.Path == "Kestrel:Port");
 	}
 

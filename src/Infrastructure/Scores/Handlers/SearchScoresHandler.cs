@@ -3,7 +3,7 @@ using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Cryptography;
+
 using Mediator;
 
 namespace Basil.Infrastructure.Scores.Handlers;

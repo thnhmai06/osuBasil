@@ -25,7 +25,7 @@ public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 
 		await player.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch,
 			ClientPacketWriter.Match("e2e room", "", mapMd5: beatmap.Hash.ToString(), mapId: beatmap.Id,
-				mapName: beatmap.Name)));
+				mapName: beatmap.FullName)));
 		var created = await player.WaitForAsync(OsuClient.In.MatchJoinSuccess);
 		var matchId = MatchIdOf(created!);
 		await guest.SendAsync(writer =>

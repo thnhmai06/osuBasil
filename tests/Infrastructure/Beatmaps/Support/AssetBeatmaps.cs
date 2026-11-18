@@ -1,7 +1,5 @@
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Support;
 
@@ -13,7 +11,7 @@ internal static class AssetBeatmaps
 		return new BeatmapsetRecord
 		{
 			Id = id,
-			Fingerprint = new ContentFingerprint(new ContentStamp(0, now), new Md5("00000000000000000000000000000000")),
+			Fingerprint = new ContentFingerprint(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
 			Metadata = new BeatmapsetMetadata
 			{
 				Artist = "Camellia",

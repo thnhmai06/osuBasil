@@ -66,15 +66,15 @@ public class ModuleGraphTests
 		Assert.False(IsAllowed("Basil.Infrastructure.Scores", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Application.Users", "Basil"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Users", "Basil.Infrastructure.Persistence"));
-		Assert.False(IsAllowed("Basil.Infrastructure.Shared", "Basil.Infrastructure.Persistence"));
+		Assert.False(IsAllowed("Basil.Infrastructure.Basil.Shared", "Basil.Infrastructure.Persistence"));
 		Assert.False(IsAllowed("Basil.Infrastructure.Persistence", "Basil.Application.Users"));
 		Assert.True(IsAllowed("Basil", "Basil.Infrastructure.Persistence"));
 		Assert.True(IsAllowed("Basil.Infrastructure.Persistence", "Basil.Infrastructure.Users"));
-		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Shared"));
-		Assert.False(IsAllowed("Basil.Protocol.Stable", "Basil.Application.Shared"));
+		Assert.False(IsAllowed("Basil.Domain", "Basil.Application.Basil.Shared"));
+		Assert.False(IsAllowed("Basil.Protocol.Game.Stable", "Basil.Application.Basil.Shared"));
 		Assert.False(IsAllowed("Basil.Protocol.Irc", "Basil.Domain"));
 		Assert.False(IsAllowed("Basil.Gateway", "Basil.Domain"));
-		Assert.True(IsAllowed("Basil.Protocol.Stable", "Basil.Domain"));
+		Assert.True(IsAllowed("Basil.Protocol.Game.Stable", "Basil.Domain"));
 		Assert.True(IsAllowed("Basil.Application.Multiplayer", "Basil.Application.Scores"));
 		Assert.True(IsAllowed("Basil.Application.Diagnostics", "Basil.Application.Users"));
 		Assert.False(IsAllowed("Basil.Application.Diagnostics", "Basil.Application.Multiplayer"));
@@ -95,8 +95,8 @@ public class ModuleGraphTests
 
 	private static bool IsKnown(string name)
 	{
-		return name is "Basil.Domain" or "Basil.Application.Shared" or "Basil.Infrastructure.Shared"
-			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Protocol.Stable"
+		return name is "Basil.Domain" or "Basil.Application.Basil.Shared" or "Basil.Infrastructure.Basil.Shared"
+			       or "Basil.Infrastructure.Persistence" or "Basil.Gateway" or "Basil" or "Basil.Protocol.Game.Stable"
 			       or "Basil.Protocol.Irc"
 		       || Modules.Any(module => name == $"Basil.Application.{module}" ||
 		                                name == $"Basil.Infrastructure.{module}");
@@ -107,23 +107,23 @@ public class ModuleGraphTests
 		if (from == "Basil.Domain") return false;
 		if (from == "Basil.Protocol.Irc") return false;
 		if (from == "Basil.Gateway") return false;
-		if (from == "Basil.Protocol.Stable") return to == "Basil.Domain";
+		if (from == "Basil.Protocol.Game.Stable") return to == "Basil.Domain";
 		if (to == "Basil.Domain") return true;
-		if (from == "Basil.Application.Shared") return false;
-		if (from == "Basil.Infrastructure.Shared") return to == "Basil.Application.Shared";
+		if (from == "Basil.Application.Basil.Shared") return false;
+		if (from == "Basil.Infrastructure.Basil.Shared") return to == "Basil.Application.Basil.Shared";
 		if (from == "Basil.Infrastructure.Persistence")
-			return to == "Basil.Infrastructure.Shared" ||
+			return to == "Basil.Infrastructure.Basil.Shared" ||
 			       (IsModuleProject(to) && to.StartsWith("Basil.Infrastructure.", StringComparison.Ordinal));
-		if (to == "Basil.Application.Shared") return true;
+		if (to == "Basil.Application.Basil.Shared") return true;
 		if (from == "Basil")
-			return IsModuleProject(to) || to is "Basil.Infrastructure.Shared" or "Basil.Infrastructure.Persistence";
+			return IsModuleProject(to) || to is "Basil.Infrastructure.Basil.Shared" or "Basil.Infrastructure.Persistence";
 
 		var parts = from.Split('.');
 		if (parts.Length != 3) return false;
 		var module = parts[2];
 		if (!ModuleDependencies.TryGetValue(module, out var dependencies)) return false;
 		if (parts[1] == "Infrastructure")
-			return to == $"Basil.Application.{module}" || to == "Basil.Infrastructure.Shared";
+			return to == $"Basil.Application.{module}" || to == "Basil.Infrastructure.Basil.Shared";
 
 		return dependencies.Any(dependency => to == $"Basil.Application.{dependency}");
 	}

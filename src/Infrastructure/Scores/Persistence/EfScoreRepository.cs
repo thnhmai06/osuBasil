@@ -1,7 +1,7 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -180,7 +180,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 			IsFullCombo = data.LastState.IsFullCombo,
 			Timestamp = data.Timestamp.ToUniversalTime(),
 			Checksum = data.Checksum?.HashValue,
-			Pp = data.Pp
+			Pp = data.PerformancePoints
 		};
 	}
 
@@ -204,7 +204,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 			with
 			{
 				Checksum = row.Checksum is { } checksum ? new Md5(checksum) : (Md5?)null,
-				Pp = row.Pp
+				PerformancePoints = row.Pp
 			};
 	}
 }

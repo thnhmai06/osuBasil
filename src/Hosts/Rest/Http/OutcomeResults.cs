@@ -16,20 +16,22 @@ public static class OutcomeResults
 		};
 	}
 
-	public static IResult Refusal<TOutcome>(this TOutcome result) where TOutcome : struct, Enum
+	extension<TOutcome>(TOutcome result) where TOutcome : struct, Enum
 	{
-		var info = OutcomeErrors.Describe(result);
-		return Api.Error(StatusOf(info.Kind), info.Code, info.Code);
-	}
+		public IResult Refusal()
+		{
+			var info = OutcomeErrors.Describe(result);
+			return Api.Error(StatusOf(info.Kind), info.Code, info.Code);
+		}
 
-	public static IResult Answer<TOutcome>(this TOutcome result) where TOutcome : struct, Enum
-	{
-		return OutcomeErrors.IsOk(result) ? Api.Done() : result.Refusal();
-	}
+		public IResult Answer()
+		{
+			return OutcomeErrors.IsOk(result) ? Api.Done() : result.Refusal();
+		}
 
-	public static IResult Answer<TOutcome, T>(this TOutcome result, Func<T> data)
-		where TOutcome : struct, Enum
-	{
-		return OutcomeErrors.IsOk(result) ? Api.Ok(data()) : result.Refusal();
+		public IResult Answer<T>(Func<T> data)
+		{
+			return OutcomeErrors.IsOk(result) ? Api.Ok(data()) : result.Refusal();
+		}
 	}
 }

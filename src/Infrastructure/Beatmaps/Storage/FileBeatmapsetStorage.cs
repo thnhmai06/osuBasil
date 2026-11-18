@@ -3,7 +3,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Logging;
@@ -135,7 +135,7 @@ internal sealed class FileBeatmapsetStorage(
 
 		var info = new FileInfo(path);
 		return new FileBeatmapsetArchive(path, folder.Name,
-			new ContentStamp(info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)), placed.Path);
+			new ContentMetadata(info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)), placed.Path);
 	}
 
 	public async Task ClearAsync(BeatmapsetRecord set)

@@ -7,7 +7,7 @@ public interface IChannelRepository
 {
 	Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken ct = default);
 
-	Task CreateOrUpdateAsync(GeneralChannelRecord channel);
+	Task CreateOrUpdateAsync(GeneralChannelRecord generalChannel);
 
-	Task DeleteAsync(GeneralChannelRecord channel);
+	Task DeleteAsync(GeneralChannelRecord generalChannel);
 }

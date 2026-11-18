@@ -1,5 +1,4 @@
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Users;
 using Basil.Host.Cli.Commands;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.DependencyInjection;

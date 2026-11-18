@@ -1,8 +1,8 @@
 using System.Drawing;
-using Basil.Domain.Client;
-using Basil.Domain.Scores;
-using Basil.Protocol.Stable.Models.Chat;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Domain.Game.Scores;
+using Basil.Domain.Game.Spectating;
+using Basil.Protocol.Game.Stable.Models.Chat;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 

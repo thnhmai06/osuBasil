@@ -11,32 +11,34 @@ namespace Basil.Host.Rest;
 
 public static class RestHost
 {
-	public static IServiceCollection AddRestHost(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services.AddSingleton<RateLimiter>();
-		services.AddSingleton<LoginAttemptGuard>();
-		services.AddSingleton<LoadSignal>();
-		services.AddSingleton<SseHub>();
-		services.AddHostedService(sp => sp.GetRequiredService<SseHub>());
-		return services;
-	}
-
-	public static IServiceCollection AddRestApi(this IServiceCollection services,
-		IConfiguration configuration)
-	{
-		services.AddOptions<RestOptions>().Configure(rest =>
-			rest.Domain = configuration.GetValue("Basil:Server:Domain", rest.Domain)!);
-		services.AddBasilOpenApi();
-		// Bad parameters throw instead of answering an empty 400, so that the pipeline answers with the envelope.
-		services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
-		services.AddCors();
-		services.AddSingleton<ICorsPolicyProvider, SettingsCorsPolicyProvider>();
-		services.ConfigureHttpJsonOptions(options =>
+		public IServiceCollection AddRestHost()
 		{
-			options.SerializerOptions.PropertyNamingPolicy = Api.Json.PropertyNamingPolicy;
-			foreach (var converter in Api.Json.Converters) options.SerializerOptions.Converters.Add(converter);
-		});
-		return services;
+			services.AddSingleton<RateLimiter>();
+			services.AddSingleton<LoginAttemptGuard>();
+			services.AddSingleton<LoadSignal>();
+			services.AddSingleton<SseHub>();
+			services.AddHostedService(sp => sp.GetRequiredService<SseHub>());
+			return services;
+		}
+
+		public IServiceCollection AddRestApi(IConfiguration configuration)
+		{
+			services.AddOptions<RestOptions>().Configure(rest =>
+				rest.Domain = ConfigurationBinder.GetValue(configuration, (Type)"Basil:Server:Domain", rest.Domain)!);
+			services.AddBasilOpenApi();
+			// Bad parameters throw instead of answering an empty 400, so that the pipeline answers with the envelope.
+			services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+			services.AddCors();
+			services.AddSingleton<ICorsPolicyProvider, SettingsCorsPolicyProvider>();
+			services.ConfigureHttpJsonOptions(options =>
+			{
+				options.SerializerOptions.PropertyNamingPolicy = Api.Json.PropertyNamingPolicy;
+				foreach (var converter in Api.Json.Converters) options.SerializerOptions.Converters.Add(converter);
+			});
+			return services;
+		}
 	}
 
 	public static IApplicationBuilder UseRest(this IApplicationBuilder app)

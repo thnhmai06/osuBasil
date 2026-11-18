@@ -4,7 +4,7 @@ using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Domain.Content;
-using Basil.Domain.Shared;
+
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
@@ -76,7 +76,7 @@ internal static class MenuRoutes
 
 	private static async Task<IResult> GetFaqAsync(string entry, ISender sender, CancellationToken ct)
 	{
-		return FaqEntryName.IsValid(entry) && await sender.Send(new ReadFaq(entry), ct) is { } text
+		return FaqRules.IsValidName(entry) && await sender.Send(new ReadFaq(entry), ct) is { } text
 			? Api.Ok(new FaqView(entry, text))
 			: Api.NotFound("No such entry.");
 	}
@@ -85,7 +85,7 @@ internal static class MenuRoutes
 		ISender sender)
 	{
 		if (request.Text is null) return Api.Invalid("text is required.");
-		if (!FaqEntryName.IsValid(entry)) return Api.Invalid("The entry name is not valid.");
+		if (!FaqRules.IsValidName(entry)) return Api.Invalid("The entry name is not valid.");
 
 		return (await sender.Send(new SaveFaq(context.Connection(), entry, request.Text), context.RequestAborted))
 			.Answer();
@@ -93,7 +93,7 @@ internal static class MenuRoutes
 
 	private static async Task<IResult> DeleteFaqAsync(HttpContext context, string entry, ISender sender)
 	{
-		return FaqEntryName.IsValid(entry)
+		return FaqRules.IsValidName(entry)
 			? (await sender.Send(new DeleteFaq(context.Connection(), entry), context.RequestAborted)).Answer()
 			: Api.NotFound("No such entry.");
 	}
@@ -130,7 +130,7 @@ internal static class MenuRoutes
 		    !TryTime(form["expires"].ToString(), out var expires))
 			return Api.Invalid("begins and expires must be ISO 8601 times.");
 
-		if (!ContentReference.IsValidPath(file!.FileName) || !url.IsHttp() ||
+		if (!PathValidation.IsValidPath(file!.FileName) || !url.IsHttp() ||
 		    !MenuBanner.IsValidWindow(begins, expires))
 			return Api.Invalid("The banner is not valid.");
 
@@ -172,7 +172,7 @@ internal static class MenuRoutes
 		var (file, error) = await ImageAsync(context);
 		if (error is not null) return error;
 
-		if (!ContentReference.IsValidPath(file!.FileName)) return Api.Invalid("The file name is not valid.");
+		if (!PathValidation.IsValidPath(file!.FileName)) return Api.Invalid("The file name is not valid.");
 
 		await using var stream = file.OpenReadStream();
 		var (result, image) = await sender.Send(new AddMenuSeasonal(context.Connection(), file.FileName, stream),
@@ -203,7 +203,7 @@ internal static class MenuRoutes
 		var file = form.Files.GetFile("image");
 		if (file?.Length > MaxImageBytes) return Api.Invalid("The image is too large.", "tooLarge");
 
-		if ((file is not null && !ContentReference.IsValidPath(file.FileName)) || (url is not null && !url.IsHttp()))
+		if ((file is not null && !PathValidation.IsValidPath(file.FileName)) || (url is not null && !url.IsHttp()))
 			return Api.Invalid("The icon is not valid.");
 
 		await using var stream = file?.OpenReadStream();

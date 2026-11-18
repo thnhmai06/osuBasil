@@ -124,7 +124,7 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		}
 		catch (Exception exception)
 		{
-			_logger.LogWarning(exception, "Could not report the changed beatmapset entry {Name}", name);
+			_logger.LogWarning(exception, "Could not report the changed beatmapset entry {FullName}", name);
 		}
 		finally
 		{

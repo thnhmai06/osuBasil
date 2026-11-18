@@ -1,6 +1,4 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Testing.Persistence;

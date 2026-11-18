@@ -164,7 +164,7 @@ public static class RoomCommands
 		var beatmap = await services.GetRequiredService<ISender>().Send(new FindBeatmap(body.Beatmap), ct);
 		if (beatmap is null) return RoomOutcome.NoBeatmap;
 
-		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name, beatmap.Metadata.Difficulty.Mode,
+		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.FullName, beatmap.Metadata.Difficulty.Mode,
 			beatmap);
 		return await room.Ask(new ConfigureRoom(room.Actor, room.Room,
 			new RoomSettingsChange(Beatmap: reference, Mode: body.Mode ?? beatmap.Metadata.Difficulty.Mode)), ct);

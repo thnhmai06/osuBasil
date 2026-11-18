@@ -1,4 +1,4 @@
-namespace Basil.Protocol.Stable.Wire.Packets;
+namespace Basil.Protocol.Game.Stable.Wire.Packets;
 
 public enum ClientPacketType : ushort
 {

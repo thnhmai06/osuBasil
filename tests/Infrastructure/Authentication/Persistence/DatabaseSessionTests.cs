@@ -1,6 +1,5 @@
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Authentication.Persistence;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Testing.Persistence;

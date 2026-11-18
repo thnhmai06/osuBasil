@@ -1,5 +1,5 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Mediator;

@@ -1,6 +1,6 @@
 using Basil.Application.Diagnostics.Messages;
 using Basil.Application.Diagnostics.Objects;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Testing;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Handlers;

@@ -3,11 +3,10 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
+using Basil.Domain.Game.Users;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
 
 namespace Basil.Testing;
 

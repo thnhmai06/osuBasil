@@ -172,14 +172,14 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
                 {
-                    b.Property<string>("Name")
+                    b.Property<string>("FullName")
                         .HasMaxLength(64)
                         .HasColumnName("name");
 
                     b.Property<long>("Next")
                         .HasColumnName("next");
 
-                    b.HasKey("Name")
+                    b.HasKey("FullName")
                         .HasName("pk_beatmap_id_counters");
 
                     b.ToTable("beatmap_id_counters", (string)null);

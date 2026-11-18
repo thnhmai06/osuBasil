@@ -17,7 +17,7 @@ internal sealed class ChannelDetails(IServiceProvider services, CommandActions a
 		var members = channel.Members.Select(member => member.User).Distinct().Count();
 		var fields = new List<(string, string, Ink)>
 		{
-			("Name", channel.Name, Ink.Text), ("Topic", data.Topic.Length == 0 ? "-" : data.Topic, Ink.Text),
+			("FullName", channel.Name, Ink.Text), ("Topic", data.Topic.Length == 0 ? "-" : data.Topic, Ink.Text),
 			("Read", data.ReadPrivileges.ToString(), Ink.Text), ("Write", data.WritePrivileges.ToString(), Ink.Text),
 			("Auto join", data.AutoJoin ? "yes" : "no", Ink.Text), ("Visible", data.Visible ? "yes" : "no", Ink.Text),
 			("Members", members.ToString(CultureInfo.InvariantCulture), Ink.Text)
@@ -45,7 +45,7 @@ internal sealed class ChannelDetails(IServiceProvider services, CommandActions a
 
 	private void AskNew()
 	{
-		dialogs.Form("New channel", [new FormField("Name (start with #)"), new FormField("Topic")], values =>
+		dialogs.Form("New channel", [new FormField("FullName (start with #)"), new FormField("Topic")], values =>
 			actions.Run($"channels create --name {CommandActions.Quote(values[0])}" +
 			            (values[1].Length > 0 ? $" --topic {CommandActions.Quote(values[1])}" : string.Empty)));
 	}

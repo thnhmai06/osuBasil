@@ -1,7 +1,6 @@
 using Basil.Application.Scores.Persistence;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Basil.Host.Stable.Web;
 using Basil.Testing.Persistence;
 
@@ -18,7 +17,7 @@ public sealed class SubmissionChartsTests
 			Id = id,
 			Value = new ScoreData(5, StoredBeatmaps.Beatmap().Hash, GameMode.Standard, GameMods.NoMod,
 				new ScoreState(hits, total, (ushort)combo, (ushort)combo, false), Grade.A, true,
-				DateTimeOffset.UnixEpoch) { Pp = pp }
+				DateTimeOffset.UnixEpoch) { PerformancePoints = pp }
 		};
 	}
 

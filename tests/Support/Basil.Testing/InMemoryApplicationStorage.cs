@@ -6,10 +6,9 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Moderation;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 
 namespace Basil.Testing;
 

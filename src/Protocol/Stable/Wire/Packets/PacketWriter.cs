@@ -1,10 +1,10 @@
-using Basil.Domain.Client;
-using Basil.Protocol.Stable.Models.Authentication;
-using Basil.Protocol.Stable.Models.Beatmaps;
-using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Wire.Binary;
+using Basil.Domain.Game.Spectating;
+using Basil.Protocol.Game.Stable.Models.Beatmaps;
+using Basil.Protocol.Game.Stable.Models.Multiplayer;
+using Basil.Protocol.Game.Stable.Models.Authentication;
+using Basil.Protocol.Game.Stable.Wire.Binary;
 
-namespace Basil.Protocol.Stable.Wire.Packets;
+namespace Basil.Protocol.Game.Stable.Wire.Packets;
 
 public sealed partial class PacketWriter
 {

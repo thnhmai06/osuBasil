@@ -7,7 +7,7 @@ using Basil.Application.Scores.Storage;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Client;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
@@ -44,7 +44,7 @@ internal sealed class ScoreRecorder(
 		}
 		catch (AlreadyExistsException)
 		{
-			return new ScoreOutcome(ScoreRejectionReason.Duplicate, null, null);
+			return new ScoreOutcome(SubmissionRejectionReason.Duplicate, null, null);
 		}
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
@@ -63,7 +63,7 @@ internal sealed class ScoreRecorder(
 		return best.Items.FirstOrDefault();
 	}
 
-	private static ScoreRejectionReason? Validate(
+	private static SubmissionRejectionReason? Validate(
 		Submission submission,
 		OsuClient osuClient,
 		BeatmapChecksums beatmap,
@@ -73,15 +73,15 @@ internal sealed class ScoreRecorder(
 		var md5ByServer = ComputeSubmissionMd5();
 
 		if (submittedClient.VersionDate != osuClient.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
-			return ScoreRejectionReason.VersionMismatch;
-		if (submittedClient.Fingerprint != osuClient.Fingerprint) return ScoreRejectionReason.ClientHashMismatch;
+			return SubmissionRejectionReason.VersionMismatch;
+		if (submittedClient.Fingerprint != osuClient.Fingerprint) return SubmissionRejectionReason.ClientHashMismatch;
 		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != osuClient.Fingerprint.UninstallHash)
-			return ScoreRejectionReason.UninstallerHashMismatch;
+			return SubmissionRejectionReason.UninstallerHashMismatch;
 		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.DiskSignature)) !=
 		    osuClient.Fingerprint.DiskSignatureHash)
-			return ScoreRejectionReason.DiskSignatureHashMismatch;
-		if (submission.HashByClient != md5ByServer) return ScoreRejectionReason.SubmissionHashMismatch;
-		if (submittedClient.BeatmapHash != beatmap.Hash) return ScoreRejectionReason.BeatmapHashMismatch;
+			return SubmissionRejectionReason.DiskSignatureHashMismatch;
+		if (submission.HashByClient != md5ByServer) return SubmissionRejectionReason.SubmissionHashMismatch;
+		if (submittedClient.BeatmapHash != beatmap.Hash) return SubmissionRejectionReason.BeatmapHashMismatch;
 
 		return null;
 

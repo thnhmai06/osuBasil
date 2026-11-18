@@ -68,7 +68,7 @@ internal sealed class FileReplayStorage(
 
 		var name = string.Format(CultureInfo.InvariantCulture,
 			"{0} {1} - {2} ({3:yyyy-MM-dd}) {4}",
-			score.Id, user.Value.Name, beatmap.Name, score.Value.Timestamp.UtcDateTime,
+			score.Id, user.Value.Name, beatmap.FullName, score.Value.Timestamp.UtcDateTime,
 			ModeName(score.Value.Mode));
 		return FileNames.Fitted(Portable(name), MaxNameBytes) + ".osr";
 	}

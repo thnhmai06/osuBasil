@@ -9,7 +9,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 {
 	public async Task<UserOutcome> SetAwayAsync(string? message)
 	{
-		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return UserOutcome.Denied;
+		if (scoped is { IsSelf: false, Actor: not OperatorConnection }) return UserOutcome.Denied;
 		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
 
 		user.Profile.SetAway(message);
@@ -18,7 +18,7 @@ public readonly struct ScopedUserProfile(ScopedUser scoped)
 
 	public async Task<UserOutcome> SetPmPrivateAsync(bool pmPrivate)
 	{
-		if (!scoped.IsSelf && scoped.Actor is not OperatorConnection) return UserOutcome.Denied;
+		if (scoped is { IsSelf: false, Actor: not OperatorConnection }) return UserOutcome.Denied;
 		if (await scoped.ResolveAsync() is not { } user) return UserOutcome.NotFound;
 
 		user.Profile.SetPmPrivate(pmPrivate);

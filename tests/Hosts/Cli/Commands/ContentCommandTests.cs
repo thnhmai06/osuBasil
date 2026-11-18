@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
-using Basil.Domain.Beatmaps;
+using Basil.Domain.Game.Beatmaps;
 using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.DependencyInjection;
 

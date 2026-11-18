@@ -2,8 +2,7 @@ using System.Text;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
 

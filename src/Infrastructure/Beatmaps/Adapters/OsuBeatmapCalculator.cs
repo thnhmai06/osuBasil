@@ -1,7 +1,7 @@
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Beatmaps.Storage;

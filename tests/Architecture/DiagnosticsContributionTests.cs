@@ -14,7 +14,7 @@ public class DiagnosticsContributionTests
 	private static IEnumerable<Assembly> ModuleInfrastructures()
 	{
 		return ModuleAssemblies.Infrastructures.Where(assembly =>
-			assembly.GetName().Name != "Basil.Infrastructure.Shared");
+			assembly.GetName().Name != "Basil.Infrastructure.Basil.Shared");
 	}
 
 	[Fact]

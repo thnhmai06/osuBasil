@@ -27,7 +27,7 @@ public readonly struct ScopedScoreSubmitter
 		_submitter = submitter;
 	}
 
-	public async Task<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection, ScoreReceipt? Receipt)> SubmitAsync(
+	public async Task<(ScoreSubmissionOutcome Result, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)> SubmitAsync(
 		Submission submission,
 		BeatmapChecksums? beatmap,
 		SubmittedClient client,

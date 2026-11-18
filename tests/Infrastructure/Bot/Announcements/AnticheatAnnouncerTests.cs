@@ -2,7 +2,7 @@ using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Bot.Announcements;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 using Basil.Infrastructure.Bot.Handlers;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;

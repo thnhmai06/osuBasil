@@ -2,7 +2,7 @@ using Basil.Application.Scores.Messages;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Host.Stable.Support;
 using Mediator;
 

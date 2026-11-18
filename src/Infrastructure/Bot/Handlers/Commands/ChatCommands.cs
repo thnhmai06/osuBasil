@@ -182,7 +182,7 @@ internal sealed class ChatCommands(
 			return true;
 		}
 
-		var reader = FaqEntryName.IsValid(query) ? await faqs.ReadAsync(query, ct) : null;
+		var reader = FaqRules.IsValidName(query) ? await faqs.ReadAsync(query, ct) : null;
 		if (reader is null)
 		{
 			await context.Reply(BotReplies.NoFaqEntryFound, new { entry = query }, ct);

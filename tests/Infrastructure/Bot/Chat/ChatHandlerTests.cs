@@ -5,7 +5,6 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Chat;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Bot.Handlers;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Infrastructure.Bot.Workers;

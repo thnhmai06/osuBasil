@@ -1,7 +1,6 @@
 using System.Text;
 using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;
 using NSubstitute;

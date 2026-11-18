@@ -47,10 +47,10 @@ internal static class MatchRoutes
 		var team = result as TeamVersusResult;
 		return new
 		{
-			ScoreOrder = result.Scores.Select(score => score.Score.Id), WinnerId = winnerId,
+			WinnerId = winnerId,
 			team?.Winner,
-			result.Margin, result.IsDraw, RedScore = team?.TeamScore[GameTeam.Red],
-			BlueScore = team?.TeamScore[GameTeam.Blue]
+			Margin = result.WinMargin, result.IsDraw, RedScore = team?.TeamScores[GameTeam.Red].TotalScore,
+			BlueScore = team?.TeamScores[GameTeam.Blue].TotalScore
 		};
 	}
 
@@ -67,7 +67,7 @@ internal static class MatchRoutes
 					teamType = round.Settings.TeamType,
 					aborted = round.Aborted, startedAt = round.StartedAt, endedAt = round.EndedAt,
 					verdict = round.Result is { } r ? VerdictOf(r) : null,
-					scores = reported.Scores.Select(s => new
+					scores = (round.Result?.Scores ?? reported.Scores).Select(s => new
 					{
 						userId = s.Score.Value.UserId, team = s.Team, totalScore = s.Score.Value.LastState.TotalScore,
 						maxCombo = s.Score.Value.LastState.MaxCombo, accuracy = s.Score.Value.Accuracy,

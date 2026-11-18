@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Host.Cli.Dashboard.Data;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;

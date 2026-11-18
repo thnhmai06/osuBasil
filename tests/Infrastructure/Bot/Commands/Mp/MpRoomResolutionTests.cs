@@ -2,7 +2,7 @@ using Basil.Application.Bot.Commands;
 using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users.Objects;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;
 

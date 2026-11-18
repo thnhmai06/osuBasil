@@ -1,8 +1,8 @@
 using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Beatmaps.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Beatmaps.Handlers;
 using Basil.Testing;
 using static Basil.Testing.BeatmapsetWorld;

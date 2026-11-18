@@ -36,7 +36,7 @@ internal sealed partial class IrcCommands
 
 	private void List(IrcSession session, Connection actor, IrcMessage message)
 	{
-		session.Numeric(IrcNumericReply.RplListStart, "Channel", "Users  Name");
+		session.Numeric(IrcNumericReply.RplListStart, "Channel", "Users  FullName");
 		var filter = message.Parameters.Count > 0
 			? message.Parameters[0].Split(',', StringSplitOptions.RemoveEmptyEntries)
 			: null;

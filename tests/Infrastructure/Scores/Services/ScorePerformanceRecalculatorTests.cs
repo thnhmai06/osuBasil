@@ -4,11 +4,8 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Scores.Logic;
 using Basil.Infrastructure.Scores.Services;
 using Basil.Testing.Persistence;
@@ -47,12 +44,12 @@ public sealed class ScorePerformanceRecalculatorTests(PersistenceFixture contain
 	{
 		var player = await Get<IUserRepository>().CreateAsync(new UserData { Name = name });
 		return await Scores.CreateAsync(StoredScores.Data(player, beatmap ?? _map.Hash, 1000, When) with
-			{ Pp = pp, IsPassed = passed });
+			{ PerformancePoints = pp, IsPassed = passed });
 	}
 
 	private async Task<double?> PpOfAsync(ScoreRecord score)
 	{
-		return (await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.Pp;
+		return (await Scores.GetAsync(score.Id, TestContext.Current.CancellationToken))!.Value.PerformancePoints;
 	}
 
 	[Fact]

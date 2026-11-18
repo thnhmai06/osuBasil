@@ -1,7 +1,6 @@
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Moderation;
-using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Users.Tests.Persistence;

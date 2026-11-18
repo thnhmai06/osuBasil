@@ -2,10 +2,10 @@ using System.Drawing;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Client;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
+using Basil.Domain.Game.Spectating;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
 

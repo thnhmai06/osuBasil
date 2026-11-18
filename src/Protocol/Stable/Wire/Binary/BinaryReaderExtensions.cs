@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Basil.Protocol.Stable.Wire.Binary;
+namespace Basil.Protocol.Game.Stable.Wire.Binary;
 
 internal static class BinaryReaderExtensions
 {

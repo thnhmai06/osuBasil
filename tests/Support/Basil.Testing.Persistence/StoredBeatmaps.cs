@@ -1,8 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 
 namespace Basil.Testing.Persistence;
 
@@ -14,7 +12,7 @@ public static class StoredBeatmaps
 		return new BeatmapsetRecord
 		{
 			Id = id,
-			Fingerprint = new ContentFingerprint(new ContentStamp(0, now), new Md5("00000000000000000000000000000000")),
+			Content = new ContentIdentifier(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
 			Metadata = new BeatmapsetMetadata
 			{
 				Artist = "Camellia",
@@ -52,7 +50,7 @@ public static class StoredBeatmaps
 	{
 		var set = Set(setId);
 		var beatmap = Beatmap();
-		return new BeatmapsetData(setId, set.Fingerprint, set.Metadata, set.Assets,
+		return new BeatmapsetData(setId, set.Content, set.Metadata, set.Assets,
 			[new BeatmapData(321, beatmap.Hash, beatmap.Metadata, beatmap.Assets)]);
 	}
 
@@ -61,7 +59,7 @@ public static class StoredBeatmaps
 	{
 		var now = DateTimeOffset.UnixEpoch;
 		return new BeatmapsetData(onlineId,
-			new ContentFingerprint(new ContentStamp(0, now), new Md5("00000000000000000000000000000000")),
+			new ContentIdentifier(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
 			new BeatmapsetMetadata { Artist = artist, Title = title, Creator = creator },
 			new BeatmapsetAssets(), beatmaps ?? []);
 	}

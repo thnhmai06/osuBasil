@@ -1,3 +1,3 @@
-namespace Basil.Protocol.Stable;
+namespace Basil.Protocol.Game.Stable;
 
 public sealed class AssemblyMarker;

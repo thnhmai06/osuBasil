@@ -1,5 +1,3 @@
-using Basil.Domain.Users;
-
 namespace Basil.Testing.Persistence;
 
 public static class StoredUsers

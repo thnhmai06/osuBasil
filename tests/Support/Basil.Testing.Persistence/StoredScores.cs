@@ -1,9 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 
 namespace Basil.Testing.Persistence;
 

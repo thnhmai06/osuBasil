@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Users;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;

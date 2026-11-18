@@ -16,20 +16,19 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Game.Client;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Packets;
 using Basil.Host.Stable.Routes;
 using Basil.Host.Stable.Support;
-using Basil.Protocol.Stable.Models.Client;
-using Basil.Protocol.Stable.Models.Scores;
-using Basil.Protocol.Stable.Wire.Security;
+using Basil.Protocol.Game.Stable.Models.Client;
+using Basil.Protocol.Game.Stable.Models.Scores;
+using Basil.Protocol.Game.Stable.Wire.Security;
 using Mediator;
 
 namespace Basil.Host.Stable.Web;
@@ -165,7 +164,7 @@ internal static class OsuWebRoutes
 		var lines = new List<string>
 		{
 			$"{(int)map.Beatmapset.Status}|false|{map.Id}|{map.Beatmapset.Id}|{rows.Count}|0",
-			"0", map.Name, "10.0", string.Empty
+			"0", map.FullName, "10.0", string.Empty
 		};
 		lines.AddRange(rows);
 		return Text(string.Join('\n', lines));

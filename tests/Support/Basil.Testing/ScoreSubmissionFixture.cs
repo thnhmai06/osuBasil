@@ -10,12 +10,11 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
-using Basil.Domain.Client;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Client;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
+using Basil.Domain.Game.Users;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 

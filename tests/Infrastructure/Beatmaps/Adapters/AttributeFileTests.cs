@@ -1,5 +1,4 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Tests.Support;
 using osu.Game.Beatmaps.Legacy;

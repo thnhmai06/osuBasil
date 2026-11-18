@@ -293,7 +293,7 @@ internal static class ContentCommands
 	private static async Task<int> ShowFaqAsync(CommandCall call)
 	{
 		var entry = call.Word("entry");
-		if (!FaqEntryName.IsValid(entry) ||
+		if (!FaqRules.IsValidName(entry) ||
 		    await call.Get<ISender>().Send(new ReadFaq(entry), call.CancellationToken) is not { } text)
 			return call.NotFound("entry");
 
@@ -304,7 +304,7 @@ internal static class ContentCommands
 	private static async Task<int> SetFaqAsync(CommandCall call)
 	{
 		var entry = call.Word("entry");
-		if (!FaqEntryName.IsValid(entry)) throw CommandException.Invalid("The entry name is not valid.");
+		if (!FaqRules.IsValidName(entry)) throw CommandException.Invalid("The entry name is not valid.");
 
 		var text = await File.ReadAllTextAsync(call.Required("file"), call.CancellationToken);
 		return call.Report(
@@ -315,7 +315,7 @@ internal static class ContentCommands
 	private static async Task<int> DeleteFaqAsync(CommandCall call)
 	{
 		var entry = call.Word("entry");
-		return FaqEntryName.IsValid(entry)
+		return FaqRules.IsValidName(entry)
 			? call.Report(await SendAsync(call, actor => new DeleteFaq(actor, entry)), "Entry deleted.")
 			: call.NotFound("entry");
 	}

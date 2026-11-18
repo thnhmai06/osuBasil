@@ -3,8 +3,7 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Host.Cli.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -67,7 +66,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 		var (code, text) = await fixture.RunAsync($"users create --username {name} --password pw");
 
 		Assert.Equal(1, code);
-		Assert.Equal("error: nameTaken: Name taken.", text);
+		Assert.Equal("error: nameTaken: FullName taken.", text);
 	}
 
 	[Fact]

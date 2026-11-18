@@ -1,9 +1,7 @@
 using Basil.Application.Scores.Persistence;
-using Basil.Domain.Client;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
+using Basil.Domain.Game.Users;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Scores;
@@ -16,7 +14,7 @@ public sealed class ScorePerformanceTests(RestHostFixture fixture)
 		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId,
 			beatmap, GameMode.Standard, GameMods.NoMod,
 			new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, true), Grade.S, passed,
-			new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)) { Pp = pp });
+			new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)) { PerformancePoints = pp });
 	}
 
 	private async Task<Md5> ServerBeatmapAsync()

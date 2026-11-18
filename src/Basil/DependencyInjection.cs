@@ -41,83 +41,86 @@ namespace Basil;
 
 public static class DependencyInjection
 {
-	public static IServiceCollection AddBasil(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services.AddBasilStorage();
-		services.AddHostedService<RuntimeStartup>();
-		services.AddUsersBackgroundWork();
-		services.AddMultiplayerBackgroundWork();
-		services.AddBotInfrastructure();
-		services.AddBeatmapsBackgroundWork();
-		services.AddScoresBackgroundWork();
-		services.AddGatewayLimits();
-		return services.AddBasilApplication();
-	}
-
-	public static IServiceCollection AddBasilStorage(this IServiceCollection services)
-	{
-		services.AddSharedInfrastructure();
-		services.AddPersistenceInfrastructure();
-
-		// The foreign keys decide the order of the migrations, not the project references.
-		services.AddUsersInfrastructure();
-		services.AddAuthInfrastructure();
-		services.AddBeatmapsInfrastructure();
-		services.AddContentInfrastructure();
-		services.AddSharedMigration();
-		services.AddScoresInfrastructure();
-		services.AddMultiplayerInfrastructure();
-		services.AddChatInfrastructure();
-		services.AddAnticheatInfrastructure();
-		services.AddServersInfrastructure();
-		services.AddDiagnosticsInfrastructure();
-		return services;
-	}
-
-	public static IServiceCollection AddBasilApplication(this IServiceCollection services)
-	{
-		services.AddEvents();
-		services.AddUsersApplication();
-		services.AddBeatmapsApplication();
-		services.AddScoresApplication();
-		services.AddMultiplayerApplication();
-		services.AddChatApplication();
-		services.AddBotApplication();
-		services.AddServersApplication();
-		services.AddDiagnosticsApplication();
-		return services;
-	}
-
-	internal static IServiceCollection AddGatewayLimits(this IServiceCollection services)
-	{
-		services.AddSingleton<SettingsGatewayLimits>();
-		services.AddSingleton(sp => new Admission(sp.GetRequiredService<TimeProvider>(),
-			sp.GetRequiredService<SettingsGatewayLimits>().Current, sp.GetRequiredService<LoadSignal>()));
-		return services;
-	}
-
-	internal static IServiceCollection AddEvents(this IServiceCollection services)
-	{
-		services.AddSharedApplication();
-		services.AddStableHost();
-		services.AddIrcHost();
-		services.AddRestHost();
-		services.AddCliFeeds();
-		services.AddMediator(options =>
+		public IServiceCollection AddBasil()
 		{
-			options.ServiceLifetime = ServiceLifetime.Singleton;
-			options.GenerateTypesAsInternal = true;
-			options.NotificationPublisherType = typeof(QueuedNotificationPublisher);
-			options.PipelineBehaviors = [typeof(MessageMeasurement<,>)];
-		});
-		AddCategory<UserEvent>(services);
-		AddCategory<ChannelEvent>(services);
-		AddCategory<LobbyEvent>(services);
-		AddCategory<RoomEvent>(services);
-		AddCategory<AnticheatEvent>(services);
-		AddCategory<ScoreEvent>(services);
-		AddCategory<BeatmapsetEvent>(services);
-		return services;
+			services.AddBasilStorage();
+			services.AddHostedService<RuntimeStartup>();
+			services.AddUsersBackgroundWork();
+			services.AddMultiplayerBackgroundWork();
+			services.AddBotInfrastructure();
+			services.AddBeatmapsBackgroundWork();
+			services.AddScoresBackgroundWork();
+			services.AddGatewayLimits();
+			return services.AddBasilApplication();
+		}
+
+		public IServiceCollection AddBasilStorage()
+		{
+			services.AddSharedInfrastructure();
+			services.AddPersistenceInfrastructure();
+
+			// The foreign keys decide the order of the migrations, not the project references.
+			services.AddUsersInfrastructure();
+			services.AddAuthInfrastructure();
+			services.AddBeatmapsInfrastructure();
+			services.AddContentInfrastructure();
+			services.AddSharedMigration();
+			services.AddScoresInfrastructure();
+			services.AddMultiplayerInfrastructure();
+			services.AddChatInfrastructure();
+			services.AddAnticheatInfrastructure();
+			services.AddServersInfrastructure();
+			services.AddDiagnosticsInfrastructure();
+			return services;
+		}
+
+		public IServiceCollection AddBasilApplication()
+		{
+			services.AddEvents();
+			services.AddUsersApplication();
+			services.AddBeatmapsApplication();
+			services.AddScoresApplication();
+			services.AddMultiplayerApplication();
+			services.AddChatApplication();
+			services.AddBotApplication();
+			services.AddServersApplication();
+			services.AddDiagnosticsApplication();
+			return services;
+		}
+
+		internal IServiceCollection AddGatewayLimits()
+		{
+			services.AddSingleton<SettingsGatewayLimits>();
+			services.AddSingleton(sp => new Admission(sp.GetRequiredService<TimeProvider>(),
+				sp.GetRequiredService<SettingsGatewayLimits>().Current, sp.GetRequiredService<LoadSignal>()));
+			return services;
+		}
+
+		internal IServiceCollection AddEvents()
+		{
+			services.AddSharedApplication();
+			services.AddStableHost();
+			services.AddIrcHost();
+			services.AddRestHost();
+			services.AddCliFeeds();
+			services.AddMediator(options =>
+			{
+				options.ServiceLifetime = ServiceLifetime.Singleton;
+				options.GenerateTypesAsInternal = true;
+				options.NotificationPublisherType = typeof(QueuedNotificationPublisher);
+				options.PipelineBehaviors = [typeof(MessageMeasurement<,>)];
+			});
+			AddCategory<UserEvent>(services);
+			AddCategory<ChannelEvent>(services);
+			AddCategory<LobbyEvent>(services);
+			AddCategory<RoomEvent>(services);
+			AddCategory<AnticheatEvent>(services);
+			AddCategory<ScoreEvent>(services);
+			AddCategory<BeatmapsetEvent>(services);
+			return services;
+		}
 	}
 
 	private static void AddCategory<T>(IServiceCollection services) where T : Event

@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Host.Rest.Tests.Sse;
 

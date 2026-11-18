@@ -12,7 +12,7 @@ public class ImplementationPlacementTests
 	];
 
 	private static readonly IReadOnlyList<Assembly> ModuleInfrastructures =
-		ModuleAssemblies.Infrastructures.Where(assembly => assembly.GetName().Name != "Basil.Infrastructure.Shared")
+		ModuleAssemblies.Infrastructures.Where(assembly => assembly.GetName().Name != "Basil.Infrastructure.Basil.Shared")
 			.ToArray();
 
 	[Fact]
@@ -85,7 +85,7 @@ public class ImplementationPlacementTests
 
 	private static bool IsImplementation(Type type)
 	{
-		return !type.IsAbstract && !type.IsInterface && type.GetInterfaces().Any(contract =>
+		return type is { IsAbstract: false, IsInterface: false } && type.GetInterfaces().Any(contract =>
 			ImplementationInterfaces.Contains((contract.IsGenericType ? contract.GetGenericTypeDefinition() : contract)
 				.FullName));
 	}

@@ -23,14 +23,14 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
                 {
-                    b.Property<string>("Name")
+                    b.Property<string>("FullName")
                         .HasMaxLength(64)
                         .HasColumnName("name");
 
                     b.Property<long>("Next")
                         .HasColumnName("next");
 
-                    b.HasKey("Name")
+                    b.HasKey("FullName")
                         .HasName("pk_user_id_counters");
 
                     b.ToTable("user_id_counters", (string)null);
@@ -119,7 +119,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Users
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnName("deleted_at");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnName("name");
 

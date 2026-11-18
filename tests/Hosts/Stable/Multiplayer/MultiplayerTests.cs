@@ -23,7 +23,7 @@ public sealed class MultiplayerTests(StableHostFixture fixture)
 		await guest.LoginAsync();
 		await hostClient.SendAsync(writer => writer.Packet(OsuClient.Out.CreateMatch,
 			ClientPacketWriter.Match("room of " + hostName, "pw", mapMd5: beatmap.Hash.ToString(), mapId: beatmap.Id,
-				mapName: beatmap.Name)));
+				mapName: beatmap.FullName)));
 		var created = await hostClient.WaitForAsync(OsuClient.In.MatchJoinSuccess);
 		Assert.NotNull(created);
 		var matchId = MatchIdOf(created);

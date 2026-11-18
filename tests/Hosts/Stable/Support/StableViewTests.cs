@@ -1,4 +1,4 @@
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Host.Stable.Support;
 
 namespace Basil.Host.Stable.Tests.Support;

@@ -1,5 +1,4 @@
 using Basil.Application.Users.Storage;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Users.Storage;
 using Basil.Testing.Persistence;
 

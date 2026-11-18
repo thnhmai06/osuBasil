@@ -34,7 +34,7 @@ internal sealed class CommandActions(IServiceProvider services, ConsoleTab conso
 	{
 		_ = check().ContinueWith(task => post(() =>
 		{
-			if (task.IsCompletedSuccessfully && task.Result) then();
+			if (task is { IsCompletedSuccessfully: true, Result: true }) then();
 			else toasts.Show(otherwise, ToastKind.Warning);
 		}), TaskScheduler.Default);
 	}

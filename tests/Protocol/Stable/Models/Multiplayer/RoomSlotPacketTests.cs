@@ -1,4 +1,4 @@
-using Basil.Protocol.Stable.Models.Multiplayer;
+using Basil.Protocol.Game.Stable.Models.Multiplayer;
 
 namespace Basil.Protocol.Stable.Tests.Models.Multiplayer;
 

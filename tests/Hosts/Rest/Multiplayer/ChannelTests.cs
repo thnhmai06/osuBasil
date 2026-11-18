@@ -1,4 +1,4 @@
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Host.Rest.Tests.Multiplayer;
 

@@ -4,7 +4,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Scores.Persistence;
 
 internal readonly record struct ScoreOutcome(
-	ScoreRejectionReason? Rejection,
+	SubmissionRejectionReason? Rejection,
 	ScoreRecord? Score,
 	UserStats? Stats,
 	ScoreRecord? PreviousBest = null);

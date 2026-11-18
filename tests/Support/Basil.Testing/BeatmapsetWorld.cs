@@ -5,10 +5,8 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Testing;
@@ -74,7 +72,7 @@ public sealed class BeatmapsetWorld
 		string? Video = null);
 
 	public sealed class MemoryArchive(string name, byte[] bytes, DateTimeOffset modifiedAt)
-		: BeatmapsetArchive(name, new ContentStamp(bytes.Length, modifiedAt))
+		: BeatmapsetArchive(name, new ContentMetadata(bytes.Length, modifiedAt))
 	{
 		public byte[] Bytes => bytes;
 

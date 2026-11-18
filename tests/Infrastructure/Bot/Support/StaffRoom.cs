@@ -3,7 +3,6 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
-using Basil.Domain.Users;
 using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Support;

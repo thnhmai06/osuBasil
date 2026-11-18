@@ -1,5 +1,5 @@
 using System.Net;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Host.Stable.Support;
 using Microsoft.AspNetCore.Http;
 

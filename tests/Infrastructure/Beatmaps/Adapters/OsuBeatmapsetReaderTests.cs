@@ -1,5 +1,5 @@
 using System.Text;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Testing.Persistence;
 

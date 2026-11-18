@@ -3,7 +3,7 @@ using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 using Basil.Domain.Client;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;

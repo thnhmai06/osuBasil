@@ -1,5 +1,4 @@
 using Basil.Application.Users.Registry;
-using Basil.Domain.Users;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Dashboard;
 using Microsoft.Extensions.DependencyInjection;

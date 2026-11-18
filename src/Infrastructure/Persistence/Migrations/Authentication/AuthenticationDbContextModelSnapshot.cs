@@ -155,14 +155,14 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
                 {
-                    b.Property<string>("Name")
+                    b.Property<string>("FullName")
                         .HasMaxLength(64)
                         .HasColumnName("name");
 
                     b.Property<long>("Next")
                         .HasColumnName("next");
 
-                    b.HasKey("Name")
+                    b.HasKey("FullName")
                         .HasName("pk_connection_id_counters");
 
                     b.ToTable("connection_id_counters", (string)null);

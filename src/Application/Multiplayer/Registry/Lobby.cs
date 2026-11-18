@@ -8,9 +8,9 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Shared;
+
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Registry;

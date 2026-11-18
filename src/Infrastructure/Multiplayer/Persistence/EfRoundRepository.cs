@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Shared.Persistence;
@@ -32,12 +32,29 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 			var round = ToRound(match, row);
 			// A stored decision is shown as it was decided, never decided again from the scores.
 			if (row.Result is not null && JsonSerializer.Deserialize<StoredDecision>(row.Result) is { } stored)
-				round.Result = RoundResult.Restore(round, await roundScores.ListAsync(round, ct), stored.ScoreOrder,
-					stored.Margin, stored.IsDraw, stored.WinnerId, stored.Winner, stored.RedScore, stored.BlueScore);
+			{
+				var scores = await roundScores.ListAsync(round, ct);
+				round.Result = round.Settings.TeamType.IsTeamMode()
+					? new TeamVersusResult(round, stored.Margin, stored.IsDraw, stored.Winner,
+						new Dictionary<GameTeam, RoundTeamScore>
+						{
+							[GameTeam.Red] = TeamScoreOf(round, scores, GameTeam.Red, stored.RedPassedScore, stored.RedScore),
+							[GameTeam.Blue] = TeamScoreOf(round, scores, GameTeam.Blue, stored.BluePassedScore, stored.BlueScore)
+						})
+					: new HeadToHeadResult(round, scores, stored.Margin, stored.IsDraw, stored.WinnerId);
+			}
 			listed.Add(round);
 		}
 
 		return listed;
+	}
+
+	private static RoundTeamScore TeamScoreOf(Round round, IEnumerable<RoundScore> scores, GameTeam team,
+		double? passedScore, double? totalScore)
+	{
+		return new RoundTeamScore(round.Settings.WinCondition,
+			scores.Where(score => score.Team == team).Select(score => score.Score).ToArray(),
+			passedScore ?? 0, totalScore ?? 0);
 	}
 
 	private static RoundRow ToRow(Round round)
@@ -87,23 +104,24 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 	}
 
 	private sealed record StoredDecision(
-		IReadOnlyList<int> ScoreOrder,
 		int? WinnerId,
 		GameTeam? Winner,
 		double Margin,
 		bool IsDraw,
+		double? RedPassedScore,
+		double? BluePassedScore,
 		double? RedScore,
 		double? BlueScore)
 	{
 		public static StoredDecision Of(RoundResult result)
 		{
-			var order = (IReadOnlyList<int>)[.. result.Scores.Select(score => score.Score.Id)];
 			return result switch
 			{
-				TeamVersusResult team => new StoredDecision(order, null, team.Winner, team.Margin, team.IsDraw,
-					team.TeamScore[GameTeam.Red], team.TeamScore[GameTeam.Blue]),
-				HeadToHeadResult head => new StoredDecision(order, head.WinnerId, null, head.Margin, head.IsDraw, null,
-					null),
+				TeamVersusResult team => new StoredDecision(null, team.Winner, team.WinMargin, team.IsDraw,
+					team.TeamScores[GameTeam.Red].PassedScore, team.TeamScores[GameTeam.Blue].PassedScore,
+					team.TeamScores[GameTeam.Red].TotalScore, team.TeamScores[GameTeam.Blue].TotalScore),
+				HeadToHeadResult head => new StoredDecision(head.WinnerId, null, head.WinMargin, head.IsDraw, null,
+					null, null, null),
 				_ => throw new ArgumentOutOfRangeException(nameof(result))
 			};
 		}

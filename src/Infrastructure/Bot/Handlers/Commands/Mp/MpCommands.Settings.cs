@@ -301,7 +301,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name,
+		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.FullName,
 			beatmap.Metadata.Difficulty.Mode, beatmap);
 		var outcome =
 			await sender.Send(

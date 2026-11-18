@@ -1,7 +1,6 @@
 using Basil.Application.Beatmaps.Storage;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Infrastructure.Beatmaps.Tests.Support;

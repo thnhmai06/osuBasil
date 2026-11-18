@@ -1,7 +1,7 @@
 using System.Globalization;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 
-namespace Basil.Protocol.Stable.Models.Scores;
+namespace Basil.Protocol.Game.Stable.Models.Scores;
 
 public sealed record ScoreSubmission(
 	string BeatmapHash,

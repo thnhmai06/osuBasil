@@ -1,7 +1,5 @@
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 
 namespace Basil.Testing.Persistence;
 

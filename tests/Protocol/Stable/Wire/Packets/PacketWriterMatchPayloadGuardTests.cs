@@ -1,5 +1,5 @@
-using Basil.Protocol.Stable.Models.Multiplayer;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Protocol.Game.Stable.Models.Multiplayer;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 

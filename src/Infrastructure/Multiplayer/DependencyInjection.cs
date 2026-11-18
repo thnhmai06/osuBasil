@@ -8,20 +8,23 @@ namespace Basil.Infrastructure.Multiplayer;
 
 public static class DependencyInjection
 {
-	public static IServiceCollection AddMultiplayerInfrastructure(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services.AddSingleton<IModuleMigration, ModuleMigration<MultiplayerDbContext>>();
-		services.AddSingleton<IMatchRepository, EfMatchRepository>();
-		services.AddSingleton<IMatchReportRepository, MatchReportRepository>();
-		services.AddSingleton<IRoundRepository, EfRoundRepository>();
-		services.AddSingleton<IRoundScoreRepository, EfRoundScoreRepository>();
-		services.AddSingleton<IMatchEventRepository, EfMatchEventRepository>();
-		return services;
-	}
+		public IServiceCollection AddMultiplayerInfrastructure()
+		{
+			services.AddSingleton<IModuleMigration, ModuleMigration<MultiplayerDbContext>>();
+			services.AddSingleton<IMatchRepository, EfMatchRepository>();
+			services.AddSingleton<IMatchReportRepository, MatchReportRepository>();
+			services.AddSingleton<IRoundRepository, EfRoundRepository>();
+			services.AddSingleton<IRoundScoreRepository, EfRoundScoreRepository>();
+			services.AddSingleton<IMatchEventRepository, EfMatchEventRepository>();
+			return services;
+		}
 
-	public static IServiceCollection AddMultiplayerBackgroundWork(this IServiceCollection services)
-	{
-		services.AddHostedService<EmptyRoomCloser>();
-		return services;
+		public IServiceCollection AddMultiplayerBackgroundWork()
+		{
+			services.AddHostedService<EmptyRoomCloser>();
+			return services;
+		}
 	}
 }

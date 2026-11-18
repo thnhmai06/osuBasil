@@ -1,8 +1,8 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Storage;
-using Basil.Domain.Client;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Client;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Scores;

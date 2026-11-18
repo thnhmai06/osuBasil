@@ -7,8 +7,8 @@ namespace Basil.ArchitectureTests;
 
 public partial class HostGraphTests
 {
-	private const string Shared = "Basil.Host.Shared";
-	private const string ProtocolStable = "Basil.Protocol.Stable";
+	private const string Shared = "Basil.Host.Basil.Shared";
+	private const string ProtocolStable = "Basil.Protocol.Game.Stable";
 
 	private static readonly string[] Transports =
 		["Basil.Host.Stable", "Basil.Host.Irc", "Basil.Host.Rest", "Basil.Host.Cli"];

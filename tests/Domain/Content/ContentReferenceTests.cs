@@ -1,5 +1,6 @@
 using Basil.Domain.Content;
 
+
 namespace Basil.Domain.Tests.Content;
 
 public class ContentReferenceTests
@@ -73,7 +74,7 @@ public class ContentReferenceTests
 	[InlineData("CONSOLE.txt")]
 	public void IsValidPath_CanonicalRelativePath_IsTrue(string path)
 	{
-		Assert.True(ContentReference.IsValidPath(path));
+		Assert.True(PathValidation.IsValidPath(path));
 	}
 
 	[Theory]
@@ -111,6 +112,6 @@ public class ContentReferenceTests
 	[InlineData("LPT9.txt")]
 	public void IsValidPath_EachBrokenRule_IsFalse(string? path)
 	{
-		Assert.False(ContentReference.IsValidPath(path));
+		Assert.False(PathValidation.IsValidPath(path));
 	}
 }

@@ -150,7 +150,7 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 	private static string Ref(object value)
 	{
 		var type = value.GetType();
-		return $"{type.GetProperty("Name")!.GetValue(value)} ({type.GetProperty("Id")!.GetValue(value)})";
+		return $"{type.GetProperty("FullName")!.GetValue(value)} ({type.GetProperty("Id")!.GetValue(value)})";
 	}
 
 	private static IEnumerable<PropertyInfo> Properties(Type type)

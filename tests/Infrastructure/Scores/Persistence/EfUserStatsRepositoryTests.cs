@@ -1,7 +1,6 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Scores.Tests.Persistence;

@@ -23,7 +23,7 @@ public class LayeringTests
 		["Basil.Host", "Basil.Configuration", "Basil.Documentation", "Basil.Lifetime", "Basil.Logging"];
 
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
-	private static readonly Assembly ProtocolStable = typeof(Protocol.Stable.AssemblyMarker).Assembly;
+	private static readonly Assembly ProtocolStable = typeof(Protocol.Game.Stable.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
 	private static readonly Assembly BotApplication = Assembly.Load("Basil.Application.Bot");
 	private static readonly Assembly BotInfrastructure = Assembly.Load("Basil.Infrastructure.Bot");
@@ -33,13 +33,13 @@ public class LayeringTests
 		.. ModuleAssemblies.Modules
 			.SelectMany(module => new[] { $"Basil.Application.{module}", $"Basil.Infrastructure.{module}" }),
 
-		"Basil.Application.Shared", "Basil.Infrastructure.Shared"
+		"Basil.Application.Basil.Shared", "Basil.Infrastructure.Basil.Shared"
 	];
 
 	private static readonly string[] MessageOnlyHosts =
 	[
 		Path.Combine("Hosts", "Irc"), Path.Combine("Hosts", "Stable"), Path.Combine("Hosts", "Rest"),
-		Path.Combine("Hosts", "Cli"), Path.Combine("Hosts", "Shared"),
+		Path.Combine("Hosts", "Cli"), Path.Combine("Hosts", "Basil.Shared"),
 		Path.Combine("Application", "Bot"), Path.Combine("Infrastructure", "Bot")
 	];
 
@@ -168,7 +168,7 @@ public class LayeringTests
 	{
 		foreach (var assembly in ModuleAssemblies.Applications)
 			AssertNoDependency(assembly,
-				["Basil.Infrastructure.Shared", .. InfrastructureNamespaces(), .. Host, Protocol]);
+				["Basil.Infrastructure.Basil.Shared", .. InfrastructureNamespaces(), .. Host, Protocol]);
 	}
 
 	[Fact]
@@ -225,7 +225,7 @@ public class LayeringTests
 	public void Infrastructure_OnlyOwnCapabilities()
 	{
 		foreach (var assembly in ModuleAssemblies.Infrastructures.Where(assembly =>
-			         assembly.GetName().Name != "Basil.Infrastructure.Shared"))
+			         assembly.GetName().Name != "Basil.Infrastructure.Basil.Shared"))
 		{
 			var module = assembly.GetName().Name!.Split('.')[1];
 			var others = ModuleAssemblies.Modules.Where(other => other != module)
@@ -259,7 +259,7 @@ public class LayeringTests
 	{
 		AssertNoDependency(BotApplication,
 		[
-			"Basil.Infrastructure.Shared", .. InfrastructureNamespaces(), .. NonScopedCapabilityTypeNames(), .. Host,
+			"Basil.Infrastructure.Basil.Shared", .. InfrastructureNamespaces(), .. NonScopedCapabilityTypeNames(), .. Host,
 			Protocol
 		]);
 	}
@@ -269,7 +269,7 @@ public class LayeringTests
 	{
 		AssertNoDependency(BotInfrastructure,
 		[
-			"Basil.Infrastructure.Shared",
+			"Basil.Infrastructure.Basil.Shared",
 			.. ModuleAssemblies.Modules.Where(module => module != "Bot")
 				.Select(module => $"Basil.Infrastructure.{module}"),
 			.. NonScopedCapabilityTypeNames(), .. Host, Protocol

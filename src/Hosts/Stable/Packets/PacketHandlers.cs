@@ -7,14 +7,13 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
-using Basil.Domain.Cryptography;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Users;
 using Basil.Gateway.Admission;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
-using Basil.Protocol.Stable.Models.Beatmaps;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Protocol.Game.Stable.Models.Beatmaps;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 using Mediator;
 
 namespace Basil.Host.Stable.Packets;

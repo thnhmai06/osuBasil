@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Testing.Persistence;
 

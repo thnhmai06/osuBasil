@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Users;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Stable.Models.Multiplayer;
 

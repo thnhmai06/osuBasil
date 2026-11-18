@@ -1,7 +1,7 @@
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Client;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Domain.Game.Spectating;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Packets;
 

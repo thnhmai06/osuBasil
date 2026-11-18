@@ -19,55 +19,57 @@ namespace Basil.Infrastructure.Beatmaps;
 
 public static class DependencyInjection
 {
-	public static IServiceCollection AddBeatmapsInfrastructure(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
-		services.AddSingleton<IResident, IncomingLeftovers>();
-		services.AddSingleton<IBeatmapsetRepository, EfBeatmapsetRepository>();
-		services.AddSingleton<IBeatmapRepository, EfBeatmapRepository>();
-		services.AddSingleton<FileBeatmapsetStorage>();
-		services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
-		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
-		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
-		services.AddSingleton<IBeatmapCalculator, OsuBeatmapCalculator>();
-		services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
-		services.AddSingleton<RulesetStore>();
-		services.AddSingleton<IRulesetUpdater>(provider => new RulesetUpdater(
-			provider.GetRequiredService<RulesetStore>(), new HttpClient { Timeout = TimeSpan.FromMinutes(5) },
-			provider.GetRequiredService<ILogger<RulesetUpdater>>()));
-		services.AddSingleton<IBeatmapReloader, BeatmapReloader>();
-		services.AddOptions<AssetOptions>().PostConfigure<DataPaths>((options, paths) =>
+		public IServiceCollection AddBeatmapsInfrastructure()
 		{
-			if (string.IsNullOrWhiteSpace(options.CacheDirectory))
-				options.CacheDirectory = Path.Combine(paths.Cache.Path, "Previews");
-		});
-		services.AddBeatmapsLogic();
-		return services;
-	}
+			services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
+			services.AddSingleton<IResident, IncomingLeftovers>();
+			services.AddSingleton<IBeatmapsetRepository, EfBeatmapsetRepository>();
+			services.AddSingleton<IBeatmapRepository, EfBeatmapRepository>();
+			services.AddSingleton<FileBeatmapsetStorage>();
+			services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
+			services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
+			services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
+			services.AddSingleton<IBeatmapCalculator, OsuBeatmapCalculator>();
+			services.AddSingleton<IBeatmapAssets, BeatmapPreviewMaker>();
+			services.AddSingleton<RulesetStore>();
+			services.AddSingleton<IRulesetUpdater>(provider => new RulesetUpdater(
+				provider.GetRequiredService<RulesetStore>(), new HttpClient { Timeout = TimeSpan.FromMinutes(5) },
+				provider.GetRequiredService<ILogger<RulesetUpdater>>()));
+			services.AddSingleton<IBeatmapReloader, BeatmapReloader>();
+			services.AddOptions<AssetOptions>().PostConfigure<DataPaths>((options, paths) =>
+			{
+				if (string.IsNullOrWhiteSpace(options.CacheDirectory))
+					options.CacheDirectory = Path.Combine(paths.Cache.Path, "Previews");
+			});
+			services.AddBeatmapsLogic();
+			return services;
+		}
 
-	public static IServiceCollection AddBeatmapsInfrastructureOptions(this IServiceCollection services,
-		IConfiguration configuration)
-	{
-		services.AddOptions<AssetOptions>().Bind(configuration.GetSection("Basil:Assets"));
-		return services;
-	}
+		public IServiceCollection AddBeatmapsInfrastructureOptions(IConfiguration configuration)
+		{
+			services.AddOptions<AssetOptions>().Bind(configuration.GetSection("Basil:Assets"));
+			return services;
+		}
 
-	public static IServiceCollection AddBeatmapsLogic(this IServiceCollection services)
-	{
-		services.AddSingleton<DifficultyAnalyser>();
-		services.AddSingleton<BeatmapsetMatcher>();
-		services.AddSingleton<BeatmapsetPlanner>();
-		services.AddSingleton<BeatmapsetFileWriter>();
-		services.AddSingleton<BeatmapsetFileAudit>();
-		services.AddSingleton<BeatmapsetStorer>();
-		services.AddSingleton<IBeatmapsetImporter, BeatmapsetImporter>();
-		services.AddSingleton<IBeatmapsetScanner, BeatmapsetScanner>();
-		return services;
-	}
+		public IServiceCollection AddBeatmapsLogic()
+		{
+			services.AddSingleton<DifficultyAnalyser>();
+			services.AddSingleton<BeatmapsetMatcher>();
+			services.AddSingleton<BeatmapsetPlanner>();
+			services.AddSingleton<BeatmapsetFileWriter>();
+			services.AddSingleton<BeatmapsetFileAudit>();
+			services.AddSingleton<BeatmapsetStorer>();
+			services.AddSingleton<IBeatmapsetImporter, BeatmapsetImporter>();
+			services.AddSingleton<IBeatmapsetScanner, BeatmapsetScanner>();
+			return services;
+		}
 
-	public static IServiceCollection AddBeatmapsBackgroundWork(this IServiceCollection services)
-	{
-		services.AddHostedService<BeatmapsetStorageWatcher>();
-		return services;
+		public IServiceCollection AddBeatmapsBackgroundWork()
+		{
+			services.AddHostedService<BeatmapsetStorageWatcher>();
+			return services;
+		}
 	}
 }

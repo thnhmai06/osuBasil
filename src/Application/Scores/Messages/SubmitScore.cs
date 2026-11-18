@@ -12,4 +12,4 @@ public sealed record SubmitScore(
 	BeatmapChecksums? Beatmap,
 	SubmittedClient Client,
 	Stream? Replay)
-	: IRequest<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection, ScoreReceipt? Receipt)>;
+	: IRequest<(ScoreSubmissionOutcome Result, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)>;

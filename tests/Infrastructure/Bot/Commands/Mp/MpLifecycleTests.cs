@@ -1,5 +1,5 @@
 using Basil.Application.Bot.Commands.Mp;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;
 

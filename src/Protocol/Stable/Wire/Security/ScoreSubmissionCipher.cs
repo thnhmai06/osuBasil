@@ -5,7 +5,7 @@ using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
 
-namespace Basil.Protocol.Stable.Wire.Security;
+namespace Basil.Protocol.Game.Stable.Wire.Security;
 
 public static class ScoreSubmissionCipher
 {

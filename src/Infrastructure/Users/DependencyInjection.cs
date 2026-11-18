@@ -12,27 +12,30 @@ namespace Basil.Infrastructure.Users;
 
 public static class DependencyInjection
 {
-	public static IServiceCollection AddUsersInfrastructure(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services.AddSingleton<IModuleMigration, ModuleMigration<UsersDbContext>>();
-		services.AddSingleton<IUserRepository, EfUserRepository>();
-		services.AddSingleton<IRelationshipRepository, EfRelationshipRepository>();
-		services.AddSingleton<IModerationLogRepository, EfModerationLogRepository>();
-		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
-		services.AddUsersLogic();
-		return services;
-	}
+		public IServiceCollection AddUsersInfrastructure()
+		{
+			services.AddSingleton<IModuleMigration, ModuleMigration<UsersDbContext>>();
+			services.AddSingleton<IUserRepository, EfUserRepository>();
+			services.AddSingleton<IRelationshipRepository, EfRelationshipRepository>();
+			services.AddSingleton<IModerationLogRepository, EfModerationLogRepository>();
+			services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
+			services.AddUsersLogic();
+			return services;
+		}
 
-	public static IServiceCollection AddUsersLogic(this IServiceCollection services)
-	{
-		services.AddSingleton<IAccountRules, AccountRules>();
-		return services;
-	}
+		public IServiceCollection AddUsersLogic()
+		{
+			services.AddSingleton<IAccountRules, AccountRules>();
+			return services;
+		}
 
-	public static IServiceCollection AddUsersBackgroundWork(this IServiceCollection services)
-	{
-		services.AddHostedService<IdleConnectionSweeper>();
-		services.AddHostedService<SessionRetentionSweeper>();
-		return services;
+		public IServiceCollection AddUsersBackgroundWork()
+		{
+			services.AddHostedService<IdleConnectionSweeper>();
+			services.AddHostedService<SessionRetentionSweeper>();
+			return services;
+		}
 	}
 }

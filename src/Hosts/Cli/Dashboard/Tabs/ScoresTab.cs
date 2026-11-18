@@ -48,7 +48,7 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 			if (data.BeatmapHash is { } hash && !maps.TryGetValue(hash.HashValue, out map))
 			{
 				var found = await sender.Send(new FindBeatmapByHash(hash), ct);
-				maps[hash.HashValue] = map = found is null ? (null, hash.HashValue) : (found.Id, found.Name);
+				maps[hash.HashValue] = map = found is null ? (null, hash.HashValue) : (found.Id, Name: found.FullName);
 			}
 
 			items.Add(new ScoreItem(score.Id, data.UserId, player.Item1, player.Item2, map.Id, map.Name, data.Mods.ToString(),

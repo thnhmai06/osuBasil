@@ -3,8 +3,8 @@ using Basil.Domain.Content;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 
-internal sealed class FileBeatmapsetArchive(string path, string name, ContentStamp stamp, string? packedFrom = null)
-	: BeatmapsetArchive(name, stamp)
+internal sealed class FileBeatmapsetArchive(string path, string name, ContentMetadata metadata, string? packedFrom = null)
+	: BeatmapsetArchive(name, metadata)
 {
 	internal string Path => path;
 

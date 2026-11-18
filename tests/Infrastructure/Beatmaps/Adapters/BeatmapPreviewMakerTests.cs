@@ -1,6 +1,5 @@
 using System.Text;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Tests.Support;
 using Basil.Testing.Persistence;

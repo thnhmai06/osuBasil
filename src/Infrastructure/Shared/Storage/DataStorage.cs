@@ -2,6 +2,7 @@ using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Content;
 
+
 namespace Basil.Infrastructure.Shared.Storage;
 
 public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
@@ -88,7 +89,7 @@ public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	public bool TryGetName(ContentReference reference, [NotNullWhen(true)] out string? name)
 	{
 		var prefix = RelativePath + "/";
-		if (!reference.IsStored || !reference.Value.StartsWith(prefix, StringComparison.Ordinal))
+		if (!reference.IsOffline || !reference.Value.StartsWith(prefix, StringComparison.Ordinal))
 		{
 			name = null;
 			return false;
@@ -185,7 +186,7 @@ public sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 
 	private bool TryResolve(string name, [NotNullWhen(true)] out string? path)
 	{
-		if (!ContentReference.IsValidPath(name))
+		if (!PathValidation.IsValidPath(name))
 		{
 			path = null;
 			return false;

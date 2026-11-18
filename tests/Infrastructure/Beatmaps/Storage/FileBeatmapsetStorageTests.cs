@@ -2,9 +2,8 @@ using System.IO.Compression;
 using System.Text;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Storage;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Domain.Cryptography;
+
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Testing.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -153,8 +152,8 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			Assert.IsAssignableFrom<BeatmapsetArchive>(
 				Assert.Single(await _storage.ListAsync(TestContext.Current.CancellationToken)));
 
-		Assert.Equal(new ContentStamp(original.Length, new DateTimeOffset(modified)), first.Stamp);
-		Assert.Equal(new ContentStamp(replacement.Length, new DateTimeOffset(modified.AddMinutes(5))), second.Stamp);
+		Assert.Equal(new ContentMetadata(original.Length, new DateTimeOffset(modified)), first.Metadata);
+		Assert.Equal(new ContentMetadata(replacement.Length, new DateTimeOffset(modified.AddMinutes(5))), second.Metadata);
 	}
 
 	[Fact]
@@ -201,7 +200,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
 
 		Assert.Equal(bytes, await ReadAllBytesAsync(await archive.OpenAsync(TestContext.Current.CancellationToken)));
-		Assert.Equal(bytes.Length, archive.Stamp.Size);
+		Assert.Equal(bytes.Length, archive.Metadata.Size);
 		Assert.Empty(await _storage.ListAsync(TestContext.Current.CancellationToken));
 	}
 
@@ -842,10 +841,10 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	public async Task DeletingSet_DeletesEveryFolder()
 	{
 		var id = NewId();
-		PlaceFolder(id, "Old", "Name", Osz(("a.osu", "x")));
-		PlaceFolder(id, "New", "Name", Osz(("a.osu", "y")));
+		PlaceFolder(id, "Old", "FullName", Osz(("a.osu", "x")));
+		PlaceFolder(id, "New", "FullName", Osz(("a.osu", "y")));
 
-		await _storage.DeleteAsync(Set(id, "New", "Name"));
+		await _storage.DeleteAsync(Set(id, "New", "FullName"));
 
 		Assert.Empty(TopLevel());
 	}
@@ -992,7 +991,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var folder = Assert.IsAssignableFrom<BeatmapsetFolder>(reported[^1]);
 		Assert.True(folder.Exists);
 		Assert.Equal(id, folder.Id);
-		Assert.Equal(replacement.Length, folder.Archive!.Stamp.Size);
+		Assert.Equal(replacement.Length, folder.Archive!.Metadata.Size);
 	}
 
 	[Fact]
@@ -1005,7 +1004,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var reported = await watching.ReadUntilAsync(source => source.Name == "9 New - Set.osz");
 
 		var archive = Assert.IsAssignableFrom<BeatmapsetArchive>(reported[^1]);
-		Assert.Equal(bytes.Length, archive.Stamp.Size);
+		Assert.Equal(bytes.Length, archive.Metadata.Size);
 	}
 
 	[Fact]
@@ -1095,7 +1094,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		{
 			Id = id,
 			Metadata = new BeatmapsetMetadata { Artist = artist, Title = title, Creator = "Mapper" },
-			Fingerprint = new ContentFingerprint(new ContentStamp(0, DateTimeOffset.UnixEpoch),
+			Fingerprint = new ContentFingerprint(new ContentMetadata(0, DateTimeOffset.UnixEpoch),
 				new Md5("00000000000000000000000000000000")),
 			Assets = new BeatmapsetAssets(),
 			UpdatedAt = DateTimeOffset.UnixEpoch,

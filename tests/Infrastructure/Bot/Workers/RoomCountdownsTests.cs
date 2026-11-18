@@ -5,7 +5,7 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Infrastructure.Bot.Workers;
 using Basil.Testing;

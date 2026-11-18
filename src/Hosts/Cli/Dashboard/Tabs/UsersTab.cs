@@ -94,7 +94,7 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 		_page = new ListPage<UserItem>("Users", Help,
 		[
 			new Column<UserItem>("ID", 8, u => u.Id.ToString()) { Right = true },
-			new Column<UserItem>("Name", 16, u => u.Name, u => Role(u.Mask)),
+			new Column<UserItem>("FullName", 16, u => u.Name, u => Role(u.Mask)),
 			new Column<UserItem>("Country", 8, u => u.Country, _ => Ink.Muted),
 			new Column<UserItem>("Privileges", 0, u => u.Privileges, u => Role(u.Mask)),
 			new Column<UserItem>("Connections", 11, u => u.Connections, _ => Ink.Info)

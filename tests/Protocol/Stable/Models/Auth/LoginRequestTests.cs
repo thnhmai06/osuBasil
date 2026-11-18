@@ -1,8 +1,8 @@
 using System.Text;
-using Basil.Domain.Client;
-using Basil.Protocol.Stable.Models.Authentication;
-using Basil.Protocol.Stable.Models.Client;
-using Basil.Protocol.Stable.Wire.Packets;
+using Basil.Domain.Game.Client;
+using Basil.Protocol.Game.Stable.Models.Authentication;
+using Basil.Protocol.Game.Stable.Models.Client;
+using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 

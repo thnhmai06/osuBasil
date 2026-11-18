@@ -1,6 +1,5 @@
 using System.Globalization;
 using Basil.Application.Scores.Persistence;
-using Basil.Domain.Beatmaps;
 
 namespace Basil.Host.Stable.Web;
 
@@ -29,7 +28,7 @@ internal static class SubmissionCharts
 			Entry("totalScore", Whole(previous?.LastState.TotalScore), Whole(score.LastState.TotalScore)),
 			Entry("maxCombo", Whole(previous?.LastState.MaxCombo), Whole(score.LastState.MaxCombo)),
 			Entry("accuracy", Fixed(previous?.Accuracy), Fixed(score.Accuracy)),
-			Entry("pp", Fixed(previous?.Pp), ""),
+			Entry("pp", Fixed(previous?.PerformancePoints), ""),
 			$"onlineScoreId:{receipt.Score.Id}",
 			"\n",
 			$"chartId:{OsuWebReplies.OverallChartId}",

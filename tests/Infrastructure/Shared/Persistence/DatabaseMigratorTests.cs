@@ -1,5 +1,4 @@
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Testing.Persistence;
 

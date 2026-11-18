@@ -20,7 +20,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		("Authentication", ["credentials", "sessions", "connections", "connection_id_counters"]),
 		("Beatmaps", ["beatmapsets", "beatmaps", "beatmap_id_counters"]),
 		("Content", ["menu_banners"]),
-		("Shared", ["settings"]),
+		("Basil.Shared", ["settings"]),
 		("Scores", ["scores", "user_stats", "score_id_counters"]),
 		("Multiplayer", ["matches", "rounds", "match_events", "round_scores", "multiplayer_id_counters"]),
 		("Chat", ["channels"])

@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
-using Basil.Domain.Cryptography;
+
 using Basil.Domain.Users;
 
 namespace Basil.Application.Authentication.Persistence;

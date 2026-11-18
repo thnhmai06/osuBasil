@@ -1,5 +1,5 @@
-using Basil.Domain.Client;
-using Basil.Protocol.Stable.Models.Scores;
+using Basil.Domain.Game.Client;
+using Basil.Protocol.Game.Stable.Models.Scores;
 
 namespace Basil.Protocol.Stable.Tests.Models.Scores;
 

@@ -3,7 +3,6 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;

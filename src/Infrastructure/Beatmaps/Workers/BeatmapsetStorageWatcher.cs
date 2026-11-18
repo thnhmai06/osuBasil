@@ -96,13 +96,13 @@ internal sealed class BeatmapsetStorageWatcher(
 			var result = await beatmapsets.ScanAsync(entry, stoppingToken);
 			if (result is not { Imported: 0, Updated: 0, Forgotten: 0 })
 				logger.LogInformation(
-					"Beatmapset entry {Name}: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
+					"Beatmapset entry {FullName}: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
 					entry.Name, result.Imported, result.Updated, result.Forgotten);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !stoppingToken.IsCancellationRequested)
 		{
-			logger.LogError(exception, "Could not scan beatmapset entry {Name}", entry.Name);
+			logger.LogError(exception, "Could not scan beatmapset entry {FullName}", entry.Name);
 		}
 	}
 

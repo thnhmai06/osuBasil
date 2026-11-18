@@ -1,5 +1,5 @@
 using Basil.Application.Users.Objects;
-using Basil.Domain.Cryptography;
+
 using Mediator;
 
 namespace Basil.Application.Users.Messages;

@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 
-namespace Basil.Protocol.Stable.Models.Client;
+namespace Basil.Protocol.Game.Stable.Models.Client;
 
 public static partial class OsuVersionExtensions
 {

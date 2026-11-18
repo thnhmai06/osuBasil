@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -107,7 +107,7 @@ internal sealed class LobbyTab : ITabView, ISearchable
 		_page = new ListPage<RoomItem>("Lobby", Help,
 		[
 			new Column<RoomItem>("ID", 8, r => r.Id.ToString()) { Right = true },
-			new Column<RoomItem>("Name", 0, r => r.Name) { Weight = 3 },
+			new Column<RoomItem>("FullName", 0, r => r.Name) { Weight = 3 },
 			new Column<RoomItem>("Players", 9, r => r.Open ? $"{r.Players}/{r.Size}" : "-") { Right = true },
 			new Column<RoomItem>("State", 9, r => r.State, State),
 			new Column<RoomItem>("Host", 0, r => r.Host, r => UserInk.Of((UserPrivileges)r.HostMask))

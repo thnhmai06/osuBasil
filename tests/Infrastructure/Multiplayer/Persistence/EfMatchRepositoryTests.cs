@@ -2,7 +2,6 @@ using System.Data.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Users;
 using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;

@@ -18,30 +18,30 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 		return rows.Select(ToRecord).OrderBy(channel => channel.Name, StringComparer.Ordinal).ToList();
 	}
 
-	public Task CreateOrUpdateAsync(GeneralChannelRecord channel)
+	public Task CreateOrUpdateAsync(GeneralChannelRecord generalChannel)
 	{
-		var row = ToRow(channel);
+		var row = ToRow(generalChannel);
 		return database.WriteAsync((ChatDbContext context) =>
 			context.UpsertAsync(row, stored => stored.Name == row.Name));
 	}
 
-	public Task DeleteAsync(GeneralChannelRecord channel)
+	public Task DeleteAsync(GeneralChannelRecord generalChannel)
 	{
 		return database.WriteAsync((ChatDbContext context) => context.Channels
-			.Where(c => c.Name == channel.Name)
+			.Where(c => c.Name == generalChannel.Name)
 			.ExecuteDeleteAsync());
 	}
 
-	private static ChannelRow ToRow(GeneralChannelRecord channel)
+	private static ChannelRow ToRow(GeneralChannelRecord generalChannel)
 	{
 		return new ChannelRow
 		{
-			Name = channel.Name,
-			Topic = channel.Value.Topic,
-			ReadPrivileges = (byte)channel.Value.ReadPrivileges,
-			WritePrivileges = (byte)channel.Value.WritePrivileges,
-			AutoJoin = channel.Value.AutoJoin,
-			Visible = channel.Value.Visible
+			Name = generalChannel.Name,
+			Topic = generalChannel.Value.Topic,
+			ReadPrivileges = (byte)generalChannel.Value.ReadPrivileges,
+			WritePrivileges = (byte)generalChannel.Value.WritePrivileges,
+			AutoJoin = generalChannel.Value.AutoJoin,
+			Visible = generalChannel.Value.Visible
 		};
 	}
 

@@ -4,8 +4,8 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Multiplayer.Handlers;
 using Basil.Testing;
 

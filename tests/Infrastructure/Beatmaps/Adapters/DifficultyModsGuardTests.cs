@@ -1,5 +1,5 @@
 using System.Reflection;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;

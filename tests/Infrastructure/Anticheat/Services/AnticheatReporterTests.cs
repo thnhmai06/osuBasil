@@ -2,7 +2,7 @@ using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Anticheat.Services;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Authentication;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
