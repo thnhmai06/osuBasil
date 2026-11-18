@@ -395,7 +395,7 @@ References only point down:
 Auth        -> Shared
 Beatmaps    -> Shared
 Content     -> Shared
-Users       -> Shared, Authentication, Content   (folders Users/ and Connections/: they reference each other)
+Users       -> Shared, Authentication, Content
 Anticheat   -> Users
 Scores      -> Users, Beatmaps
 Multiplayer -> Users, Beatmaps, Content, Scores
@@ -481,18 +481,18 @@ system; no host or gateway knows it exists.
 * A host translates: inbound it turns the wire into a strongly typed message of the system (using Protocol), checks what
   the client sent, and sends it through Mediator; outbound it listens to Notifications and writes its wire. It holds no
   business, permission or state rule. A host never calls `ScopeTo`, never references Infrastructure and
-  never references another host. Every message carries the `Connection` of the session as its actor, and only the Users
-  module creates a `Connection`.
+  never references another host. Every message carries the `Session` of the session as its actor, and only the Users
+  module creates a `Session`.
 * Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
   `Protocol.Stable`. `tests/Architecture/HostGraphTests.cs` enforces this.
 * `Basil.Gateway` (enforcement by the hosts: **target**) is a leaf project that answers `Allow` or `Deny` for each incoming request from size, rate,
   concurrency and load, in two tiers (before and after authentication; the second tier receives an opaque
-  `AdmissionSubject` that `Host.Shared` maps from the `Connection`). It has no user types and no business facts. Every
+  `AdmissionSubject` that `Host.Shared` maps from the `Session`). It has no user types and no business facts. Every
   entry point declares a policy. See [`docs/for-developers/gateway.md`](docs/for-developers/gateway.md).
 * The project that defines an options type binds it **(target)**; BasilBot's reply file is bound with the bot
   (`Configurations/Templates/replies.json`, written with the defaults when missing).
 * Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
-* The console is the one entry point that skips privilege checks (`OperatorConnection`); a chat command still uses the
+* The console is the one entry point that skips privilege checks (`OperatorSession`); a chat command still uses the
   typist's privileges. See [`docs/for-agents/identity-privileges.md`](docs/for-agents/identity-privileges.md).
 
 ### Application feature folders

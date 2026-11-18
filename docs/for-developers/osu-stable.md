@@ -64,7 +64,7 @@ operation, so a class each would only add files.
 
 * Packets any osu! or tournament connection may send (logout, stats and presence requests, tournament match info and
   channel joins) are handled first.
-* Packets of a regular osu! client (`StableConnection`: status, friends, away message, channels, messages, lobby, spectating,
+* Packets of a regular osu! client (`StableSession`: status, friends, away message, channels, messages, lobby, spectating,
   multiplayer) follow; a tournament client (target: removed) does not send them.
 * The multiplayer packets map onto the room's operations (`room.ScopeTo(connection)` and its parts: members, settings,
   authority, slots, rounds).

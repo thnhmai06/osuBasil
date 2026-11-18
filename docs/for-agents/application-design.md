@@ -40,7 +40,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   I/O, no events. A type that only means something while the server runs (session state, presence, spectator frames, a room in play) is
   Application, not Domain; a row that carries data to the database is Infrastructure.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
-  privileges is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
+  privileges is an **Application object** (`User`, `Session`, `Room`, `RoomSlot`, `Lobby`, the
   channels, `Beatmapset`, and the root `Server`) in the Objects folder of its module (`Basil.Application.<Module>`). It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
@@ -68,7 +68,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   share a name.
 * **The service ladder.** Service > Ports > the three stores (Registry | Repository | Storage) > Objects; a level uses only the
   levels below it. A call across levels is direct (dependency injection); a call between peers is a Mediator message. A
-  Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers`. Hosts do not call `ScopeTo`: they send a message that carries the `Connection`
+  Handler is the Mediator listener for one message type, thin and `internal`, in `Infrastructure.<Module>/Handlers`. Hosts do not call `ScopeTo`: they send a message that carries the `Session`
   and the handler scopes the object.
 * **Each folder of a module owns one kind of type.** The full map is in [`module-layout.md`](module-layout.md). **Persistence/** holds the
   persistent ports (repositories) and query records; **Storage/** holds the file-storage ports; Application.Shared
@@ -98,7 +98,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   is the explicit system-facing operation described above, not a replacement for that object behaviour.
 * **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
   event publisher, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
-  `ChannelContext`, `ConnectionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
+  `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
   object's constructor are `internal`; the registration builds them in factory lambdas, because the container only
   sees public constructors (a root object that two others need, such as the user registry for a session, is reached
   through a deferred port to avoid a construction cycle). A service class that the container creates by itself
@@ -154,18 +154,18 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   starts the round.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
-* **A user is one `User`; each place they log in from is a `Connection`.**
+* **A user is one `User`; each place they log in from is a `Session`.**
   `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
-  shared (`AwayMessage`, the `Silence`) plus its connections as child data, keyed by
-  `ConnectionType` (`Stable`, `Tourney`, `Irc`, `Api`), with typed accessors (`Stable`, `Irc`, `Tourneys`,
-  `Apis`); how many connections of each type one user may hold is a per-type limit the user registry enforces (target;
-  see [`identity-privileges.md`](identity-privileges.md)).
-  `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `StableConnection`,
-  `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
-  (`StableConnection.Status`). Rooms, channels and the lobby hold connections, not users' sessions.
+  shared (`AwayMessage`, the `Silence`) plus its sessions as child data, keyed by
+  `SessionType` (`Stable`, `StableTourney`, `Irc`, `Api`), with typed accessors (`Stable`, `Irc`, `Tourneys`,
+  `Apis`); one active session per type (Tourney excepted) is a rule the user registry enforces (see
+  [`identity-privileges.md`](identity-privileges.md)).
+  `Session` is an abstract class (`State`, `User`, `Record`, `Token`, `IsOpen`, `Type`) with `StableSession`,
+  `TourneySession`, `IrcSession`, `ApiSession`, `OperatorSession`; each holds only what exists for that kind of client
+  (`StableSession.Status`). Rooms, channels and the lobby hold sessions, not users.
   Chat keeps a PM channel per online user; it is opened when the user is first needed and closed when they go offline.
-  Spectating is a relation on the spectated osu! client (`StableConnection.Spectators`), changed through
-  `host.ScopeTo(actor).SpectateAsync()` (what only an osu! client has lives under `StableConnection`:
+  Spectating is a relation on the spectated osu! client (`StableSession.Spectators`), changed through
+  `host.ScopeTo(actor).SpectateAsync()` (what only an osu! client has lives under `StableSession`:
   spectating and its presence status). Chat keeps the client's spectator channel in step by reacting to the
   spectator events (the first spectator brings the host in, the last one out), so membership of that channel is
   eventually consistent with them; the channel never stands for who is spectating.
@@ -178,7 +178,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   deliberately (`Room.Beatmap` object, `PlayerStatus` beatmap `Md5?`); never `string` for an MD5.
 * **Relations are references** in `ConcurrentSet<T>`, never `ConcurrentDictionary<T, byte>`.
 * **`User` or a connection?** If the information is gone once the user goes offline, store the
-  connection (`StableConnection` as slot occupant or host); otherwise the `User` (creator, referees,
+  connection (`StableSession` as slot occupant or host); otherwise the `User` (creator, referees,
   bans).
 * **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
   only *calls* an action. The relation is stored on the object acted on (`Channel.Members`,
@@ -195,7 +195,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   follow the same pattern. There are no child service trees for object behaviour; coordination that spans objects
   is a method of the object that is acted on (or of the registry that holds them).
 * **Each owner manages its own kind, and reacts to other kinds only through events.** The user registry
-  opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its responsibility
+  opens and closes connections and announces `UserSessionOpened`/`UserSessionClosed`; its responsibility
   ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
   that receive the event and call the owning object (`Lobby.ReleaseAsync`, `GeneralChannelRegistry.PartAll`). When a second connection of the same kind arrives
   for a user an owner still holds, the owner **asks the old connection who it is** (`connection.IsOpen`):
@@ -248,7 +248,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
 * **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
   to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
   (`ChannelOpened`, `UserSilenced`). A subject that belongs to another is written `{Parent}{Child}`
-  (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserConnectionOpened`). The abstract category
+  (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserSessionOpened`). The abstract category
   records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
 * **Chat channels.** Domain stores only what is persisted: `GeneralChannelRecord` (identity: the name with its
   `#`) and `GeneralChannelData` (`Topic`, `ReadPrivileges`, `WritePrivileges`, `AutoJoin`, `Visible`); messages
@@ -256,7 +256,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   `GeneralChannel` (wraps the record), `RoomChannel`, `SpectatorChannel`, `PmChannel`; each names itself
   (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives with the object that manages
   it**: `GeneralChannelRegistry` holds the general channels, `RoomChannels` the channel of each open room, `PmChannels` the PM
-  channel of each online user, `SpectatorChannels` the spectator channel of each watched `StableConnection`. Each kind of
+  channel of each online user, `SpectatorChannels` the spectator channel of each watched `StableSession`. Each kind of
   channel decides who may read and write it. A private message is a post into the recipient's PM channel.
   Access follows osu!: a user may join a channel (including `/join` over IRC) only if an osu! client doing the
   matching in-game action would have access. General channels are created, configured and deleted at runtime through

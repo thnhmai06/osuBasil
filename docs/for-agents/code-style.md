@@ -2,7 +2,7 @@
 
 Moved out of `AGENTS.md`; the rules are binding. Read this before writing or reviewing C#.
 
-* A small type used by one type lives in that type's file (`ConnectionType` in `Connection.cs`).
+* A small type used by one type lives in that type's file (`SessionType` in `SessionType.cs`).
 * Object-oriented, not procedural: an operation goes through the object that owns the state it changes
   (`DataStorage.SaveAsync`, `RoomState.IsManagedBy`), not through a static helper that is handed the state.
 * A type that is a collection implements the matching BCL interface (`DataStorage : IReadOnlyDictionary<string,

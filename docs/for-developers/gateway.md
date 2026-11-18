@@ -8,7 +8,7 @@ concurrent or arriving while the server is overloaded never reaches a module.
 
 > **Migration status.** The rate limiter, the login-attempt guard and the second tier (`Admission`, `AdmissionSubject`,
 > `GatewayLimits`) live in `Basil.Gateway`, with the load policies below (bulkhead, shedding, health). The Rest, Stable and
-> IRC hosts call `Admit` before they handle a request and `Release` when it ends; `Basil.Host.Shared` maps a `Connection` to
+> IRC hosts call `Admit` before they handle a request and `Release` when it ends; `Basil.Host.Shared` maps a `Session` to
 > an `AdmissionSubject` and decides how a denial is reported. Every subject is `Standard` for now: no rule yet grants the
 > `Elevated` allowance. The Stable and Rest hosts still have their own upload limit (they depend on ASP.NET Core
 > and the runtime settings, so they cannot move as they are).
@@ -49,7 +49,7 @@ purpose: a ban or a restriction is a business fact, decided at login and by capa
 1. **Before authentication.** Raw facts only: client address, size, concurrency. This tier guards login and token lookup,
    where nothing is known about the caller. Failed login attempts keep their own counter, because a limiter that is
    consumed by time does not give a permit back on success.
-2. **After authentication.** Per user. The host turns the `Connection` into an opaque `AdmissionSubject` (a key and a tier)
+2. **After authentication.** Per user. The host turns the `Session` into an opaque `AdmissionSubject` (a key and a tier)
    that the gateway defines; the mapping lives in `Basil.Host.Shared`. A signed-in user gets a higher allowance, and
    all of a user's connections share one key. The tier is recomputed for each request from effective privileges and is not
    stored. The gateway never sees a Users type.

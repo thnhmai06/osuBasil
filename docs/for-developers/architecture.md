@@ -17,7 +17,7 @@ wire), Hosts (translate and dispatch), Gateway (admission control) and the Serve
 | Layer | Is | Holds | Does not hold |
 |---|---|---|---|
 | Domain | the system at rest | durable models (what is stored) and the rules that stay true while the system is offline: validity of data, constants and enums of the rules, pure computation | runtime state, time, connections, I/O |
-| Application | contracts plus the running system | runtime objects (`User`, `Connection`, `Room`, channels), registries, capabilities, Mediator messages, and the contracts of services, ports, repositories and storages | implementations, third-party libraries |
+| Application | contracts plus the running system | runtime objects (`User`, `Session`, `Room`, channels), registries, capabilities, Mediator messages, and the contracts of services, ports, repositories and storages | implementations, third-party libraries |
 | Infrastructure | the implementations of those contracts | EF rows, handlers, service implementations, adapters, workers | contracts other layers depend on |
 
 A type belongs to Domain only if it is stored or is a rule that stays true offline. A type that only means something while
@@ -97,8 +97,8 @@ Objects      runtime objects that own state, invariants and behaviour (User, Con
 ### Messages
 
 A message is a Mediator **request**: a `record` in the owning module's Application project that implements
-`IRequest<TResponse>` and carries the `Connection` of the caller as `Actor` (a login carries none, because it creates the
-`Connection`). Mediator maps each request type to exactly one handler, so the host never names a handler.
+`IRequest<TResponse>` and carries the `Session` of the caller as `Actor` (a login carries none, because it creates the
+`Session`). Mediator maps each request type to exactly one handler, so the host never names a handler.
 
 * A command changes state and answers the outcome enum of the object it acts on; a query reads and
   answers a view or `null`. Both are requests; the name says which (`PostChatMessage`, `GetChannelMembers`).
@@ -161,7 +161,7 @@ ASP.NET types.
 
 A host holds no repository and no storage: it does not take one by constructor, field or route parameter, and it does not
 ask the service provider for one. Every read a host needs is a query message answered in the owning module. A read that
-depends on the caller's privileges carries the caller's `Connection`; a public read (images, beatmap downloads, the menu, the
+depends on the caller's privileges carries the caller's `Session`; a public read (images, beatmap downloads, the menu, the
 FAQ, scores, an account's public profile) carries no actor. The checks that admit a request (upload limits, rate limits, the
 allowed origins, the message of the day) have no exception: they send the public `ReadSettings` message, which the
 cache-aside settings repository answers from memory. A message names an account by a `UserReference` and a stored thing by
@@ -174,12 +174,12 @@ privileges. `tests/Architecture/HostGraphTests.cs` enforces the rule by reflecti
 * **Which handler?** The host does not choose a handler. It chooses a **message type** from the wire (an HTTP route, a
   packet id, an IRC command) and sends it. Mediator maps a message type to exactly one handler at compile time. The host
   knows only the message record in `Application.<Module>`, not the handler or the module that implements it.
-* **Whose request?** Every transport session is bound to a `Connection`, an object of the Users module. Logging in is a
-  Command with no actor and returns the `Connection`. On Rest the token is resolved by a Query to a `Connection` that is
+* **Whose request?** Every transport session is bound to a `Session`, an object of the Users module. Logging in is a
+  Command with no actor and returns the `Session`. On Rest the token is resolved by a Query to a `Session` that is
   attached to the request; on Stable the polling request carries the `osu-token`; on IRC the socket keeps the
-  `Connection` after PASS and NICK. Every later message carries the `Connection` as its actor, and the handler
+  `Session` after PASS and NICK. Every later message carries the `Session` as its actor, and the handler
   calls `object.ScopeTo(message.Actor)`; the capability computes effective privileges and checks them with `Lacks`.
-* **Unforgeable.** Only the Users module creates a `Connection` (its constructor is `internal`), so a host cannot build one.
+* **Unforgeable.** Only the Users module creates a `Session` (its constructor is `internal`), so a host cannot build one.
   A bad token resolves to nothing and the host answers 401 before any business message is built.
 
 ### Gateway: admission control
@@ -229,14 +229,13 @@ forwarding getters for the owner's parts, and calls the owner's `internal` raw m
 the outcome enum of the object. A capability is never stored in a field or property (an architecture test enforces this). System work
 with no caller (startup, event handlers reacting for the server, announcements) calls the object directly.
 
-## Sessions and connections
+## Sessions
 
-A session is the persisted record of a sign-in; a connection is the live socket or request. A session stays valid while
-its connection is idle or closed; the connection leaves memory after the idle window and the next request verifies the
-token against the database. Connection types are Stable, StableTourney (the osu!tourney client and observers), Irc and Api.
-BasilBot is a module bound to user id 1 that holds exactly one Stable and one Irc connection and has no connection type
-of its own; see [`../for-agents/identity-privileges.md`](../for-agents/identity-privileges.md), which also owns the
-per-user session limits.
+A session is one sign-in on one connection: one token, one row in `sessions`. It is alive while its client keeps
+sending heartbeats; after a silence it can be replaced or expires, and the osu! and API sessions survive a restart.
+Session types are Stable, StableTourney (the osu!tourney client and observers), Irc and Api. BasilBot is a module bound
+to user id 1 that holds exactly one Stable and one Irc session and has no session type of its own; see
+[`../for-agents/identity-privileges.md`](../for-agents/identity-privileges.md), which also owns the one-session-per-type rule.
 
 ## Streaming
 
@@ -269,7 +268,7 @@ that root. The first event is a snapshot. See [`sse.md`](sse.md).
 * The acted-on object stores the relation and emits the event.
 * A notification is never awaited under a lock; objects enqueue, a dispatcher publishes.
 * A capability lives for one request.
-* Only Users creates a `Connection`; every business message carries one.
+* Only Users creates a `Session`; every business message carries one.
 * Every entry point declares an admission policy **(target)**.
 * Performance points are display-only; they never affect ranking or gameplay.
 * User-visible reply strings are centralized in the production type that owns them.

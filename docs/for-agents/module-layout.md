@@ -19,7 +19,7 @@ Every module uses these folders, and creates only the ones it needs:
 | `Services/` | The contracts of the services the system provides (the implementation is in Infrastructure). Only what a module offers as a service belongs here |
 | `Persistence/` | The repository ports, their query records and the data both layers name |
 | `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
-| `Messages/` | The Mediator requests the module answers (a message carries the `Connection` as `Actor`) and the values they name |
+| `Messages/` | The Mediator requests the module answers (a message carries the `Session` as `Actor`) and the values they name |
 
 Infrastructure mirrors those ports: `Persistence/` for the `DbContext`, rows and repositories (PostgreSQL and its migrations are in `Infrastructure.Persistence`), `Storage/` for the
 file implementations, `Adapters/` for what needs an external library, `Registry/` for the shared memory
@@ -92,13 +92,12 @@ Persistence; routes and handlers that answer queries do not. Server settings cha
 owned by Application.Shared, with its repository and the `ReadSettings` message) exist only while the server runs and are stored through `ISettingsRepository`; they are
 not Domain and not host configuration.
 
-* Shared projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
+* Shared projects depend only on Domain and shared external packages. `Users`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` objects. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported through `IAnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.
-* `Chat` references `Multiplayer`, and both reference `Users` and `Connections` (`Room.Host`, `Channel.Members`, the online
-  `User`); treat them as one cluster. `Users` and `Connections` reference each other (a user holds its connections, a
-  connection knows its user), so those two form one cluster of their own. Their runtime objects and registries live in Objects;
+* `Chat` references `Multiplayer`, and both reference `Users` (`Room.Host`, `Channel.Members`, the online
+  `User`); treat them as one cluster. Inside `Users`, a user holds its sessions and a session knows its user. Their runtime objects and registries live in Objects;
   persistent repositories remain in each module's Persistence folder. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.

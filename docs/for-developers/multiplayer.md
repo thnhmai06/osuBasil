@@ -10,7 +10,7 @@ This separation keeps current play state in one place while retaining the facts 
 
 ### Room-scoped actions
 
-An action that depends on a caller starts from the room and the caller's real `Connection`:
+An action that depends on a caller starts from the room and the caller's real `Session`:
 
 ```csharp
 var scopedRoom = room.ScopeTo(by);
