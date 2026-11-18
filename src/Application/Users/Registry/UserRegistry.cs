@@ -26,8 +26,6 @@ public sealed class UserRegistry
 {
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
-	internal static readonly TimeSpan ReopenWithin = TimeSpan.FromMinutes(5);
-
 	private static readonly OsuClient ServerClient =
 		new(new OsuVersion(default, null, OsuVersionStream.Stable), default);
 
@@ -107,7 +105,6 @@ public sealed class UserRegistry
 		try
 		{
 			await _context.Sessions.CreateOrUpdateAsync(session);
-			await RecordConnectionAsync(connection);
 		}
 		catch
 		{
@@ -117,15 +114,6 @@ public sealed class UserRegistry
 		}
 
 		return LoginResult.Success(connection);
-	}
-
-	private Task RecordConnectionAsync(Connection connection)
-	{
-		if (connection.IsServerOwned) return Task.CompletedTask;
-
-		var device = connection.Session.Value.Fingerprint;
-		return _context.Connections.OpenAsync(connection.Session.Id, device.Ip, device.ClientInfo,
-			_context.Clock.GetUtcNow(), ReopenWithin);
 	}
 
 	private static void ThrowIfInvalidLogin(SessionType type, OsuClient? client)
@@ -148,8 +136,16 @@ public sealed class UserRegistry
 		return new SessionRecord
 		{
 			Id = NewSessionId(),
-			Value = new SessionData(record, type, now, new SessionFingerprint(ip, client), HashToken(token), expiresAt,
-				now)
+			Value = new SessionData
+			{
+				User = record,
+				Type = type,
+				StartedAt = now,
+				Fingerprint = new SessionFingerprint(ip, client),
+				TokenHash = HashToken(token),
+				ExpiresAt = expiresAt,
+				LastActiveAt = now
+			}
 		};
 	}
 
@@ -171,17 +167,6 @@ public sealed class UserRegistry
 		var connection = NewConnection(session, token, 0, lifetime);
 
 		if (OpenUnlessRaced(token, connection) is { } settled) return settled;
-
-		try
-		{
-			await RecordConnectionAsync(connection);
-		}
-		catch
-		{
-			// A connection that could not be recorded does not stay open.
-			Close(connection, SessionEndReason.ConnectionLost);
-			throw;
-		}
 
 		MarkActive(connection);
 		return LoginResult.Success(connection);
@@ -219,9 +204,16 @@ public sealed class UserRegistry
 		return new SessionRecord
 		{
 			Id = stored.Id,
-			Value = new SessionData(record, type, stored.StartedAt,
-				new SessionFingerprint(ip, ClientInfo: stored.ClientInfo), HashToken(token), stored.ExpiresAt,
-				stored.StartedAt)
+			Value = new SessionData
+			{
+				User = record,
+				Type = type,
+				StartedAt = stored.StartedAt,
+				Fingerprint = new SessionFingerprint(ip, ClientInformation: stored.ClientInfo),
+				TokenHash = HashToken(token),
+				ExpiresAt = stored.ExpiresAt,
+				LastActiveAt = stored.StartedAt
+			}
 		};
 	}
 
@@ -421,8 +413,16 @@ public sealed class UserRegistry
 		return new SessionRecord
 		{
 			Id = NewSessionId(),
-			Value = new SessionData(bot, type, now, new SessionFingerprint(IPAddress.Loopback, client),
-				HashToken(token), null, now)
+			Value = new SessionData
+			{
+				User = bot,
+				Type = type,
+				StartedAt = now,
+				Fingerprint = new SessionFingerprint(IPAddress.Loopback, client),
+				TokenHash = HashToken(token),
+				ExpiresAt = null,
+				LastActiveAt = now
+			}
 		};
 	}
 
@@ -447,24 +447,19 @@ public sealed class UserRegistry
 	public async Task FlushActivityAsync()
 	{
 		var sessions = new List<SessionActivity>();
-		var connections = new List<ConnectionActivity>();
 		foreach (var (id, _) in _activity)
 			if (_activity.TryRemove(id, out var connection))
 			{
 				sessions.Add(new SessionActivity(id, connection.LastActiveAt, connection.ExpiresAt));
-				connections.Add(new ConnectionActivity(id, connection.LastActiveAt));
 			}
 
 		await _context.Sessions.WriteActivityAsync(sessions);
-		await _context.Connections.WriteActivityAsync(connections);
 	}
 
 	public async Task<int> CloseStoppedAsync()
 	{
-		var closed = await _context.Connections.CloseOpenAsync(SessionEndReason.ServerStopped);
-		await _context.Sessions.EndOpenAsync([SessionType.Stable, SessionType.StableTourney],
+		return await _context.Sessions.EndOpenAsync([SessionType.Stable, SessionType.StableTourney],
 			SessionEndReason.ServerStopped);
-		return closed;
 	}
 
 	public async Task<int> PurgeEndedSessionsAsync()

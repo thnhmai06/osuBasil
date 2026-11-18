@@ -64,10 +64,6 @@ internal static class UserRoutes
 				"Filter by `state` (`all`, `online` or `offline`) and by `types`, a bitmask of the session types.");
 		token.MapGet("/{id:int}/sessions/{sid:long}", GetSessionAsync)
 			.WithSummary("Get a session of an account.");
-		token.MapGet("/{id:int}/sessions/{sid:long}/connections", ListConnectionsAsync).Admitted(WorkClass.Listing)
-			.WithSummary("List connections of a session.")
-			.WithDescription(
-				"Each connection tells when and from which address a client connected and how the connection ended, newest first. A client that comes back from the same address soon after it left continues its last connection.");
 		token.MapDelete("/{id:int}/sessions/{sid:long}", CloseSessionAsync)
 			.WithSummary("Delete a session of an account.")
 			.WithDescription(
@@ -279,23 +275,6 @@ internal static class UserRoutes
 		var (result, session) = await context.Sender()
 			.Send(new GetUserSession(context.Connection(), target, sid), context.RequestAborted);
 		return result == UserOutcome.Ok ? Api.Ok(SessionView.Of(session!)) : result.Refusal();
-	}
-
-	private static async Task<IResult> ListConnectionsAsync(HttpContext context, int id, long sid, int? offset,
-		int? limit)
-	{
-		var (page, error) = Targets.Paging(offset, limit);
-		if (error is not null) return error;
-
-		var target = UserReference.ById(id);
-
-		var (result, connections) = await context.Sender()
-			.Send(new ListSessionConnections(context.Connection(), target, sid, page!), context.RequestAborted);
-		return result == UserOutcome.Ok
-			? Api.Paged(
-				new Page<ConnectionView>([.. connections!.Items.Select(ConnectionView.Of)], connections.HasNext),
-				page!)
-			: result.Refusal();
 	}
 
 	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, long sid)

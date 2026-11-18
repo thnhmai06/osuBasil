@@ -9,6 +9,8 @@ namespace Basil.Infrastructure.Beatmaps.Persistence;
 
 internal static class BeatmapQueryFilter
 {
+	private const string InvalidOsuFileNameCharacters = ":\\/*<>?\"|";
+
 	public static IQueryable<BeatmapRow> Apply(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
 		beatmaps = ByState(beatmaps, query);
@@ -111,7 +113,7 @@ internal static class BeatmapQueryFilter
 
 		if (!string.IsNullOrWhiteSpace(query.FileName))
 		{
-			var pattern = LikePattern.Literal(BeatmapMetadata.NormalizeFileName(query.FileName)).ToLowerInvariant();
+			var pattern = LikePattern.Literal(NormalizeFileName(query.FileName)).ToLowerInvariant();
 			// The name of the .osu file of a beatmap leaves out the characters a file name cannot hold. The characters
 			// are query parameters, not literals, because a literal holding a quote or a backslash is not portable.
 			string colon = ":",
@@ -156,5 +158,11 @@ internal static class BeatmapQueryFilter
 	{
 		var body = Expression.MakeBinary(comparison, selector.Body, Expression.Constant(bound, typeof(T)));
 		return Expression.Lambda<Func<BeatmapRow, bool>>(body, selector.Parameters);
+	}
+
+	private static string NormalizeFileName(string fileName)
+	{
+		ArgumentNullException.ThrowIfNull(fileName);
+		return string.Concat(fileName.Where(character => InvalidOsuFileNameCharacters.IndexOf(character) < 0));
 	}
 }

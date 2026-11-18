@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Users.Persistence;
 
 internal sealed class EfModerationLogRepository(DatabaseSession database) : IModerationLogRepository
 {
-	public Task AppendAsync(ModerationData entry)
+	public Task AppendAsync(ModerationLogData entry)
 	{
 		return database.WriteAsync((UsersDbContext context) => AddAsync(context, entry));
 	}
@@ -51,7 +51,7 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 			.. rows.Select(found => new ModerationLog
 			{
 				Id = found.row.Id,
-				Value = new ModerationData
+				Value = new ModerationLogData
 				{
 					Action = (ModerationAction)found.row.Action,
 					Actor = EfUserRepository.ToUser(found.actor),
@@ -63,7 +63,7 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 		], hasNext);
 	}
 
-	internal static async Task AddAsync(UsersDbContext context, ModerationData entry)
+	internal static async Task AddAsync(UsersDbContext context, ModerationLogData entry)
 	{
 		var row = new ModerationLogRow
 		{

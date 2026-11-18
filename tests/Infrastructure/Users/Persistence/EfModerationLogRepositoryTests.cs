@@ -22,7 +22,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 		var target = await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = "target_user" });
 
-		await Log.AppendAsync(new ModerationData
+		await Log.AppendAsync(new ModerationLogData
 		{
 			Action = ModerationAction.Note,
 			Actor = moderator,
@@ -50,7 +50,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 			.CreateAsync(new UserData { Name = "moderator" });
 		var unknown = new UserRecord { Id = 4242, Value = new UserData { Name = "not_stored" } };
 
-		await Assert.ThrowsAnyAsync<Exception>(() => Log.AppendAsync(new ModerationData
+		await Assert.ThrowsAnyAsync<Exception>(() => Log.AppendAsync(new ModerationLogData
 		{
 			Action = ModerationAction.Note,
 			Actor = moderator,
@@ -190,7 +190,7 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 
 	private async Task AppendAsync(UserRecord moderator, UserRecord target, DateTimeOffset timestamp)
 	{
-		await Log.AppendAsync(new ModerationData
+		await Log.AppendAsync(new ModerationLogData
 		{
 			Action = ModerationAction.Note,
 			Actor = moderator,

@@ -59,7 +59,7 @@ public sealed class UserSessions
 	{
 		var now = _user.Context.Clock.GetUtcNow();
 		if (!viewer.Record.Equals(_user.Record))
-			await _user.Context.ModerationLog.AppendAsync(new ModerationData
+			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData
 			{
 				Action = ModerationAction.ViewLogins,
 				Actor = viewer.Record,
@@ -78,7 +78,7 @@ public sealed class UserSessions
 		if (session is null) return (UserOutcome.NotFound, null);
 
 		if (!viewer.Record.Equals(_user.Record))
-			await _user.Context.ModerationLog.AppendAsync(new ModerationData
+			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData
 			{
 				Action = ModerationAction.ViewLogins,
 				Actor = viewer.Record,
@@ -89,21 +89,12 @@ public sealed class UserSessions
 		return (UserOutcome.Ok, session);
 	}
 
-	internal async Task<(UserOutcome Outcome, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
-		Connection viewer, long id, PageRequest page, CancellationToken ct)
-	{
-		var (outcome, _) = await GetAsync(viewer, id, ct);
-		if (outcome is not UserOutcome.Ok) return (outcome, null);
-
-		return (UserOutcome.Ok, await _user.Context.Connections.ListAsync(id, page, ct));
-	}
-
 	internal async Task<UserOutcome> CloseAsync(long id)
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
 		if (!Connections.Any(connection => connection.Session.Id == id) &&
-		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Value.End: null })
+		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Value.Ended: null })
 			return UserOutcome.NotFound;
 
 		await CloseAsync(id, null, SessionEndReason.Revoked);
@@ -118,7 +109,7 @@ public sealed class UserSessions
 		long? keep = isSelf && keepCurrent && actor is ApiConnection api ? api.Session.Id : null;
 		// The sessions live in another module's database, so no transaction covers both: log first, so an action is never unrecorded.
 		if (!isSelf)
-			await _user.Context.ModerationLog.AppendAsync(new ModerationData
+			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData
 			{
 				Action = ModerationAction.CloseSessions,
 				Actor = actor.Record,
@@ -144,9 +135,16 @@ public sealed class UserSessions
 		var session = new SessionRecord
 		{
 			Id = UserRegistry.NewSessionId(),
-			Value = new SessionData(_user.Record, SessionType.Irc, now,
-				new SessionFingerprint(actor.Session.Value.Fingerprint.Ip, ClientInfo: label),
-				UserRegistry.HashToken(key), null, now)
+			Value = new SessionData
+			{
+				User = _user.Record,
+				Type = SessionType.Irc,
+				StartedAt = now,
+				Fingerprint = new SessionFingerprint(actor.Session.Value.Fingerprint.Ip, ClientInformation: label),
+				TokenHash = UserRegistry.HashToken(key),
+				ExpiresAt = null,
+				LastActiveAt = now
+			}
 		};
 		await _user.Context.Sessions.CreateOrUpdateAsync(session);
 		return (UserOutcome.Ok, key, session);

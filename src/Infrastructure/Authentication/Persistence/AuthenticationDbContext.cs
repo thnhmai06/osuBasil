@@ -10,8 +10,6 @@ internal sealed class AuthenticationDbContext(DbContextOptions<AuthenticationDbC
 
 	public DbSet<SessionRow> Sessions => Set<SessionRow>();
 
-	public DbSet<ConnectionRow> Connections => Set<ConnectionRow>();
-
 	static string IDatabaseContext<AuthenticationDbContext>.HistoryTable => "__ef_migrations_auth";
 
 	static AuthenticationDbContext IDatabaseContext<AuthenticationDbContext>.Create(

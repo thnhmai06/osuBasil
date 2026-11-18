@@ -31,22 +31,6 @@ public sealed record UserView(
 	}
 }
 
-public sealed record ConnectionView(
-	string Ip,
-	string? ClientInfo,
-	DateTimeOffset OpenedAt,
-	DateTimeOffset LastActiveAt,
-	DateTimeOffset? ClosedAt,
-	SessionEndReason? CloseReason)
-{
-	public static ConnectionView Of(ConnectionRecord c)
-	{
-		var data = c.Value;
-		return new ConnectionView(data.Ip.ToString(), data.ClientInfo, data.OpenedAt, data.LastActiveAt, data.ClosedAt,
-			data.CloseReason);
-	}
-}
-
 public sealed record SessionView(
 	long Id,
 	SessionType Type,
@@ -61,7 +45,7 @@ public sealed record SessionView(
 	{
 		var data = s.Value;
 		var device = data.Fingerprint;
-		return new SessionView(s.Id, data.Type, device.Ip.ToString(), device.ClientInfo, data.StartedAt,
-			data.LastActiveAt, data.End?.At, data.End?.Reason);
+		return new SessionView(s.Id, data.Type, device.Ip.ToString(), device.ClientInformation, data.StartedAt,
+			data.LastActiveAt, data.Ended?.At, data.Ended?.Reason);
 	}
 }

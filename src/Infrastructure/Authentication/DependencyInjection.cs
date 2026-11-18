@@ -12,7 +12,6 @@ public static class DependencyInjection
 		services.AddSingleton<IModuleMigration, ModuleMigration<AuthenticationDbContext>>();
 		services.AddSingleton<ICredentialRepository, EfCredentialRepository>();
 		services.AddSingleton<ISessionRepository, EfSessionRepository>();
-		services.AddSingleton<IConnectionRepository, EfConnectionRepository>();
 		return services;
 	}
 }

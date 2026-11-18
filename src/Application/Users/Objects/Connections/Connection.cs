@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Basil.Application.Shared.Actors;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Objects.Events;
@@ -15,7 +16,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 {
 	// Swapped whole: a connection and the activity flush touch it from different threads.
 	private Activity _activity = new(login.Value.LastActiveAt, login.Value.ExpiresAt);
-	private SessionEnd? _end;
+	private StrongBox<SessionEnded>? _end;
 
 	public User User { get; internal set; } = null!;
 
@@ -31,7 +32,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 
 	public DateTimeOffset? ExpiresAt => Volatile.Read(ref _activity).ExpiresAt;
 
-	public SessionEnd? End => Volatile.Read(ref _end);
+	public SessionEnded? End => Volatile.Read(ref _end)?.Value;
 
 	public bool IsServerOwned => Record.IsBasilBot();
 
@@ -53,7 +54,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 			{
 				ExpiresAt = activity.ExpiresAt,
 				LastActiveAt = activity.LastActiveAt,
-				End = End
+				Ended = End
 			}
 		};
 	}
@@ -82,7 +83,7 @@ public abstract class Connection(SessionRecord login, string token) : IActor
 
 	internal void EndSession(DateTimeOffset at, SessionEndReason reason)
 	{
-		Interlocked.CompareExchange(ref _end, new SessionEnd(at, reason), null);
+		Interlocked.CompareExchange(ref _end, new StrongBox<SessionEnded>(new SessionEnded(at, reason)), null);
 	}
 
 	internal virtual bool Outranks(UserPrivileges granted, UserPrivileges target)

@@ -33,9 +33,9 @@ internal sealed record SessionItem(long Id, int UserId, string UserName, ulong M
 	public static SessionItem Of(SessionRecord record, DateTimeOffset now)
 	{
 		var data = record.Value;
-		var live = data.End is null && (data.ExpiresAt is null || data.ExpiresAt > now);
+		var live = data.Ended is null && (data.ExpiresAt is null || data.ExpiresAt > now);
 		return new SessionItem(record.Id, data.User.Id, data.User.Value.Name, (ulong)data.User.Value.Privileges,
-			data.Type, data.Fingerprint.Ip.ToString(), data.Fingerprint.ClientInfo ?? string.Empty, data.StartedAt,
-			data.LastActiveAt, live, data.End?.Reason.ToString() ?? string.Empty);
+			data.Type, data.Fingerprint.Ip.ToString(), data.Fingerprint.ClientInformation ?? string.Empty, data.StartedAt,
+			data.LastActiveAt, live, data.Ended?.Reason.ToString() ?? string.Empty);
 	}
 }

@@ -30,16 +30,6 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 		return (outcome, session);
 	}
 
-	public async Task<(UserOutcome Result, Page<ConnectionRecord>? Connections)> ListConnectionsAsync(
-		long id, PageRequest page, CancellationToken ct = default)
-	{
-		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
-		if (user is null) return (refusal, null);
-
-		var (outcome, connections) = await user.Sessions.ListConnectionsAsync(scoped.Actor, id, page, ct);
-		return (outcome, connections);
-	}
-
 	public async Task<UserOutcome> CloseAsync(long id)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Owner);

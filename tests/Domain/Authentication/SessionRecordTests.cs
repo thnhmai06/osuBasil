@@ -83,8 +83,16 @@ public class SessionRecordTests
 		return new SessionRecord
 		{
 			Id = id ?? 1,
-			Value = new SessionData(user, type, Start, new SessionFingerprint(IPAddress.Loopback, client),
-				tokenHash ?? new Sha256Hash("token"u8.ToArray()), null, lastActiveAt ?? Start)
+			Value = new SessionData
+			{
+				User = user,
+				Type = type,
+				StartedAt = Start,
+				Fingerprint = new SessionFingerprint(IPAddress.Loopback, client),
+				TokenHash = tokenHash ?? new Sha256Hash("token"u8.ToArray()),
+				ExpiresAt = null,
+				LastActiveAt = lastActiveAt ?? Start
+			}
 		};
 	}
 

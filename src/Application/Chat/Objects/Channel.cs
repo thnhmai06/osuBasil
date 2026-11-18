@@ -159,7 +159,7 @@ public abstract class Channel
 			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
 		}
 
-		if (!pm.Owner.Record.IsFriendOfEveryone() && recipientSilenced)
+		if (!pm.Owner.Record.IsBasilBot() && recipientSilenced)
 			return ChannelOutcome.TargetSilenced;
 
 		return null;

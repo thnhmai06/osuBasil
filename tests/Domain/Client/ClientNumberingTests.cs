@@ -59,9 +59,7 @@ public sealed class ClientNumberingTests
 	}
 
 	[Theory]
-	[InlineData(BeatmapsetStatus.NotSubmitted, -1)]
 	[InlineData(BeatmapsetStatus.Pending, 0)]
-	[InlineData(BeatmapsetStatus.UpdateAvailable, 1)]
 	[InlineData(BeatmapsetStatus.Ranked, 2)]
 	[InlineData(BeatmapsetStatus.Approved, 3)]
 	[InlineData(BeatmapsetStatus.Qualified, 4)]

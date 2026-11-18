@@ -71,7 +71,6 @@ public sealed class TestApplication : IDisposable
 		new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
 	private static long _sessionIds = 1_000_000;
-	private readonly InMemoryConnectionRepository _connections;
 
 	private readonly InMemoryCredentialRepository _credentials;
 	private readonly InMemoryModerationLogRepository _moderationLog;
@@ -86,7 +85,6 @@ public sealed class TestApplication : IDisposable
 		_users = new InMemoryUserRepository();
 		_credentials = new InMemoryCredentialRepository();
 		_sessions = new InMemorySessionRepository();
-		_connections = new InMemoryConnectionRepository();
 		var relationships = new InMemoryRelationshipRepository();
 		_moderationLog = new InMemoryModerationLogRepository();
 		_settings = new InMemorySettingsRepository();
@@ -101,7 +99,6 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IUserRepository>(_users);
 		services.AddSingleton<ICredentialRepository>(_credentials);
 		services.AddSingleton<ISessionRepository>(_sessions);
-		services.AddSingleton<IConnectionRepository>(_connections);
 		services.AddSingleton<IRelationshipRepository>(relationships);
 		services.AddSingleton<IModerationLogRepository>(_moderationLog);
 		services.AddSingleton<ISettingsRepository>(_settings);
@@ -141,14 +138,11 @@ public sealed class TestApplication : IDisposable
 		});
 		// The host delivers events to the handlers; this fixture runs the one that stores a closed session.
 		var sessionEnd = new SessionEndHandler(_sessions, NullLogger<SessionEndHandler>.Instance);
-		var connectionClosed = new ConnectionClosedHandler(_connections, Clock,
-			NullLogger<ConnectionClosedHandler>.Instance);
 		UserEvents.Recorded += @event =>
 		{
 			if (@event is not UserConnectionClosed closed) return;
 
 			_ = sessionEnd.Handle(closed, CancellationToken.None);
-			_ = connectionClosed.Handle(closed, CancellationToken.None);
 		};
 		Users = Provider.GetRequiredService<UserRegistry>();
 		Lobby = Provider.GetRequiredService<Lobby>();
@@ -204,8 +198,6 @@ public sealed class TestApplication : IDisposable
 
 	public IReadOnlyList<SessionRecord> StoredSessions => _sessions.Entries;
 
-	public IReadOnlyList<ConnectionRecord> StoredConnections => _connections.Entries;
-
 	public Exception? SessionRecordFailure
 	{
 		get => _sessions.RecordFailure;
@@ -224,7 +216,7 @@ public sealed class TestApplication : IDisposable
 		set => _moderationLog.AppendFailure = value;
 	}
 
-	public IReadOnlyList<ModerationData> ModerationEntries => _moderationLog.Entries;
+	public IReadOnlyList<ModerationLogData> ModerationEntries => _moderationLog.Entries;
 
 	public string UploadsRoot { get; }
 
@@ -324,8 +316,16 @@ public sealed class TestApplication : IDisposable
 		await _sessions.CreateOrUpdateAsync(new SessionRecord
 		{
 			Id = Interlocked.Increment(ref _sessionIds),
-			Value = new SessionData(record, SessionType.Irc, now, new SessionFingerprint(IPAddress.Loopback),
-				new Sha256Hash(Encoding.UTF8.GetBytes(key)), null, now)
+			Value = new SessionData
+			{
+				User = record,
+				Type = SessionType.Irc,
+				StartedAt = now,
+				Fingerprint = new SessionFingerprint(IPAddress.Loopback),
+				TokenHash = new Sha256Hash(Encoding.UTF8.GetBytes(key)),
+				ExpiresAt = null,
+				LastActiveAt = now
+			}
 		});
 		return await Users.LoginWithTokenAsync(SessionType.Irc, key, IPAddress.Loopback);
 	}
@@ -340,7 +340,7 @@ public sealed class TestApplication : IDisposable
 		var inMemoryPortTypes = new HashSet<Type>
 		{
 			typeof(IUserRepository), typeof(ICredentialRepository),
-			typeof(ISessionRepository), typeof(IConnectionRepository), typeof(IRelationshipRepository),
+			typeof(ISessionRepository), typeof(IRelationshipRepository),
 			typeof(IModerationLogRepository),
 			typeof(ISettingsRepository)
 		};

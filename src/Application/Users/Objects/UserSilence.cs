@@ -47,10 +47,10 @@ public sealed class UserSilence
 		return UserOutcome.Ok;
 	}
 
-	private ModerationData Log(ModerationAction action, UserRecord actor, string? reason,
+	private ModerationLogData Log(ModerationAction action, UserRecord actor, string? reason,
 		DateTimeOffset now)
 	{
-		return new ModerationData
+		return new ModerationLogData
 		{
 			Action = action,
 			Actor = actor,

@@ -205,7 +205,16 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	{
 		return new SessionRecord
 		{
-			Id = id, Value = new SessionData(user, type, startedAt, fingerprint, hash, expiresAt, startedAt)
+			Id = id, Value = new SessionData
+			{
+				User = user,
+				Type = type,
+				StartedAt = startedAt,
+				Fingerprint = fingerprint,
+				TokenHash = hash,
+				ExpiresAt = expiresAt,
+				LastActiveAt = startedAt
+			}
 		};
 	}
 

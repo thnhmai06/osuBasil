@@ -180,7 +180,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.FromResult(found is null
 			? null
 			: new StoredSession(found.Id, found.Value.User.Id, found.Value.Type, found.Value.Fingerprint.Ip,
-				found.Value.Fingerprint.ClientInfo, found.Value.StartedAt, found.Value.ExpiresAt));
+				found.Value.Fingerprint.ClientInformation, found.Value.StartedAt, found.Value.ExpiresAt));
 	}
 
 	public Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types,
@@ -257,87 +257,6 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 	}
 }
 
-internal sealed class InMemoryConnectionRepository : IConnectionRepository
-{
-	private readonly List<ConnectionRecord> _entries = [];
-	private long _nextId = 1;
-
-	public IReadOnlyList<ConnectionRecord> Entries => _entries;
-
-	public Task OpenAsync(long sessionId, IPAddress ip, string? clientInfo, DateTimeOffset at, TimeSpan reopenWithin)
-	{
-		var lastIndex = _entries.FindLastIndex(entry => entry.Value.SessionId == sessionId);
-		if (lastIndex >= 0 && _entries[lastIndex].Value is { ClosedAt: { } closedAt } last &&
-		    closedAt >= at - reopenWithin && last.Ip.Equals(ip))
-		{
-			_entries[lastIndex] = With(_entries[lastIndex], data => data with
-			{
-				ClosedAt = null, CloseReason = null, LastActiveAt = at
-			});
-			return Task.CompletedTask;
-		}
-
-		_entries.Add(new ConnectionRecord
-		{
-			Id = _nextId++, Value = new ConnectionData(sessionId, ip, clientInfo, at, at)
-		});
-		return Task.CompletedTask;
-	}
-
-	public Task CloseAsync(long sessionId, DateTimeOffset lastActiveAt, DateTimeOffset closedAt,
-		SessionEndReason reason)
-	{
-		for (var index = 0; index < _entries.Count; index++)
-			if (_entries[index].Value is { ClosedAt: null } data && data.SessionId == sessionId)
-				_entries[index] = With(_entries[index], value => value with
-				{
-					LastActiveAt = lastActiveAt, ClosedAt = closedAt, CloseReason = reason
-				});
-
-		return Task.CompletedTask;
-	}
-
-	public Task WriteActivityAsync(IReadOnlyCollection<ConnectionActivity> activity)
-	{
-		foreach (var item in activity)
-			for (var index = 0; index < _entries.Count; index++)
-				if (_entries[index].Value is { ClosedAt: null } data && data.SessionId == item.SessionId)
-					_entries[index] = With(_entries[index], value => value with { LastActiveAt = item.LastActiveAt });
-
-		return Task.CompletedTask;
-	}
-
-	public ValueTask<Page<ConnectionRecord>> ListAsync(long sessionId, PageRequest page,
-		CancellationToken ct = default)
-	{
-		var entries = _entries.Where(entry => entry.Value.SessionId == sessionId).Reverse().ToList();
-		return ValueTask.FromResult(new Page<ConnectionRecord>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
-			page.Offset + page.Limit < entries.Count));
-	}
-
-	public Task<int> CloseOpenAsync(SessionEndReason reason)
-	{
-		var closed = 0;
-		for (var index = 0; index < _entries.Count; index++)
-		{
-			if (_entries[index].Value.ClosedAt is not null) continue;
-
-			_entries[index] = With(_entries[index], value => value with
-			{
-				ClosedAt = value.LastActiveAt, CloseReason = reason
-			});
-			closed++;
-		}
-
-		return Task.FromResult(closed);
-	}
-
-	private static ConnectionRecord With(ConnectionRecord record, Func<ConnectionData, ConnectionData> change)
-	{
-		return new ConnectionRecord { Id = record.Id, Value = change(record.Value) };
-	}
-}
-
 internal sealed class InMemoryRelationshipRepository : IRelationshipRepository
 {
 	private readonly List<Relationship> _relationships = [];
@@ -368,14 +287,14 @@ internal sealed class InMemoryRelationshipRepository : IRelationshipRepository
 internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 {
 	private readonly List<ModerationLog> _entries = [];
-	private readonly List<ModerationData> _values = [];
+	private readonly List<ModerationLogData> _values = [];
 	private long _nextId = 1;
 
-	public IReadOnlyList<ModerationData> Entries => _values;
+	public IReadOnlyList<ModerationLogData> Entries => _values;
 
 	public Exception? AppendFailure { get; set; }
 
-	public Task AppendAsync(ModerationData entry)
+	public Task AppendAsync(ModerationLogData entry)
 	{
 		if (AppendFailure is { } failure) throw failure;
 		_entries.Add(new ModerationLog { Id = _nextId++, Value = entry });

@@ -26,7 +26,7 @@ internal sealed class RoomUsers
 
 	internal async ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken ct = default)
 	{
-		if (blocker.IsFriendOfEveryone()) return false;
+		if (blocker.IsBasilBot()) return false;
 
 		var relationships = await _relationships.ListAsync(blocker, ct);
 		return relationships.Any(relationship => relationship.Target.Equals(who) &&

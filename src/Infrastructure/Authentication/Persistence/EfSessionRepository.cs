@@ -131,13 +131,21 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 
 	private static SessionRecord ToRecord(SessionRow row, UserRecord user)
 	{
-		var end = row.EndedAt is { } at ? new SessionEnd(at, row.EndReason!.Value) : null;
+		var ended = row.EndedAt is { } at ? new SessionEnded(at, row.EndReason!.Value) : (SessionEnded?)null;
 		return new SessionRecord
 		{
 			Id = row.Id,
-			Value = new SessionData(user, row.Type, row.StartedAt,
-				new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
-				new Sha256Hash(Convert.ToHexStringLower(row.TokenHash)), row.ExpiresAt, row.LastActiveAt, end)
+			Value = new SessionData
+			{
+				User = user,
+				Type = row.Type,
+				StartedAt = row.StartedAt,
+				Fingerprint = new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
+				TokenHash = new Sha256Hash(Convert.ToHexStringLower(row.TokenHash)),
+				ExpiresAt = row.ExpiresAt,
+				LastActiveAt = row.LastActiveAt,
+				Ended = ended
+			}
 		};
 	}
 
@@ -165,11 +173,11 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			UserId = data.User.Id,
 			Type = data.Type,
 			Ip = device.Ip,
-			ClientInfo = device.ClientInfo,
+			ClientInfo = device.ClientInformation,
 			StartedAt = data.StartedAt.ToUniversalTime(),
 			LastActiveAt = data.LastActiveAt.ToUniversalTime(),
-			EndedAt = data.End?.At.ToUniversalTime(),
-			EndReason = data.End?.Reason,
+			EndedAt = data.Ended?.At.ToUniversalTime(),
+			EndReason = data.Ended?.Reason,
 			TokenHash = Convert.FromHexString(data.TokenHash.HashValue),
 			ExpiresAt = data.ExpiresAt?.ToUniversalTime(),
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

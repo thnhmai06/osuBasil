@@ -27,7 +27,6 @@ public static class DependencyInjection
 			sp.GetRequiredService<IModerationLogRepository>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<ISessionRepository>(),
-			sp.GetRequiredService<IConnectionRepository>(),
 			sp.GetRequiredService<ICredentialRepository>(),
 			sp.GetRequiredService<IUserAvatarStorage>(),
 			sp.GetRequiredService<IScreenshotInspector>(),

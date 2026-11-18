@@ -46,7 +46,7 @@ public sealed class UserCredentials
 		var keep = isSelf && !includeCurrent && actor is ApiConnection api ? api.Session.Id : (long?)null;
 		await _user.Sessions.CloseAsync(null, keep, SessionEndReason.CredentialsChanged);
 		if (!isSelf)
-			await _user.Context.ModerationLog.AppendAsync(new ModerationData
+			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData
 			{
 				Action = ModerationAction.ChangePassword,
 				Actor = actor.Record,

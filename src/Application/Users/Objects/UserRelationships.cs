@@ -43,7 +43,7 @@ public sealed class UserRelationships
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsFriendOfEveryone()) return UserOutcome.Ok;
+		if (target.IsBasilBot()) return UserOutcome.Ok;
 
 		await SetAsync(target, RelationshipType.Friend);
 		return UserOutcome.Ok;
@@ -52,7 +52,7 @@ public sealed class UserRelationships
 	internal async Task<UserOutcome> RemoveFriendAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
-		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
+		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
 
 		return await RemoveAsync(target, RelationshipType.Friend) ? UserOutcome.Ok : UserOutcome.NotFound;
 	}
@@ -61,7 +61,7 @@ public sealed class UserRelationships
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsFriendOfEveryone()) return UserOutcome.SystemAccount;
+		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
 
 		await SetAsync(target, RelationshipType.Block);
 		return UserOutcome.Ok;
@@ -70,7 +70,7 @@ public sealed class UserRelationships
 	internal async Task<UserOutcome> UnblockAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
-		if (target.IsFriendOfEveryone()) return UserOutcome.NotFound;
+		if (target.IsBasilBot()) return UserOutcome.NotFound;
 
 		return await RemoveAsync(target, RelationshipType.Block) ? UserOutcome.Ok : UserOutcome.NotFound;
 	}

@@ -94,8 +94,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		if (session.EndReason.Length > 0) fields.Add(("Ended", session.EndReason, Ink.Text));
 		var actionList = new List<DetailAction>
 		{
-			DetailAction.OpenAsync("User", () => OfAsync(UserReference.ById(session.UserId))),
-			DetailAction.OpenAsync("Connections", () => ConnectionsAsync(session))
+			DetailAction.OpenAsync("User", () => OfAsync(UserReference.ById(session.UserId)))
 		};
 		if (session.Live)
 			actionList.Add(new DetailAction("Close session", () => dialogs.Confirm("Close session",
@@ -140,28 +139,6 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 			session => session.Id.ToString(CultureInfo.InvariantCulture),
 			[.. SessionItem.Kinds.Select(kind => GroupOf(kind, items))], glyphs, options.NoColor, clock,
 			session => push(Of(session)))) { Reload = () => SessionsAsync(user) };
-	}
-
-	private async Task<DetailView> ConnectionsAsync(SessionItem session)
-	{
-		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
-		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListSessionConnections(actor,
-			UserReference.ById(session.UserId), session.Id, new PageRequest(0, RowsShown)));
-		if (outcome != UserOutcome.Ok || page is null)
-			return new DetailView("Connections", [("Connections", "not available", Ink.Warning)], []);
-
-		var items = page.Items.Select(ConnectionView.Of).ToList();
-		IReadOnlyList<Column<ConnectionView>> columns =
-		[
-			new Column<ConnectionView>("Opened", 17, c => SessionItem.Time(c.OpenedAt), _ => Ink.Muted),
-			new Column<ConnectionView>("Last seen", 17, c => SessionItem.Time(c.LastActiveAt), _ => Ink.Muted),
-			new Column<ConnectionView>("Ended", 0, c => c.CloseReason?.ToString() ?? "open", c => c.CloseReason is null ? Ink.Success : Ink.Text),
-			new Column<ConnectionView>("Client / IP", 0, c => $"{c.ClientInfo} {c.Ip}".Trim()) { Weight = 2 }
-		];
-		return new DetailView("Connections", [], [], _ => NestedTable.Of(columns,
-			c => c.OpenedAt.ToString("O", CultureInfo.InvariantCulture),
-			[new Section<ConnectionView>("Connections", items.Count.ToString(CultureInfo.InvariantCulture), items)], glyphs,
-			options.NoColor, clock, _ => { })) { Reload = () => ConnectionsAsync(session) };
 	}
 
 	private async Task<DetailView> ScoresAsync(UserItem user)

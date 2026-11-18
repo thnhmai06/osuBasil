@@ -20,7 +20,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                 .HasAnnotation("ProductVersion", "10.0.14");
 
 
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.ConnectionRow).FullName!, b =>
+            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.ConnectionRow", b =>
                 {
                     b.Property<long>("Id")
                         .HasColumnName("id");
@@ -191,7 +191,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                         });
                 });
 
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.ConnectionRow).FullName!, b =>
+            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.ConnectionRow", b =>
                 {
                     b.HasOne(typeof(Basil.Infrastructure.Authentication.Persistence.SessionRow).FullName!, null)
                         .WithMany()

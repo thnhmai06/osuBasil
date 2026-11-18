@@ -18,7 +18,6 @@ internal sealed record UserContext(
 	IModerationLogRepository ModerationLog,
 	IRelationshipRepository Relationships,
 	ISessionRepository Sessions,
-	IConnectionRepository Connections,
 	ICredentialRepository Credentials,
 	IUserAvatarStorage Avatars,
 	IScreenshotInspector Inspector,
