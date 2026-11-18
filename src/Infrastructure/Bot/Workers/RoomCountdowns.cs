@@ -55,7 +55,7 @@ internal sealed class RoomCountdowns(
 		var running = new Running(new RoomCountdown(actor, length, startsRound, clock.GetUtcNow()));
 		running.Timers =
 		[
-			.. RoomCountdown.MarksFor(length, startsRound).Select(mark =>
+			.. CountdownMarks.For(length, startsRound).Select(mark =>
 				clock.CreateTimer(InBackground(() => TickAsync(room, running, mark)), null, length - mark,
 					Timeout.InfiniteTimeSpan)),
 			clock.CreateTimer(InBackground(() => ElapseAsync(room, running)), null, length,

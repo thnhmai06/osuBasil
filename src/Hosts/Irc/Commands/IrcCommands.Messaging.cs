@@ -4,6 +4,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Chat;
 using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc.Models;
@@ -38,7 +39,7 @@ internal sealed partial class IrcCommands
 				return;
 			}
 
-			destination = RoomChannel.TryParseName(target, out var roomId)
+			destination = RoomChannelName.TryParse(target, out var roomId)
 				? new ChatTarget.Room(roomId)
 				: new ChatTarget.General(target);
 		}
@@ -163,7 +164,7 @@ internal sealed partial class IrcCommands
 
 	private static ChatTarget IrcTarget(string name)
 	{
-		return RoomChannel.TryParseName(name, out var roomId)
+		return RoomChannelName.TryParse(name, out var roomId)
 			? new ChatTarget.Room(roomId)
 			: new ChatTarget.General(name);
 	}

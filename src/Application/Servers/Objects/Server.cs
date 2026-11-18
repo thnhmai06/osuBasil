@@ -70,7 +70,7 @@ public sealed partial class Server
 		if (Context.Chat.Registry.All.TryGetValue(name, out var general))
 			return general.IsClosed ? null : general;
 
-		if (!RoomChannel.TryParseName(name, out var roomId)
+		if (!RoomChannelName.TryParse(name, out var roomId)
 		    || !Context.Lobby.Rooms.TryGetValue(roomId, out var room)
 		    || room.IsClosed)
 			return null;

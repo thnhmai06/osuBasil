@@ -4,7 +4,6 @@ using Basil.Domain.Chat;
 
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
-using Basil.Shared.Utilities;
 
 namespace Basil.Application.Chat.Objects;
 
@@ -41,8 +40,8 @@ public sealed class GeneralChannel : Channel
 			if (IsClosed) return ChannelOutcome.Closed;
 			var target = Record.Value;
 
-			Validate(change);
-			Apply(target, change);
+			change.Validate();
+			change.ApplyTo(target);
 
 			var removed = Members.Where(member => !CanRead(member, privilegesOf(member))).ToArray();
 			foreach (var member in removed)
@@ -59,21 +58,5 @@ public sealed class GeneralChannel : Channel
 		Close();
 		await Context.Channels.DeleteAsync(Record);
 		return ChannelOutcome.Ok;
-	}
-
-	private static void Validate(GeneralChannelChange change)
-	{
-		if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfInvalid();
-		if (change.WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfInvalid();
-		change.Topic?.ThrowIfHasNul();
-	}
-
-	private static void Apply(GeneralChannelData target, GeneralChannelChange change)
-	{
-		if (change.Topic is { } topic) target.Topic = topic;
-		if (change.ReadPrivileges is { } read) target.ReadPrivileges = read;
-		if (change.WritePrivileges is { } write) target.WritePrivileges = write;
-		if (change.AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;
-		if (change.Visible is { } visible) target.Visible = visible;
 	}
 }

@@ -2,6 +2,7 @@ using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Chat;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Chat;
 using Basil.Domain.Users;
@@ -43,7 +44,7 @@ internal sealed partial class PacketHandlers
 		{
 			StableView.MultiplayerAlias => new ChatTarget.OwnRoom(),
 			StableView.SpectatorAlias => new ChatTarget.OwnSpectators(),
-			_ when RoomChannel.TryParseName(name, out var roomId) => new ChatTarget.Room(roomId),
+			_ when RoomChannelName.TryParse(name, out var roomId) => new ChatTarget.Room(roomId),
 			_ => new ChatTarget.General(name)
 		};
 	}

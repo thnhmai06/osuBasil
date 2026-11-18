@@ -1,6 +1,7 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Registry;
+using Basil.Domain.Chat;
 using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;

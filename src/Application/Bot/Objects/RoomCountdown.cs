@@ -10,16 +10,4 @@ internal sealed record RoomCountdown(Session Actor, TimeSpan Length, bool Starts
 
 	public DateTimeOffset EndsAt => StartedAt + Length;
 
-	public static IReadOnlyList<TimeSpan> MarksFor(TimeSpan length, bool startsRound)
-	{
-		int[] seconds = startsRound ? [30, 10, 5, 4, 3] : [60, 30, 10, 5];
-		var marks = seconds.Select(second => TimeSpan.FromSeconds(second)).Where(mark => mark < length).ToList();
-		if (!startsRound) return [.. marks.OrderByDescending(mark => mark)];
-
-		for (var minute = TimeSpan.FromMinutes(1); minute < length; minute += TimeSpan.FromMinutes(1))
-			if (length - minute > TimeSpan.FromSeconds(5))
-				marks.Add(minute);
-
-		return [.. marks.OrderByDescending(mark => mark)];
-	}
 }

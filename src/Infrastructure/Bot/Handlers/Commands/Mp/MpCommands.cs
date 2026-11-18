@@ -1,3 +1,4 @@
+using Basil.Domain.Chat;
 using System.Collections.Frozen;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Bot.Commands;
@@ -109,7 +110,7 @@ internal sealed partial class MpCommands(
 
 		return context with
 		{
-			Say = context.Channel == RoomChannel.NameFor(roomId)
+			Say = context.Channel == RoomChannelName.NameFor(roomId)
 				? context.Say
 				: (text, ct) => context.Say(NameLines(text), ct),
 			SayPrivately = (text, ct) => context.SayPrivately(NameLines(text), ct)
@@ -129,7 +130,7 @@ internal sealed partial class MpCommands(
 		var actor = context.Actor;
 
 		// (a) Channel takes precedence: if sent in #mp_{id}, use that room
-		if (context.Channel is not null && RoomChannel.TryParseName(context.Channel, out var channelRoomId))
+		if (context.Channel is not null && RoomChannelName.TryParse(context.Channel, out var channelRoomId))
 		{
 			var channelRoom = lobby.Find(channelRoomId);
 			if (channelRoom is not null) return channelRoom;

@@ -1,4 +1,5 @@
 using Basil.Domain.Authentication;
+using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using System.Globalization;
 using Basil.Application.Beatmaps.Objects;

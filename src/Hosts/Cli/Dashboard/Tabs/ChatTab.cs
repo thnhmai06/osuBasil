@@ -4,6 +4,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
+using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Basil.Host.Cli.Dashboard.Data;
@@ -516,7 +517,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				}
 
 				var outcome = await sender.Send(new PostChatMessage(actor, target, text));
-				if (outcome != Basil.Application.Chat.Objects.ChannelOutcome.Ok)
+				if (outcome != Basil.Domain.Chat.ChannelOutcome.Ok)
 					Report(channel, $"The message was not sent ({outcome}).");
 			}
 			catch (Exception exception)
