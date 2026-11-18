@@ -10,8 +10,7 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 		get;
 		init
 		{
-			if (string.IsNullOrEmpty(value) || value is not ['#', _, ..] || value.Any(char.IsWhiteSpace) ||
-			    value.Contains(',') || value.Contains('\0'))
+			if (!IsValidName(value))
 				throw new ArgumentException("Channel name is invalid.", nameof(value));
 			field = value;
 		}
@@ -49,20 +48,26 @@ public sealed class GeneralChannelData
 		set
 		{
 			ArgumentNullException.ThrowIfNull(value);
-			field = value.ThrowIfHasNul();
+			if (!IsValidTopic(value))
+				throw new ArgumentException("Text cannot contain the NUL character.", nameof(value));
+			field = value;
 		}
 	} = string.Empty;
 
 	public UserPrivileges ReadPrivileges
 	{
 		get;
-		set => field = value.ThrowIfInvalid();
+		set => field = IsValidPrivileges(value)
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
 	} = UserPrivileges.None;
 
 	public UserPrivileges WritePrivileges
 	{
 		get;
-		set => field = value.ThrowIfInvalid();
+		set => field = IsValidPrivileges(value)
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
 	} = UserPrivileges.None;
 
 	public bool AutoJoin { get; set; }

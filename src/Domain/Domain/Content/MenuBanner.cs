@@ -23,7 +23,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 		get;
 		set
 		{
-			if (value > EndsAt)
+			if (!IsValidWindow(value, EndsAt))
 				throw new ArgumentOutOfRangeException(nameof(value), value, "A banner cannot start after it ends.");
 			field = value;
 		}
@@ -34,7 +34,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 		get;
 		set
 		{
-			if (value < StartsAt)
+			if (!IsValidWindow(StartsAt, value))
 				throw new ArgumentOutOfRangeException(nameof(value), value, "A banner cannot end before it starts.");
 			field = value;
 		}

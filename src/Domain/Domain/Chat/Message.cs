@@ -12,7 +12,7 @@ public sealed record Message
 		init
 		{
 			ArgumentNullException.ThrowIfNull(value);
-			if (value.Length <= 0 || value.Any(c => char.IsControl(c) && c is not ('\t' or '\n' or '\r' or '\u0001')))
+			if (!IsValidContent(value))
 				throw new ArgumentException("Message content cannot be empty or hold control characters.",
 					nameof(value));
 			field = value;
