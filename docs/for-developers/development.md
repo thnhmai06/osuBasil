@@ -82,8 +82,8 @@ The IRC gateway listens on port `6667` by default (`Basil:Server:Irc:Port`). For
 /server basil.local 6667
 ```
 
-Authenticate with an IRC key: create one for your account with `POST /v1/users/{id}/sessions/irc` and send it as the
-connection password or through SASL `PLAIN`. See [`irc.md`](irc.md).
+Authenticate with your account password, sent as the connection password or through SASL `PLAIN`. See
+[`irc.md`](irc.md).
 
 ### Resetting the development database
 

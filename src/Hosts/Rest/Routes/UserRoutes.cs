@@ -1,11 +1,11 @@
 using System.Text;
-using System.Text.Json;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -70,10 +70,6 @@ internal static class UserRoutes
 				"Closing an osu! session only disconnects the client, which can sign in again with its password; change the password to keep the client out.");
 		token.MapDelete("/{id:int}/sessions", CloseSessionsAsync).WithSummary("Delete every session of an account.")
 			.WithDescription("The optional body `keepCurrent` (default `true`) keeps the calling session.");
-		token.MapPost("/{id:int}/sessions/irc", OpenIrcAsync).Accepts<IrcKeyRequest>(true, "application/json", "*/*")
-			.WithSummary("Create an IRC key.")
-			.WithDescription(
-				"The body names the device with `label`. The key is shown only in this response; delete the key's session to revoke it.");
 
 		token.MapGet("/{id:int}/friends", FriendsAsync).Admitted(WorkClass.Listing)
 			.WithSummary("List friends of an account.");
@@ -119,7 +115,7 @@ internal static class UserRoutes
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var found = await sender.Send(new SearchUsers(context.Connection(), UserQuery.Parse(query ?? string.Empty),
+		var found = await sender.Send(new SearchUsers(context.Session(), UserQuery.Parse(query ?? string.Empty),
 			page!), ct);
 		return Api.Paged(
 			new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.HasNext),
@@ -136,7 +132,7 @@ internal static class UserRoutes
 		var data = new UserData { Name = request.Username };
 		if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
 
-		var (record, result) = await context.Sender().Send(new CreateAccount(context.Connection(), data,
+		var (record, result) = await context.Sender().Send(new CreateAccount(context.Session(), data,
 			new Md5Hash(Encoding.UTF8.GetBytes(request.Password)), request.Privileges), context.RequestAborted);
 		return result == UserOutcome.Ok ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
@@ -160,14 +156,14 @@ internal static class UserRoutes
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Name is not null &&
-		    await context.Sender().Send(new RenameUser(context.Connection(), target, request.Name), ct) is
+		    await context.Sender().Send(new RenameUser(context.Session(), target, request.Name), ct) is
 			    var renamed and not UserOutcome.Ok)
 			return renamed.Refusal();
 
 		if (request.Country is null) return null;
 		if (Targets.ParseCountry(request.Country) is not { } country)
 			return Api.Invalid("country must be a two-letter code.");
-		return await context.Sender().Send(new SetUserCountry(context.Connection(), target, country), ct) is
+		return await context.Sender().Send(new SetUserCountry(context.Session(), target, country), ct) is
 			var changed and not UserOutcome.Ok
 			? changed.Refusal()
 			: null;
@@ -177,16 +173,16 @@ internal static class UserRoutes
 		PatchUserRequest request, CancellationToken ct)
 	{
 		if (request.Away is not null && await context.Sender().Send(
-			    new SetUserAway(context.Connection(), target, request.Away.Length == 0 ? null : request.Away), ct) is
+			    new SetUserAway(context.Session(), target, request.Away.Length == 0 ? null : request.Away), ct) is
 			    var away and not UserOutcome.Ok)
 			return NotSelf(away);
 		if (request.PmPrivate is { } pm &&
-		    await context.Sender().Send(new SetUserPmPrivate(context.Connection(), target, pm), ct) is
+		    await context.Sender().Send(new SetUserPmPrivate(context.Session(), target, pm), ct) is
 			    var pmPrivate and not UserOutcome.Ok)
 			return NotSelf(pmPrivate);
 		if (request.Privileges is { } privileges &&
 		    await context.Sender()
-				    .Send(new SetUserPrivileges(context.Connection(), target, privileges), ct) is
+				    .Send(new SetUserPrivileges(context.Session(), target, privileges), ct) is
 			    var set and not UserOutcome.Ok)
 			return set.Refusal();
 
@@ -206,14 +202,14 @@ internal static class UserRoutes
 		var target = UserReference.ById(id);
 
 		var current = request.Current is null ? (Md5Hash?)null : new Md5Hash(Encoding.UTF8.GetBytes(request.Current));
-		return (await context.Sender().Send(new ChangeUserPassword(context.Connection(), target,
+		return (await context.Sender().Send(new ChangeUserPassword(context.Session(), target,
 				new Md5Hash(Encoding.UTF8.GetBytes(request.New)), current, request.IncludeCurrent ?? false),
 			context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, int id)
 	{
-		return (await context.Sender().Send(new DeleteUser(context.Connection(), UserReference.ById(id)),
+		return (await context.Sender().Send(new DeleteUser(context.Session(), UserReference.ById(id)),
 			context.RequestAborted)).Answer();
 	}
 
@@ -230,12 +226,12 @@ internal static class UserRoutes
 
 		await using var stream = file.OpenReadStream();
 		return (await context.Sender()
-			.Send(new SetUserAvatar(context.Connection(), target, stream), context.RequestAborted)).Answer();
+			.Send(new SetUserAvatar(context.Session(), target, stream), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> DeleteAvatarAsync(HttpContext context, int id)
 	{
-		return (await context.Sender().Send(new RemoveUserAvatar(context.Connection(), UserReference.ById(id)),
+		return (await context.Sender().Send(new RemoveUserAvatar(context.Session(), UserReference.ById(id)),
 			context.RequestAborted)).Answer();
 	}
 
@@ -247,9 +243,9 @@ internal static class UserRoutes
 
 		var sessionState = (state ?? "all").ToLowerInvariant() switch
 		{
-			"all" => (SessionState?)SessionState.Any,
-			"online" => SessionState.Active,
-			"offline" => SessionState.Ended,
+			"all" => (SessionFilter?)SessionFilter.Any,
+			"online" => SessionFilter.Active,
+			"offline" => SessionFilter.Ended,
 			_ => null
 		};
 		if (sessionState is null) return Api.Invalid("state must be all, online or offline.");
@@ -261,7 +257,7 @@ internal static class UserRoutes
 
 		var (result, sessions) =
 			await context.Sender().Send(
-				new ListUserSessions(context.Connection(), target, page!, sessionState.Value, kinds),
+				new ListUserSessions(context.Session(), target, page!, sessionState.Value, kinds),
 				context.RequestAborted);
 		if (result != UserOutcome.Ok) return result.Refusal();
 
@@ -273,13 +269,13 @@ internal static class UserRoutes
 		var target = UserReference.ById(id);
 
 		var (result, session) = await context.Sender()
-			.Send(new GetUserSession(context.Connection(), target, sid), context.RequestAborted);
+			.Send(new GetUserSession(context.Session(), target, sid), context.RequestAborted);
 		return result == UserOutcome.Ok ? Api.Ok(SessionView.Of(session!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, long sid)
 	{
-		return (await context.Sender().Send(new CloseUserSession(context.Connection(), UserReference.ById(id), sid),
+		return (await context.Sender().Send(new CloseUserSession(context.Session(), UserReference.ById(id), sid),
 			context.RequestAborted)).Answer();
 	}
 
@@ -289,30 +285,8 @@ internal static class UserRoutes
 		if (refusal is not null) return refusal;
 
 		return (await context.Sender().Send(
-			new CloseUserSessions(context.Connection(), UserReference.ById(id), request?.KeepCurrent ?? true),
+			new CloseUserSessions(context.Session(), UserReference.ById(id), request?.KeepCurrent ?? true),
 			context.RequestAborted)).Answer();
-	}
-
-	private static async Task<IResult> OpenIrcAsync(HttpContext context, int id)
-	{
-		if (!context.Request.HasJsonContentType()) return Api.Invalid("A JSON body is required.");
-		IrcKeyRequest? request;
-		try
-		{
-			request = await context.Request.ReadFromJsonAsync<IrcKeyRequest>(Api.Json, context.RequestAborted);
-		}
-		catch (JsonException)
-		{
-			return Api.Invalid("The body is not valid.");
-		}
-
-		if (request is null) return Api.Invalid("A body is required.");
-		if (string.IsNullOrWhiteSpace(request.Label)) return Api.Invalid("label is required.");
-		var target = UserReference.ById(id);
-
-		var (result, key, session) = await context.Sender()
-			.Send(new OpenIrcSession(context.Connection(), target, request.Label), context.RequestAborted);
-		return result == UserOutcome.Ok ? Api.Created(new IrcKeyResponse(session!.Id, key!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> FriendsAsync(HttpContext context, int id)
@@ -320,7 +294,7 @@ internal static class UserRoutes
 		var target = UserReference.ById(id);
 
 		var (result, list) =
-			await context.Sender().Send(new ListFriends(context.Connection(), target), context.RequestAborted);
+			await context.Sender().Send(new ListFriends(context.Session(), target), context.RequestAborted);
 		return result == UserOutcome.Ok ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
@@ -329,17 +303,17 @@ internal static class UserRoutes
 		var target = UserReference.ById(id);
 
 		var (result, list) =
-			await context.Sender().Send(new ListBlocks(context.Connection(), target), context.RequestAborted);
+			await context.Sender().Send(new ListBlocks(context.Session(), target), context.RequestAborted);
 		return result == UserOutcome.Ok ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
 	private static async Task<IResult> RelationAsync(HttpContext context, int id, int otherId,
-		Func<Connection, UserReference, IRequest<UserOutcome>> ask)
+		Func<Session, UserReference, IRequest<UserOutcome>> ask)
 	{
-		if (id != context.Connection().Record.Id)
+		if (id != context.Session().Record.Id)
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
 
-		return (await context.Sender().Send(ask(context.Connection(), UserReference.ById(otherId)),
+		return (await context.Sender().Send(ask(context.Session(), UserReference.ById(otherId)),
 			context.RequestAborted)).Answer();
 	}
 
@@ -347,7 +321,7 @@ internal static class UserRoutes
 	{
 		var target = UserReference.ById(id);
 
-		return (await context.Sender().Send(new SilenceUser(context.Connection(), target, request.EndsAt,
+		return (await context.Sender().Send(new SilenceUser(context.Session(), target, request.EndsAt,
 			request.Reason), context.RequestAborted)).Answer();
 	}
 
@@ -355,7 +329,7 @@ internal static class UserRoutes
 	{
 		var target = UserReference.ById(id);
 
-		return (await context.Sender().Send(new UnsilenceUser(context.Connection(), target, null),
+		return (await context.Sender().Send(new UnsilenceUser(context.Session(), target, null),
 			context.RequestAborted)).Answer();
 	}
 
@@ -375,10 +349,6 @@ internal static class UserRoutes
 		UserPrivileges? Privileges);
 
 	public sealed record CloseSessionsRequest(bool? KeepCurrent);
-
-	public sealed record IrcKeyRequest(string? Label);
-
-	public sealed record IrcKeyResponse(long SessionId, string Key);
 
 	public sealed record SilenceRequest(DateTimeOffset EndsAt, string? Reason);
 }

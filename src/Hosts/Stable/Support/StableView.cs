@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Users;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;

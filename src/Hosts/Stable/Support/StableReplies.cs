@@ -6,7 +6,7 @@ public static class StableReplies
 
 	public const string ChatTooFast = "You are sending messages too fast. Slow down.";
 
-	public const string TooManySessions = "This account has too many open sessions.";
+	public const string AlreadyOnline = "User already logged in.";
 
 	public const string TooManyAttempts = "Too many failed login attempts. Try again later.";
 

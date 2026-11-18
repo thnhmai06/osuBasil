@@ -30,11 +30,10 @@ internal sealed record SessionItem(long Id, int UserId, string UserName, ulong M
 		return moment.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 	}
 
-	public static SessionItem Of(SessionRecord record, DateTimeOffset now)
+	public static SessionItem Of(Session data, DateTimeOffset now)
 	{
-		var data = record.Value;
-		var live = data.Ended is null && (data.ExpiresAt is null || data.ExpiresAt > now);
-		return new SessionItem(record.Id, data.User.Id, data.User.Value.Name, (ulong)data.User.Value.Privileges,
+		var live = data.StatusAt(now) is not (SessionStatus.Expired or SessionStatus.Ended);
+		return new SessionItem(data.Id, data.User.Id, data.User.Value.Name, (ulong)data.User.Value.Privileges,
 			data.Type, data.Fingerprint.Ip.ToString(), data.Fingerprint.ClientInformation ?? string.Empty, data.StartedAt,
 			data.LastActiveAt, live, data.Ended?.Reason.ToString() ?? string.Empty);
 	}

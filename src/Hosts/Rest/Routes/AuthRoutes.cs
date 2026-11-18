@@ -22,16 +22,16 @@ internal static class AuthRoutes
 			.WithDescription("""
 			                 Signs in with `username` and `password` and returns a Bearer token, which is shown only in this response. To learn the id of the signed-in user later, call `GET /v1/auth/session`.
 
+			                 The account may hold one API session at a time. While another API session of the account is in use, signing in is answered with 409; once that session has been silent for 30 seconds, signing in ends it and returns a new token.
+
 			                 A wrong username or password, or an account that cannot sign in, is answered with 401. Repeated wrong passwords for the same address and account, or from one address, are answered with 429.
 			                 """);
 		auth.MapPost("/logout", LogoutAsync).RequireToken()
 			.WithSummary("Delete the current session.");
 		auth.MapGet("/session", (HttpContext context) =>
 			{
-				var connection = context.Connection();
-				var session = connection.Session;
-				return Api.Ok(new SessionView(session.Id, session.Value.User.Id, session.Value.StartedAt,
-					connection.ExpiresAt));
+				var session = context.Session().State;
+				return Api.Ok(new SessionView(session.Id, session.User.Id, session.StartedAt, ExpiresAt(session)));
 			}).RequireToken()
 			.WithSummary("Get the current session.")
 			.WithDescription("Names the signed-in user.");
@@ -58,24 +58,33 @@ internal static class AuthRoutes
 
 		var attempt = new LoginAttempt(request.Username, new Md5Hash(Encoding.UTF8.GetBytes(request.Password)));
 		var result = await registry.LoginAsync(attempt, SessionType.Api, ip, null, 0, context.RequestAborted);
-		if (result.Connection is not { } connection)
+		if (result.Session is not { } connection)
 		{
 			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) reservation.Keep();
+			if (result.Failure is LoginFailure.AlreadyOnline)
+				return Api.Error(StatusCodes.Status409Conflict, "alreadyOnline",
+					"This account is already signed in elsewhere.");
 
 			return Api.Error(StatusCodes.Status401Unauthorized, "invalidCredentials",
 				"The username or password is wrong, or the account cannot sign in.");
 		}
 
-		var session = connection.Session;
-		return Api.Created(new LoginResponse(connection.Token, session.Value.User.Id, session.Id, connection.ExpiresAt),
+		var session = connection.State;
+		return Api.Created(new LoginResponse(connection.Token, session.User.Id, session.Id, ExpiresAt(session)),
 			"Signed in");
+	}
+
+	// The session expires once it has been silent this long; every use moves the moment on.
+	private static DateTimeOffset ExpiresAt(Basil.Domain.Authentication.Session session)
+	{
+		return session.LastActiveAt + session.Type.ExpiresAfter;
 	}
 
 	private static async Task<IResult> LogoutAsync(HttpContext context, CancellationToken ct)
 	{
-		var connection = context.Connection();
+		var connection = context.Session();
 		var result = await context.Sender().Send(
-			new CloseUserSession(connection, UserReference.ById(connection.Record.Id), connection.Session.Id), ct);
+			new CloseUserSession(connection, UserReference.ById(connection.Record.Id), connection.State.Id), ct);
 		return result.Answer();
 	}
 

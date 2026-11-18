@@ -4,7 +4,7 @@ using System.Text;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Game.Users;
 using Basil.Gateway.RateLimiting;
@@ -22,19 +22,19 @@ internal sealed class WebAuthentication(
 	TimeProvider clock)
 {
 	// The digest that passed the password check, per connection: later requests skip the slow hash check.
-	private readonly ConditionalWeakTable<StableConnection, string> _verified = new();
+	private readonly ConditionalWeakTable<StableSession, string> _verified = new();
 
-	public bool MayUseDirect(StableConnection client)
+	public bool MayUseDirect(StableSession client)
 	{
 		return Effective(client).Allows(UserPrivileges.Supporter);
 	}
 
-	public UserPrivileges Effective(StableConnection client)
+	public UserPrivileges Effective(StableSession client)
 	{
 		return client.User.EffectivePrivileges(clock.GetUtcNow());
 	}
 
-	public async Task<StableConnection?> AuthenticateAsync(HttpContext context, string? username,
+	public async Task<StableSession?> AuthenticateAsync(HttpContext context, string? username,
 		string? passwordMd5,
 		CancellationToken ct)
 	{

@@ -37,7 +37,7 @@ internal static class ContentRoutes
 
 	private static async Task<IResult> GetAllAsync(HttpContext context, ISender sender)
 	{
-		var (result, settings) = await sender.Send(new GetSettings(context.Connection()), context.RequestAborted);
+		var (result, settings) = await sender.Send(new GetSettings(context.Session()), context.RequestAborted);
 		return result == ServerOutcome.Ok
 			? Api.Ok(SettingsCategories.GetAll(settings!))
 			: result.Refusal();
@@ -47,7 +47,7 @@ internal static class ContentRoutes
 	{
 		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
-		var (result, settings) = await sender.Send(new GetSettings(context.Connection()), context.RequestAborted);
+		var (result, settings) = await sender.Send(new GetSettings(context.Session()), context.RequestAborted);
 		return result == ServerOutcome.Ok ? Api.Ok(SettingsCategories.Get(category, settings!)) : result.Refusal();
 	}
 
@@ -56,7 +56,7 @@ internal static class ContentRoutes
 	{
 		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
-		var actor = context.Connection();
+		var actor = context.Session();
 		var (read, current) = await sender.Send(new GetSettings(actor), context.RequestAborted);
 		if (read != ServerOutcome.Ok) return read.Refusal();
 
@@ -79,7 +79,7 @@ internal static class ContentRoutes
 	{
 		if (string.IsNullOrWhiteSpace(request.Text)) return Api.Invalid("text is required.");
 
-		var actor = context.Connection();
+		var actor = context.Session();
 		if (request.To is not { Length: > 0 } ids)
 		{
 			var (all, sent) = await sender.Send(new NotifyEveryone(actor, request.Text), context.RequestAborted);
@@ -100,7 +100,7 @@ internal static class ContentRoutes
 
 	private static async Task<IResult> ListScreenshotsAsync(HttpContext context, ISender sender)
 	{
-		var (result, list) = await sender.Send(new ListScreenshots(context.Connection()), context.RequestAborted);
+		var (result, list) = await sender.Send(new ListScreenshots(context.Session()), context.RequestAborted);
 		return result == ServerOutcome.Ok
 			? Api.Ok(list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList())
 			: result.Refusal();
@@ -108,7 +108,7 @@ internal static class ContentRoutes
 
 	private static async Task<IResult> DeleteScreenshotAsync(HttpContext context, string id, ISender sender)
 	{
-		var actor = context.Connection();
+		var actor = context.Session();
 		var (listed, list) = await sender.Send(new ListScreenshots(actor), context.RequestAborted);
 		if (listed != ServerOutcome.Ok) return listed.Refusal();
 

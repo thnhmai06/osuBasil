@@ -1,5 +1,5 @@
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Spectating;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 
@@ -7,7 +7,7 @@ namespace Basil.Host.Stable.Packets;
 
 internal sealed partial class PacketHandlers
 {
-	private async Task StartSpectatingAsync(StableConnection osu, int hostId, CancellationToken ct)
+	private async Task StartSpectatingAsync(StableSession osu, int hostId, CancellationToken ct)
 	{
 		if (OnlineUsers([hostId]) is not [{ } hostUser] || registry.OpenStableClient(hostUser.Record) is not { } host)
 			return;
@@ -15,19 +15,19 @@ internal sealed partial class PacketHandlers
 		await sender.Send(new SpectateUser(osu, host), ct);
 	}
 
-	private async Task StopSpectatingAsync(StableConnection osu, CancellationToken ct)
+	private async Task StopSpectatingAsync(StableSession osu, CancellationToken ct)
 	{
 		if (registry.FindSpectating(osu) is { } host)
 			await sender.Send(new StopSpectating(osu, host), ct);
 	}
 
-	private async Task ReportSpectatingFailedAsync(StableConnection osu, CancellationToken ct)
+	private async Task ReportSpectatingFailedAsync(StableSession osu, CancellationToken ct)
 	{
 		if (registry.FindSpectating(osu) is { } host)
 			await sender.Send(new ReportSpectatingFailed(osu, host), ct);
 	}
 
-	private async Task ForwardFramesAsync(StableConnection osu, byte[] raw, CancellationToken ct)
+	private async Task ForwardFramesAsync(StableSession osu, byte[] raw, CancellationToken ct)
 	{
 		if (osu.Spectators.Count == 0) return;
 		outbox.Send(osu.Spectators, writer => writer.SpectateFrames(raw));

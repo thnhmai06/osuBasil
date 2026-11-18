@@ -4,7 +4,7 @@ using Basil.Host.Irc.Transport;
 using Basil.Host.Shared.Documentation;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Host.Irc.Session;
+namespace Basil.Host.Irc.Clients;
 
 public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 {

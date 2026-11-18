@@ -76,7 +76,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   contexts, their outcome enums and their event records live in **Objects/**; the registries that keep live objects in
   RAM (`UserRegistry`, `Lobby`, `GeneralChannelRegistry`, the channel registries) live in **Registry/**; the `Scoped*`
   views live in **Capabilities/** (only those), the ports to external computation in **Ports/**, the contracts of the object-free logic in **Ports/** (an `internal` interface, implemented in `Infrastructure.<Module>/Logic`); the event handlers, the logic and the background runs live in the Infrastructure project (**Handlers/**, **Logic/**, **Workers/**). In the
-  Users module the online user and its context are in `Objects/`, its connections in `Objects/Connections/`, and its
+  Users module the online user and its context are in `Objects/`, its sessions in `Objects/Sessions/`, and its
   registry in `Registry/`. Persistence never decides a business rule, emits an event, calls a service or starts a
   timer. A state change and its consequences belong to the object that owns the state.
 * **A service the system provides has a contract; the logic behind a capability does not.** What the module offers as

@@ -112,7 +112,7 @@ internal static class BeatmapRoutes
 		var (page, error) = Targets.Paging(offset, limit);
 		if (error is not null) return error;
 
-		var found = await sender.Send(new SearchBeatmapsets(context.Connection(),
+		var found = await sender.Send(new SearchBeatmapsets(context.Session(),
 			BeatmapQuery.Parse(query ?? string.Empty), page!), context.RequestAborted);
 		return Api.Paged(new Page<SetView>([.. found.Items.Select(SetView.Of)], found.HasNext), page!);
 	}
@@ -142,7 +142,7 @@ internal static class BeatmapRoutes
 		if (form.Files.GetFile("file") is not { } file) return Api.Invalid("The file field is missing.");
 
 		await using var stream = file.OpenReadStream();
-		var (result, import) = await sender.Send(new UploadBeatmapset(context.Connection(), stream),
+		var (result, import) = await sender.Send(new UploadBeatmapset(context.Session(), stream),
 			context.RequestAborted);
 		if (result != ServerOutcome.Ok) return result.Refusal();
 
@@ -160,7 +160,7 @@ internal static class BeatmapRoutes
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, int id, ISender sender)
 	{
-		return (await sender.Send(new DeleteBeatmapset(context.Connection(), id), context.RequestAborted)).Answer();
+		return (await sender.Send(new DeleteBeatmapset(context.Session(), id), context.RequestAborted)).Answer();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchSetRequest request,
@@ -169,11 +169,11 @@ internal static class BeatmapRoutes
 		if (request.Status is { } status && !Enum.IsDefined(status)) return Api.Invalid("status is not valid.");
 
 		var result = await sender.Send(
-			new PatchBeatmapset(context.Connection(), id, request.Status, request.Visible, request.Locked),
+			new PatchBeatmapset(context.Session(), id, request.Status, request.Visible, request.Locked),
 			context.RequestAborted);
 		if (result != BeatmapsetOutcome.Ok) return result.Refusal();
 
-		var detail = await sender.Send(new GetBeatmapset(context.Connection(), id), context.RequestAborted);
+		var detail = await sender.Send(new GetBeatmapset(context.Session(), id), context.RequestAborted);
 		return detail is null
 			? Api.NotFound("No such beatmapset.")
 			: Api.Ok(SetView.Of(detail.Set), "Updated successfully");

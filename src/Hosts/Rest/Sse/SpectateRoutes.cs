@@ -1,6 +1,6 @@
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Game.Client;
@@ -40,9 +40,9 @@ internal static class SpectateRoutes
 		if (host is not { IsOpen: true })
 			return Api.Error(StatusCodes.Status409Conflict, "targetOffline", "The player is not in game.");
 
-		var connection = context.Connection();
+		var connection = context.Session();
 		var spectated = await sender.Send(new SpectateUser(connection, host), context.RequestAborted);
-		if (spectated != ConnectionOutcome.Ok) return spectated.Refusal();
+		if (spectated != SessionOutcome.Ok) return spectated.Refusal();
 
 		var result = await context.StreamAsync(KeyOf(id), _ => Task.FromResult<(object, string?)>((new
 		{
@@ -97,11 +97,11 @@ internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<User
 	}
 }
 
-internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<UserConnectionStatusChanged>
+internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<UserSessionStatusChanged>
 {
-	public ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken ct)
+	public ValueTask Handle(UserSessionStatusChanged notification, CancellationToken ct)
 	{
-		hub.Publish(SpectateRoutes.KeyOf(notification.Connection.Record.Id),
+		hub.Publish(SpectateRoutes.KeyOf(notification.Session.Record.Id),
 			new { type = "status", status = SpectateRoutes.StatusOf(notification.Status) });
 		return ValueTask.CompletedTask;
 	}
@@ -111,7 +111,7 @@ internal sealed class SpectateEnd(SseHub hub) : INotificationHandler<UserSpectat
 {
 	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken ct)
 	{
-		if (notification.Spectator is ApiConnection)
+		if (notification.Spectator is ApiSession)
 			hub.Close(SpectateRoutes.KeyOf(notification.Host.Record.Id), notification.Spectator);
 		return ValueTask.CompletedTask;
 	}

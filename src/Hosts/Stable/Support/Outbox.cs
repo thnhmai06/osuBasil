@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Protocol.Game.Stable.Wire.Packets;
@@ -12,19 +13,19 @@ internal sealed class Outbox(UserRegistry registry)
 
 	public const long MaxQueuedBytes = 4 * 1024 * 1024;
 
-	private readonly ConcurrentDictionary<Connection, Pending> _queues = new(ReferenceEqualityComparer.Instance);
+	private readonly ConcurrentDictionary<Session, Pending> _queues = new(ReferenceEqualityComparer.Instance);
 
-	public event Action<Connection>? Polled;
+	public event Action<Session>? Polled;
 
-	public bool HasPending(Connection connection)
+	public bool HasPending(Session connection)
 	{
 		return _queues.TryGetValue(connection, out var pending) && !pending.Queue.IsEmpty;
 	}
 
-	public void Send(IEnumerable<Connection> recipients, Action<PacketWriter> write)
+	public void Send(IEnumerable<Session> recipients, Action<PacketWriter> write)
 	{
 		byte[]? bytes = null;
-		List<Connection>? tooSlow = null;
+		List<Session>? tooSlow = null;
 		foreach (var recipient in recipients.Where(Receives))
 		{
 			bytes ??= Build(write);
@@ -44,12 +45,12 @@ internal sealed class Outbox(UserRegistry registry)
 		}
 	}
 
-	public void Send(Connection recipient, Action<PacketWriter> write)
+	public void Send(Session recipient, Action<PacketWriter> write)
 	{
 		Send([recipient], write);
 	}
 
-	public byte[] Drain(Connection connection)
+	public byte[] Drain(Session connection)
 	{
 		if (!_queues.TryGetValue(connection, out var pending))
 		{
@@ -68,7 +69,7 @@ internal sealed class Outbox(UserRegistry registry)
 		return stream.ToArray();
 	}
 
-	public void Remove(Connection connection)
+	public void Remove(Session connection)
 	{
 		_queues.TryRemove(connection, out _);
 	}
@@ -80,10 +81,10 @@ internal sealed class Outbox(UserRegistry registry)
 		return stream.ToArray();
 	}
 
-	private static bool Receives(Connection connection)
+	private static bool Receives(Session connection)
 	{
 		// The bot's game client connection has no client to drain a queue, so it would overflow.
-		return connection is { IsOpen: true, IsServerOwned: false } and (StableConnection or TourneyConnection);
+		return connection is { IsOpen: true, IsServerOwned: false } and (StableSession or TourneySession);
 	}
 
 	private sealed class Pending

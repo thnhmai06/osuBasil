@@ -5,7 +5,7 @@ using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 
 namespace Basil.Host.Shared.Errors;
 
@@ -92,7 +92,7 @@ public static class OutcomeErrors
 				? ErrorKind.NotFound
 				: ErrorKind.Locked,
 			RulesetOutcome or ScorePerformanceOutcome => ErrorKind.Conflict,
-			ConnectionOutcome connection => connection == ConnectionOutcome.Rejected
+			SessionOutcome connection => connection == SessionOutcome.Rejected
 				? ErrorKind.Invalid
 				: ErrorKind.Conflict,
 			_ => throw new ArgumentException($"No error table for {typeof(TOutcome).Name}.", nameof(outcome))

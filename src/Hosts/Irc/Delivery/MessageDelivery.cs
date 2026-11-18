@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Users;
-using Basil.Host.Irc.Session;
+using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;
 using Basil.Protocol.Irc.Models;
@@ -55,7 +55,7 @@ internal sealed class MessageDelivery(IrcClients clients, IOptions<IrcOptions> o
 				awaySession.Deliver(client => client.Numeric(IrcNumericReply.RplAway, IrcView.Nick(away.Author), line));
 	}
 
-	private static void Send(IrcSession session, string command, string prefix, string target, string text,
+	private static void Send(IrcSocket session, string command, string prefix, string target, string text,
 		DateTimeOffset at, UserRecord author)
 	{
 		foreach (var line in IrcText.Lines(text))

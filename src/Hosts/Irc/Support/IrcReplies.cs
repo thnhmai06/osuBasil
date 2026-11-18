@@ -30,9 +30,7 @@ public static class IrcReplies
 
 	public const string ServerBusy = "The server is busy. Try again later.";
 
-	public const string TooManySessions = "This account has too many open connections.";
-
-	public const string KeyInUse = "This key is already connected.";
+	public const string AlreadyOnline = "This account is already signed in elsewhere.";
 
 	public const string RegistrationTimeout = "Registration timed out.";
 

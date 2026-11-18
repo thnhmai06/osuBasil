@@ -18,23 +18,21 @@ on a running instance.
 | Server | `irc.<domain>` (the same domain as the osu! server) |
 | Port | `6667`, plain text, **no TLS** |
 | Nickname | your username, with spaces written as `_` (case does not matter) |
-| Password / SASL password | an **IRC key** (not your account password) |
-
-### Getting an IRC key
-
-An IRC key belongs to one device or bot. Create it with the HTTP API (`POST /v1/users/{id}/sessions/irc`, with a
-label such as "osu-ahr VPS"); the key is shown once. Ending that IRC session revokes only that key. Your account
-password is never accepted by IRC.
-
-> The IRC port is not encrypted: the key travels in clear text each time you connect. Anyone who captures it can chat
-> as you until you revoke it. Use a key per device and revoke it if it leaks.
+| Password / SASL password | your account password |
 
 ### Signing in
 
-* Most clients: put the key in the **server password** field, and set the nickname to your username.
-* Clients with SASL: choose **PLAIN**, with your username as the login and the key as the password.
+* Most clients: put your account password in the **server password** field, and set the nickname to your username.
+* Clients with SASL: choose **PLAIN**, with your username as the login and your password as the password.
 
-If the key is wrong, revoked, or the nickname is not yours, the server answers `464` and closes the connection.
+Each sign-in is a new session, and an account holds one IRC session at a time. While another IRC session of the
+account is in use, a new sign-in is refused; once that session has been silent for 30 seconds, the new sign-in ends it.
+
+> The IRC port is not encrypted: your password travels in clear text each time you connect. Connect from a trusted
+> network or through a tunnel.
+
+If the password is wrong, the nickname is not yours, or the account is already signed in on IRC, the server answers
+`464` and closes the connection.
 
 ---
 

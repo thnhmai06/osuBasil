@@ -4,15 +4,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;
 using Basil.Protocol.Irc.Models;
 
-namespace Basil.Host.Irc.Session;
+namespace Basil.Host.Irc.Clients;
 
-internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions options, TimeProvider clock)
+internal sealed class IrcSocket(TcpClient tcp, IPAddress address, IrcOptions options, TimeProvider clock)
 {
 	public const int MaxQueuedLines = 4096;
 
@@ -24,7 +24,7 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 	private readonly Channel<string> _lines = Channel.CreateBounded<string>(
 		new BoundedChannelOptions(MaxQueuedLines) { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
 
-	private List<Action<IrcSession>>? _held = [];
+	private List<Action<IrcSocket>>? _held = [];
 
 	private int _queuedCharacters;
 
@@ -32,9 +32,7 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 
 	public string Label { get; } = Guid.NewGuid().ToString("N");
 
-	public Connection? Connection { get; set; }
-
-	public string? Key { get; set; }
+	public Session? Session { get; set; }
 
 	public string? RequestedNick { get; set; }
 
@@ -50,7 +48,7 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 
 	public bool Registered { get; set; }
 
-	public string Nick => Connection is { } connection ? IrcView.Nick(connection.Record) : "*";
+	public string Nick => Session is { } connection ? IrcView.Nick(connection.Record) : "*";
 
 	public string ServerName => options.ServerName;
 
@@ -106,7 +104,7 @@ internal sealed class IrcSession(TcpClient tcp, IPAddress address, IrcOptions op
 		Deliver(session => session.Send(message));
 	}
 
-	public void Deliver(Action<IrcSession> write)
+	public void Deliver(Action<IrcSocket> write)
 	{
 		lock (_gate)
 		{

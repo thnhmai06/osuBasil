@@ -114,7 +114,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 						user.Record.Id, user.Record.Value.Name,
 						string.Join(' ', user.Connections.Select(c => c.Type.ToString().ToLowerInvariant()).Distinct()),
 						user.Stable?.Status.Activity.ToString() ?? "-", RoomOf(lobby, user),
-						now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
+						now - user.Connections.Select(c => c.State.LastActiveAt).DefaultIfEmpty(now).Max(),
 						(ulong)user.EffectivePrivileges(now)))
 		];
 	}

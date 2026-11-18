@@ -10,7 +10,7 @@ using Basil.Domain.Authentication;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 using Basil.Host.Irc.Commands;
-using Basil.Host.Irc.Session;
+using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc.Models;
 using Mediator;
@@ -34,7 +34,7 @@ internal sealed class IrcListener(
 	private static readonly TimeSpan KeepAlive = TimeSpan.FromMinutes(2);
 
 	private readonly ConcurrentDictionary<IPAddress, int> _perAddress = new();
-	private readonly ConcurrentDictionary<IrcSession, Task> _sessions = new();
+	private readonly ConcurrentDictionary<IrcSocket, Task> _sessions = new();
 	private TcpListener? _listener;
 
 	public int Port => ((IPEndPoint)_listener!.LocalEndpoint).Port;
@@ -73,7 +73,7 @@ internal sealed class IrcListener(
 			}
 
 			var address = ((IPEndPoint)tcp.Client.RemoteEndPoint!).Address;
-			var session = new IrcSession(tcp, address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address,
+			var session = new IrcSocket(tcp, address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address,
 				options.Value, clock);
 			_sessions[session] = RunAsync(session, tcp, stoppingToken);
 		}
@@ -100,7 +100,7 @@ internal sealed class IrcListener(
 		await base.StopAsync(ct);
 	}
 
-	private async Task RunAsync(IrcSession session, TcpClient tcp, CancellationToken stoppingToken)
+	private async Task RunAsync(IrcSocket session, TcpClient tcp, CancellationToken stoppingToken)
 	{
 		var counted = _perAddress.AddOrUpdate(session.Address, 1, (_, count) => count + 1);
 		var stream = tcp.GetStream();
@@ -128,27 +128,27 @@ internal sealed class IrcListener(
 		}
 	}
 
-	private static void CloseIfUnregistered(IrcSession session)
+	private static void CloseIfUnregistered(IrcSocket session)
 	{
 		if (!session.Registered) session.Close(IrcReplies.RegistrationTimeout);
 	}
 
-	private static void PingIfRegistered(IrcSession session)
+	private static void PingIfRegistered(IrcSocket session)
 	{
 		if (session.Registered) session.Send(new IrcMessage("PING", null, session.ServerName) { ForceTrailing = true });
 	}
 
-	private void RejectIfOverLimit(IrcSession session, int counted, int perIp)
+	private void RejectIfOverLimit(IrcSocket session, int counted, int perIp)
 	{
 		if (!state.AcceptingLogins) session.Close(IrcReplies.ServerStopping);
 		else if (counted > perIp) session.Close(IrcReplies.TooManyConnections);
 	}
 
-	private async Task ReleaseAsync(IrcSession session, Task writer)
+	private async Task ReleaseAsync(IrcSocket session, Task writer)
 	{
-		if (session.Connection is { IsOpen: true } connection)
+		if (session.Session is { IsOpen: true } connection)
 			registry.Close(connection, session.Quit ? SessionEndReason.LoggedOut : SessionEndReason.ConnectionLost);
-		if (session.Key is { } key) clients.Release(key, session);
+		clients.Remove(session);
 		session.Close("Connection closed");
 		await writer;
 		var remaining = _perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
@@ -156,7 +156,7 @@ internal sealed class IrcListener(
 		_sessions.TryRemove(session, out _);
 	}
 
-	private async Task HandleLineAsync(IrcSession session, string? text, CancellationToken ct)
+	private async Task HandleLineAsync(IrcSocket session, string? text, CancellationToken ct)
 	{
 		if (text is null || Encoding.UTF8.GetByteCount(BodyOf(text)) > IrcReplies.MaxBodyBytes)
 		{
@@ -166,7 +166,7 @@ internal sealed class IrcListener(
 
 		if (!IrcMessage.TryParse(text, null, out var message)) return;
 
-		var subject = session.Connection is { } connection
+		var subject = session.Session is { } connection
 			? AdmissionRefusals.SubjectOf(connection)
 			: AdmissionRefusals.SubjectOf(session.Label);
 		var decision = admission.Admit(subject);

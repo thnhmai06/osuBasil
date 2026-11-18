@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Chat;
 using Basil.Domain.Users;
@@ -10,21 +10,21 @@ namespace Basil.Host.Stable.Packets;
 
 internal sealed partial class PacketHandlers
 {
-	private async Task JoinChannelAsync(StableConnection osu, string name, CancellationToken ct)
+	private async Task JoinChannelAsync(StableSession osu, string name, CancellationToken ct)
 	{
 		var result = await sender.Send(new JoinChannel(osu, TargetOf(name)), ct);
 		if (result != ChannelOutcome.Ok && result != ChannelOutcome.AlreadyMember)
 			outbox.Send(osu, writer => writer.ChannelKick(name));
 	}
 
-	private async Task PartChannelAsync(StableConnection osu, string name, CancellationToken ct)
+	private async Task PartChannelAsync(StableSession osu, string name, CancellationToken ct)
 	{
 		// The client leaves the match and spectator channels together with the match or the host.
 		if (name is StableView.MultiplayerAlias or StableView.SpectatorAlias) return;
 		await sender.Send(new PartChannel(osu, TargetOf(name)), ct);
 	}
 
-	private async Task<bool> MayChatAsync(StableConnection osu, CancellationToken ct)
+	private async Task<bool> MayChatAsync(StableSession osu, CancellationToken ct)
 	{
 		var limit = (await sender.Send(new ReadSettings(), ct)).RateLimits.Chat;
 		if (limiter.TryAcquire($"chat:{osu.Record.Id}", limit.Count, limit.Window)) return true;
@@ -48,7 +48,7 @@ internal sealed partial class PacketHandlers
 		};
 	}
 
-	private async Task PublicMessageAsync(StableConnection osu, StableMessage message,
+	private async Task PublicMessageAsync(StableSession osu, StableMessage message,
 		CancellationToken ct)
 	{
 		if (!await MayChatAsync(osu, ct)) return;
@@ -56,7 +56,7 @@ internal sealed partial class PacketHandlers
 			ct);
 	}
 
-	private async Task PrivateMessageAsync(StableConnection osu, StableMessage message,
+	private async Task PrivateMessageAsync(StableSession osu, StableMessage message,
 		CancellationToken ct)
 	{
 		var name = UserData.NormalizeName(message.Recipient);

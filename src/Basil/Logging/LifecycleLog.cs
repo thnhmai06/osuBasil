@@ -4,22 +4,22 @@ using Mediator;
 
 namespace Basil.Logging;
 
-internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<UserConnectionOpened>
+internal sealed class LoginLog(ILogger<LoginLog> logger) : INotificationHandler<UserSessionOpened>
 {
-	public ValueTask Handle(UserConnectionOpened notification, CancellationToken ct)
+	public ValueTask Handle(UserSessionOpened notification, CancellationToken ct)
 	{
-		var connection = notification.Connection;
+		var connection = notification.Session;
 		logger.LogInformation("{Type} login of {User} ({UserId})", connection.Type, connection.Record.Value.Name,
 			connection.Record.Id);
 		return ValueTask.CompletedTask;
 	}
 }
 
-internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandler<UserConnectionClosed>
+internal sealed class LogoutLog(ILogger<LogoutLog> logger) : INotificationHandler<UserSessionClosed>
 {
-	public ValueTask Handle(UserConnectionClosed notification, CancellationToken ct)
+	public ValueTask Handle(UserSessionClosed notification, CancellationToken ct)
 	{
-		var connection = notification.Connection;
+		var connection = notification.Session;
 		logger.LogInformation("{Type} logout of {User} ({UserId}): {Reason}", connection.Type,
 			connection.Record.Value.Name,
 			connection.Record.Id, notification.Reason);

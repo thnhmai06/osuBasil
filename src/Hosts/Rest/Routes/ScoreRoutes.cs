@@ -47,7 +47,7 @@ internal static class ScoreRoutes
 
 	private static async Task<IResult> RecalculateAsync(HttpContext context, bool? all, ISender sender)
 	{
-		var result = await sender.Send(new RecalculateScorePerformance(context.Connection(),
+		var result = await sender.Send(new RecalculateScorePerformance(context.Session(),
 			all == true ? ScorePerformanceScope.All : ScorePerformanceScope.Missing), context.RequestAborted);
 		return result == ScorePerformanceOutcome.Ok ? Api.Accepted("Calculation started") : result.Refusal();
 	}

@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Domain.Users;
 
-namespace Basil.Host.Irc.Session;
+namespace Basil.Host.Irc.Clients;
 
 internal sealed class IrcPresence
 {

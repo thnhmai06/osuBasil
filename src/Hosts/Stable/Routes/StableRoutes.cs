@@ -80,14 +80,21 @@ public static class StableRoutes
 			return Results.Bytes(reply, "text/html; charset=UTF-8");
 		}
 
+		byte[] welcome = [];
 		if (registry.Find(token) is not
 		    { IsOpen: true, Type: SessionType.Stable or SessionType.StableTourney } connection)
-			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
+		{
+			// A token the server no longer holds in memory resumes its stored session, as after a restart.
+			(var resumed, welcome) = await login.ResumeAsync(token, ct);
+			if (resumed is null)
+				return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
+			connection = resumed;
+		}
 
 		var started = Stopwatch.GetTimestamp();
 		registry.MarkActive(connection);
 		await dispatcher.DispatchAsync(connection, body, ct);
-		var packets = outbox.Drain(connection);
+		byte[] packets = [.. welcome, .. outbox.Drain(connection)];
 		DiagnosticsMetrics.StableDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 		return Results.Bytes(packets, "text/html; charset=UTF-8");
 	}

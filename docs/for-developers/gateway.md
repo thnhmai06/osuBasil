@@ -97,7 +97,7 @@ reports one), so a class never turns away work below its cap.
 #### Audit of the queues for rebuildable work
 
 No queue was added. The background workers are `BeatmapsetStorageWatcher` (rebuildable: re-scans the files),
-`EmptyRoomCloser`, `IdleConnectionSweeper`, `SessionRetentionSweeper`, `DiagnosticsSampler` (periodic, nothing to level) and
+`EmptyRoomCloser`, `SessionSweeper`, `SessionRetentionSweeper`, `DiagnosticsSampler` (periodic, nothing to level) and
 the `EventDispatcher`. The other channels (`CommandWorker` of BasilBot, `IrcSession`, `SseHub`, `DiagnosticsFeed`) carry a
 single connection's or stream's live traffic, which a client is waiting for, so they are not load-leveling candidates.
 

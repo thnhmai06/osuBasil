@@ -34,7 +34,7 @@ internal static class ChannelRoutes
 
 	private static IResult List(HttpContext context, GeneralChannelRegistry registry)
 	{
-		return Api.Ok(registry.VisibleTo(context.Connection()).OrderBy(c => c.Name)
+		return Api.Ok(registry.VisibleTo(context.Session()).OrderBy(c => c.Name)
 			.Select(c => ChannelView.Of(c.Record)).ToList());
 	}
 
@@ -62,7 +62,7 @@ internal static class ChannelRoutes
 			}
 		};
 
-		var result = await sender.Send(new CreateGeneralChannel(context.Connection(), record), context.RequestAborted);
+		var result = await sender.Send(new CreateGeneralChannel(context.Session(), record), context.RequestAborted);
 		return result == ServerOutcome.Ok ? Api.Created(ChannelView.Of(record)) : result.Refusal();
 	}
 
@@ -74,7 +74,7 @@ internal static class ChannelRoutes
 			request.Visible);
 		if (!change.IsValid) return Api.Invalid("The change is not valid.");
 
-		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Connection(), name, change),
+		var (result, channel) = await sender.Send(new ConfigureGeneralChannel(context.Session(), name, change),
 			context.RequestAborted);
 		return result == ChannelOutcome.Ok
 			? Api.Ok(ChannelView.Of(channel!.Record), "Updated successfully")
@@ -83,7 +83,7 @@ internal static class ChannelRoutes
 
 	private static async Task<IResult> DeleteAsync(HttpContext context, string name, ISender sender)
 	{
-		var (result, _) = await sender.Send(new DeleteGeneralChannel(context.Connection(), name),
+		var (result, _) = await sender.Send(new DeleteGeneralChannel(context.Session(), name),
 			context.RequestAborted);
 		return result.Answer();
 	}

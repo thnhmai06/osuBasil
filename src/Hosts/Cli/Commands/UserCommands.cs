@@ -287,9 +287,9 @@ internal static class UserCommands
 		var page = call.Page();
 		var state = (call.Text("state") ?? "all").ToLowerInvariant() switch
 		{
-			"all" => (SessionState?)SessionState.Any,
-			"online" => SessionState.Active,
-			"offline" => SessionState.Ended,
+			"all" => (SessionFilter?)SessionFilter.Any,
+			"online" => SessionFilter.Active,
+			"offline" => SessionFilter.Ended,
 			_ => null
 		} ?? throw CommandException.Invalid("--state must be all, online or offline.");
 		var kinds = call.Mask("types") is { } types

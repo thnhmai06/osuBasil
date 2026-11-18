@@ -71,7 +71,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 				() => actions.Run($"users {id} avatar delete"))), DetailActionKind.Destructive));
 		if (online)
 			list.Add(new DetailAction("Kick", () => dialogs.Confirm("Kick",
-				$"Close every session of {user.Name} (id {id})? Their clients are disconnected, and API tokens and IRC keys " +
+				$"Close every session of {user.Name} (id {id})? Their clients are disconnected, and API tokens " +
 				"stop working. They can sign in again with their password.", "Kick",
 				() => actions.Run($"users {id} sessions delete")), DetailActionKind.Destructive));
 		list.Add(new DetailAction("Delete account", () => dialogs.Confirm("Delete account",
@@ -98,7 +98,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		};
 		if (session.Live)
 			actionList.Add(new DetailAction("Close session", () => dialogs.Confirm("Close session",
-				$"Close session {session.Id} of {session.UserName}? The client is disconnected; the API token or IRC key of " +
+				$"Close session {session.Id} of {session.UserName}? The client is disconnected; the API token of " +
 				"this session stops working. The account can sign in again with its password.", "Close session",
 				() => actions.Run($"users {session.UserId} sessions {session.Id} delete")), DetailActionKind.Destructive));
 		var id = session.Id.ToString(CultureInfo.InvariantCulture);
@@ -129,7 +129,7 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 	{
 		var actor = await services.GetRequiredService<UserRegistry>().OperateAsync();
 		var (outcome, page) = await services.GetRequiredService<ISender>().Send(new ListUserSessions(actor,
-			UserReference.ById(user.Id), new PageRequest(0, RowsShown), SessionState.Any, null));
+			UserReference.ById(user.Id), new PageRequest(0, RowsShown), SessionFilter.Any, null));
 		if (outcome != UserOutcome.Ok || page is null)
 			return new DetailView("Sessions", [("Sessions", "not available", Ink.Warning)], []);
 

@@ -31,10 +31,10 @@ Users/         IUserRepository and friends, UserQuery, login inputs    (Persiste
                IUserAvatarStorage                                      (Storage)
                IAccountRules (internal)                                (Ports)
                User, UserContext, UserGrants, UserProfile, UserOutcome  (Objects)
-               Connection, ConnectionContext, ConnectionRules,
-               PlayerStatus                                            (Objects/Connections)
+               Session, SessionContext, SessionOutcome,
+               PlayerStatus                                            (Objects/Sessions)
                UserRegistry                                            (Registry)
-               ScopedUser*, ScopedStableConnection                      (Capabilities)
+               ScopedUser*, ScopedStableSession                         (Capabilities)
                AccountRules                                            (Infrastructure Logic)
                ConnectionHandler                                       (Infrastructure Handlers)
 Chat/          IChannelRepository                                      (Persistence)

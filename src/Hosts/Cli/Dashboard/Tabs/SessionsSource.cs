@@ -13,7 +13,7 @@ internal sealed class SessionsSource(IServiceProvider services, TimeProvider clo
 		var text = query.Trim();
 		var items = services.GetRequiredService<UserRegistry>().Online.Values.Where(user => !user.Record.IsBasilBot())
 			.SelectMany(user => user.Connections.Where(connection => !connection.IsServerOwned))
-			.Select(connection => SessionItem.Of(connection.Snapshot(), now) with { Live = true })
+			.Select(connection => SessionItem.Of(connection.State, now) with { Live = true })
 			.Where(item => Matches(item, text))
 			.OrderByDescending(item => item.LastActive).Take(limit).ToList();
 		IReadOnlyList<SectionData<SessionItem>> sections =

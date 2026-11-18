@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Wire.Packets;
@@ -11,9 +11,9 @@ namespace Basil.Host.Stable.Delivery;
 
 internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 {
-	public static IEnumerable<Connection> Of(Room room)
+	public static IEnumerable<Session> Of(Room room)
 	{
-		return room.Slots.Select(Connection? (slot) => slot.Player).OfType<Connection>()
+		return room.Slots.Select(Session? (slot) => slot.Player).OfType<Session>()
 			.Concat(room.Members.Observers);
 	}
 
@@ -26,7 +26,7 @@ internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 	{
 		if (room.IsClosed) return;
 		var match = StableView.Match(room);
-		outbox.Send(room.Slots.Select(Connection? (slot) => slot.Player).OfType<Connection>(),
+		outbox.Send(room.Slots.Select(Session? (slot) => slot.Player).OfType<Session>(),
 			writer => writer.UpdateMatch(match));
 		outbox.Send(room.Members.Observers, writer => writer.UpdateMatch(match, false));
 		if (!room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.UpdateMatch(match, false));
@@ -156,7 +156,7 @@ internal sealed class LobbyRoomClosedDelivery(Lobby lobby, Outbox outbox) : INot
 	public ValueTask Handle(LobbyRoomClosed notification, CancellationToken ct)
 	{
 		var id = notification.Room.Id;
-		outbox.Send(lobby.Watchers.Concat<Connection>(notification.Evicted), writer => writer.DisposeMatch(id));
+		outbox.Send(lobby.Watchers.Concat<Session>(notification.Evicted), writer => writer.DisposeMatch(id));
 		return ValueTask.CompletedTask;
 	}
 }

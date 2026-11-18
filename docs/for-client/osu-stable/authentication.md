@@ -128,7 +128,8 @@ A failed login does not create an authenticated session.
 
 Normally, an account can have only one active game session.
 
-Logging in again with the same account replaces the previous session.
+Logging in again with the same account is refused while the previous session is still in use ("User already logged
+in."); once the previous session has been silent for 30 seconds, the new login ends it and takes its place.
 
 Tourney spectator clients are an exception and may run alongside the player's normal game session.
 
@@ -136,9 +137,9 @@ Tourney spectator clients are an exception and may run alongside the player's no
 
 Sessions are recorded in the database, not only in server memory.
 
-A game session token is tied to the live game connection: a server restart closes that connection, and a client that
-presents the old token is told to restart and log in again. API tokens and IRC keys are stored, so they keep working
-across a restart until they expire or are ended.
+A session survives a server restart. A client that presents its token after a restart resumes its session and receives
+the same login bundle a password login sends, as long as the session has not been silent for 300 seconds; past that,
+or once the session has ended, the client is told to restart and log in again.
 
 ---
 

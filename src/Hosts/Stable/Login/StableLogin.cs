@@ -5,7 +5,8 @@ using Basil.Application.Scores.Messages;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
@@ -64,7 +65,7 @@ internal sealed class StableLogin(
 			return Fail(LoginFailureReason.AuthenticationFailed);
 		}
 
-		if (result.Connection is not { } connection)
+		if (result.Session is not { } connection)
 		{
 			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) attempt.Keep();
 			return FailureReply(result.Failure);
@@ -72,6 +73,21 @@ internal sealed class StableLogin(
 
 		if (request.BlockNonFriendDms) await sender.Send(new SetPmPrivate(connection, true), ct);
 		return (connection.Token, await WelcomeAsync(connection, ct));
+	}
+
+	public async Task<(Session? Session, byte[] Reply)> ResumeAsync(string token, CancellationToken ct)
+	{
+		if (!state.AcceptingLogins) return (null, []);
+
+		// The token does not say which client holds it, so both osu! session types are asked.
+		foreach (var type in new[] { SessionType.Stable, SessionType.StableTourney })
+		{
+			var result = await registry.ResumeAsync(type, token, ct: ct);
+			if (result.Session is { } session) return (session, await WelcomeAsync(session, ct));
+			if (result.Failure is not LoginFailure.InvalidToken) break;
+		}
+
+		return (null, []);
 	}
 
 	private static bool TryParse(byte[] body, out LoginRequest request, out OsuClient client)
@@ -94,22 +110,22 @@ internal sealed class StableLogin(
 	{
 		return registry.Online.Values.SelectMany(user => user.Connections)
 			.Count(connection => connection is { IsOpen: true, IsServerOwned: false } &&
-			                     Equals(connection.Session.Value.Fingerprint.Ip, ip));
+			                     Equals(connection.State.Fingerprint.Ip, ip));
 	}
 
 	private static (string Token, byte[] Reply) FailureReply(LoginFailure? failure)
 	{
 		return failure switch
 		{
-			LoginFailure.TooManySessions => Fail(LoginFailureReason.AuthenticationFailed,
-				StableReplies.TooManySessions),
+			LoginFailure.AlreadyOnline => Fail(LoginFailureReason.AuthenticationFailed,
+				StableReplies.AlreadyOnline),
 			LoginFailure.NoTourneyPrivilege => Fail(LoginFailureReason.AuthenticationFailed,
 				StableReplies.NoTourneyPrivilege),
 			_ => Fail(LoginFailureReason.AuthenticationFailed)
 		};
 	}
 
-	private async Task<byte[]> WelcomeAsync(Connection connection, CancellationToken ct)
+	private async Task<byte[]> WelcomeAsync(Session connection, CancellationToken ct)
 	{
 		var user = connection.User;
 		var now = clock.GetUtcNow();

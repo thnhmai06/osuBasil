@@ -32,10 +32,9 @@ specifications that are listed below. Where this page and a specification differ
 `irc.<domain>:6667`, plain TCP, **no TLS**, so that existing IRC software works unchanged. There is no IRCv3 `sts` and
 no SASL `EXTERNAL`. The port is `Basil:Server:Irc:Port`.
 
-Because the connection is not encrypted, **the IRC key crosses the network in clear text on every connection**. Whoever
-captures it can chat as the key's owner until the key is revoked. Keys are per device, so revoke the one that leaked
-(closing that IRC session in the HTTP API revokes exactly that key) and prefer connecting from a trusted network or
-through a tunnel. [`https.md`](../for-technicians/https.md) explains why HTTPS and IRC differ.
+Because the connection is not encrypted, **the account password crosses the network in clear text on every
+connection**. Whoever captures it can sign in as the account until its password is changed, so prefer connecting from
+a trusted network or through a tunnel. [`https.md`](../for-technicians/https.md) explains why HTTPS and IRC differ.
 
 ### Identity
 
@@ -43,10 +42,8 @@ through a tunnel. [`https.md`](../for-technicians/https.md) explains why HTTPS a
   gets `462`. Nicknames compare case-insensitively with ASCII case folding (`CASEMAPPING=ascii`).
 * The visible mask of every user is `nick!nick@<domain>`. The real address of a client never appears in `WHO`, `WHOIS`,
   `USERHOST`, `NAMES` or any prefix.
-* An **IRC key** is a long-lived secret that belongs to one device. It is issued once through the HTTP API
-  (`POST /v1/users/{id}/sessions/irc`), stored only as a hash, and is the only credential IRC accepts: the account
-  password is never accepted. Every connection made with a key is recorded as an IRC session of that key.
-* A key that is wrong, revoked or whose account is deleted is refused with `464`.
+* The credential is the **account password**. Each sign-in opens a new IRC session; it lives as long as its socket.
+* A wrong password, an unknown or deleted account, or an account already signed in on IRC is refused with `464`.
 
 ### Registration
 
@@ -54,7 +51,7 @@ through a tunnel. [`https.md`](../for-technicians/https.md) explains why HTTPS a
 client                                  server
 CAP LS 302            ->                :irc.<domain> CAP * LS :... sasl=PLAIN ...
 CAP REQ :sasl ...     ->                :irc.<domain> CAP * ACK :sasl ...
-PASS <key>            ->               (or SASL PLAIN below)
+PASS <password>       ->               (or SASL PLAIN below)
 NICK <nick>           ->
 USER <u> 0 * :<real>  ->
 CAP END               ->                001 .. 005, 375/372/376 (MOTD)
@@ -66,14 +63,16 @@ Registration completes when `NICK`, `USER`, a credential and the end of capabili
 
 | Credential | Rule |
 | --- | --- |
-| `PASS <key>` | The key must be valid. `NICK` must equal the nickname of the key's owner (case-insensitive), else `464`. |
-| SASL `PLAIN` | `authcid` is the username, the password is the key. A wrong pair is `904`. If `NICK` differs from the account's nickname the server renames the client with a `NICK` message before the welcome. |
+| `PASS <password>` | `NICK` names the account (case-insensitive) and the password must be its password, else `464`. |
+| SASL `PLAIN` | `authcid` is the username and the password is the account password. A wrong pair is `904`. If `NICK` differs from the account's nickname the server renames the client with a `NICK` message before the welcome. |
 
 A failed registration is answered with `464` and the connection is closed with `ERROR`. Repeated failures from one
 address, or for one account from one address, are limited by the server's login-failure settings, and the number of
 simultaneous connections from one address by its connection limit; both are refused with `ERROR :Closing Link:`.
 
-A key can be used by one socket at a time; a second socket with the same key is closed with `ERROR`.
+An account holds one IRC session at a time. While its IRC session is in use, a second sign-in is refused with `464`
+and `ERROR`; once that session has been silent for 30 seconds, the new sign-in ends it (`Replaced`) and takes its
+place.
 
 On success the server sends `001`-`004`, `005` (ISUPPORT, enough lines for the tokens below) and the message of the day
 (`375`, `372`..., `376`, or `422` when none is set). The user joins the channels set to auto-join, and the client
@@ -221,8 +220,8 @@ closes the socket.
 ### Rationale
 
 * **One model, thin transport.** A rule added to the Application holds on every transport.
-* **Keys, not passwords.** A client library or bot stores its credential in plain text and sends it unencrypted; a
-  per-device key limits what a leak costs and can be revoked alone.
+* **One credential.** IRC signs in with the account password, like the osu! client and the API, so there is no second
+  secret to issue, store or revoke.
 * **No management over IRC.** Channels and rooms already have an API and BasilBot commands with privilege checks;
   duplicating them as IRC modes would be a second, weaker surface.
 * **BasilBot is a user.** The bot is account 1 with a server-owned IRC connection, so it appears in `WHO`, `NAMES` and `WHOIS` and
@@ -232,14 +231,13 @@ closes the socket.
 
 * No IRC line, to any client, contains a real address.
 * An IRC connection is never seated in a room and never spectates.
-* The credential for IRC is an IRC key, never the password.
+* The credential for IRC is the account password.
 * A client sees one `JOIN`/`PART`/`QUIT` per user, not per connection.
 
 ## Related code
 
-* [`Connection.cs`](../../src/Application/Users/Objects/Connections/Connection.cs): connection kinds
-* [`UserRegistry.cs`](../../src/Application/Users/Registry/UserRegistry.cs): `LoginWithTokenAsync`, idle sweep
-* [`ScopedUserSessions.cs`](../../src/Application/Users/Capabilities/ScopedUserSessions.cs): issuing an IRC key
+* [`Session.cs`](../../src/Application/Users/Objects/Sessions/Session.cs): session types
+* [`UserRegistry.cs`](../../src/Application/Users/Registry/UserRegistry.cs): `LoginAsync`, `CloseSilent`
 * [`Channel.cs`](../../src/Application/Chat/Objects/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Chat/Capabilities/ScopedChannel.cs): membership, posting, recipients
 * [`RoomChannel.cs`](../../src/Application/Chat/Objects/RoomChannel.cs): room channel access
 * [`IrcMessage.cs`](../../src/Protocol/Irc/IrcMessage.cs), [`IrcTag.cs`](../../src/Protocol/Irc/IrcTag.cs), [`IrcNumericReply.cs`](../../src/Protocol/Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../src/Protocol/Irc/IrcUserPrefix.cs): wire format

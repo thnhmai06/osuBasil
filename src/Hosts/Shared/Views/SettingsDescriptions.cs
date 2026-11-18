@@ -16,16 +16,6 @@ public static class SettingsDescriptions
 			"Restricts profile and password changes to account managers. On or off. Default: off.",
 		["accounts.defaultPrivileges"] =
 			"Privileges a new account holds when none are asked for. Comma-separated names from player, moderator, supporter, owner, developer, tournament. Default: player, supporter.",
-		["sessions.maxPerUser.stable"] =
-			"How many osu! game clients one user may hold open at once. Whole number, at least 1. Default: 1.",
-		["sessions.maxPerUser.stableTourney"] =
-			"How many osu!tourney clients one user may hold open at once. Whole number, at least 1. Default: 10.",
-		["sessions.maxPerUser.irc"] =
-			"How many IRC clients one user may hold open at once. Whole number, at least 1. Default: 5.",
-		["sessions.maxPerUser.api"] =
-			"How many HTTP API connections one user may hold open at once; a new one beyond it replaces the oldest. Whole number, at least 1. Default: 10.",
-		["sessions.apiToken.lifetime"] =
-			"How long an HTTP API token stays valid after its last use. Duration as [d.]hh:mm:ss. Default: 7.00:00:00 (7 days).",
 		["sessions.retentionPeriod"] =
 			"How long ended sessions are kept before they are deleted. Duration as [d.]hh:mm:ss. Default: 90.00:00:00 (90 days).",
 		["rateLimits.login.maxAttempts"] =

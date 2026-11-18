@@ -48,7 +48,7 @@ internal static class DiagnosticsRoutes
 	private static async Task<IResult> StreamAsync(HttpContext context, ISender sender, IDiagnosticsIntake intake,
 		string? category)
 	{
-		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
+		var access = await sender.Send(new CheckDiagnosticsAccess(context.Session()), context.RequestAborted);
 		if (access != DiagnosticsOutcome.Ok) return access.Refusal();
 		if (category is not null && !Categories.Contains(category, StringComparer.OrdinalIgnoreCase))
 			return Api.NotFound("No such diagnostics category.");
@@ -62,10 +62,10 @@ internal static class DiagnosticsRoutes
 	private static async Task<IResult> ActionAsync(HttpContext context, string category, string action, ISender sender,
 		RateLimiter limiter)
 	{
-		var access = await sender.Send(new CheckDiagnosticsAccess(context.Connection()), context.RequestAborted);
+		var access = await sender.Send(new CheckDiagnosticsAccess(context.Session()), context.RequestAborted);
 		if (access != DiagnosticsOutcome.Ok) return access.Refusal();
 
-		var actor = context.Connection();
+		var actor = context.Session();
 		switch ($"{category}/{action}".ToLowerInvariant())
 		{
 			case "gc/collect":

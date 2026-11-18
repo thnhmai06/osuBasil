@@ -1,4 +1,4 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 
 namespace Basil.Host.Stable.Support;
@@ -28,9 +28,9 @@ internal sealed class StableShutdown(StableState state, UserRegistry registry, O
 	{
 		StopAccepting();
 		var clients = registry.Online.Values.SelectMany(user => user.Connections)
-			.Where(connection => connection is { IsOpen: true } and (StableConnection or TourneyConnection))
+			.Where(connection => connection is { IsOpen: true } and (StableSession or TourneySession))
 			.ToList();
-		var waiting = new HashSet<Connection>(clients, ReferenceEqualityComparer.Instance);
+		var waiting = new HashSet<Session>(clients, ReferenceEqualityComparer.Instance);
 		var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 		var gate = new Lock();
 
@@ -43,7 +43,7 @@ internal sealed class StableShutdown(StableState state, UserRegistry registry, O
 			}
 		}
 
-		void OnPolled(Connection connection)
+		void OnPolled(Session connection)
 		{
 			Check();
 		}

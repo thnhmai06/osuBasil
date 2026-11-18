@@ -4,7 +4,8 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Messages;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Mechanics;
@@ -39,7 +40,7 @@ internal sealed partial class PacketHandlers(
 			(IReadOnlyList<object>)typeof(PacketHandlers).GetCustomAttributes(true)))
 	];
 
-	public Task HandleAsync(Connection actor, ClientPacket packet, CancellationToken ct)
+	public Task HandleAsync(Session actor, ClientPacket packet, CancellationToken ct)
 	{
 		var reader = PacketReader.ForPayload(packet.Payload);
 		return packet.Type switch
@@ -57,13 +58,13 @@ internal sealed partial class PacketHandlers(
 				ct),
 			ClientPacketType.TournamentLeaveMatchChannel =>
 				TourneyLeaveAsync(actor, reader.ReadInt32(), ct),
-			_ when actor is StableConnection osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,
+			_ when actor is StableSession osu => HandleOsuAsync(osu, packet.Type, packet.Payload, reader,
 				ct),
 			_ => Task.CompletedTask
 		};
 	}
 
-	private Task HandleOsuAsync(StableConnection osu, ClientPacketType type, byte[] payload, PacketReader reader,
+	private Task HandleOsuAsync(StableSession osu, ClientPacketType type, byte[] payload, PacketReader reader,
 		CancellationToken ct)
 	{
 		return type switch
@@ -97,7 +98,7 @@ internal sealed partial class PacketHandlers(
 		return Task.CompletedTask;
 	}
 
-	private async Task ChangeActionAsync(StableConnection osu, PacketReader reader,
+	private async Task ChangeActionAsync(StableSession osu, PacketReader reader,
 		CancellationToken ct)
 	{
 		var action = reader.ReadChangeAction();
@@ -118,7 +119,7 @@ internal sealed partial class PacketHandlers(
 		await sender.Send(new SetPlayerStatus(osu, status), ct);
 	}
 
-	private async Task StatsRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken ct)
+	private async Task StatsRequestAsync(Session actor, IEnumerable<int> ids, CancellationToken ct)
 	{
 		var wanted = OnlineUsers(ids);
 
@@ -133,7 +134,7 @@ internal sealed partial class PacketHandlers(
 		});
 	}
 
-	private async Task PresenceRequestAsync(Connection actor, IEnumerable<int> ids, CancellationToken ct)
+	private async Task PresenceRequestAsync(Session actor, IEnumerable<int> ids, CancellationToken ct)
 	{
 		var wanted = OnlineUsers(ids);
 
@@ -159,19 +160,19 @@ internal sealed partial class PacketHandlers(
 		return [.. asked.Where(online.ContainsKey).Select(id => online[id])];
 	}
 
-	private async Task FriendAsync(StableConnection osu, int id, bool add, CancellationToken ct)
+	private async Task FriendAsync(StableSession osu, int id, bool add, CancellationToken ct)
 	{
 		var target = UserReference.ById(id);
 		if (add) await sender.Send(new AddFriend(osu, target), ct);
 		else await sender.Send(new RemoveFriend(osu, target), ct);
 	}
 
-	private async Task SetAwayAsync(StableConnection osu, string text, CancellationToken ct)
+	private async Task SetAwayAsync(StableSession osu, string text, CancellationToken ct)
 	{
 		await sender.Send(new SetAwayMessage(osu, string.IsNullOrEmpty(text) ? null : text), ct);
 	}
 
-	private async Task BeatmapInfoAsync(StableConnection osu, BeatmapInfoRequest request,
+	private async Task BeatmapInfoAsync(StableSession osu, BeatmapInfoRequest request,
 		CancellationToken ct)
 	{
 		var entries = new List<BeatmapInfoResponse>();

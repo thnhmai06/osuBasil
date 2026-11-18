@@ -1,5 +1,5 @@
 using System.Globalization;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 
 namespace Basil.Host.Cli.Commands;
@@ -43,7 +43,7 @@ public sealed class CommandCall
 {
 	private readonly Dictionary<string, string> _options;
 	private readonly Dictionary<string, string> _words;
-	private OperatorConnection? _by;
+	private OperatorSession? _by;
 
 	public CommandCall(IServiceProvider services, ICommandOutput output, ViewFormatter formatter,
 		Dictionary<string, string> words, Dictionary<string, string> options, CancellationToken ct,
@@ -76,7 +76,7 @@ public sealed class CommandCall
 		       throw new InvalidOperationException($"{typeof(T).Name} is not registered.");
 	}
 
-	public async Task<OperatorConnection> ByAsync()
+	public async Task<OperatorSession> ByAsync()
 	{
 		return _by ??= await Get<UserRegistry>().OperateAsync(CancellationToken);
 	}

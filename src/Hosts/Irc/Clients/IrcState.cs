@@ -1,4 +1,4 @@
-namespace Basil.Host.Irc.Session;
+namespace Basil.Host.Irc.Clients;
 
 public sealed class IrcState(TimeProvider clock)
 {

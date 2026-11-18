@@ -58,7 +58,7 @@ internal static class RoomRoutes
 				if (body is null) return Api.Invalid("A body is required.");
 			}
 
-			var result = await command.Run(new RoomCall(sender, context.Connection(), room), body,
+			var result = await command.Run(new RoomCall(sender, context.Session(), room), body,
 				context.RequestServices, context.RequestAborted);
 			return result.Answer();
 		}).WithSummary(command.Summary).WithTags("Rooms");
@@ -67,7 +67,7 @@ internal static class RoomRoutes
 	private static async Task<Room?> Find(HttpContext context, Lobby lobby, ISender sender, int id)
 	{
 		return lobby.Find(id) is { } room &&
-		       await sender.Send(new CanViewMatch(context.Connection(), room.Match.Id), context.RequestAborted)
+		       await sender.Send(new CanViewMatch(context.Session(), room.Match.Id), context.RequestAborted)
 			? room
 			: null;
 	}
@@ -79,7 +79,7 @@ internal static class RoomRoutes
 		if (error is not null) return error;
 
 		var found = await sender.Send(
-			new ListRooms(context.Connection(), RoomQuery.Parse(query ?? string.Empty), page!),
+			new ListRooms(context.Session(), RoomQuery.Parse(query ?? string.Empty), page!),
 			context.RequestAborted);
 		return Api.Paged(new Page<RoomView>([.. found.Items.Select(RoomView.Of)], found.HasNext), page);
 	}
@@ -116,7 +116,7 @@ internal static class RoomRoutes
 	{
 		if (string.IsNullOrWhiteSpace(request.Name)) return Api.Invalid("name is required.");
 
-		var (room, result) = await sender.Send(new OpenRoom(context.Connection(),
+		var (room, result) = await sender.Send(new OpenRoom(context.Session(),
 				RoomCommands.Truncate(request.Name), request.Password ?? string.Empty, RoomSource.Api,
 				request.IsPrivate ?? false),
 			context.RequestAborted);

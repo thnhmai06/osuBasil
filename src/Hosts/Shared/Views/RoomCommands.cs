@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Game.Mechanics;
 using Mediator;
@@ -35,7 +35,7 @@ public sealed record NameRequest(string? Name);
 
 public sealed record PrivateRequest(bool Private);
 
-public readonly record struct RoomCall(ISender Sender, Connection Actor, Room Room)
+public readonly record struct RoomCall(ISender Sender, Session Actor, Room Room)
 {
 	public Task<RoomOutcome> Ask(IRequest<RoomOutcome> request, CancellationToken ct)
 	{

@@ -1,14 +1,14 @@
 using System.Text;
 using Basil.Application.Chat.Objects;
 using Basil.Domain.Users;
-using Basil.Host.Irc.Session;
+using Basil.Host.Irc.Clients;
 using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Support;
 
 internal static class IrcChannels
 {
-	public static void SendTopic(IrcSession session, Channel channel)
+	public static void SendTopic(IrcSocket session, Channel channel)
 	{
 		if (string.IsNullOrEmpty(channel.Topic))
 			session.Numeric(IrcNumericReply.RplNoTopic, channel.Name, "No topic is set");
@@ -16,7 +16,7 @@ internal static class IrcChannels
 			session.Numeric(IrcNumericReply.RplTopic, channel.Name, channel.Topic.ReplaceLineEndings(" "));
 	}
 
-	public static void SendNames(IrcSession session, Channel channel)
+	public static void SendNames(IrcSocket session, Channel channel)
 	{
 		var now = session.Now;
 		var entries = channel.Members.GroupBy(member => member.Record)
@@ -42,7 +42,7 @@ internal static class IrcChannels
 		session.Numeric(IrcNumericReply.RplEndOfNames, channel.Name, "End of /NAMES list.");
 	}
 
-	public static void SendJoin(IrcSession session, Channel channel, UserRecord user)
+	public static void SendJoin(IrcSocket session, Channel channel, UserRecord user)
 	{
 		var mask = IrcView.Mask(user, session.Domain).ToString();
 		session.Deliver(client =>

@@ -1,5 +1,5 @@
 using System.Globalization;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Gateway.Admission;
 using Basil.Gateway.Limits;
 
@@ -15,7 +15,7 @@ public static class AdmissionRefusals
 
 	public const string BusyMessage = "The server is busy. Try again later.";
 
-	public static AdmissionSubject SubjectOf(Connection connection)
+	public static AdmissionSubject SubjectOf(Session connection)
 	{
 		return new AdmissionSubject($"user:{connection.Record.Id}", AdmissionTier.Standard);
 	}

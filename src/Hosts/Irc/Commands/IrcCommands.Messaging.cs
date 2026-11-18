@@ -3,8 +3,8 @@ using Basil.Application.Chat.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
-using Basil.Host.Irc.Session;
+using Basil.Application.Users.Objects.Sessions;
+using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc.Models;
 
@@ -12,7 +12,7 @@ namespace Basil.Host.Irc.Commands;
 
 internal sealed partial class IrcCommands
 {
-	private async Task MessageAsync(IrcSession session, Connection actor, IrcMessage message,
+	private async Task MessageAsync(IrcSocket session, Session actor, IrcMessage message,
 		CancellationToken ct)
 	{
 		var notice = message.Command == "NOTICE";
@@ -60,7 +60,7 @@ internal sealed partial class IrcCommands
 		ReplyToPost(session, target, result);
 	}
 
-	private async Task<bool> MayChatAsync(IrcSession session, Connection actor, string command, string target,
+	private async Task<bool> MayChatAsync(IrcSocket session, Session actor, string command, string target,
 		CancellationToken ct)
 	{
 		var limit = (await sender.Send(new ReadSettings(), ct)).RateLimits.Chat;
@@ -74,7 +74,7 @@ internal sealed partial class IrcCommands
 		return false;
 	}
 
-	private static void ReplyToPost(IrcSession session, string target, ChannelOutcome result)
+	private static void ReplyToPost(IrcSocket session, string target, ChannelOutcome result)
 	{
 		if (result == ChannelOutcome.Denied)
 		{
@@ -112,7 +112,7 @@ internal sealed partial class IrcCommands
 		return registry.Online.Values.FirstOrDefault(user => IrcView.IsNick(user.Record, nick));
 	}
 
-	private async Task JoinAsync(IrcSession session, Connection actor, IrcMessage message,
+	private async Task JoinAsync(IrcSocket session, Session actor, IrcMessage message,
 		CancellationToken ct)
 	{
 		if (message.Parameters.Count == 0)
@@ -142,7 +142,7 @@ internal sealed partial class IrcCommands
 		}
 	}
 
-	private async Task PartAsync(IrcSession session, Connection actor, IrcMessage message,
+	private async Task PartAsync(IrcSocket session, Session actor, IrcMessage message,
 		CancellationToken ct)
 	{
 		if (message.Parameters.Count == 0)
@@ -168,7 +168,7 @@ internal sealed partial class IrcCommands
 			: new ChatTarget.General(name);
 	}
 
-	private async Task AwayAsync(IrcSession session, Connection actor, IrcMessage message,
+	private async Task AwayAsync(IrcSocket session, Session actor, IrcMessage message,
 		CancellationToken ct)
 	{
 		var text = message.Parameters.Count > 0 && message.Parameters[0].Length > 0 ? message.Parameters[0] : null;
@@ -180,13 +180,13 @@ internal sealed partial class IrcCommands
 			text is null ? [] : [text]) { ForceTrailing = true };
 		var mine = presence.Of(actor.Record);
 		foreach (var other in clients.All.Where(other =>
-			         other.Has("away-notify") && other.Connection is { } connection &&
+			         other.Has("away-notify") && other.Session is { } connection &&
 			         !ReferenceEquals(connection.User, actor.User) &&
 			         mine.Any(channel => channel.Members.Contains(connection))))
 			other.Deliver(line);
 	}
 
-	private void Management(IrcSession session, IrcMessage message)
+	private void Management(IrcSocket session, IrcMessage message)
 	{
 		if (message.Parameters.Count < 2)
 		{
@@ -201,7 +201,7 @@ internal sealed partial class IrcCommands
 			session.Numeric(IrcNumericReply.ErrChanOPrivsNeeded, channel, IrcReplies.NoManagement);
 	}
 
-	private void Topic(IrcSession session, Connection actor, IrcMessage message)
+	private void Topic(IrcSocket session, Session actor, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 		{
@@ -224,7 +224,7 @@ internal sealed partial class IrcCommands
 			IrcChannels.SendTopic(session, channel);
 	}
 
-	private void Mode(IrcSession session, Connection actor, IrcMessage message)
+	private void Mode(IrcSocket session, Session actor, IrcMessage message)
 	{
 		if (message.Parameters.Count == 0)
 		{

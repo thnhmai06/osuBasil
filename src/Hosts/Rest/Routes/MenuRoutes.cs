@@ -71,7 +71,7 @@ internal static class MenuRoutes
 			                 An image over 10 MB is refused with 422 and the error code `tooLarge`.
 			                 """);
 		menu.MapDelete("/icon", async (HttpContext context, ISender sender) =>
-				(await sender.Send(new ClearMenuIcon(context.Connection()), context.RequestAborted)).Answer())
+				(await sender.Send(new ClearMenuIcon(context.Session()), context.RequestAborted)).Answer())
 			.RequireToken().WithSummary("Delete the main-menu icon.");
 	}
 
@@ -88,14 +88,14 @@ internal static class MenuRoutes
 		if (request.Text is null) return Api.Invalid("text is required.");
 		if (!FaqRules.IsValidName(entry)) return Api.Invalid("The entry name is not valid.");
 
-		return (await sender.Send(new SaveFaq(context.Connection(), entry, request.Text), context.RequestAborted))
+		return (await sender.Send(new SaveFaq(context.Session(), entry, request.Text), context.RequestAborted))
 			.Answer();
 	}
 
 	private static async Task<IResult> DeleteFaqAsync(HttpContext context, string entry, ISender sender)
 	{
 		return FaqRules.IsValidName(entry)
-			? (await sender.Send(new DeleteFaq(context.Connection(), entry), context.RequestAborted)).Answer()
+			? (await sender.Send(new DeleteFaq(context.Session(), entry), context.RequestAborted)).Answer()
 			: Api.NotFound("No such entry.");
 	}
 
@@ -137,7 +137,7 @@ internal static class MenuRoutes
 
 		await using var stream = file.OpenReadStream();
 		var (result, banner) = await sender.Send(
-			new AddMenuBanner(context.Connection(), file.FileName, stream, url, begins, expires),
+			new AddMenuBanner(context.Session(), file.FileName, stream, url, begins, expires),
 			context.RequestAborted);
 		return result == ServerOutcome.Ok
 			? Api.Created(new BannerView(Path.GetFileName(banner!.Image.Value), banner.Url.AbsoluteUri,
@@ -162,7 +162,7 @@ internal static class MenuRoutes
 				Path.GetFileName(b.Image.Value) == image);
 		return banner is null
 			? Api.NotFound("No such banner.")
-			: (await sender.Send(new DeleteMenuBanner(context.Connection(), banner), context.RequestAborted))
+			: (await sender.Send(new DeleteMenuBanner(context.Session(), banner), context.RequestAborted))
 			.Answer();
 	}
 
@@ -176,7 +176,7 @@ internal static class MenuRoutes
 		if (!PathValidation.IsValidPath(file!.FileName)) return Api.Invalid("The file name is not valid.");
 
 		await using var stream = file.OpenReadStream();
-		var (result, image) = await sender.Send(new AddMenuSeasonal(context.Connection(), file.FileName, stream),
+		var (result, image) = await sender.Send(new AddMenuSeasonal(context.Session(), file.FileName, stream),
 			context.RequestAborted);
 		return result == ServerOutcome.Ok ? Api.Created(Path.GetFileName(image!.Value.Value)) : result.Refusal();
 	}
@@ -187,7 +187,7 @@ internal static class MenuRoutes
 			.FirstOrDefault(r => Path.GetFileName(r!.Value.Value) == image);
 		return reference is null
 			? Api.NotFound("No such background.")
-			: (await sender.Send(new DeleteMenuSeasonal(context.Connection(), reference.Value), context.RequestAborted))
+			: (await sender.Send(new DeleteMenuSeasonal(context.Session(), reference.Value), context.RequestAborted))
 			.Answer();
 	}
 
@@ -208,7 +208,7 @@ internal static class MenuRoutes
 			return Api.Invalid("The icon is not valid.");
 
 		await using var stream = file?.OpenReadStream();
-		return (await sender.Send(new SetMenuIcon(context.Connection(), file?.FileName, stream, url),
+		return (await sender.Send(new SetMenuIcon(context.Session(), file?.FileName, stream, url),
 			context.RequestAborted)).Answer();
 	}
 

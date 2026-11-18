@@ -1,6 +1,6 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Host.Irc.Session;
+using Basil.Host.Irc.Clients;
 using Basil.Host.Irc.Support;
 using Basil.Host.Irc.Transport;
 using Basil.Protocol.Irc.Models;
@@ -56,7 +56,7 @@ internal sealed class ChannelPartedDelivery(IrcClients clients, IrcPresence pres
 		return ValueTask.CompletedTask;
 	}
 
-	internal static IrcMessage Kick(IrcSession session, Channel channel, string reason)
+	internal static IrcMessage Kick(IrcSocket session, Channel channel, string reason)
 	{
 		return new IrcMessage("KICK", session.ServerName, channel.Name, session.Nick, reason);
 	}

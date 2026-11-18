@@ -1,5 +1,5 @@
 using System.Net;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Gateway.Admission;
@@ -13,14 +13,14 @@ public static class Caller
 
 	extension(HttpContext context)
 	{
-		public ApiConnection Connection()
+		public ApiSession Session()
 		{
-			return (ApiConnection)context.Items[ConnectionKey]!;
+			return (ApiSession)context.Items[ConnectionKey]!;
 		}
 
-		public ApiConnection? ConnectionOrNull()
+		public ApiSession? ConnectionOrNull()
 		{
-			return context.Items.TryGetValue(ConnectionKey, out var value) ? value as ApiConnection : null;
+			return context.Items.TryGetValue(ConnectionKey, out var value) ? value as ApiSession : null;
 		}
 
 		public IPAddress Ip()
@@ -46,9 +46,8 @@ public static class Caller
 			var token = header["Bearer ".Length..].Trim();
 			if (token.Length == 0) return false;
 
-			var result = await registry.LoginWithTokenAsync(SessionType.Api, token, context.Ip(), null,
-				context.RequestAborted);
-			if (result.Connection is not ApiConnection connection) return false;
+			var result = await registry.ResumeAsync(SessionType.Api, token, null, context.RequestAborted);
+			if (result.Session is not ApiSession connection) return false;
 
 			context.Items[ConnectionKey] = connection;
 			return true;

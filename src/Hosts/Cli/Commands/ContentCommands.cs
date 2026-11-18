@@ -9,7 +9,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Messages;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Content;
 using Basil.Host.Shared.Json;
 using Basil.Host.Shared.Views;
@@ -179,7 +179,7 @@ internal static class ContentCommands
 		};
 	}
 
-	private static async Task<T> SendAsync<T>(CommandCall call, Func<Connection, IRequest<T>> message)
+	private static async Task<T> SendAsync<T>(CommandCall call, Func<Session, IRequest<T>> message)
 	{
 		return await call.Get<ISender>().Send(message(await call.ByAsync()), call.CancellationToken);
 	}

@@ -1,11 +1,11 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Packets;
 
 internal sealed class PacketDispatcher(PacketHandlers handlers, ILogger<PacketDispatcher> logger)
 {
-	public async Task DispatchAsync(Connection actor, byte[] body, CancellationToken ct)
+	public async Task DispatchAsync(Session actor, byte[] body, CancellationToken ct)
 	{
 		IReadOnlyList<ClientPacket> packets;
 		try

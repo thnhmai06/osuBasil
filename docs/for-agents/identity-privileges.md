@@ -66,36 +66,35 @@ touching users, connections, privileges, silences or the bot.
   point; `Tournament`, while the file watcher keeps running) and `Profiles` (a user changing their own username,
   country, avatar or password; `Owner` may change another account's). A lock covers create, change and delete. It
   is checked in Application, never in a transport, and refuses with a `Locked` outcome.
-* **Sessions and tokens.** A session is one sign-in, from its start to its end. A `SessionRecord` (a numeric `Id` with its `SessionData`: user, kind, start, device, the SHA-256 hash of the token, the expiry, the last activity and the end) is the persisted record of it. The `Id` is a marker the API shows in place of the hash and opens nothing; the hash is the lookup key and is never shown. Every session has a token, kept as a hash: the `cho-token` of an osu! session is stored like an API token or IRC key, but an osu! session lives only as long as its connection (it ends whenever the connection closes, idle included) and its token is never looked up again. Connection types: Stable, StableTourney, Irc, Api (the bot has none of its own, and the console's operator connection is of kind Api); a `Connection` is the live one and owns what changes while it runs (last activity, the sliding token expiry, the end); only a copy is written back. Api tokens and IRC keys are 256-bit secrets stored as SHA-256 hashes; the Api
-  token expires after `Sessions.ApiToken.Lifetime` (sliding, one week by default) and is verified against the database
-  the first time it is used, then kept in memory while its connection is used. An IRC key belongs to one device, is
-  issued by `POST /v1/users/{id}/sessions/irc`, and is the only credential IRC accepts. osu! signs in with username and
-  password every time. A connection that has sent nothing for its transport's idle timeout leaves memory; the session stays valid
-  and the next use opens a new connection. Every connection leaves an entry in the session's trail (`connections`: address,
-  opening, last activity, closing and why), written when the client connects and updated when it leaves; a client that
-  comes back from the same address within five minutes of leaving continues its last entry instead of adding one. A
-  start after the server stopped closes the entries left open at their last activity with `ServerStopped` and ends the
-  osu! sessions the same way, as the room recovery ends the matches left running; API tokens and IRC keys stay valid.
-  Reading the trail needs the same privilege as reading the sessions and is logged the same way. Ended sessions, with
-  their trail, are deleted after `Sessions.RetentionPeriod` (90 days by
-  default).
-* **Concurrent sessions per user are limited per connection type.** The Users module enforces the limit in
-  `UserRegistry.Open`, under the registry's lock, from the runtime setting `Sessions.MaxPerUser` (positive numbers;
-  Rest `PATCH /v1/settings/sessions`, Cli `settings sessions set --maxPerUser.irc 7`). Defaults: Stable 1,
-  StableTourney 10, Irc 5, Api 10; BasilBot's connections are fixed at one Stable and one Irc and ignore the setting. Only open
-  connections count; at the ceiling, connections of that user and kind that have been idle beyond the idle timeout are
-  closed first. Then Stable, StableTourney and Irc **refuse** the new connection (`LoginFailure.TooManySessions`: a
-  Stable notice, an IRC `464` plus `ERROR`), while Api **closes the connection active longest ago** and accepts the new
-  one (its token stays valid; the next use opens a connection again), so an Api login never fails on this rule. Open
-  live streams (SSE) have a separate per-user ceiling equal to the Api limit and answer `429`. Refusals are counted
-  in diagnostics (`basil.connections.rejected`, tags `type` and `reason=too_many_sessions`). This is a business rule
-  of Users, not an admission policy of the gateway. Whether a new connection takes the place of the user's closed one in
-  a channel is a different, fixed rule (`ReplacesOnJoin`: osu! game clients and BasilBot).
-* **Logging out revokes credentials, not saved passwords.** Closing an Api session revokes its token; closing an osu! session only disconnects the
-  client, which can sign in again with its password; closing an IRC session revokes that
-  device's key. Changing a password revokes every other Api token and every IRC key, and closes osu! connections.
-  Changing the password only forces a new login: a client that stored the password can sign in again, so a real lockout
-  of a stolen device needs a password change by someone else.
+* **Sessions and tokens.** A session is one sign-in on one connection, from its start to its end: one token, one
+  connection, one row in `sessions`. The Domain `Session` holds the user, type, start, device (address and client), the
+  SHA-256 hash of the token, the last activity and the end; the Application `Session` (`StableSession`,
+  `TourneySession`, `IrcSession`, `ApiSession`, `OperatorSession`) is the live actor and wraps it as `State`. The `Id`
+  is a marker the API shows in place of the hash and opens nothing; the hash is the lookup key and is never shown.
+  Several clients that share one API token are one session. Types: Stable, StableTourney, Irc, Api (the bot has none of
+  its own, and the console's operator session is of type Api). Every heartbeat (an osu! poll, an IRC line, an API request
+  or an open SSE stream) moves the last activity on. A session's status comes from how long it has been silent, with
+  thresholds fixed in Domain (`SessionRules`): under 30 s it is `Active`; from 30 s it is `Replaceable`; from its
+  `ExpiresAfter` (300 s for Stable, StableTourney and Irc; 8 h for Api) it is `Expired`. An osu! or API session survives a
+  server restart: its token resumes it while it is not `Expired` (`UserRegistry.ResumeAsync`; an osu! client that
+  resumes gets the same login bundle a password login sends). An IRC session lives as long as its socket, and a start
+  after the server stopped ends the IRC sessions left open with `ServerStopped`. A sweeper ends every `Expired` session,
+  in memory and in the store, with `TimedOut`; activity never revives an expired one. Every end, whatever the reason,
+  ends the token. osu!, IRC and the API all sign in with username and password (IRC's `PASS` is the account password).
+  Ended sessions are deleted after `Sessions.RetentionPeriod` (90 days by default).
+* **One active session per user and type.** The Users module enforces it in `UserRegistry.Open`, under the account
+  gate, for every type except StableTourney (no check, no count). When the user already has an open session of that
+  type, in memory or, after a restart, only in the store: `Active` refuses the new login (`LoginFailure.AlreadyOnline`:
+  the osu! client gets bancho.py's "User already logged in." notice, IRC a `464` plus `ERROR`, the API a `409`);
+  `Replaceable` ends the old one with `Replaced` and opens the new one; `Expired` ends the old one with `TimedOut` and
+  opens the new one. BasilBot's sessions are fixed at one Stable and one Irc. Refusals are counted in diagnostics
+  (`basil.connections.rejected`, tags `type` and `reason=already_online`). Open live streams (SSE) have a per-user
+  ceiling equal to the per-address one and answer `429`. This is a business rule of Users, not an admission policy of
+  the gateway. In a channel, a new session of an exclusive type takes the place of the user's closed one of that type.
+* **Logging out ends the session, not saved passwords.** Closing any session ends it and its token; the client can
+  sign in again with its password. Changing a password ends every other session of the account. Changing the password
+  only forces a new login: a client that stored the password can sign in again, so a real lockout of a stolen device
+  needs a password change by someone else.
 * **No authority by connection kind.** Never decide authority with `ConnectionType` or `is XConnection`. The kind only
   decides what the client can technically do (an osu! client takes a slot; a tourney client gets no private-message
   channel). BasilBot's two connections are never presented by a client, cannot be signed in as and are never

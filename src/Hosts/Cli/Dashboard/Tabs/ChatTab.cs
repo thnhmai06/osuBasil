@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Registry;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
@@ -72,7 +72,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private long _refreshedAt;
 	private string _current = string.Empty;
 	private long _seen;
-	private Task<OperatorConnection>? _operator;
+	private Task<OperatorSession>? _operator;
 	private TerminalApp? _app;
 
 	public ChatTab(IServiceProvider services, UserDetails users, ChannelDetails channels, ChatFeed feed, CliOptions options, Glyphs glyphs,
@@ -476,7 +476,7 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_members.SetSections(sections, query.Length > 0);
 	}
 
-	private Task<OperatorConnection> Operator()
+	private Task<OperatorSession> Operator()
 	{
 		return _operator ??= _services.GetRequiredService<UserRegistry>().OperateAsync(CancellationToken.None);
 	}

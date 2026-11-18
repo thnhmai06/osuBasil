@@ -12,12 +12,12 @@ internal sealed class UserOnlineDelivery(
 	UserRegistry registry,
 	Outbox outbox,
 	ISender sender,
-	TimeProvider clock) : INotificationHandler<UserConnectionOpened>
+	TimeProvider clock) : INotificationHandler<UserSessionOpened>
 {
-	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken ct)
+	public async ValueTask Handle(UserSessionOpened notification, CancellationToken ct)
 	{
-		if (!notification.CameOnline || notification.Connection.Type is not SessionType.Stable) return;
-		var user = notification.Connection.User;
+		if (!notification.CameOnline || notification.Session.Type is not SessionType.Stable) return;
+		var user = notification.Session.User;
 		var stats = await sender.Send(new GetUserStats(user, user.Stable?.Status.GameMode ?? GameMode.Standard), ct);
 		var now = clock.GetUtcNow();
 		outbox.Send(registry.OpenStableClients(), writer =>
@@ -29,11 +29,11 @@ internal sealed class UserOnlineDelivery(
 }
 
 internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
-	: INotificationHandler<UserConnectionClosed>
+	: INotificationHandler<UserSessionClosed>
 {
-	public ValueTask Handle(UserConnectionClosed notification, CancellationToken ct)
+	public ValueTask Handle(UserSessionClosed notification, CancellationToken ct)
 	{
-		var connection = notification.Connection;
+		var connection = notification.Session;
 		outbox.Remove(connection);
 		if (notification.WentOffline && connection.Type is SessionType.Stable)
 			outbox.Send(registry.OpenStableClients(), writer => writer.Logout(connection.Record.Id));
@@ -43,11 +43,11 @@ internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
 }
 
 internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, ISender sender)
-	: INotificationHandler<UserConnectionStatusChanged>
+	: INotificationHandler<UserSessionStatusChanged>
 {
-	public async ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken ct)
+	public async ValueTask Handle(UserSessionStatusChanged notification, CancellationToken ct)
 	{
-		var user = notification.Connection.User;
+		var user = notification.Session.User;
 		var stats = await sender.Send(new GetUserStats(user, notification.Status.GameMode), ct);
 		outbox.Send(registry.OpenStableClients(), writer => StableView.WriteStats(writer, user, stats));
 	}

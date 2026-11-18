@@ -2,7 +2,7 @@ using Basil.Application.Beatmaps.Messages;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Stable.Support;
@@ -15,7 +15,7 @@ namespace Basil.Host.Stable.Packets;
 
 internal sealed partial class PacketHandlers
 {
-	private Task HandleRoomAsync(StableConnection osu, ClientPacketType type, PacketReader reader,
+	private Task HandleRoomAsync(StableSession osu, ClientPacketType type, PacketReader reader,
 		CancellationToken ct)
 	{
 		switch (type)
@@ -57,7 +57,7 @@ internal sealed partial class PacketHandlers
 		};
 	}
 
-	private async Task CreateMatchAsync(StableConnection osu, RoomStatePacket match,
+	private async Task CreateMatchAsync(StableSession osu, RoomStatePacket match,
 		CancellationToken ct)
 	{
 		var matchSettings = SettingsOf(match);
@@ -73,7 +73,7 @@ internal sealed partial class PacketHandlers
 			await sender.Send(new ConfigureRoom(osu, room, await beatmapChange), ct);
 	}
 
-	private async Task JoinMatchAsync(StableConnection osu, JoinMatchRequest request,
+	private async Task JoinMatchAsync(StableSession osu, JoinMatchRequest request,
 		CancellationToken ct)
 	{
 		var result = lobby.Find(request.MatchId) is { IsClosed: false } room
@@ -110,7 +110,7 @@ internal sealed partial class PacketHandlers
 		}
 	}
 
-	private async Task ChangeSettingsAsync(StableConnection osu, Room room, RoomStatePacket match,
+	private async Task ChangeSettingsAsync(StableSession osu, Room room, RoomStatePacket match,
 		CancellationToken ct)
 	{
 		var current = room.Settings.MatchSettings;
@@ -138,44 +138,44 @@ internal sealed partial class PacketHandlers
 		return sender.Send(message, ct).AsTask();
 	}
 
-	private Task TransferHostAsync(StableConnection osu, Room room, int slot, CancellationToken ct)
+	private Task TransferHostAsync(StableSession osu, Room room, int slot, CancellationToken ct)
 	{
 		return room.Slots.At(slot)?.Player is { } player
 			? Ask(new SetRoomHost(osu, room, player), ct)
 			: Task.CompletedTask;
 	}
 
-	private async Task InviteAsync(StableConnection osu, Room room, int userId, CancellationToken ct)
+	private async Task InviteAsync(StableSession osu, Room room, int userId, CancellationToken ct)
 	{
 		if (OnlineUsers([userId]) is [{ } target]) await sender.Send(new InvitePlayer(osu, room, target), ct);
 	}
 
-	private void ForwardScore(StableConnection osu, Room room, PacketReader reader)
+	private void ForwardScore(StableSession osu, Room room, PacketReader reader)
 	{
 		if (room.Slots.Find(osu) is not { } slot || !room.Rounds.InProgress) return;
 		var frame = reader.ReadScoreFrame() with { Id = slot.Index };
-		outbox.Send(room.Slots.Select(Connection? (other) => other.Player).OfType<Connection>()
+		outbox.Send(room.Slots.Select(Session? (other) => other.Player).OfType<Session>()
 			.Concat(room.Members.Observers), writer => writer.MatchScoreUpdate(frame));
 	}
 
-	private async Task TourneyInfoAsync(Connection actor, int matchId, CancellationToken ct)
+	private async Task TourneyInfoAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
+		if (actor is not TourneySession || lobby.Find(matchId) is not { IsClosed: false } room) return;
 		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
 		var match = StableView.Match(room);
 		outbox.Send(actor, writer => writer.UpdateMatch(match, false));
 	}
 
-	private async Task TourneyJoinAsync(Connection actor, int matchId, CancellationToken ct)
+	private async Task TourneyJoinAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
+		if (actor is not TourneySession || lobby.Find(matchId) is not { IsClosed: false } room) return;
 		if (!await sender.Send(new CanViewMatch(actor, room.Match.Id), ct)) return;
 		await sender.Send(new ObserveRoom(actor, room), ct);
 	}
 
-	private async Task TourneyLeaveAsync(Connection actor, int matchId, CancellationToken ct)
+	private async Task TourneyLeaveAsync(Session actor, int matchId, CancellationToken ct)
 	{
-		if (actor is TourneyConnection && lobby.Find(matchId) is { } room)
+		if (actor is TourneySession && lobby.Find(matchId) is { } room)
 			await sender.Send(new StopObservingRoom(actor, room), ct);
 	}
 }

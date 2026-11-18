@@ -50,7 +50,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 		               !HttpMethods.IsOptions(context.Request.Method);
 		if (authenticated && mutation)
 		{
-			var user = context.Connection().Record.Id;
+			var user = context.Session().Record.Id;
 			if (limiter.TryAcquire($"rest-mutation:{user}", limits.Mutations.Count, limits.Mutations.Window))
 				return false;
 

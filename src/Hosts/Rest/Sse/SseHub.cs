@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Http;
 using Mediator;
@@ -27,17 +27,17 @@ public sealed class SseStream
 	private int _lag;
 	private int _released;
 
-	internal SseStream(string key, ApiConnection? connection, string addressKey, string? userKey)
+	internal SseStream(string key, ApiSession? connection, string addressKey, string? userKey)
 	{
 		Key = key;
-		Connection = connection;
+		Session = connection;
 		AddressKey = addressKey;
 		UserKey = userKey;
 	}
 
 	public string Key { get; }
 
-	public ApiConnection? Connection { get; }
+	public ApiSession? Session { get; }
 
 	internal string AddressKey { get; }
 
@@ -128,17 +128,17 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		return _roots.TryGetValue(key, out var root) ? root.Buffer.Count : 0;
 	}
 
-	public void Close(string key, Connection? connection = null)
+	public void Close(string key, Session? connection = null)
 	{
 		if (!_roots.TryGetValue(key, out var root)) return;
 
 		foreach (var stream in root.Snapshot())
-			if (connection is null || ReferenceEquals(stream.Connection, connection))
+			if (connection is null || ReferenceEquals(stream.Session, connection))
 				stream.Complete();
 	}
 
 	public async Task<(SseStream? Stream, byte[]? Snapshot, IResult? Refusal)> OpenAsync(string key,
-		ApiConnection? connection, IPAddress ip, Func<CancellationToken, Task<(object Data, string? Id)>> snapshot,
+		ApiSession? connection, IPAddress ip, Func<CancellationToken, Task<(object Data, string? Id)>> snapshot,
 		CancellationToken ct, Func<CancellationToken, Task<SsePoll>>? poll = null)
 	{
 		if (_stopping) return (null, null, ShuttingDown());
@@ -149,8 +149,8 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		var userKey = connection is null ? null : "user:" + connection.Record.Id;
 		if (!TryCount(addressKey, limit)) return (null, null, TooManyStreams());
 
-		// A signed-in caller also has a ceiling of its own, the same as its number of API connections.
-		if (userKey is not null && !TryCount(userKey, current.Sessions.MaxPerUser.Api))
+		// A signed-in caller also has a ceiling of its own, the same as one address has.
+		if (userKey is not null && !TryCount(userKey, limit))
 		{
 			Uncount(addressKey);
 			return (null, null, TooManyStreams());
@@ -209,7 +209,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 
 	public void Touch(SseStream stream)
 	{
-		if (stream.Connection is { IsOpen: true } connection) registry.MarkActive(connection);
+		if (stream.Session is { IsOpen: true } connection) registry.MarkActive(connection);
 	}
 
 	internal static byte[] Frame(string eventName, string? id, byte[] json)
@@ -265,7 +265,7 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 						JsonSerializer.SerializeToUtf8Bytes(events.Select(e => e.Data), Api.Json));
 				foreach (var stream in root.Snapshot())
 				{
-					if (stream.Connection is { IsOpen: false })
+					if (stream.Session is { IsOpen: false })
 					{
 						Release(stream);
 						continue;
