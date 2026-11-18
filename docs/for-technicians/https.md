@@ -46,7 +46,9 @@ trust the certificate or its issuing CA. See
 
 IRC is a separate listener and **does not use TLS**: plain TCP on `Basil:Server:Irc:Port` (default `6667`). It needs no
 `irc.<domain>` record, no certificate and no HTTPS configuration; clients connect to the server's address on that port.
-The plain port is deliberate, and it means the IRC key crosses the network readable. See
+The plain port is deliberate, and it means **the account password crosses the network readable**: IRC signs in with
+the account password, and without TLS anyone on the path can read it. Put the port behind a TLS tunnel or terminator,
+or allow IRC only on networks you trust. See
 [`../for-developers/irc.md`](../for-developers/irc.md).
 
 ---

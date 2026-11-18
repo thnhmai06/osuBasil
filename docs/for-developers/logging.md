@@ -58,7 +58,7 @@ A background service logs the failure and continues its loop.
 
 * The log carries lifecycle events, not routine traffic.
 * Every sink is behind the bounded async queue; a full queue drops and counts, never blocks or grows.
-* No log message contains a password, a token, an IRC key or a certificate password.
+* No log message contains a password, a token or a certificate password.
 * File retention follows `Logging:File:Retention`; the defaults are 14 days, 30 files and 1 GB.
 * A lifecycle event is logged once, by its handler, not by every entry point.
 

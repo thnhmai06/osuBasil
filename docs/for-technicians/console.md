@@ -215,7 +215,7 @@ Console commands mirror the HTTP API one to one. There is a single rule, not a s
   an ordinary enum is its camelCase name; a boolean is `true` or `false`; a duration is `30m`, `12h` or `7d`.
 * Every list takes `--offset` and `--limit` as the API does (default 0 and 25, at most 100).
 * A route that returns a file or a stream (replays, beatmap files, avatars, the live `/live` and match streams) and the
-  routes of one's own session (`/v1/auth/*`, `/v1/me`, `/v1/sessions`, the IRC key of the calling account) have no
+  routes of one's own session (`/v1/auth/*`, `/v1/me`, `/v1/sessions`) have no
   command: the console is not signed in.
 
 ## Output

@@ -15,6 +15,7 @@ internal sealed class ConnectionClosedDelivery(IrcClients clients, IrcPresence p
 	{
 		var connection = notification.Session;
 		if (clients.Find(connection) is { } own) own.Close(IrcReplies.Closing(notification.Reason));
+		clients.Forget(connection);
 		if (!notification.WentOffline) return ValueTask.CompletedTask;
 
 		var channels = presence.Take(connection.Record);

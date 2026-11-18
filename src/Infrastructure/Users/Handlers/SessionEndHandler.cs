@@ -1,13 +1,17 @@
 using System.Diagnostics.Metrics;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Objects.Events;
+using Basil.Application.Users.Registry;
 using Basil.Infrastructure.Users.Metrics;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<SessionEndHandler> logger)
+internal sealed class SessionEndHandler(
+	ISessionRepository sessions,
+	UserRegistry registry,
+	ILogger<SessionEndHandler> logger)
 	: INotificationHandler<UserSessionClosed>
 {
 	internal static readonly Counter<long> UpdateFailures = UsersMeter.Instance
@@ -19,6 +23,7 @@ internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<Ses
 		try
 		{
 			await sessions.EndAsync(session.Id, session.Ended!.Value);
+			registry.ConfirmEnded(session.Id);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !ct.IsCancellationRequested)

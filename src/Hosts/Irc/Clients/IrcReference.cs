@@ -11,10 +11,10 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 	internal static readonly IReadOnlyList<(string Command, bool SignedIn, string Summary)> Commands =
 	[
 		("CAP", false, "Negotiate the IRCv3 capabilities (`LS`, `LIST`, `REQ`, `END`)."),
-		("PASS", false, "Send the IRC key before registering."),
+		("PASS", false, "Send your account password before registering."),
 		("NICK", false, "Give the nickname: your username, with spaces written as `_`."),
 		("USER", false, "Complete the registration."),
-		("AUTHENTICATE", false, "Sign in with SASL `PLAIN`: your username and the IRC key."),
+		("AUTHENTICATE", false, "Sign in with SASL `PLAIN`: your username and your account password."),
 		("PING", false, "Check that the server answers; `PONG` is accepted back."),
 		("QUIT", false, "Close the connection."),
 		("PRIVMSG", true, "Send a message to a channel or a user, or a command to BasilBot."),
@@ -52,10 +52,11 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 		text.AppendLine($"| Server | `{options.Value.ServerName}` |");
 		text.AppendLine($"| Port | `{options.Value.Port}`, plain text, no TLS |");
 		text.AppendLine("| Nickname | your username, with spaces written as `_` |");
-		text.AppendLine("| Password / SASL password | an IRC key, not your account password |").AppendLine();
+		text.AppendLine("| Password / SASL password | your account password |").AppendLine();
 		text.AppendLine(
-				"An IRC key belongs to one device or bot and is created with the HTTP API; ending its session revokes it. " +
-				"A wrong key, or a nickname that is not yours, is answered with `464` and the connection is closed.")
+				"The connection is not encrypted, so your password travels in clear text: connect only from a network you " +
+				"trust. An account holds one IRC sign-in at a time. A wrong password, or an account already signed in on " +
+				"IRC, is answered with `464` and the connection is closed.")
 			.AppendLine();
 		text.AppendLine("## Capabilities").AppendLine();
 		text.AppendLine("`CAP LS` offers: " + string.Join(", ", IrcCommands.Capabilities.Select(cap => $"`{cap}`")) +

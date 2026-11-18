@@ -93,6 +93,9 @@ public static class StableRoutes
 
 		var started = Stopwatch.GetTimestamp();
 		registry.MarkActive(connection);
+		// A session silent past its expiry is closed by the heartbeat: the client logs in again, as for a dead token.
+		if (!connection.IsOpen)
+			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 		await dispatcher.DispatchAsync(connection, body, ct);
 		byte[] packets = [.. welcome, .. outbox.Drain(connection)];
 		DiagnosticsMetrics.StableDuration.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds);

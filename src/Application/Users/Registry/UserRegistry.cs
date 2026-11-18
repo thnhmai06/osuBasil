@@ -33,6 +33,8 @@ public sealed class UserRegistry
 
 	private readonly IAccountRules _accounts;
 	private readonly ConcurrentDictionary<long, Session> _activity = new();
+	// Sessions ended here whose end the store has not confirmed yet: their tokens never resume meanwhile.
+	private readonly ConcurrentDictionary<long, byte> _ended = new();
 	private readonly SessionContext _sessionContext;
 	private readonly ConcurrentDictionary<string, Session> _tokens = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
@@ -105,11 +107,16 @@ public sealed class UserRegistry
 		var session = NewSession(NewLoginState(record, type, ip, client, now, token), token, utcOffset);
 
 		var openFailure = Open(session, stored);
-		if (stored?.Ended is { } replaced) await _context.Sessions.EndAsync(stored.Id, replaced);
 		if (openFailure is not null) return LoginResult.Fail(openFailure.Value);
 
 		try
 		{
+			if (stored?.Ended is { } replaced)
+			{
+				await _context.Sessions.EndAsync(stored.Id, replaced);
+				ConfirmEnded(stored.Id);
+			}
+
 			await _context.Sessions.CreateAsync(session.State);
 		}
 		catch
@@ -156,46 +163,66 @@ public sealed class UserRegistry
 		var hash = HashToken(token);
 		var owner = await _context.Sessions.FindOpenOwnerAsync(type, hash, ct);
 		var record = owner is { } id ? await _context.Users.GetAsync(id, ct) : null;
-		if (record is null) return LoginResult.Fail(LoginFailure.InvalidToken);
-		if (record.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
-		if (accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
+		if (record is null || accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 		var stored = await _context.Sessions.FindOpenByTokenAsync(record, type, hash, ct);
-		if (stored is null) return LoginResult.Fail(LoginFailure.InvalidToken);
+		if (stored is null || _ended.ContainsKey(stored.Id)) return LoginResult.Fail(LoginFailure.InvalidToken);
+
 		var now = _context.Clock.GetUtcNow();
-		if (stored.StatusAt(now) is SessionStatus.Expired)
+		var refusal = Ineligible(record, type);
+		if (refusal is not null || stored.StatusAt(now) is SessionStatus.Expired)
 		{
-			stored.End(now, SessionEndReason.TimedOut);
+			stored.End(now, refusal is null ? SessionEndReason.TimedOut : SessionEndReason.Revoked);
 			await _context.Sessions.EndAsync(stored.Id, stored.Ended!.Value);
-			return LoginResult.Fail(LoginFailure.InvalidToken);
+			return LoginResult.Fail(refusal ?? LoginFailure.InvalidToken);
 		}
 
+		// Heard from now: a password login racing this resume must not judge it silent by its stored activity.
+		stored.Heartbeat(now);
 		var session = NewSession(stored, token, 0);
 		using (Enter(record))
 		{
 			// Another request may have brought the same token in while this one read the database.
 			if (_tokens.GetValueOrDefault(token) is { IsOpen: true } raced) return LoginResult.Success(raced);
+			// The session may have been closed here after the read; its end may not have reached the store yet.
+			if (_ended.ContainsKey(stored.Id)) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 			var failure = Open(session);
 			if (failure is not null) return LoginResult.Fail(failure.Value);
 		}
 
 		MarkActive(session);
-		return LoginResult.Success(session);
+		return session.IsOpen ? LoginResult.Success(session) : LoginResult.Fail(LoginFailure.InvalidToken);
 	}
 
 	private LoginResult ResumeOpen(Session open, Func<UserRecord, bool>? accepts)
 	{
 		if (accepts?.Invoke(open.Record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
 
-		if (open.State.StatusAt(_context.Clock.GetUtcNow()) is SessionStatus.Expired)
+		// The online user holds the current record; the account may have changed since the session opened.
+		if (Ineligible(open.User.Record, open.Type) is { } refusal)
 		{
-			Close(open, SessionEndReason.TimedOut);
-			return LoginResult.Fail(LoginFailure.InvalidToken);
+			Close(open, SessionEndReason.Revoked);
+			return LoginResult.Fail(refusal);
 		}
 
 		MarkActive(open);
-		return LoginResult.Success(open);
+		return open.IsOpen ? LoginResult.Success(open) : LoginResult.Fail(LoginFailure.InvalidToken);
+	}
+
+	// The account checks a password login makes, made again for a session that comes back by its token.
+	private static LoginFailure? Ineligible(UserRecord record, SessionType type)
+	{
+		if (record.IsBasilBot()) return LoginFailure.InvalidToken;
+		if (record.Value.DeletedAt is not null) return LoginFailure.AccountDeleted;
+		if (type is SessionType.StableTourney && !record.Value.Privileges.Allows(UserPrivileges.Tournament))
+			return LoginFailure.NoTourneyPrivilege;
+		return null;
+	}
+
+	public void ConfirmEnded(long id)
+	{
+		_ended.TryRemove(id, out _);
 	}
 
 	private Session NewSession(SessionState state, string token, int utcOffset)
@@ -242,11 +269,18 @@ public sealed class UserRegistry
 
 	public void MarkActive(Session session)
 	{
-		if (session.IsOpen)
+		if (!session.IsOpen) return;
+
+		var now = _context.Clock.GetUtcNow();
+		// A session silent past its expiry is over: a late heartbeat closes it instead of reviving it.
+		if (session.State.StatusAt(now) is SessionStatus.Expired)
 		{
-			session.State.Heartbeat(_context.Clock.GetUtcNow());
-			if (!session.IsServerOwned) _activity[session.State.Id] = session;
+			Close(session, SessionEndReason.TimedOut);
+			return;
 		}
+
+		session.State.Heartbeat(now);
+		if (!session.IsServerOwned) _activity[session.State.Id] = session;
 	}
 
 	public int CloseSilent()
@@ -390,6 +424,7 @@ public sealed class UserRegistry
 				break;
 		}
 
+		if (stored.Ended is not null) _ended[stored.Id] = 0;
 		return null;
 	}
 
@@ -489,6 +524,7 @@ public sealed class UserRegistry
 		if (!connection.IsOpen) return;
 
 		connection.State.End(_context.Clock.GetUtcNow(), reason);
+		if (!connection.IsServerOwned) _ended[connection.State.Id] = 0;
 		_activity.TryRemove(connection.State.Id, out _);
 		connection.IsOpen = false;
 		Unindex(connection);

@@ -19,7 +19,7 @@ internal sealed class ChannelJoinedDelivery(IrcClients clients, IrcPresence pres
 
 		var member = notification.Member;
 		var firstOfUser = presence.Add(member.Record, channel);
-		if (clients.Find(member) is { } own) IrcChannels.SendJoin(own, channel, member.Record);
+		clients.DeliverTo(member, own => IrcChannels.SendJoin(own, channel, member.Record));
 		if (!firstOfUser) return ValueTask.CompletedTask;
 
 		var mask = IrcView.Mask(member.Record, options.Value.Domain).ToString();

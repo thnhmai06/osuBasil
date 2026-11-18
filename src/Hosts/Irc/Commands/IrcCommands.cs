@@ -50,7 +50,16 @@ internal sealed partial class IrcCommands(
 
 	public async Task HandleAsync(IrcSocket session, IrcMessage message, CancellationToken ct)
 	{
-		if (session.Session is { } connection) registry.MarkActive(connection);
+		if (session.Session is { } connection)
+		{
+			registry.MarkActive(connection);
+			// A closed session, such as one silent past its expiry, takes its socket with it.
+			if (!connection.IsOpen)
+			{
+				session.Close(IrcReplies.Closing(connection.State.Ended?.Reason ?? SessionEndReason.TimedOut));
+				return;
+			}
+		}
 
 		switch (message.Command)
 		{
@@ -142,19 +151,16 @@ internal sealed partial class IrcCommands(
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
 		if (attempt is null) return IrcReplies.TooManyAttempts;
 
-		if (!clients.Reserve(claimed, session)) return IrcReplies.AlreadyOnline;
-
 		var result = await registry.LoginAsync(
 			new LoginAttempt(claimed, new Md5Hash(Encoding.UTF8.GetBytes(password))), SessionType.Irc,
 			session.Address, null, 0, ct);
 		if (result.Session is IrcSession connection)
 		{
 			session.Session = connection;
-			clients.Bind(claimed, connection, session);
+			clients.Bind(connection, session);
 			return null;
 		}
 
-		clients.Release(claimed, session);
 		// Only a wrong name or password counts against the sign-in limit.
 		if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) attempt.Keep();
 		return result.Failure is LoginFailure.AlreadyOnline ? IrcReplies.AlreadyOnline : IrcReplies.BadCredentials;

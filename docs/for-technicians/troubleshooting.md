@@ -269,10 +269,9 @@ See [`configuration.md`](configuration.md).
 
 ## Client repeatedly shows `Unknown token, reconnecting`
 
-An osu! client's connection is held in memory.
-
-A server restart therefore ends the connections of the osu! clients, and they reconnect. This is expected behaviour. API
-tokens and IRC keys are stored and survive a restart.
+Sessions are stored, so osu! and API sessions survive a restart: a client that comes back within its expiry (300
+seconds for osu!, 8 hours for the API) resumes its session with its token. IRC sessions end with the server, and IRC
+clients sign in again with their password. This is expected behaviour.
 
 If clients repeatedly reconnect **without a server restart**, check:
 
