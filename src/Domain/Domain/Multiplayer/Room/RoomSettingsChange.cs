@@ -1,7 +1,6 @@
-using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Game.Mechanics;
 
-namespace Basil.Application.Multiplayer.Objects;
+namespace Basil.Domain.Multiplayer;
 
 public sealed record RoomSettingsChange(
 	string? Name = null,

@@ -1,6 +1,10 @@
+using System.Collections.Concurrent;
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
+using DomainRoom = Basil.Domain.Multiplayer.Room;
 using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
 using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
 
@@ -8,44 +12,41 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room : IEquatable<Room>
 {
-	private readonly Lock _sync = new();
+	private readonly ConcurrentDictionary<UserRecord, StableSession> _seats = new();
 
-	private bool _settlePending;
+	private ITimer? _timer;
+	private RoundSettlement? _timerSettlement;
 
-	internal Room(int id, MatchRecord match, MatchSettings settings, RoomContext context)
+	internal Room(int id, MatchRecord match, MatchSettings settings, RoomContext context, string password = "")
 	{
-		ArgumentOutOfRangeException.ThrowIfNegative(id);
-		Id = id;
-		Match = match;
-		Settings = new RoomSettings(match, settings);
-		Authority = new RoomAuthority(match);
-		Members = new RoomMembers();
-		Rounds = new RoomRounds();
-		Slots = new RoomSlots(this);
+		State = new DomainRoom(id, match, settings, password);
+		Members = new RoomMembers(State.Banned);
 		Context = context;
 	}
 
 	internal RoomContext Context { get; }
 
-	public MatchRecord Match { get; }
+	public DomainRoom State { get; }
 
-	public int Id { get; }
+	public MatchRecord Match => State.Match;
 
-	public RoomSlots Slots { get; }
+	public int Id => State.Id;
 
-	public RoomSettings Settings { get; }
+	public RoomSlots Slots => State.Slots;
 
-	public RoomAuthority Authority { get; }
+	public RoomSettings Settings => State.Settings;
+
+	public RoomAuthority Authority => State.Authority;
 
 	public RoomMembers Members { get; }
 
-	public RoomRounds Rounds { get; }
+	public RoomRounds Rounds => State.Rounds;
 
-	public bool IsClosed
-	{
-		get => Volatile.Read(ref field);
-		internal set => Volatile.Write(ref field, value);
-	}
+	public bool IsClosed => State.IsClosed;
+
+	public StableSession? Host => Authority.Host is { } host ? SessionOf(host) : null;
+
+	public IEnumerable<StableSession> Players => Slots.Select(PlayerAt).OfType<StableSession>();
 
 	internal DateTimeOffset? EmptySince { get; set; }
 
@@ -54,6 +55,23 @@ public sealed partial class Room : IEquatable<Room>
 	public string Url => $"osump://{Id}/{Settings.Password}";
 
 	public string UrlEmbed => $"({Settings.Name})[{Url}]";
+
+	private DateTimeOffset Now => Context.Clock.GetUtcNow();
+
+	public StableSession? SessionOf(UserRecord user)
+	{
+		return _seats.GetValueOrDefault(user);
+	}
+
+	public StableSession? PlayerAt(RoomSlot slot)
+	{
+		return slot.Player is { } player ? SessionOf(player) : null;
+	}
+
+	public RoomSlot? SlotOf(StableSession player)
+	{
+		return Seated(player) is { } record ? Slots.Find(record) : null;
+	}
 
 	public bool Equals(Room? other)
 	{
@@ -67,15 +85,36 @@ public sealed partial class Room : IEquatable<Room>
 
 	internal Lock.Scope Enter()
 	{
-		return _sync.EnterScope();
+		return State.Enter();
+	}
+
+	internal void MarkClosed()
+	{
+		State.Close();
+	}
+
+	private UserRecord? Seated(StableSession player)
+	{
+		return _seats.TryGetValue(player.Record, out var current) && ReferenceEquals(current, player)
+			? player.Record
+			: null;
+	}
+
+	private UserRecord? PlayerOf(Session actor)
+	{
+		return actor is StableSession stable ? Seated(stable) : null;
+	}
+
+	private StableSession? Unseat(UserRecord user)
+	{
+		return _seats.TryRemove(user, out var session) ? session : null;
 	}
 
 	private void Emit(RoomEvent @event)
 	{
 		Context.Events.Publish(@event);
-		if (!_settlePending) return;
+		if (!Rounds.TakeSettlePending()) return;
 
-		_settlePending = false;
 		SettleRound();
 	}
 

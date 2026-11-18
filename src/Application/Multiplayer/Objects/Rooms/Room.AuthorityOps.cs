@@ -1,5 +1,6 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -8,42 +9,36 @@ public sealed partial class Room
 {
 	internal RoomOutcome AddReferee(UserRecord actor, UserRecord user)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Authority.Creator.Equals(user)) return RoomOutcome.IsCreator;
-			if (Authority.Referees.Contains(user)) return RoomOutcome.AlreadyReferee;
-			if (Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomOutcome.TooManyReferees;
-
-			Authority.MutableReferees.Add(user);
-			Emit(new RoomRefereeAdded(this, actor, user));
-			return RoomOutcome.Ok;
+			var outcome = State.AddReferee(user);
+			if (outcome is RoomOutcome.Ok) Emit(new RoomRefereeAdded(this, actor, user));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome RemoveReferee(UserRecord actor, UserRecord user)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!Authority.MutableReferees.Remove(user)) return RoomOutcome.NotReferee;
-
-			Emit(new RoomRefereeRemoved(this, actor, user));
-			return RoomOutcome.Ok;
+			var outcome = State.RemoveReferee(user);
+			if (outcome is RoomOutcome.Ok) Emit(new RoomRefereeRemoved(this, actor, user));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome SetHost(UserRecord actor, StableSession? host)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (host is not null && Slots.Find(host) is null) return RoomOutcome.NotInRoom;
-			if (ReferenceEquals(Authority.Host, host)) return RoomOutcome.Ok;
+			if (host is not null && Seated(host) is null)
+				return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotInRoom;
 
-			Authority.Host = host;
-			Emit(new RoomHostChanged(this, actor, host));
-			return RoomOutcome.Ok;
+			var record = host?.Record;
+
+			var (outcome, changed) = State.SetHost(record);
+			if (changed) Emit(new RoomHostChanged(this, actor, host));
+			return outcome;
 		}
 	}
 }

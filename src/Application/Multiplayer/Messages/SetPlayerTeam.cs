@@ -4,6 +4,8 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Mediator;
+using Basil.Domain.Multiplayer;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 

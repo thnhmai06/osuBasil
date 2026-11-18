@@ -3,6 +3,8 @@ using Basil.Application.Bot.Commands.Mp;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
+using Basil.Domain.Multiplayer;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 

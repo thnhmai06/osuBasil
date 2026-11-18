@@ -1,10 +1,9 @@
 using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Multiplayer.Objects.Rooms;
+namespace Basil.Domain.Multiplayer;
 
-internal sealed class RoundSettlement
+public sealed class RoundSettlement
 {
 	private readonly HashSet<UserRecord> _completed = [];
 	private readonly Dictionary<UserRecord, GameTeam?> _participants;
@@ -16,44 +15,40 @@ internal sealed class RoundSettlement
 		_participants = participants.ToDictionary(p => p.Player, p => p.Team);
 	}
 
-	internal Round Round { get; }
+	public Round Round { get; }
 
-	internal List<RoundScore> Scores { get; } = [];
+	public List<RoundScore> Scores { get; } = [];
 
-	internal bool Closed { get; private set; }
+	public bool Closed { get; private set; }
 
-	internal ITimer? Timer { get; set; }
+	public bool HasParticipants => _participants.Count > 0;
 
-	internal bool HasParticipants => _participants.Count > 0;
+	public bool HasCompletions => _completed.Count > 0;
 
-	internal bool HasCompletions => _completed.Count > 0;
-
-	internal void Complete(UserRecord player)
+	public void Complete(UserRecord player)
 	{
 		if (_participants.ContainsKey(player)) _completed.Add(player);
 	}
 
-	internal void Leave(UserRecord player)
+	public void Leave(UserRecord player)
 	{
 		if (_participants.ContainsKey(player) && !_completed.Contains(player)) _struckOff.Add(player);
 	}
 
-	internal bool Awaits(UserRecord player, out GameTeam? team)
+	public bool Awaits(UserRecord player, out GameTeam? team)
 	{
 		team = null;
 		return !Closed && _participants.TryGetValue(player, out team) && !_struckOff.Contains(player) &&
 		       Scores.All(s => s.Score.Value.UserId != player.Id);
 	}
 
-	internal IReadOnlyList<UserRecord> Missing()
+	public IReadOnlyList<UserRecord> Missing()
 	{
 		return [.. _participants.Keys.Where(player => Awaits(player, out _))];
 	}
 
-	internal void Close()
+	public void Close()
 	{
 		Closed = true;
-		Timer?.Dispose();
-		Timer = null;
 	}
 }

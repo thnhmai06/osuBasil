@@ -1,6 +1,7 @@
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Mediator;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 

@@ -1,8 +1,6 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
-
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Game.Scores;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 
@@ -12,16 +10,12 @@ public sealed partial class Room
 {
 	internal RoomOutcome ReceiveScore(ScoreRecord score, UserRecord player)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Rounds.Settlement is not { } settlement || !settlement.Awaits(player, out var team) ||
-			    settlement.Round.BeatmapHash != score.Value.BeatmapHash)
-				return RoomOutcome.RoundMismatch;
+			var (outcome, settlement, roundScore) = State.ReceiveScore(score, player);
+			if (outcome is not RoomOutcome.Ok) return outcome;
 
-			var roundScore = new RoundScore(score, settlement.Round, team);
-			settlement.Scores.Add(roundScore);
-			Context.Events.Publish(new RoomRoundScoreSubmitted(this, settlement.Round, player, roundScore));
+			Context.Events.Publish(new RoomRoundScoreSubmitted(this, settlement!.Round, player, roundScore!.Value));
 			if (settlement.Round.EndedAt is not null && settlement.Missing().Count == 0) Decide(settlement);
 			return RoomOutcome.Ok;
 		}
@@ -29,19 +23,10 @@ public sealed partial class Room
 
 	internal bool AwaitsScore(UserRecord player, Md5Hash beatmap)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			return !IsClosed && Rounds.Settlement is { } settlement && settlement.Round.BeatmapHash == beatmap &&
-			       settlement.Awaits(player, out _);
+			return State.AwaitsScore(player, beatmap);
 		}
-	}
-
-	private void BeginSettlement(Round round, IReadOnlyList<StableSession> players)
-	{
-		DecideForClosing();
-		Rounds.Settlement?.Close();
-		Rounds.Settlement = new RoundSettlement(round,
-			players.Select(player => (player.Record, Slots.Find(player)?.Team)));
 	}
 
 	private void SettleRound()
@@ -53,21 +38,25 @@ public sealed partial class Room
 			Context.Events.Publish(new RoomRoundEnded(this, settlement.Round, wait));
 
 		if (settlement.Missing().Count == 0)
+		{
 			Decide(settlement);
-		else
-			settlement.Timer = Context.Clock.CreateTimer(_ => Fire(() => DecideAfterWait(settlement)), null,
-				wait, Timeout.InfiniteTimeSpan);
+			return;
+		}
+
+		_timer = Context.Clock.CreateTimer(_ => Fire(() => DecideAfterWait(settlement)), null,
+			wait, Timeout.InfiniteTimeSpan);
+		_timerSettlement = settlement;
 	}
 
 	internal void DecideForClosing()
 	{
-		if (Rounds.Settlement is { Closed: false, Round.EndedAt: not null } settlement)
-			Decide(settlement);
+		Publish(State.DecideForClosing());
+		SyncTimer();
 	}
 
 	private void DecideAfterWait(RoundSettlement settlement)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
 			if (IsClosed || settlement.Closed) return;
 
@@ -77,12 +66,14 @@ public sealed partial class Room
 
 	private void Decide(RoundSettlement settlement)
 	{
-		var missing = settlement.Missing();
-		settlement.Close();
-		if (!settlement.HasParticipants) return;
+		var decision = State.Decide(settlement);
+		SyncTimer();
+		Publish(decision);
+	}
 
-		var result = RoundResult.Decide(settlement.Round, settlement.Scores);
-		settlement.Round.Result = result;
-		Context.Events.Publish(new RoomRoundDecided(this, settlement.Round, result, missing));
+	private void Publish(RoundDecision? decision)
+	{
+		if (decision is { } d)
+			Context.Events.Publish(new RoomRoundDecided(this, d.Round, d.Result, d.Missing));
 	}
 }

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
@@ -9,128 +8,97 @@ public sealed partial class Room
 {
 	internal RoomOutcome StartRound()
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Rounds.InProgress) return RoomOutcome.InProgress;
-			if (Settings.Beatmap is null) return RoomOutcome.NoBeatmap;
+			var (outcome, round, players, previous) = State.StartRound(Now);
+			if (outcome is not RoomOutcome.Ok) return outcome;
 
-			var (round, players) = BeginRound();
-			Emit(new RoomRoundStarted(this, round, players));
+			SyncTimer();
+			Publish(previous);
+			Emit(new RoomRoundStarted(this, round!, [.. players.Select(player => SessionOf(player)!)]));
 			return RoomOutcome.Ok;
 		}
 	}
 
 	internal RoomOutcome AbortRound()
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!Rounds.InProgress) return RoomOutcome.NotInProgress;
+			var (outcome, round) = State.AbortRound(Now);
+			if (outcome is not RoomOutcome.Ok) return outcome;
 
-			var round = EndCurrentRound(true)!;
-			Emit(new RoomRoundAborted(this, round));
+			SyncTimer();
+			Emit(new RoomRoundAborted(this, round!));
 			return RoomOutcome.Ok;
 		}
 	}
 
 	internal RoomOutcome MarkLoaded(Session actor)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
-			if (slot.Loaded is true) return RoomOutcome.Ok;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
 
-			slot.Loaded = true;
-			if (!Rounds.AllLoadedAnnounced &&
-			    Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.Loaded is true))
+			var (outcome, signal) = State.MarkLoaded(player);
+			if (signal is { } s)
 			{
-				Rounds.AllLoadedAnnounced = true;
-				Emit(new RoomRoundAllLoaded(this, round, slot.Index));
-			}
-			else
-			{
-				Emit(new RoomRoundPlayerLoaded(this, round, slot.Index));
+				if (s.All)
+					Emit(new RoomRoundAllLoaded(this, s.Round, s.Slot));
+				else
+					Emit(new RoomRoundPlayerLoaded(this, s.Round, s.Slot));
 			}
 
-			return RoomOutcome.Ok;
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome SkipIntro(Session actor)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
-			if (slot.IntroSkipped is true) return RoomOutcome.Ok;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
 
-			slot.IntroSkipped = true;
-			if (!Rounds.AllSkippedAnnounced &&
-			    Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true))
+			var (outcome, signal) = State.SkipIntro(player);
+			if (signal is { } s)
 			{
-				Rounds.AllSkippedAnnounced = true;
-				Emit(new RoomRoundAllSkipped(this, round, slot.Index));
-			}
-			else
-			{
-				Emit(new RoomRoundPlayerSkipped(this, round, slot.Index));
+				if (s.All)
+					Emit(new RoomRoundAllSkipped(this, s.Round, s.Slot));
+				else
+					Emit(new RoomRoundPlayerSkipped(this, s.Round, s.Slot));
 			}
 
-			return RoomOutcome.Ok;
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome ReportFailed(Session actor)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
 
-			Emit(new RoomRoundPlayerFailed(this, round, slot.Index));
-			return RoomOutcome.Ok;
+			var (outcome, signal) = State.ReportFailed(player);
+			if (signal is { } s) Emit(new RoomRoundPlayerFailed(this, s.Round, s.Slot));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome ReportCompleted(Session actor)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!TryGetPlayingSlot(actor, out var round, out var slot)) return RoomOutcome.NotPlaying;
+			if (PlayerOf(actor) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotPlaying;
 
-			slot.SetStatus(RoomSlotStatus.Complete);
-			Rounds.Settlement?.Complete(slot.Player!.Record);
-			if (Slots.Any(s => s.Status is RoomSlotStatus.Playing))
+			var (outcome, signal) = State.ReportCompleted(player, Now);
+			if (signal is { } s)
 			{
-				Emit(new RoomRoundPlayerCompleted(this, round, slot.Index));
-			}
-			else
-			{
-				var ended = EndCurrentRound(false)!;
-				Emit(new RoomRoundCompleted(this, ended, slot.Index));
+				if (s.All)
+					Emit(new RoomRoundCompleted(this, s.Round, s.Slot));
+				else
+					Emit(new RoomRoundPlayerCompleted(this, s.Round, s.Slot));
 			}
 
-			return RoomOutcome.Ok;
+			return outcome;
 		}
-	}
-
-	private bool TryGetPlayingSlot(Session actor, [MaybeNullWhen(false)] out Round round,
-		[MaybeNullWhen(false)] out RoomSlot slot)
-	{
-		if (actor is StableSession connection &&
-		    Rounds.CurrentRound is { } current &&
-		    Slots.Find(connection) is { Status: RoomSlotStatus.Playing } playing)
-		{
-			round = current;
-			slot = playing;
-			return true;
-		}
-
-		round = null;
-		slot = null;
-		return false;
 	}
 }

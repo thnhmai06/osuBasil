@@ -13,7 +13,7 @@ internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 {
 	public static IEnumerable<Session> Of(Room room)
 	{
-		return room.Slots.Select(Session? (slot) => slot.Player).OfType<Session>()
+		return room.Players.Cast<Session>()
 			.Concat(room.Members.Observers);
 	}
 
@@ -26,7 +26,7 @@ internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 	{
 		if (room.IsClosed) return;
 		var match = StableView.Match(room);
-		outbox.Send(room.Slots.Select(Session? (slot) => slot.Player).OfType<Session>(),
+		outbox.Send(room.Players,
 			writer => writer.UpdateMatch(match));
 		outbox.Send(room.Members.Observers, writer => writer.UpdateMatch(match, false));
 		if (!room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.UpdateMatch(match, false));
@@ -200,7 +200,7 @@ internal sealed class RoundPlayerSkippedDelivery(RoomAudience audience) : INotif
 	public ValueTask Handle(RoomRoundPlayerSkipped notification, CancellationToken ct)
 	{
 		if (notification.Room.Slots[notification.Slot].Player is { } player)
-			audience.ToRoom(notification.Room, writer => writer.MatchPlayerSkipped(player.Record.Id));
+			audience.ToRoom(notification.Room, writer => writer.MatchPlayerSkipped(player.Id));
 
 		return ValueTask.CompletedTask;
 	}

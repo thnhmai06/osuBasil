@@ -1,14 +1,14 @@
 using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Multiplayer;
 
-namespace Basil.Application.Multiplayer.Objects.Rooms;
+namespace Basil.Domain.Multiplayer;
 
 public sealed class RoomSettings
 {
 	private readonly MatchRecord _match;
 
-	internal RoomSettings(MatchRecord match, MatchSettings matchSettings)
+	internal RoomSettings(MatchRecord match, MatchSettings matchSettings, string password)
 	{
+		Password = password;
 		_match = match;
 		Editable = matchSettings;
 		MatchSettings = new MatchSettingsView(matchSettings);
@@ -22,7 +22,7 @@ public sealed class RoomSettings
 
 	public bool IsPrivate => _match.Value.IsPrivate;
 
-	public string Password { get; internal set; } = string.Empty;
+	public string Password { get; internal set; }
 
 	public BeatmapReference? Beatmap { get; internal set; }
 

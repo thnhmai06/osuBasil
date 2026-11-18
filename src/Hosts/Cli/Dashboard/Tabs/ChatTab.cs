@@ -448,9 +448,9 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 				var player = slot.Player;
 				if (player is null) continue;
 
-				players.Add(new MemberItem(player.Record.Value.Name,
-					ReferenceEquals(host, player) ? "(H)" : room.Rounds.InProgress ? "(P)" : string.Empty,
-					(ulong)player.Record.Value.Privileges));
+				players.Add(new MemberItem(player.Value.Name,
+					player.Equals(host) ? "(H)" : room.Rounds.InProgress ? "(P)" : string.Empty,
+					(ulong)player.Value.Privileges));
 			}
 		}
 		else if (_services.GetRequiredService<GeneralChannelRegistry>().Find(_current) is { } channel)

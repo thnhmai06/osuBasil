@@ -1,9 +1,11 @@
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 using System.Text.Json;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
+using Basil.Domain.Multiplayer;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;

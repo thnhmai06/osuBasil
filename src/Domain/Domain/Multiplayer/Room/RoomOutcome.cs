@@ -1,4 +1,4 @@
-namespace Basil.Application.Multiplayer.Objects;
+namespace Basil.Domain.Multiplayer;
 
 public enum RoomOutcome : byte
 {

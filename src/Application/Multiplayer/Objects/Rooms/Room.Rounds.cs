@@ -1,5 +1,3 @@
-using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -21,62 +19,23 @@ public sealed partial class Room
 
 	internal Round? EndCurrentRound(bool aborted)
 	{
-		if (Rounds.CurrentRound is not { } round) return null;
-
-		round.EndedAt = Context.Clock.GetUtcNow();
-		round.Aborted = aborted;
-		Slots.ResetPlayers();
-		if (aborted)
-			Rounds.Settlement?.Close();
-		else
-			_settlePending = true;
+		var round = State.EndCurrentRound(aborted, Now);
+		SyncTimer();
 		return round;
-	}
-
-	internal (Round Round, IReadOnlyList<StableSession> Players) BeginRound()
-	{
-		var round = new Round
-		{
-			Index = (Rounds.LastRound?.Index ?? 0) + 1,
-			Match = Match,
-			BeatmapHash = Settings.Beatmap!.Hash,
-			Settings = Settings.Editable.Clone(),
-			StartedAt = Context.Clock.GetUtcNow(),
-			EndedAt = null
-		};
-		Rounds.LastRound = round;
-		Rounds.AllLoadedAnnounced = false;
-		Rounds.AllSkippedAnnounced = false;
-
-		var players = new List<StableSession>();
-		foreach (var slot in Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
-		{
-			slot.SetStatus(RoomSlotStatus.Playing);
-			players.Add(slot.Player!);
-		}
-
-		BeginSettlement(round, players);
-		if (players.Count == 0) EndCurrentRound(false);
-		return (round, players);
 	}
 
 	internal RoomRoundProgress? AdvanceRound()
 	{
-		if (Rounds.CurrentRound is not { } round) return null;
+		return State.AdvanceRound(Now);
+	}
 
-		var playing = Slots.Where(s => s.Status is RoomSlotStatus.Playing).ToList();
-		if (playing.Count == 0)
-		{
-			EndCurrentRound(false);
-			return new RoomRoundProgress(round, false, false, true);
-		}
+	private void SyncTimer()
+	{
+		if (_timer is null) return;
+		if (Rounds.Settlement is { Closed: false } settlement && ReferenceEquals(settlement, _timerSettlement)) return;
 
-		var allLoaded = !Rounds.AllLoadedAnnounced && playing.All(s => s.Loaded is true);
-		if (allLoaded) Rounds.AllLoadedAnnounced = true;
-
-		var allSkipped = !Rounds.AllSkippedAnnounced && playing.All(s => s.IntroSkipped is true);
-		if (allSkipped) Rounds.AllSkippedAnnounced = true;
-
-		return allLoaded || allSkipped ? new RoomRoundProgress(round, allLoaded, allSkipped, false) : null;
+		_timer.Dispose();
+		_timer = null;
+		_timerSettlement = null;
 	}
 }

@@ -6,6 +6,7 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Host.Shared.Errors;
 

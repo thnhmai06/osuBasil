@@ -1,8 +1,7 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Game.Mechanics;
-using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
@@ -10,23 +9,9 @@ public sealed partial class Room
 {
 	internal RoomSlot? Seat(StableSession player)
 	{
-		if (Members.Banned.Contains(player.Record))
-			throw new InvalidOperationException("The user is banned from this room.");
-
-		if (Slots.Find(player) is { } existing) return existing;
-
-		var slot = Slots.FirstOrDefault(s => s is { Locked: false, Player: null });
-		if (slot is null) return null;
-
-		slot.Occupy(player);
-
-		if (Settings.Editable.TeamType.IsTeamMode())
-		{
-			var redCount = Slots.Count(s => s.Team == GameTeam.Red);
-			var blueCount = Slots.Count(s => s.Team == GameTeam.Blue);
-			slot.Team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
-		}
-
+		var added = _seats.TryAdd(player.Record, player);
+		var slot = State.Seat(player.Record);
+		if (slot is null && added) Unseat(player.Record);
 		return slot;
 	}
 
@@ -43,7 +28,7 @@ public sealed partial class Room
 
 	public bool IsPresent(Session connection)
 	{
-		return (connection is StableSession player && Slots.Find(player) is not null)
+		return (connection is StableSession player && SlotOf(player) is not null)
 		       || (connection is TourneySession observer && Members.Observers.Contains(observer));
 	}
 
@@ -59,20 +44,17 @@ public sealed partial class Room
 		if (Vacate(actor) is not { } slot) return RoomOutcome.NotInRoom;
 
 		var progress = AdvanceRound();
-		Emit(new RoomPlayerLeft(this, actor, slot.Index, Authority.Host, progress));
+		Emit(new RoomPlayerLeft(this, actor, slot.Index, Host, progress));
 		ReportIfEmpty();
 		return RoomOutcome.Ok;
 	}
 
 	internal RoomSlot? Vacate(StableSession player)
 	{
-		var slot = Slots.Find(player);
-		if (slot is null) return null;
+		if (Seated(player) is not { } record) return null;
 
-		PassHostFrom(player);
-
-		Rounds.Settlement?.Leave(player.Record);
-		slot.Clear();
+		var slot = State.Vacate(record);
+		Unseat(record);
 		return slot;
 	}
 
@@ -91,24 +73,10 @@ public sealed partial class Room
 		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
 	}
 
-	private void PassHostFrom(StableSession leaving)
-	{
-		if (!ReferenceEquals(Authority.Host, leaving)) return;
-		Authority.Host = Slots
-			.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
-			?.Player;
-	}
-
 	private RoomOutcome ReplaceSeat(StableSession player, StableSession stale)
 	{
-		var slot = Slots.Find(stale)!;
-		var team = slot.Team;
-		var wasHost = ReferenceEquals(Authority.Host, stale);
-
-		slot.Clear();
-		slot.Occupy(player);
-		slot.Team = team;
-		if (wasHost) Authority.Host = player;
+		_seats[player.Record] = player;
+		var slot = State.Reseat(player.Record);
 
 		var progress = AdvanceRound();
 		MarkOccupied();

@@ -8,6 +8,8 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Game.Mechanics;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Basil.Domain.Multiplayer;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Host.Shared.Views;
 

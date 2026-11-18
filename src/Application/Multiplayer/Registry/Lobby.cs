@@ -1,3 +1,4 @@
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 using System.Collections.Concurrent;
 using Basil.Application.Multiplayer.Capabilities;
 using Basil.Application.Multiplayer.Objects;
@@ -90,7 +91,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	public Room? RoomOf(StableSession player)
 	{
 		// ponytail: scans every room; add a player index if room counts grow large.
-		return _rooms.Select(pair => pair.Value).FirstOrDefault(room => room.Slots.Find(player) is not null);
+		return _rooms.Select(pair => pair.Value).FirstOrDefault(room => room.SlotOf(player) is not null);
 	}
 
 	internal int? Reserve()
@@ -170,12 +171,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		var aborted = room.EndCurrentRound(true);
 		room.DecideForClosing();
 
-		var evicted = room.Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
+		var evicted = room.Players.ToList();
 		foreach (var player in evicted) room.Vacate(player);
 
 		room.Match.Value.EndedAt = Context.Clock.GetUtcNow();
 		room.Members.MutableObservers.Clear();
-		room.IsClosed = true;
+		room.MarkClosed();
 		Remove(room);
 		Context.Events.Publish(new LobbyRoomClosed(room, actor, evicted, aborted));
 	}
@@ -245,7 +246,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		var room = Establish(id, match, settings, password, seat);
 
 		var closesAt = !room.Slots.Any(slot => slot.Player is not null) ? StartEmptyClock(room) : (DateTimeOffset?)null;
-		Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
+		Context.Events.Publish(new LobbyRoomOpened(room, room.Host, closesAt));
 		return (room, RoomOutcome.Ok);
 	}
 
@@ -277,8 +278,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		using (Enter())
 		{
 			var context = new RoomContext(Context.Clock, Context.RoomEvents, this, Context.Users, Context.Settings);
-			room = new Room(id, match, settings ?? new MatchSettings(), context);
-			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
+			room = new Room(id, match, settings ?? new MatchSettings(), context, password);
 			if (seat is not null && RoomOf(seat) is null && TryClaim(seat, room))
 				try
 				{
@@ -308,7 +308,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	internal static void SeatCreator(Room room, StableSession creator)
 	{
 		if (room.Seat(creator) is null) return;
-		room.Authority.Host = creator;
+		room.State.SetHost(creator.Record);
 	}
 
 	public Task ReleaseAsync(Session connection)

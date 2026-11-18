@@ -5,6 +5,7 @@ using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
 
@@ -64,11 +65,11 @@ public readonly struct ScopedRoom
 		var privileges = RoomPrivileges.None;
 
 		// Player: seated StableSession
-		if (actor is StableSession stable && room.Slots.Find(stable) is not null)
+		if (actor is StableSession stable && room.SlotOf(stable) is not null)
 			privileges |= RoomPrivileges.Player;
 
 		// Host: reference equals
-		if (ReferenceEquals(actor, room.Authority.Host))
+		if (ReferenceEquals(actor, room.Host))
 			privileges |= RoomPrivileges.Host;
 
 		// Referee: managed by but not creator

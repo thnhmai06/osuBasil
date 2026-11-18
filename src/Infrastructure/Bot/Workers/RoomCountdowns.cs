@@ -1,3 +1,4 @@
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 using System.Collections.Concurrent;
 using Basil.Application.Bot.Announcements;
 using Basil.Application.Bot.Objects;
@@ -10,6 +11,7 @@ using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 using Microsoft.Extensions.Logging;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Infrastructure.Bot.Workers;
 

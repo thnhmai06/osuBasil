@@ -126,9 +126,9 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 			.. lobby.Rooms.Values.OrderBy(room => room.Id).Select(room => new RoomRow(room.Id, room.Settings.Name,
 				room.Slots.Count(slot => slot.Player is not null), room.Slots.Count(slot => !slot.Locked),
 				room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
-				room.Authority.Host?.Record.Value.Name ?? "-",
+				room.Authority.Host?.Value.Name ?? "-",
 				[
-					.. room.Slots.Select(slot => new SlotRow(slot.Index, slot.Player?.Record.Value.Name ?? "-",
+					.. room.Slots.Select(slot => new SlotRow(slot.Index, slot.Player?.Value.Name ?? "-",
 						slot.Locked ? "locked" : slot.Status?.ToString() ?? "open"))
 				]))
 		];
@@ -137,7 +137,7 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 	private static string RoomOf(Lobby lobby, User user)
 	{
 		var room = lobby.Rooms.Values.FirstOrDefault(r =>
-			r.Slots.Any(slot => slot.Player is not null && ReferenceEquals(slot.Player.User, user)));
+			r.Slots.Any(slot => slot.Player is not null && slot.Player.Equals(user.Record)));
 		return room is null ? "-" : $"#{room.Id}";
 	}
 

@@ -42,13 +42,13 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 			open.Add(new RoomItem(room.Id, room.Settings.Name, room.Slots.Count(slot => slot.Player is not null),
 				room.Slots.Count(slot => !slot.Locked),
 				room.Rounds.InProgress ? "playing" : room.Slots.Locked ? "locked" : "waiting",
-				host?.Record.Value.Name ?? string.Empty, room.Authority.Creator.Value.Name,
+				host?.Value.Name ?? string.Empty, room.Authority.Creator.Value.Name,
 				string.Join(", ", room.Authority.Referees.Select(referee => referee.Value.Name)),
-				host is null ? 0UL : (ulong)host.Record.Value.Privileges, (ulong)room.Authority.Creator.Value.Privileges, true,
+				host is null ? 0UL : (ulong)host.Value.Privileges, (ulong)room.Authority.Creator.Value.Privileges, true,
 				room.Slots.Locked,
 				[
 					.. room.Slots.Where(slot => slot.Player is not null).Select(slot => (slot.Index,
-						slot.Player!.Record.Value.Name, ReferenceEquals(host, slot.Player.User),
+						slot.Player!.Value.Name, slot.Player.Equals(host),
 						slot.Status?.ToString() ?? "open"))
 				],
 				new RoomRules(room.Settings.IsPrivate, room.Settings.Password.Length > 0,

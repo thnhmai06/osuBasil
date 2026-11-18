@@ -3,6 +3,7 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Mediator;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Messages;
 

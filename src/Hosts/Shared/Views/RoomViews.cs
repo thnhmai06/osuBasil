@@ -1,6 +1,7 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Host.Shared.Views;
 
@@ -40,14 +41,14 @@ public sealed record RoomView(
 		return new RoomView(room.Id, room.Match.Id, room.Settings.Name, room.Settings.IsPrivate,
 			room.Settings.Password.Length > 0, room.Slots.Locked, room.Rounds.InProgress,
 			UserRef.Of(room.Authority.Creator),
-			host is null ? null : UserRef.Of(host.Record), [.. room.Authority.Referees.Select(UserRef.Of)],
+			host is null ? null : UserRef.Of(host), [.. room.Authority.Referees.Select(UserRef.Of)],
 			[.. room.Members.Banned.Select(UserRef.Of)], room.Settings.Beatmap?.Id, settings.Mode,
 			settings.Mods.ToString(),
 			settings.Freemods, settings.TeamType, settings.WinCondition,
 			[
 				.. room.Slots.Select(slot => new SlotView(slot.Index, slot.Locked, slot.Status, slot.Team,
-					slot.Mods?.ToString(), slot.Player is null ? null : UserRef.Of(slot.Player.Record),
-					host is not null && slot.Player == host))
+					slot.Mods?.ToString(), slot.Player is null ? null : UserRef.Of(slot.Player),
+					host is not null && slot.Player.Equals(host)))
 			]);
 	}
 }

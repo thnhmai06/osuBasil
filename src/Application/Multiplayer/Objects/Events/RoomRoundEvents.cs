@@ -2,12 +2,11 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Application.Multiplayer.Objects.Events;
 
 public abstract record RoomRoundEvent(Room Room, Round Round) : RoomEvent(Room);
-
-public sealed record RoomRoundProgress(Round Round, bool AllLoaded, bool AllSkipped, bool Completed);
 
 public sealed record RoomRoundStarted(
 	Room Room,

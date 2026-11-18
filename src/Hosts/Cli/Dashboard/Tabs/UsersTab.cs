@@ -59,7 +59,7 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 		var room = user is null
 			? string.Empty
 			: lobby.Rooms.Values.FirstOrDefault(r =>
-				r.Slots.Any(slot => slot.Player is not null && ReferenceEquals(slot.Player.User, user)))?.Id is { } id
+				r.Slots.Any(slot => slot.Player is not null && slot.Player.Equals(user.Record)))?.Id is { } id
 				? $"#{id}"
 				: string.Empty;
 		var managed = string.Join(", ", lobby.Rooms.Values

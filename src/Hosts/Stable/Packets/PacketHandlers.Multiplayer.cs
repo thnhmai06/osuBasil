@@ -10,6 +10,7 @@ using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Shared.Structures.Cryptography;
 using Mediator;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Host.Stable.Packets;
 
@@ -140,7 +141,7 @@ internal sealed partial class PacketHandlers
 
 	private Task TransferHostAsync(StableSession osu, Room room, int slot, CancellationToken ct)
 	{
-		return room.Slots.At(slot)?.Player is { } player
+		return room.Slots.At(slot) is { } target && room.PlayerAt(target) is { } player
 			? Ask(new SetRoomHost(osu, room, player), ct)
 			: Task.CompletedTask;
 	}
@@ -152,9 +153,9 @@ internal sealed partial class PacketHandlers
 
 	private void ForwardScore(StableSession osu, Room room, PacketReader reader)
 	{
-		if (room.Slots.Find(osu) is not { } slot || !room.Rounds.InProgress) return;
+		if (room.SlotOf(osu) is not { } slot || !room.Rounds.InProgress) return;
 		var frame = reader.ReadScoreFrame() with { Id = slot.Index };
-		outbox.Send(room.Slots.Select(Session? (other) => other.Player).OfType<Session>()
+		outbox.Send(room.Players.Cast<Session>()
 			.Concat(room.Members.Observers), writer => writer.MatchScoreUpdate(frame));
 	}
 

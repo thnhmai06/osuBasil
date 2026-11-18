@@ -1,20 +1,15 @@
 using System.Collections;
 using System.Collections.Immutable;
-using Basil.Application.Users.Objects.Sessions;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Multiplayer.Objects.Rooms;
+namespace Basil.Domain.Multiplayer;
 
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {
-	public readonly Room Room;
-
 	private readonly ImmutableArray<RoomSlot> _slots;
 
-	internal RoomSlots(Room room)
+	internal RoomSlots()
 	{
-		Room = room;
 		_slots = [.. Enumerable.Range(1, RoomRules.MaxPlayers).Select(index => new RoomSlot(this, index))];
 	}
 
@@ -43,12 +38,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 	public RoomSlot? Find(UserRecord user)
 	{
-		return _slots.FirstOrDefault(s => user.Equals(s.Player?.Record));
-	}
-
-	public RoomSlot? Find(StableSession player)
-	{
-		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
+		return _slots.FirstOrDefault(s => user.Equals(s.Player));
 	}
 
 	internal void ResetPlayers()

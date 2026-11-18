@@ -7,6 +7,8 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
@@ -62,11 +64,11 @@ internal sealed partial class MpCommands
 			: null;
 	}
 
-	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, StableSession player,
+	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, UserRecord player,
 		bool showTeam)
 	{
 		var tags = new List<string>();
-		if (room.Authority.Host is not null && player == room.Authority.Host)
+		if (room.Authority.Host is not null && player.Equals(room.Authority.Host))
 			tags.Add(replies.Text(MpReplies.HostTag));
 		if (slot.Mods is { } slotMods && slotMods != GameMods.NoMod) tags.Add(slotMods.ToString());
 		var tagText = tags.Count > 0
@@ -78,8 +80,8 @@ internal sealed partial class MpCommands
 			slot = $"{slot.Index,2}",
 			status = $"{SlotStatusText(replies, slot.Status),-10}",
 			team = teamText,
-			id = $"{player.Record.Id,6}",
-			name = $"{player.Record.Value.Name,-16}",
+			id = $"{player.Id,6}",
+			name = $"{player.Value.Name,-16}",
 			tags = tagText
 		});
 	}

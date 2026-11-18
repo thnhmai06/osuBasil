@@ -4,9 +4,11 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Users;
+using Basil.Domain.Multiplayer;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Domain.Users;
+using Room = Basil.Application.Multiplayer.Objects.Rooms.Room;
 
 namespace Basil.Host.Stable.Support;
 
@@ -58,13 +60,13 @@ internal static class StableView
 	{
 		var slots = room.Slots.Select(slot => new RoomSlotPacket(SlotStatus(slot),
 			(int)WireMap.ToWire(slot.Team),
-			slot.Mods is { } mods ? (int)mods : 0, slot.Player?.Record.Id)).ToList();
+			slot.Mods is { } mods ? (int)mods : 0, slot.Player?.Id)).ToList();
 		var beatmap = room.Settings.Beatmap;
 		return new RoomPacket(room.Id, room.Rounds.InProgress, (int)room.Settings.MatchSettings.Mods,
 			room.Settings.Name,
 			room.Settings.Password, beatmap?.Name ?? string.Empty, beatmap?.Id ?? 0,
 			beatmap?.Hash.ToString() ?? string.Empty,
-			slots, room.Authority.Host?.Record.Id ?? RoomPacket.NoHostId,
+			slots, room.Authority.Host?.Id ?? RoomPacket.NoHostId,
 			(int)room.Settings.MatchSettings.Mode,
 			(int)room.Settings.MatchSettings.WinCondition,
 			(int)room.Settings.MatchSettings.TeamType,

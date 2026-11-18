@@ -1,7 +1,7 @@
-using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Users;
 
-namespace Basil.Application.Multiplayer.Objects.Rooms;
+namespace Basil.Domain.Multiplayer;
 
 public sealed class RoomSlot
 {
@@ -17,7 +17,7 @@ public sealed class RoomSlot
 
 	public bool Locked { get; internal set; }
 
-	public StableSession? Player { get; internal set; }
+	public UserRecord? Player { get; internal set; }
 
 	public RoomSlotStatus? Status { get; internal set; }
 
@@ -29,7 +29,7 @@ public sealed class RoomSlot
 
 	public GameMods? Mods { get; internal set; }
 
-	internal void Occupy(StableSession player)
+	internal void Occupy(UserRecord player)
 	{
 		if (Locked) throw new InvalidOperationException("The slot is locked.");
 		if (Player is not null) throw new InvalidOperationException("The slot is already occupied.");
@@ -88,7 +88,7 @@ public sealed class RoomSlot
 }
 
 internal readonly record struct RoomSlotState(
-	StableSession Player,
+	UserRecord Player,
 	RoomSlotStatus? Status,
 	GameTeam? Team,
 	GameMods? Mods,

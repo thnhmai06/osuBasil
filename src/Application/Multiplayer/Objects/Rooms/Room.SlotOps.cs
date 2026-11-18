@@ -10,192 +10,107 @@ public sealed partial class Room
 {
 	internal RoomOutcome ChangeSlot(StableSession stable, int index)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(stable) is not { } from) return RoomOutcome.NotInRoom;
-			if (Slots.Locked) return RoomOutcome.RoomLocked;
-			if (Rounds.InProgress) return RoomOutcome.InProgress;
-			if (Slots.At(index) is not { } to) return RoomOutcome.SlotNotOpen;
-			if (ReferenceEquals(from, to)) return RoomOutcome.Ok;
-			if (to.Locked || to.Player is not null) return RoomOutcome.SlotNotOpen;
+			if (Seated(stable) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotInRoom;
 
-			from.MoveTo(to);
-			Emit(new RoomPlayerMoved(this, stable, from.Index, to.Index));
-			return RoomOutcome.Ok;
+			var (outcome, move) = State.ChangeSlot(player, index);
+			if (move is { } moved) Emit(new RoomPlayerMoved(this, stable, moved.From, moved.To));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome MovePlayer(UserRecord player, int index)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(player) is not { Player: { } seated } from) return RoomOutcome.NotInRoom;
-			if (Slots.At(index) is not { } to) return RoomOutcome.SlotNotOpen;
-			if (ReferenceEquals(from, to)) return RoomOutcome.Ok;
-			if (to.Locked || to.Player is not null) return RoomOutcome.SlotNotOpen;
-
-			from.MoveTo(to);
-			Emit(new RoomPlayerMoved(this, seated, from.Index, to.Index));
-			return RoomOutcome.Ok;
+			var (outcome, move) = State.MovePlayer(player, index);
+			if (move is { } moved) Emit(new RoomPlayerMoved(this, SessionOf(player)!, moved.From, moved.To));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome ArrangeSlots(IReadOnlyList<SlotArrangement> arrangement)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Rounds.InProgress) return RoomOutcome.InProgress;
-
-			var seated = Slots.Where(s => s.Player is not null)
-				.ToDictionary(s => s.Player!.Record, s => s.Capture());
-			var named = arrangement.Where(e => e.Player is not null).Select(e => e.Player!).ToList();
-			if (!IsValidArrangement(arrangement, seated, named)) return RoomOutcome.InvalidSettings;
-
-			ApplyArrangement(arrangement, seated);
-
-			Emit(new RoomSlotsArranged(this));
-			return RoomOutcome.Ok;
-		}
-	}
-
-	private static bool IsValidArrangement(IReadOnlyList<SlotArrangement> arrangement,
-		Dictionary<UserRecord, RoomSlotState> seated, List<UserRecord> named)
-	{
-		return !(arrangement.Any(e =>
-			         e.Index is < 1 or > RoomRules.MaxPlayers || (e.Player is not null && e.Locked)) ||
-		         arrangement.DistinctBy(e => e.Index).Count() != arrangement.Count ||
-		         named.Count != seated.Count || !seated.Keys.ToHashSet().SetEquals(named));
-	}
-
-	private void ApplyArrangement(IReadOnlyList<SlotArrangement> arrangement,
-		Dictionary<UserRecord, RoomSlotState> seated)
-	{
-		foreach (var slot in Slots)
-			slot.Clear();
-
-		foreach (var entry in arrangement)
-		{
-			var slot = Slots.At(entry.Index)!;
-			slot.Locked = entry.Locked;
-			if (entry.Player is null) continue;
-
-			slot.Restore(seated[entry.Player]);
-			if (entry.Team is { } team && Settings.Editable.TeamType.IsTeamMode()) slot.Team = team;
+			var outcome = State.ArrangeSlots(arrangement);
+			if (outcome is RoomOutcome.Ok) Emit(new RoomSlotsArranged(this));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome SetReady(StableSession stable, bool ready)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(stable) is not { } slot) return RoomOutcome.NotInRoom;
-			if (Rounds.InProgress) return RoomOutcome.InProgress;
+			if (Seated(stable) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotInRoom;
 
-			var status = ready ? RoomSlotStatus.Ready : RoomSlotStatus.NotReady;
-			if (slot.Status == status) return RoomOutcome.Ok;
-
-			slot.SetStatus(status);
-			Emit(new RoomSlotStatusChanged(this, slot.Index, status));
-			return RoomOutcome.Ok;
+			var (outcome, changed) = State.SetReady(player, ready);
+			if (changed is { } slot)
+				Emit(new RoomSlotStatusChanged(this, slot, ready ? RoomSlotStatus.Ready : RoomSlotStatus.NotReady));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome SetHasMap(StableSession stable, bool has)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(stable) is not { } slot) return RoomOutcome.NotInRoom;
-			if (slot.Status is RoomSlotStatus.Playing || (has && slot.Status is not RoomSlotStatus.NoMap))
-				return RoomOutcome.Ok;
+			if (Seated(stable) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotInRoom;
 
-			var status = has ? RoomSlotStatus.NotReady : RoomSlotStatus.NoMap;
-			if (slot.Status == status) return RoomOutcome.Ok;
-
-			slot.SetStatus(status);
-			Emit(new RoomSlotStatusChanged(this, slot.Index, status));
-			return RoomOutcome.Ok;
+			var (outcome, changed) = State.SetHasMap(player, has);
+			if (changed is { } slot)
+				Emit(new RoomSlotStatusChanged(this, slot, has ? RoomSlotStatus.NotReady : RoomSlotStatus.NoMap));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome ToggleTeam(StableSession stable)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(stable) is not { } slot) return RoomOutcome.NotInRoom;
-			if (!Settings.Editable.TeamType.IsTeamMode()) return RoomOutcome.NoTeams;
-			if (Slots.Locked) return RoomOutcome.RoomLocked;
-			if (Rounds.InProgress) return RoomOutcome.InProgress;
+			if (Seated(stable) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotInRoom;
 
-			var team = slot.Team is GameTeam.Red ? GameTeam.Blue : GameTeam.Red;
-			slot.Team = team;
-			Emit(new RoomSlotTeamChanged(this, slot.Index, team));
-			return RoomOutcome.Ok;
+			var (outcome, slot, team) = State.ToggleTeam(player);
+			if (outcome is RoomOutcome.Ok) Emit(new RoomSlotTeamChanged(this, slot, team));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome SetTeam(UserRecord player, GameTeam team)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (!Settings.Editable.TeamType.IsTeamMode()) return RoomOutcome.NoTeams;
-			if (Slots.Find(player) is not { Player: not null } slot) return RoomOutcome.NotInRoom;
-			if (slot.Team == team) return RoomOutcome.Ok;
-
-			slot.Team = team;
-			Emit(new RoomSlotTeamChanged(this, slot.Index, team));
-			return RoomOutcome.Ok;
+			var (outcome, changed) = State.SetTeam(player, team);
+			if (changed is { } slot) Emit(new RoomSlotTeamChanged(this, slot, team));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome SetMods(StableSession stable, GameMods mods)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.Find(stable) is not { } slot) return RoomOutcome.NotInRoom;
-			if (Rounds.InProgress) return RoomOutcome.InProgress;
-			if (!Settings.Editable.Freemods) return RoomOutcome.NotFreemod;
-			if ((mods & GameModsGroups.SpeedChanging) != GameMods.NoMod) return RoomOutcome.SpeedModNotAllowed;
-			if (!mods.IsValid(Settings.Editable.Mode)) return RoomOutcome.InvalidMods;
-			if (slot.Mods == mods) return RoomOutcome.Ok;
+			if (Seated(stable) is not { } player) return IsClosed ? RoomOutcome.RoomClosed : RoomOutcome.NotInRoom;
 
-			slot.Mods = mods;
-			Emit(new RoomSlotModsChanged(this, slot.Index, mods));
-			return RoomOutcome.Ok;
+			var (outcome, changed) = State.SetMods(player, mods);
+			if (changed is { } slot) Emit(new RoomSlotModsChanged(this, slot, mods));
+			return outcome;
 		}
 	}
 
 	internal RoomOutcome ToggleSlotLock(Session actor, int index)
 	{
-		lock (_sync)
+		using (State.Enter())
 		{
-			if (IsClosed) return RoomOutcome.RoomClosed;
-			if (Slots.At(index) is not { } slot) return RoomOutcome.SlotNotOpen;
-			if (ReferenceEquals(slot.Player, actor)) return RoomOutcome.OwnSlot;
+			var (outcome, slot, locking, evicted, progress) = State.LockSlot(PlayerOf(actor), index, Now);
+			if (outcome is not RoomOutcome.Ok) return outcome;
 
-			var locking = !slot.Locked;
+			var session = evicted is null ? null : Unseat(evicted);
+			Emit(new RoomSlotLockChanged(this, slot, locking, session, Host, progress));
 
-			StableSession? evicted = null;
-			RoomRoundProgress? progress = null;
-			if (locking && slot.Player is { } player)
-			{
-				evicted = player;
-				Vacate(player);
-				progress = AdvanceRound();
-			}
-
-			slot.Locked = locking;
-			Emit(new RoomSlotLockChanged(this, slot.Index, locking, evicted, Authority.Host,
-				progress));
-
-			if (evicted is not null) ReportIfEmpty();
+			if (session is not null) ReportIfEmpty();
 
 			return RoomOutcome.Ok;
 		}

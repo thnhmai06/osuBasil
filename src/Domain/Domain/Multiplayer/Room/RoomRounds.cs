@@ -1,6 +1,4 @@
-using Basil.Domain.Multiplayer;
-
-namespace Basil.Application.Multiplayer.Objects.Rooms;
+namespace Basil.Domain.Multiplayer;
 
 public sealed class RoomRounds
 {
@@ -14,5 +12,14 @@ public sealed class RoomRounds
 
 	internal bool AllSkippedAnnounced { get; set; }
 
-	internal RoundSettlement? Settlement { get; set; }
+	public RoundSettlement? Settlement { get; internal set; }
+
+	internal bool SettlePending { get; set; }
+
+	public bool TakeSettlePending()
+	{
+		var pending = SettlePending;
+		SettlePending = false;
+		return pending;
+	}
 }
