@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Events;
@@ -11,8 +11,8 @@ public sealed record RoomPlayerBanned(
 	UserRecord Actor,
 	UserRecord Player,
 	int? Vacated,
-	StableConnection? Evicted,
-	StableConnection? Host,
+	StableSession? Evicted,
+	StableSession? Host,
 	RoomRoundProgress? RoundProgress)
 	: RoomAccessEvent(Room);
 

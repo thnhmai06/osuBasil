@@ -1,4 +1,4 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 
 using Basil.Domain.Users;
@@ -22,7 +22,7 @@ public sealed class RoomAuthority
 
 	public IReadOnlySet<UserRecord> Referees => _referees;
 
-	public StableConnection? Host { get; internal set; }
+	public StableSession? Host { get; internal set; }
 
 	internal ISet<UserRecord> MutableReferees => _referees;
 

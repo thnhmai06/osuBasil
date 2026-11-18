@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record SetReady(Connection Actor, Room Room, bool Ready) : IRequest<RoomOutcome>;
+public sealed record SetReady(Session Actor, Room Room, bool Ready) : IRequest<RoomOutcome>;

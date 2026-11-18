@@ -1,11 +1,11 @@
 using Basil.Application.Bot.Replies;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Bot.Commands;
 
 internal sealed record CommandContext(
-	Connection Actor,
+	Session Actor,
 	string? Channel,
 	IReplies Replies,
 	Func<string, CancellationToken, Task> Say,

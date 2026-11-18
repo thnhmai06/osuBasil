@@ -4,7 +4,7 @@ using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
@@ -32,7 +32,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<IScreenshotInspector>(),
 			sp.GetRequiredService<IUploadSpool>(),
 			sp.GetRequiredService<ISettingsRepository>()));
-		services.AddSingleton<ConnectionContext>(sp => new ConnectionContext(
+		services.AddSingleton<SessionContext>(sp => new SessionContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
 			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
@@ -40,7 +40,7 @@ public static class DependencyInjection
 		services.AddSingleton<UserRegistry>(sp => new UserRegistry(
 			sp.GetRequiredService<IAccountRules>(),
 			sp.GetRequiredService<UserContext>(),
-			sp.GetRequiredService<ConnectionContext>()));
+			sp.GetRequiredService<SessionContext>()));
 		return services;
 	}
 }

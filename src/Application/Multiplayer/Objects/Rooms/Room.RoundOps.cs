@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -34,7 +34,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome MarkLoaded(Connection actor)
+	internal RoomOutcome MarkLoaded(Session actor)
 	{
 		lock (_sync)
 		{
@@ -58,7 +58,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome SkipIntro(Connection actor)
+	internal RoomOutcome SkipIntro(Session actor)
 	{
 		lock (_sync)
 		{
@@ -82,7 +82,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ReportFailed(Connection actor)
+	internal RoomOutcome ReportFailed(Session actor)
 	{
 		lock (_sync)
 		{
@@ -94,7 +94,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ReportCompleted(Connection actor)
+	internal RoomOutcome ReportCompleted(Session actor)
 	{
 		lock (_sync)
 		{
@@ -117,10 +117,10 @@ public sealed partial class Room
 		}
 	}
 
-	private bool TryGetPlayingSlot(Connection actor, [MaybeNullWhen(false)] out Round round,
+	private bool TryGetPlayingSlot(Session actor, [MaybeNullWhen(false)] out Round round,
 		[MaybeNullWhen(false)] out RoomSlot slot)
 	{
-		if (actor is StableConnection connection &&
+		if (actor is StableSession connection &&
 		    Rounds.CurrentRound is { } current &&
 		    Slots.Find(connection) is { Status: RoomSlotStatus.Playing } playing)
 		{

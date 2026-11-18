@@ -1,4 +1,4 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Persistence;
 
 namespace Basil.Application.Users.Objects;
@@ -9,15 +9,15 @@ public sealed record LoginResult
 	{
 	}
 
-	public Connection? Connection { get; private init; }
+	public Session? Session { get; private init; }
 
 	public LoginFailure? Failure { get; private init; }
 
-	public bool Succeeded => Connection is not null;
+	public bool Succeeded => Session is not null;
 
-	public static LoginResult Success(Connection connection)
+	public static LoginResult Success(Session connection)
 	{
-		return new LoginResult { Connection = connection };
+		return new LoginResult { Session = connection };
 	}
 
 	public static LoginResult Fail(LoginFailure failure)

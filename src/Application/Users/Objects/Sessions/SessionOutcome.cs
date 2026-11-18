@@ -1,6 +1,6 @@
-namespace Basil.Application.Users.Objects.Connections;
+namespace Basil.Application.Users.Objects.Sessions;
 
-public enum ConnectionOutcome : byte
+public enum SessionOutcome : byte
 {
 	Denied = 0,
 

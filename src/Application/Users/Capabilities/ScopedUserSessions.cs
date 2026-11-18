@@ -9,8 +9,8 @@ namespace Basil.Application.Users.Capabilities;
 
 public readonly struct ScopedUserSessions(ScopedUser scoped)
 {
-	public async Task<(UserOutcome Result, Page<SessionRecord>? Sessions)> ListAsync(PageRequest page,
-		SessionState state = SessionState.Any, IReadOnlyList<SessionType>? types = null,
+	public async Task<(UserOutcome Result, Page<Session>? Sessions)> ListAsync(PageRequest page,
+		SessionFilter state = SessionFilter.Any, IReadOnlyList<SessionType>? types = null,
 		CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
@@ -20,7 +20,7 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 		return (UserOutcome.Ok, sessions);
 	}
 
-	public async Task<(UserOutcome Result, SessionRecord? Session)> GetAsync(long id,
+	public async Task<(UserOutcome Result, Session? Session)> GetAsync(long id,
 		CancellationToken ct = default)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Moderator, ct);
@@ -40,17 +40,6 @@ public readonly struct ScopedUserSessions(ScopedUser scoped)
 	{
 		var (user, refusal) = await GuardAsync(UserPrivileges.Owner);
 		return user is null ? refusal : await user.Sessions.CloseAllAsync(scoped.Actor, keepCurrent);
-	}
-
-	public async Task<(UserOutcome Result, string? Key, SessionRecord? Session)> OpenIrcAsync(string label)
-	{
-		var user = await scoped.ResolveAsync();
-		if (user is not null && user.Record.IsBasilBot()) return (UserOutcome.SystemAccount, null, null);
-		if (!scoped.IsSelf) return (UserOutcome.NotSelf, null, null);
-		if (user is null) return (UserOutcome.NotFound, null, null);
-
-		var (outcome, key, session) = await user.Sessions.OpenIrcAsync(scoped.Actor, label);
-		return (outcome, key, session);
 	}
 
 	// Another account's sessions need the privilege; nothing is read before it is held.

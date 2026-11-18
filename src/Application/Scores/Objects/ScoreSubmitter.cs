@@ -3,7 +3,7 @@ using Basil.Application.Scores.Objects.Events;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Ports;
 using Basil.Application.Shared.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Scores;
 
 namespace Basil.Application.Scores.Objects;
@@ -27,13 +27,13 @@ public sealed class ScoreSubmitter
 
 	internal IScoreBeatmapAcceptance Acceptance { get; }
 
-	public ScopedScoreSubmitter ScopeTo(StableConnection actor)
+	public ScopedScoreSubmitter ScopeTo(StableSession actor)
 	{
 		return new ScopedScoreSubmitter(this, actor, actor.EffectivePrivileges(_clock.GetUtcNow()));
 	}
 
 	internal async Task<(ScoreSubmissionOutcome Outcome, SubmissionRejectionReason? Rejection, ScoreReceipt? Receipt)> SubmitAsync(
-		StableConnection actor, Submission submission, BeatmapChecksums? beatmap, SubmittedClient client,
+		StableSession actor, Submission submission, BeatmapChecksums? beatmap, SubmittedClient client,
 		Stream? replay, CancellationToken ct)
 	{
 		var checkedBeatmap = beatmap ??
@@ -43,7 +43,7 @@ public sealed class ScoreSubmitter
 		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, SubmissionRejectionReason.UnknownBeatmap, null);
 
 		var outcome = await Recorder.ValidateAndRecordAsync(
-			actor.Record, actor.Session.Value.Fingerprint.Client!, submission, checkedBeatmap, client, replay,
+			actor.Record, actor.State.Fingerprint.Client!, submission, checkedBeatmap, client, replay,
 			ct);
 		if (outcome.Rejection is { } rejection) return (ScoreSubmissionOutcome.Rejected, rejection, null);
 

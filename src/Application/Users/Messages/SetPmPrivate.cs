@@ -1,6 +1,6 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SetPmPrivate(Connection Actor, bool PmPrivate) : IRequest<bool>;
+public sealed record SetPmPrivate(Session Actor, bool PmPrivate) : IRequest<bool>;

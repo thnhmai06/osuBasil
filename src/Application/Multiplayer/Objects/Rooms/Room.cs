@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Capabilities.Rooms;
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
 using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
 
@@ -60,7 +60,7 @@ public sealed partial class Room : IEquatable<Room>
 		return other is not null && Match.Equals(other.Match);
 	}
 
-	public ScopedRoom ScopeTo(Connection actor)
+	public ScopedRoom ScopeTo(Session actor)
 	{
 		return new ScopedRoom(this, actor);
 	}

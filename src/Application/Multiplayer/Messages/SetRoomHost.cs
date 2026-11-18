@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record SetRoomHost(Connection Actor, Room Room, StableConnection? Host) : IRequest<RoomOutcome>;
+public sealed record SetRoomHost(Session Actor, Room Room, StableSession? Host) : IRequest<RoomOutcome>;

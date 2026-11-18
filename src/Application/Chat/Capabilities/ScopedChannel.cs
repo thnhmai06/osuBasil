@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Shared.Privileges;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
@@ -9,7 +9,7 @@ namespace Basil.Application.Chat.Capabilities;
 
 public readonly struct ScopedChannel
 {
-	public Connection Actor { get; }
+	public Session Actor { get; }
 
 	public UserPrivileges Privileges { get; }
 
@@ -18,7 +18,7 @@ public readonly struct ScopedChannel
 		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
-	internal ScopedChannel(Channel channel, Connection actor)
+	internal ScopedChannel(Channel channel, Session actor)
 	{
 		Actor = actor;
 		Privileges = actor.EffectivePrivileges(channel.Context.Clock.GetUtcNow());

@@ -1,7 +1,7 @@
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Privileges;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -10,7 +10,7 @@ namespace Basil.Application.Scores.Capabilities;
 
 public readonly struct ScopedScoreSubmitter
 {
-	public StableConnection Actor { get; }
+	public StableSession Actor { get; }
 
 	public UserPrivileges Privileges { get; }
 
@@ -21,7 +21,7 @@ public readonly struct ScopedScoreSubmitter
 
 	private readonly ScoreSubmitter _submitter;
 
-	internal ScopedScoreSubmitter(ScoreSubmitter submitter, StableConnection actor, UserPrivileges privileges)
+	internal ScopedScoreSubmitter(ScoreSubmitter submitter, StableSession actor, UserPrivileges privileges)
 	{
 		Actor = actor;
 		Privileges = privileges;

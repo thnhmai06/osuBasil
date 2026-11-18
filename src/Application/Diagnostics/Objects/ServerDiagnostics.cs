@@ -1,13 +1,13 @@
 using System.Runtime;
 using Basil.Application.Diagnostics.Capabilities;
 using Basil.Application.Diagnostics.Services;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 
 namespace Basil.Application.Diagnostics.Objects;
 
 public sealed class ServerDiagnostics(TimeProvider clock, ICacheCleaner caches, IClearTally exceptions)
 {
-	public ScopedDiagnostics ScopeTo(Connection actor)
+	public ScopedDiagnostics ScopeTo(Session actor)
 	{
 		return new ScopedDiagnostics(this, actor.EffectivePrivileges(clock.GetUtcNow()));
 	}

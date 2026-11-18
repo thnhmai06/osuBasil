@@ -8,19 +8,19 @@ namespace Basil.Infrastructure.Chat.Handlers;
 
 internal sealed class ConnectionChannelHandler(
 	GeneralChannelRegistry channels,
-	ILogger<ConnectionChannelHandler> logger) : INotificationHandler<UserConnectionOpened>,
-	INotificationHandler<UserConnectionClosed>
+	ILogger<ConnectionChannelHandler> logger) : INotificationHandler<UserSessionOpened>,
+	INotificationHandler<UserSessionClosed>
 {
-	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
+	public ValueTask Handle(UserSessionClosed @event, CancellationToken ct)
 	{
-		HandlerStep.Run(logger, "part its channels", "the closed connection of user", @event.Connection.Record.Id,
-			() => channels.PartAll(@event.Connection), ct);
+		HandlerStep.Run(logger, "part its channels", "the closed connection of user", @event.Session.Record.Id,
+			() => channels.PartAll(@event.Session), ct);
 		return ValueTask.CompletedTask;
 	}
 
-	public ValueTask Handle(UserConnectionOpened @event, CancellationToken ct)
+	public ValueTask Handle(UserSessionOpened @event, CancellationToken ct)
 	{
-		channels.JoinAutoChannels(@event.Connection);
+		channels.JoinAutoChannels(@event.Session);
 		return ValueTask.CompletedTask;
 	}
 }

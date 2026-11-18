@@ -12,7 +12,7 @@ internal sealed class LobbyConnectionReleasedHandler(Lobby lobby, RoomChannels c
 	{
 		foreach (var room in lobby.Rooms.Values)
 			if (channels.Find(room) is { } channel)
-				channel.ScopeTo(@event.Connection).Part();
+				channel.ScopeTo(@event.Session).Part();
 
 		return ValueTask.CompletedTask;
 	}

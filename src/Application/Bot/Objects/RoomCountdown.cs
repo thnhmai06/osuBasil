@@ -1,8 +1,8 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 
 namespace Basil.Application.Bot.Objects;
 
-internal sealed record RoomCountdown(Connection Actor, TimeSpan Length, bool StartsRound, DateTimeOffset StartedAt)
+internal sealed record RoomCountdown(Session Actor, TimeSpan Length, bool StartsRound, DateTimeOffset StartedAt)
 {
 	public static readonly TimeSpan Min = TimeSpan.FromSeconds(1);
 

@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 
 namespace Basil.Application.Multiplayer.Objects.Events;
@@ -14,8 +14,8 @@ public sealed record RoomSlotLockChanged(
 	Room Room,
 	int Slot,
 	bool Locked,
-	StableConnection? Evicted,
-	StableConnection? Host,
+	StableSession? Evicted,
+	StableSession? Host,
 	RoomRoundProgress? RoundProgress)
 	: RoomSlotEvent(Room, Slot);
 

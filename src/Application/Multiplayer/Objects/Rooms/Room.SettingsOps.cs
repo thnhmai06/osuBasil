@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 
@@ -20,7 +20,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome Configure(Connection actor, RoomSettingsChange change)
+	internal RoomOutcome Configure(Session actor, RoomSettingsChange change)
 	{
 		lock (_sync)
 		{
@@ -83,11 +83,11 @@ public sealed partial class Room
 			slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
 	}
 
-	private void ApplyMods(Connection actor, GameMods newMods, bool freemods)
+	private void ApplyMods(Session actor, GameMods newMods, bool freemods)
 	{
 		Settings.Editable.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
 		// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
-		if (freemods && actor is StableConnection caller && Slots.Find(caller) is { } callerSlot)
+		if (freemods && actor is StableSession caller && Slots.Find(caller) is { } callerSlot)
 			callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
 	}
 

@@ -5,12 +5,12 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-internal sealed class PmConnectionOpenedHandler(PmChannels channels) : INotificationHandler<UserConnectionOpened>
+internal sealed class PmConnectionOpenedHandler(PmChannels channels) : INotificationHandler<UserSessionOpened>
 {
-	public ValueTask Handle(UserConnectionOpened @event, CancellationToken ct)
+	public ValueTask Handle(UserSessionOpened @event, CancellationToken ct)
 	{
-		if (@event.Connection.Type is not SessionType.StableTourney)
-			channels.Of(@event.Connection.User).ScopeTo(@event.Connection).Join();
+		if (@event.Session.Type is not SessionType.StableTourney)
+			channels.Of(@event.Session.User).ScopeTo(@event.Session).Join();
 
 		return ValueTask.CompletedTask;
 	}

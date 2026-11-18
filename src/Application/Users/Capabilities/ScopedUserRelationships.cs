@@ -1,5 +1,5 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Capabilities;
@@ -53,7 +53,7 @@ public readonly struct ScopedUserRelationships
 		RelationshipType type, CancellationToken ct)
 	{
 		// The operator reads any account's lists; everyone else reads their own.
-		if (_scoped is { IsSelf: false, Actor: not OperatorConnection }) return (UserOutcome.NotSelf, []);
+		if (_scoped is { IsSelf: false, Actor: not OperatorSession }) return (UserOutcome.NotSelf, []);
 
 		if (await _scoped.ResolveAsync(ct) is not { } user) return (UserOutcome.NotFound, []);
 

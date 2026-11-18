@@ -28,8 +28,6 @@ public enum UserOutcome : byte
 
 	NotSelf,
 
-	InvalidLabel,
-
 	InvalidCountry,
 
 	InvalidImage,

@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects;
 using Basil.Application.Servers.Capabilities;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Objects.Events;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
@@ -17,7 +17,7 @@ public sealed partial class Server
 
 	internal ServerContext Context { get; }
 
-	public ScopedServer ScopeTo(Connection actor)
+	public ScopedServer ScopeTo(Session actor)
 	{
 		return new ScopedServer(this, actor);
 	}
@@ -105,7 +105,7 @@ public sealed partial class Server
 		var context = Context.Connections;
 		var recipients = (to is null
 				? context.Registry.OpenStableClients()
-				: to.Select(context.Registry.OpenStableClient).OfType<StableConnection>())
+				: to.Select(context.Registry.OpenStableClient).OfType<StableSession>())
 			.ToList();
 		if (recipients.Count == 0) return 0;
 

@@ -1,6 +1,6 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record ReportSpectatingFailed(Connection Actor, StableConnection Host) : IRequest<bool>;
+public sealed record ReportSpectatingFailed(Session Actor, StableSession Host) : IRequest<bool>;

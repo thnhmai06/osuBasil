@@ -1,5 +1,6 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -19,12 +20,12 @@ public sealed class PmChannel : Channel
 
 	public override string Topic => string.Empty;
 
-	internal override bool CanRead(Connection connection, UserPrivileges privileges)
+	internal override bool CanRead(Session connection, UserPrivileges privileges)
 	{
 		return ReferenceEquals(connection.User, Owner) && connection.Type is not SessionType.StableTourney;
 	}
 
-	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
+	internal override bool CanWrite(Session connection, UserPrivileges privileges)
 	{
 		return connection.IsOpen && Owner.IsOnline;
 	}

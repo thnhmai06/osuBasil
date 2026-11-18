@@ -1,13 +1,13 @@
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Scores;
 using Mediator;
 
 namespace Basil.Application.Scores.Messages;
 
 public sealed record SubmitScore(
-	StableConnection Actor,
+	StableSession Actor,
 	Submission Submission,
 	BeatmapChecksums? Beatmap,
 	SubmittedClient Client,

@@ -1,5 +1,5 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -8,5 +8,5 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record CreateAccount(Connection Actor, UserData Data, Md5Hash PasswordHash, UserPrivileges? Privileges)
+public sealed record CreateAccount(Session Actor, UserData Data, Md5Hash PasswordHash, UserPrivileges? Privileges)
 	: IRequest<(UserRecord? User, UserOutcome Result)>;

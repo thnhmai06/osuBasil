@@ -1,9 +1,9 @@
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Content;
 using Mediator;
 
 namespace Basil.Application.Servers.Messages;
 
-public sealed record AddMenuSeasonal(Connection Actor, string Name, Stream Image)
+public sealed record AddMenuSeasonal(Session Actor, string Name, Stream Image)
 	: IRequest<(ServerOutcome Result, ContentReference? Image)>;

@@ -1,8 +1,8 @@
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Content;
 using Mediator;
 
 namespace Basil.Application.Servers.Messages;
 
-public sealed record DeleteMenuSeasonal(Connection Actor, ContentReference Image) : IRequest<ServerOutcome>;
+public sealed record DeleteMenuSeasonal(Session Actor, ContentReference Image) : IRequest<ServerOutcome>;

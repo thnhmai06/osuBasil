@@ -3,7 +3,7 @@ using Basil.Application.Bot.Replies;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Bot.Handlers.Commands;
@@ -43,12 +43,12 @@ internal sealed class ChatHandler(
 
 	// The operator speaks as BasilBot, so its messages are commands typed by the operator; the bot's own connections
 	// never are.
-	private static bool IsIgnored(Message message, Connection actor)
+	private static bool IsIgnored(Message message, Session actor)
 	{
-		return message.IsNotice || (message.Author.IsBasilBot() && actor is not OperatorConnection);
+		return message.IsNotice || (message.Author.IsBasilBot() && actor is not OperatorSession);
 	}
 
-	private CommandContext NewContext(ChannelMessagePosted posted, Connection actor, bool privateMessage)
+	private CommandContext NewContext(ChannelMessagePosted posted, Session actor, bool privateMessage)
 	{
 		return new CommandContext(
 			actor,

@@ -1,8 +1,8 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SilenceUser(Connection Actor, UserReference Target, DateTimeOffset EndsAt, string? Reason)
+public sealed record SilenceUser(Session Actor, UserReference Target, DateTimeOffset EndsAt, string? Reason)
 	: IRequest<UserOutcome>;

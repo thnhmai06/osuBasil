@@ -1,7 +1,7 @@
 using Basil.Application.Diagnostics.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Diagnostics.Messages;
 
-public sealed record ResetExceptions(Connection Actor) : IRequest<DiagnosticsOutcome>;
+public sealed record ResetExceptions(Session Actor) : IRequest<DiagnosticsOutcome>;

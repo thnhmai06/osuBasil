@@ -1,4 +1,4 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -17,7 +17,7 @@ public sealed class RoomSlot
 
 	public bool Locked { get; internal set; }
 
-	public StableConnection? Player { get; internal set; }
+	public StableSession? Player { get; internal set; }
 
 	public RoomSlotStatus? Status { get; internal set; }
 
@@ -29,7 +29,7 @@ public sealed class RoomSlot
 
 	public GameMods? Mods { get; internal set; }
 
-	internal void Occupy(StableConnection player)
+	internal void Occupy(StableSession player)
 	{
 		if (Locked) throw new InvalidOperationException("The slot is locked.");
 		if (Player is not null) throw new InvalidOperationException("The slot is already occupied.");
@@ -88,7 +88,7 @@ public sealed class RoomSlot
 }
 
 internal readonly record struct RoomSlotState(
-	StableConnection Player,
+	StableSession Player,
 	RoomSlotStatus? Status,
 	GameTeam? Team,
 	GameMods? Mods,

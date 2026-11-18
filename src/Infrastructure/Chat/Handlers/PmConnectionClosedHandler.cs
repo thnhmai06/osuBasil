@@ -4,13 +4,13 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-internal sealed class PmConnectionClosedHandler(PmChannels channels) : INotificationHandler<UserConnectionClosed>
+internal sealed class PmConnectionClosedHandler(PmChannels channels) : INotificationHandler<UserSessionClosed>
 {
-	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
+	public ValueTask Handle(UserSessionClosed @event, CancellationToken ct)
 	{
-		var user = @event.Connection.User;
+		var user = @event.Session.User;
 		if (channels.Find(user) is { } channel)
-			channel.ScopeTo(@event.Connection).Part();
+			channel.ScopeTo(@event.Session).Part();
 
 		if (@event.WentOffline && channels.Remove(user) is { } closed)
 			closed.Close();

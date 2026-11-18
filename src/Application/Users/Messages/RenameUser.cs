@@ -1,7 +1,7 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record RenameUser(Connection Actor, UserReference Target, string Name) : IRequest<UserOutcome>;
+public sealed record RenameUser(Session Actor, UserReference Target, string Name) : IRequest<UserOutcome>;

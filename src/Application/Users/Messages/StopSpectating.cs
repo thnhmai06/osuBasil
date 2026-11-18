@@ -1,6 +1,6 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record StopSpectating(Connection Actor, StableConnection Host) : IRequest<bool>;
+public sealed record StopSpectating(Session Actor, StableSession Host) : IRequest<bool>;

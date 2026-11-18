@@ -1,9 +1,9 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record GetFriends(Connection Actor)
+public sealed record GetFriends(Session Actor)
 	: IRequest<(UserOutcome Result, IReadOnlyList<UserRecord> Users)>;

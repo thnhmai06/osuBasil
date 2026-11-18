@@ -1,13 +1,13 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;
 
 public sealed record OpenRoom(
-	Connection Actor,
+	Session Actor,
 	string Name,
 	string Password,
 	RoomSource Source,

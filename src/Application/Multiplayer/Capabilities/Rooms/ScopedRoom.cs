@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Shared.Privileges;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -12,15 +12,15 @@ public readonly struct ScopedRoom
 {
 	private readonly UserPrivileges _global;
 
-	public Connection Actor { get; }
+	public Session Actor { get; }
 
 	public RoomPrivileges Privileges { get; }
 
-	internal ScopedRoom(Room room, Connection actor) : this(room, actor, Snapshot(room, actor))
+	internal ScopedRoom(Room room, Session actor) : this(room, actor, Snapshot(room, actor))
 	{
 	}
 
-	private ScopedRoom(Room room, Connection actor,
+	private ScopedRoom(Room room, Session actor,
 		(UserPrivileges Global, RoomPrivileges Privileges) snapshot)
 	{
 		Actor = actor;
@@ -44,7 +44,7 @@ public readonly struct ScopedRoom
 
 	internal bool ManagesAnyRoom { get; }
 
-	private static (UserPrivileges Global, RoomPrivileges Privileges) Snapshot(Room room, Connection actor)
+	private static (UserPrivileges Global, RoomPrivileges Privileges) Snapshot(Room room, Session actor)
 	{
 		var global = actor.EffectivePrivileges(room.Context.Clock.GetUtcNow());
 
@@ -59,12 +59,12 @@ public readonly struct ScopedRoom
 		return (global, privileges);
 	}
 
-	private static RoomPrivileges RoleGroups(Room room, Connection actor)
+	private static RoomPrivileges RoleGroups(Room room, Session actor)
 	{
 		var privileges = RoomPrivileges.None;
 
-		// Player: seated StableConnection
-		if (actor is StableConnection stable && room.Slots.Find(stable) is not null)
+		// Player: seated StableSession
+		if (actor is StableSession stable && room.Slots.Find(stable) is not null)
 			privileges |= RoomPrivileges.Player;
 
 		// Host: reference equals

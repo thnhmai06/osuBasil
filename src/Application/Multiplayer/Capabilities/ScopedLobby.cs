@@ -6,7 +6,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -15,7 +15,7 @@ namespace Basil.Application.Multiplayer.Capabilities;
 
 public readonly struct ScopedLobby
 {
-	public Connection Actor { get; }
+	public Session Actor { get; }
 
 	public UserPrivileges Privileges { get; }
 
@@ -24,7 +24,7 @@ public readonly struct ScopedLobby
 		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
-	internal ScopedLobby(Lobby lobby, Connection actor)
+	internal ScopedLobby(Lobby lobby, Session actor)
 	{
 		Actor = actor;
 		Privileges = actor.EffectivePrivileges(lobby.Context.Clock.GetUtcNow());
@@ -40,7 +40,7 @@ public readonly struct ScopedLobby
 		bool isPrivate,
 		MatchSettings? settings = null)
 	{
-		if (source is RoomSource.Game && Actor is not StableConnection)
+		if (source is RoomSource.Game && Actor is not StableSession)
 			throw new ArgumentException("A room opened in game needs the creator's osu! client.");
 
 		if (await OpenRefusalAsync(source) is { } refusal) return (null, refusal);
@@ -67,7 +67,7 @@ public readonly struct ScopedLobby
 		return null;
 	}
 
-	private StableConnection? SeatFor(RoomSource source)
+	private StableSession? SeatFor(RoomSource source)
 	{
 		// A room opened in game seats its creator; a room opened through the API seats the creator's osu! client when it may join.
 		return source is RoomSource.Api
@@ -75,7 +75,7 @@ public readonly struct ScopedLobby
 			  stable.User.EffectivePrivileges(Lobby.Context.Clock.GetUtcNow()).Allows(UserPrivileges.Player)
 				? stable
 				: null
-			: (StableConnection)Actor;
+			: (StableSession)Actor;
 	}
 
 	public async Task<(RoomOutcome Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
@@ -122,7 +122,7 @@ public readonly struct ScopedLobby
 
 	public void Watch()
 	{
-		if (Actor is not StableConnection stable)
+		if (Actor is not StableSession stable)
 			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
 
 		Lobby.Watch(stable);
@@ -130,7 +130,7 @@ public readonly struct ScopedLobby
 
 	public void Unwatch()
 	{
-		if (Actor is not StableConnection stable)
+		if (Actor is not StableSession stable)
 			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(Actor));
 
 		Lobby.Unwatch(stable);

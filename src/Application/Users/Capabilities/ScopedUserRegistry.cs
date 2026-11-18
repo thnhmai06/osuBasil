@@ -1,6 +1,6 @@
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 
 using Basil.Domain.Users;
@@ -11,7 +11,7 @@ namespace Basil.Application.Users.Capabilities;
 
 public readonly struct ScopedUserRegistry
 {
-	public Connection Actor { get; }
+	public Session Actor { get; }
 
 	public UserPrivileges Privileges { get; }
 
@@ -22,7 +22,7 @@ public readonly struct ScopedUserRegistry
 
 	private readonly UserRegistry _registry;
 
-	internal ScopedUserRegistry(UserRegistry registry, Connection actor)
+	internal ScopedUserRegistry(UserRegistry registry, Session actor)
 	{
 		Actor = actor;
 		Privileges = actor.EffectivePrivileges(actor.User.Context.Clock.GetUtcNow());

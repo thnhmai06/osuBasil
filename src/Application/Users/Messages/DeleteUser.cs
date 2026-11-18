@@ -1,7 +1,7 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record DeleteUser(Connection Actor, UserReference Target) : IRequest<UserOutcome>;
+public sealed record DeleteUser(Session Actor, UserReference Target) : IRequest<UserOutcome>;

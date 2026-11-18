@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Chat.Messages;
 
-public sealed record PartChannel(Connection Actor, ChatTarget Target) : IRequest<ChannelOutcome>;
+public sealed record PartChannel(Session Actor, ChatTarget Target) : IRequest<ChannelOutcome>;

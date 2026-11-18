@@ -1,7 +1,7 @@
 using Basil.Application.Chat.Messages;
 using Basil.Application.Chat.Objects;
 using Basil.Application.Multiplayer.Registry;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 
 namespace Basil.Application.Chat.Registry;
@@ -26,7 +26,7 @@ public sealed class ChannelDirectory
 		_registry = registry;
 	}
 
-	public Channel? Find(ChatTarget target, Connection viewer)
+	public Channel? Find(ChatTarget target, Session viewer)
 	{
 		switch (target)
 		{
@@ -35,11 +35,11 @@ public sealed class ChannelDirectory
 			case ChatTarget.Room(var id):
 				return _lobby.Find(id) is { IsClosed: false } room ? _roomChannels.Of(room) : null;
 			case ChatTarget.OwnRoom:
-				return viewer is StableConnection player && _lobby.RoomOf(player) is { IsClosed: false } own
+				return viewer is StableSession player && _lobby.RoomOf(player) is { IsClosed: false } own
 					? _roomChannels.Of(own)
 					: null;
 			case ChatTarget.OwnSpectators:
-				var host = viewer is StableConnection { Spectators.Count: > 0 } self
+				var host = viewer is StableSession { Spectators.Count: > 0 } self
 					? self
 					: _registry.FindSpectating(viewer);
 				return host is null ? null : _spectatorChannels.Of(host);

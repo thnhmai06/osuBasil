@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Application.Chat.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
@@ -28,7 +28,7 @@ public sealed class GeneralChannelRegistry
 		return _channels.GetValueOrDefault(name);
 	}
 
-	public IEnumerable<GeneralChannel> VisibleTo(Connection actor)
+	public IEnumerable<GeneralChannel> VisibleTo(Session actor)
 	{
 		foreach (var (_, channel) in _channels)
 		{
@@ -39,13 +39,13 @@ public sealed class GeneralChannelRegistry
 		}
 	}
 
-	public void JoinAutoChannels(Connection actor)
+	public void JoinAutoChannels(Session actor)
 	{
 		foreach (var channel in All.Values.Where(channel => channel.Record.Value.AutoJoin))
 			channel.ScopeTo(actor).Join();
 	}
 
-	public void PartAll(Connection actor)
+	public void PartAll(Session actor)
 	{
 		foreach (var channel in All.Values)
 			channel.ScopeTo(actor).Part();

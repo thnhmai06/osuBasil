@@ -1,10 +1,10 @@
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SetUserCountry(Connection Actor, UserReference Target, Country Country)
+public sealed record SetUserCountry(Session Actor, UserReference Target, Country Country)
 	: IRequest<UserOutcome>;

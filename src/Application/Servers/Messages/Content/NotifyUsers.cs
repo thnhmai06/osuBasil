@@ -1,8 +1,8 @@
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Servers.Messages;
 
-public sealed record NotifyUsers(Connection Actor, string Text, IReadOnlyCollection<int> To)
+public sealed record NotifyUsers(Session Actor, string Text, IReadOnlyCollection<int> To)
 	: IRequest<(ServerOutcome Result, int Sent)>;

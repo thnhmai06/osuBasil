@@ -1,6 +1,6 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-public sealed record UnwatchLobby(Connection Actor) : IRequest;
+public sealed record UnwatchLobby(Session Actor) : IRequest;

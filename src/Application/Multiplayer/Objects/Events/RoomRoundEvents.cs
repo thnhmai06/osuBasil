@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -12,7 +12,7 @@ public sealed record RoomRoundProgress(Round Round, bool AllLoaded, bool AllSkip
 public sealed record RoomRoundStarted(
 	Room Room,
 	Round Round,
-	IReadOnlyList<StableConnection> Players)
+	IReadOnlyList<StableSession> Players)
 	: RoomRoundEvent(Room, Round);
 
 public sealed record RoomRoundAborted(Room Room, Round Round) : RoomRoundEvent(Room, Round);

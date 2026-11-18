@@ -4,7 +4,7 @@ using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 using Basil.Shared.Structures.Cryptography;
 
-namespace Basil.Application.Users.Objects.Connections;
+namespace Basil.Application.Users.Objects.Sessions;
 
 public sealed record PlayerStatus(
 	UserActivity Activity,

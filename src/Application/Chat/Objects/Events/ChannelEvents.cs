@@ -1,5 +1,5 @@
 using Basil.Application.Shared.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat.Objects.Events;
@@ -8,14 +8,14 @@ public abstract record ChannelEvent(Channel Channel) : Event;
 
 public sealed record ChannelOpened(Channel Channel) : ChannelEvent(Channel);
 
-public sealed record ChannelClosed(Channel Channel, IReadOnlyList<Connection> Members) : ChannelEvent(Channel);
+public sealed record ChannelClosed(Channel Channel, IReadOnlyList<Session> Members) : ChannelEvent(Channel);
 
 public abstract record ChannelMembershipEvent(Channel Channel) : ChannelEvent(Channel);
 
-public sealed record ChannelMemberJoined(Channel Channel, Connection Member, Connection? Replaced)
+public sealed record ChannelMemberJoined(Channel Channel, Session Member, Session? Replaced)
 	: ChannelMembershipEvent(Channel);
 
-public sealed record ChannelMemberParted(Channel Channel, Connection Member, bool Kicked)
+public sealed record ChannelMemberParted(Channel Channel, Session Member, bool Kicked)
 	: ChannelMembershipEvent(Channel);
 
 public abstract record ChannelMessageEvent(Channel Channel) : ChannelEvent(Channel);
@@ -25,12 +25,12 @@ public sealed record ChannelMessagePosted(
 	Message Message,
 	bool Truncated,
 	Message? AwayReply,
-	Connection? Actor = null,
+	Session? Actor = null,
 	bool BypassesBlocks = false)
 	: ChannelMessageEvent(Channel);
 
 public sealed record ChannelConfigured(
 	Channel Channel,
 	GeneralChannelChange Change,
-	IReadOnlyList<Connection> Removed)
+	IReadOnlyList<Session> Removed)
 	: ChannelEvent(Channel);

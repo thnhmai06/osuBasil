@@ -7,7 +7,7 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
@@ -43,7 +43,7 @@ internal sealed class RoomCountdowns(
 		return _running.ContainsKey(room);
 	}
 
-	public async Task<RoomOutcome> StartAsync(Connection actor, Room room, TimeSpan length, bool startsRound,
+	public async Task<RoomOutcome> StartAsync(Session actor, Room room, TimeSpan length, bool startsRound,
 		CancellationToken ct)
 	{
 		if (room.IsClosed) return RoomOutcome.RoomClosed;

@@ -1,12 +1,12 @@
 using Basil.Application.Users.Messages;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-internal sealed class SpectateUserHandler : IRequestHandler<SpectateUser, ConnectionOutcome>
+internal sealed class SpectateUserHandler : IRequestHandler<SpectateUser, SessionOutcome>
 {
-	public async ValueTask<ConnectionOutcome> Handle(SpectateUser request, CancellationToken ct)
+	public async ValueTask<SessionOutcome> Handle(SpectateUser request, CancellationToken ct)
 	{
 		return await request.Host.ScopeTo(request.Actor).SpectateAsync();
 	}

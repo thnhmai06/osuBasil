@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -8,7 +8,7 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
-	internal RoomOutcome ChangeSlot(StableConnection stable, int index)
+	internal RoomOutcome ChangeSlot(StableSession stable, int index)
 	{
 		lock (_sync)
 		{
@@ -87,7 +87,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome SetReady(StableConnection stable, bool ready)
+	internal RoomOutcome SetReady(StableSession stable, bool ready)
 	{
 		lock (_sync)
 		{
@@ -104,7 +104,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome SetHasMap(StableConnection stable, bool has)
+	internal RoomOutcome SetHasMap(StableSession stable, bool has)
 	{
 		lock (_sync)
 		{
@@ -122,7 +122,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ToggleTeam(StableConnection stable)
+	internal RoomOutcome ToggleTeam(StableSession stable)
 	{
 		lock (_sync)
 		{
@@ -154,7 +154,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome SetMods(StableConnection stable, GameMods mods)
+	internal RoomOutcome SetMods(StableSession stable, GameMods mods)
 	{
 		lock (_sync)
 		{
@@ -172,7 +172,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ToggleSlotLock(Connection actor, int index)
+	internal RoomOutcome ToggleSlotLock(Session actor, int index)
 	{
 		lock (_sync)
 		{
@@ -182,7 +182,7 @@ public sealed partial class Room
 
 			var locking = !slot.Locked;
 
-			StableConnection? evicted = null;
+			StableSession? evicted = null;
 			RoomRoundProgress? progress = null;
 			if (locking && slot.Player is { } player)
 			{

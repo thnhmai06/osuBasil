@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -12,7 +12,7 @@ public sealed partial class Room
 		return Authority.IsManagedBy(user) || Slots.Find(user) is not null;
 	}
 
-	internal RoomOutcome JoinClaiming(StableConnection actor, string password, bool managesAnyRoom)
+	internal RoomOutcome JoinClaiming(StableSession actor, string password, bool managesAnyRoom)
 	{
 		var lobby = Context.Lobby;
 		if (!lobby.TryClaim(actor, this)) return RoomOutcome.InAnotherRoom;
@@ -27,7 +27,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome Join(StableConnection actor, string password, bool managesAnyRoom)
+	internal RoomOutcome Join(StableSession actor, string password, bool managesAnyRoom)
 	{
 		lock (_sync)
 		{
@@ -42,7 +42,7 @@ public sealed partial class Room
 		}
 	}
 
-	private RoomOutcome? JoinRefusal(StableConnection actor, string password, bool managesAnyRoom)
+	private RoomOutcome? JoinRefusal(StableSession actor, string password, bool managesAnyRoom)
 	{
 		if (Members.Banned.Contains(actor.Record)) return RoomOutcome.Banned;
 
@@ -58,7 +58,7 @@ public sealed partial class Room
 		return !string.IsNullOrEmpty(Settings.Password) && Settings.Password != password && !managesAnyRoom;
 	}
 
-	internal RoomOutcome Leave(StableConnection actor)
+	internal RoomOutcome Leave(StableSession actor)
 	{
 		lock (_sync)
 		{
@@ -91,7 +91,7 @@ public sealed partial class Room
 			if (!Members.MutableBanned.Add(player)) return RoomOutcome.Ok;
 
 			int? vacated = null;
-			StableConnection? evicted = null;
+			StableSession? evicted = null;
 			RoomRoundProgress? progress = null;
 			if (Slots.Find(player) is { Player: { } seated })
 			{
@@ -132,7 +132,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ObserverJoin(TourneyConnection actor)
+	internal RoomOutcome ObserverJoin(TourneySession actor)
 	{
 		lock (_sync)
 		{
@@ -145,7 +145,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome ObserverLeave(TourneyConnection actor)
+	internal RoomOutcome ObserverLeave(TourneySession actor)
 	{
 		lock (_sync)
 		{

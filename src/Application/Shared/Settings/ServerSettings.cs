@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Basil.Domain.Authentication;
 using Basil.Domain.Content;
 
 using Basil.Domain.Users;
@@ -88,63 +87,11 @@ public sealed record ServerSettings
 
 	public sealed record SessionSettings
 	{
-		public MaxSessionsSettings MaxPerUser { get; init; } = new();
-
-		public ApiTokenSettings ApiToken { get; init; } = new();
-
 		public TimeSpan RetentionPeriod
 		{
 			get;
 			init => field = Positive(value);
 		} = TimeSpan.FromDays(90);
-	}
-
-	public sealed record MaxSessionsSettings
-	{
-		public int Stable
-		{
-			get;
-			init => field = Positive(value);
-		} = 1;
-
-		public int StableTourney
-		{
-			get;
-			init => field = Positive(value);
-		} = 10;
-
-		public int Irc
-		{
-			get;
-			init => field = Positive(value);
-		} = 5;
-
-		public int Api
-		{
-			get;
-			init => field = Positive(value);
-		} = 10;
-
-		public int For(SessionType type)
-		{
-			return type switch
-			{
-				SessionType.Stable => Stable,
-				SessionType.StableTourney => StableTourney,
-				SessionType.Irc => Irc,
-				SessionType.Api => Api,
-				_ => 1
-			};
-		}
-	}
-
-	public sealed record ApiTokenSettings
-	{
-		public TimeSpan Lifetime
-		{
-			get;
-			init => field = Positive(value);
-		} = TimeSpan.FromDays(7);
 	}
 
 	public sealed record Limit

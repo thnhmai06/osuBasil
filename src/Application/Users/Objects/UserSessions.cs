@@ -2,7 +2,8 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Moderation;
@@ -14,12 +15,7 @@ namespace Basil.Application.Users.Objects;
 
 public sealed class UserSessions
 {
-	private const int MaxLabelLength = 64;
-
-	private static readonly SessionType[] ClientTypes =
-		[SessionType.Stable, SessionType.StableTourney, SessionType.Irc, SessionType.Api];
-
-	private readonly ConcurrentDictionary<SessionType, ConcurrentSet<Connection>> _connections = new();
+	private readonly ConcurrentDictionary<SessionType, ConcurrentSet<Session>> _connections = new();
 	private readonly User _user;
 
 	internal UserSessions(User user)
@@ -27,35 +23,35 @@ public sealed class UserSessions
 		_user = user;
 	}
 
-	public IReadOnlySet<Connection> this[SessionType type] =>
-		_connections.TryGetValue(type, out var set) ? set : ImmutableHashSet<Connection>.Empty;
+	public IReadOnlySet<Session> this[SessionType type] =>
+		_connections.TryGetValue(type, out var set) ? set : ImmutableHashSet<Session>.Empty;
 
-	public IEnumerable<Connection> Connections => _connections.SelectMany(pair => pair.Value);
+	public IEnumerable<Session> Connections => _connections.SelectMany(pair => pair.Value);
 
-	public StableConnection? Osu =>
-		(StableConnection?)this[SessionType.Stable].SingleOrDefault(connection => !connection.IsServerOwned);
+	public StableSession? Osu =>
+		(StableSession?)this[SessionType.Stable].SingleOrDefault(connection => !connection.IsServerOwned);
 
-	public IrcConnection? Irc => Ircs.FirstOrDefault();
+	public IrcSession? Irc => Ircs.FirstOrDefault();
 
-	public IEnumerable<IrcConnection> Ircs => this[SessionType.Irc].Cast<IrcConnection>();
+	public IEnumerable<IrcSession> Ircs => this[SessionType.Irc].Cast<IrcSession>();
 
-	public IEnumerable<TourneyConnection> Tourneys => this[SessionType.StableTourney].Cast<TourneyConnection>();
+	public IEnumerable<TourneySession> Tourneys => this[SessionType.StableTourney].Cast<TourneySession>();
 
-	internal void Add(Connection connection)
+	internal void Add(Session connection)
 	{
 		using var scope = _user.Enter();
 		var set = _connections.GetOrAdd(connection.Type, _ => []);
 		set.Add(connection);
 	}
 
-	internal bool Remove(Connection connection)
+	internal bool Remove(Session connection)
 	{
 		using var scope = _user.Enter();
 		return _connections.TryGetValue(connection.Type, out var set) && set.Remove(connection);
 	}
 
-	internal async Task<Page<SessionRecord>> ListAsync(Connection viewer, PageRequest page, SessionState state,
-		IReadOnlyList<SessionType>? types, CancellationToken ct)
+	internal async Task<Page<Basil.Domain.Authentication.Session>> ListAsync(Session viewer, PageRequest page,
+		SessionFilter state, IReadOnlyList<SessionType>? types, CancellationToken ct)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
 		if (!viewer.Record.Equals(_user.Record))
@@ -67,12 +63,12 @@ public sealed class UserSessions
 				Timestamp = now
 			});
 
-		return await _user.Context.Sessions.ListAsync(new SessionQuery(_user.Record, state, types, now), page,
+		return await _user.Context.Sessions.ListAsync(new SessionQuery(_user.Record, state, types), page,
 			ct);
 	}
 
-	internal async Task<(UserOutcome Outcome, SessionRecord? Session)> GetAsync(Connection viewer, long id,
-		CancellationToken ct)
+	internal async Task<(UserOutcome Outcome, Basil.Domain.Authentication.Session? Session)> GetAsync(Session viewer,
+		long id, CancellationToken ct)
 	{
 		var session = await _user.Context.Sessions.GetAsync(_user.Record, id, ct);
 		if (session is null) return (UserOutcome.NotFound, null);
@@ -93,20 +89,20 @@ public sealed class UserSessions
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		// A session whose client is online exists even before its record reaches the store.
-		if (!Connections.Any(connection => connection.Session.Id == id) &&
-		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Value.Ended: null })
+		if (!Connections.Any(connection => connection.State.Id == id) &&
+		    await _user.Context.Sessions.GetAsync(_user.Record, id) is not { Ended: null })
 			return UserOutcome.NotFound;
 
 		await CloseAsync(id, null, SessionEndReason.Revoked);
 		return UserOutcome.Ok;
 	}
 
-	internal async Task<UserOutcome> CloseAllAsync(Connection actor, bool keepCurrent)
+	internal async Task<UserOutcome> CloseAllAsync(Session actor, bool keepCurrent)
 	{
 		if (_user.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 
 		var isSelf = actor.Record.Equals(_user.Record);
-		long? keep = isSelf && keepCurrent && actor is ApiConnection api ? api.Session.Id : null;
+		long? keep = isSelf && keepCurrent && actor is ApiSession api ? api.State.Id : null;
 		// The sessions live in another module's database, so no transaction covers both: log first, so an action is never unrecorded.
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData
@@ -122,38 +118,9 @@ public sealed class UserSessions
 		return UserOutcome.Ok;
 	}
 
-	internal async Task<(UserOutcome Outcome, string? Key, SessionRecord? Session)> OpenIrcAsync(Connection actor,
-		string label)
-	{
-		if (_user.Record.Value.DeletedAt is not null) return (UserOutcome.Deleted, null, null);
-
-		label = label.Trim();
-		if (label.Length is 0 or > MaxLabelLength) return (UserOutcome.InvalidLabel, null, null);
-
-		var key = UserRegistry.NewToken();
-		var now = _user.Context.Clock.GetUtcNow();
-		var session = new SessionRecord
-		{
-			Id = UserRegistry.NewSessionId(),
-			Value = new SessionData
-			{
-				User = _user.Record,
-				Type = SessionType.Irc,
-				StartedAt = now,
-				Fingerprint = new SessionFingerprint(actor.Session.Value.Fingerprint.Ip, ClientInformation: label),
-				TokenHash = UserRegistry.HashToken(key),
-				ExpiresAt = null,
-				LastActiveAt = now
-			}
-		};
-		await _user.Context.Sessions.CreateOrUpdateAsync(session);
-		return (UserOutcome.Ok, key, session);
-	}
-
 	internal async Task CloseAsync(long? only, long? except, SessionEndReason reason)
 	{
 		_user.Context.Registry.CloseAll(_user.Record, reason, except, only);
-		await _user.Context.Sessions.EndAsync(_user.Record, only, except, ClientTypes,
-			_user.Context.Clock.GetUtcNow(), reason);
+		await _user.Context.Sessions.EndAsync(_user.Record, only, except, reason, _user.Context.Clock.GetUtcNow());
 	}
 }

@@ -1,6 +1,6 @@
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Privileges;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
@@ -8,7 +8,7 @@ namespace Basil.Application.Servers.Capabilities;
 
 public readonly struct ScopedServer
 {
-	public Connection Actor { get; }
+	public Session Actor { get; }
 
 	public UserPrivileges Privileges { get; }
 
@@ -17,7 +17,7 @@ public readonly struct ScopedServer
 		return ScopedPrivileges.Lacks(Privileges, required);
 	}
 
-	internal ScopedServer(Server server, Connection actor)
+	internal ScopedServer(Server server, Session actor)
 	{
 		Actor = actor;
 		Privileges = actor.EffectivePrivileges(server.Context.Connections.Clock.GetUtcNow());

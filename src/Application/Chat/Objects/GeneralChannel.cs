@@ -1,5 +1,5 @@
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Chat;
 
 using Basil.Domain.Users;
@@ -23,18 +23,18 @@ public sealed class GeneralChannel : Channel
 
 	public override string Topic => Record.Value.Topic;
 
-	internal override bool CanRead(Connection connection, UserPrivileges privileges)
+	internal override bool CanRead(Session connection, UserPrivileges privileges)
 	{
 		return privileges.Allows(Record.Value.ReadPrivileges);
 	}
 
-	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
+	internal override bool CanWrite(Session connection, UserPrivileges privileges)
 	{
 		return privileges.Allows(Record.Value.WritePrivileges);
 	}
 
 	internal async Task<ChannelOutcome> ConfigureAsync(GeneralChannelChange change,
-		Func<Connection, UserPrivileges> privilegesOf)
+		Func<Session, UserPrivileges> privilegesOf)
 	{
 		using (Enter())
 		{

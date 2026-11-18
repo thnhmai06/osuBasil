@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
 
@@ -34,12 +34,12 @@ public sealed class RoomChannel : Channel
 		return !digits.IsEmpty && digits.IndexOfAnyExceptInRange('0', '9') < 0 && int.TryParse(digits, out roomId);
 	}
 
-	internal override bool CanRead(Connection connection, UserPrivileges privileges)
+	internal override bool CanRead(Session connection, UserPrivileges privileges)
 	{
 		return Room.Involves(connection, privileges) || privileges.Allows(UserPrivileges.Tournament);
 	}
 
-	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
+	internal override bool CanWrite(Session connection, UserPrivileges privileges)
 	{
 		return Room.Involves(connection, privileges) || privileges.Allows(UserPrivileges.Tournament);
 	}

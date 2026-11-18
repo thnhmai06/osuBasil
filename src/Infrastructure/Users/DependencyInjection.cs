@@ -33,7 +33,7 @@ public static class DependencyInjection
 
 		public IServiceCollection AddUsersBackgroundWork()
 		{
-			services.AddHostedService<IdleConnectionSweeper>();
+			services.AddHostedService<SessionSweeper>();
 			services.AddHostedService<SessionRetentionSweeper>();
 			return services;
 		}

@@ -1,6 +1,6 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SetPlayerStatus(StableConnection Actor, PlayerStatus Status) : IRequest<bool>;
+public sealed record SetPlayerStatus(StableSession Actor, PlayerStatus Status) : IRequest<bool>;

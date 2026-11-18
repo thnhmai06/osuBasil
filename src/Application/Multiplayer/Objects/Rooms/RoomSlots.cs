@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Immutable;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -46,7 +46,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return _slots.FirstOrDefault(s => user.Equals(s.Player?.Record));
 	}
 
-	public RoomSlot? Find(StableConnection player)
+	public RoomSlot? Find(StableSession player)
 	{
 		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
 	}

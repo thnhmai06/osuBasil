@@ -8,7 +8,7 @@ public enum LoginFailure : byte
 
 	AccountDeleted,
 
-	TooManySessions,
+	AlreadyOnline,
 
 	NoTourneyPrivilege,
 

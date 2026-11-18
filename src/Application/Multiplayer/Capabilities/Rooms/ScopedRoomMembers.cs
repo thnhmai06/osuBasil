@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
@@ -16,14 +16,14 @@ public readonly struct ScopedRoomMembers
 
 	public Task<RoomOutcome> JoinAsync(string password)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection actor
+		return Task.FromResult(_scoped.Actor is StableSession actor
 			? _scoped.RequireJoin() ?? _scoped.Room.JoinClaiming(actor, password, _scoped.ManagesAnyRoom)
 			: RoomOutcome.NotInRoom);
 	}
 
 	public Task<RoomOutcome> LeaveAsync()
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection actor
+		return Task.FromResult(_scoped.Actor is StableSession actor
 			? _scoped.Room.Leave(actor)
 			: RoomOutcome.NotInRoom);
 	}
@@ -65,14 +65,14 @@ public readonly struct ScopedRoomMembers
 
 	public Task<RoomOutcome> ObserverJoinAsync()
 	{
-		return Task.FromResult(_scoped.Actor is TourneyConnection actor
+		return Task.FromResult(_scoped.Actor is TourneySession actor
 			? _scoped.Room.ObserverJoin(actor)
 			: RoomOutcome.NotObserver);
 	}
 
 	public Task<RoomOutcome> ObserverLeaveAsync()
 	{
-		return Task.FromResult(_scoped.Actor is TourneyConnection actor
+		return Task.FromResult(_scoped.Actor is TourneySession actor
 			? _scoped.Room.ObserverLeave(actor)
 			: RoomOutcome.NotObserver);
 	}

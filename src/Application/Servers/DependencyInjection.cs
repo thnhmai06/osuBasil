@@ -9,7 +9,7 @@ using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Shared.Storage;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,7 +20,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddServersApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<ServerContext>(sp => new ServerContext(
-			sp.GetRequiredService<ConnectionContext>(),
+			sp.GetRequiredService<SessionContext>(),
 			sp.GetRequiredService<ChannelContext>(),
 			sp.GetRequiredService<RoomChannels>(),
 			sp.GetRequiredService<PmChannels>(),

@@ -1,6 +1,6 @@
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-public sealed record SpectateUser(Connection Actor, StableConnection Host) : IRequest<ConnectionOutcome>;
+public sealed record SpectateUser(Session Actor, StableSession Host) : IRequest<SessionOutcome>;

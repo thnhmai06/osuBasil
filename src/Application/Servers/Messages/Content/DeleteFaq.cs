@@ -1,7 +1,7 @@
 using Basil.Application.Servers.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Mediator;
 
 namespace Basil.Application.Servers.Messages;
 
-public sealed record DeleteFaq(Connection Actor, string Entry) : IRequest<ServerOutcome>;
+public sealed record DeleteFaq(Session Actor, string Entry) : IRequest<ServerOutcome>;

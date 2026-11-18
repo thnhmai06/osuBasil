@@ -4,7 +4,7 @@ using Basil.Application.Bot.Replies;
 using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Objects.Rooms;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 
@@ -62,7 +62,7 @@ internal sealed partial class MpCommands
 			: null;
 	}
 
-	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, StableConnection player,
+	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, StableSession player,
 		bool showTeam)
 	{
 		var tags = new List<string>();

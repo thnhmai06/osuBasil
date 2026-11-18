@@ -1,5 +1,6 @@
 using Basil.Application.Authentication.Persistence;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 
@@ -27,7 +28,7 @@ public sealed class UserCredentials
 		return _user.Context.Credentials.CreateOrUpdateAsync(new Credentials(_user.Record, passwordHash));
 	}
 
-	internal async Task<UserOutcome> ChangeAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash, Connection actor,
+	internal async Task<UserOutcome> ChangeAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash, Session actor,
 		bool includeCurrent)
 	{
 		var isSelf = actor.Record.Equals(_user.Record);
@@ -43,7 +44,7 @@ public sealed class UserCredentials
 		await ReplaceAsync(newPasswordHash);
 		if (unchanged) return UserOutcome.Ok;
 
-		var keep = isSelf && !includeCurrent && actor is ApiConnection api ? api.Session.Id : (long?)null;
+		var keep = isSelf && !includeCurrent && actor is ApiSession api ? api.State.Id : (long?)null;
 		await _user.Sessions.CloseAsync(null, keep, SessionEndReason.CredentialsChanged);
 		if (!isSelf)
 			await _user.Context.ModerationLog.AppendAsync(new ModerationLogData

@@ -7,7 +7,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Objects;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 
 using Basil.Domain.Multiplayer;
 
@@ -27,12 +27,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	public static readonly TimeSpan EmptyRoomWarningBefore = TimeSpan.FromMinutes(5);
 
-	private readonly Dictionary<StableConnection, Room> _claims = [];
+	private readonly Dictionary<StableSession, Room> _claims = [];
 
 	private readonly HashSet<int> _reserved = [];
 	private readonly ConcurrentDictionary<int, Room> _rooms = new();
 	private readonly Lock _sync = new();
-	private readonly ConcurrentSet<StableConnection> _watchers = [];
+	private readonly ConcurrentSet<StableSession> _watchers = [];
 
 	internal Lobby(LobbyContext context)
 	{
@@ -43,11 +43,11 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 
 	public IReadOnlyDictionary<int, Room> Rooms => _rooms;
 
-	public IReadOnlySet<StableConnection> Watchers => _watchers;
+	public IReadOnlySet<StableSession> Watchers => _watchers;
 
-	internal ISet<StableConnection> MutableWatchers => _watchers;
+	internal ISet<StableSession> MutableWatchers => _watchers;
 
-	Room? IRoomLobbyPort.RoomOf(StableConnection player)
+	Room? IRoomLobbyPort.RoomOf(StableSession player)
 	{
 		return RoomOf(player);
 	}
@@ -67,12 +67,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		Close(room, actor);
 	}
 
-	bool IRoomLobbyPort.TryClaim(StableConnection player, Room room)
+	bool IRoomLobbyPort.TryClaim(StableSession player, Room room)
 	{
 		return TryClaim(player, room);
 	}
 
-	void IRoomLobbyPort.Release(StableConnection player, Room room)
+	void IRoomLobbyPort.Release(StableSession player, Room room)
 	{
 		Release(player, room);
 	}
@@ -87,7 +87,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return _rooms.TryGetValue(id, out var room) && !room.IsClosed ? room : null;
 	}
 
-	public Room? RoomOf(StableConnection player)
+	public Room? RoomOf(StableSession player)
 	{
 		// ponytail: scans every room; add a player index if room counts grow large.
 		return _rooms.Select(pair => pair.Value).FirstOrDefault(room => room.Slots.Find(player) is not null);
@@ -107,13 +107,13 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return null;
 	}
 
-	internal bool TryClaim(StableConnection player, Room room)
+	internal bool TryClaim(StableSession player, Room room)
 	{
 		using var scope = _sync.EnterScope();
 		return _claims.TryAdd(player, room) || ReferenceEquals(_claims[player], room);
 	}
 
-	internal void Release(StableConnection player, Room room)
+	internal void Release(StableSession player, Room room)
 	{
 		using var scope = _sync.EnterScope();
 		if (_claims.TryGetValue(player, out var claimed) && ReferenceEquals(claimed, room)) _claims.Remove(player);
@@ -142,12 +142,12 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return _sync.EnterScope();
 	}
 
-	public ScopedLobby ScopeTo(Connection actor)
+	public ScopedLobby ScopeTo(Session actor)
 	{
 		return new ScopedLobby(this, actor);
 	}
 
-	public void Unwatch(StableConnection connection)
+	public void Unwatch(StableSession connection)
 	{
 		if (MutableWatchers.Remove(connection)) Context.Events.Publish(new LobbyWatcherLeft(connection));
 	}
@@ -230,7 +230,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return (await Context.Settings.GetAsync(ct)).Locks.HasFlag(Locks.Rooms);
 	}
 
-	internal async Task<(Room? Room, RoomOutcome Outcome)> OpenRoomAsync(UserRecord creator, StableConnection? seat,
+	internal async Task<(Room? Room, RoomOutcome Outcome)> OpenRoomAsync(UserRecord creator, StableSession? seat,
 		bool seatsFromGame, string name, string password, bool isPrivate, MatchSettings? settings)
 	{
 		var now = Context.Clock.GetUtcNow();
@@ -271,7 +271,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	}
 
 	private Room Establish(int id, MatchRecord match, MatchSettings? settings, string password,
-		StableConnection? seat)
+		StableSession? seat)
 	{
 		Room room;
 		using (Enter())
@@ -300,27 +300,27 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		return Rooms.Values.FirstOrDefault(room => !room.IsClosed && room.Match.Id == match.Id);
 	}
 
-	internal void Watch(StableConnection connection)
+	internal void Watch(StableSession connection)
 	{
 		if (MutableWatchers.Add(connection)) Context.Events.Publish(new LobbyWatcherJoined(connection));
 	}
 
-	internal static void SeatCreator(Room room, StableConnection creator)
+	internal static void SeatCreator(Room room, StableSession creator)
 	{
 		if (room.Seat(creator) is null) return;
 		room.Authority.Host = creator;
 	}
 
-	public Task ReleaseAsync(Connection connection)
+	public Task ReleaseAsync(Session connection)
 	{
 		switch (connection)
 		{
-			case StableConnection player:
+			case StableSession player:
 			{
 				RoomOf(player)?.Leave(player);
 				break;
 			}
-			case TourneyConnection observer:
+			case TourneySession observer:
 			{
 				foreach (var room in Rooms.Values.Where(room => room.Members.Observers.Contains(observer)).ToArray())
 					room.ObserverLeave(observer);

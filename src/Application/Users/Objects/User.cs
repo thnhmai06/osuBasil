@@ -1,5 +1,6 @@
 using Basil.Application.Users.Capabilities;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -45,19 +46,19 @@ public sealed class User
 
 	internal UserContext Context { get; }
 
-	public IReadOnlySet<Connection> this[SessionType type] => Sessions[type];
+	public IReadOnlySet<Session> this[SessionType type] => Sessions[type];
 
-	public IEnumerable<Connection> Connections => Sessions.Connections;
+	public IEnumerable<Session> Connections => Sessions.Connections;
 
-	public StableConnection? Stable => Sessions.Osu;
+	public StableSession? Stable => Sessions.Osu;
 
-	public IrcConnection? Irc => Sessions.Irc;
+	public IrcSession? Irc => Sessions.Irc;
 
-	public IEnumerable<IrcConnection> Ircs => Sessions.Ircs;
+	public IEnumerable<IrcSession> Ircs => Sessions.Ircs;
 
-	public IEnumerable<TourneyConnection> Tourneys => Sessions.Tourneys;
+	public IEnumerable<TourneySession> Tourneys => Sessions.Tourneys;
 
-	public ScopedUser ScopeTo(Connection actor)
+	public ScopedUser ScopeTo(Session actor)
 	{
 		return new ScopedUser(this, actor);
 	}
@@ -110,12 +111,12 @@ public sealed class User
 		return UserOutcome.Ok;
 	}
 
-	internal void Add(Connection connection)
+	internal void Add(Session connection)
 	{
 		Sessions.Add(connection);
 	}
 
-	internal bool Remove(Connection connection)
+	internal bool Remove(Session connection)
 	{
 		return Sessions.Remove(connection);
 	}

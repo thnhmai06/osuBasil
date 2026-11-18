@@ -7,11 +7,11 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Users.Handlers;
 
 internal sealed class ConnectionHandler(UserRegistry registry, ILogger<ConnectionHandler> logger)
-	: INotificationHandler<UserConnectionClosed>
+	: INotificationHandler<UserSessionClosed>
 {
-	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
+	public ValueTask Handle(UserSessionClosed @event, CancellationToken ct)
 	{
-		var connection = @event.Connection;
+		var connection = @event.Session;
 		if (registry.FindSpectating(connection) is { } host)
 			HandlerStep.Run(logger, "stop spectating", "the closed connection of user", connection.Record.Id,
 				() => host.ScopeTo(connection).StopSpectating(), ct);

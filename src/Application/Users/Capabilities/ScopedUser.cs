@@ -1,7 +1,7 @@
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -14,7 +14,7 @@ public readonly struct ScopedUser
 	private readonly UserReference _target;
 	private readonly User? _user;
 
-	public Connection Actor { get; }
+	public Session Actor { get; }
 
 	public UserPrivileges Effective { get; }
 
@@ -23,7 +23,7 @@ public readonly struct ScopedUser
 		return ScopedPrivileges.Lacks(Effective, required);
 	}
 
-	internal ScopedUser(User user, Connection actor)
+	internal ScopedUser(User user, Session actor)
 	{
 		Actor = actor;
 		Effective = actor.EffectivePrivileges(user.Context.Clock.GetUtcNow());
@@ -31,7 +31,7 @@ public readonly struct ScopedUser
 		_user = user;
 	}
 
-	internal ScopedUser(UserRegistry registry, UserReference target, Connection actor)
+	internal ScopedUser(UserRegistry registry, UserReference target, Session actor)
 	{
 		Actor = actor;
 		Effective = actor.EffectivePrivileges(actor.User.Context.Clock.GetUtcNow());

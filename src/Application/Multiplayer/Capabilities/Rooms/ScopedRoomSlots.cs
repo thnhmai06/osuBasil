@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 
@@ -17,7 +17,7 @@ public readonly struct ScopedRoomSlots
 
 	public Task<RoomOutcome> ChangeAsync(int index)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.ChangeSlot(stable, index)
 			: RoomOutcome.NotInRoom);
 	}
@@ -38,21 +38,21 @@ public readonly struct ScopedRoomSlots
 
 	public Task<RoomOutcome> SetReadyAsync(bool ready)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.SetReady(stable, ready)
 			: RoomOutcome.NotInRoom);
 	}
 
 	public Task<RoomOutcome> SetHasMapAsync(bool has)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.SetHasMap(stable, has)
 			: RoomOutcome.NotInRoom);
 	}
 
 	public Task<RoomOutcome> ToggleTeamAsync()
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.ToggleTeam(stable)
 			: RoomOutcome.NotInRoom);
 	}
@@ -67,7 +67,7 @@ public readonly struct ScopedRoomSlots
 
 	public Task<RoomOutcome> SetModsAsync(GameMods mods)
 	{
-		return Task.FromResult(_scoped.Actor is StableConnection stable
+		return Task.FromResult(_scoped.Actor is StableSession stable
 			? _scoped.Room.SetMods(stable, mods)
 			: RoomOutcome.NotInRoom);
 	}

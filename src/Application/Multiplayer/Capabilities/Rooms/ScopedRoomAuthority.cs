@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Users.Objects;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Capabilities.Rooms;
@@ -30,7 +30,7 @@ public readonly struct ScopedRoomAuthority
 			: RoomOutcome.NotFound;
 	}
 
-	public Task<RoomOutcome> SetHostAsync(StableConnection? host)
+	public Task<RoomOutcome> SetHostAsync(StableSession? host)
 	{
 		return Task.FromResult(_scoped.Require(RoomPrivileges.HostTransfer) ??
 		                       _scoped.Room.SetHost(_scoped.Actor.Record, host));

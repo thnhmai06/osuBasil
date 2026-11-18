@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -33,7 +33,7 @@ public sealed partial class Room
 		return round;
 	}
 
-	internal (Round Round, IReadOnlyList<StableConnection> Players) BeginRound()
+	internal (Round Round, IReadOnlyList<StableSession> Players) BeginRound()
 	{
 		var round = new Round
 		{
@@ -48,7 +48,7 @@ public sealed partial class Room
 		Rounds.AllLoadedAnnounced = false;
 		Rounds.AllSkippedAnnounced = false;
 
-		var players = new List<StableConnection>();
+		var players = new List<StableSession>();
 		foreach (var slot in Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
 		{
 			slot.SetStatus(RoomSlotStatus.Playing);

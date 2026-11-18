@@ -1,6 +1,8 @@
 using Basil.Application.Chat.Capabilities;
 using Basil.Application.Chat.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
+using Basil.Domain.Authentication;
+using Session = Basil.Application.Users.Objects.Sessions.Session;
 using Basil.Domain.Chat;
 
 using Basil.Domain.Users;
@@ -13,7 +15,7 @@ public abstract class Channel
 {
 	public const int MaxMessageLength = 2000;
 
-	private readonly ConcurrentSet<Connection> _members = [];
+	private readonly ConcurrentSet<Session> _members = [];
 	private readonly Lock _sync = new();
 	private volatile bool _closed;
 
@@ -28,9 +30,9 @@ public abstract class Channel
 
 	public abstract string Topic { get; }
 
-	public IReadOnlySet<Connection> Members => _members;
+	public IReadOnlySet<Session> Members => _members;
 
-	internal ISet<Connection> MutableMembers => _members;
+	internal ISet<Session> MutableMembers => _members;
 
 	public bool IsClosed
 	{
@@ -38,11 +40,11 @@ public abstract class Channel
 		internal set => _closed = value;
 	}
 
-	internal abstract bool CanRead(Connection connection, UserPrivileges privileges);
+	internal abstract bool CanRead(Session connection, UserPrivileges privileges);
 
-	internal abstract bool CanWrite(Connection connection, UserPrivileges privileges);
+	internal abstract bool CanWrite(Session connection, UserPrivileges privileges);
 
-	public ScopedChannel ScopeTo(Connection actor)
+	public ScopedChannel ScopeTo(Session actor)
 	{
 		return new ScopedChannel(this, actor);
 	}
@@ -52,7 +54,7 @@ public abstract class Channel
 		return _sync.EnterScope();
 	}
 
-	public async Task<IReadOnlyList<Connection>> RecipientsAsync(ChannelMessagePosted posted,
+	public async Task<IReadOnlyList<Session>> RecipientsAsync(ChannelMessagePosted posted,
 		CancellationToken ct = default)
 	{
 		var author = posted.Message.Author;
@@ -71,7 +73,7 @@ public abstract class Channel
 		return blockers.Count == 0 ? members : [.. members.Where(member => !blockers.Contains(member.Record))];
 	}
 
-	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Connection? actor,
+	public void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Session? actor,
 		bool bypassesBlocks = false)
 	{
 		var truncated = text.Length > MaxMessageLength;
@@ -90,15 +92,15 @@ public abstract class Channel
 		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, actor, bypassesBlocks));
 	}
 
-	internal ChannelOutcome Join(Connection connection, UserPrivileges privileges)
+	internal ChannelOutcome Join(Session connection, UserPrivileges privileges)
 	{
 		using var scope = Enter();
 		if (IsClosed) return ChannelOutcome.Closed;
 		if (!CanRead(connection, privileges)) return ChannelOutcome.AccessDenied;
 		if (Members.Contains(connection)) return ChannelOutcome.AlreadyMember;
 
-		Connection? replaced = null;
-		if (connection.Type.ReplacesOnJoin())
+		Session? replaced = null;
+		if (connection.Type.IsExclusive)
 		{
 			replaced = Members.FirstOrDefault(member =>
 				member.Record.Equals(connection.Record) && member.Type == connection.Type);
@@ -114,7 +116,7 @@ public abstract class Channel
 		return ChannelOutcome.Ok;
 	}
 
-	internal ChannelOutcome Part(Connection connection)
+	internal ChannelOutcome Part(Session connection)
 	{
 		using var scope = Enter();
 		if (!MutableMembers.Remove(connection)) return ChannelOutcome.NotMember;
@@ -122,7 +124,7 @@ public abstract class Channel
 		return ChannelOutcome.Ok;
 	}
 
-	internal async Task<ChannelOutcome> PostAsync(Connection actor, UserPrivileges privileges,
+	internal async Task<ChannelOutcome> PostAsync(Session actor, UserPrivileges privileges,
 		bool? recipientSilenced, string text, bool notice, CancellationToken ct)
 	{
 		if (IsClosed) return ChannelOutcome.Closed;
@@ -145,7 +147,7 @@ public abstract class Channel
 		return ChannelOutcome.Ok;
 	}
 
-	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, Connection actor,
+	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, Session actor,
 		bool mayMessageAnyone, bool recipientSilenced, CancellationToken ct)
 	{
 		if (!mayMessageAnyone)

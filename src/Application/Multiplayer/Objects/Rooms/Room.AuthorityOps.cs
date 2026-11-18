@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -33,7 +33,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal RoomOutcome SetHost(UserRecord actor, StableConnection? host)
+	internal RoomOutcome SetHost(UserRecord actor, StableSession? host)
 	{
 		lock (_sync)
 		{

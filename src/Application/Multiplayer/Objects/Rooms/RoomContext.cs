@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Shared.Events;
 using Basil.Application.Shared.Settings;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
@@ -15,7 +15,7 @@ internal sealed record RoomContext(
 
 internal interface IRoomLobbyPort
 {
-	Room? RoomOf(StableConnection player);
+	Room? RoomOf(StableSession player);
 
 	void Occupied(Room room);
 
@@ -23,7 +23,7 @@ internal interface IRoomLobbyPort
 
 	void Close(Room room, UserRecord? actor);
 
-	bool TryClaim(StableConnection player, Room room);
+	bool TryClaim(StableSession player, Room room);
 
-	void Release(StableConnection player, Room room);
+	void Release(StableSession player, Room room);
 }

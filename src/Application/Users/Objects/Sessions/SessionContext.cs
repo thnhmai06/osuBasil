@@ -3,9 +3,9 @@ using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 
-namespace Basil.Application.Users.Objects.Connections;
+namespace Basil.Application.Users.Objects.Sessions;
 
-public sealed record ConnectionContext(
+public sealed record SessionContext(
 	TimeProvider Clock,
 	IEventPublisher<UserEvent> Events,
 	Lazy<UserRegistry> RegistryOf,

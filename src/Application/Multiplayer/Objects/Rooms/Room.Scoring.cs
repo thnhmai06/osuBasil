@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Game.Scores;
@@ -36,7 +36,7 @@ public sealed partial class Room
 		}
 	}
 
-	private void BeginSettlement(Round round, IReadOnlyList<StableConnection> players)
+	private void BeginSettlement(Round round, IReadOnlyList<StableSession> players)
 	{
 		DecideForClosing();
 		Rounds.Settlement?.Close();

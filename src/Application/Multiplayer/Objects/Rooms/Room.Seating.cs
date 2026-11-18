@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer.Objects.Events;
-using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Users;
 using Basil.Domain.Game.Users;
@@ -8,7 +8,7 @@ namespace Basil.Application.Multiplayer.Objects.Rooms;
 
 public sealed partial class Room
 {
-	internal RoomSlot? Seat(StableConnection player)
+	internal RoomSlot? Seat(StableSession player)
 	{
 		if (Members.Banned.Contains(player.Record))
 			throw new InvalidOperationException("The user is banned from this room.");
@@ -30,7 +30,7 @@ public sealed partial class Room
 		return slot;
 	}
 
-	internal RoomOutcome TakeSeat(StableConnection player, StableConnection? stale)
+	internal RoomOutcome TakeSeat(StableSession player, StableSession? stale)
 	{
 		if (stale is not null) return ReplaceSeat(player, stale);
 
@@ -41,20 +41,20 @@ public sealed partial class Room
 		return RoomOutcome.Ok;
 	}
 
-	public bool IsPresent(Connection connection)
+	public bool IsPresent(Session connection)
 	{
-		return (connection is StableConnection player && Slots.Find(player) is not null)
-		       || (connection is TourneyConnection observer && Members.Observers.Contains(observer));
+		return (connection is StableSession player && Slots.Find(player) is not null)
+		       || (connection is TourneySession observer && Members.Observers.Contains(observer));
 	}
 
-	public bool Involves(Connection connection, UserPrivileges privileges)
+	public bool Involves(Session connection, UserPrivileges privileges)
 	{
 		return IsPresent(connection)
 		       || (Authority.IsManagedBy(connection.Record) && privileges.Allows(UserPrivileges.Player))
 		       || privileges.Allows(UserPrivileges.Tournament);
 	}
 
-	private RoomOutcome LeaveSeat(StableConnection actor)
+	private RoomOutcome LeaveSeat(StableSession actor)
 	{
 		if (Vacate(actor) is not { } slot) return RoomOutcome.NotInRoom;
 
@@ -64,7 +64,7 @@ public sealed partial class Room
 		return RoomOutcome.Ok;
 	}
 
-	internal RoomSlot? Vacate(StableConnection player)
+	internal RoomSlot? Vacate(StableSession player)
 	{
 		var slot = Slots.Find(player);
 		if (slot is null) return null;
@@ -76,7 +76,7 @@ public sealed partial class Room
 		return slot;
 	}
 
-	internal Room? RoomOf(StableConnection player)
+	internal Room? RoomOf(StableSession player)
 	{
 		return Context.Lobby.RoomOf(player);
 	}
@@ -91,7 +91,7 @@ public sealed partial class Room
 		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
 	}
 
-	private void PassHostFrom(StableConnection leaving)
+	private void PassHostFrom(StableSession leaving)
 	{
 		if (!ReferenceEquals(Authority.Host, leaving)) return;
 		Authority.Host = Slots
@@ -99,7 +99,7 @@ public sealed partial class Room
 			?.Player;
 	}
 
-	private RoomOutcome ReplaceSeat(StableConnection player, StableConnection stale)
+	private RoomOutcome ReplaceSeat(StableSession player, StableSession stale)
 	{
 		var slot = Slots.Find(stale)!;
 		var team = slot.Team;
