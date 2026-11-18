@@ -120,7 +120,12 @@ public sealed class UserSessions
 
 	internal async Task CloseAsync(long? only, long? except, SessionEndReason reason)
 	{
-		_user.Context.Registry.CloseAll(_user.Record, reason, except, only);
-		await _user.Context.Sessions.EndAsync(_user.Record, only, except, reason, _user.Context.Clock.GetUtcNow());
+		var registry = _user.Context.Registry;
+		var now = _user.Context.Clock.GetUtcNow();
+		// A failed write leaves the revocation in place: the sessions stay unresumable.
+		var revocation = registry.BeginRevoke(_user.Record, only, except, now);
+		registry.CloseAll(_user.Record, reason, except, only);
+		await _user.Context.Sessions.EndAsync(_user.Record, only, except, reason, now);
+		registry.EndRevoke(_user.Record, only, revocation);
 	}
 }

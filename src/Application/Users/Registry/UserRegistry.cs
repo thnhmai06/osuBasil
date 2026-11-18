@@ -35,6 +35,8 @@ public sealed class UserRegistry
 	private readonly ConcurrentDictionary<long, Session> _activity = new();
 	// Sessions ended here whose end the store has not confirmed yet: their tokens never resume meanwhile.
 	private readonly ConcurrentDictionary<long, byte> _ended = new();
+	// Accounts whose stored sessions are being revoked: those started before the revocation never resume meanwhile.
+	private readonly ConcurrentDictionary<int, Revocation> _revoking = new();
 	private readonly SessionContext _sessionContext;
 	private readonly ConcurrentDictionary<string, Session> _tokens = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
@@ -166,7 +168,7 @@ public sealed class UserRegistry
 		if (record is null || accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 		var stored = await _context.Sessions.FindOpenByTokenAsync(record, type, hash, ct);
-		if (stored is null || _ended.ContainsKey(stored.Id)) return LoginResult.Fail(LoginFailure.InvalidToken);
+		if (stored is null || IsEnding(stored)) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 		var now = _context.Clock.GetUtcNow();
 		var refusal = Ineligible(record, type);
@@ -185,7 +187,7 @@ public sealed class UserRegistry
 			// Another request may have brought the same token in while this one read the database.
 			if (_tokens.GetValueOrDefault(token) is { IsOpen: true } raced) return LoginResult.Success(raced);
 			// The session may have been closed here after the read; its end may not have reached the store yet.
-			if (_ended.ContainsKey(stored.Id)) return LoginResult.Fail(LoginFailure.InvalidToken);
+			if (IsEnding(stored)) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 			var failure = Open(session);
 			if (failure is not null) return LoginResult.Fail(failure.Value);
@@ -223,6 +225,34 @@ public sealed class UserRegistry
 	public void ConfirmEnded(long id)
 	{
 		_ended.TryRemove(id, out _);
+	}
+
+	private bool IsEnding(SessionState stored)
+	{
+		return _ended.ContainsKey(stored.Id) ||
+		       (_revoking.TryGetValue(stored.User.Id, out var revocation) && stored.StartedAt <= revocation.At &&
+		        stored.Id != revocation.Except);
+	}
+
+	// Called before the sessions close and their end is written, so no resume slips in between.
+	internal Revocation? BeginRevoke(UserRecord user, long? only, long? except, DateTimeOffset at)
+	{
+		if (only is { } id)
+		{
+			_ended[id] = 0;
+			return null;
+		}
+
+		var revocation = new Revocation(at, except);
+		_revoking[user.Id] = revocation;
+		return revocation;
+	}
+
+	internal void EndRevoke(UserRecord user, long? only, Revocation? revocation)
+	{
+		if (only is { } id) ConfirmEnded(id);
+		else if (revocation is not null)
+			_revoking.TryRemove(new KeyValuePair<int, Revocation>(user.Id, revocation));
 	}
 
 	private Session NewSession(SessionState state, string token, int utcOffset)
@@ -568,6 +598,8 @@ public sealed class UserRegistry
 			_ => (null, UserOutcome.NameTaken)
 		};
 	}
+
+	internal sealed record Revocation(DateTimeOffset At, long? Except);
 
 	internal sealed class AccountGate
 	{
