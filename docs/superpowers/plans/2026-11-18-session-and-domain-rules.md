@@ -10,13 +10,13 @@
 
 **Spec:** the two statements of intent confirmed in the session of 2026-11-18, reproduced here.
 
-> **Session.** One concept, Session: one token, one connection, one row in `sessions` holding both the authentication data (token hash, user, type) and the connection data (IP, client, StartedAt, LastActiveAt, end). The `connections` table, `IConnectionRepository`, `ConnectionRecord` and `ListSessionConnections` go. Several clients sharing one API token are one session. A session survives a server restart. One active session per user per type; Tourney skips the check. Heartbeat: osu! and IRC as bancho.py, API = every request and every open SSE stream. Thresholds A / B: osu!, Tourney, IRC = 10 s / 300 s; API = 10 s / 8 h. Silent < A: a new login is refused. A ≤ silent < B: `Replaceable`, a new login ends it at once (`Replaced`). Silent ≥ B: `Expired`, the sweeper ends it. IRC `PASS` is the account password; `OpenIrcSession`, keys and labels go. Thresholds are fixed in Domain, not settings. `MaxPerUser`, `ApiToken.Lifetime`, `ExpiresAt`, `OutlivesConnection`/`EndsToken`, `ReopenWithin` go.
+> **Session.** One concept, Session: one token, one connection, one row in `sessions` holding both the authentication data (token hash, user, type) and the connection data (IP, client, StartedAt, LastActiveAt, end). The `connections` table, `IConnectionRepository`, `ConnectionRecord` and `ListSessionConnections` go. Several clients sharing one API token are one session. A session survives a server restart. One active session per user per type; Tourney skips the check. Heartbeat: osu! and IRC as bancho.py, API = every request and every open SSE stream. Thresholds A / B: osu!, Tourney, IRC = 30 s / 300 s; API = 30 s / 8 h. Silent < A: a new login is refused. A ≤ silent < B: `Replaceable`, a new login ends it at once (`Replaced`). Silent ≥ B: `Expired`, the sweeper ends it. IRC `PASS` is the account password; `OpenIrcSession`, keys and labels go. Thresholds are fixed in Domain, not settings. `MaxPerUser`, `ApiToken.Lifetime`, `ExpiresAt`, `OutlivesConnection`/`EndsToken`, `ReopenWithin` go.
 >
 > **Domain rules.** Domain holds the rules of one object on its own (state, invariants, transitions that touch only itself), synchronous, no repository, no event publishing, no live object of another module; a seat holds a user identity, not a live session. Application holds capabilities (`Scoped*`), contracts (repositories, ports, messages, events) and the coordination between objects. Every module. One Domain project, split by folder. The live half and the rule half share the type name, told apart by namespace. Outcome enums move with the object that returns them. Out of scope: observable contracts (packets, API, BasilBot replies), moving Metrics / `EventPublisher` / `CappedStream`, splitting Domain into projects, anything that involves two objects.
 
 ## Global Constraints
 
-- Thresholds, exact: `ReplaceableAfter = 10 s` for every type; `ExpiresAfter = 300 s` for Stable, StableTourney, Irc; `8 h` for Api. Boundaries: silence `< 10 s` → Active; `≥ 10 s` → Replaceable; `≥ ExpiresAfter` → Expired.
+- Thresholds, exact: `ReplaceableAfter = 30 s` for every type; `ExpiresAfter = 300 s` for Stable, StableTourney, Irc; `8 h` for Api. Boundaries: silence `< 30 s` → Active; `≥ 30 s` → Replaceable; `≥ ExpiresAfter` → Expired.
 - One active session per user per `SessionType`, except `StableTourney` (no duplicate check, no count limit).
 - Domain (`src/Domain/Domain`, project `Basil.Domain`) references no `Basil.Application.*`, no `Basil.Infrastructure.*`, no `Mediator*`, no repository, no `IEventPublisher`. Synchronous only.
 - Room invariants stay: one `Lock` per room held across the whole transition, events published inside it, never `await` under it, a closed room answers `RoomClosed`.
@@ -30,7 +30,7 @@
 1. **Restart, then old token:** an API client presenting its token after a restart within 8 h keeps working without login; an osu! client presenting its `osu-token` within 300 s keeps working. → test `ResumeAfterRestart_WithinExpiry_Opens` (Task 4).
 2. **Restart, then a fresh login while the old session exists only in the database:** the A/B rule must apply against the stored session, not be skipped because RAM is empty. → test `Login_StoredSessionSilentUnderA_Refused` (Task 4).
 3. **Two API clients on one token:** concurrent first requests after restart resume one session, not two. → test `Resume_ConcurrentSameToken_OneSession` (Task 4).
-4. **Exactly at the boundary:** silence of exactly 10 s is Replaceable, exactly 300 s is Expired. → `StatusAt_*` tests (Task 2).
+4. **Exactly at the boundary:** silence of exactly 30 s is Replaceable, exactly 300 s is Expired. → `StatusAt_*` tests (Task 2).
 5. **IRC after restart:** IRC has no token, so a stored open IRC session cannot be resumed; it must be ended at startup (`ServerStopped`), not left open forever. → test `Startup_EndsOpenIrcSessions` (Task 4).
 
 ---
@@ -63,8 +63,8 @@
   - `SessionEndReason` loses nothing; values kept.
 
 - [ ] **Step 1: Write tests** in `SessionTests`:
-  - `StatusAt_SilentUnderTenSeconds_Active`: heartbeat at t, `StatusAt(t + 9.999 s) == Active`.
-  - `StatusAt_SilentTenSeconds_Replaceable`: `StatusAt(t + 10 s) == Replaceable`.
+  - `StatusAt_SilentUnderThirtySeconds_Active`: heartbeat at t, `StatusAt(t + 29.999 s) == Active`.
+  - `StatusAt_SilentThirtySeconds_Replaceable`: `StatusAt(t + 30 s) == Replaceable`.
   - `StatusAt_OsuSilentJustUnder300_Replaceable` / `StatusAt_OsuSilent300_Expired`; same pair for `Irc`.
   - `StatusAt_ApiSilentJustUnderEightHours_Replaceable` / `StatusAt_ApiSilentEightHours_Expired`.
   - `StatusAt_Ended_Ended`; `Heartbeat_AfterEnd_Ignored`; `Heartbeat_Earlier_Ignored`; `End_Twice_FirstReasonKept`.
