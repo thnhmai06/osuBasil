@@ -4,6 +4,7 @@ using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Scores.Storage;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Scores.Tests.Storage;
 
@@ -249,7 +250,7 @@ public sealed class FileReplayStorageTests : IDisposable
 		return new ScoreRecord
 		{
 			Id = id,
-			Value = new ScoreData(8, new Md5("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod,
+			Value = new ScoreData(8, new Md5Hash("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod,
 				new ScoreState(new HitCounts(100, 10, 2, 1, 3, 0), 51_000, 500, 312, false), Grade.A, true,
 				new DateTimeOffset(2026, 3, 5, 12, 0, 0, TimeSpan.Zero))
 		};

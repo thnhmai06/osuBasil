@@ -3,6 +3,8 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Chat;
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Utilities;
 
 namespace Basil.Application.Chat.Objects;
 
@@ -61,8 +63,8 @@ public sealed class GeneralChannel : Channel
 
 	private static void Validate(GeneralChannelChange change)
 	{
-		if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfUndefined();
-		if (change.WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfUndefined();
+		if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfInvalid();
+		if (change.WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfInvalid();
 		change.Topic?.ThrowIfHasNul();
 	}
 

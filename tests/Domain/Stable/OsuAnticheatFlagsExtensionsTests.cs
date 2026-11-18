@@ -1,4 +1,4 @@
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 
 namespace Basil.Domain.Tests.Stable;
 

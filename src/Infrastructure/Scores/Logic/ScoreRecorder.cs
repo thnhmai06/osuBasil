@@ -6,10 +6,11 @@ using Basil.Application.Scores.Ports;
 using Basil.Application.Scores.Storage;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Scores.Logic;
 
@@ -75,9 +76,9 @@ internal sealed class ScoreRecorder(
 		if (submittedClient.VersionDate != osuClient.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
 			return SubmissionRejectionReason.VersionMismatch;
 		if (submittedClient.Fingerprint != osuClient.Fingerprint) return SubmissionRejectionReason.ClientHashMismatch;
-		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != osuClient.Fingerprint.UninstallHash)
+		if (new Md5Hash(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != osuClient.Fingerprint.UninstallHash)
 			return SubmissionRejectionReason.UninstallerHashMismatch;
-		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.DiskSignature)) !=
+		if (new Md5Hash(Encoding.UTF8.GetBytes(submittedClient.DiskSignature)) !=
 		    osuClient.Fingerprint.DiskSignatureHash)
 			return SubmissionRejectionReason.DiskSignatureHashMismatch;
 		if (submission.HashByClient != md5ByServer) return SubmissionRejectionReason.SubmissionHashMismatch;

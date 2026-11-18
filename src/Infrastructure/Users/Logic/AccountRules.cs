@@ -5,6 +5,8 @@ using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Logic;
@@ -28,7 +30,7 @@ internal sealed class AccountRules(
 			: null;
 	}
 
-	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
+	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5Hash passwordHash,
 		UserPrivileges? privileges)
 	{
 		data.Privileges = privileges ?? (await settings.GetAsync()).Accounts.DefaultPrivileges;

@@ -3,6 +3,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Application.Users.Capabilities;
 

@@ -5,6 +5,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Client;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;
 
@@ -30,7 +31,7 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 			Id = id,
 			Value = new SessionData(user, type, T0,
 				new SessionFingerprint(Home, type is SessionType.Stable ? Client() : null),
-				new Sha256(BitConverter.GetBytes(id)),
+				new Sha256Hash(BitConverter.GetBytes(id)),
 				null, T0)
 		});
 		return id;
@@ -264,12 +265,12 @@ public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : 
 		return new OsuClient(
 			new OsuVersion(new DateOnly(2026, 1, 2), 42, OsuVersionStream.Beta),
 			new OsuFingerprint(
-				new Md5("0cc175b9c0f1b6a831c399e269772661"),
-				new Md5("4a8a08f09d37b73795649038408b5f33"),
-				new Md5("f97c5d29941bfb1b2fdab0874906ab82"), new NetworkAdapters
+				new Md5Hash("0cc175b9c0f1b6a831c399e269772661"),
+				new Md5Hash("4a8a08f09d37b73795649038408b5f33"),
+				new Md5Hash("f97c5d29941bfb1b2fdab0874906ab82"), new NetworkAdapters
 				{
 					Adapters = "adapter-one.adapter-two.",
-					Hash = new Md5("92eb5ffee6ae2fec3ad71c777531578f")
+					Hash = new Md5Hash("92eb5ffee6ae2fec3ad71c777531578f")
 				}));
 	}
 }

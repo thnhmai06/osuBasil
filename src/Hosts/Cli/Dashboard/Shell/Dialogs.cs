@@ -1,4 +1,5 @@
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using XenoAtom.Terminal;
 using XenoAtom.Terminal.UI;
 using XenoAtom.Terminal.UI.Commands;

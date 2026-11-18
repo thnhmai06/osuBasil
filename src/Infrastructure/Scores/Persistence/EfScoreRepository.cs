@@ -2,10 +2,11 @@ using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Scores.Persistence;
@@ -193,7 +194,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 	{
 		return new ScoreData(
 				row.UserId,
-				row.BeatmapHash is { } beatmapHash ? new Md5(beatmapHash) : (Md5?)null,
+				row.BeatmapHash is { } beatmapHash ? new Md5Hash(beatmapHash) : (Md5Hash?)null,
 				(GameMode)row.Mode,
 				(GameMods)row.Mods,
 				new ScoreState(new HitCounts(row.Num300, row.Num100, row.Num50, row.NumGeki, row.NumKatu, row.NumMiss),
@@ -203,7 +204,7 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 				row.Timestamp)
 			with
 			{
-				Checksum = row.Checksum is { } checksum ? new Md5(checksum) : (Md5?)null,
+				Checksum = row.Checksum is { } checksum ? new Md5Hash(checksum) : (Md5Hash?)null,
 				PerformancePoints = row.Pp
 			};
 	}

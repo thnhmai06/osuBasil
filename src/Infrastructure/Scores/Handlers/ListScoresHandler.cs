@@ -4,6 +4,7 @@ using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
 
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Infrastructure.Scores.Handlers;
@@ -13,7 +14,7 @@ internal sealed class ListScoresHandler(IScoreRepository scores, IBeatmapReposit
 {
 	public async ValueTask<ScoreListing> Handle(ListScores request, CancellationToken ct)
 	{
-		Md5? hash = null;
+		Md5Hash? hash = null;
 		if (request.BeatmapId is { } beatmapId)
 		{
 			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map)

@@ -4,15 +4,16 @@ using Basil.Application.Shared.Paging;
 using Basil.Domain.Game.Beatmaps;
 using Basil.Domain.Game.Mechanics;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;
 
 [Collection("Persistence")]
 public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	private static readonly Md5 BeatmapHash = new("d41d8cd98f00b204e9800998ecf8427e");
-	private static readonly Md5 OtherHash = new("11111111111111111111111111111111");
-	private static readonly Md5 ThirdHash = new("22222222222222222222222222222222");
+	private static readonly Md5Hash BeatmapHash = new("d41d8cd98f00b204e9800998ecf8427e");
+	private static readonly Md5Hash OtherHash = new("11111111111111111111111111111111");
+	private static readonly Md5Hash ThirdHash = new("22222222222222222222222222222222");
 
 	private IBeatmapsetRepository Sets => Get<IBeatmapsetRepository>();
 
@@ -442,7 +443,7 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 		await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []));
 	}
 
-	private static BeatmapRecord Changed(BeatmapRecord beatmap, Md5 hash)
+	private static BeatmapRecord Changed(BeatmapRecord beatmap, Md5Hash hash)
 	{
 		return new BeatmapRecord
 		{

@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Domain.Content;
 using Basil.Domain.Game.Mechanics;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Testing.Persistence;
 
@@ -12,7 +13,7 @@ public static class StoredBeatmaps
 		return new BeatmapsetRecord
 		{
 			Id = id,
-			Content = new ContentIdentifier(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
+			Content = new ContentIdentifier(new ContentMetadata(0, now), new Md5Hash("00000000000000000000000000000000")),
 			Metadata = new BeatmapsetMetadata
 			{
 				Artist = "Camellia",
@@ -32,7 +33,7 @@ public static class StoredBeatmaps
 		{
 			Id = 321,
 			Beatmapset = Set(setId),
-			Hash = new Md5("d41d8cd98f00b204e9800998ecf8427e"),
+			Hash = new Md5Hash("d41d8cd98f00b204e9800998ecf8427e"),
 			Metadata = new BeatmapMetadata
 			{
 				Version = "Primordial Nucleosynthesis",
@@ -59,12 +60,12 @@ public static class StoredBeatmaps
 	{
 		var now = DateTimeOffset.UnixEpoch;
 		return new BeatmapsetData(onlineId,
-			new ContentIdentifier(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
+			new ContentIdentifier(new ContentMetadata(0, now), new Md5Hash("00000000000000000000000000000000")),
 			new BeatmapsetMetadata { Artist = artist, Title = title, Creator = creator },
 			new BeatmapsetAssets(), beatmaps ?? []);
 	}
 
-	public static BeatmapData Difficulty(int? onlineId, Md5 hash, string version,
+	public static BeatmapData Difficulty(int? onlineId, Md5Hash hash, string version,
 		GameMode mode = GameMode.Standard, double cs = 4, double ar = 9, double od = 8, double hp = 5,
 		double bpm = 180, int lengthSeconds = 120, int circles = 0, int sliders = 0, double stars = 5.0)
 	{

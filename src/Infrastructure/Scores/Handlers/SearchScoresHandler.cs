@@ -3,6 +3,7 @@ using Basil.Application.Scores.Messages;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 using Mediator;
 
@@ -13,7 +14,7 @@ internal sealed class SearchScoresHandler(IScoreRepository scores, IBeatmapRepos
 {
 	public async ValueTask<ScoreListing> Handle(SearchScores request, CancellationToken ct)
 	{
-		HashSet<Md5>? hashes = null;
+		HashSet<Md5Hash>? hashes = null;
 		if (request.BeatmapId is { } beatmapId)
 		{
 			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map)

@@ -8,6 +8,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Multiplayer;
 
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Data;
 using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers;

@@ -12,6 +12,8 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
+using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Multiplayer.Registry;
 
@@ -75,7 +77,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		Release(player, room);
 	}
 
-	bool IScoreBeatmapAcceptance.AcceptsUnknown(UserRecord player, Md5 beatmap)
+	bool IScoreBeatmapAcceptance.AcceptsUnknown(UserRecord player, Md5Hash beatmap)
 	{
 		return _rooms.Any(pair => pair.Value.AwaitsScore(player, beatmap));
 	}

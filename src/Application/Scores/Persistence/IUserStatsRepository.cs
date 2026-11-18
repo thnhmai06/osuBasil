@@ -1,4 +1,4 @@
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Scores.Persistence;

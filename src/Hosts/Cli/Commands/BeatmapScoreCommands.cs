@@ -7,6 +7,7 @@ using Basil.Application.Servers.Messages;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Game.Beatmaps;
 using Basil.Host.Shared.Views;
 using Mediator;
 

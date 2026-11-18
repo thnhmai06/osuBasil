@@ -6,6 +6,7 @@ using Basil.Domain.Content;
 
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -167,7 +168,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 
 		Assert.Equal(bytes, await ReadAllBytesAsync(await archive.OpenAsync(TestContext.Current.CancellationToken)));
 		Assert.Equal(bytes, await ReadAllBytesAsync(await archive.OpenAsync(TestContext.Current.CancellationToken)));
-		Assert.Equal(new Md5(bytes),
+		Assert.Equal(new Md5Hash(bytes),
 			(await archive.FingerprintAsync(TestContext.Current.CancellationToken)).Hash);
 	}
 
@@ -184,7 +185,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			sources.Select(source => source.Name).Order(StringComparer.Ordinal));
 		var archive =
 			Assert.IsAssignableFrom<BeatmapsetArchive>(sources.Single(source => source.Name == "99 Corrupt.osz"));
-		Assert.Equal(new Md5(corrupt),
+		Assert.Equal(new Md5Hash(corrupt),
 			(await archive.FingerprintAsync(TestContext.Current.CancellationToken)).Hash);
 	}
 
@@ -1094,8 +1095,8 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		{
 			Id = id,
 			Metadata = new BeatmapsetMetadata { Artist = artist, Title = title, Creator = "Mapper" },
-			Fingerprint = new ContentFingerprint(new ContentMetadata(0, DateTimeOffset.UnixEpoch),
-				new Md5("00000000000000000000000000000000")),
+			Fingerprint = new ContentIdentifier(new ContentMetadata(0, DateTimeOffset.UnixEpoch),
+				new Md5Hash("00000000000000000000000000000000")),
 			Assets = new BeatmapsetAssets(),
 			UpdatedAt = DateTimeOffset.UnixEpoch,
 			CreatedAt = DateTimeOffset.UnixEpoch

@@ -1,6 +1,7 @@
 using System.Text;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Objects;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Host.Cli.Commands;
@@ -40,8 +41,8 @@ internal static class CommandHelpers
 		}
 	}
 
-	public static Md5 Md5Of(string password)
+	public static Md5Hash Md5Of(string password)
 	{
-		return new Md5(Encoding.UTF8.GetBytes(password));
+		return new Md5Hash(Encoding.UTF8.GetBytes(password));
 	}
 }

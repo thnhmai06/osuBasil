@@ -9,6 +9,7 @@ using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Scores.Logic;
 using Basil.Infrastructure.Scores.Services;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
@@ -39,7 +40,7 @@ public sealed class ScorePerformanceRecalculatorTests(PersistenceFixture contain
 		return new ScorePerformanceRecalculator(Scores, calculator, NullLogger<ScorePerformanceRecalculator>.Instance);
 	}
 
-	private async Task<ScoreRecord> StoreAsync(string name, Md5? beatmap = null, double? pp = null,
+	private async Task<ScoreRecord> StoreAsync(string name, Md5Hash? beatmap = null, double? pp = null,
 		bool passed = true)
 	{
 		var player = await Get<IUserRepository>().CreateAsync(new UserData { Name = name });

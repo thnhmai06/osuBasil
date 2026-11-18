@@ -9,6 +9,7 @@ using Basil.Domain.Authentication;
 
 using Basil.Domain.Moderation;
 using Basil.Domain.Multiplayer;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Testing;
 
@@ -105,7 +106,7 @@ internal sealed class InMemoryUserRepository : IUserRepository
 
 internal sealed class InMemoryCredentialRepository : ICredentialRepository
 {
-	private readonly Dictionary<int, Md5> _passwords = [];
+	private readonly Dictionary<int, Md5Hash> _passwords = [];
 
 	public Task<bool> VerifyAsync(Credentials credentials, CancellationToken ct = default)
 	{
@@ -170,7 +171,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.FromResult(_entries.FirstOrDefault(entry => entry.Id == id && entry.Value.User.Equals(user)));
 	}
 
-	public Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
+	public Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256Hash tokenHash, DateTimeOffset now,
 		CancellationToken ct = default)
 	{
 		var found = _entries.FirstOrDefault(entry => entry.Value.Type == type && entry.Value.End is null &&

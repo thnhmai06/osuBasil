@@ -1,5 +1,6 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Domain.Tests.Beatmaps;
@@ -12,7 +13,7 @@ public class BeatmapsetTests
 		return new BeatmapsetRecord
 		{
 			Id = id,
-			Fingerprint = new ContentFingerprint(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
+			Fingerprint = new ContentIdentifier(new ContentMetadata(0, now), new Md5Hash("00000000000000000000000000000000")),
 			Metadata = new BeatmapsetMetadata { Artist = "Artist", Title = "Title", Creator = "Creator" },
 			Assets = new BeatmapsetAssets(),
 			UpdatedAt = now,

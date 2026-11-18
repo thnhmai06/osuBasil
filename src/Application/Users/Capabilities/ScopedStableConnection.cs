@@ -1,7 +1,9 @@
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Spectating;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Application.Users.Capabilities;
 

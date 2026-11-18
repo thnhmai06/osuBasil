@@ -1,7 +1,7 @@
 using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Scores;
 using Mediator;
 
 namespace Basil.Application.Scores.Messages;

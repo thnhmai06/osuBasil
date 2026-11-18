@@ -2,10 +2,11 @@ using System.Globalization;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Authentication.Persistence;
@@ -61,7 +62,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		return row is null ? null : ToRecord(row, user);
 	}
 
-	public async Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
+	public async Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256Hash tokenHash, DateTimeOffset now,
 		CancellationToken ct = default)
 	{
 		var at = now.ToUniversalTime();
@@ -136,7 +137,7 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			Id = row.Id,
 			Value = new SessionData(user, row.Type, row.StartedAt,
 				new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
-				new Sha256(Convert.ToHexStringLower(row.TokenHash)), row.ExpiresAt, row.LastActiveAt, end)
+				new Sha256Hash(Convert.ToHexStringLower(row.TokenHash)), row.ExpiresAt, row.LastActiveAt, end)
 		};
 	}
 
@@ -147,9 +148,9 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		var version = new OsuVersion(DateOnly.ParseExact(row.ClientDate, "yyyy-MM-dd", CultureInfo.InvariantCulture),
 			row.ClientRevision, (OsuVersionStream)row.ClientStream!.Value);
 		var adapters = new NetworkAdapters
-			{ Adapters = row.NetworkAdapters!, Hash = new Md5(row.NetworkAdaptersHash!) };
+			{ Adapters = row.NetworkAdapters!, Hash = new Md5Hash(row.NetworkAdaptersHash!) };
 		return new OsuClient(version,
-			new OsuFingerprint(new Md5(row.OsuPathHash!), new Md5(row.UninstallHash!), new Md5(row.DiskSignatureHash!),
+			new OsuFingerprint(new Md5Hash(row.OsuPathHash!), new Md5Hash(row.UninstallHash!), new Md5Hash(row.DiskSignatureHash!),
 				adapters));
 	}
 

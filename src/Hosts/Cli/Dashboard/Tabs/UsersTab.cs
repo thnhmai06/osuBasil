@@ -4,6 +4,7 @@ using Basil.Application.Users.Messages;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Mediator;
 using Microsoft.Extensions.Logging;

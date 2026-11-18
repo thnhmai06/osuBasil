@@ -14,6 +14,7 @@ using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Wire.Packets;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Host.Stable.Packets;
@@ -99,11 +100,11 @@ internal sealed partial class PacketHandlers(
 		CancellationToken ct)
 	{
 		var action = reader.ReadChangeAction();
-		Md5? hash = null;
+		Md5Hash? hash = null;
 		if (action.MapMd5.Length == 32)
 			try
 			{
-				hash = new Md5(action.MapMd5);
+				hash = new Md5Hash(action.MapMd5);
 			}
 			catch (ArgumentException)
 			{

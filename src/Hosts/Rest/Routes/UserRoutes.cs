@@ -11,10 +11,12 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;
 using Basil.Host.Rest.Sse;
 using Basil.Host.Shared.Views;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Host.Rest.Routes;
@@ -139,7 +141,7 @@ internal static class UserRoutes
 		if (Targets.ParseCountry(request.Country) is { } country) data.Country = country;
 
 		var (record, result) = await context.Sender().Send(new CreateAccount(context.Connection(), data,
-			new Md5(Encoding.UTF8.GetBytes(request.Password)), request.Privileges), context.RequestAborted);
+			new Md5Hash(Encoding.UTF8.GetBytes(request.Password)), request.Privileges), context.RequestAborted);
 		return result == UserOutcome.Ok ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
 
@@ -207,9 +209,9 @@ internal static class UserRoutes
 		if (string.IsNullOrEmpty(request.New)) return Api.Invalid("new is required.");
 		var target = UserReference.ById(id);
 
-		var current = request.Current is null ? (Md5?)null : new Md5(Encoding.UTF8.GetBytes(request.Current));
+		var current = request.Current is null ? (Md5Hash?)null : new Md5Hash(Encoding.UTF8.GetBytes(request.Current));
 		return (await context.Sender().Send(new ChangeUserPassword(context.Connection(), target,
-				new Md5(Encoding.UTF8.GetBytes(request.New)), current, request.IncludeCurrent ?? false),
+				new Md5Hash(Encoding.UTF8.GetBytes(request.New)), current, request.IncludeCurrent ?? false),
 			context.RequestAborted)).Answer();
 	}
 

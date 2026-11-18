@@ -5,6 +5,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Users.Handlers;
 using Basil.Testing;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
@@ -297,8 +298,8 @@ public sealed class AccountHandlerTests
 		return await app.LoginAsync(await app.CreateUserAsync("Admin", "password", UserPrivilegesExtensions.All));
 	}
 
-	private static Md5 Hash(string password)
+	private static Md5Hash Hash(string password)
 	{
-		return new Md5(Encoding.UTF8.GetBytes(password));
+		return new Md5Hash(Encoding.UTF8.GetBytes(password));
 	}
 }

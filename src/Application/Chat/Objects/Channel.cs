@@ -4,6 +4,8 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Chat;
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Chat.Objects;
 

@@ -4,7 +4,7 @@ using Basil.Application.Beatmaps.Services;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Services;
@@ -96,7 +96,7 @@ internal sealed class BeatmapReloader(
 
 			beatmap.Metadata = new BeatmapMetadata
 			{
-				Version = beatmap.Metadata.Version, Difficulty = analysis.Difficulty, ObjectCount = analysis.ObjectCount
+				VersionName = beatmap.Metadata.VersionName, Difficulty = analysis.Difficulty, ObjectCount = analysis.ObjectCount
 			};
 			await beatmaps.UpdateAsync(beatmap);
 			return true;

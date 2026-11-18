@@ -2,12 +2,14 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects;
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Users.Capabilities;
 
 public readonly struct ScopedUserCredentials(ScopedUser scoped)
 {
-	public async Task<UserOutcome> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
+	public async Task<UserOutcome> ChangePasswordAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash,
 		bool includeCurrent = false)
 	{
 		if (await scoped.IsLockedAsync(Locks.Profiles, UserPrivileges.Owner))

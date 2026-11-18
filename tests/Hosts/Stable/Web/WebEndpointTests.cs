@@ -13,6 +13,7 @@ using Basil.Host.Stable.Tests.Support;
 using Basil.Host.Stable.Web;
 using Basil.Testing.Clients;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 using OsuClient = Basil.Testing.Clients.OsuClient;
 
@@ -416,9 +417,9 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	public async Task Search_WritesSetLineWithDifficultiesByStars()
 	{
 		await StoreSetAsync(700_001, "Art|ist", "Zqlines Alpha",
-			StoredBeatmaps.Difficulty(null, new Md5("a0000000000000000000000000000001"), "Hard|Er", cs: 4, ar: 9.3,
+			StoredBeatmaps.Difficulty(null, new Md5Hash("a0000000000000000000000000000001"), "Hard|Er", cs: 4, ar: 9.3,
 				od: 8, hp: 5, stars: 5.5),
-			StoredBeatmaps.Difficulty(null, new Md5("a0000000000000000000000000000002"), "Easy", cs: 3.5, ar: 5, od: 4,
+			StoredBeatmaps.Difficulty(null, new Md5Hash("a0000000000000000000000000000002"), "Easy", cs: 3.5, ar: 5, od: 4,
 				hp: 3, stars: 1.234));
 		using var client = await SupporterAsync("SearchLines");
 
@@ -436,7 +437,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	public async Task Search_FiltersByModeAndStatus()
 	{
 		await StoreSetAsync(700_002, "Zqfilter", "Taiko Only",
-			StoredBeatmaps.Difficulty(null, new Md5("a0000000000000000000000000000003"), "Oni", GameMode.Taiko));
+			StoredBeatmaps.Difficulty(null, new Md5Hash("a0000000000000000000000000000003"), "Oni", GameMode.Taiko));
 		using var client = await SupporterAsync("SearchFilter");
 
 		var (_, taiko) = await SearchAsync(client, "Zqfilter", m: 1);
@@ -458,7 +459,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 		await Host.Services.GetRequiredService<IBeatmapsetRepository>().CommitAsync(new BeatmapsetChanges(
 			Enumerable.Range(1, 100).Select(i => new BeatmapsetChange(null, StoredBeatmaps.Data(710_000 + i, "Zqpage",
 				$"Set {i}", "Mapper",
-				[StoredBeatmaps.Difficulty(null, new Md5(i.ToString("x32")), "Normal")]))).ToList(), []));
+				[StoredBeatmaps.Difficulty(null, new Md5Hash(i.ToString("x32")), "Normal")]))).ToList(), []));
 		using var client = await SupporterAsync("SearchPaging");
 
 		var (_, first) = await SearchAsync(client, "Zqpage");
@@ -477,7 +478,7 @@ public sealed class WebEndpointTests(StableHostFixture fixture)
 	public async Task Search_SortTab_FiltersNothing(string tab)
 	{
 		await StoreSetAsync(700_100 + tab.Length, "Zqtab", "Any", StoredBeatmaps.Difficulty(null,
-			new Md5("b" + tab.Length.ToString("x31")), "Normal"));
+			new Md5Hash("b" + tab.Length.ToString("x31")), "Normal"));
 		using var client = await SupporterAsync("SearchTab" + tab.Length);
 
 		var (_, text) = await SearchAsync(client, tab);

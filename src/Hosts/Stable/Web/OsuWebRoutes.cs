@@ -29,6 +29,7 @@ using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Client;
 using Basil.Protocol.Game.Stable.Models.Scores;
 using Basil.Protocol.Game.Stable.Wire.Security;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Host.Stable.Web;
@@ -228,12 +229,12 @@ internal static class OsuWebRoutes
 			var clientHashText = ScoreSubmissionCipher.Decrypt(form["s"].ToString(), iv, version);
 			var fingerprint = OsuFingerprintExtensions.Parse(clientHashText);
 			var ids = form["c1"].ToString().Split('|');
-			var beatmapHash = new Md5(data.BeatmapHash);
+			var beatmapHash = new Md5Hash(data.BeatmapHash);
 			var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0],
 				ids.ElementAtOrDefault(1) ?? string.Empty,
 				version[..8], beatmapHash);
 			var known = await sender.Send(new FindBeatmapByHash(beatmapHash), ct);
-			var storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5?)null;
+			var storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5Hash?)null;
 			var submission = ToSubmission(data, beatmapHash);
 			anticheat.Report(client, submission.Flags);
 			await using var replay = OpenReplay(context);
@@ -250,7 +251,7 @@ internal static class OsuWebRoutes
 		}
 	}
 
-	private static Submission ToSubmission(ScoreSubmission data, Md5 beatmapHash)
+	private static Submission ToSubmission(ScoreSubmission data, Md5Hash beatmapHash)
 	{
 		var score = new ScoreData(null, beatmapHash, WireMap.Known<GameMode>(data.Mode) ?? GameMode.Standard,
 			WireMap.Mods(data.Mods),
@@ -259,7 +260,7 @@ internal static class OsuWebRoutes
 				data.TotalScore, checked((ushort)data.MaxCombo), checked((ushort)data.MaxCombo), data.Perfect),
 			ParseGrade(data.Grade), data.IsPassed, data.Timestamp);
 		return new Submission
-			{ Score = score, Flags = data.ClientFlags, HashByClient = new Md5(data.Checksum) };
+			{ Score = score, Flags = data.ClientFlags, HashByClient = new Md5Hash(data.Checksum) };
 	}
 
 	private static Stream? OpenReplay(HttpContext context)
@@ -510,7 +511,7 @@ internal static class OsuWebRoutes
 				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
 				statusCode: 429);
 		var failure = await registry.CheckRegistrationAsync(
-			new RegisterAttempt(name, new Md5(Encoding.UTF8.GetBytes(password))), ct);
+			new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password))), ct);
 		if (failure is not null)
 			return Results.Json(new { form_error = new { user = new { username = new[] { failure.ToString() } } } },
 				statusCode: 400);
@@ -521,7 +522,7 @@ internal static class OsuWebRoutes
 				new { form_error = new { user = new { username = new[] { "Too many registrations." } } } },
 				statusCode: 429);
 		var (_, error) = await registry.RegisterAsync(
-			new RegisterAttempt(name, new Md5(Encoding.UTF8.GetBytes(password))), ct);
+			new RegisterAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(password))), ct);
 		return error is null
 			? Text("ok")
 			: Results.Json(new { form_error = new { user = new { username = new[] { error.ToString() } } } },
@@ -542,13 +543,13 @@ internal static class OsuWebRoutes
 
 internal static class Md5Text
 {
-	public static bool TryParse(string? text, out Md5 hash)
+	public static bool TryParse(string? text, out Md5Hash hash)
 	{
 		hash = default;
 		if (text is not { Length: 32 }) return false;
 		try
 		{
-			hash = new Md5(text);
+			hash = new Md5Hash(text);
 			return true;
 		}
 		catch (ArgumentException)

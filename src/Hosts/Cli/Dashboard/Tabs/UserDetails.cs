@@ -7,6 +7,7 @@ using Basil.Application.Users.Objects;
 using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Host.Cli.Dashboard.Shell;
 using Basil.Host.Shared.Views;
 using Mediator;

@@ -2,6 +2,7 @@ using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Beatmaps.Adapters;
 using Basil.Infrastructure.Beatmaps.Storage;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Support;
@@ -30,7 +31,7 @@ internal sealed class CalculatorWorld : IDisposable
 		foreach (var (mode, file) in Samples)
 		{
 			var content = OszArchive.Sample(Path.Combine("Beatmaps", file));
-			var hash = new Md5(content);
+			var hash = new Md5Hash(content);
 			File.WriteAllBytes(OsuFile(hash), content);
 			using var stream = new MemoryStream(content, false);
 			var analysis = analyser.Analyze(stream, mode, GameMods.NoMod);
@@ -63,7 +64,7 @@ internal sealed class CalculatorWorld : IDisposable
 		_data.Dispose();
 	}
 
-	public string OsuFile(Md5 hash)
+	public string OsuFile(Md5Hash hash)
 	{
 		return Path.Combine(Folder, FileBeatmapsetNames.VersionFolder, $"{hash}.osu");
 	}

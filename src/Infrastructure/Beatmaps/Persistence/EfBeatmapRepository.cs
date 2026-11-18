@@ -5,8 +5,9 @@ using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
 
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
@@ -35,7 +36,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 		return row is null ? null : ToBeatmap(row, row.Set.ToRecord());
 	}
 
-	public async ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken ct = default)
+	public async ValueTask<BeatmapRecord?> GetAsync(Md5Hash hash, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 			.Include(b => b.Set)
@@ -156,10 +157,10 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 		{
 			Id = row.Id,
 			Beatmapset = set,
-			Hash = new Md5(row.Hash),
+			Hash = new Md5Hash(row.Hash),
 			Metadata = new BeatmapMetadata
 			{
-				Version = row.Version,
+				VersionName = row.Version,
 				Difficulty = new BeatmapDifficulty((GameMode)row.Mode, row.Bpm, TimeSpan.FromMilliseconds(row.Length),
 					row.Cs, row.Ar, row.Od, row.Hp, row.Star),
 				ObjectCount = objects
@@ -187,7 +188,7 @@ internal sealed class EfBeatmapRepository(DatabaseSession database) : IBeatmapRe
 			Id = beatmap.Id,
 			BeatmapsetId = beatmap.Beatmapset.Id,
 			Hash = beatmap.Hash.HashValue,
-			Version = beatmap.Metadata.Version,
+			Version = beatmap.Metadata.VersionName,
 			Mode = (int)difficulty.Mode,
 			Star = difficulty.Star,
 			Length = (int)difficulty.Length.TotalMilliseconds,

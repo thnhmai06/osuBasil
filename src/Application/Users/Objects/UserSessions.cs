@@ -8,6 +8,7 @@ using Basil.Domain.Authentication;
 using Basil.Domain.Moderation;
 
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Users.Objects;
 

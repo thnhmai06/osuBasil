@@ -1,11 +1,12 @@
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
 internal sealed class SetClaims
 {
-	private readonly HashSet<Md5> _beatmaps = [];
+	private readonly HashSet<Md5Hash> _beatmaps = [];
 	private readonly HashSet<int> _sets = [];
 
 	public bool TryClaim(BeatmapsetChange change)

@@ -8,6 +8,7 @@ using Basil.Domain.Authentication;
 
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Rest.Http;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Host.Rest.Routes;
@@ -55,7 +56,7 @@ internal static class AuthRoutes
 			return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many attempts.");
 		}
 
-		var attempt = new LoginAttempt(request.Username, new Md5(Encoding.UTF8.GetBytes(request.Password)));
+		var attempt = new LoginAttempt(request.Username, new Md5Hash(Encoding.UTF8.GetBytes(request.Password)));
 		var result = await registry.LoginAsync(attempt, SessionType.Api, ip, null, 0, context.RequestAborted);
 		if (result.Connection is not { } connection)
 		{

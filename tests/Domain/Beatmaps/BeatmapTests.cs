@@ -1,7 +1,8 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Tests.Beatmaps;
 
@@ -13,7 +14,7 @@ public class BeatmapTests
 		var beatmapset = new BeatmapsetRecord
 		{
 			Id = 100,
-			Fingerprint = new ContentFingerprint(new ContentMetadata(0, now), new Md5("00000000000000000000000000000000")),
+			Fingerprint = new ContentIdentifier(new ContentMetadata(0, now), new Md5Hash("00000000000000000000000000000000")),
 			Metadata = new BeatmapsetMetadata
 			{
 				Artist = "Camellia",
@@ -28,7 +29,7 @@ public class BeatmapTests
 		{
 			Id = 321,
 			Beatmapset = beatmapset,
-			Hash = new Md5("d41d8cd98f00b204e9800998ecf8427e"),
+			Hash = new Md5Hash("d41d8cd98f00b204e9800998ecf8427e"),
 			Metadata = new BeatmapMetadata
 			{
 				Version = "Hyper",

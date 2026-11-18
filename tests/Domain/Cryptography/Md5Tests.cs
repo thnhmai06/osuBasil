@@ -1,3 +1,4 @@
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Domain.Tests.Cryptography;
@@ -9,7 +10,7 @@ public sealed class Md5Tests
 	[InlineData("D41D8CD98F00B204E9800998ECF8427E")]
 	public void HexDigest_ReturnsLowercase(string text)
 	{
-		Assert.True(Md5.TryParse(text, null, out var digest));
+		Assert.True(Md5Hash.TryParse(text, null, out var digest));
 		Assert.Equal("d41d8cd98f00b204e9800998ecf8427e", digest.ToString());
 	}
 
@@ -21,12 +22,12 @@ public sealed class Md5Tests
 	[InlineData("g41d8cd98f00b204e9800998ecf8427e")]
 	public void NotADigest_ReturnsFalse(string? text)
 	{
-		Assert.False(Md5.TryParse(text, null, out _));
+		Assert.False(Md5Hash.TryParse(text, null, out _));
 	}
 
 	[Fact]
 	public void NotADigest_ThrowsFormat()
 	{
-		Assert.Throws<FormatException>(() => Md5.Parse("nope"));
+		Assert.Throws<FormatException>(() => Md5Hash.Parse("nope"));
 	}
 }

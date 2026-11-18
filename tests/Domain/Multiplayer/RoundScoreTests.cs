@@ -1,8 +1,9 @@
 
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Domain.Tests.Multiplayer;
 
@@ -13,7 +14,7 @@ public class RoundScoreTests
 		return new Round
 		{
 			Index = 1,
-			BeatmapHash = new Md5("0123456789abcdef0123456789abcdef"),
+			BeatmapHash = new Md5Hash("0123456789abcdef0123456789abcdef"),
 			Settings = new MatchSettings { TeamType = teamType },
 			StartedAt = DateTimeOffset.UnixEpoch,
 			EndedAt = null,

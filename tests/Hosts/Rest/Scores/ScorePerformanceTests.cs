@@ -2,6 +2,7 @@ using Basil.Application.Scores.Persistence;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Domain.Game.Users;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Scores;
@@ -9,7 +10,7 @@ namespace Basil.Host.Rest.Tests.Scores;
 [Collection("REST host")]
 public sealed class ScorePerformanceTests(RestHostFixture fixture)
 {
-	private async Task<ScoreRecord> StoreAsync(int userId, double? pp, bool passed = true, Md5? beatmap = null)
+	private async Task<ScoreRecord> StoreAsync(int userId, double? pp, bool passed = true, Md5Hash? beatmap = null)
 	{
 		return await fixture.Host.Services.GetRequiredService<IScoreRepository>().CreateAsync(new ScoreData(userId,
 			beatmap, GameMode.Standard, GameMods.NoMod,
@@ -17,7 +18,7 @@ public sealed class ScorePerformanceTests(RestHostFixture fixture)
 			new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)) { PerformancePoints = pp });
 	}
 
-	private async Task<Md5> ServerBeatmapAsync()
+	private async Task<Md5Hash> ServerBeatmapAsync()
 	{
 		return (await fixture.Host.ImportSampleAsync("Sets/selene-ui-mania.osz")).First().Hash;
 	}
@@ -54,7 +55,7 @@ public sealed class ScorePerformanceTests(RestHostFixture fixture)
 	{
 		var user = await fixture.Host.CreateUserAsync("PpUnknownMap");
 
-		var data = await GetAsync(await StoreAsync(user.Id, null, beatmap: new Md5(new string('a', 32))));
+		var data = await GetAsync(await StoreAsync(user.Id, null, beatmap: new Md5Hash(new string('a', 32))));
 
 		Assert.Null(data["pp"]);
 	}

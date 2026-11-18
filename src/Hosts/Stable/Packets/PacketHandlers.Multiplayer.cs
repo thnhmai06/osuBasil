@@ -8,6 +8,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Host.Stable.Packets;
@@ -102,7 +103,7 @@ internal sealed partial class PacketHandlers
 
 		async Task<RoomSettingsChange> BuildAsync(GameMode mode)
 		{
-			var hash = new Md5(match.MapMd5);
+			var hash = new Md5Hash(match.MapMd5);
 			var known = await sender.Send(new FindBeatmapByHash(hash));
 			return new RoomSettingsChange(
 				Beatmap: new BeatmapReference(hash, match.MapId, match.MapName, mode, known));

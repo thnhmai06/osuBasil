@@ -2,7 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using osu.Game.IO;
 using Decoder = osu.Game.Beatmaps.Formats.Decoder;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;

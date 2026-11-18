@@ -1,6 +1,7 @@
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Testing;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Users.Tests.Logic;
@@ -12,7 +13,7 @@ public sealed class AccountCreationTests
 	{
 		using var app = new TestApplication(services =>
 			services.AddSingleton<ICredentialRepository>(new RefusingCredentials()));
-		var attempt = new RegisterAttempt("Unfinished", new Md5("0123456789abcdef0123456789abcdef"));
+		var attempt = new RegisterAttempt("Unfinished", new Md5Hash("0123456789abcdef0123456789abcdef"));
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
 			app.Users.RegisterAsync(attempt, TestContext.Current.CancellationToken));

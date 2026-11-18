@@ -2,9 +2,10 @@ using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Beatmaps.Storage;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
@@ -28,7 +29,7 @@ internal sealed class OsuBeatmapCalculator(
 	FileBeatmapsetStorage storage,
 	ILogger<OsuBeatmapCalculator> logger) : IBeatmapCalculator
 {
-	private readonly SingleFlight<(Md5, GameMode, GameMods), DifficultyAttributes> _flights =
+	private readonly SingleFlight<(Md5Hash, GameMode, GameMods), DifficultyAttributes> _flights =
 		new();
 
 	private readonly SemaphoreSlim _gate = new(Environment.ProcessorCount);

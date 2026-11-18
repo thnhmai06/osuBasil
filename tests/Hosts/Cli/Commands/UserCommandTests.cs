@@ -5,6 +5,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Users;
 using Basil.Host.Cli.Commands;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;
@@ -16,7 +17,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 	{
 		var credentials = fixture.Host.Services.GetRequiredService<ICredentialRepository>();
 		return await credentials.VerifyAsync(new Credentials(await fixture.UserAsync(name),
-			new Md5(Encoding.UTF8.GetBytes(password))));
+			new Md5Hash(Encoding.UTF8.GetBytes(password))));
 	}
 
 	[Fact]

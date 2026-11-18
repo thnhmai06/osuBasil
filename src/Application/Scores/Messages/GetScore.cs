@@ -1,4 +1,4 @@
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Scores;
 using Mediator;
 
 namespace Basil.Application.Scores.Messages;

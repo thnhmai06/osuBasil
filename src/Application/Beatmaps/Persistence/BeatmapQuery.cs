@@ -2,8 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Application.Beatmaps.Persistence;
 

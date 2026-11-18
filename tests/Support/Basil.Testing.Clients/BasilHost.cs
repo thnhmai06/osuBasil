@@ -16,6 +16,7 @@ using Basil.Domain.Game.Users;
 using Basil.Host.Irc.Session;
 using Basil.Lifetime;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -125,14 +126,14 @@ public sealed class BasilHost : IAsyncDisposable
 		var user = await Services.GetRequiredService<IUserRepository>()
 			.CreateAsync(new UserData { Name = name, Privileges = privileges ?? UserPrivilegesExtensions.Default });
 		await Services.GetRequiredService<ICredentialRepository>()
-			.CreateOrUpdateAsync(new Credentials(user, new Md5(Encoding.UTF8.GetBytes(password))));
+			.CreateOrUpdateAsync(new Credentials(user, new Md5Hash(Encoding.UTF8.GetBytes(password))));
 		return user;
 	}
 
 	public async Task<string> CreateIrcKeyAsync(string name, string label = "test-device")
 	{
 		var registry = Services.GetRequiredService<UserRegistry>();
-		var attempt = new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes("password")));
+		var attempt = new LoginAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes("password")));
 		var login = await registry.LoginAsync(attempt, SessionType.Api, IPAddress.Loopback, null, 0);
 		var api = login.Connection ?? throw new InvalidOperationException($"Login failed: {login.Failure}.");
 		var (result, key, session) = await api.User.ScopeTo(api).Sessions.OpenIrcAsync(label);
@@ -145,7 +146,7 @@ public sealed class BasilHost : IAsyncDisposable
 	public async Task RevokeIrcKeyAsync(string name, string key)
 	{
 		var registry = Services.GetRequiredService<UserRegistry>();
-		var attempt = new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes("password")));
+		var attempt = new LoginAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes("password")));
 		var api = (await registry.LoginAsync(attempt, SessionType.Api, IPAddress.Loopback, null, 0)).Connection!;
 		await api.User.ScopeTo(api).Sessions.CloseAsync(_keySessions[key]);
 		registry.Close(api, SessionEndReason.LoggedOut);

@@ -5,6 +5,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Scores.Tests.Persistence;
 
@@ -342,7 +343,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		Assert.Equal(winner, await Scores.GetAsync(winner.Id, TestContext.Current.CancellationToken));
 	}
 
-	private async Task<List<object>> RaceAsync(IReadOnlyList<UserRecord> players, Md5 checksum)
+	private async Task<List<object>> RaceAsync(IReadOnlyList<UserRecord> players, Md5Hash checksum)
 	{
 		var start = new TaskCompletionSource();
 		var attempts = players.Select(async (player, index) =>
@@ -363,7 +364,7 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		return [.. await Task.WhenAll(attempts)];
 	}
 
-	private async Task AssertOneStoredAsync(List<object> outcomes, Md5 checksum)
+	private async Task AssertOneStoredAsync(List<object> outcomes, Md5Hash checksum)
 	{
 		Assert.Single(outcomes.OfType<ScoreRecord>());
 		Assert.All(outcomes.OfType<Exception>(), exception => Assert.IsType<AlreadyExistsException>(exception));
@@ -407,8 +408,8 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		Assert.Equal([standard.Id], listed.Items.Select(score => score.Id));
 	}
 
-	private async Task<ScoreRecord> CreateScoreAsync(UserRecord player, Md5 beatmapHash, int totalScore,
-		DateTimeOffset timestamp, Md5? checksum = null, GameMods mods = GameMods.NoMod)
+	private async Task<ScoreRecord> CreateScoreAsync(UserRecord player, Md5Hash beatmapHash, int totalScore,
+		DateTimeOffset timestamp, Md5Hash? checksum = null, GameMods mods = GameMods.NoMod)
 	{
 		return await Scores.CreateAsync(StoredScores.Data(player, beatmapHash, totalScore, timestamp, checksum, mods));
 	}

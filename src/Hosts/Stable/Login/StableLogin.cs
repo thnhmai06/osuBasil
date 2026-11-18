@@ -15,6 +15,7 @@ using Basil.Domain.Game.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Authentication;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Host.Stable.Login;
@@ -53,7 +54,7 @@ internal sealed class StableLogin(
 		LoginResult result;
 		try
 		{
-			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5(request.PasswordMd5)), type,
+			result = await registry.LoginAsync(new LoginAttempt(request.Username, new Md5Hash(request.PasswordMd5)), type,
 				ip,
 				client, request.UtcOffset, ct);
 		}

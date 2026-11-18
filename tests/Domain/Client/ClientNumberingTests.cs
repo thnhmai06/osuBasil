@@ -1,6 +1,8 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Beatmaps;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Domain.Tests.Client;
 

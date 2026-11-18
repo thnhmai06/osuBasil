@@ -2,6 +2,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
@@ -29,13 +30,13 @@ internal sealed class BeatmapsetPlanner(
 		}
 	}
 
-	internal async Task<BeatmapsetPlan> PlanAsync(BeatmapsetArchive archive, ContentFingerprint? fingerprint,
+	internal async Task<BeatmapsetPlan> PlanAsync(BeatmapsetArchive archive, ContentIdentifier? fingerprint,
 		BeatmapsetContent content,
 		int? folderId, CancellationToken ct)
 	{
 		var setFingerprint = fingerprint ?? await archive.FingerprintAsync(ct);
 
-		var hashes = new Dictionary<BeatmapsetDifficulty, Md5>(content.Difficulties.Count);
+		var hashes = new Dictionary<BeatmapsetDifficulty, Md5Hash>(content.Difficulties.Count);
 		var stored = new Dictionary<BeatmapsetDifficulty, BeatmapRecord?>(content.Difficulties.Count);
 		foreach (var difficulty in content.Difficulties)
 		{
@@ -67,7 +68,7 @@ internal sealed class BeatmapsetPlanner(
 			await matcher.TouchesLockedAsync(existing, content, hashes, stored, ct));
 	}
 
-	private async Task<BeatmapData> SyncDifficultyAsync(BeatmapsetDifficulty difficulty, Md5 hash,
+	private async Task<BeatmapData> SyncDifficultyAsync(BeatmapsetDifficulty difficulty, Md5Hash hash,
 		BeatmapRecord? stored, IReadOnlyDictionary<BeatmapsetContentFile, string> backgrounds,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> audio,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> video,
@@ -83,7 +84,7 @@ internal sealed class BeatmapsetPlanner(
 			hash,
 			new BeatmapMetadata
 			{
-				Version = difficulty.Version, Difficulty = analysis.Difficulty, ObjectCount = analysis.ObjectCount
+				VersionName = difficulty.Version, Difficulty = analysis.Difficulty, ObjectCount = analysis.ObjectCount
 			},
 			new BeatmapAssets
 			{
@@ -95,7 +96,7 @@ internal sealed class BeatmapsetPlanner(
 			});
 	}
 
-	internal async Task<BeatmapsetChange> ChangeOfAsync(BeatmapsetRecord set, ContentFingerprint fingerprint,
+	internal async Task<BeatmapsetChange> ChangeOfAsync(BeatmapsetRecord set, ContentIdentifier fingerprint,
 		CancellationToken ct)
 	{
 		var synced = (

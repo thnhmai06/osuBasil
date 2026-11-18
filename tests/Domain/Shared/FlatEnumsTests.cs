@@ -1,5 +1,6 @@
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Domain.Tests.Shared;
 

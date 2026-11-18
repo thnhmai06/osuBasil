@@ -4,6 +4,8 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Registry;
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Users.Capabilities;
 
@@ -28,7 +30,7 @@ public readonly struct ScopedUserRegistry
 	}
 
 	public async Task<(UserRecord? User, UserOutcome Result)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, UserPrivileges? privileges)
+		Md5Hash passwordHash, UserPrivileges? privileges)
 	{
 		var granted = privileges ??
 		              (await Actor.User.Context.Settings.GetAsync()).Accounts.DefaultPrivileges;

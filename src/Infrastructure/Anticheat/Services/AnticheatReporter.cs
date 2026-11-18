@@ -2,7 +2,7 @@ using Basil.Application.Anticheat.Objects.Events;
 using Basil.Application.Anticheat.Services;
 using Basil.Application.Shared.Events;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 
 namespace Basil.Infrastructure.Anticheat.Services;
 

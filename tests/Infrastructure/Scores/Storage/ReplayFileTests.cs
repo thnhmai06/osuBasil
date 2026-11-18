@@ -2,6 +2,7 @@ using Basil.Domain.Game.Client;
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Infrastructure.Scores.Storage;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Scores.Tests.Storage;
 
@@ -95,7 +96,7 @@ public sealed class ReplayFileTests
 		return new ScoreRecord
 		{
 			Id = 555,
-			Value = new ScoreData(1, new Md5("c0aabbccddeeff001122334455667788"), GameMode.Standard, mods, state,
+			Value = new ScoreData(1, new Md5Hash("c0aabbccddeeff001122334455667788"), GameMode.Standard, mods, state,
 				Grade.S, true, new DateTimeOffset(2021, 5, 20, 23, 59, 59, TimeSpan.Zero))
 		};
 	}

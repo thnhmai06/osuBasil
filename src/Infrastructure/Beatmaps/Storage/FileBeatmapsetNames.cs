@@ -4,8 +4,9 @@ using System.Text;
 using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Shared.Storage;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 
@@ -76,7 +77,7 @@ internal static class FileBeatmapsetNames
 		return FileNames.Fitted(builder.ToString().TrimEnd('.', ' '), MaxFolderNameBytes);
 	}
 
-	internal static string AttributesPath(string setFolder, Md5 hash, GameMode mode, GameMods mask)
+	internal static string AttributesPath(string setFolder, Md5Hash hash, GameMode mode, GameMods mask)
 	{
 		return Path.Combine(setFolder, AttributesFolder, hash.HashValue,
 			((int)mode).ToString(CultureInfo.InvariantCulture),

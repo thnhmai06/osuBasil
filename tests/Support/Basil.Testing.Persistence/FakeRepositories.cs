@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Application.Users.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Testing.Persistence;
 
@@ -54,7 +55,7 @@ public sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRepo
 {
 	public BeatmapRecord? Beatmap { get; set; } = beatmap;
 
-	public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken ct = default)
+	public ValueTask<BeatmapRecord?> GetAsync(Md5Hash hash, CancellationToken ct = default)
 	{
 		return ValueTask.FromResult(Beatmap is { } found && found.Hash == hash ? found : null);
 	}

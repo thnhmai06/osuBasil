@@ -1,13 +1,15 @@
 
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Users.Objects.Connections;
 
 public sealed record PlayerStatus(
 	UserActivity Activity,
 	string Text,
-	Md5? BeatmapHash,
+	Md5Hash? BeatmapHash,
 	int? BeatmapId,
 	GameMods GameMods,
 	GameMode GameMode)

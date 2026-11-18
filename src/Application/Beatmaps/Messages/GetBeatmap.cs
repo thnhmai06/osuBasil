@@ -1,6 +1,6 @@
 using Basil.Application.Shared.Actors;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Mediator;
 
 namespace Basil.Application.Beatmaps.Messages;

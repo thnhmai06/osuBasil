@@ -2,9 +2,10 @@ using System.Text.Json;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
 
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
@@ -95,7 +96,7 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 		{
 			Match = match,
 			Index = row.Number,
-			BeatmapHash = new Md5(row.BeatmapHash),
+			BeatmapHash = new Md5Hash(row.BeatmapHash),
 			Settings = settings,
 			StartedAt = row.StartedAt,
 			EndedAt = row.EndedAt,

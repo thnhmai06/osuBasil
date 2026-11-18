@@ -2,8 +2,9 @@ using Basil.Application.Scores.Objects;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Application.Scores.Capabilities;
 

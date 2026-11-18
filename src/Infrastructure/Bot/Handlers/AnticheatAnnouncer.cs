@@ -6,7 +6,7 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Servers.Objects;
 using Basil.Application.Users.Registry;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 using Basil.Domain.Users;
 using Mediator;
 

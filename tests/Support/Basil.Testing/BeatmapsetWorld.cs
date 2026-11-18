@@ -7,6 +7,7 @@ using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Content;
 using Basil.Domain.Game.Mechanics;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Testing;
@@ -58,9 +59,9 @@ public sealed class BeatmapsetWorld
 			return Encoding.UTF8.GetBytes(text.ToString());
 		}
 
-		public static Md5 HashOf(Diff difficulty)
+		public static Md5Hash HashOf(Diff difficulty)
 		{
-			return new Md5(Encoding.UTF8.GetBytes(difficulty.Content));
+			return new Md5Hash(Encoding.UTF8.GetBytes(difficulty.Content));
 		}
 	}
 
@@ -344,7 +345,7 @@ public sealed class BeatmapsetWorld
 
 	public sealed class FakeBeatmaps(FakeBeatmapsets sets) : IBeatmapRepository
 	{
-		public Dictionary<Md5, BeatmapRecord> Records { get; } = [];
+		public Dictionary<Md5Hash, BeatmapRecord> Records { get; } = [];
 
 		public Task UpdateAsync(BeatmapRecord beatmap)
 		{
@@ -357,7 +358,7 @@ public sealed class BeatmapsetWorld
 			return ValueTask.FromResult(Records.Values.FirstOrDefault(beatmap => beatmap.Id == id));
 		}
 
-		public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken ct = default)
+		public ValueTask<BeatmapRecord?> GetAsync(Md5Hash hash, CancellationToken ct = default)
 		{
 			return ValueTask.FromResult(Records.GetValueOrDefault(hash));
 		}
@@ -387,7 +388,7 @@ public sealed class BeatmapsetWorld
 
 		internal void Replace(BeatmapsetRecord set, IReadOnlyList<BeatmapData> data)
 		{
-			var keep = new HashSet<Md5>();
+			var keep = new HashSet<Md5Hash>();
 			foreach (var item in data)
 			{
 				var known = Records.GetValueOrDefault(item.Hash) ??

@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Game.Beatmaps;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -130,7 +131,7 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		return new BeatmapsetRecord
 		{
 			Id = id,
-			Fingerprint = data.Fingerprint,
+			Content = data.Fingerprint,
 			Metadata = data.Metadata,
 			Assets = data.Assets,
 			CreatedAt = existing?.CreatedAt ?? now,
@@ -151,9 +152,9 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 			Creator = set.Metadata.Creator,
 			CreatedAt = set.CreatedAt.ToUniversalTime(),
 			UpdatedAt = set.UpdatedAt.ToUniversalTime(),
-			ArchiveHash = set.Fingerprint.Hash.HashValue,
-			ArchiveSize = set.Fingerprint.Metadata.Size,
-			ArchiveModifiedAt = set.Fingerprint.Metadata.ModifiedAt.ToUniversalTime(),
+			ArchiveHash = set.Content.Hash.HashValue,
+			ArchiveSize = set.Content.Metadata.Size,
+			ArchiveModifiedAt = set.Content.Metadata.ModifiedAt.ToUniversalTime(),
 			Storyboard = set.Assets.HasStoryboard,
 			Locked = set.Locked,
 			Visible = set.Visible,

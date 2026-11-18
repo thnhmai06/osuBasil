@@ -3,7 +3,7 @@ using Basil.Application.Multiplayer.Messages;
 using Basil.Application.Multiplayer.Objects;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Shared.Paging;
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Gateway.Limits;
 using Basil.Host.Rest.Http;

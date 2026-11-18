@@ -1,6 +1,7 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Domain.Beatmaps;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
@@ -8,7 +9,7 @@ namespace Basil.Infrastructure.Beatmaps.Logic;
 internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapsetRepository beatmapsets)
 {
 	public async Task<BeatmapsetRecord?> ResolveAsync(BeatmapsetContent content,
-		IReadOnlyDictionary<BeatmapsetDifficulty, Md5> hashes, int? folderId, CancellationToken ct)
+		IReadOnlyDictionary<BeatmapsetDifficulty, Md5Hash> hashes, int? folderId, CancellationToken ct)
 	{
 		foreach (var hash in hashes.Values)
 		{
@@ -28,7 +29,7 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 	}
 
 	public async Task<bool> TouchesLockedAsync(BeatmapsetRecord? existing, BeatmapsetContent content,
-		Dictionary<BeatmapsetDifficulty, Md5> hashes, Dictionary<BeatmapsetDifficulty, BeatmapRecord?> stored,
+		Dictionary<BeatmapsetDifficulty, Md5Hash> hashes, Dictionary<BeatmapsetDifficulty, BeatmapRecord?> stored,
 		CancellationToken ct)
 	{
 		if (existing is { Locked: true }) return true;

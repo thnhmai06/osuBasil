@@ -2,7 +2,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Beatmaps.Ports;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Shared.Settings;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Scores;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Scores.Logic;

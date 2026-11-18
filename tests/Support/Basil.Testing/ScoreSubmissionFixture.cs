@@ -15,6 +15,7 @@ using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Domain.Game.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
@@ -32,7 +33,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 
 	public const string Password = "password";
 
-	public static readonly Md5 Beatmap = new("0123456789abcdef0123456789abcdef");
+	public static readonly Md5Hash Beatmap = new("0123456789abcdef0123456789abcdef");
 
 	public static readonly DateTimeOffset PlayedAt = new(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
 
@@ -119,7 +120,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 		var app = new TestApplication();
 		var user = await app.CreateUserAsync(name, Password, privileges);
 		var result = await app.Users.LoginAsync(
-			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), SessionType.Stable,
+			new LoginAttempt(name, new Md5Hash(Encoding.UTF8.GetBytes(Password))), SessionType.Stable,
 			IPAddress.Loopback, LoginClient(), 0);
 		var client = Assert.IsType<StableConnection>(result.Connection);
 		return new ScoreSubmissionFixture(app, client, user);
@@ -127,7 +128,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 
 	public static OsuClient LoginClient()
 	{
-		var hash = new Md5("0123456789abcdef0123456789abcdef");
+		var hash = new Md5Hash("0123456789abcdef0123456789abcdef");
 		var fingerprint = new OsuFingerprint(hash,
 			Md5Of(UninstallId), Md5Of(DiskSignature),
 			new NetworkAdapters { Adapters = "runningunderwine", Hash = hash });
@@ -135,7 +136,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			fingerprint);
 	}
 
-	public static SubmittedClient GenuineClient(Md5? beatmap = null)
+	public static SubmittedClient GenuineClient(Md5Hash? beatmap = null)
 	{
 		return new SubmittedClient(ClientHash, LoginClient().Fingerprint, UninstallId, DiskSignature, VersionDate,
 			beatmap ?? Beatmap);
@@ -147,7 +148,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			new ScoreState(new HitCounts(100, 0, 0, 0, 0, 0), 1000, 100, 100, true), Grade.S, true, PlayedAt);
 	}
 
-	public Submission Genuine(ScoreData score, Md5? storyboard = null)
+	public Submission Genuine(ScoreData score, Md5Hash? storyboard = null)
 	{
 		return new Submission
 		{
@@ -155,8 +156,8 @@ public sealed class ScoreSubmissionFixture : IDisposable
 		};
 	}
 
-	public static Md5 SubmissionChecksum(ScoreData score, string playerName, Md5? storyboard = null,
-		Md5? beatmap = null)
+	public static Md5Hash SubmissionChecksum(ScoreData score, string playerName, Md5Hash? storyboard = null,
+		Md5Hash? beatmap = null)
 	{
 		var hits = score.LastState.HitCounts;
 		var timestamp = score.Timestamp.ToString("yyMMddHHmmss", CultureInfo.InvariantCulture);
@@ -166,11 +167,11 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			$"{score.LastState.TotalScore}{score.Grade.ToString().ToUpperInvariant()}{(int)score.Mods}Q" +
 			$"{(score.IsPassed ? "True" : "False")}{(int)score.Mode}{VersionDate}{timestamp}{ClientHash}" +
 			$"{storyboard?.ToString() ?? string.Empty}");
-		return new Md5(Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(raw))));
+		return new Md5Hash(Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(raw))));
 	}
 
-	private static Md5 Md5Of(string text)
+	private static Md5Hash Md5Of(string text)
 	{
-		return new Md5(Encoding.UTF8.GetBytes(text));
+		return new Md5Hash(Encoding.UTF8.GetBytes(text));
 	}
 }

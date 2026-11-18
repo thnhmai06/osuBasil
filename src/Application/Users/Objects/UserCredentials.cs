@@ -4,6 +4,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 
 using Basil.Domain.Moderation;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Users.Objects;
 
@@ -16,17 +17,17 @@ public sealed class UserCredentials
 		_user = user;
 	}
 
-	internal Task<bool> IsPasswordAsync(Md5 passwordHash, CancellationToken ct = default)
+	internal Task<bool> IsPasswordAsync(Md5Hash passwordHash, CancellationToken ct = default)
 	{
 		return _user.Context.Credentials.IsPasswordAsync(_user.Record, passwordHash, ct);
 	}
 
-	internal Task ReplaceAsync(Md5 passwordHash)
+	internal Task ReplaceAsync(Md5Hash passwordHash)
 	{
 		return _user.Context.Credentials.CreateOrUpdateAsync(new Credentials(_user.Record, passwordHash));
 	}
 
-	internal async Task<UserOutcome> ChangeAsync(Md5 newPasswordHash, Md5? currentPasswordHash, Connection actor,
+	internal async Task<UserOutcome> ChangeAsync(Md5Hash newPasswordHash, Md5Hash? currentPasswordHash, Connection actor,
 		bool includeCurrent)
 	{
 		var isSelf = actor.Record.Equals(_user.Record);

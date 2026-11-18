@@ -12,10 +12,13 @@ using Basil.Application.Users.Objects.Events;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Ports;
 using Basil.Domain.Authentication;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
 
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Structures.Cryptography;
+using Basil.Shared.Utilities;
 
 namespace Basil.Application.Users.Registry;
 
@@ -127,7 +130,7 @@ public sealed class UserRegistry
 
 	private static void ThrowIfInvalidLogin(SessionType type, OsuClient? client)
 	{
-		type.ThrowIfUndefined();
+		type.ThrowIfInvalid();
 		switch (type)
 		{
 			case SessionType.Irc:
@@ -247,9 +250,9 @@ public sealed class UserRegistry
 		};
 	}
 
-	internal static Sha256 HashToken(string token)
+	internal static Sha256Hash HashToken(string token)
 	{
-		return new Sha256(Encoding.UTF8.GetBytes(token));
+		return new Sha256Hash(Encoding.UTF8.GetBytes(token));
 	}
 
 	public Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
@@ -549,12 +552,12 @@ public sealed class UserRegistry
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,
-		Md5 passwordHash, UserPrivileges? privileges)
+		Md5Hash passwordHash, UserPrivileges? privileges)
 	{
 		return _accounts.CreateAsync(data, passwordHash, privileges);
 	}
 
-	internal async Task<(UserRecord? User, UserOutcome Outcome)> RegisterAsync(UserData data, Md5 passwordHash,
+	internal async Task<(UserRecord? User, UserOutcome Outcome)> RegisterAsync(UserData data, Md5Hash passwordHash,
 		UserPrivileges? privileges)
 	{
 		var (user, failure) = await CreateAccountAsync(data, passwordHash, privileges);

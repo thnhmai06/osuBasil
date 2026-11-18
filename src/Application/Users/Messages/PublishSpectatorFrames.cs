@@ -1,5 +1,6 @@
 using Basil.Application.Users.Objects.Connections;
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
+using Basil.Domain.Game.Spectating;
 using Mediator;
 
 namespace Basil.Application.Users.Messages;

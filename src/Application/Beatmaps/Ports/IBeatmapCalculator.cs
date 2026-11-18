@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 
 namespace Basil.Application.Beatmaps.Ports;
 

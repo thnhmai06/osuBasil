@@ -4,8 +4,9 @@ using Basil.Application.Beatmaps.Storage;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 
-using Basil.Domain.Mechanics;
+using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Shared.Storage;
+using Basil.Shared.Structures.Cryptography;
 using Microsoft.Extensions.Logging;
 using static Basil.Infrastructure.Beatmaps.Storage.FileBeatmapsetEntryReader;
 using static Basil.Infrastructure.Beatmaps.Storage.FileBeatmapsetNames;
@@ -160,7 +161,7 @@ internal sealed class FileBeatmapsetStorage(
 		}
 	}
 
-	internal async Task<string?> ReadAttributesAsync(BeatmapsetRecord set, Md5 hash, GameMode mode, GameMods mask,
+	internal async Task<string?> ReadAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
 		CancellationToken ct = default)
 	{
 		var folder = FindFolder(set.Id, FolderName(set));
@@ -176,7 +177,7 @@ internal sealed class FileBeatmapsetStorage(
 		}
 	}
 
-	internal async Task<bool> WriteAttributesAsync(BeatmapsetRecord set, Md5 hash, GameMode mode, GameMods mask,
+	internal async Task<bool> WriteAttributesAsync(BeatmapsetRecord set, Md5Hash hash, GameMode mode, GameMods mask,
 		string content)
 	{
 		var gate = await LockAsync(set.Id);

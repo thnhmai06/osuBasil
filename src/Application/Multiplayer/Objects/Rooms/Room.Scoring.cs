@@ -2,8 +2,9 @@ using Basil.Application.Multiplayer.Objects.Events;
 using Basil.Application.Users.Objects.Connections;
 
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Scores;
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
@@ -26,7 +27,7 @@ public sealed partial class Room
 		}
 	}
 
-	internal bool AwaitsScore(UserRecord player, Md5 beatmap)
+	internal bool AwaitsScore(UserRecord player, Md5Hash beatmap)
 	{
 		lock (_sync)
 		{

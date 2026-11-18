@@ -1,5 +1,5 @@
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
+using Basil.Domain.Game.Mechanics;
+using Basil.Domain.Game.Scores;
 
 namespace Basil.Domain.Tests.Mechanics;
 

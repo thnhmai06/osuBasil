@@ -5,6 +5,7 @@ using Basil.Domain.Content;
 using Basil.Domain.Game.Mechanics;
 using Basil.Infrastructure.Bot.Tests.Support;
 using Basil.Testing;
+using Basil.Shared.Structures.Cryptography;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
@@ -205,7 +206,7 @@ public sealed class MpMapAndModsTests
 			{
 				Id = 100,
 				Content = new ContentIdentifier(new ContentMetadata(0, now),
-					new Md5("00000000000000000000000000000000")),
+					new Md5Hash("00000000000000000000000000000000")),
 				Metadata = new BeatmapsetMetadata
 				{
 					Artist = "Camellia",
@@ -216,7 +217,7 @@ public sealed class MpMapAndModsTests
 				UpdatedAt = now,
 				CreatedAt = now
 			},
-			Hash = new Md5("d41d8cd98f00b204e9800998ecf8427e"),
+			Hash = new Md5Hash("d41d8cd98f00b204e9800998ecf8427e"),
 			Metadata = new BeatmapMetadata
 			{
 				Version = "Hyper",

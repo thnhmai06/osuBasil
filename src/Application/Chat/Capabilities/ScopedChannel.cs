@@ -3,6 +3,7 @@ using Basil.Application.Chat.Objects.Events;
 using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 
 namespace Basil.Application.Chat.Capabilities;
 

@@ -3,6 +3,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Authentication.Persistence;
 
@@ -41,7 +42,7 @@ public interface ISessionRepository
 
 	Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default);
 
-	Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
+	Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256Hash tokenHash, DateTimeOffset now,
 		CancellationToken ct = default);
 
 	Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types, DateTimeOffset at,

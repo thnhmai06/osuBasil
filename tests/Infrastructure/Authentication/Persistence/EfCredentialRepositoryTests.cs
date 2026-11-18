@@ -2,6 +2,7 @@ using System.Text;
 using Basil.Application.Authentication.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;
 
@@ -175,8 +176,8 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 			TestContext.Current.CancellationToken));
 	}
 
-	private static Md5 HashOf(string password)
+	private static Md5Hash HashOf(string password)
 	{
-		return new Md5(Encoding.UTF8.GetBytes(password));
+		return new Md5Hash(Encoding.UTF8.GetBytes(password));
 	}
 }

@@ -5,6 +5,7 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Authentication;
 using Basil.Domain.Game.Client;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;
 
@@ -18,7 +19,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	private static readonly long SecondId = 2;
 	private static readonly long ThirdId = 3;
 
-	private static readonly Sha256 Hash = new("token"u8.ToArray());
+	private static readonly Sha256Hash Hash = new("token"u8.ToArray());
 
 	private ISessionRepository Sessions => Get<ISessionRepository>();
 
@@ -191,7 +192,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 			.CreateAsync(new UserData { Name = name });
 	}
 
-	private Task RecordTokenAsync(UserRecord user, long id, SessionType type, Sha256 hash,
+	private Task RecordTokenAsync(UserRecord user, long id, SessionType type, Sha256Hash hash,
 		DateTimeOffset? expiresAt = null)
 	{
 		return Sessions.CreateOrUpdateAsync(
@@ -200,7 +201,7 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 	}
 
 	private static SessionRecord Record(long id, UserRecord user, SessionType type, DateTimeOffset startedAt,
-		SessionFingerprint fingerprint, Sha256 hash, DateTimeOffset? expiresAt = null)
+		SessionFingerprint fingerprint, Sha256Hash hash, DateTimeOffset? expiresAt = null)
 	{
 		return new SessionRecord
 		{
@@ -366,9 +367,9 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		Assert.Equal(2, apiOnly.Items.Count);
 	}
 
-	private static Sha256 Sha(byte[] input)
+	private static Sha256Hash Sha(byte[] input)
 	{
-		return new Sha256(input);
+		return new Sha256Hash(input);
 	}
 
 	private async Task RecordAsync(UserRecord user, DateTimeOffset timestamp, long id)
@@ -426,12 +427,12 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		return new OsuClient(
 			new OsuVersion(new DateOnly(2026, 1, 2), 42, OsuVersionStream.Beta),
 			new OsuFingerprint(
-				new Md5("0cc175b9c0f1b6a831c399e269772661"),
-				new Md5("4a8a08f09d37b73795649038408b5f33"),
-				new Md5("f97c5d29941bfb1b2fdab0874906ab82"), new NetworkAdapters
+				new Md5Hash("0cc175b9c0f1b6a831c399e269772661"),
+				new Md5Hash("4a8a08f09d37b73795649038408b5f33"),
+				new Md5Hash("f97c5d29941bfb1b2fdab0874906ab82"), new NetworkAdapters
 				{
 					Adapters = "adapter-one.adapter-two.",
-					Hash = new Md5("92eb5ffee6ae2fec3ad71c777531578f")
+					Hash = new Md5Hash("92eb5ffee6ae2fec3ad71c777531578f")
 				}));
 	}
 }

@@ -1,13 +1,14 @@
 using Basil.Application.Authentication.Persistence;
 
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Users.Persistence;
 
 internal static class CredentialChecks
 {
 	public static async Task<bool> IsPasswordAsync(this ICredentialRepository credentials, UserRecord user,
-		Md5 passwordHash, CancellationToken ct)
+		Md5Hash passwordHash, CancellationToken ct)
 	{
 		try
 		{

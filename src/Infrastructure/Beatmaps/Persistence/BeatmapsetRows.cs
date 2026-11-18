@@ -1,5 +1,6 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
@@ -13,8 +14,8 @@ internal static class BeatmapsetRows
 			return new BeatmapsetRecord
 			{
 				Id = row.Id,
-				Fingerprint = new ContentFingerprint(new ContentMetadata(row.ArchiveSize, row.ArchiveModifiedAt),
-					new Md5(row.ArchiveHash)),
+				Content = new ContentIdentifier(new ContentMetadata(row.ArchiveSize, row.ArchiveModifiedAt),
+					new Md5Hash(row.ArchiveHash)),
 				Metadata = new BeatmapsetMetadata { Artist = row.Artist, Title = row.Title, Creator = row.Creator },
 				Assets = new BeatmapsetAssets { HasStoryboard = row.Storyboard },
 				CreatedAt = row.CreatedAt,

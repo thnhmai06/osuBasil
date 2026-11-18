@@ -1,6 +1,7 @@
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Beatmaps;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Application.Beatmaps.Persistence;
@@ -11,7 +12,7 @@ public interface IBeatmapRepository
 
 	ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken ct = default);
 
-	ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken ct = default);
+	ValueTask<BeatmapRecord?> GetAsync(Md5Hash hash, CancellationToken ct = default);
 
 	Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set, CancellationToken ct = default);
 

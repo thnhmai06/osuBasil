@@ -4,6 +4,7 @@ using Basil.Application.Content.Storage;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands;

@@ -7,6 +7,7 @@ using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Scores;
 using Basil.Domain.Game.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Testing;
 
@@ -32,7 +33,7 @@ public enum RoomRole
 public sealed class RoomFixture
 {
 	public static BeatmapReference Beatmap { get; } =
-		new(new Md5("0123456789abcdef0123456789abcdef"), 1, "beatmap", GameMode.Standard, null);
+		new(new Md5Hash("0123456789abcdef0123456789abcdef"), 1, "beatmap", GameMode.Standard, null);
 
 	public Room Room { get; private init; } = null!;
 
@@ -66,7 +67,7 @@ public sealed class RoomFixture
 		return new RoundScore(score, round, null);
 	}
 
-	public static ScoreRecord PlayerScore(int id, UserRecord player, Md5 beatmap, int totalScore = 1000)
+	public static ScoreRecord PlayerScore(int id, UserRecord player, Md5Hash beatmap, int totalScore = 1000)
 	{
 		return new ScoreRecord
 		{

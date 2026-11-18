@@ -1,4 +1,5 @@
 using System.Text;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Domain.Tests.Cryptography;
@@ -10,7 +11,7 @@ public sealed class Sha256Tests
 	[InlineData("abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")]
 	public void SomeContent_LowerHexDigest(string content, string expected)
 	{
-		Assert.Equal(expected, new Sha256(Encoding.UTF8.GetBytes(content)).ToString());
+		Assert.Equal(expected, new Sha256Hash(Encoding.UTF8.GetBytes(content)).ToString());
 	}
 
 	[Fact]
@@ -18,7 +19,7 @@ public sealed class Sha256Tests
 	{
 		const string Text = "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD";
 
-		Assert.Equal(new Sha256(Text.ToLowerInvariant()), new Sha256(Text));
+		Assert.Equal(new Sha256Hash(Text.ToLowerInvariant()), new Sha256Hash(Text));
 	}
 
 	[Theory]
@@ -28,7 +29,7 @@ public sealed class Sha256Tests
 	[InlineData("za7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")]
 	public void NotHex64_Refused(string text)
 	{
-		Assert.Throws<ArgumentException>(() => new Sha256(text));
+		Assert.Throws<ArgumentException>(() => new Sha256Hash(text));
 	}
 
 	[Fact]
@@ -36,7 +37,7 @@ public sealed class Sha256Tests
 	{
 		using var stream = new MemoryStream("abc"u8.ToArray());
 
-		Assert.Equal(new Sha256("abc"u8.ToArray()),
-			await Sha256.ComputeAsync(stream, TestContext.Current.CancellationToken));
+		Assert.Equal(new Sha256Hash("abc"u8.ToArray()),
+			await Sha256Hash.ComputeAsync(stream, TestContext.Current.CancellationToken));
 	}
 }

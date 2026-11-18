@@ -2,6 +2,7 @@ using Basil.Application.Users.Objects.Connections;
 using Basil.Domain.Multiplayer;
 
 using Basil.Domain.Users;
+using Basil.Shared.Structures.Data;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 

@@ -40,6 +40,7 @@ using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Users;
 using Basil.Infrastructure.Users.Handlers;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -279,7 +280,7 @@ public sealed class TestApplication : IDisposable
 
 	public static OsuClient CreateClient()
 	{
-		var hash = new Md5("0123456789abcdef0123456789abcdef");
+		var hash = new Md5Hash("0123456789abcdef0123456789abcdef");
 		return new OsuClient(
 			new OsuVersion(new DateOnly(2026, 1, 1), null, OsuVersionStream.Stable),
 			new OsuFingerprint(hash, hash,
@@ -324,14 +325,14 @@ public sealed class TestApplication : IDisposable
 		{
 			Id = Interlocked.Increment(ref _sessionIds),
 			Value = new SessionData(record, SessionType.Irc, now, new SessionFingerprint(IPAddress.Loopback),
-				new Sha256(Encoding.UTF8.GetBytes(key)), null, now)
+				new Sha256Hash(Encoding.UTF8.GetBytes(key)), null, now)
 		});
 		return await Users.LoginWithTokenAsync(SessionType.Irc, key, IPAddress.Loopback);
 	}
 
-	private static Md5 PasswordHash(string password)
+	private static Md5Hash PasswordHash(string password)
 	{
-		return new Md5(Encoding.UTF8.GetBytes(password));
+		return new Md5Hash(Encoding.UTF8.GetBytes(password));
 	}
 
 	private static void RegisterStoragePorts(IServiceCollection services)

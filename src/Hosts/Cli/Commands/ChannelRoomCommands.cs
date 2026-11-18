@@ -9,6 +9,7 @@ using Basil.Application.Shared.Paging;
 using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
 using Basil.Host.Shared.Views;
 using Mediator;
 

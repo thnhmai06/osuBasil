@@ -1,11 +1,12 @@
 using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Multiplayer;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Testing.Persistence;
 
 public static class StoredMatches
 {
-	public static Md5 BeatmapHash => new("00000000000000000000000000000000");
+	public static Md5Hash BeatmapHash => new("00000000000000000000000000000000");
 
 	public static MatchData Data(string name, DateTimeOffset startedAt, UserRecord creator,
 		DateTimeOffset? endedAt = null, bool isPrivate = false)
@@ -20,7 +21,7 @@ public static class StoredMatches
 		};
 	}
 
-	public static Round Round(MatchRecord match, int index, DateTimeOffset startedAt, Md5? beatmapHash = null,
+	public static Round Round(MatchRecord match, int index, DateTimeOffset startedAt, Md5Hash? beatmapHash = null,
 		MatchSettings? settings = null)
 	{
 		return new Round

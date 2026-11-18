@@ -1,4 +1,5 @@
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Domain.Tests.Stable;
@@ -10,7 +11,7 @@ public class NetworkAdaptersTests
 		return new NetworkAdapters
 		{
 			Adapters = adapters,
-			Hash = new Md5("00000000000000000000000000000000")
+			Hash = new Md5Hash("00000000000000000000000000000000")
 		};
 	}
 
@@ -41,7 +42,7 @@ public class NetworkAdaptersTests
 		Assert.Throws<ArgumentNullException>(() => new NetworkAdapters
 		{
 			Adapters = null!,
-			Hash = new Md5("00000000000000000000000000000000")
+			Hash = new Md5Hash("00000000000000000000000000000000")
 		});
 	}
 

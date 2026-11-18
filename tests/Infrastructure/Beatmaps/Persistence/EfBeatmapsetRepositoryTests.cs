@@ -2,15 +2,16 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Shared.Exceptions;
 using Basil.Application.Shared.Paging;
 using Basil.Testing.Persistence;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;
 
 [Collection("Persistence")]
 public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	private static readonly Md5 EasyHash = new("11111111111111111111111111111111");
-	private static readonly Md5 HardHash = new("22222222222222222222222222222222");
-	private static readonly Md5 ThirdHash = new("33333333333333333333333333333333");
+	private static readonly Md5Hash EasyHash = new("11111111111111111111111111111111");
+	private static readonly Md5Hash HardHash = new("22222222222222222222222222222222");
+	private static readonly Md5Hash ThirdHash = new("33333333333333333333333333333333");
 
 	private IBeatmapsetRepository Sets => Get<IBeatmapsetRepository>();
 

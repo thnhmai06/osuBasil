@@ -1,4 +1,5 @@
 using Basil.Domain.Content;
+using Basil.Shared.Structures.Cryptography;
 
 
 namespace Basil.Application.Beatmaps.Persistence;
@@ -14,13 +15,13 @@ public abstract class BeatmapsetArchive(string name, ContentMetadata metadata) :
 
 	public abstract Task<Stream> OpenAsync(CancellationToken ct = default);
 
-	public async Task<ContentFingerprint> FingerprintAsync(CancellationToken ct = default)
+	public async Task<ContentIdentifier> FingerprintAsync(CancellationToken ct = default)
 	{
 		var stream = await OpenAsync(ct);
 		await using (stream)
 		{
-			return new ContentFingerprint(metadata,
-				await Md5.ComputeAsync(stream, ct));
+			return new ContentIdentifier(metadata,
+				await Md5Hash.ComputeAsync(stream, ct));
 		}
 	}
 }

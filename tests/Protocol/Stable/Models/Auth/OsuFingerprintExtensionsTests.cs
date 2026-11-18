@@ -1,5 +1,6 @@
 
 using Basil.Protocol.Game.Stable.Models.Client;
+using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 
@@ -41,11 +42,11 @@ public class OsuFingerprintExtensionsTests
 	{
 		var fingerprint = OsuFingerprintExtensions.Parse($"{Path}:{adapters}:{AdaptersHash}:{Uninstall}:{Disk}:");
 
-		Assert.Equal(new Md5(Path), fingerprint.PathHash);
+		Assert.Equal(new Md5Hash(Path), fingerprint.PathHash);
 		Assert.Equal(adapters, fingerprint.NetworkAdapters.Adapters);
-		Assert.Equal(new Md5(AdaptersHash), fingerprint.NetworkAdapters.Hash);
-		Assert.Equal(new Md5(Uninstall), fingerprint.UninstallHash);
-		Assert.Equal(new Md5(Disk), fingerprint.DiskSignatureHash);
+		Assert.Equal(new Md5Hash(AdaptersHash), fingerprint.NetworkAdapters.Hash);
+		Assert.Equal(new Md5Hash(Uninstall), fingerprint.UninstallHash);
+		Assert.Equal(new Md5Hash(Disk), fingerprint.DiskSignatureHash);
 	}
 
 	[Theory]

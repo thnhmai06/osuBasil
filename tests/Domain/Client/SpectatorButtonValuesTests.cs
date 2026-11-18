@@ -1,4 +1,5 @@
-using Basil.Domain.Client;
+using Basil.Domain.Game.Client;
+using Basil.Domain.Game.Spectating;
 
 namespace Basil.Domain.Tests.Client;
 

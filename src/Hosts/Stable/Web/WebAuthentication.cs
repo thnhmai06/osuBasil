@@ -9,6 +9,7 @@ using Basil.Application.Users.Registry;
 using Basil.Domain.Game.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
+using Basil.Shared.Structures.Cryptography;
 using Mediator;
 
 namespace Basil.Host.Stable.Web;
@@ -48,7 +49,7 @@ internal sealed class WebAuthentication(
 		if (attempt is null) return null;
 
 		if (_verified.TryGetValue(client, out var known) && SameDigest(known, passwordMd5)) return client;
-		if (Md5.TryParse(passwordMd5, null, out var digest) &&
+		if (Md5Hash.TryParse(passwordMd5, null, out var digest) &&
 		    await sender.Send(new VerifyUserPassword(online, digest), ct))
 		{
 			_verified.AddOrUpdate(client, passwordMd5.ToLowerInvariant());

@@ -3,6 +3,8 @@ using Basil.Domain.Authentication;
 using Basil.Domain.Content;
 
 using Basil.Domain.Users;
+using Basil.Domain.Game.Users;
+using Basil.Shared.Utilities;
 
 namespace Basil.Application.Shared.Settings;
 
@@ -13,7 +15,7 @@ public sealed record ServerSettings
 	public Locks Locks
 	{
 		get;
-		init => field = value.ThrowIfUndefined();
+		init => field = value.ThrowIfInvalid();
 	} = Locks.Beatmapsets;
 
 	public AccountSettings Accounts { get; init; } = new();
@@ -80,7 +82,7 @@ public sealed record ServerSettings
 		public UserPrivileges DefaultPrivileges
 		{
 			get;
-			init => field = value.ThrowIfUndefined();
+			init => field = value.ThrowIfInvalid();
 		} = UserPrivilegesExtensions.Default;
 	}
 
