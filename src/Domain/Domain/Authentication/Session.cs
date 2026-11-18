@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Basil.Domain.Users;
 using Basil.Shared.Structures.Cryptography;
 using Basil.Shared.Utilities;
@@ -7,9 +6,7 @@ namespace Basil.Domain.Authentication;
 
 public sealed class Session : IEquatable<Session>
 {
-	// Swapped whole / compared by ticks: Heartbeat, StatusAt and End run on different threads.
-	private long _lastActiveTicks;
-	private StrongBox<SessionEnded>? _ended;
+	private State _state = null!;
 
 	public required long Id
 	{
@@ -44,27 +41,26 @@ public sealed class Session : IEquatable<Session>
 
 	public required DateTimeOffset LastActiveAt
 	{
-		get => new(Volatile.Read(ref _lastActiveTicks), TimeSpan.Zero);
+		get => Volatile.Read(ref _state).LastActiveAt;
 		init
 		{
 			if (value < StartedAt)
 				throw new ArgumentOutOfRangeException(nameof(value), value,
 					"A session cannot be active before it starts.");
-			_lastActiveTicks = value.UtcTicks;
+			_state = new State(value, null);
 		}
 	}
 
-	public SessionEnded? Ended => Volatile.Read(ref _ended)?.Value;
+	public SessionEnded? Ended => Volatile.Read(ref _state).Ended;
 
 	public void Heartbeat(DateTimeOffset at)
 	{
-		var ticks = at.UtcTicks;
-		var current = Volatile.Read(ref _lastActiveTicks);
-		while (ticks > current && Ended is null)
+		while (true)
 		{
-			var seen = Interlocked.CompareExchange(ref _lastActiveTicks, ticks, current);
-			if (seen == current) return;
-			current = seen;
+			var current = Volatile.Read(ref _state);
+			if (current.Ended is not null || at <= current.LastActiveAt) return;
+			if (Interlocked.CompareExchange(ref _state, current with { LastActiveAt = at }, current) == current)
+				return;
 		}
 	}
 
@@ -78,8 +74,13 @@ public sealed class Session : IEquatable<Session>
 
 	public bool End(DateTimeOffset at, SessionEndReason reason)
 	{
-		return Interlocked.CompareExchange(ref _ended, new StrongBox<SessionEnded>(new SessionEnded(at, reason)),
-			null) is null;
+		while (true)
+		{
+			var current = Volatile.Read(ref _state);
+			if (current.Ended is not null) return false;
+			if (Interlocked.CompareExchange(ref _state, current with { Ended = new SessionEnded(at, reason) },
+				    current) == current) return true;
+		}
 	}
 
 	public bool Equals(Session? other)
@@ -96,4 +97,6 @@ public sealed class Session : IEquatable<Session>
 	{
 		return Id.GetHashCode();
 	}
+
+	private sealed record State(DateTimeOffset LastActiveAt, SessionEnded? Ended);
 }
