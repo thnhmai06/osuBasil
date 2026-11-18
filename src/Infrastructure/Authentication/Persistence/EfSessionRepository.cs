@@ -154,7 +154,10 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			foreach (var item in activity)
 			{
 				var last = item.LastActiveAt.ToUniversalTime();
-				await context.Sessions.Where(row => row.Id == item.Id && row.EndedAt == null)
+				// A session already past its expiry stays expired: activity never brings it back.
+				var expiredBy = last - item.Type.ExpiresAfter;
+				await context.Sessions.Where(row => row.Id == item.Id && row.EndedAt == null &&
+				                                    row.LastActiveAt > expiredBy)
 					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.LastActiveAt, last));
 			}
 		});

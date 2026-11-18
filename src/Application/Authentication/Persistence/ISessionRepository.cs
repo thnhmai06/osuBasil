@@ -20,7 +20,7 @@ public sealed record SessionQuery(
 	SessionFilter State,
 	IReadOnlyList<SessionType>? Types);
 
-public sealed record SessionActivity(long Id, DateTimeOffset LastActiveAt);
+public sealed record SessionActivity(long Id, SessionType Type, DateTimeOffset LastActiveAt);
 
 public interface ISessionRepository
 {
