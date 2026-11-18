@@ -10,7 +10,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
-/// <summary>Keeps room-channel membership and lifetime in step with room and connection events.</summary>
 public sealed class RoomChannelHandlerTests
 {
 	[Fact]

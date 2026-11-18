@@ -2,10 +2,8 @@ using Basil.Host.Rest.Http;
 
 namespace Basil.Host.Rest.Sse;
 
-/// <summary>Writes an SSE response: the snapshot first, then every chunk the hub gives the stream.</summary>
 internal sealed class SseResult(SseHub hub, SseStream stream, byte[] snapshot, Action? onClosed = null) : IResult
 {
-	/// <inheritdoc />
 	public async Task ExecuteAsync(HttpContext httpContext)
 	{
 		var response = httpContext.Response;
@@ -37,10 +35,8 @@ internal sealed class SseResult(SseHub hub, SseStream stream, byte[] snapshot, A
 	}
 }
 
-/// <summary>Opens SSE streams for the routes.</summary>
 internal static class SseRoutes
 {
-	/// <summary>Opens a stream on a root and answers with it, or with the reason none could be opened.</summary>
 	public static async Task<IResult> StreamAsync(this HttpContext context, string key,
 		Func<CancellationToken, Task<(object Data, string? Id)>> snapshot, Action? onClosed = null,
 		Func<CancellationToken, Task<SsePoll>>? poll = null)
@@ -58,10 +54,8 @@ internal static class SseRoutes
 	}
 }
 
-/// <summary>Answers with a snapshot and ends, for a source that will never change again.</summary>
 internal sealed class SnapshotOnlyResult(byte[] snapshot) : IResult
 {
-	/// <inheritdoc />
 	public async Task ExecuteAsync(HttpContext httpContext)
 	{
 		var response = httpContext.Response;

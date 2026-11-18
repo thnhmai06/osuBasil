@@ -6,10 +6,8 @@ using Basil.Domain.Client;
 
 namespace Basil.Infrastructure.Anticheat.Services;
 
-/// <summary>Reports the anticheat flags a game client sent and announces the signs of cheating among them.</summary>
 internal sealed class AnticheatReporter(IEventPublisher<AnticheatEvent> events) : IAnticheatReporter
 {
-	/// <inheritdoc />
 	public OsuFlags Report(StableConnection player, OsuFlags flags)
 	{
 		var signs = flags & OsuFlagsGroups.CheatSigns;

@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Runs a <see cref="CompleteRound" /> on the room for the connection that asked.</summary>
 internal sealed class CompleteRoundHandler : IRequestHandler<CompleteRound, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(CompleteRound request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

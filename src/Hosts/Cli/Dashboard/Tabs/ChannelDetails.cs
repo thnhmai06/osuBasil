@@ -5,11 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>Builds the detail of a general chat channel, with a button for every <c>channels</c> console command.</summary>
 internal sealed class ChannelDetails(IServiceProvider services, CommandActions actions, Dialogs dialogs)
 {
-	/// <summary>Builds the detail of a channel, or the one with only the way to create a channel when it is not a general one.</summary>
-	/// <param name="name">The name of the channel.</param>
 	public DetailView Of(string name)
 	{
 		var create = new DetailAction("New channel", AskNew);

@@ -4,13 +4,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 
-/// <summary>
-///     Watches the beatmapset storage and reports each entry that changed, once its changes have settled; it watches
-///     from its creation until the token it was given is cancelled or it is disposed.
-/// </summary>
 internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>, IDisposable
 {
-	/// <summary>How long an entry must stay unchanged before it is reported.</summary>
 	internal static readonly TimeSpan SettleTime = TimeSpan.FromSeconds(2);
 
 	private readonly Lock _gate = new();
@@ -23,12 +18,6 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 	private readonly FileSystemWatcher _watcher;
 	private bool _stopped;
 
-	/// <summary>Starts watching a storage directory.</summary>
-	/// <param name="root">The storage directory's full path.</param>
-	/// <param name="time">The clock the settling time is measured on.</param>
-	/// <param name="logger">The logger for what could not be reported.</param>
-	/// <param name="listEntries">Lists every entry in the storage, to report them all again when watching fails.</param>
-	/// <param name="stopping">A token that stops watching.</param>
 	internal FileBeatmapsetWatcher(string root, TimeProvider time, ILogger logger,
 		Func<IEnumerable<BeatmapsetSource>> listEntries, CancellationToken stopping)
 	{
@@ -55,7 +44,6 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		_registration = stopping.UnsafeRegister(static state => ((FileBeatmapsetWatcher)state!).Dispose(), this);
 	}
 
-	/// <summary>Gets whether watching has stopped: nothing more is reported and the file system is no longer watched.</summary>
 	internal bool IsStopped
 	{
 		get
@@ -67,9 +55,6 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		}
 	}
 
-	/// <summary>Reads the reports; ending the read stops watching.</summary>
-	/// <param name="ct">A token that ends the read.</param>
-	/// <returns>Each entry that changed, as it is once its changes have settled.</returns>
 	public async IAsyncEnumerator<BeatmapsetSource> GetAsyncEnumerator(CancellationToken ct = default)
 	{
 		try
@@ -86,7 +71,6 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		}
 	}
 
-	/// <summary>Stops watching; entries that have not settled are not reported, and reading ends.</summary>
 	public void Dispose()
 	{
 		lock (_gate)
@@ -102,8 +86,6 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		_settled.Writer.TryComplete();
 	}
 
-	/// <summary>Notes that a top-level name changed: it is reported once it stays unchanged for the settling time.</summary>
-	/// <param name="name">The top-level name; a hidden name or <see langword="null" /> is ignored.</param>
 	internal void Report(string? name)
 	{
 		if (name is null || FileBeatmapsetNames.IsHidden(name)) return;

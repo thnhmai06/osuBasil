@@ -2,11 +2,6 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Domain.Tests.Multiplayer;
 
-/// <summary>
-///     Pins the privileges each room role groups. The expected masks are written from the rules in
-///     AGENTS.md ("Authority") and docs/for-developers/multiplayer.md ("Room roles and permissions"), not
-///     from the implementation.
-/// </summary>
 public class RoomPrivilegesTests
 {
 	private const RoomPrivileges EveryPrivilege =

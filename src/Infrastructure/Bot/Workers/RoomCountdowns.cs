@@ -13,27 +13,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Bot.Workers;
 
-/// <summary>Why a running countdown was cancelled; decides what, if anything, BasilBot says in the room.</summary>
 internal enum CountdownCancelReason
 {
-	/// <summary>Someone asked for the countdown to be aborted.</summary>
 	Aborted = 1,
 
-	/// <summary>A setting the countdown's round depends on changed.</summary>
 	SettingsChanged,
 
-	/// <summary>A round was started by hand while the countdown ran.</summary>
 	RoundStarted,
 
-	/// <summary>The round in progress was aborted.</summary>
 	RoundAborted,
 
-	/// <summary>The room closed.</summary>
 	RoomClosed
 }
 
-/// <summary>Runs the countdowns of rooms: announces their marks and, when one elapses, starts the round it was for.</summary>
-/// <remarks>A room has at most one countdown; starting another replaces it. The caller checks the privileges.</remarks>
 internal sealed class RoomCountdowns(
 	TimeProvider clock,
 	ISender sender,
@@ -44,24 +36,13 @@ internal sealed class RoomCountdowns(
 {
 	private readonly ConcurrentDictionary<Room, Running> _running = new();
 
-	/// <summary>Gets how many countdowns are running.</summary>
 	public int Count => _running.Count;
 
-	/// <summary>Tells whether a countdown is running in a room.</summary>
-	/// <param name="room">The room.</param>
-	/// <returns><see langword="true" /> when a countdown is running.</returns>
 	public bool IsRunning(Room room)
 	{
 		return _running.ContainsKey(room);
 	}
 
-	/// <summary>Starts a countdown in a room, replacing the one already running.</summary>
-	/// <param name="actor">The connection that starts the countdown.</param>
-	/// <param name="room">The room.</param>
-	/// <param name="length">How long the countdown runs.</param>
-	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
-	/// <param name="ct">A token that cancels the announcements.</param>
-	/// <returns>Ok, InvalidSettings (out of range), InProgress or RoomClosed.</returns>
 	public async Task<RoomOutcome> StartAsync(Connection actor, Room room, TimeSpan length, bool startsRound,
 		CancellationToken ct)
 	{
@@ -108,12 +89,6 @@ internal sealed class RoomCountdowns(
 		return RoomOutcome.Ok;
 	}
 
-	/// <summary>Cancels the countdown of a room and says why in the room.</summary>
-	/// <param name="room">The room.</param>
-	/// <param name="reason">Why the countdown is cancelled.</param>
-	/// <param name="onlyIfStartsRound">Whether a countdown that starts no round is left running.</param>
-	/// <param name="ct">A token that cancels the announcement.</param>
-	/// <returns><see langword="true" /> when a countdown was cancelled.</returns>
 	public async Task<bool> CancelAsync(Room room, CountdownCancelReason reason, bool onlyIfStartsRound,
 		CancellationToken ct)
 	{
@@ -134,7 +109,6 @@ internal sealed class RoomCountdowns(
 		return true;
 	}
 
-	/// <summary>Wraps work that a timer starts; the work reports its own failures.</summary>
 	private static TimerCallback InBackground(Func<Task> work)
 	{
 		return state => { _ = work(); };
@@ -206,16 +180,12 @@ internal sealed class RoomCountdowns(
 			: server.SayAsync(channels.Of(room), text, ct: ct);
 	}
 
-	/// <summary>A countdown and the timers that announce its marks and its end.</summary>
 	private sealed class Running(RoomCountdown countdown) : IDisposable
 	{
-		/// <summary>The countdown.</summary>
 		public RoomCountdown Countdown { get; } = countdown;
 
-		/// <summary>The timers that announce the marks and the end.</summary>
 		public ITimer[] Timers { get; set; } = [];
 
-		/// <inheritdoc />
 		public void Dispose()
 		{
 			foreach (var timer in Timers) timer.Dispose();

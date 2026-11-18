@@ -5,14 +5,6 @@ using AdmissionGate = Basil.Gateway.Admission.Admission;
 
 namespace Basil.Gateway.Tests;
 
-/// <summary>
-///     Tier 2 admits a subject up to its allowance per window: <c>Requests</c> for Standard,
-///     <c>
-///         Requests *
-///         ElevatedMultiplier
-///     </c>
-///     for Elevated; the next request is denied with a retry delay.
-/// </summary>
 public sealed class AdmissionTests
 {
 	private static readonly GatewayLimits Small = new()

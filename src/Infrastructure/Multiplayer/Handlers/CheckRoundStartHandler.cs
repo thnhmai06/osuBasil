@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Answers a <see cref="CheckRoundStart" /> from the privileges of the connection that asked.</summary>
 internal sealed class CheckRoundStartHandler : IRequestHandler<CheckRoundStart, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(CheckRoundStart request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

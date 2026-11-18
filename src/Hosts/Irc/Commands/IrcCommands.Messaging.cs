@@ -102,9 +102,6 @@ internal sealed partial class IrcCommands
 		}
 	}
 
-	/// <summary>Finds the open channel an IRC client means by a name.</summary>
-	/// <param name="name">The channel name.</param>
-	/// <returns>The channel, or <see langword="null" /> when none matches or the name is one IRC never reaches.</returns>
 	private Channel? Resolve(string name)
 	{
 		return name.StartsWith("#spec_", StringComparison.OrdinalIgnoreCase) ? null : server.FindChannel(name);

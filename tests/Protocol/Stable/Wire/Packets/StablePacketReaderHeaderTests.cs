@@ -2,10 +2,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies `PacketReader.ReadHeader` parses the type/length header and leaves the payload
-///     unconsumed.
-/// </summary>
 public class StablePacketReaderHeaderTests
 {
 	private static (PacketReader Reader, MemoryStream Stream) Reader(string hex)

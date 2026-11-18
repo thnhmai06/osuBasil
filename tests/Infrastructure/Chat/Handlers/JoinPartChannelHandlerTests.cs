@@ -11,7 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
-/// <summary>Joining and leaving a channel through messages. Outcomes come from the channel's own contract.</summary>
 public sealed class JoinPartChannelHandlerTests
 {
 	private const string ChannelName = "#lobby";

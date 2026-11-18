@@ -7,10 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Chat.Persistence;
 
-/// <summary>Stores the general chat channels the server offers.</summary>
 internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRepository
 {
-	/// <inheritdoc />
 	public async Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((ChatDbContext context) => context.Channels
@@ -20,7 +18,6 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 		return rows.Select(ToRecord).OrderBy(channel => channel.Name, StringComparer.Ordinal).ToList();
 	}
 
-	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(GeneralChannelRecord channel)
 	{
 		var row = ToRow(channel);
@@ -28,7 +25,6 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 			context.UpsertAsync(row, stored => stored.Name == row.Name));
 	}
 
-	/// <inheritdoc />
 	public Task DeleteAsync(GeneralChannelRecord channel)
 	{
 		return database.WriteAsync((ChatDbContext context) => context.Channels
@@ -36,7 +32,6 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 			.ExecuteDeleteAsync());
 	}
 
-	/// <summary>Builds the row that stores a channel, from the values it has now.</summary>
 	private static ChannelRow ToRow(GeneralChannelRecord channel)
 	{
 		return new ChannelRow
@@ -50,7 +45,6 @@ internal sealed class EfChannelRepository(DatabaseSession database) : IChannelRe
 		};
 	}
 
-	/// <summary>Builds a general channel from a stored row.</summary>
 	private static GeneralChannelRecord ToRecord(ChannelRow row)
 	{
 		return new GeneralChannelRecord

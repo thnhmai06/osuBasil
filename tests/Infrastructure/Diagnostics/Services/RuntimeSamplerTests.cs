@@ -7,7 +7,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Services;
 
-/// <summary>The sampler keeps one window per known host label, whatever labels the meter is given.</summary>
 public sealed class RuntimeSamplerTests
 {
 	[Fact]

@@ -9,16 +9,10 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 
 namespace Basil.Host.Rest.Http;
 
-/// <summary>
-///     The first steps of the API pipeline: turns an unhandled exception into a 500 answer, authenticates the
-///     caller and applies the rate limits that are read from the server settings.
-/// </summary>
 internal sealed class RestPipeline(RequestDelegate next)
 {
-	/// <summary>The seconds a client waits before it tries again while the server is stopping.</summary>
 	internal const string RetryAfterWhileStopping = "5";
 
-	/// <summary>Runs the steps for one request.</summary>
 	public async Task InvokeAsync(HttpContext context, UserRegistry registry, ISender sender,
 		RateLimiter limiter, SseHub hub, ILogger<RestPipeline> logger)
 	{
@@ -99,10 +93,8 @@ internal sealed class RestPipeline(RequestDelegate next)
 	}
 }
 
-/// <summary>Reads the allowed origins from the server settings on each request, so a change applies at once.</summary>
 internal sealed class SettingsCorsPolicyProvider(ISender sender) : ICorsPolicyProvider
 {
-	/// <inheritdoc />
 	public async Task<CorsPolicy?> GetPolicyAsync(HttpContext context, string? policyName)
 	{
 		var origins = (await sender.Send(new ReadSettings(), context.RequestAborted)).Cors.AllowedOrigins;

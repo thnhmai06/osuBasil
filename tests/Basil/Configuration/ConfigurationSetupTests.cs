@@ -3,10 +3,6 @@ using Microsoft.AspNetCore.Builder;
 
 namespace Basil.Tests.Configuration;
 
-/// <summary>
-///     The order in which the server's configuration sources win: the environment and the command line over the
-///     files.
-/// </summary>
 public sealed class ConfigurationSetupTests
 {
 	private const string Key = "ConnectionStrings__Write";

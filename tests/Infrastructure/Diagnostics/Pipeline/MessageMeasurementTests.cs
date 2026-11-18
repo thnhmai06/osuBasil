@@ -5,7 +5,6 @@ using Mediator;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Pipeline;
 
-/// <summary>Every request is timed on the diagnostics meter, tagged with the name of its type and nothing else.</summary>
 public sealed class MessageMeasurementTests
 {
 	[Fact]

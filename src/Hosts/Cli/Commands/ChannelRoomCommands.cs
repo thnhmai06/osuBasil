@@ -14,7 +14,6 @@ using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>The <c>channels</c>, <c>rooms</c> and <c>matches</c> commands.</summary>
 internal static class ChannelRoomCommands
 {
 	private static readonly OptionDef[] ChannelFields =
@@ -25,7 +24,6 @@ internal static class ChannelRoomCommands
 		new("visible", "Whether it is listed.", OptionKind.Bool)
 	];
 
-	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef
@@ -98,7 +96,6 @@ internal static class ChannelRoomCommands
 		};
 	}
 
-	/// <summary>Turns the fields of a request body into options, the way the API names them.</summary>
 	public static OptionDef[] OptionsOf(Type? body)
 	{
 		if (body is null) return [];
@@ -121,7 +118,6 @@ internal static class ChannelRoomCommands
 		];
 	}
 
-	/// <summary>Builds the request body of a room command from the options.</summary>
 	private static object? BodyOf(CommandCall call, Type? body)
 	{
 		if (body is null) return null;

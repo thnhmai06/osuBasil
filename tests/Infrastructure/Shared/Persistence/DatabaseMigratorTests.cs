@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Shared.Tests.Persistence;
 
-/// <summary>Contract tests of the migrator that brings the database up to date.</summary>
 [Collection("Persistence")]
 public sealed class DatabaseMigratorTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -32,8 +31,6 @@ public sealed class DatabaseMigratorTests(PersistenceFixture container) : Databa
 		Assert.Equal("kept_user", found.Value.Name);
 	}
 
-	/// <summary>Reads the migrations the database has been given.</summary>
-	/// <returns>The migrations, in the order the database holds them.</returns>
 	private async Task<IReadOnlyList<string>> AppliedMigrationsAsync()
 	{
 		var rows = await StoredRows.ReadAsync(ConnectionString, """

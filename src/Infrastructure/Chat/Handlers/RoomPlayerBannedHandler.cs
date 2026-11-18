@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>Parts a banned player from a room's chat channel when their seat is vacated.</summary>
 internal sealed class RoomPlayerBannedHandler(RoomChannels channels) : INotificationHandler<RoomPlayerBanned>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(RoomPlayerBanned @event, CancellationToken ct)
 	{
 		if (@event.Evicted is { } evicted && channels.Find(@event.Room) is { } channel &&

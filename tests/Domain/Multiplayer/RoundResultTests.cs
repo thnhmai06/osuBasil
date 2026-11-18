@@ -6,7 +6,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Multiplayer;
 
-/// <summary>Verifies how a round's scores decide a winner, a draw or no result.</summary>
 public class RoundResultTests
 {
 	private static Round MakeRound(GameTeamType teamType, GameWinCondition condition = GameWinCondition.Score)

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Tests.Lifetime;
 
-/// <summary>What the server does before it serves anyone: it recovers the runtime.</summary>
 public sealed class RuntimeStartupTests
 {
 	[Fact]

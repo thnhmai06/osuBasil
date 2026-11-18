@@ -4,8 +4,6 @@ using Basil.Domain.Scores;
 
 namespace Basil.Host.Shared.Views;
 
-/// <summary>A score as the API shows it.</summary>
-/// <remarks><c>Pp</c> is <see langword="null" /> when the score has no calculated pp.</remarks>
 public sealed record ScoreView(
 	int Id,
 	int? UserId,
@@ -21,8 +19,6 @@ public sealed record ScoreView(
 	DateTimeOffset Timestamp,
 	double? Pp)
 {
-	/// <summary>Describes a score.</summary>
-	/// <param name="score">The score.</param>
 	public static ScoreView Of(ScoreRecord score)
 	{
 		var v = score.Value;

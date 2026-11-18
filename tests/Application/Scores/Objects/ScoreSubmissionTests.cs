@@ -17,14 +17,8 @@ using NSubstitute;
 
 namespace Basil.Application.Scores.Tests.Objects;
 
-/// <summary>
-///     Submitting a score on a game client, as the <c>SubmitAsync</c> contract states it: the client's own
-///     privilege, one rejection reason per failed check, no duplicates, the replay rule, the statistics and the
-///     association with the latest round of the player's room.
-/// </summary>
 public sealed class ScoreSubmissionTests
 {
-	/// <summary>The wait for scores the server settings default to, 10 seconds.</summary>
 	private static readonly TimeSpan ScoreWait = TimeSpan.FromSeconds(10);
 
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);

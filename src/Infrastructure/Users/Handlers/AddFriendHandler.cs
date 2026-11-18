@@ -5,10 +5,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Carries out <see cref="AddFriend" /> on the account it names.</summary>
 internal sealed class AddFriendHandler(UserRegistry registry) : IRequestHandler<AddFriend, UserOutcome>
 {
-	/// <inheritdoc />
 	public async ValueTask<UserOutcome> Handle(AddFriend request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Relationships.AddFriendAsync();

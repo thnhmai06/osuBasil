@@ -7,10 +7,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Scores.Workers;
 
-/// <summary>
-///     Calculates the performance points of each score after it is stored, and at startup of the scores that still
-///     lack them.
-/// </summary>
 internal sealed class ScorePerformanceWorker(
 	ScorePerformanceQueue queue,
 	IScoreRepository scores,
@@ -18,7 +14,6 @@ internal sealed class ScorePerformanceWorker(
 	IScorePerformanceRecalculator recalculator,
 	ILogger<ScorePerformanceWorker> logger) : BackgroundService
 {
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		await StartMissingAsync(stoppingToken);
@@ -27,7 +22,6 @@ internal sealed class ScorePerformanceWorker(
 		await Task.WhenAll(readers);
 	}
 
-	/// <summary>Starts the calculation for the scores without points when any exist.</summary>
 	internal async Task StartMissingAsync(CancellationToken ct)
 	{
 		try
@@ -41,7 +35,6 @@ internal sealed class ScorePerformanceWorker(
 		}
 	}
 
-	/// <summary>Calculates the score with the given id; a failure is logged, never thrown.</summary>
 	internal async Task CalculateAsync(int id, CancellationToken ct)
 	{
 		try

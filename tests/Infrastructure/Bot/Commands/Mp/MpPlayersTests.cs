@@ -7,11 +7,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     The commands that act on the people in a room: <c>!mp move</c>, <c>host</c>, <c>clearhost</c>, <c>invite</c>,
-///     <c>kick</c>, <c>ban</c>, <c>unban</c> and <c>team</c>. Expected replies are named by the reply that owns the
-///     wording.
-/// </summary>
 public sealed class MpPlayersTests
 {
 	[Theory]
@@ -486,10 +481,6 @@ public sealed class MpPlayersTests
 		Assert.Equal(before, Snapshot(room));
 	}
 
-	/// <summary>
-	///     Opens a room as "Creator" (seated in slot 1 as host, targeting the room) and seats "Player" in slot 2 with
-	///     <c>!mp join</c>.
-	/// </summary>
 	private static async Task<(Room Room, StableConnection Creator, StableConnection Player)> SetUpAsync(
 		BotHarness bot)
 	{
@@ -500,7 +491,6 @@ public sealed class MpPlayersTests
 		return (room, creator, player);
 	}
 
-	/// <summary>Reads everything these commands can change: the host, who is banned, and who sits where in which team.</summary>
 	private static (StableConnection? Host, int Banned, string Seats) Snapshot(Room room)
 	{
 		var seats = room.Slots.Where(slot => slot.Player is not null)

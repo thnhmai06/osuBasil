@@ -3,12 +3,6 @@ using Basil.Protocol.Stable.Models.Client;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 
-/// <summary>
-///     Verifies the client hash contract <c>osuPath:adapters:adaptersHash:uninstall:disk:</c>: exactly five
-///     colon-separated components and a required trailing colon, every hash a 32-digit hex string, the adapters a
-///     dot-terminated list or the wine marker, and <see cref="OsuFingerprintExtensions.ToText" /> restoring the wire text.
-///     Anything else is rejected.
-/// </summary>
 public class OsuFingerprintExtensionsTests
 {
 	private const string Path = "0123456789abcdef0123456789abcdef";

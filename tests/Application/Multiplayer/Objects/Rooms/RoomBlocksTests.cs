@@ -6,11 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Multiplayer.Tests.Objects.Rooms;
 
-/// <summary>
-///     Whether one user blocks another, as a room asks it. The expected values come from
-///     docs/for-developers/multiplayer.md: a room refuses an invitation when the invited user blocks the inviter, and
-///     BasilBot blocks nobody.
-/// </summary>
 public sealed class RoomBlocksTests
 {
 	private static readonly DateTimeOffset CreatedAt = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);

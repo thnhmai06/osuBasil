@@ -5,10 +5,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Records a host being granted to a player.</summary>
 internal sealed class RoomHostChangedRecorder(IMatchEventRepository matchEvents) : INotificationHandler<RoomHostChanged>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomHostChanged @event, CancellationToken ct)
 	{
 		if (@event.Host is { } host)

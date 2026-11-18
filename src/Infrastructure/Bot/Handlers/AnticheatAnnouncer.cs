@@ -12,7 +12,6 @@ using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers;
 
-/// <summary>Announces anticheat flags in room channels and to room staff.</summary>
 internal sealed class AnticheatAnnouncer(
 	Server server,
 	Lobby lobby,
@@ -21,7 +20,6 @@ internal sealed class AnticheatAnnouncer(
 	IReplies replies)
 	: INotificationHandler<AnticheatPlayerFlagged>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(AnticheatPlayerFlagged flagged, CancellationToken ct)
 	{
 		if (lobby.RoomOf(flagged.Player) is not { } room || room.IsClosed)

@@ -11,7 +11,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>The messages that start, stop and report spectating, publish the watched play and set the presence status.</summary>
 public sealed class SpectatingHandlerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

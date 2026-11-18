@@ -13,7 +13,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Scores.Tests.Handlers;
 
-/// <summary>Contract tests of the score search: which scores a search names, and which searches are refused.</summary>
 [Collection("Persistence")]
 public sealed class SearchScoresHandlerTests(PersistenceFixture container) : DatabaseTests(container)
 {

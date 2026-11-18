@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Irc.Tests.Users;
 
-/// <summary>What clients read when the server stops or restarts.</summary>
 [Collection("IRC host")]
 public sealed class ShutdownTests(IrcHostFixture fixture)
 {

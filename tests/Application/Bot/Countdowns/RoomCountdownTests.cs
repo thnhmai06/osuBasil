@@ -2,12 +2,6 @@ using Basil.Application.Bot.Objects;
 
 namespace Basil.Application.Bot.Tests.Countdowns;
 
-/// <summary>
-///     The remaining times a countdown announces. The expected marks come from the announcement rules of
-///     docs/for-developers/multiplayer.md ("Countdown"): a timer announces 60, 30, 10 and 5 seconds; a countdown that
-///     starts a round announces every whole minute left (unless the end is within 5 seconds) and then 30, 10, 5, 4 and 3
-///     seconds; a mark is only announced while it is shorter than the countdown.
-/// </summary>
 public sealed class RoomCountdownTests
 {
 	[Fact]

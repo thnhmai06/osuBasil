@@ -13,10 +13,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Scores.Tests.Logic;
 
-/// <summary>
-///     The pp of a stored score: calculated for a passed play of a beatmap the server has, otherwise left uncalculated
-///     without refusing anything.
-/// </summary>
 public sealed class ScorePerformanceCalculatorTests
 {
 	private static readonly TimeSpan Limit = TimeSpan.FromSeconds(30);

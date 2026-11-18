@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>What the dashboard keeps of the log and of the chat, and hands out in order.</summary>
 public sealed class FeedTests
 {
 	private static LogLine Line(string text)

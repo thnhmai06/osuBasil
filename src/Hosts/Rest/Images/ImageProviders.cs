@@ -7,11 +7,9 @@ using Mediator;
 
 namespace Basil.Host.Rest.Images;
 
-/// <summary>Avatars on <c>a.&lt;domain&gt;/{userId}</c>; a user without one shows the default avatar.</summary>
 public sealed partial class AvatarProvider(ISender sender)
 	: StreamImageProvider("a", path => AvatarPath().IsMatch(path.Value ?? ""))
 {
-	/// <inheritdoc />
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var id = int.Parse(AvatarPath().Match(path.Value!).Groups[1].Value);
@@ -23,11 +21,9 @@ public sealed partial class AvatarProvider(ISender sender)
 	private static partial Regex AvatarPath();
 }
 
-/// <summary>Menu banners, seasonal backgrounds and the icon on <c>assets.&lt;domain&gt;/menu/...</c>.</summary>
 public sealed partial class MenuImageProvider(ISender sender)
 	: StreamImageProvider("assets", path => MenuPath().IsMatch(path.Value ?? ""))
 {
-	/// <inheritdoc />
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var match = MenuPath().Match(path.Value!);
@@ -45,11 +41,9 @@ public sealed partial class MenuImageProvider(ISender sender)
 	private static partial Regex MenuPath();
 }
 
-/// <summary>Screenshots on <c>osu.&lt;domain&gt;/ss/{id}.{ext}</c>, which the game opens in a browser after an upload.</summary>
 public sealed partial class ScreenshotProvider(ISender sender)
 	: StreamImageProvider("osu", path => ScreenshotPath().IsMatch(path.Value ?? ""))
 {
-	/// <inheritdoc />
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var name = ScreenshotPath().Match(path.Value!).Groups["name"].Value;
@@ -60,7 +54,6 @@ public sealed partial class ScreenshotProvider(ISender sender)
 	private static partial Regex ScreenshotPath();
 }
 
-/// <summary>Beatmapset thumbnails and covers; a hidden set shows nothing, because every image is public.</summary>
 public sealed partial class BeatmapImageProvider(ISender sender)
 	: StreamImageProvider("assets", path => CoverPath().IsMatch(path.Value ?? ""))
 {
@@ -69,11 +62,6 @@ public sealed partial class BeatmapImageProvider(ISender sender)
 		["cover"] = (900, 250), ["card"] = (400, 140), ["list"] = (150, 150), ["slimcover"] = (1920, 360)
 	};
 
-	/// <summary>Finds the crop size a cover path asks for.</summary>
-	/// <param name="path">The request path.</param>
-	/// <param name="width">The width of the crop.</param>
-	/// <param name="height">The height of the crop.</param>
-	/// <returns><see langword="true" /> when the path is a cover path.</returns>
 	public static bool TryGetSize(PathString path, out int width, out int height)
 	{
 		var match = CoverPath().Match(path.Value ?? "");
@@ -87,7 +75,6 @@ public sealed partial class BeatmapImageProvider(ISender sender)
 		return false;
 	}
 
-	/// <inheritdoc />
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var match = CoverPath().Match(path.Value!);
@@ -99,15 +86,9 @@ public sealed partial class BeatmapImageProvider(ISender sender)
 	private static partial Regex CoverPath();
 }
 
-/// <summary>Beatmapset thumbnails on <c>b.&lt;domain&gt;/thumb/{id}.jpg</c>, the fixed paths of the game client.</summary>
 public sealed partial class BeatmapThumbnailProvider(ISender sender)
 	: StreamImageProvider("b", path => ThumbPath().IsMatch(path.Value ?? ""))
 {
-	/// <summary>Finds the crop size a thumbnail path asks for.</summary>
-	/// <param name="path">The request path.</param>
-	/// <param name="width">The width of the crop.</param>
-	/// <param name="height">The height of the crop.</param>
-	/// <returns><see langword="true" /> when the path is a thumbnail path.</returns>
 	public static bool TryGetSize(PathString path, out int width, out int height)
 	{
 		var match = ThumbPath().Match(path.Value ?? "");
@@ -115,7 +96,6 @@ public sealed partial class BeatmapThumbnailProvider(ISender sender)
 		return match.Success;
 	}
 
-	/// <inheritdoc />
 	protected override async Task<Stream?> OpenAsync(PathString path, CancellationToken ct)
 	{
 		var id = int.Parse(ThumbPath().Match(path.Value!).Groups["id"].Value);
@@ -126,11 +106,8 @@ public sealed partial class BeatmapThumbnailProvider(ISender sender)
 	private static partial Regex ThumbPath();
 }
 
-/// <summary>Serves the 10-second audio preview of a visible beatmapset on <c>b.&lt;domain&gt;/preview/{id}.mp3</c>.</summary>
-/// <remarks>The preview is public like every picture of the beatmapset; a hidden set or one without a preview is 404.</remarks>
 internal sealed partial class BeatmapPreviewMiddleware(RequestDelegate next)
 {
-	/// <summary>Answers a preview request, and passes every other request on.</summary>
 	public async Task InvokeAsync(HttpContext context, ISender sender)
 	{
 		var match = PreviewPath().Match(context.Request.Path.Value ?? "");

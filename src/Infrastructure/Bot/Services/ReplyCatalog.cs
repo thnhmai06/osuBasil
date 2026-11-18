@@ -9,19 +9,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Bot.Services;
 
-/// <summary>
-///     Gives BasilBot the wording of its replies: the default wording of each reply, changed by the replies file when it
-///     gives a text for it.
-/// </summary>
-/// <remarks>
-///     A text in the file that is not valid, or that uses an argument its reply does not declare, is left out and the
-///     default is used. A file that cannot be read leaves the wording that was in use. Saying a reply never fails because
-///     of the file.
-/// </remarks>
-/// <remarks>Initializes the catalog of the replies BasilBot can say.</remarks>
-/// <param name="replies">Every reply, each with a key no other reply has.</param>
-/// <param name="options">Where the replies file is.</param>
-/// <param name="logger">Receives what is wrong with the replies file.</param>
 internal sealed class ReplyCatalog(
 	IEnumerable<Reply> replies,
 	IOptions<RepliesOptions> options,
@@ -43,10 +30,8 @@ internal sealed class ReplyCatalog(
 
 	private FrozenDictionary<string, string> _texts = FrozenDictionary<string, string>.Empty;
 
-	/// <summary>Gets the full path of the replies file.</summary>
 	public string Path { get; } = System.IO.Path.GetFullPath(options.Value.Path);
 
-	/// <inheritdoc />
 	public string Text(Reply reply, object? arguments = null)
 	{
 		var values = ArgumentsOf(arguments);
@@ -68,7 +53,6 @@ internal sealed class ReplyCatalog(
 		return Format(reply.Default, values);
 	}
 
-	/// <summary>Writes the replies file with the default wording when it does not exist, then reads it.</summary>
 	public void Load()
 	{
 		if (!File.Exists(Path))
@@ -77,11 +61,6 @@ internal sealed class ReplyCatalog(
 		Reload();
 	}
 
-	/// <summary>Reads the replies file again.</summary>
-	/// <returns>
-	///     <see langword="true" /> when the file was read and its wording is in use; <see langword="false" /> when it
-	///     could not be read and the wording that was in use stays.
-	/// </returns>
 	public bool Reload()
 	{
 		Dictionary<string, JsonElement> entries;

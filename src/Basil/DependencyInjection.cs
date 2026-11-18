@@ -39,15 +39,8 @@ using Basil.Lifetime;
 
 namespace Basil;
 
-/// <summary>Registers every module of the server, which the hosts call once.</summary>
 public static class DependencyInjection
 {
-	/// <summary>
-	///     Adds the server: the modules' application objects and their storage, with the ports to external
-	///     computation that the caller registers.
-	/// </summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBasil(this IServiceCollection services)
 	{
 		services.AddBasilStorage();
@@ -61,12 +54,6 @@ public static class DependencyInjection
 		return services.AddBasilApplication();
 	}
 
-	/// <summary>
-	///     Adds the server's storage: the database with a migration history for each module, the repositories and
-	///     the file storages, prepared at startup.
-	/// </summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBasilStorage(this IServiceCollection services)
 	{
 		services.AddSharedInfrastructure();
@@ -87,12 +74,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>
-	///     Adds the modules' application objects and the publishing of events, which use the repository, storage and
-	///     capability ports the caller registers.
-	/// </summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBasilApplication(this IServiceCollection services)
 	{
 		services.AddEvents();
@@ -107,7 +88,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Registers the second admission tier, which reads its limits from the server settings.</summary>
 	internal static IServiceCollection AddGatewayLimits(this IServiceCollection services)
 	{
 		services.AddSingleton<SettingsGatewayLimits>();
@@ -116,10 +96,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>
-	///     Registers the publishing of events: every category is published by the one publisher, and the handlers
-	///     found in the modules observe the events they name.
-	/// </summary>
 	internal static IServiceCollection AddEvents(this IServiceCollection services)
 	{
 		services.AddSharedApplication();

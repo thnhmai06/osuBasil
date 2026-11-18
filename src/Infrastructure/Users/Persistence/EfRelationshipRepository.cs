@@ -6,10 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Users.Persistence;
 
-/// <summary>Stores the friends and blocks users set toward each other.</summary>
 internal sealed class EfRelationshipRepository(DatabaseSession database) : IRelationshipRepository
 {
-	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Relationship relationship)
 	{
 		var actorId = relationship.Actor.Id;
@@ -25,7 +23,6 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 			context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId));
 	}
 
-	/// <inheritdoc />
 	public Task DeleteAsync(Relationship relationship)
 	{
 		var actorId = relationship.Actor.Id;
@@ -35,7 +32,6 @@ internal sealed class EfRelationshipRepository(DatabaseSession database) : IRela
 			.ExecuteDeleteAsync());
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor,
 		CancellationToken ct = default)
 	{

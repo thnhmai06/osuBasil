@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Tests.EndToEnd;
 
-/// <summary>The HTTP diagnostics stream and the dashboard read the same sample of the same server.</summary>
 [Collection("Host end to end")]
 public sealed class DiagnosticsEndToEndTests(HostEndToEndFixture fixture)
 {

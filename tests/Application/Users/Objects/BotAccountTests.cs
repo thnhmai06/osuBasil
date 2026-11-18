@@ -6,11 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Users.Tests.Objects;
 
-/// <summary>
-///     The account of id <see cref="BasilBot.Id" /> is BasilBot whatever it held before: another account is taken
-///     over, a deleted one is restored and a missing one is created, with no privileges, no password and no
-///     restriction.
-/// </summary>
 public sealed class BotAccountTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

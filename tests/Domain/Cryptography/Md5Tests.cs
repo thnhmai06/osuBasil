@@ -2,7 +2,6 @@ using Basil.Domain.Cryptography;
 
 namespace Basil.Domain.Tests.Cryptography;
 
-/// <summary>An MD5 digest reads from 32 hexadecimal characters in either case, and refuses anything else without throwing.</summary>
 public sealed class Md5Tests
 {
 	[Theory]

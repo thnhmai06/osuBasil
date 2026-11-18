@@ -4,12 +4,10 @@ using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Content.Storage;
 
-/// <summary>Stores FAQ entries as files in the data directory.</summary>
 internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 {
 	private DataStorage Files => paths.Faqs;
 
-	/// <inheritdoc />
 	public Task<IEnumerable<string>> ListAsync(CancellationToken ct = default)
 	{
 		return Task.FromResult(
@@ -18,13 +16,11 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 				.Select(key => key[..^4].Replace('/', ':')));
 	}
 
-	/// <inheritdoc />
 	public Task<IFaqEntryWriter> CreateOrUpdateAsync(string entry)
 	{
 		return Task.FromResult<IFaqEntryWriter>(EntryWriter.Create(Files.Resolve(FileNameOf(entry))));
 	}
 
-	/// <inheritdoc />
 	public Task<StreamReader?> ReadAsync(string entry, CancellationToken ct = default)
 	{
 		var fileName = FileNameOf(entry);
@@ -32,7 +28,6 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 		return Task.FromResult(Files.Open(fileName) is { } stream ? new StreamReader(stream) : null);
 	}
 
-	/// <inheritdoc />
 	public Task DeleteAsync(string entry)
 	{
 		var fileName = FileNameOf(entry);
@@ -41,7 +36,6 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Gets the name of an entry's file, refusing an entry name that is not valid.</summary>
 	private static string FileNameOf(string entry)
 	{
 		ArgumentNullException.ThrowIfNull(entry);
@@ -50,7 +44,6 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 			: throw new ArgumentException("An entry name and each part of it must name something.", nameof(entry));
 	}
 
-	/// <summary>Writes an entry's new text to a temporary file and puts it in place once committed.</summary>
 	private sealed class EntryWriter : StreamWriter, IFaqEntryWriter
 	{
 		private readonly string _path;
@@ -69,7 +62,6 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 			_temporary = temporary;
 		}
 
-		/// <summary>Stores the text written so far, replacing the entry's previous text; committing again does nothing.</summary>
 		public void Commit()
 		{
 			if (_committed) return;
@@ -84,14 +76,12 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 			return WriteAsync(text);
 		}
 
-		/// <summary>Opens a writer for the entry at a path, creating its folder.</summary>
 		public static EntryWriter Create(string path)
 		{
 			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 			return new EntryWriter(path, TempFiles.Name(path));
 		}
 
-		/// <inheritdoc />
 		protected override void Dispose(bool disposing)
 		{
 			if (!disposing || !_committed) base.Dispose(disposing);

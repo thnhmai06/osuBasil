@@ -2,7 +2,6 @@ using Basil.Infrastructure.Scores.Storage;
 
 namespace Basil.Infrastructure.Scores.Tests.Storage;
 
-/// <summary>Contract tests of SliceStream: a read-only, seekable view of one part of another stream.</summary>
 public sealed class SliceStreamTests
 {
 	private static readonly byte[] Source = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];

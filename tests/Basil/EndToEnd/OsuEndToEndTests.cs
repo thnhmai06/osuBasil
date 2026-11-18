@@ -3,10 +3,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Tests.EndToEnd;
 
-/// <summary>
-///     The osu! host end to end: a client logs in, opens a room, plays a round, submits a score, and is signed out
-///     from the HTTP API, after which its next automatic login asks for the password once.
-/// </summary>
 [Collection("Host end to end")]
 public sealed class OsuEndToEndTests(HostEndToEndFixture fixture)
 {

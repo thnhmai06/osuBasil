@@ -6,7 +6,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Services;
 
-/// <summary>The sample merges the process measurements with what every module reports.</summary>
 public sealed class DiagnosticsIntakeTests
 {
 	private static async Task<DiagnosticsSample> TakeAsync(params INotificationHandler<CollectDiagnostics>[] modules)

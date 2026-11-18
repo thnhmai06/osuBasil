@@ -5,7 +5,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Irc.Tests.Chat;
 
-/// <summary>Chat between IRC clients and the osu! client, in both directions, and the limits on it.</summary>
 [Collection("IRC host")]
 public sealed class ChatTests(IrcHostFixture fixture)
 {

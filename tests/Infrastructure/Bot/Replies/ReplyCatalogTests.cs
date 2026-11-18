@@ -8,7 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Bot.Tests.Replies;
 
-/// <summary>Contract tests of the wording of BasilBot's replies: the defaults, and what the replies file changes.</summary>
 public sealed class ReplyCatalogTests : IDisposable
 {
 	private static readonly Reply Joined = new("test.joined", "Joined match #{room} {name}", "room", "name");

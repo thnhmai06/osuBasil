@@ -6,7 +6,6 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The detail frame: the order of its actions, what it never shows as text, and the results that arrive too late.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class DetailPanelTests
 {

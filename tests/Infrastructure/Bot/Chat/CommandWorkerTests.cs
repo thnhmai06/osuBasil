@@ -4,11 +4,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Chat;
 
-/// <summary>
-///     How the queue that runs chat commands behaves: commands keep their order, one user cannot fill the queue,
-///     the queue is bounded, a failing command does not stop the commands after it and a command that outlives
-///     <see cref="CommandWorker.CommandTimeout" /> is cancelled.
-/// </summary>
 public sealed class CommandWorkerTests : IAsyncLifetime
 {
 	private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(10);
@@ -249,10 +244,6 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 			Assert.True(_worker.Enqueue(1, _ => Task.CompletedTask));
 	}
 
-	/// <summary>
-	///     Gives a user the most commands they may have waiting, the first of which holds the worker until the gate
-	///     opens.
-	/// </summary>
 	private async Task FillUserAsync(int userId, Func<CancellationToken, Task>? rest = null)
 	{
 		await BlockWorkerAsync(userId);
@@ -260,7 +251,6 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 			Assert.True(_worker.Enqueue(userId, rest ?? (_ => Task.CompletedTask)));
 	}
 
-	/// <summary>Has a user's command take the worker and hold it until the gate opens.</summary>
 	private async Task BlockWorkerAsync(int userId)
 	{
 		var started = NewSignal();
@@ -272,7 +262,6 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 		await started.Task.WaitAsync(HangGuard, Token);
 	}
 
-	/// <summary>Waits until every command enqueued so far has run, by queueing one more behind them.</summary>
 	private async Task DrainAsync()
 	{
 		var done = NewSignal();

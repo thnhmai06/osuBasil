@@ -6,7 +6,6 @@ using NSubstitute;
 
 namespace Basil.Application.Diagnostics.Tests.Capabilities;
 
-/// <summary>The diagnostics and their maintenance actions need <see cref="UserPrivileges.Developer" />.</summary>
 public sealed class ScopedDiagnosticsTests
 {
 	private static readonly UserPrivileges Staff =

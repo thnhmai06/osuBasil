@@ -20,28 +20,15 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>One entry of the channel list.</summary>
-/// <param name="Name">The channel name, which is the id.</param>
-/// <param name="Members">How many members it has, or -1 when unknown.</param>
 internal sealed record ChannelItem(string Name, int Members);
 
-/// <summary>One entry of the member list.</summary>
-/// <param name="Name">The user name.</param>
-/// <param name="Mark">The mark after the name: <c>(H)</c> for the host, <c>(P)</c> for a player in a round.</param>
-/// <param name="Mask">The privilege flags of the user as a number, which colour the name.</param>
 internal sealed record MemberItem(string Name, string Mark, ulong Mask);
 
-/// <summary>A tab whose scrolling view can be sent back to its newest line.</summary>
 internal interface IJumpable
 {
-	/// <summary>Follows the newest line again.</summary>
 	void JumpToEnd();
 }
 
-/// <summary>
-///     The chat: the channels on the left, the messages of the selected channel in the middle with a box to answer as
-///     BasilBot, and the members on the right, grouped by role.
-/// </summary>
 internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 {
 	private readonly Palette _palette;
@@ -87,7 +74,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 	private Task<OperatorConnection>? _operator;
 	private TerminalApp? _app;
 
-	/// <summary>Creates the tab.</summary>
 	public ChatTab(IServiceProvider services, UserDetails users, ChannelDetails channels, ChatFeed feed, CliOptions options, Glyphs glyphs,
 		ShellKit kit, Palette palette, Func<(int Columns, int Rows)> size, TimeProvider clock, Action<Action> post,
 		ILogger logger)
@@ -160,10 +146,8 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		AddSearchKeys(_memberSearch, _memberQuery, _members);
 	}
 
-	/// <inheritdoc />
 	public Visual View { get; }
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 		_app = app;
@@ -189,13 +173,11 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		});
 	}
 
-	/// <summary>Follows the newest message again.</summary>
 	public void JumpToEnd()
 	{
 		_log.ScrollToTail();
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		_lastTick = Environment.TickCount64;
@@ -204,7 +186,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		FocusDefault();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 		_lastTick = Environment.TickCount64;
@@ -249,7 +230,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		_seen = total;
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		_feedRevision = _feed.Revision;
@@ -279,7 +259,6 @@ internal sealed class ChatTab : ITabView, ISelectable, IJumpable
 		Members();
 	}
 
-	/// <inheritdoc />
 	public void Select(string id)
 	{
 		if (!id.StartsWith('#')) _openedDms.Add(id);

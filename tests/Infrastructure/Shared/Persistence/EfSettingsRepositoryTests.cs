@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Shared.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the settings of the server.</summary>
 [Collection("Persistence")]
 public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -159,8 +158,6 @@ public sealed class EfSettingsRepositoryTests(PersistenceFixture container) : Da
 		Assert.Equal(new ServerSettings(), reloaded);
 	}
 
-	/// <summary>Reads the settings as a fresh server would read them.</summary>
-	/// <returns>The settings the fresh server loaded from the database.</returns>
 	private async Task<ServerSettings> ReloadAsync()
 	{
 		await using var fresh = new StorageComposition(ConnectionString);

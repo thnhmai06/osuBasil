@@ -5,17 +5,11 @@ using Basil.Host.Cli.Dashboard.Shell;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>
-///     Builds the detail of a room: what it holds, and a button for every room command of the console that applies to
-///     its state (the ones for an open room are kept in dialogs by topic).
-/// </summary>
 internal sealed class RoomDetails(UserDetails users, CommandActions actions, Action<string> openChat, Dialogs dialogs)
 {
 	private const string Settings = "Settings ›";
 	private const string Manage = "Manage ›";
 
-	/// <summary>Builds the detail of a room.</summary>
-	/// <param name="room">The room.</param>
 	public DetailView Of(RoomItem room)
 	{
 		var id = room.Id;

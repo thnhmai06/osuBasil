@@ -7,20 +7,10 @@ using Basil.Domain.Scores;
 
 namespace Basil.Infrastructure.Scores.Storage;
 
-/// <summary>The <c>.osr</c> replay file: its header around the LZMA frames the osu! client submits.</summary>
 internal static class ReplayFile
 {
 	private const byte StringMarker = 0x0B;
 
-	/// <summary>Writes the complete <c>.osr</c> file of a score around the frames the client submitted.</summary>
-	/// <param name="output">Where the file is written; it must be seekable.</param>
-	/// <param name="score">The score whose result the header records.</param>
-	/// <param name="playerName">The player's name; empty when the player is unknown.</param>
-	/// <param name="clientVersion">The osu! client version that played the score.</param>
-	/// <param name="frames">
-	///     The LZMA-compressed frames exactly as the client submitted them, from the current position to the end.
-	/// </param>
-	/// <param name="ct">A token that cancels the operation.</param>
 	public static async Task WriteAsync(Stream output, ScoreRecord score, string playerName, OsuVersion clientVersion,
 		Stream frames, CancellationToken ct = default)
 	{
@@ -73,11 +63,6 @@ internal static class ReplayFile
 		}
 	}
 
-	/// <summary>Finds the LZMA frames inside a complete <c>.osr</c> file, reading only its header.</summary>
-	/// <param name="file">The file, as a seekable stream positioned anywhere; its position afterwards is unspecified.</param>
-	/// <param name="offset">Where the frames start.</param>
-	/// <param name="length">How many bytes the frames take.</param>
-	/// <returns><see langword="true" /> when the file is a well-formed replay; otherwise, <see langword="false" />.</returns>
 	public static bool TryFindFrames(Stream file, out long offset, out long length)
 	{
 		offset = length = 0;
@@ -107,7 +92,6 @@ internal static class ReplayFile
 		}
 	}
 
-	/// <summary>A hit count as the file stores it: 16 bits, so a count beyond them is kept at the largest.</summary>
 	private static ushort Count(int count)
 	{
 		return (ushort)Math.Min(count, ushort.MaxValue);

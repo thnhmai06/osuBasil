@@ -6,10 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     The server as the host composes it: every registration of the modules, their storage and the bot can be built and
-///     resolved. A construction cycle shows up as a hang, so the check runs against a deadline.
-/// </summary>
 public sealed class CompositionTests
 {
 	private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
@@ -34,7 +30,6 @@ public sealed class CompositionTests
 		Assert.Empty(unresolved);
 	}
 
-	/// <summary>Every handler class of the modules is registered for each event type it handles.</summary>
 	[Fact]
 	public async Task EveryHandler_RegisteredForEvents()
 	{

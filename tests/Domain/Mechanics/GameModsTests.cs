@@ -2,7 +2,6 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests.Mechanics;
 
-/// <summary>Verifies gameplay-mod conflict resolution and text parsing.</summary>
 public class GameModsTests
 {
 	[Theory]

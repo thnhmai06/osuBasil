@@ -7,7 +7,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Testing.Persistence;
 
-/// <summary>Stores one user in memory, for tests that drive only the lookups of a repository.</summary>
 public sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 {
 	public UserRecord? User { get; set; } = user;
@@ -54,7 +53,6 @@ public sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 	}
 }
 
-/// <summary>Stores one beatmap in memory, for tests that drive only the lookups of a repository.</summary>
 public sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRepository
 {
 	public BeatmapRecord? Beatmap { get; set; } = beatmap;

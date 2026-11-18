@@ -8,7 +8,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;
 
-/// <summary>Contract tests of the reading of stored difficulties.</summary>
 [Collection("Persistence")]
 public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -439,17 +438,11 @@ public sealed class EfBeatmapRepositoryTests(PersistenceFixture container) : Dat
 			Beatmaps.UpdateAsync(Changed(beatmap!, BeatmapHash)));
 	}
 
-	/// <summary>Commits one beatmapset as a new set.</summary>
-	/// <param name="data">The set as it is stored.</param>
 	private async Task CommitAsync(BeatmapsetData data)
 	{
 		await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []));
 	}
 
-	/// <summary>Copies a difficulty with another hash.</summary>
-	/// <param name="beatmap">The difficulty to copy.</param>
-	/// <param name="hash">The hash the copy has.</param>
-	/// <returns>The copy.</returns>
 	private static BeatmapRecord Changed(BeatmapRecord beatmap, Md5 hash)
 	{
 		return new BeatmapRecord

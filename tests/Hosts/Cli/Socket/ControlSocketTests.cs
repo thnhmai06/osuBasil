@@ -13,7 +13,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Cli.Tests.Socket;
 
-/// <summary>The local control socket of a running server, and the shell commands that use it.</summary>
 [Collection("CLI host")]
 public sealed class ControlSocketTests(CliFixture fixture)
 {

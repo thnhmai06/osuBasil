@@ -2,7 +2,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Stable.Tests.Users;
 
-/// <summary>Logging in as the osu! stable client does: the first reply and the refusals.</summary>
 [Collection("Stable host")]
 public sealed class LoginTests(StableHostFixture fixture)
 {

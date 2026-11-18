@@ -12,14 +12,10 @@ using Basil.Host.Stable.Web;
 
 namespace Basil.Host.Stable.Routes;
 
-/// <summary>Maps the osu! client's endpoints: stable on <c>c.</c> and its variants, the web on <c>osu.</c>.</summary>
 public static class StableRoutes
 {
 	private static readonly string[] StableHosts = ["c", "ce", "c4", "c5", "c6"];
 
-	/// <summary>Adds the services of the osu! host.</summary>
-	/// <param name="services">The service collection.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddStableHost(this IServiceCollection services)
 	{
 		services.AddSingleton<Outbox>();
@@ -37,9 +33,6 @@ public static class StableRoutes
 		return services;
 	}
 
-	/// <summary>Serves the osu! client's endpoints for the requests addressed to its sub-domains.</summary>
-	/// <param name="app">The application pipeline.</param>
-	/// <returns><paramref name="app" />, for chaining.</returns>
 	public static IApplicationBuilder UseStable(this IApplicationBuilder app)
 	{
 		app.MapWhen(context => IsHost(context, StableHosts), branch =>
@@ -61,8 +54,6 @@ public static class StableRoutes
 		return labels.Any(label => host.StartsWith(label + ".", StringComparison.OrdinalIgnoreCase));
 	}
 
-	/// <summary>Maps the game server routes of the <c>c.</c> hosts; each one declares its admission policy.</summary>
-	/// <param name="app">The route builder of the <c>c.</c> hosts.</param>
 	internal static void MapStable(this IEndpointRouteBuilder app)
 	{
 		var cho = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Game server")

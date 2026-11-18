@@ -9,7 +9,6 @@ using static Basil.Testing.BeatmapsetWorld;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Handlers;
 
-/// <summary>The messages that delete or change a beatmapset with the privileges of the sending connection.</summary>
 public sealed class BeatmapsetHandlerTests
 {
 	private static readonly UserPrivileges Manager = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;

@@ -5,7 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Handlers;
 
-/// <summary>The requests of the maintenance actions refuse a sender without the privilege and name what is missing.</summary>
 public sealed class DiagnosticsRequestTests
 {
 	[Fact]

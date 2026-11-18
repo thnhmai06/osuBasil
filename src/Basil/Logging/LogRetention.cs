@@ -3,16 +3,8 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Logging;
 
-/// <summary>Deletes the log files that are too old, too many or too large together.</summary>
 public static class LogRetention
 {
-	/// <summary>Deletes the log files of a folder that go beyond the limits, keeping the newest.</summary>
-	/// <param name="directory">The folder of the log files.</param>
-	/// <param name="maxAge">How long a log file is kept after its last write; zero for no limit.</param>
-	/// <param name="maxFiles">How many log files are kept; zero for no limit.</param>
-	/// <param name="maxBytes">The total size of the kept log files; zero for no limit. The newest file is always kept.</param>
-	/// <param name="now">The current time.</param>
-	/// <returns>How many files were deleted.</returns>
 	public static int Sweep(string directory, TimeSpan maxAge, int maxFiles, long maxBytes, DateTimeOffset now)
 	{
 		if (!Directory.Exists(directory)) return 0;
@@ -48,14 +40,12 @@ public static class LogRetention
 	}
 }
 
-/// <summary>Runs the log retention when the server starts and then every six hours.</summary>
 internal sealed class LogRetentionJob(
 	IOptions<LoggingOptions> options,
 	TimeProvider time,
 	ILogger<LogRetentionJob> logger)
 	: BackgroundService
 {
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromHours(6), time);

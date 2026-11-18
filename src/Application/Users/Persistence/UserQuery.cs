@@ -5,31 +5,12 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Persistence;
 
-/// <summary>Which users a user listing includes.</summary>
-/// <param name="Text">
-///     Text matched against the user's id exactly or contained in the name (ignoring case and spaces), or
-///     <see langword="null" /> for any.
-/// </param>
-/// <param name="Countries">The countries a user may be from, or <see langword="null" /> for any.</param>
-/// <param name="Privileges">Privileges a user must all be granted, or <see langword="null" /> for any.</param>
-/// <param name="Deleted">
-///     Whether only deleted (<see langword="true" />) or only existing (<see langword="false" />) users are
-///     included, or <see langword="null" /> for both; a user's search is narrowed with <see cref="LimitTo" />.
-/// </param>
 public sealed record UserQuery(
 	string? Text = null,
 	IReadOnlyList<Country>? Countries = null,
 	UserPrivileges? Privileges = null,
 	bool? Deleted = null) : IParsable<UserQuery>
 {
-	/// <summary>Reads a query written in the user search syntax.</summary>
-	/// <param name="s">
-	///     The search text, for example <c>country=usvn privilege=4 deleted=* bob</c>; a state takes <c>1</c>,
-	///     <c>0</c> or <c>*</c> for both.
-	/// </param>
-	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
-	/// <returns>The query; a filter with an unknown key or a value that does not parse stays in <see cref="Text" />.</returns>
-	/// <exception cref="ArgumentNullException"><paramref name="s" /> is <see langword="null" />.</exception>
 	public static UserQuery Parse(string s, IFormatProvider? provider = null)
 	{
 		ArgumentNullException.ThrowIfNull(s);
@@ -61,11 +42,6 @@ public sealed record UserQuery(
 		return new UserQuery(keywords, countries, privileges, deleted);
 	}
 
-	/// <summary>Reads a query written in the user search syntax.</summary>
-	/// <param name="s">The search text.</param>
-	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
-	/// <param name="result">The query, or <see langword="null" /> when <paramref name="s" /> is <see langword="null" />.</param>
-	/// <returns><see langword="true" /> unless <paramref name="s" /> is <see langword="null" />; any text reads as a query.</returns>
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider,
 		[MaybeNullWhen(false)] out UserQuery result)
 	{
@@ -91,9 +67,6 @@ public sealed record UserQuery(
 		return true;
 	}
 
-	/// <summary>Narrows the query to what a user with the given privileges may see.</summary>
-	/// <param name="effective">The asker's effective privileges.</param>
-	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
 	public UserQuery LimitTo(UserPrivileges effective)
 	{
 		return effective.Allows(UserPrivileges.Owner) ? this : this with { Deleted = false };

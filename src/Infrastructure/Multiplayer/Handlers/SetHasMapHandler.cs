@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Runs a <see cref="SetHasMap" /> on the room for the connection that asked.</summary>
 internal sealed class SetHasMapHandler : IRequestHandler<SetHasMap, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(SetHasMap request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Scores;
 
-/// <summary>Scores are public; replays need a token.</summary>
 [Collection("REST host")]
 public sealed class ScoreTests(RestHostFixture fixture)
 {

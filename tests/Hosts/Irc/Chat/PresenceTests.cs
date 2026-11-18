@@ -3,7 +3,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Irc.Tests.Chat;
 
-/// <summary>What IRC clients see when users come and go: one JOIN, PART or QUIT per user, however many connections.</summary>
 [Collection("IRC host")]
 public sealed class PresenceTests(IrcHostFixture fixture)
 {

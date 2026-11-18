@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Users.Tests.Storage;
 
-/// <summary>Contract tests of FileUserAvatarStorage, read through IUserAvatarStorage.</summary>
 public sealed class FileUserAvatarStorageTests : IDisposable
 {
 	private static readonly UserRecord Alice = User(8, "Alice");

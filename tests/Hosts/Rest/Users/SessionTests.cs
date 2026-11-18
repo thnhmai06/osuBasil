@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Users;
 
-/// <summary>Closing sessions, changing passwords and the profiles lock (plan 5.5).</summary>
 [Collection("REST host")]
 public sealed class SessionTests(RestHostFixture fixture)
 {

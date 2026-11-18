@@ -3,7 +3,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Users;
 
-/// <summary>Verifies the validation of the statistics a user's account carries.</summary>
 public class UserStatsTests
 {
 	[Fact]

@@ -6,15 +6,8 @@ using XenoAtom.Terminal.UI.Scrolling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>Makes the mouse wheel scroll a viewer faster the quicker the notches follow each other.</summary>
 internal static class WheelScroll
 {
-	/// <summary>Makes the wheel over a visual scroll a viewer with <see cref="WheelAcceleration" />.</summary>
-	/// <param name="host">The visual the wheel turns over; a viewer or the control that contains one.</param>
-	/// <param name="viewer">Gets the viewer to scroll, or <see langword="null" /> when there is none yet.</param>
-	/// <param name="clock">Measures the time between notches.</param>
-	/// <param name="scrolled">Told after each notch whether the viewer now sits at its end.</param>
-	/// <returns>The same host.</returns>
 	public static T Accelerate<T>(T host, Func<ScrollViewer?> viewer, TimeProvider clock, Action<bool>? scrolled = null)
 		where T : Visual
 	{
@@ -39,19 +32,11 @@ internal static class WheelScroll
 		return host;
 	}
 
-	/// <summary>Makes the wheel over a scrolling page scroll it faster.</summary>
-	/// <param name="viewer">The viewer.</param>
-	/// <param name="clock">Measures the time between notches.</param>
-	/// <returns>The same viewer.</returns>
 	public static ScrollViewer Accelerate(ScrollViewer viewer, TimeProvider clock)
 	{
 		return Accelerate(viewer, () => viewer, clock);
 	}
 
-	/// <summary>Makes the wheel over a log scroll it faster, and makes the log follow its tail again when it reaches the end.</summary>
-	/// <param name="log">The log.</param>
-	/// <param name="clock">Measures the time between notches.</param>
-	/// <returns>The same log.</returns>
 	public static LogControl Accelerate(LogControl log, TimeProvider clock)
 	{
 		return Accelerate(log, () => log.EnumerateVisualsDepthFirst().OfType<ScrollViewer>().FirstOrDefault(), clock,
@@ -62,8 +47,6 @@ internal static class WheelScroll
 			});
 	}
 
-	/// <summary>Tells whether a viewer shows the end of its content, which is also the case when the content fits.</summary>
-	/// <param name="viewer">The viewer.</param>
 	public static bool AtEnd(ScrollViewer viewer)
 	{
 		return viewer.VerticalOffset >= Max(viewer);

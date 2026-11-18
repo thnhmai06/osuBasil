@@ -7,13 +7,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Takes a closed connection out of its room and out of the lobby's watchers.</summary>
 internal sealed class ConnectionLobbyHandler(Lobby lobby, ILogger<ConnectionLobbyHandler> logger)
 	: INotificationHandler<UserConnectionClosed>
 {
 	private const string Subject = "the closed connection of user";
 
-	/// <inheritdoc />
 	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var connection = @event.Connection;

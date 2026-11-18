@@ -9,12 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Beatmaps;
 
-/// <summary>Registers the application behavior and runtime objects owned by Beatmaps.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the Beatmaps application services and runtime objects.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBeatmapsApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<BeatmapsetContext>(sp => new BeatmapsetContext(

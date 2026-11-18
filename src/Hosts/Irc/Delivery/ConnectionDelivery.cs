@@ -8,11 +8,9 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc.Delivery;
 
-/// <summary>Ends the socket of a connection the server closed and tells the other clients when a user goes offline.</summary>
 internal sealed class ConnectionClosedDelivery(IrcClients clients, IrcPresence presence, IOptions<IrcOptions> options)
 	: INotificationHandler<UserConnectionClosed>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Connection;

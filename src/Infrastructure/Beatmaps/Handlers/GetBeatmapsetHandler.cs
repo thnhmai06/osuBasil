@@ -5,11 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Answers <see cref="GetBeatmapset" /> for what the caller may see.</summary>
 internal sealed class GetBeatmapsetHandler(IBeatmapsetRepository sets, IBeatmapRepository beatmaps, TimeProvider clock)
 	: IRequestHandler<GetBeatmapset, BeatmapsetDetail?>
 {
-	/// <inheritdoc />
 	public async ValueTask<BeatmapsetDetail?> Handle(GetBeatmapset request, CancellationToken ct)
 	{
 		var mayViewHidden = BeatmapVisibility.MayViewHidden(request.Actor, clock);

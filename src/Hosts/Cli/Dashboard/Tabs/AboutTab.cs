@@ -11,7 +11,6 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>What Basil is, which version runs, and whether a newer release exists.</summary>
 internal sealed class AboutTab : ITabView
 {
 	// Original art by Joan G. Stark (Spunk), edited by Mai Thành (thnhmai06).
@@ -39,7 +38,6 @@ internal sealed class AboutTab : ITabView
 	private readonly State<string> _rulesets = new(string.Empty);
 	private bool _checking;
 
-	/// <summary>Creates the tab; the art beside the details shows only when the terminal is wide.</summary>
 	public AboutTab(IServiceProvider services, Glyphs glyphs, CliOptions options, Func<(int Columns, int Rows)> size,
 		Action<Action> post, ILogger logger)
 	{
@@ -74,26 +72,21 @@ internal sealed class AboutTab : ITabView
 		Show();
 	}
 
-	/// <inheritdoc />
 	public Visual View { get; }
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		Show();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		Show();

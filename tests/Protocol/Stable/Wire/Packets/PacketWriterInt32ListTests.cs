@@ -2,15 +2,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies <c>WriteInt32List</c> (reached through <c>PacketWriter.FriendsList</c>, whose payload
-///     is exactly one u16-prefixed i32 list): count as u16 little-endian followed by each value as i32
-///     little-endian, and an <see cref="OverflowException" /> when the count leaves the u16 range.
-/// </summary>
-/// <remarks>
-///     The read side of this list has no public surface in <see cref="PacketReader" />, so the list is
-///     pinned by golden bytes instead of a round-trip.
-/// </remarks>
 public class PacketWriterInt32ListTests
 {
 	private static byte[] Write(Action<PacketWriter> write)

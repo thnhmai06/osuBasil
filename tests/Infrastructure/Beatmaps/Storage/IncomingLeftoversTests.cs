@@ -3,10 +3,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Storage;
 
-/// <summary>
-///     What the beatmapset storage cleans up at startup: what it was writing or setting aside when the server
-///     stopped.
-/// </summary>
 public sealed class IncomingLeftoversTests : IDisposable
 {
 	private readonly TempData _data = new();

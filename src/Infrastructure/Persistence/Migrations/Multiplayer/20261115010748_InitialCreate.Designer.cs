@@ -15,7 +15,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Multiplayer
     [Migration("20261115010748_InitialCreate")]
     partial class InitialCreate
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

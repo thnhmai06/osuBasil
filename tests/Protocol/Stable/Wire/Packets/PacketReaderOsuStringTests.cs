@@ -4,19 +4,8 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the read side of the osu! string wire format (<c>ReadOsuString</c>, reached through
-///     <c>PacketReader.ReadMessage</c>, whose payload is three osu! strings followed by a 32-bit sender
-///     id): a null marker <c>0x00</c> or an empty <c>0x0B</c> string reads as <c>""</c>, the length is a
-///     ULEB128 byte count, and malformed or truncated lengths are rejected.
-/// </summary>
 public class PacketReaderOsuStringTests
 {
-	/// <summary>
-	///     Builds a ReadMessage payload per the osu! wire format: for each string the existence byte
-	///     <c>0x0B</c>, its ULEB128 byte length, then the UTF-8 bytes; followed by the sender id as an
-	///     i32 (little-endian).
-	/// </summary>
 	private static byte[] Message(string sender, string body, string recipient, int senderId = 0)
 	{
 		var bytes = new List<byte>

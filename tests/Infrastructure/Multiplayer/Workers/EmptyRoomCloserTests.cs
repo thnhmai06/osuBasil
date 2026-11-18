@@ -8,16 +8,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Workers;
 
-/// <summary>
-///     Pins that a room closes by itself once it stayed empty for fifteen minutes; which rooms count as empty is
-///     pinned by the lobby's own tests.
-/// </summary>
 public sealed class EmptyRoomCloserTests
 {
-	/// <summary>How long a test waits for the worker to close a room before calling it dead.</summary>
 	private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
 
-	/// <summary>A room nobody sits in closes once the empty period has passed, and not a check earlier.</summary>
 	[Fact]
 	public async Task ExecuteAsync_ClosesAnEmptyRoomAfterFifteenMinutes()
 	{
@@ -57,7 +51,6 @@ public sealed class EmptyRoomCloserTests
 		return new RunningCloser(closer);
 	}
 
-	/// <summary>Moves the clock one check at a time over a span, stopping early once the awaited close happened.</summary>
 	private static async Task CheckUntilAsync(TestApplication app, TimeSpan span, Task until)
 	{
 		for (var moved = TimeSpan.Zero; moved < span && !until.IsCompleted; moved += EmptyRoomCloser.Period)
@@ -67,7 +60,6 @@ public sealed class EmptyRoomCloserTests
 		}
 	}
 
-	/// <summary>The worker a test started, disposed after it stops.</summary>
 	private sealed class RunningCloser(EmptyRoomCloser closer) : IDisposable
 	{
 		public void Dispose()

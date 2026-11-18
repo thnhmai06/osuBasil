@@ -2,10 +2,6 @@ using Basil.Infrastructure.Bot.Handlers.Commands;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands;
 
-/// <summary>
-///     The syntax of a command message: segments chained by <c>;</c> and <c>&amp;&amp;</c>, words split on spaces, a
-///     double quote that groups words, and a backslash that makes a following quote or backslash an ordinary character.
-/// </summary>
 public sealed class CommandLineTests
 {
 	[Fact]

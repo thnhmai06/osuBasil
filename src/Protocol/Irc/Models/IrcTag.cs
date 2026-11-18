@@ -2,14 +2,8 @@ using System.Text;
 
 namespace Basil.Protocol.Irc.Models;
 
-/// <summary>An IRCv3 message tag: a key with an optional value.</summary>
-/// <param name="Key">The tag key; a client-only tag starts with <c>+</c>.</param>
-/// <param name="Value">The unescaped value, or <see langword="null" /> when the tag has none.</param>
 public sealed record IrcTag(string Key, string? Value = null)
 {
-	/// <summary>Reads a tag from its wire form <c>key[=value]</c>.</summary>
-	/// <param name="text">The tag as it appears between the semicolons of a tag section.</param>
-	/// <returns>The tag; an empty value reads as no value.</returns>
 	public static IrcTag Parse(string text)
 	{
 		var equals = text.IndexOf('=');
@@ -19,8 +13,6 @@ public sealed record IrcTag(string Key, string? Value = null)
 		return new IrcTag(text[..equals], value.Length == 0 ? null : value);
 	}
 
-	/// <summary>Writes the tag in its wire form <c>key[=value]</c>, escaping the value.</summary>
-	/// <returns>The wire form.</returns>
 	public override string ToString()
 	{
 		return string.IsNullOrEmpty(Value) ? Key : $"{Key}={Escape(Value)}";

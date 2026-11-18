@@ -1,9 +1,7 @@
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>Builds the catalog of every console command.</summary>
 public static class CommandCatalogFactory
 {
-	/// <summary>Creates the catalog with all commands.</summary>
 	public static CommandCatalog Create()
 	{
 		CommandCatalog? catalog = null;

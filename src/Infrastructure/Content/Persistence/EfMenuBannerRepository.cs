@@ -7,12 +7,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Content.Persistence;
 
-/// <summary>Stores the banners shown on the osu! main menu.</summary>
 internal sealed class EfMenuBannerRepository(
 	DatabaseSession database,
 	ILogger<EfMenuBannerRepository> logger) : IMenuBannerRepository
 {
-	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(MenuBanner banner)
 	{
 		var image = banner.Image.ToString();
@@ -39,7 +37,6 @@ internal sealed class EfMenuBannerRepository(
 		});
 	}
 
-	/// <inheritdoc />
 	public async ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken ct = default)
 	{
 		var name = image.ToString();
@@ -48,7 +45,6 @@ internal sealed class EfMenuBannerRepository(
 		return row is null ? null : TryRead(row);
 	}
 
-	/// <inheritdoc />
 	public async Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((ContentDbContext context) => context.MenuBanners
@@ -58,7 +54,6 @@ internal sealed class EfMenuBannerRepository(
 		return rows.Select(TryRead).OfType<MenuBanner>().ToList();
 	}
 
-	/// <inheritdoc />
 	public Task DeleteAsync(MenuBanner banner)
 	{
 		var image = banner.Image.ToString();
@@ -67,7 +62,6 @@ internal sealed class EfMenuBannerRepository(
 			.ExecuteDeleteAsync());
 	}
 
-	/// <summary>Builds a banner from a stored row, or logs and returns null when the row is not valid.</summary>
 	private MenuBanner? TryRead(MenuBannerRow row)
 	{
 		if (!ContentReference.TryParse(row.Image, null, out var image))
@@ -88,7 +82,6 @@ internal sealed class EfMenuBannerRepository(
 		}
 	}
 
-	/// <summary>Builds a banner from a stored row and its parsed image.</summary>
 	private static MenuBanner ToBanner(MenuBannerRow row, ContentReference image)
 	{
 		return new MenuBanner

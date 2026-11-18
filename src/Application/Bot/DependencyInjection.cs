@@ -5,12 +5,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Application.Bot;
 
-/// <summary>Registers the BasilBot application's objects.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the objects BasilBot needs.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBotApplication(this IServiceCollection services)
 	{
 		services.AddSingleton(Random.Shared);

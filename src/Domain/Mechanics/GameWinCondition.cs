@@ -3,36 +3,21 @@ using Basil.Domain.Shared;
 
 namespace Basil.Domain.Mechanics;
 
-/// <summary>
-///     Specifies how the winner of a multiplayer match is decided.
-/// </summary>
 public enum GameWinCondition : byte
 {
-	/// <summary>The match is decided by the total score of each team.</summary>
 	Score = 0,
 
-	/// <summary>The match is decided by the accuracy of each team.</summary>
 	Accuracy = 1,
 
-	/// <summary>The match is decided by the highest combo each team reached.</summary>
 	Combo = 2,
 
-	/// <summary>The match is decided by the ScoreV2 scoring rules.</summary>
 	ScoreV2 = 3
 }
 
-/// <summary>Provides the ranking a win condition imposes on scores.</summary>
 public static class GameWinConditionExtensions
 {
-	/// <param name="condition">The win condition that selects the metric.</param>
 	extension(GameWinCondition condition)
 	{
-		/// <summary>Gets the comparer that orders scores by this win condition's metric.</summary>
-		/// <returns>
-		///     A comparer in the metric's natural order: a score with the better metric compares greater, so
-		///     ordering descending puts the winner first.
-		/// </returns>
-		/// <exception cref="ArgumentOutOfRangeException">The win condition is not a defined value.</exception>
 		public IComparer<ScoreData> ToComparer()
 		{
 			return condition switch
@@ -44,10 +29,6 @@ public static class GameWinConditionExtensions
 			};
 		}
 
-		/// <summary>Gets the metric this win condition compares.</summary>
-		/// <param name="score">The score to measure.</param>
-		/// <returns>The total score, the accuracy, or the highest combo reached.</returns>
-		/// <exception cref="ArgumentOutOfRangeException">The win condition is not a defined value.</exception>
 		public double Metric(ScoreData score)
 		{
 			return condition switch
@@ -60,10 +41,6 @@ public static class GameWinConditionExtensions
 		}
 	}
 
-	/// <summary>
-	///     Orders two possibly null scores so that a missing score orders before any score, or returns nothing when both
-	///     are present.
-	/// </summary>
 	private static int? Nulls(ScoreData? x, ScoreData? y)
 	{
 		if (ReferenceEquals(x, y)) return 0;
@@ -72,37 +49,28 @@ public static class GameWinConditionExtensions
 		return null;
 	}
 
-	/// <summary>Compares scores by total score; a higher score compares greater.</summary>
 	private sealed class ScoreComparer : IComparer<ScoreData>
 	{
-		/// <summary>Gets the single instance of the comparer.</summary>
 		public static readonly ScoreComparer Instance = new();
 
 		private ScoreComparer()
 		{
 		}
 
-		/// <inheritdoc />
 		public int Compare(ScoreData? x, ScoreData? y)
 		{
 			return Nulls(x, y) ?? x!.LastState.TotalScore.CompareTo(y!.LastState.TotalScore);
 		}
 	}
 
-	/// <summary>
-	///     Compares scores by accuracy; a higher accuracy compares greater. A perfect-accuracy tie is broken
-	///     by total score, any other tie is a draw.
-	/// </summary>
 	private sealed class AccuracyComparer : IComparer<ScoreData>
 	{
-		/// <summary>Gets the single instance of the comparer.</summary>
 		public static readonly AccuracyComparer Instance = new();
 
 		private AccuracyComparer()
 		{
 		}
 
-		/// <inheritdoc />
 		public int Compare(ScoreData? x, ScoreData? y)
 		{
 			if (Nulls(x, y) is { } order) return order;
@@ -117,20 +85,14 @@ public static class GameWinConditionExtensions
 		}
 	}
 
-	/// <summary>
-	///     Compares scores by the highest combo reached; a higher count compares greater. A
-	///     tie is broken by total score.
-	/// </summary>
 	private sealed class ComboComparer : IComparer<ScoreData>
 	{
-		/// <summary>Gets the single instance of the comparer.</summary>
 		public static readonly ComboComparer Instance = new();
 
 		private ComboComparer()
 		{
 		}
 
-		/// <inheritdoc />
 		public int Compare(ScoreData? x, ScoreData? y)
 		{
 			if (Nulls(x, y) is { } order) return order;

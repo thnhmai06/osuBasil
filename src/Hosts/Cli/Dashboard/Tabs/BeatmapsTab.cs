@@ -13,32 +13,12 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>One difficulty in the beatmaps table, with the facts of its beatmapset.</summary>
-/// <param name="Id">The beatmap id.</param>
-/// <param name="SetId">The id of the beatmapset it belongs to.</param>
-/// <param name="Version">The difficulty name.</param>
-/// <param name="Status">The ranked status of the beatmapset.</param>
-/// <param name="Local">Whether the beatmap has no osu! id and was given a local one.</param>
-/// <param name="Modified">When the difficulty was last imported.</param>
-/// <param name="Uploaded">When the difficulty was first imported.</param>
-/// <param name="Cs">The circle size.</param>
-/// <param name="Ar">The approach rate.</param>
-/// <param name="Od">The overall difficulty.</param>
-/// <param name="Hp">The health drain.</param>
-/// <param name="Stars">The star rating, shown for display only.</param>
-/// <param name="Length">The length of the beatmap.</param>
-/// <param name="Private">Whether the beatmapset is hidden.</param>
-/// <param name="Locked">Whether the beatmapset is write-locked.</param>
-/// <param name="Versions">How many difficulties the beatmapset has.</param>
-/// <param name="Name">The full name, <c>Artist - Title [Version]</c>, or empty when not known.</param>
 internal sealed record BeatmapItem(int Id, int SetId, string Version, BeatmapsetStatus Status, bool Local,
 	DateTimeOffset Modified, DateTimeOffset Uploaded, double Cs, double Ar, double Od, double Hp, double Stars,
 	TimeSpan Length, bool Private, bool Locked, int Versions, string Name = "");
 
-/// <summary>Reads the beatmapsets a search finds, with their difficulties.</summary>
 internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<BeatmapItem>
 {
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<SectionData<BeatmapItem>>> LoadAsync(string query, int limit,
 		CancellationToken ct)
 	{
@@ -71,7 +51,6 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 	}
 }
 
-/// <summary>The beatmaps: each beatmapset with its difficulties, and what can be done to the set.</summary>
 internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 {
 	private const string Help = """
@@ -87,7 +66,6 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 	private readonly ListPage<BeatmapItem> _page;
 	private bool _opened;
 
-	/// <summary>Creates the tab.</summary>
 	public BeatmapsTab(IServiceProvider services, BeatmapDetails details, CliOptions options, Glyphs glyphs,
 		ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
@@ -108,16 +86,13 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 			kit, options.NoColor, clock, post, logger);
 	}
 
-	/// <inheritdoc />
 	public Visual View => _page.View;
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 		_page.Attach(app);
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		_page.FocusList();
@@ -127,32 +102,26 @@ internal sealed class BeatmapsTab : ITabView, ISelectable, ISearchable
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 		_page.Tick();
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void FocusSearch()
 	{
 		_page.FocusSearch();
 	}
 
-	/// <inheritdoc />
 	public void ShowHelp()
 	{
 		_page.ShowHelp();
 	}
 
-	/// <summary>Selects a beatmap by its id when it is in the list.</summary>
-	/// <param name="id">The beatmap id.</param>
 	public void Select(string id)
 	{
 		_page.Select(id);

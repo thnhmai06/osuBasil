@@ -2,23 +2,15 @@ using Microsoft.Extensions.Primitives;
 
 namespace Basil.Configuration;
 
-/// <summary>
-///     Notices when the configuration files change: the sections that are read once at start wait for the next start and
-///     are reported as pending, the others apply at once.
-/// </summary>
-/// <param name="configuration">The configuration, which is read again when a file changes.</param>
-/// <param name="logger">Reports what a change does.</param>
 public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<ConfigurationWatcher> logger)
 	: IHostedService, IDisposable
 {
-	/// <summary>The sections that are read when the server starts.</summary>
 	public static readonly IReadOnlyList<string> RestartRequired =
 	[
 		"Kestrel", "ConnectionStrings", "OpenTelemetry", "Logging:File", "Basil:Server", "Basil:Database",
 		"Basil:Storage", "Basil:Assets"
 	];
 
-	/// <summary>The sections that apply as soon as they change.</summary>
 	public static readonly IReadOnlyList<string> Live = ["Logging:LogLevel", "Basil:Updates"];
 
 	private readonly Dictionary<string, string> _applied = [];
@@ -26,7 +18,6 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 	private readonly SortedSet<string> _pending = [];
 	private IDisposable? _registration;
 
-	/// <summary>Gets the sections whose configured value differs from the one the running server uses.</summary>
 	public IReadOnlyList<string> PendingRestart
 	{
 		get
@@ -38,13 +29,11 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 		}
 	}
 
-	/// <inheritdoc />
 	public void Dispose()
 	{
 		_registration?.Dispose();
 	}
 
-	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
 		lock (_gate)
@@ -56,7 +45,6 @@ public sealed class ConfigurationWatcher(IConfiguration configuration, ILogger<C
 		return Task.CompletedTask;
 	}
 
-	/// <inheritdoc />
 	public Task StopAsync(CancellationToken ct)
 	{
 		Dispose();

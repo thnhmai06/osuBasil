@@ -9,21 +9,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands;
 
-/// <summary>
-///     Executes the <c>!channel</c> chat command: <c>list</c>, <c>create</c>, <c>set</c> and <c>delete</c>, one for one
-///     with the HTTP API that manages the general channels.
-/// </summary>
-/// <remarks>
-///     Operations run on the server and the channel scoped to the connection of the user who typed the command; the
-///     scope decides whether the typist may manage channels, and the command only turns the result into a reply.
-/// </remarks>
 internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry channels)
 {
-	/// <summary>Runs a <c>!channel &lt;subcommand&gt; [args...]</c> command for the sender.</summary>
-	/// <param name="context">Who sent the command, where it was sent, and how to answer it.</param>
-	/// <param name="args">The tokens after <c>!channel</c>; <paramref name="args" />[0] is the subcommand.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> when the command succeeded; otherwise <see langword="false" />.</returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken ct)
 	{
@@ -117,7 +104,6 @@ internal sealed class ChannelCommands(ISender sender, GeneralChannelRegistry cha
 		return false;
 	}
 
-	/// <summary>Reads <c>key=value</c> options: <c>topic</c>, <c>read</c>, <c>write</c>, <c>autojoin</c>, <c>visible</c>.</summary>
 	private static bool TryParse(IEnumerable<string> options, out GeneralChannelChange change)
 	{
 		change = new GeneralChannelChange();

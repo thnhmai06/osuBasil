@@ -4,7 +4,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Irc.Tests.Chat;
 
-/// <summary>The read-only queries: NAMES, LIST, WHO, WHOIS, ISON and USERHOST.</summary>
 [Collection("IRC host")]
 public sealed class QueryTests(IrcHostFixture fixture)
 {

@@ -8,10 +8,6 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>
-///     The one-row title of a group of a form, in the shape of the group titles of the tables (<c>▾ ── Name (4) ───</c>):
-///     Enter, Left, Right or a click opens and folds the group.
-/// </summary>
 internal sealed partial class FoldTitle : Visual
 {
 	private readonly Glyphs _glyphs;
@@ -19,11 +15,6 @@ internal sealed partial class FoldTitle : Visual
 	private readonly string _name;
 	private readonly int _indent;
 
-	/// <summary>Creates the title.</summary>
-	/// <param name="name">The name of the group; its first letter is shown in capital.</param>
-	/// <param name="glyphs">The characters to draw with.</param>
-	/// <param name="noColor">Whether the title is monochrome.</param>
-	/// <param name="indent">How many columns the title is moved to the right, for a group inside a group.</param>
 	public FoldTitle(string name, Glyphs glyphs, bool noColor, int indent = 0)
 	{
 		_name = name;
@@ -35,22 +26,17 @@ internal sealed partial class FoldTitle : Visual
 		HorizontalAlignment = Align.Stretch;
 	}
 
-	/// <summary>Gets or sets whether the group is open.</summary>
 	[Bindable] public partial bool Open { get; set; }
 
-	/// <summary>Gets or sets the number shown next to the name.</summary>
 	[Bindable] public partial int Count { get; set; }
 
-	/// <summary>Occurs when the operator asks to open (<see langword="true" />) or fold (<see langword="false" />) the group.</summary>
 	public event Action<bool>? Folding;
 
-	/// <inheritdoc />
 	protected override SizeHints MeasureCore(in LayoutConstraints constraints)
 	{
 		return SizeHints.FlexX(new Size(4, 1), new Size(20, 1), 1, 1).Normalize();
 	}
 
-	/// <inheritdoc />
 	protected override void RenderOverride(CellBuffer buffer)
 	{
 		var rect = Bounds;
@@ -60,7 +46,6 @@ internal sealed partial class FoldTitle : Visual
 		GroupTitle.Draw(buffer, rect, rect.Y, _glyphs, _noColor, GetTheme(), _name, Count.ToString(), Open, HasFocus);
 	}
 
-	/// <inheritdoc />
 	protected override void OnKeyDown(KeyEventArgs e)
 	{
 		switch (e.Key)
@@ -74,7 +59,6 @@ internal sealed partial class FoldTitle : Visual
 		e.Handled = true;
 	}
 
-	/// <inheritdoc />
 	protected override void OnPointerPressed(PointerEventArgs e)
 	{
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.Button != TerminalMouseButton.Left) return;

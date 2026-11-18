@@ -3,7 +3,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Chat;
 
-/// <summary>Verifies which texts can be the content of a chat message.</summary>
 public class MessageTests
 {
 	private static readonly UserRecord Author = new() { Id = 1, Value = new UserData { Name = "author" } };

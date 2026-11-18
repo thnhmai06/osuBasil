@@ -1,14 +1,7 @@
 namespace Basil.Host.Shared.Views;
 
-/// <summary>What each server setting does, its unit or format and its default, written for the operator who changes it.</summary>
-/// <remarks>
-///     Paths are the camel-case JSON paths of the settings, beginning with the category name used by
-///     <see cref="SettingsCategories" />, for example <c>sessions.maxPerUser.irc</c>. Every setting of
-///     <c>ServerSettings</c> has one entry.
-/// </remarks>
 public static class SettingsDescriptions
 {
-	/// <summary>Gets the description of each setting, by path.</summary>
 	public static readonly IReadOnlyDictionary<string, string> All = new Dictionary<string, string>
 	{
 		["general.motd"] =
@@ -113,9 +106,6 @@ public static class SettingsDescriptions
 			"The image of the icon on the main menu. An absolute http or https address, or the path of a stored file relative to the data directory; empty for none. Default: none."
 	};
 
-	/// <summary>Gets the description of one setting.</summary>
-	/// <param name="path">The camel-case path of the setting, such as <c>bot.commandPrefix</c>.</param>
-	/// <returns>The description, or <see langword="null" /> when no setting has that path.</returns>
 	public static string? Of(string path)
 	{
 		return All.GetValueOrDefault(path);

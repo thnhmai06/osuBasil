@@ -9,12 +9,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Host.Rest;
 
-/// <summary>Maps the HTTP API of the <c>api.</c> host.</summary>
 public static class RestHost
 {
-	/// <summary>Adds the services of the live streams and the diagnostics, which need nothing of the web server.</summary>
-	/// <param name="services">The service collection.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddRestHost(this IServiceCollection services)
 	{
 		services.AddSingleton<RateLimiter>();
@@ -25,13 +21,6 @@ public static class RestHost
 		return services;
 	}
 
-	/// <summary>
-	///     Adds the web services of the HTTP API: documentation, CORS and the JSON options; the public domain is
-	///     <c>Basil:Server:Domain</c>.
-	/// </summary>
-	/// <param name="services">The service collection.</param>
-	/// <param name="configuration">The configuration to read.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddRestApi(this IServiceCollection services,
 		IConfiguration configuration)
 	{
@@ -50,9 +39,6 @@ public static class RestHost
 		return services;
 	}
 
-	/// <summary>Serves the HTTP API for the requests addressed to the <c>api.</c> sub-domain.</summary>
-	/// <param name="app">The application pipeline.</param>
-	/// <returns><paramref name="app" />, for chaining.</returns>
 	public static IApplicationBuilder UseRest(this IApplicationBuilder app)
 	{
 		app.MapWhen(context => context.Request.Host.Host.StartsWith("api.", StringComparison.OrdinalIgnoreCase),
@@ -78,8 +64,6 @@ public static class RestHost
 			: Api.NotFound("No such route.");
 	}
 
-	/// <summary>Maps every route of the <c>api.</c> host; each one declares its admission policy.</summary>
-	/// <param name="endpoints">The route builder of the <c>api.</c> host.</param>
 	internal static void MapRest(this IEndpointRouteBuilder endpoints)
 	{
 		var app = endpoints.MapGroup("").WithMetadata(new AdmissionPolicyAttribute());

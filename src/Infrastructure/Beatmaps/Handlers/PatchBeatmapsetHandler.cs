@@ -4,11 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Changes a beatmapset with the privileges of the sending connection.</summary>
 internal sealed class PatchBeatmapsetHandler(Beatmapsets beatmapsets)
 	: IRequestHandler<PatchBeatmapset, BeatmapsetOutcome>
 {
-	/// <inheritdoc />
 	public async ValueTask<BeatmapsetOutcome> Handle(PatchBeatmapset request,
 		CancellationToken ct)
 	{

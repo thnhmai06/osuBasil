@@ -5,11 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Lists the friends of the account the sending connection belongs to.</summary>
 internal sealed class GetFriendsHandler
 	: IRequestHandler<GetFriends, (UserOutcome Result, IReadOnlyList<UserRecord> Users)>
 {
-	/// <inheritdoc />
 	public async ValueTask<(UserOutcome Result, IReadOnlyList<UserRecord> Users)> Handle(GetFriends request,
 		CancellationToken ct)
 	{

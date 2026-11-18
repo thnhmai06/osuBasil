@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Irc.Tests;
 
-/// <summary>The limit on how many IRC connections one address may hold open at the same time.</summary>
 [Collection("IRC host")]
 public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 {
@@ -62,7 +61,6 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 		});
 	}
 
-	/// <summary>Sets the connection limit one address may use, and puts the previous settings back afterwards.</summary>
 	private async Task WithConnectionLimitAsync(int perIp, Func<Task> body)
 	{
 		var settings = Host.Services.GetRequiredService<ISettingsRepository>();
@@ -84,7 +82,6 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 		}
 	}
 
-	/// <summary>Asserts that the server keeps a connection, by answering a <c>PING</c> with a <c>PONG</c>.</summary>
 	private static async Task AssertAcceptedAsync(IrcClient client, string which)
 	{
 		await client.SendAsync("PING accepted");

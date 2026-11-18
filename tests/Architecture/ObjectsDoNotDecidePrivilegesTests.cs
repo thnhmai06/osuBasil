@@ -2,14 +2,8 @@ using System.Text.RegularExpressions;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Pins the owner rule that a runtime object does the logic and returns its own outcome, while the <c>Scoped*</c>
-///     capability in front of it decides what the caller's privileges allow: an object of the listed modules neither
-///     reads effective privileges nor answers with a denial.
-/// </summary>
 public sealed partial class ObjectsDoNotDecidePrivilegesTests
 {
-	/// <summary>The modules whose objects follow the rule so far; a module joins when its objects are done.</summary>
 	private static readonly string[] Modules = ["Multiplayer", "Chat"];
 
 	[Fact]

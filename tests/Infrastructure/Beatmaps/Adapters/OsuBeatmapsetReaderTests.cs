@@ -5,15 +5,12 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>Pins what the reader takes from an archive and which archives it refuses.</summary>
 public sealed class OsuBeatmapsetReaderTests
 {
-	/// <summary>A real standard difficulty, taken as the set's only difficulty.</summary>
 	private static readonly byte[] Standard = OszArchive.Sample(Path.Combine("Beatmaps", "standard.osu"));
 
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-	/// <summary>Everything the archive declares reaches the content under the name the contract gives it.</summary>
 	[Fact]
 	public async Task ReadAsync_ReturnsWhatTheArchiveDeclares()
 	{
@@ -51,7 +48,6 @@ public sealed class OsuBeatmapsetReaderTests
 		}
 	}
 
-	/// <summary>A file of the set stays readable until the content is disposed, and not afterwards.</summary>
 	[Fact]
 	public async Task ReadAsync_KeepsTheFilesReadableUntilTheContentIsDisposed()
 	{
@@ -75,7 +71,6 @@ public sealed class OsuBeatmapsetReaderTests
 		await Assert.ThrowsAnyAsync<ObjectDisposedException>(() => background.OpenAsync(Token));
 	}
 
-	/// <summary>Content that is not an archive is not a beatmapset.</summary>
 	[Fact]
 	public async Task ReadAsync_ReturnsNullWhenTheArchiveIsNotAnArchive()
 	{
@@ -87,7 +82,6 @@ public sealed class OsuBeatmapsetReaderTests
 		Assert.Null(content);
 	}
 
-	/// <summary>An archive with files but no difficulty is not a beatmapset.</summary>
 	[Fact]
 	public async Task ReadAsync_ReturnsNullWhenTheArchiveHasNoDifficulty()
 	{
@@ -99,7 +93,6 @@ public sealed class OsuBeatmapsetReaderTests
 		Assert.Null(content);
 	}
 
-	/// <summary>A difficultly that cannot be decoded is skipped, and the readable ones still count.</summary>
 	[Fact]
 	public async Task ReadAsync_SkipsADifficultyItCannotDecode()
 	{
@@ -118,7 +111,6 @@ public sealed class OsuBeatmapsetReaderTests
 		}
 	}
 
-	/// <summary>Difficulties lie at the top of a set; one deeper in a folder is no difficulty of the set.</summary>
 	[Fact]
 	public async Task ReadAsync_IgnoresADifficultyThatSitsInAFolder()
 	{
@@ -130,8 +122,6 @@ public sealed class OsuBeatmapsetReaderTests
 		Assert.Null(content);
 	}
 
-	/// <summary>A file named outside the set makes the whole archive unacceptable.</summary>
-	/// <param name="name">The name of the file that leaves the set.</param>
 	[Theory]
 	[InlineData("../outside.jpg")]
 	[InlineData("nested/../../outside.jpg")]
@@ -148,7 +138,6 @@ public sealed class OsuBeatmapsetReaderTests
 		Assert.Null(content);
 	}
 
-	/// <summary>Two files whose names differ only in case name the same file.</summary>
 	[Fact]
 	public async Task ReadAsync_ReturnsNullWhenTwoFilesShareANameIgnoringCase()
 	{
@@ -163,7 +152,6 @@ public sealed class OsuBeatmapsetReaderTests
 		Assert.Null(content);
 	}
 
-	/// <summary>The largest number of files a set may hold is accepted.</summary>
 	[Fact]
 	public async Task ReadAsync_AcceptsTheLargestAllowedSet()
 	{
@@ -176,7 +164,6 @@ public sealed class OsuBeatmapsetReaderTests
 		await content.DisposeAsync();
 	}
 
-	/// <summary>One file more than a set may hold makes the archive unacceptable.</summary>
 	[Fact]
 	public async Task ReadAsync_ReturnsNullPastTheLargestAllowedSet()
 	{
@@ -188,7 +175,6 @@ public sealed class OsuBeatmapsetReaderTests
 		Assert.Null(content);
 	}
 
-	/// <summary>A difficulty past the size a difficulty may take is skipped.</summary>
 	[Fact]
 	public async Task ReadAsync_SkipsADifficultyPastTheAllowedSize()
 	{
@@ -201,7 +187,6 @@ public sealed class OsuBeatmapsetReaderTests
 		Assert.Null(content);
 	}
 
-	/// <summary>Blank metadata takes the name the domain accepts in place of a blank one.</summary>
 	[Fact]
 	public async Task ReadAsync_UsesUnknownForBlankMetadata()
 	{
@@ -223,7 +208,6 @@ public sealed class OsuBeatmapsetReaderTests
 		}
 	}
 
-	/// <summary>A difficulty that sets no preview time has none.</summary>
 	[Fact]
 	public async Task ReadAsync_OmitsThePreviewTimeTheDifficultyDoesNotSet()
 	{
@@ -242,7 +226,6 @@ public sealed class OsuBeatmapsetReaderTests
 		}
 	}
 
-	/// <summary>A difficulty that names a storyboard object draws one.</summary>
 	[Fact]
 	public async Task ReadAsync_ReportsADifficultyThatDrawsAStoryboard()
 	{
@@ -262,9 +245,6 @@ public sealed class OsuBeatmapsetReaderTests
 		}
 	}
 
-	/// <summary>Builds small files that only fill the set up to the file-count limit.</summary>
-	/// <param name="count">How many files to build.</param>
-	/// <returns>The files, with distinct names.</returns>
 	private static (string Name, byte[] Content)[] Filler(int count)
 	{
 		var files = new (string, byte[])[count];

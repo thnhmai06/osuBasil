@@ -3,17 +3,12 @@ using Basil.Application.Beatmaps.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Support;
 
-/// <summary>
-///     Stands in for the storage's watch: hands out one controllable stream per call and records whether each one was
-///     released.
-/// </summary>
 internal sealed class FakeWatch
 {
 	private readonly Lock _gate = new();
 	private readonly List<FakeWatchStream> _streams = [];
 	private readonly Dictionary<int, TaskCompletionSource<FakeWatchStream>> _waiting = [];
 
-	/// <summary>Gets how many streams were handed out.</summary>
 	public int Count
 	{
 		get
@@ -25,9 +20,6 @@ internal sealed class FakeWatch
 		}
 	}
 
-	/// <summary>Gets the stream handed out at a position, once it exists.</summary>
-	/// <param name="index">The zero-based position of the stream.</param>
-	/// <returns>The stream.</returns>
 	public FakeWatchStream this[int index]
 	{
 		get
@@ -39,9 +31,6 @@ internal sealed class FakeWatch
 		}
 	}
 
-	/// <summary>Hands out the next stream, which the caller controls through the returned value.</summary>
-	/// <param name="failure">The failure the stream throws instead of yielding, or <see langword="null" /> for none.</param>
-	/// <returns>The stream handed out.</returns>
 	public IAsyncEnumerable<BeatmapsetSource> Next(Exception? failure = null)
 	{
 		var stream = new FakeWatchStream { Failure = failure };
@@ -57,10 +46,6 @@ internal sealed class FakeWatch
 		return stream;
 	}
 
-	/// <summary>Waits for the stream at a position to be handed out, or reports that it never was.</summary>
-	/// <param name="index">The zero-based position of the stream.</param>
-	/// <param name="timeout">How long to wait before reporting that it never was.</param>
-	/// <returns>The stream, or <see langword="null" /> when it was not handed out in time.</returns>
 	public async Task<FakeWatchStream?> WaitAsync(int index, TimeSpan timeout)
 	{
 		TaskCompletionSource<FakeWatchStream> waiter;
@@ -76,22 +61,17 @@ internal sealed class FakeWatch
 	}
 }
 
-/// <summary>A stream the storage hands out from its watch, which ends when it fails or when its watch stops.</summary>
 internal sealed class FakeWatchStream : IAsyncEnumerable<BeatmapsetSource>
 {
 	private readonly TaskCompletionSource _released =
 		new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-	/// <summary>Gets the failure the stream throws instead of yielding, or <see langword="null" /> for none.</summary>
 	public Exception? Failure { get; init; }
 
-	/// <summary>Gets whether the stream's watch was released.</summary>
 	public bool Released => _released.Task.IsCompleted;
 
-	/// <summary>Gets a task that completes when the stream's watch is released.</summary>
 	public Task Ending => _released.Task;
 
-	/// <inheritdoc />
 	public IAsyncEnumerator<BeatmapsetSource> GetAsyncEnumerator(CancellationToken ct = default)
 	{
 		return EnumerateAsync(ct).GetAsyncEnumerator(ct);

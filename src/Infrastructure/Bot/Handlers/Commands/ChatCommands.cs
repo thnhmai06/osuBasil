@@ -8,7 +8,6 @@ using Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands;
 
-/// <summary>Dispatches chat commands to their handlers.</summary>
 internal sealed class ChatCommands(
 	IUserRepository users,
 	IFaqStorage faqs,
@@ -16,14 +15,8 @@ internal sealed class ChatCommands(
 	ChannelCommands channelCommands,
 	Random random)
 {
-	/// <summary>The text that starts a command.</summary>
 	public const string CommandPrefix = "!";
 
-	/// <summary>Executes a command if the text starts with the command prefix.</summary>
-	/// <param name="context">The command context.</param>
-	/// <param name="text">The message text.</param>
-	/// <param name="ct">A cancellation token.</param>
-	/// <returns>True if a command was executed; otherwise false (no reply sent for unknown commands).</returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, string text, CancellationToken ct)
 	{
 		if (string.IsNullOrEmpty(text))

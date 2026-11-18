@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>The <c>channels</c>, <c>rooms</c> and <c>matches</c> commands.</summary>
 [Collection("CLI host")]
 public sealed class RoomChannelCommandTests(CliFixture fixture)
 {

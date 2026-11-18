@@ -2,16 +2,10 @@ using Basil.Application.Bot.Replies;
 
 namespace Basil.Application.Bot.Commands;
 
-/// <summary>One chat command BasilBot answers, as the help lists it.</summary>
-/// <param name="Path">The words that name the command, without the prefix (<c>roll</c>, <c>mp mods</c>).</param>
-/// <param name="Usage">The arguments the command takes, in the notation of the help; empty when it takes none.</param>
-/// <param name="Summary">The reply that says what the command does; the replies file can reword it.</param>
 internal sealed record CommandHelp(string Path, string Usage, Reply Summary);
 
-/// <summary>Every chat command BasilBot answers; <c>!help</c>, <c>!mp help</c> and the command reference are made from it.</summary>
 internal static class CommandCatalog
 {
-	/// <summary>The commands, in the order the help lists them.</summary>
 	public static readonly IReadOnlyList<CommandHelp> All =
 	[
 		Of("help", "", "list the commands"),
@@ -54,10 +48,6 @@ internal static class CommandCatalog
 		Of("mp close", "", "close the match immediately")
 	];
 
-	/// <summary>Says the lines of the help for the commands one step below a scope.</summary>
-	/// <param name="replies">Gives the wording of each summary.</param>
-	/// <param name="scope">The command whose subcommands are listed, or empty for the commands of the prefix itself.</param>
-	/// <returns>One line per command: <c>!path usage - summary</c>.</returns>
 	public static string Lines(IReplies replies, string scope)
 	{
 		var depth = scope.Length == 0 ? 0 : scope.Count(c => c == ' ') + 1;

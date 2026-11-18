@@ -4,7 +4,6 @@ using Serilog.Events;
 
 namespace Basil.Tests.Logging;
 
-/// <summary>The queue behind the log writer is bounded: when it is full events are dropped and counted, never waited for.</summary>
 public sealed class LogQueueTests
 {
 	[Fact]

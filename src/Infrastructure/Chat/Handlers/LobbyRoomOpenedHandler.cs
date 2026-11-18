@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>Opens the chat channel of a new room and adds its first host to it.</summary>
 internal sealed class LobbyRoomOpenedHandler(RoomChannels channels) : INotificationHandler<LobbyRoomOpened>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(LobbyRoomOpened @event, CancellationToken ct)
 	{
 		if (@event.Room.IsClosed) return ValueTask.CompletedTask;

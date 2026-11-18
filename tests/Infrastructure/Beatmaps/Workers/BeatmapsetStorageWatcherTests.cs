@@ -9,16 +9,10 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Workers;
 
-/// <summary>Pins how the watcher starts, keeps watching after a failure, and releases its watch.</summary>
 public sealed class BeatmapsetStorageWatcherTests
 {
-	/// <summary>How long a test waits for the watcher to take its next watch before calling it dead.</summary>
 	private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
 
-	/// <summary>
-	///     A start-up scan that was cancelled leaves the watch never enumerated; stopping the service must still release
-	///     it.
-	/// </summary>
 	[Fact]
 	public async Task StopAsync_ReleasesTheWatchWhenTheStartUpScanWasCancelled()
 	{
@@ -41,10 +35,6 @@ public sealed class BeatmapsetStorageWatcherTests
 		Assert.True(watch[0].Released);
 	}
 
-	/// <summary>
-	///     A watch that fails must not end the watching: once the restart delay has passed, the storage is watched
-	///     again.
-	/// </summary>
 	[Fact]
 	public async Task ExecuteAsync_WatchesAgainAfterTheWatchFails()
 	{
@@ -72,10 +62,6 @@ public sealed class BeatmapsetStorageWatcherTests
 		await watcher.StopAsync(TestContext.Current.CancellationToken);
 	}
 
-	/// <summary>
-	///     A watch that stops by a cancellation nobody asked for is a failure like any other, so the storage is watched
-	///     again.
-	/// </summary>
 	[Fact]
 	public async Task ExecuteAsync_WatchesAgainAfterAWatchCancelledWithoutStopping()
 	{

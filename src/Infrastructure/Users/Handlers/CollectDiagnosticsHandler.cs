@@ -6,10 +6,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Reports the users online and the open connections of each type; the bot's own connections are not clients.</summary>
 internal sealed class CollectDiagnosticsHandler(UserRegistry registry) : INotificationHandler<CollectDiagnostics>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		var collector = notification.Collector;

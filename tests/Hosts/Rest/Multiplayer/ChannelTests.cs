@@ -2,7 +2,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Tests.Multiplayer;
 
-/// <summary>Management of general channels.</summary>
 [Collection("REST host")]
 public sealed class ChannelTests(RestHostFixture fixture)
 {

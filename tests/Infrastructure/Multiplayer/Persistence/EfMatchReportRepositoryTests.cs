@@ -8,7 +8,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 
-/// <summary>Contract tests of the report of what happened in a match.</summary>
 [Collection("Persistence")]
 public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -205,29 +204,17 @@ public sealed class EfMatchReportRepositoryTests(PersistenceFixture container) :
 		Assert.Empty(report.Records);
 	}
 
-	/// <summary>Creates a match the report of the test describes.</summary>
-	/// <param name="name">The name of the match.</param>
-	/// <returns>The match.</returns>
 	private async Task<MatchRecord> CreateMatchAsync(string name)
 	{
 		return await CreateStoredMatchAsync(name, First);
 	}
 
-	/// <summary>Creates the account that played.</summary>
-	/// <param name="name">The name of the account.</param>
-	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
 		return await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = name });
 	}
 
-	/// <summary>Records a play in a round.</summary>
-	/// <param name="round">The round the play was made in.</param>
-	/// <param name="player">The account that played.</param>
-	/// <param name="totalScore">The total score the play achieved.</param>
-	/// <param name="timestamp">The moment the play happened.</param>
-	/// <returns>The relation between the round and the score.</returns>
 	private async Task<RoundScore> RecordScoreAsync(Round round, UserRecord player, int totalScore,
 		DateTimeOffset timestamp)
 	{

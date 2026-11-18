@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>Keeps the chat channel of an open room in step when a player joins or replaces a connection.</summary>
 internal sealed class RoomPlayerJoinedHandler(RoomChannels channels) : INotificationHandler<RoomPlayerJoined>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(RoomPlayerJoined @event, CancellationToken ct)
 	{
 		if (@event.Room.IsClosed || channels.Find(@event.Room) is not { } channel)

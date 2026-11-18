@@ -6,11 +6,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Users.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of registered users.</summary>
-/// <remarks>
-///     A new database holds no account. BasilBot is stored under <see cref="BasilBot.Id" /> by the server at start-up,
-///     so the first account the database numbers is <c>BasilBot.Id + 1</c>.
-/// </remarks>
 [Collection("Persistence")]
 public sealed class EfUserRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -478,14 +473,12 @@ public sealed class EfUserRepositoryTests(PersistenceFixture container) : Databa
 		Assert.Equal(new[] { first.Id, second.Id, third.Id }, page.Items.Select(account => account.Id));
 	}
 
-	/// <summary>Deletes an account.</summary>
 	private async Task DeleteAsync(UserRecord user)
 	{
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
 		await Users.UpdateAsync(user);
 	}
 
-	/// <summary>Creates two accounts and deletes the second one.</summary>
 	private async Task TwoAccountsOneDeletedAsync()
 	{
 		await Users.CreateAsync(new UserData { Name = "living_user" });

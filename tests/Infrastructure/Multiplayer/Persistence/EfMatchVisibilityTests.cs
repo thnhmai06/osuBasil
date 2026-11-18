@@ -7,13 +7,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 
-/// <summary>
-///     Contract tests of who may view a private match. The rule comes from the owner's decision: a public match is
-///     viewable by everyone; a private one only by a user who took part in it (a player-joined event targets the user),
-///     its
-///     creator, or a referee that is still one (a referee-added event not followed by a referee-removed event for the same
-///     user). The privilege that lets a user view every private match is not a persistence concern.
-/// </summary>
 [Collection("Persistence")]
 public sealed class EfMatchVisibilityTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -150,7 +143,6 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 		Assert.Equal(2, names.Count);
 	}
 
-	/// <summary>Creates a private match and records the given events against a user in order.</summary>
 	private async Task<(MatchRecord Match, UserRecord User)> PrivateMatchWithAsync(params MatchEventType[] events)
 	{
 		var creator = await UserAsync("creator");
@@ -160,7 +152,6 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 		return (match, user);
 	}
 
-	/// <summary>Asserts that the single-match check and the listing both say whether the viewer may see the match.</summary>
 	private async Task AssertVisibleAsync(MatchRecord match, UserRecord viewer, bool expected)
 	{
 		var single = await Matches.IsVisibleToAsync(match, viewer, TestContext.Current.CancellationToken);
@@ -187,7 +178,6 @@ public sealed class EfMatchVisibilityTests(PersistenceFixture container) : Datab
 		return await Matches.CreateAsync(StoredMatches.Data(name, At, creator, isPrivate: isPrivate));
 	}
 
-	/// <summary>Records an event that targets a user and waits until it is stored.</summary>
 	private async Task RecordAsync(MatchRecord match, MatchEventType type, UserRecord target)
 	{
 		var before = (await Events.ListAsync(match, TestContext.Current.CancellationToken)).Count;

@@ -3,7 +3,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Shared.Tests.Settings;
 
-/// <summary>Verifies the validation of the settings an administrator changes while the server runs.</summary>
 public class ServerSettingsTests
 {
 	public static TheoryData<Action> InvalidValues => new()

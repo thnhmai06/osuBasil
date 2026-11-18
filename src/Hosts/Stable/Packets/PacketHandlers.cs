@@ -19,7 +19,6 @@ using Mediator;
 
 namespace Basil.Host.Stable.Packets;
 
-/// <summary>Handles the packets an osu! client sends; each handler works through the scopes of the sender's connection.</summary>
 [AdmissionPolicy]
 internal sealed partial class PacketHandlers(
 	UserRegistry registry,
@@ -29,23 +28,16 @@ internal sealed partial class PacketHandlers(
 	RateLimiter limiter,
 	TimeProvider clock)
 {
-	/// <summary>The most ids a stats or presence request is answered for; the rest are ignored.</summary>
 	internal const int MaxRequestedIds = 256;
 
-	/// <summary>The most file names a beatmap info request is answered for; the rest are ignored.</summary>
 	internal const int MaxRequestedFilenames = 100;
 
-	/// <summary>Every packet type a client can send, with the admission policy metadata it is received under.</summary>
 	internal static IReadOnlyList<(string Name, IReadOnlyList<object> Metadata)> EntryPoints { get; } =
 	[
 		.. Enum.GetValues<ClientPacketType>().Select(type => (type.ToString(),
 			(IReadOnlyList<object>)typeof(PacketHandlers).GetCustomAttributes(true)))
 	];
 
-	/// <summary>Handles one packet from a connection.</summary>
-	/// <param name="actor">The connection that sent it.</param>
-	/// <param name="packet">The packet.</param>
-	/// <param name="ct">A token that cancels the handling.</param>
 	public Task HandleAsync(Connection actor, ClientPacket packet, CancellationToken ct)
 	{
 		var reader = PacketReader.ForPayload(packet.Payload);

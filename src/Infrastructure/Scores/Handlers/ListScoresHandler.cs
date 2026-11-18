@@ -8,11 +8,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Scores.Handlers;
 
-/// <summary>Lists scores for <see cref="ListScores" />.</summary>
 internal sealed class ListScoresHandler(IScoreRepository scores, IBeatmapRepository beatmaps, IUserRepository users)
 	: IRequestHandler<ListScores, ScoreListing>
 {
-	/// <inheritdoc />
 	public async ValueTask<ScoreListing> Handle(ListScores request, CancellationToken ct)
 	{
 		Md5? hash = null;

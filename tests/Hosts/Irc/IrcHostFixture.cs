@@ -3,7 +3,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Host.Irc.Tests;
 
-/// <summary>One server and one PostgreSQL container for all the IRC host tests, which use different usernames.</summary>
 public sealed class IrcHostFixture : IAsyncLifetime
 {
 	private readonly PersistenceFixture _database = new();

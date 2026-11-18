@@ -3,7 +3,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Gateway.Tests.RateLimiting;
 
-/// <summary>The limiter forgets keys whose events expired and never remembers more than its cap.</summary>
 public sealed class RateLimiterTests
 {
 	private static readonly TimeSpan Window = TimeSpan.FromMinutes(5);

@@ -4,7 +4,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Irc.Tests.Chat;
 
-/// <summary>The <c>#mp_{id}</c> channels follow the rules of the room, whichever client asks.</summary>
 [Collection("IRC host")]
 public sealed class RoomChannelTests(IrcHostFixture fixture)
 {
@@ -15,7 +14,6 @@ public sealed class RoomChannelTests(IrcHostFixture fixture)
 		return BitConverter.ToUInt16(joinSuccess.Payload, 0);
 	}
 
-	/// <summary>An account that has an osu! client seated as host of a new room and an IRC client of its own.</summary>
 	private async Task<(OsuClient Osu, IrcClient Irc, int RoomId)> CreatorWithIrcAsync(string name)
 	{
 		var osu = await Host.NewClientAsync(name);

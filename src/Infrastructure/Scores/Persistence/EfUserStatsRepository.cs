@@ -7,10 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Scores.Persistence;
 
-/// <summary>Stores users' cumulative score statistics.</summary>
 internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserStatsRepository
 {
-	/// <inheritdoc />
 	public async ValueTask<UserStats> GetAsync(UserRecord user, GameMode mode,
 		CancellationToken ct = default)
 	{
@@ -22,7 +20,6 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 		return row is null ? new UserStats { UserId = userId, Mode = mode } : ToStats(row);
 	}
 
-	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(UserStats stats)
 	{
 		var row = new UserStatsRow
@@ -37,7 +34,6 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 			context.UpsertAsync(row, stored => stored.UserId == row.UserId && stored.Mode == row.Mode));
 	}
 
-	/// <inheritdoc />
 	public async ValueTask<UserStats> AddPlayAsync(UserRecord user, GameMode mode, long totalScore, long rankedScore)
 	{
 		try
@@ -52,14 +48,12 @@ internal sealed class EfUserStatsRepository(DatabaseSession database) : IUserSta
 		}
 	}
 
-	/// <summary>Adds one play with column-level updates, or creates the row when the account has none yet.</summary>
 	private Task<UserStats> IncrementAsync(int userId, GameMode mode, long totalScore, long rankedScore)
 	{
 		return database.WriteAsync((ScoresDbContext context) =>
 			AddPlayAsync(context, userId, mode, totalScore, rankedScore));
 	}
 
-	/// <summary>Adds one play on a context with column-level updates, or adds the row when the account has none yet.</summary>
 	internal static async Task<UserStats> AddPlayAsync(ScoresDbContext context, int userId, GameMode mode,
 		long totalScore, long rankedScore)
 	{

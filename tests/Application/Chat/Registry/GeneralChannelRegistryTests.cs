@@ -5,10 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Chat.Tests.Registry;
 
-/// <summary>
-///     Which channels a connection may see in a listing: the ones it may read, hiding the hidden for those who cannot
-///     manage.
-/// </summary>
 public sealed class GeneralChannelRegistryTests
 {
 	private static async Task OpenAsync(TestApplication app, string name, UserPrivileges read = UserPrivileges.None,

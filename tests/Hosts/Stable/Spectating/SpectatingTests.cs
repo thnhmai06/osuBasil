@@ -2,7 +2,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Stable.Tests.Spectating;
 
-/// <summary>Spectating as the osu! client does it: the host's frames reach every spectator unchanged.</summary>
 [Collection("Stable host")]
 public sealed class SpectatingTests(StableHostFixture fixture)
 {

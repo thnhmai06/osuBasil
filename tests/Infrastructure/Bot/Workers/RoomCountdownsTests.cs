@@ -13,11 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Bot.Tests.Workers;
 
-/// <summary>
-///     The countdowns BasilBot runs in rooms, driven through the messages the hosts send. The expected behaviour comes
-///     from docs/for-developers/multiplayer.md ("Countdown"): a countdown announces its marks in the room, starts the
-///     round it was for when it elapses, and is cancelled by whatever makes it pointless.
-/// </summary>
 public sealed class RoomCountdownsTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

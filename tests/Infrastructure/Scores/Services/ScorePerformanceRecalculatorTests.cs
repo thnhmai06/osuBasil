@@ -18,7 +18,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Scores.Tests.Services;
 
-/// <summary>The calculation of pp for stored scores: which scores each scope covers, and that it is safe to repeat.</summary>
 [Collection("Persistence")]
 public sealed class ScorePerformanceRecalculatorTests(PersistenceFixture container) : DatabaseTests(container)
 {

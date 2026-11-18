@@ -3,11 +3,8 @@ using Basil.Application.Bot.Commands;
 
 namespace Basil.Application.Bot;
 
-/// <summary>Writes the reference of BasilBot's chat commands.</summary>
 public static class BotReference
 {
-	/// <summary>Writes the reference of the chat commands, with the wording they have unless the replies file changes it.</summary>
-	/// <returns>The Markdown text.</returns>
 	public static string Markdown()
 	{
 		var text = new StringBuilder();

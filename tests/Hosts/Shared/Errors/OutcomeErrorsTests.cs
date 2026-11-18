@@ -3,7 +3,6 @@ using Basil.Host.Shared.Errors;
 
 namespace Basil.Host.Shared.Tests.Errors;
 
-/// <summary>A refused operation is reported with a stable camelCase code and a classification.</summary>
 public sealed class OutcomeErrorsTests
 {
 	[Theory]

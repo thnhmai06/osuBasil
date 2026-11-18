@@ -5,11 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers;
 
-/// <summary>Handles <see cref="ListScreenshots" /> with the privileges of the sending connection.</summary>
 internal sealed class ListScreenshotsHandler(Server server)
 	: IRequestHandler<ListScreenshots, (ServerOutcome Result, IReadOnlyList<ContentReference> Screenshots)>
 {
-	/// <inheritdoc />
 	public async ValueTask<(ServerOutcome Result, IReadOnlyList<ContentReference> Screenshots)> Handle(
 		ListScreenshots request, CancellationToken ct)
 	{

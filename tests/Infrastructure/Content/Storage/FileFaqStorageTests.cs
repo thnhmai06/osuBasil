@@ -4,7 +4,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Content.Tests.Storage;
 
-/// <summary>Contract tests of FileFaqStorage, read through IFaqStorage and the entry writer it opens.</summary>
 public sealed class FileFaqStorageTests : IDisposable
 {
 	private const string Entry = "Rules:ScoreSubmission";
@@ -234,7 +233,6 @@ public sealed class FileFaqStorageTests : IDisposable
 		writer.Commit();
 	}
 
-	/// <summary>Reads the full text of the entry; an empty string when no entry has the name.</summary>
 	private async ValueTask<string> ReadAsync(string entry)
 	{
 		var reader = await _faqs.ReadAsync(entry, TestContext.Current.CancellationToken);

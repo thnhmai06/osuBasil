@@ -3,7 +3,6 @@ using Basil.Host.Irc.Transport;
 
 namespace Basil.Tests.Configuration;
 
-/// <summary>The multicast DNS answers are off by default.</summary>
 public sealed class MulticastSettingsTests
 {
 	[Fact]

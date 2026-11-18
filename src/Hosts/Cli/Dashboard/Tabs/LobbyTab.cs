@@ -14,40 +14,19 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>One room in the lobby table, open or closed.</summary>
-/// <param name="Id">The room id (the match id).</param>
-/// <param name="Name">The room name.</param>
-/// <param name="Players">How many players sit in it.</param>
-/// <param name="Size">How many slots are usable.</param>
-/// <param name="State">Playing, waiting, locked or closed.</param>
-/// <param name="Host">The host, or empty.</param>
-/// <param name="Creator">The creator, or empty.</param>
-/// <param name="Referees">The referees, as names.</param>
-/// <param name="HostMask">The privilege flags of the host as a number, which colour its name.</param>
-/// <param name="CreatorMask">The privilege flags of the creator as a number, which colour its name.</param>
-/// <param name="Open">Whether the room is open now, so it can be changed.</param>
-/// <param name="Locked">Whether nobody else can join.</param>
-/// <param name="Slots">The seated players: slot number, name, whether host, and the slot's status.</param>
-/// <param name="Rules">The settings of an open room; <see langword="null" /> for a closed one.</param>
-/// <param name="Countdown">Whether a countdown is running in the room.</param>
 internal sealed record RoomItem(int Id, string Name, int Players, int Size, string State, string Host,
 	string Creator, string Referees, ulong HostMask, ulong CreatorMask, bool Open, bool Locked, IReadOnlyList<(int Index, string Player, bool Host, string Status)> Slots,
 	RoomRules? Rules = null, bool Countdown = false)
 {
-	/// <summary>Gets whether a round can start now: the room is open and idle, has a beatmap and at least one player.</summary>
 	public bool CanStartRound => Open && State != "playing" && Players > 0 && Rules is { Map.Length: > 0 };
 
-	/// <summary>Gets whether a countdown can start now: none runs and a round could start.</summary>
 	public bool CanStartTimer => !Countdown && CanStartRound;
 
-	/// <summary>Gets whether there is a countdown to abort.</summary>
 	public bool CanAbortTimer => Open && Countdown;
 }
 
-/// <summary>Reads the rooms: the open ones from memory, the closed ones from the match history.</summary>
 internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomItem>
 {
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<SectionData<RoomItem>>> LoadAsync(string query, int limit, CancellationToken ct)
 	{
 		var registry = services.GetRequiredService<UserRegistry>();
@@ -104,7 +83,6 @@ internal sealed class LobbySource(IServiceProvider services) : IListSource<RoomI
 	}
 }
 
-/// <summary>The rooms: the open ones with what the creator and the referees can do, and the ones that ended.</summary>
 internal sealed class LobbyTab : ITabView, ISearchable
 {
 	private const string Help = """
@@ -122,7 +100,6 @@ internal sealed class LobbyTab : ITabView, ISearchable
 	private readonly ListPage<RoomItem> _page;
 	private bool _opened;
 
-	/// <summary>Creates the tab.</summary>
 	public LobbyTab(IServiceProvider services, UserDetails users, CommandActions actions, Action<string> openChat, CliOptions options,
 		Glyphs glyphs, ShellKit kit, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
@@ -145,16 +122,13 @@ internal sealed class LobbyTab : ITabView, ISearchable
 			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
-	/// <inheritdoc />
 	public Visual View => _page.View;
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 		_page.Attach(app);
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		_page.FocusList();
@@ -164,25 +138,21 @@ internal sealed class LobbyTab : ITabView, ISearchable
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 		_page.Tick();
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void FocusSearch()
 	{
 		_page.FocusSearch();
 	}
 
-	/// <inheritdoc />
 	public void ShowHelp()
 	{
 		_page.ShowHelp();

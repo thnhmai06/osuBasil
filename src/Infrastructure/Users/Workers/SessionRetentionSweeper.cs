@@ -4,13 +4,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Workers;
 
-/// <summary>Deletes the sessions that ended longer ago than the server settings keep them, once an hour.</summary>
 internal sealed class SessionRetentionSweeper(
 	UserRegistry registry,
 	TimeProvider time,
 	ILogger<SessionRetentionSweeper> logger) : BackgroundService
 {
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromHours(1), time);

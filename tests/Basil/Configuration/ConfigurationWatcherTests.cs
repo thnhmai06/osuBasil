@@ -9,12 +9,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Tests.Configuration;
 
-/// <summary>
-///     The configuration files are read again when they change: <c>Logging</c> and <c>Updates</c> apply at once, while
-///     <c>Server</c>, <c>Database</c>, <c>Storage</c> and <c>Telemetry</c> are read when the server starts and wait for
-///     the
-///     next start.
-/// </summary>
 public sealed class ConfigurationWatcherTests
 {
 	private readonly MemoryConfigurationProvider _file;

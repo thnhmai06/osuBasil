@@ -6,7 +6,6 @@ using SixLabors.ImageSharp.Formats.Png;
 
 namespace Basil.Infrastructure.Content.Adapters;
 
-/// <inheritdoc />
 internal sealed class ImageSharpScreenshotInspector : IScreenshotInspector
 {
 	// Only the accepted formats are probed, so the header parsers of the other formats never see uploaded content.
@@ -15,7 +14,6 @@ internal sealed class ImageSharpScreenshotInspector : IScreenshotInspector
 		Configuration = new Configuration(new PngConfigurationModule(), new JpegConfigurationModule())
 	};
 
-	/// <inheritdoc />
 	public async Task<ScreenshotInfo?> InspectAsync(Stream content, CancellationToken ct = default)
 	{
 		try

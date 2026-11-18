@@ -6,14 +6,12 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Opens the archive of a beatmapset for a caller who may see it.</summary>
 internal sealed class OpenBeatmapsetArchiveHandler(
 	IBeatmapsetRepository sets,
 	IBeatmapsetStorage storage,
 	TimeProvider clock)
 	: IRequestHandler<OpenBeatmapsetArchive, Stream?>
 {
-	/// <inheritdoc />
 	public async ValueTask<Stream?> Handle(OpenBeatmapsetArchive request, CancellationToken ct)
 	{
 		return await sets.GetAsync(request.SetId, ct) is { } set &&

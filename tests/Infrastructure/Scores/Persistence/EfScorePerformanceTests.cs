@@ -6,7 +6,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Scores.Tests.Persistence;
 
-/// <summary>Contract tests of the pp stored with a score and of the listing that finds the scores to calculate.</summary>
 [Collection("Persistence")]
 public sealed class EfScorePerformanceTests(PersistenceFixture container) : DatabaseTests(container)
 {

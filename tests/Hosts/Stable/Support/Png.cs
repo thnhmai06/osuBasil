@@ -2,7 +2,6 @@ using System.Text;
 
 namespace Basil.Host.Stable.Tests.Support;
 
-/// <summary>Builds a PNG that has the given size in its header and a body the server never decodes.</summary>
 internal static class Png
 {
 	public static byte[] WithSize(int width, int height)

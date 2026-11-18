@@ -4,13 +4,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Shared.Tests.Events;
 
-/// <summary>
-///     Pins that queued deliveries run in order, one at a time, only while the queue runs, and that a failing one
-///     ends nothing.
-/// </summary>
 public sealed class EventQueueTests
 {
-	/// <summary>How long a test waits for a delivery before calling the queue dead.</summary>
 	private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
 
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -154,11 +149,9 @@ public sealed class EventQueueTests
 		Assert.Equal(0, queue.Outstanding);
 	}
 
-	/// <summary>Announces that it started, then waits until it is released.</summary>
 	private sealed class GatedDelivery(TaskCompletionSource started, TaskCompletionSource release, Action finish)
 		: IEventDelivery
 	{
-		/// <inheritdoc />
 		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
 			started.SetResult();
@@ -167,30 +160,24 @@ public sealed class EventQueueTests
 		}
 	}
 
-	/// <summary>Reports its name when it runs.</summary>
 	private sealed class RecordingDelivery(string name, Channel<string> done) : IEventDelivery
 	{
-		/// <inheritdoc />
 		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
 			await done.Writer.WriteAsync(name, ct);
 		}
 	}
 
-	/// <summary>Fails when it runs.</summary>
 	private sealed class ThrowingDelivery : IEventDelivery
 	{
-		/// <inheritdoc />
 		public ValueTask DeliverAsync(CancellationToken ct)
 		{
 			throw new InvalidOperationException("The delivery failed.");
 		}
 	}
 
-	/// <summary>Runs until the server stops.</summary>
 	private sealed class BlockedDelivery : IEventDelivery
 	{
-		/// <inheritdoc />
 		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
 			await Task.Delay(Timeout.Infinite, ct);

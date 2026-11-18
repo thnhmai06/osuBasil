@@ -3,7 +3,6 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Shared.Tests.Registry;
 
-/// <summary>Contract tests of the cache that sits next to the database.</summary>
 public sealed class CacheAsideTests
 {
 	[Fact]

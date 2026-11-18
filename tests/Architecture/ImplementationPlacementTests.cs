@@ -2,11 +2,6 @@ using System.Reflection;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Where implementations live: an Application project holds contracts and runtime objects only, so it has no
-///     handler, no object-free logic and no background run; the implementations are in the module's Infrastructure
-///     project, which shows only its registration (<c>Add&lt;Module&gt;Infrastructure()</c>) to the outside.
-/// </summary>
 public class ImplementationPlacementTests
 {
 	private static readonly string[] ImplementationFolders = ["Handlers", "Logic", "Workers"];

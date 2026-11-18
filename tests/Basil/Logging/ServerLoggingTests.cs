@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Tests.Logging;
 
-/// <summary>The server's logger follows the <c>Logging:LogLevel</c> settings, and follows them again when they change.</summary>
 public sealed class ServerLoggingTests : IDisposable
 {
 	private readonly WebApplication _app;

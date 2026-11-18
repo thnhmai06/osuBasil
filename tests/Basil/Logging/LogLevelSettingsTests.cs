@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Tests.Logging;
 
-/// <summary>The standard <c>Logging:LogLevel</c> settings decide which events are written, per source.</summary>
 public sealed class LogLevelSettingsTests
 {
 	private static readonly Dictionary<string, string?> Shipped = new()

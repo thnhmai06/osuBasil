@@ -5,13 +5,11 @@ using System.Text.Json.Nodes;
 
 namespace Basil.Testing.Clients;
 
-/// <summary>A client of the HTTP API: Bearer or anonymous, never following redirects.</summary>
 public sealed class RestClient(Uri address, string domain, string? bearer = null) : IDisposable
 {
 	private readonly HttpClient _http = new(new HttpClientHandler { AllowAutoRedirect = false })
 		{ BaseAddress = address };
 
-	/// <summary>Gets or sets the Bearer token the client sends.</summary>
 	public string? Bearer { get; set; } = bearer;
 
 	public void Dispose()
@@ -19,11 +17,6 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		_http.Dispose();
 	}
 
-	/// <summary>Sends a request to the <c>api.</c> host.</summary>
-	/// <param name="method">The HTTP method.</param>
-	/// <param name="path">The path and query.</param>
-	/// <param name="body">A JSON body, or <see langword="null" />.</param>
-	/// <param name="ct">A token that cancels the request.</param>
 	public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body = null,
 		CancellationToken ct = default)
 	{
@@ -35,11 +28,6 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 	}
 
-	/// <summary>Sends a multipart form with an optional file and text fields.</summary>
-	/// <param name="method">The HTTP method.</param>
-	/// <param name="path">The path.</param>
-	/// <param name="file">The name of the file field, its file name and content, or <see langword="null" /> for none.</param>
-	/// <param name="fields">The text fields.</param>
 	public async Task<(int Status, JsonNode? Envelope)> FormAsync(HttpMethod method, string path,
 		(string Field, string FileName, byte[] Content)? file = null, params (string Name, string Value)[] fields)
 	{
@@ -61,9 +49,6 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		return ((int)response.StatusCode, text.Length == 0 ? null : JsonNode.Parse(text));
 	}
 
-	/// <summary>Sends a GET request to another sub-domain, such as the avatar host.</summary>
-	/// <param name="label">The first label of the host name, such as <c>a</c>.</param>
-	/// <param name="path">The path and query.</param>
 	public async Task<HttpResponseMessage> GetFromAsync(string label, string path, string? ifNoneMatch = null)
 	{
 		using var request = new HttpRequestMessage(HttpMethod.Get, path);
@@ -72,16 +57,11 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		return await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
 	}
 
-	/// <summary>Sends a GET request.</summary>
 	public Task<HttpResponseMessage> GetAsync(string path, CancellationToken ct = default)
 	{
 		return SendAsync(HttpMethod.Get, path, null, ct);
 	}
 
-	/// <summary>Opens a Server-Sent Events stream; the caller disposes the response to end it.</summary>
-	/// <param name="path">The path of the live route.</param>
-	/// <param name="lastEventId">The <c>Last-Event-ID</c> to send, or <see langword="null" />.</param>
-	/// <returns>The response with its headers read, and a reader over its events when it is a stream.</returns>
 	public async Task<(HttpResponseMessage Response, SseReader? Reader)> OpenStreamAsync(string path,
 		string? lastEventId = null, CancellationToken ct = default)
 	{
@@ -97,7 +77,6 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 			: null);
 	}
 
-	/// <summary>Sends a request and reads the envelope of the answer.</summary>
 	public async Task<(int Status, JsonNode? Envelope)> CallAsync(HttpMethod method, string path, object? body = null)
 	{
 		using var response = await SendAsync(method, path, body);
@@ -105,8 +84,6 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 		return ((int)response.StatusCode, text.Length == 0 ? null : JsonNode.Parse(text));
 	}
 
-	/// <summary>Signs in and keeps the token.</summary>
-	/// <returns>The user id the token belongs to.</returns>
 	public async Task<int> LoginAsync(string username, string password = "password")
 	{
 		var (status, envelope) = await CallAsync(HttpMethod.Post, "/v1/auth/login", new { username, password });
@@ -116,15 +93,12 @@ public sealed class RestClient(Uri address, string domain, string? bearer = null
 	}
 }
 
-/// <summary>Reads Server-Sent Events from a response stream, in order.</summary>
 public sealed class SseReader(Stream stream)
 {
 	private readonly StreamReader _reader = new(stream);
 
-	/// <summary>Gets the <c>id:</c> of the event read last, or <see langword="null" />.</summary>
 	public string? LastId { get; private set; }
 
-	/// <summary>Reads the next event, or <see langword="null" /> at the end of the stream; comments are skipped.</summary>
 	public async Task<(string Event, string Data)?> ReadAsync(CancellationToken ct = default)
 	{
 		string eventName = "message", data = string.Empty;

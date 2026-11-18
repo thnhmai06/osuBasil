@@ -10,12 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Chat;
 
-/// <summary>Registers the runtime objects owned by Chat.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the Chat runtime objects.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddChatApplication(this IServiceCollection services)
 	{
 		services.AddSingleton(new GeneralChannelRegistry());

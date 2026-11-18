@@ -6,10 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
 
-/// <summary>Stores beatmapsets in the <c>beatmapsets</c> table.</summary>
 internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvider time) : IBeatmapsetRepository
 {
-	/// <inheritdoc />
 	public async ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((BeatmapsDbContext context) => context.Beatmapsets
@@ -18,7 +16,6 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		return row?.ToRecord();
 	}
 
-	/// <inheritdoc />
 	public Task UpdateAsync(BeatmapsetRecord set)
 	{
 		var row = ToRow(set);
@@ -26,7 +23,6 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 			context.UpsertAsync(row, stored => stored.Id == row.Id));
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes)
 	{
 		List<StoredSet> stored = [];
@@ -35,7 +31,6 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		return [.. stored.Select(item => item.Set)];
 	}
 
-	/// <inheritdoc />
 	public Task DeleteAsync(BeatmapsetRecord set)
 	{
 		return database.WriteAsync((BeatmapsDbContext context) => context.Beatmapsets
@@ -43,7 +38,6 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 			.ExecuteDeleteAsync());
 	}
 
-	/// <inheritdoc />
 	public async Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken ct = default)
 	{
@@ -62,7 +56,6 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		return new Page<BeatmapsetRecord>([.. rows.Select(row => row.ToRecord())], hasNext);
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<int>> ListIdsAsync(CancellationToken ct = default)
 	{
 		return await database.ReadAsync(async (BeatmapsDbContext context) => await context.Beatmapsets
@@ -72,10 +65,6 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 			.ToListAsync(ct), ct);
 	}
 
-	/// <summary>Stores every change in one transaction, keeping what a replaced beatmapset was stored with.</summary>
-	/// <param name="changes">The beatmapsets to store and to remove.</param>
-	/// <param name="context">The EF context the transaction runs on.</param>
-	/// <returns>What was stored, in the order of <see cref="BeatmapsetChanges.Store" />.</returns>
 	private async Task<List<StoredSet>> StoreAsync(BeatmapsetChanges changes, BeatmapsDbContext context)
 	{
 		var now = time.GetUtcNow();
@@ -152,7 +141,6 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 		};
 	}
 
-	/// <summary>Makes the row that stores a beatmapset, with the values it has now.</summary>
 	private static BeatmapsetRow ToRow(BeatmapsetRecord set)
 	{
 		return new BeatmapsetRow
@@ -174,7 +162,4 @@ internal sealed class EfBeatmapsetRepository(DatabaseSession database, TimeProvi
 	}
 }
 
-/// <summary>One beatmapset, as a commit stored it.</summary>
-/// <param name="Set">The beatmapset, with the values it now has.</param>
-/// <param name="Beatmaps">The difficulties the set now has, in order.</param>
 internal sealed record StoredSet(BeatmapsetRecord Set, List<BeatmapRecord> Beatmaps);

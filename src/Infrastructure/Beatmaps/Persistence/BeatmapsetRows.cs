@@ -4,13 +4,10 @@ using Basil.Domain.Cryptography;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
 
-/// <summary>Builds stored beatmapsets from their rows.</summary>
 internal static class BeatmapsetRows
 {
 	extension(BeatmapsetRow row)
 	{
-		/// <summary>Builds the beatmapset a row holds.</summary>
-		/// <returns>The beatmapset, with the values it was stored with.</returns>
 		public BeatmapsetRecord ToRecord()
 		{
 			return new BeatmapsetRecord

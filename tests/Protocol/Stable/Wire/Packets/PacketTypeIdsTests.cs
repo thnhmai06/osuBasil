@@ -2,11 +2,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Pins the osu! protocol packet ids of <see cref="ServerPacketType" /> and
-///     <see cref="ClientPacketType" />, using the ids from the osu! protocol / bancho.py
-///     <c>constants/packets.py</c> tables.
-/// </summary>
 public class PacketTypeIdsTests
 {
 	// Columns: enum member name, protocol id. Where bancho.py's ALL_CAPS name differs from the C#

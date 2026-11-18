@@ -14,12 +14,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Users;
 
-/// <summary>Registers the application behavior and runtime objects owned by Users and Connections.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the Users application services and runtime objects.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddUsersApplication(this IServiceCollection services)
 	{
 		// The contexts and the registry refer to each other, so the contexts resolve the registry at first use.

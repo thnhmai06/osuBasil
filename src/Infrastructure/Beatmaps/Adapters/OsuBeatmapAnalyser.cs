@@ -21,31 +21,19 @@ using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
 namespace Basil.Infrastructure.Beatmaps.Adapters;
 
-/// <summary>
-///     Computes beatmap gameplay stats with ppy's osu!lazer ruleset libraries, the same engine the
-///     real client and website run.
-/// </summary>
-/// <remarks>
-///     The server uses these numbers for star rating and difficulty display only; they feed no
-///     scoring, leaderboard, or match win condition.
-/// </remarks>
 internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 {
-	/// <inheritdoc />
-	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
 	public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
 	{
 		return Analyze(new StreamlessWorkingBeatmap(Decode(content)), mode, mods);
 	}
 
-	/// <summary>Decodes the content of a <c>.osu</c> file.</summary>
 	internal static LazerBeatmap Decode(Stream content)
 	{
 		using var reader = new LineBufferedReader(content, true);
 		return Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
 	}
 
-	/// <summary>Computes the gameplay stats of an already-decoded difficulty under the given mode and mods.</summary>
 	private static BeatmapAnalysis Analyze(IWorkingBeatmap working, GameMode mode, GameMods mods)
 	{
 		var ruleset = CreateRuleset(mode);
@@ -77,16 +65,6 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 		return Math.Round(value, digits, MidpointRounding.AwayFromZero);
 	}
 
-	/// <summary>
-	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjectCount" /> subtype.
-	/// </summary>
-	/// <remarks>
-	///     Standard, taiko, and mania count <paramref name="hitObjects" /> at the top level only:
-	///     <c>playable.HitObjects</c> already excludes nested slider parts for standard, and taiko and
-	///     mania have no equivalent container objects. Catch is the exception: <c>JuiceStream</c> and
-	///     <c>BananaShower</c> are containers whose children only exist in
-	///     <see cref="HitObject.NestedHitObjects" />, so counting recurses.
-	/// </remarks>
 	private static BeatmapObjectCount BuildObjectCounts(
 		GameMode mode, IReadOnlyList<HitObject> hitObjects, int maxCombo)
 	{
@@ -167,7 +145,6 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 		}
 	}
 
-	/// <summary>Recursively counts a Catch hit object and its nested parts into the per-type totals.</summary>
 	private static void CountCatchRecursive(
 		HitObject h, ref int fruits, ref int droplets, ref int tinyDroplets, ref int bananas)
 	{
@@ -183,7 +160,6 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 			CountCatchRecursive(nested, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 	}
 
-	/// <summary>Creates the osu!lazer ruleset instance for the given game mode.</summary>
 	internal static Ruleset CreateRuleset(GameMode mode)
 	{
 		return mode switch

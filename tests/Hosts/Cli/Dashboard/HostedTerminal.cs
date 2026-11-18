@@ -4,22 +4,14 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>Every test that opens the process-wide terminal or builds a terminal UI tree runs in this collection, one at a time.</summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
 public sealed class HostedTerminalCollection
 {
-	/// <summary>The name of the collection.</summary>
 	public const string Name = "HostedTerminal";
 }
 
-/// <summary>Runs a visual on a virtual terminal for a few frames, with the mouse clicks the test asks for.</summary>
 internal static class HostedTerminal
 {
-	/// <summary>Runs the visual and returns what it wrote to the terminal.</summary>
-	/// <param name="root">What to show.</param>
-	/// <param name="clicks">The cells to click with the left button, one after the other.</param>
-	/// <param name="width">The columns.</param>
-	/// <param name="height">The rows.</param>
 	public static string Run(Visual root, IReadOnlyList<(int X, int Y)> clicks, int width = 80, int height = 24)
 	{
 		var output = new StringWriter();

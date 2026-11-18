@@ -4,23 +4,10 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Host.Stable.Web;
 
-/// <summary>
-///     Writes the answer to a score submission: the beatmap's metadata line, then the beatmap chart and the overall
-///     chart that the osu! client shows on its results screen.
-/// </summary>
 internal static class SubmissionCharts
 {
 	private const string DateFormat = "yyyy-MM-dd HH:mm:ss";
 
-	/// <summary>Writes the answer for a stored score.</summary>
-	/// <param name="receipt">What the player is told about the score.</param>
-	/// <param name="beatmap">The beatmap, or <see langword="null" /> when the server does not have it.</param>
-	/// <param name="origin">The scheme and host the chart links point at, without a trailing slash.</param>
-	/// <returns>The answer text.</returns>
-	/// <remarks>
-	///     A value that is zero or that Basil does not have is empty. The pp after the score is always empty, because
-	///     the answer does not wait for it; the overall chart has no pp, rank, accuracy or combo.
-	/// </remarks>
 	public static string Build(ScoreReceipt receipt, BeatmapRecord? beatmap, string origin)
 	{
 		var score = receipt.Score.Value;
@@ -59,19 +46,16 @@ internal static class SubmissionCharts
 		return string.Join('|', parts);
 	}
 
-	/// <summary>Writes the before and after of one chart value.</summary>
 	private static string Entry(string name, string before, string after)
 	{
 		return $"{name}Before:{before}|{name}After:{after}";
 	}
 
-	/// <summary>Writes a whole number; a missing or zero value is empty, as on bancho.</summary>
 	private static string Whole(long? value)
 	{
 		return value is null or 0 ? string.Empty : value.Value.ToString(CultureInfo.InvariantCulture);
 	}
 
-	/// <summary>Writes a number rounded to two places with at least one; a missing or zero value is empty.</summary>
 	private static string Fixed(double? value)
 	{
 		return value is { } number && Math.Round(number, 2) is var rounded and not 0

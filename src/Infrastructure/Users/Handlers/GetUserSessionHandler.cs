@@ -6,11 +6,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Carries out <see cref="GetUserSession" /> on the account it names.</summary>
 internal sealed class GetUserSessionHandler(UserRegistry registry)
 	: IRequestHandler<GetUserSession, (UserOutcome Result, SessionRecord? Session)>
 {
-	/// <inheritdoc />
 	public async ValueTask<(UserOutcome Result, SessionRecord? Session)> Handle(GetUserSession request,
 		CancellationToken ct)
 	{

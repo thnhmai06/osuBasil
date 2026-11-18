@@ -9,11 +9,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Registry;
 
-/// <summary>
-///     One user holds at most <c>Sessions.MaxPerUser</c> open connections of each kind (Stable 1, StableTourney 10,
-///     Irc 5, Api 10 by default); idle ones are closed before a login is refused and an HTTP API connection replaces the
-///     oldest.
-/// </summary>
 public sealed class SessionLimitTests
 {
 	private static readonly UserPrivileges Observer = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;

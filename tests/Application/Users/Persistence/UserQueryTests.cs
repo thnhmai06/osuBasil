@@ -4,12 +4,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Tests.Persistence;
 
-/// <summary>
-///     Behaviour of the user search syntax and of narrowing a query to what an asker may see, from the XML contract of
-///     <see cref="UserQuery" />: free text matches names, <c>country=</c> takes two-letter codes, <c>privilege=</c> a
-///     decimal mask, <c>deleted=</c> <c>1</c>, <c>0</c> or <c>*</c>; a filter that is unknown or does not parse stays in
-///     the text.
-/// </summary>
 public sealed class UserQueryTests
 {
 	#region Parse: text

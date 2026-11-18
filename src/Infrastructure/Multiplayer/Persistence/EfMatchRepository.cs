@@ -8,10 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
-/// <summary>Stores matches.</summary>
 internal sealed class EfMatchRepository(DatabaseSession database, IUserRepository users) : IMatchRepository
 {
-	/// <inheritdoc />
 	public async Task<MatchRecord> CreateAsync(MatchData data)
 	{
 		var value = await WithCreatorAsync(data);
@@ -37,7 +35,6 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		return new MatchRecord { Id = row.Id, Value = value };
 	}
 
-	/// <inheritdoc />
 	public Task UpdateAsync(MatchRecord match)
 	{
 		var row = new MatchRow
@@ -53,7 +50,6 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 			context.ReplaceAsync(row, stored => stored.Id == row.Id));
 	}
 
-	/// <inheritdoc />
 	public async ValueTask<MatchRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((MultiplayerDbContext context) => context.Matches
@@ -62,7 +58,6 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		return row is null ? null : await ToMatchAsync(row, ct);
 	}
 
-	/// <inheritdoc />
 	public async Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
 		CancellationToken ct = default)
 	{
@@ -81,7 +76,6 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		return new Page<MatchRecord>(matches, hasNext);
 	}
 
-	/// <inheritdoc />
 	public async Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,
 		CancellationToken ct = default)
 	{
@@ -90,7 +84,6 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 				.AnyAsync(ct), ct);
 	}
 
-	/// <summary>Narrows the matches to the ones a query asks for.</summary>
 	private static IQueryable<MatchRow> Filter(MultiplayerDbContext context, IQueryable<MatchRow> matches,
 		MatchQuery query)
 	{
@@ -103,7 +96,6 @@ internal sealed class EfMatchRepository(DatabaseSession database, IUserRepositor
 		return matches;
 	}
 
-	/// <summary>Keeps the public matches and the private ones the user took part in or manages.</summary>
 	private static IQueryable<MatchRow> WhereVisibleTo(MultiplayerDbContext context, IQueryable<MatchRow> matches,
 		int viewer)
 	{

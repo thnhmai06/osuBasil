@@ -8,10 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps.Adapters;
 
-/// <summary>
-///     Makes the files derived from a beatmapset's stored files: a ten-second audio preview of each audio track its
-///     difficulties use, rendered through <c>ffmpeg</c>.
-/// </summary>
 internal sealed class BeatmapPreviewMaker(
 	IOptions<AssetOptions> options,
 	IBeatmapsetStorage storage,
@@ -21,7 +17,6 @@ internal sealed class BeatmapPreviewMaker(
 
 	private FFOptions FfmpegOptions => new() { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty };
 
-	/// <inheritdoc />
 	public async Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
 		CancellationToken ct = default)
 	{
@@ -48,11 +43,6 @@ internal sealed class BeatmapPreviewMaker(
 			}
 	}
 
-	/// <summary>Makes the preview of one audio track from the set's stored audio.</summary>
-	/// <param name="set">The beatmapset, whose audio is already stored.</param>
-	/// <param name="audio">The name of the audio track in the set.</param>
-	/// <param name="start">Where the preview starts.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
 	private async Task BuildPreviewAsync(BeatmapsetRecord set, string audio, TimeSpan start,
 		CancellationToken ct)
 	{
@@ -99,7 +89,6 @@ internal sealed class BeatmapPreviewMaker(
 		}
 	}
 
-	/// <summary>Cuts the ten-second preview clip with ffmpeg.</summary>
 	private Task<bool> RunFfmpegAsync(string audioPath, TimeSpan start, string outputPath,
 		CancellationToken ct)
 	{

@@ -12,7 +12,6 @@ using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers;
 
-/// <summary>Reacts to room and lobby events by posting announcements in the affected room.</summary>
 internal sealed class RoomAnnouncer(
 	Server server,
 	RoomChannels channels,
@@ -31,20 +30,17 @@ internal sealed class RoomAnnouncer(
 	private readonly ConcurrentSet<Round> _awaitingScores = [];
 	private readonly ConcurrentSet<Room> _closingRooms = [];
 
-	/// <inheritdoc />
 	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken ct)
 	{
 		_closingRooms.Remove(@event.Room);
 		return ValueTask.CompletedTask;
 	}
 
-	/// <inheritdoc />
 	public async ValueTask Handle(LobbyRoomClosingAnnounced @event, CancellationToken ct)
 	{
 		await AnnounceClosingAsync(@event, ct);
 	}
 
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomPlayerJoined @event, CancellationToken ct)
 	{
 		if (_closingRooms.Remove(@event.Room))
@@ -52,13 +48,11 @@ internal sealed class RoomAnnouncer(
 				ct);
 	}
 
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundAborted @event, CancellationToken ct)
 	{
 		await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoundAborted), ct);
 	}
 
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundDecided @event, CancellationToken ct)
 	{
 		if (!_awaitingScores.Remove(@event.Round)) return;
@@ -76,7 +70,6 @@ internal sealed class RoomAnnouncer(
 				ct);
 	}
 
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundEnded @event, CancellationToken ct)
 	{
 		var seconds = (int)Math.Round(@event.ScoreWait.TotalSeconds);
@@ -86,7 +79,6 @@ internal sealed class RoomAnnouncer(
 			ct);
 	}
 
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundStarted @event, CancellationToken ct)
 	{
 		if (@event.Players.Count == 0)

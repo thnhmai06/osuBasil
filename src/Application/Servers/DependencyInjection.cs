@@ -15,12 +15,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Servers;
 
-/// <summary>Registers the runtime objects owned by Servers.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the Servers runtime objects.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddServersApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<ServerContext>(sp => new ServerContext(

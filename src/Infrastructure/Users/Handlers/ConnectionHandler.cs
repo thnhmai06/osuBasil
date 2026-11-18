@@ -6,11 +6,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Stops a closed connection spectating.</summary>
 internal sealed class ConnectionHandler(UserRegistry registry, ILogger<ConnectionHandler> logger)
 	: INotificationHandler<UserConnectionClosed>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var connection = @event.Connection;

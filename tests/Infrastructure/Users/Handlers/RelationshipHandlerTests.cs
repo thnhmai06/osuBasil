@@ -6,7 +6,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>The messages that set, remove and list the friends and blocks the sender holds toward other accounts.</summary>
 public sealed class RelationshipHandlerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

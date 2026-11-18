@@ -3,17 +3,11 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Irc.Session;
 
-/// <summary>
-///     Remembers in which channels each user is visible to IRC clients, so a user shows up once however many
-///     connections they have.
-/// </summary>
 internal sealed class IrcPresence
 {
 	private readonly Dictionary<int, HashSet<Channel>> _channels = [];
 	private readonly Lock _gate = new();
 
-	/// <summary>Records that a user is in a channel.</summary>
-	/// <returns><see langword="true" /> when the user was not in it before.</returns>
 	public bool Add(UserRecord user, Channel channel)
 	{
 		lock (_gate)
@@ -23,8 +17,6 @@ internal sealed class IrcPresence
 		}
 	}
 
-	/// <summary>Records that a user left a channel.</summary>
-	/// <returns><see langword="true" /> when the user was in it.</returns>
 	public bool Remove(UserRecord user, Channel channel)
 	{
 		lock (_gate)
@@ -33,7 +25,6 @@ internal sealed class IrcPresence
 		}
 	}
 
-	/// <summary>Forgets a closed channel.</summary>
 	public void Remove(Channel channel)
 	{
 		lock (_gate)
@@ -42,9 +33,6 @@ internal sealed class IrcPresence
 		}
 	}
 
-	/// <summary>Lists the channels a user is in.</summary>
-	/// <param name="user">The user.</param>
-	/// <returns>A snapshot of the channels.</returns>
 	public Channel[] Of(UserRecord user)
 	{
 		lock (_gate)
@@ -53,8 +41,6 @@ internal sealed class IrcPresence
 		}
 	}
 
-	/// <summary>Takes every channel a user was in.</summary>
-	/// <returns>The channels, empty when the user was in none.</returns>
 	public IReadOnlyCollection<Channel> Take(UserRecord user)
 	{
 		lock (_gate)

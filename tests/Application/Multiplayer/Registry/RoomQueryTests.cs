@@ -3,7 +3,6 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Multiplayer.Tests.Registry;
 
-/// <summary>Reading the room search syntax.</summary>
 public sealed class RoomQueryTests
 {
 	[Fact]

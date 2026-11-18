@@ -13,7 +13,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Bot.Handlers;
 
-/// <summary>Runs chat commands posted in channels on the connection that typed them.</summary>
 internal sealed class ChatHandler(
 	Server server,
 	ChatCommands commands,
@@ -24,7 +23,6 @@ internal sealed class ChatHandler(
 {
 	private const int MaxMessageLength = 2000;
 
-	/// <inheritdoc />
 	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken ct)
 	{
 		// A message the server said has no actor, so BasilBot's own replies are never read as commands.

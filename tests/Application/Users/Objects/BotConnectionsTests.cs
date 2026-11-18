@@ -6,7 +6,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Objects;
 
-/// <summary>BasilBot is online through one osu! game client connection and one IRC connection that no client holds.</summary>
 public sealed class BotConnectionsTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

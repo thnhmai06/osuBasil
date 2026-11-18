@@ -13,10 +13,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Every entry point declares an admission policy, by carrying <see cref="AdmissionPolicyAttribute" /> in its
-///     metadata: each route of the HTTP hosts, each packet type of the osu! client and each IRC command.
-/// </summary>
 public sealed class AdmissionPolicyTests
 {
 	private static IEnumerable<EntryPoint> Undeclared(IEnumerable<EntryPoint> entryPoints)

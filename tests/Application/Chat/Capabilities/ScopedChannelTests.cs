@@ -10,10 +10,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Chat.Tests.Capabilities;
 
-/// <summary>
-///     Behaviour of a chat channel as a connection may use it. Expected values come from AGENTS.md and
-///     docs/for-agents/identity-privileges.md (privileges, privileges, blocks yielding to a higher privilege).
-/// </summary>
 public sealed class ScopedChannelTests
 {
 	private const string ChannelName = "#lobby";

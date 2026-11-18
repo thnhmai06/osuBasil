@@ -5,26 +5,16 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell.Toasts;
 
-/// <summary>
-///     The short messages that tell the operator how something ended: a stack at the bottom right of the page, each
-///     40 columns by 3 rows, the newest at the bottom. A message already on screen is not shown twice but counted.
-///     A toast closes by itself, by a click or by Esc.
-/// </summary>
 internal sealed class ToastTray
 {
-	/// <summary>The width of a toast in columns, border included.</summary>
 	public const int Width = 40;
 
-	/// <summary>The height of a toast in rows, border included.</summary>
 	public const int Height = 3;
 
-	/// <summary>How many toasts show at once.</summary>
 	public const int MaxVisible = 4;
 
-	/// <summary>How long a toast stays.</summary>
 	public static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(5);
 
-	/// <summary>How long an error stays.</summary>
 	public static readonly TimeSpan ErrorLifetime = TimeSpan.FromSeconds(10);
 
 	private readonly TimeProvider _clock;
@@ -34,11 +24,6 @@ internal sealed class ToastTray
 	private readonly Action<Action> _post;
 	private readonly State<int> _version = new(0);
 
-	/// <summary>Creates the tray.</summary>
-	/// <param name="glyphs">The characters to draw with.</param>
-	/// <param name="palette">Colours the mark of a toast.</param>
-	/// <param name="clock">Tells when a toast is due to close.</param>
-	/// <param name="post">Runs an action on the thread of the interface, which every toast is shown on.</param>
 	public ToastTray(Glyphs glyphs, Palette palette, TimeProvider clock, Action<Action> post)
 	{
 		_glyphs = glyphs;
@@ -47,11 +32,8 @@ internal sealed class ToastTray
 		_post = post;
 	}
 
-	/// <summary>Gets whether a toast is on screen.</summary>
 	public bool Any => _entries.Count > 0;
 
-	/// <summary>Puts the tray over a page, at its bottom right corner; the page keeps the pointer outside the toasts.</summary>
-	/// <param name="page">What the toasts float over.</param>
 	public Visual Over(Visual page)
 	{
 		var slots = new VStack().Spacing(0).HorizontalAlignment(Align.End).VerticalAlignment(Align.End)
@@ -69,9 +51,6 @@ internal sealed class ToastTray
 		return new ZStack(page, slots);
 	}
 
-	/// <summary>Shows a message; it can be called from any thread.</summary>
-	/// <param name="text">The message, as plain text.</param>
-	/// <param name="kind">How it ended; an error stays longer.</param>
 	public void Show(string text, ToastKind kind = ToastKind.Info)
 	{
 		_post(() =>
@@ -94,14 +73,12 @@ internal sealed class ToastTray
 		});
 	}
 
-	/// <summary>Closes the toasts whose time is up; the dashboard calls it on every pass of its loop.</summary>
 	public void Tick()
 	{
 		var now = _clock.GetTimestamp();
 		if (_entries.RemoveAll(entry => now >= entry.Deadline) > 0) _version.Value++;
 	}
 
-	/// <summary>Closes every toast.</summary>
 	public void DismissAll()
 	{
 		_entries.Clear();

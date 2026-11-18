@@ -5,10 +5,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Answers <see cref="GetUser" /> from the stored accounts.</summary>
 internal sealed class GetUserHandler(IUserRepository users) : IRequestHandler<GetUser, UserRecord?>
 {
-	/// <inheritdoc />
 	public async ValueTask<UserRecord?> Handle(GetUser request, CancellationToken ct)
 	{
 		var record = request.Target.Id is { } id

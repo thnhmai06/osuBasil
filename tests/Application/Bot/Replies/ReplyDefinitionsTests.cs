@@ -8,7 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Bot.Tests.Replies;
 
-/// <summary>Contract tests of the replies BasilBot declares: every one can be edited in the replies file.</summary>
 public sealed class ReplyDefinitionsTests : IDisposable
 {
 	private static readonly IReadOnlyList<Reply> All = ReplyDefinitions.In(typeof(Reply).Assembly);

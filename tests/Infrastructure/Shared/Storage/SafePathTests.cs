@@ -2,7 +2,6 @@ using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Shared.Tests.Storage;
 
-/// <summary>Contract tests of SafePath: a name is combined with the root only when it stays inside it.</summary>
 public sealed class SafePathTests
 {
 	private static readonly string Root = Path.Combine(Path.GetTempPath(), "basil-safepath-root");

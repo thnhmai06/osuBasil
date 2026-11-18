@@ -12,10 +12,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Storage;
 
-/// <summary>
-///     Contract tests of FileBeatmapsetStorage, read through IBeatmapsetStorage. Scanning, fingerprint comparison and
-///     indexing belong to the beatmapset service of Application.Runtime and are not tested here.
-/// </summary>
 public sealed class FileBeatmapsetStorageTests : IDisposable
 {
 	private static int _nextId = 1000;
@@ -1107,7 +1103,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		};
 	}
 
-	/// <summary>Places a set folder by hand, as the server would have left it, and gives the set it holds.</summary>
 	private BeatmapsetRecord StoredSet(out string folder)
 	{
 		var id = NewId();
@@ -1115,7 +1110,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		return Set(id, "Artist", "Title");
 	}
 
-	/// <summary>Places a folder named <c>{id} {artist} - {title}</c> by hand, with an archive and files if given.</summary>
 	private string PlaceFolder(int id, string artist, string title, byte[]? archive,
 		params (string Name, string Content)[] files)
 	{
@@ -1203,7 +1197,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		}
 	}
 
-	/// <summary>A running watch: reads the reports, moving the fake clock past the settling time while it waits for them.</summary>
 	private sealed class Watching(
 		FakeTimeProvider? time,
 		IAsyncEnumerable<BeatmapsetSource> reports,
@@ -1224,8 +1217,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			return new Watching(time, storage.WatchAsync(stop.Token), stop);
 		}
 
-		/// <summary>Reads reports until one matches.</summary>
-		/// <returns>Every report read, the matching one last.</returns>
 		public async Task<List<BeatmapsetSource>> ReadUntilAsync(Func<BeatmapsetSource, bool> match)
 		{
 			var seen = new List<BeatmapsetSource>();
@@ -1243,8 +1234,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			}
 		}
 
-		/// <summary>Stops the watch while a read is waiting for a report.</summary>
-		/// <returns>What the waiting read failed with, or <see langword="null" /> when it ended quietly.</returns>
 		public async Task<Exception?> CancelAndWaitAsync()
 		{
 			var next = _reports.MoveNextAsync().AsTask();

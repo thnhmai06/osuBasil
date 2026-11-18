@@ -12,16 +12,8 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Objects.Rooms;
 
-/// <summary>
-///     How a room takes the scores of a round and decides it. The expected behaviour comes from the plan's D16-D18: a
-///     score belongs to a round when its player took part, on the round's beatmap, before the round is decided; a
-///     player who left before completing is not awaited, one who completed and then left still is; the round is decided
-///     once it has ended and every awaited player has a score, or ten seconds after it ended; an aborted round is
-///     never decided.
-/// </summary>
 public sealed class RoomScoringTests
 {
-	/// <summary>The wait for scores the server settings default to, 10 seconds.</summary>
 	private static readonly TimeSpan ScoreWait = TimeSpan.FromSeconds(10);
 
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

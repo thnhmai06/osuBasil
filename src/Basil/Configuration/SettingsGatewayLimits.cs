@@ -3,14 +3,10 @@ using Basil.Gateway.Limits;
 
 namespace Basil.Configuration;
 
-/// <summary>Supplies the admission limits from the server settings in memory, so a change applies to the next request.</summary>
-/// <param name="settings">The server settings.</param>
 public sealed class SettingsGatewayLimits(ISettingsRepository settings)
 {
 	private (ServerSettings.AdmissionLimitSettings Source, GatewayLimits Limits)? _cached;
 
-	/// <summary>Gets the limits in force.</summary>
-	/// <returns>The limits of the current settings.</returns>
 	public GatewayLimits Current()
 	{
 		var source = settings.Current.RateLimits.Admission;

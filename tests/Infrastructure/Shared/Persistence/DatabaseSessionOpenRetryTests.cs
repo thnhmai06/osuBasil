@@ -5,10 +5,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Shared.Tests.Persistence;
 
-/// <summary>
-///     Contract tests of how a write behaves while the database is briefly unreachable: opening the connection is
-///     retried after 50, 200 and 800 ms, and the change itself runs once.
-/// </summary>
 public sealed class DatabaseSessionOpenRetryTests
 {
 	private static readonly TimeSpan[] Waits =
@@ -78,7 +74,6 @@ public sealed class DatabaseSessionOpenRetryTests
 		await write;
 	}
 
-	/// <summary>A context with no tables; the session only opens its connection.</summary>
 	private sealed class ProbeContext(DbContextOptions<ProbeContext> options) : DbContext(options),
 		IDatabaseContext<ProbeContext>
 	{
@@ -90,7 +85,6 @@ public sealed class DatabaseSessionOpenRetryTests
 		}
 	}
 
-	/// <summary>A session whose first connection attempts fail and whose later ones succeed without a database.</summary>
 	private sealed class UnreachableSession(TimeProvider time, int failures) : DatabaseSession(NewDatabase(), time)
 	{
 		private int _failures = failures;
@@ -107,7 +101,6 @@ public sealed class DatabaseSessionOpenRetryTests
 		}
 	}
 
-	/// <summary>A fake clock that remembers how long each timer was asked to wait.</summary>
 	private sealed class RecordingClock : FakeTimeProvider
 	{
 		public List<TimeSpan> Waits { get; } = [];

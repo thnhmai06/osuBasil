@@ -7,7 +7,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc.Tests.Session;
 
-/// <summary>The IRC reference lists the commands the server answers and the capabilities it grants.</summary>
 [Collection("IRC host")]
 public sealed class IrcReferenceTests(IrcHostFixture fixture)
 {

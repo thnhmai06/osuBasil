@@ -7,11 +7,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     The commands that show or change the settings of a room: <c>!mp settings</c>, <c>lock</c>, <c>unlock</c>,
-///     <c>private</c>, <c>size</c>, <c>name</c>, <c>password</c> and <c>set</c>. Expected replies are named by the
-///     reply that owns the wording.
-/// </summary>
 public sealed class MpSettingsTests
 {
 	[Fact]
@@ -329,13 +324,11 @@ public sealed class MpSettingsTests
 		Assert.Equal(before, Snapshot(room));
 	}
 
-	/// <summary>Counts the slots a player may sit in: the occupied ones and the open ones.</summary>
 	private static int UsableSlots(Room room)
 	{
 		return room.Slots.Count(slot => !slot.Locked);
 	}
 
-	/// <summary>Reads everything the settings commands can change, as the room now shows it.</summary>
 	private static (bool Locked, bool IsPrivate, int Usable, string Name, string Password, GameTeamType TeamType)
 		Snapshot(Room room)
 	{
@@ -343,11 +336,6 @@ public sealed class MpSettingsTests
 			room.Settings.Password, room.Settings.MatchSettings.TeamType);
 	}
 
-	/// <summary>
-	///     Writes the <c>!mp settings</c> line of a player who has not touched ready, padding the columns by hand:
-	///     the slot number to 2 characters on the right, the status to 10 on the left, the user id to 6 on the right and
-	///     the name to 16 on the left.
-	/// </summary>
 	private static string SlotLine(BotHarness bot, int slot, StableConnection player, bool isHost)
 	{
 		return bot.Text(MpReplies.SettingsSlot, new

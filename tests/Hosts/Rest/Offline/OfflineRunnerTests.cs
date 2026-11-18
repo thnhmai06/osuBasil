@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Rest.Tests.Offline;
 
-/// <summary>The offline command that creates the first administrator, which CI uses before the server starts.</summary>
 [Collection("REST host")]
 public sealed class OfflineRunnerTests(RestHostFixture fixture)
 {

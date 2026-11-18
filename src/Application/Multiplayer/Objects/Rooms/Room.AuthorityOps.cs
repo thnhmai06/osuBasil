@@ -4,11 +4,8 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <content>Authority transitions: referees and host.</content>
 public sealed partial class Room
 {
-	/// <summary>Makes a user a referee.</summary>
-	/// <returns>Ok, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed.</returns>
 	internal RoomOutcome AddReferee(UserRecord actor, UserRecord user)
 	{
 		lock (_sync)
@@ -24,8 +21,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Removes a user from the referees.</summary>
-	/// <returns>Ok, NotReferee or RoomClosed.</returns>
 	internal RoomOutcome RemoveReferee(UserRecord actor, UserRecord user)
 	{
 		lock (_sync)
@@ -38,8 +33,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Gives host to a seated player, or clears it.</summary>
-	/// <returns>Ok, NotInRoom or RoomClosed; giving host to the current host does nothing.</returns>
 	internal RoomOutcome SetHost(UserRecord actor, StableConnection? host)
 	{
 		lock (_sync)

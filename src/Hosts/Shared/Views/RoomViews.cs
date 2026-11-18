@@ -4,7 +4,6 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Host.Shared.Views;
 
-/// <summary>A slot of a room.</summary>
 public sealed record SlotView(
 	int Index,
 	bool Locked,
@@ -14,7 +13,6 @@ public sealed record SlotView(
 	UserRef? Player,
 	bool IsHost);
 
-/// <summary>A room as the API shows it; the password is never shown.</summary>
 public sealed record RoomView(
 	int Id,
 	int MatchId,
@@ -35,7 +33,6 @@ public sealed record RoomView(
 	GameWinCondition WinCondition,
 	IReadOnlyList<SlotView> Slots)
 {
-	/// <summary>Describes a room.</summary>
 	public static RoomView Of(Room room)
 	{
 		var host = room.Authority.Host;
@@ -55,7 +52,6 @@ public sealed record RoomView(
 	}
 }
 
-/// <summary>A match as the API shows it.</summary>
 public sealed record MatchView(
 	int Id,
 	string Name,
@@ -64,7 +60,6 @@ public sealed record MatchView(
 	DateTimeOffset? EndedAt,
 	UserRef Creator)
 {
-	/// <summary>Describes a match.</summary>
 	public static MatchView Of(MatchRecord match)
 	{
 		return new MatchView(match.Id, match.Value.Name, match.Value.IsPrivate, match.Value.StartedAt,

@@ -2,31 +2,17 @@ using System.Text;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands;
 
-/// <summary>The operator that joins two command segments in a chain.</summary>
 internal enum ChainOperator : byte
 {
-	/// <summary>The second segment always runs.</summary>
 	Semicolon,
 
-	/// <summary>The second segment runs only when the first succeeds.</summary>
 	And
 }
 
-/// <summary>One segment of a chained command message.</summary>
-/// <param name="Text">The command text, without its leading operator.</param>
-/// <param name="Operator">How this segment connects to the one before it.</param>
 internal sealed record CommandSegment(string Text, ChainOperator Operator);
 
-/// <summary>Splits a command message into segments and tokenises each segment.</summary>
-/// <remarks>
-///     Both steps read the same syntax: a double quote starts or ends a quoted string, and a backslash before a double
-///     quote or another backslash makes that character an ordinary one.
-/// </remarks>
 internal static class CommandLine
 {
-	/// <summary>Splits a command message into segments, respecting quoted strings and escape sequences.</summary>
-	/// <param name="message">The full command message, prefix included.</param>
-	/// <returns>The segments, in order; the first carries <see cref="ChainOperator.Semicolon" />.</returns>
 	public static IReadOnlyList<CommandSegment> Split(string message)
 	{
 		var segments = new List<CommandSegment>();
@@ -77,9 +63,6 @@ internal static class CommandLine
 		}
 	}
 
-	/// <summary>Tokenises a command segment into words, respecting quoted strings and escape sequences.</summary>
-	/// <param name="segment">The command text.</param>
-	/// <returns>The words, with quotes stripped and escapes resolved.</returns>
 	public static IReadOnlyList<string> Tokenize(string segment)
 	{
 		var tokens = new List<string>();

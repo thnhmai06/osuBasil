@@ -2,16 +2,9 @@ using Mediator;
 
 namespace Basil.Application.Shared.Events;
 
-/// <summary>Publishes every event of the application: stamps it, and returns before any of its handlers runs.</summary>
-/// <param name="publisher">
-///     The mediator that finds the handlers; resolved at first use, because the handlers reach objects
-///     that publish.
-/// </param>
-/// <param name="clock">The clock the events are stamped with.</param>
 public sealed class EventPublisher(Lazy<IPublisher> publisher, TimeProvider clock)
 	: IEventPublisher<Event>
 {
-	/// <inheritdoc />
 	public void Publish(Event @event)
 	{
 		@event.Timestamp = clock.GetUtcNow();

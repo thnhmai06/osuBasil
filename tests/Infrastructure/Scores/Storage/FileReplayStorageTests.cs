@@ -9,7 +9,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Scores.Tests.Storage;
 
-/// <summary>Contract tests of FileReplayStorage's replay saves.</summary>
 public sealed class FileReplayStorageTests : IDisposable
 {
 	private const int ScoreId = 17;
@@ -236,7 +235,6 @@ public sealed class FileReplayStorageTests : IDisposable
 		_beatmaps.Beatmap = beatmap;
 	}
 
-	/// <summary>The frames as text, as the storage's frames stream delivers them; empty when no replay is stored.</summary>
 	private async ValueTask<string> TextAsync(ScoreRecord? score = null)
 	{
 		var stream = await _replays.OpenFramesAsync(score ?? Score(), TestContext.Current.CancellationToken);

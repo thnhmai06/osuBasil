@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Servers.Tests.Handlers;
 
-/// <summary>The messages that manage the FAQ, the menu, the settings, the screenshots and the notifications of the server.</summary>
 public sealed class ContentHandlerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -303,7 +302,6 @@ public sealed class ContentHandlerTests
 		return await app.LoginAsync(await app.CreateUserAsync("Plain", "password", UserPrivileges.None));
 	}
 
-	/// <summary>A FAQ storage that keeps its entries in memory.</summary>
 	private sealed class InMemoryFaqs : IFaqStorage
 	{
 		public Dictionary<string, string> Entries { get; } = [];

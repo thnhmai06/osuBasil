@@ -14,7 +14,6 @@ using Mediator;
 
 namespace Basil.Host.Stable.Web;
 
-/// <summary>Authenticates the web requests of an osu! client by its username and password hash.</summary>
 internal sealed class WebAuthentication(
 	UserRegistry registry,
 	ISender sender,
@@ -24,28 +23,16 @@ internal sealed class WebAuthentication(
 	// The digest that passed the password check, per connection: later requests skip the slow hash check.
 	private readonly ConditionalWeakTable<StableConnection, string> _verified = new();
 
-	/// <summary>Tells whether a client may use osu!direct.</summary>
-	/// <param name="client">The authenticated client.</param>
-	/// <returns><see langword="true" /> when its effective privileges include osu!direct.</returns>
 	public bool MayUseDirect(StableConnection client)
 	{
 		return Effective(client).Allows(UserPrivileges.Supporter);
 	}
 
-	/// <summary>Gets what a client may do right now.</summary>
-	/// <param name="client">The authenticated client.</param>
-	/// <returns>Its effective privileges.</returns>
 	public UserPrivileges Effective(StableConnection client)
 	{
 		return client.User.EffectivePrivileges(clock.GetUtcNow());
 	}
 
-	/// <summary>Finds the online osu! client a web request speaks for.</summary>
-	/// <param name="context">The request, whose caller address the failed attempts are counted against.</param>
-	/// <param name="username">The username the client sent.</param>
-	/// <param name="passwordMd5">The MD5 digest of the password the client sent.</param>
-	/// <param name="ct">A token that cancels the check.</param>
-	/// <returns>The client's connection, or <see langword="null" /> when nobody online has that name and password.</returns>
 	public async Task<StableConnection?> AuthenticateAsync(HttpContext context, string? username,
 		string? passwordMd5,
 		CancellationToken ct)

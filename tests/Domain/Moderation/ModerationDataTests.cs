@@ -3,7 +3,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Moderation;
 
-/// <summary>Verifies the validation of a recorded moderation action.</summary>
 public class ModerationDataTests
 {
 	private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;

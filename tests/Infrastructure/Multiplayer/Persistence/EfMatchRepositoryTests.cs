@@ -7,7 +7,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of matches.</summary>
 [Collection("Persistence")]
 public sealed class EfMatchRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {

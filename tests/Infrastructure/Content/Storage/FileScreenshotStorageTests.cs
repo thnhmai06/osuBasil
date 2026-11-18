@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Content.Tests.Storage;
 
-/// <summary>Contract tests of FileScreenshotStorage, read through IScreenshotStorage.</summary>
 public sealed class FileScreenshotStorageTests : IDisposable
 {
 	private readonly TempData _data = new();

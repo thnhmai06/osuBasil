@@ -9,12 +9,8 @@ using Velopack;
 
 namespace Basil;
 
-/// <summary>The entry point of the server executable.</summary>
 public static class Program
 {
-	/// <summary>Runs the operator shell command named by the arguments, or the server until it stops.</summary>
-	/// <param name="args">The command-line arguments.</param>
-	/// <returns>The process exit code.</returns>
 	public static async Task<int> Main(string[] args)
 	{
 		// Lets the updater run its install and uninstall hooks; it returns at once when Basil was started normally.

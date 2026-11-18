@@ -15,7 +15,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
     [Migration("20261115010708_InitialCreate")]
     partial class InitialCreate
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

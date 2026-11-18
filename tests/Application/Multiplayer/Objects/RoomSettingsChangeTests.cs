@@ -4,7 +4,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Objects;
 
-/// <summary>Which changes of a room's settings alter the round that the room plays next.</summary>
 public sealed class RoomSettingsChangeTests
 {
 	public static TheoryData<RoomSettingsChange> RoundChanges => new()

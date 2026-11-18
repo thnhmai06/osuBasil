@@ -10,10 +10,6 @@ using NSubstitute;
 
 namespace Basil.Application.Servers.Tests.Objects;
 
-/// <summary>
-///     What the server recovers before it serves anyone: opens the configured channels, makes the account of the bot's
-///     fixed id the bot and brings it online, and ends the matches left running by the previous run.
-/// </summary>
 public sealed class ServerRecoverTests
 {
 	[Fact]

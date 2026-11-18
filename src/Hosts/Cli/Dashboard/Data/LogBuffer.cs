@@ -2,14 +2,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Cli.Dashboard.Data;
 
-/// <summary>One line of the server's log as the dashboard keeps it.</summary>
-/// <param name="Time">When it was logged.</param>
-/// <param name="Level">How serious it is.</param>
-/// <param name="Category">What logged it.</param>
-/// <param name="Message">The text, with the exception after it when there is one.</param>
 public sealed record LogLine(DateTimeOffset Time, LogLevel Level, string Category, string Message);
 
-/// <summary>Keeps the most recent log lines for the dashboard; a logging provider, so it sees what every part logs.</summary>
 public sealed class LogBuffer : ILoggerProvider
 {
 	private readonly int _capacity;
@@ -18,27 +12,21 @@ public sealed class LogBuffer : ILoggerProvider
 	private readonly Queue<LogLine> _lines = new();
 	private long _total;
 
-	/// <summary>Creates a buffer.</summary>
-	/// <param name="clock">The clock that stamps the lines.</param>
-	/// <param name="capacity">How many lines are kept.</param>
 	public LogBuffer(TimeProvider clock, int capacity = 2000)
 	{
 		_clock = clock;
 		_capacity = capacity;
 	}
 
-	/// <inheritdoc />
 	public ILogger CreateLogger(string categoryName)
 	{
 		return new BufferLogger(this, categoryName, _clock);
 	}
 
-	/// <inheritdoc />
 	public void Dispose()
 	{
 	}
 
-	/// <summary>Gets the lines, oldest first.</summary>
 	public IReadOnlyList<LogLine> Lines()
 	{
 		lock (_gate)
@@ -47,9 +35,6 @@ public sealed class LogBuffer : ILoggerProvider
 		}
 	}
 
-	/// <summary>Gets the lines added after the first <paramref name="seen" /> ones, which the buffer still holds.</summary>
-	/// <param name="seen">How many lines the caller has already taken (the <paramref name="total" /> of its last call).</param>
-	/// <param name="total">How many lines have been added in all.</param>
 	public IReadOnlyList<LogLine> Since(long seen, out long total)
 	{
 		lock (_gate)
@@ -60,7 +45,6 @@ public sealed class LogBuffer : ILoggerProvider
 		}
 	}
 
-	/// <summary>Adds a line.</summary>
 	public void Add(LogLine line)
 	{
 		lock (_gate)
@@ -73,19 +57,16 @@ public sealed class LogBuffer : ILoggerProvider
 
 	private sealed class BufferLogger(LogBuffer buffer, string category, TimeProvider clock) : ILogger
 	{
-		/// <inheritdoc />
 		public IDisposable? BeginScope<TState>(TState state) where TState : notnull
 		{
 			return null;
 		}
 
-		/// <inheritdoc />
 		public bool IsEnabled(LogLevel logLevel)
 		{
 			return logLevel != LogLevel.None;
 		}
 
-		/// <inheritdoc />
 		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
 			Func<TState, Exception?, string> formatter)
 		{
@@ -96,16 +77,8 @@ public sealed class LogBuffer : ILoggerProvider
 	}
 }
 
-/// <summary>One chat message as the chat tab shows it.</summary>
-/// <param name="Time">When it was posted.</param>
-/// <param name="Channel">The channel it was posted in.</param>
-/// <param name="Author">Who posted it.</param>
-/// <param name="Text">The text.</param>
 public sealed record ChatLine(DateTimeOffset Time, string Channel, string Author, string Text);
 
-/// <summary>Keeps the most recent chat messages of each channel since the server started, for the chat tab.</summary>
-/// <param name="capacity">How many messages each channel keeps.</param>
-/// <param name="maxChannels">How many channels are kept; beyond it the one that was quiet the longest is forgotten.</param>
 public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 {
 	private readonly Dictionary<string, Channel> _channels = new(StringComparer.OrdinalIgnoreCase);
@@ -113,10 +86,8 @@ public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 	private long _stamp;
 	private long _revision;
 
-	/// <summary>Gets a number that changes whenever a channel gains its first message or is forgotten.</summary>
 	public long Revision => Interlocked.Read(ref _revision);
 
-	/// <summary>Gets the names of the channels that have messages.</summary>
 	public IReadOnlyList<string> Channels()
 	{
 		lock (_gate)
@@ -125,10 +96,6 @@ public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 		}
 	}
 
-	/// <summary>Gets the messages of a channel added after the first <paramref name="seen" /> ones that it still holds.</summary>
-	/// <param name="channel">The channel name.</param>
-	/// <param name="seen">How many messages the caller has taken (the <paramref name="total" /> of its last call).</param>
-	/// <param name="total">How many messages the channel has had in all.</param>
 	public IReadOnlyList<ChatLine> Since(string channel, long seen, out long total)
 	{
 		lock (_gate)
@@ -145,7 +112,6 @@ public sealed class ChatFeed(int capacity = 500, int maxChannels = 200)
 		}
 	}
 
-	/// <summary>Adds a message.</summary>
 	public void Add(ChatLine line)
 	{
 		lock (_gate)

@@ -6,31 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Workers;
 
-/// <summary>
-///     Keeps the server's beatmapsets in step with the beatmapset storage: a full scan that finishes before the
-///     server serves clients, then every entry that changes.
-/// </summary>
 internal sealed class BeatmapsetStorageWatcher(
 	Beatmapsets beatmapsets,
 	IBeatmapsetStorage storage,
 	TimeProvider time,
 	ILogger<BeatmapsetStorageWatcher> logger) : BackgroundService
 {
-	/// <summary>How long to wait before watching the storage again after its watch stops.</summary>
 	private static readonly TimeSpan RestartDelay = TimeSpan.FromSeconds(5);
 
 	private readonly CancellationTokenSource _stopping = new();
 
-	/// <summary>The watched entries to scan once the full scan is done.</summary>
 	private IAsyncEnumerable<BeatmapsetSource>? _changes;
 
-	/// <summary>Starts watching the storage, scans it fully, and only then starts serving the changed entries.</summary>
-	/// <param name="ct">A token that cancels starting.</param>
-	/// <remarks>
-	///     Watching begins before the scan, so no change made during the scan is lost. The scan finishes here, before
-	///     the server serves clients; a scan that fails for any reason other than cancellation is logged and the server
-	///     starts anyway.
-	/// </remarks>
 	public override async Task StartAsync(CancellationToken ct)
 	{
 		_changes = storage.WatchAsync(_stopping.Token);
@@ -50,12 +37,6 @@ internal sealed class BeatmapsetStorageWatcher(
 		await base.StartAsync(ct);
 	}
 
-	/// <summary>Stops watching the storage, then lets the remaining hosted services stop.</summary>
-	/// <param name="ct">A token that cancels stopping.</param>
-	/// <remarks>
-	///     A start-up that was cancelled ends before the watch is read; stopping reads it here instead, so the storage
-	///     is not left watched.
-	/// </remarks>
 	public override async Task StopAsync(CancellationToken ct)
 	{
 		await _stopping.CancelAsync();
@@ -74,19 +55,12 @@ internal sealed class BeatmapsetStorageWatcher(
 		}
 	}
 
-	/// <summary>Releases the watch's cancellation.</summary>
 	public override void Dispose()
 	{
 		_stopping.Dispose();
 		base.Dispose();
 	}
 
-	/// <inheritdoc />
-	/// <remarks>
-	///     A watch that stops for any reason other than stopping the service is logged, and the storage is watched again
-	///     after a short delay, so one broken entry or one broken storage call does not leave the server with stale
-	///     beatmapsets.
-	/// </remarks>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		// The watch belongs to this method once it runs; a start-up that ended before this leaves it to StopAsync.

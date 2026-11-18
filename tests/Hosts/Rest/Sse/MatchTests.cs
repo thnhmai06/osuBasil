@@ -3,7 +3,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Tests.Sse;
 
-/// <summary>Match reports: the manager list and the public live report.</summary>
 [Collection("REST host")]
 public sealed class MatchTests(RestHostFixture fixture)
 {

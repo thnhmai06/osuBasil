@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Security;
 
-/// <summary>Rate limits, stream limits, CORS and shutdown: the settings are read at run time.</summary>
 [Collection("REST host")]
 public sealed class LimitTests(RestHostFixture fixture)
 {

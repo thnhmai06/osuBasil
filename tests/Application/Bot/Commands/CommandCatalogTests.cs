@@ -10,10 +10,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Bot.Tests.Commands;
 
-/// <summary>
-///     The catalog of chat commands: the help is made from it, every command in it is one the bot answers, and the
-///     replies file can reword what each command is said to do.
-/// </summary>
 public sealed class CommandCatalogTests
 {
 	public static TheoryData<string> TopLevelCommands()

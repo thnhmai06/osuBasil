@@ -7,10 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Authentication.Persistence;
 
-/// <summary>Records the trail of connections of sessions.</summary>
 internal sealed class EfConnectionRepository(DatabaseSession database) : IConnectionRepository
 {
-	/// <inheritdoc />
 	public Task OpenAsync(long sessionId, IPAddress ip, string? clientInfo, DateTimeOffset at, TimeSpan reopenWithin)
 	{
 		var opened = at.ToUniversalTime();
@@ -39,7 +37,6 @@ internal sealed class EfConnectionRepository(DatabaseSession database) : IConnec
 		});
 	}
 
-	/// <inheritdoc />
 	public Task CloseAsync(long sessionId, DateTimeOffset lastActiveAt, DateTimeOffset closedAt,
 		SessionEndReason reason)
 	{
@@ -53,7 +50,6 @@ internal sealed class EfConnectionRepository(DatabaseSession database) : IConnec
 				.SetProperty(row => row.CloseReason, reason)));
 	}
 
-	/// <inheritdoc />
 	public Task WriteActivityAsync(IReadOnlyCollection<ConnectionActivity> activity)
 	{
 		if (activity.Count == 0) return Task.CompletedTask;
@@ -69,7 +65,6 @@ internal sealed class EfConnectionRepository(DatabaseSession database) : IConnec
 		});
 	}
 
-	/// <inheritdoc />
 	public async ValueTask<Page<ConnectionRecord>> ListAsync(long sessionId, PageRequest page,
 		CancellationToken ct = default)
 	{
@@ -85,7 +80,6 @@ internal sealed class EfConnectionRepository(DatabaseSession database) : IConnec
 		return new Page<ConnectionRecord>(rows.Select(ToRecord).ToList(), hasNext);
 	}
 
-	/// <inheritdoc />
 	public Task<int> CloseOpenAsync(SessionEndReason reason)
 	{
 		return database.WriteAsync((AuthenticationDbContext context) => context.Connections

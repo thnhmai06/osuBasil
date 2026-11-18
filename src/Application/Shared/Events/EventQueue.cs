@@ -3,14 +3,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Shared.Events;
 
-/// <summary>
-///     The one queue every published event waits in, so that handlers run one at a time, in the order the events were
-///     published, and never on the thread that published them.
-/// </summary>
-/// <remarks>
-///     Nothing runs until <see cref="RunAsync" /> does: the host runs it for as long as the server lives. A handler
-///     that fails is reported and does not stop the ones after it.
-/// </remarks>
 public sealed class EventQueue
 {
 	private readonly Channel<IEventDelivery> _deliveries =
@@ -21,30 +13,22 @@ public sealed class EventQueue
 	private long _published;
 	private long _failures;
 
-	/// <summary>Creates an empty queue.</summary>
-	/// <param name="logger">The logger that reports a delivery that failed.</param>
 	public EventQueue(ILogger<EventQueue> logger)
 	{
 		_logger = logger;
 	}
 
-	/// <summary>Gets how many deliveries are queued or being delivered.</summary>
 	public int Outstanding => Volatile.Read(ref _outstanding);
 
-	/// <summary>Gets how many events have been published since the server started.</summary>
 	public long Published => Interlocked.Read(ref _published);
 
-	/// <summary>Gets how many times a handler or a whole delivery failed since the server started.</summary>
 	public long Failures => Interlocked.Read(ref _failures);
 
-	/// <summary>Counts a handler that failed; the queue keeps delivering.</summary>
 	public void CountFailure()
 	{
 		Interlocked.Increment(ref _failures);
 	}
 
-	/// <summary>Adds a delivery behind the ones already waiting; returns at once and never waits.</summary>
-	/// <param name="delivery">The delivery to run.</param>
 	public void Enqueue(IEventDelivery delivery)
 	{
 		Interlocked.Increment(ref _outstanding);
@@ -52,8 +36,6 @@ public sealed class EventQueue
 		_deliveries.Writer.TryWrite(delivery);
 	}
 
-	/// <summary>Delivers the queued events, and the ones queued later, until the server stops.</summary>
-	/// <param name="stoppingToken">A token that ends the delivery when the server stops.</param>
 	public async Task RunAsync(CancellationToken stoppingToken)
 	{
 		try
@@ -66,8 +48,6 @@ public sealed class EventQueue
 		}
 	}
 
-	/// <summary>Delivers what is queued now and returns when no delivery is queued or still running.</summary>
-	/// <param name="ct">A token that cancels the delivery.</param>
 	public async Task DrainAsync(CancellationToken ct = default)
 	{
 		while (true)

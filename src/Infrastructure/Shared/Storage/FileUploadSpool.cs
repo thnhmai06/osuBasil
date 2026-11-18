@@ -3,10 +3,8 @@ using Basil.Application.Shared.Storage;
 
 namespace Basil.Infrastructure.Shared.Storage;
 
-/// <summary>Spools uploads into temporary files under the data directory; the files are named by no part of the upload.</summary>
 public sealed class FileUploadSpool(DataPaths paths, TimeProvider time) : IUploadSpool
 {
-	/// <inheritdoc />
 	public async Task<ISpooledUpload> SpoolAsync(Stream content, long maxBytes,
 		CancellationToken ct = default)
 	{

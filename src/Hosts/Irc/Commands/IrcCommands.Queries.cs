@@ -10,7 +10,6 @@ namespace Basil.Host.Irc.Commands;
 
 internal sealed partial class IrcCommands
 {
-	/// <summary>Lists the channels a connection may see: the visible general channels it may read and the rooms it may join.</summary>
 	private IEnumerable<Channel> VisibleChannels(Connection actor, DateTimeOffset now)
 	{
 		var privileges = actor.EffectivePrivileges(now);

@@ -10,7 +10,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>Pins which audio tracks get a preview, and that a failure leaves the rest of the set alone.</summary>
 public sealed class BeatmapPreviewMakerTests : IDisposable
 {
 	private readonly BeatmapPreviewMaker _assets;
@@ -18,7 +17,6 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 	private readonly List<(string Name, byte[] Content)> _previews = [];
 	private readonly IBeatmapsetStorage _storage = Substitute.For<IBeatmapsetStorage>();
 
-	/// <summary>Composes the capability over a storage the test controls and a temporary cache directory.</summary>
 	public BeatmapPreviewMakerTests()
 	{
 		_storage.SaveAsync(Arg.Any<BeatmapsetRecord>(), BeatmapsetFileType.Preview, Arg.Any<string>(),
@@ -34,13 +32,11 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 			NullLogger<BeatmapPreviewMaker>.Instance);
 	}
 
-	/// <inheritdoc />
 	public void Dispose()
 	{
 		if (Directory.Exists(_cache)) Directory.Delete(_cache, true);
 	}
 
-	/// <summary>An audio track the set has gets a preview named after it, and the temporary files are cleaned up.</summary>
 	[Fact]
 	public async Task BuildAsync_MakesAPreviewOfTheAudioTheDifficultyUses()
 	{
@@ -57,7 +53,6 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 		Assert.Empty(Directory.EnumerateFiles(_cache));
 	}
 
-	/// <summary>An Ogg Vorbis track gets a preview like an mp3 does.</summary>
 	[Fact]
 	public async Task BuildAsync_MakesAPreviewOfAnOggTrack()
 	{
@@ -73,7 +68,6 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 		Assert.NotEmpty(preview.Content);
 	}
 
-	/// <summary>Every distinct audio track gets one preview, however many difficulties use it.</summary>
 	[Fact]
 	public async Task BuildAsync_MakesOnePreviewPerAudioTrack()
 	{
@@ -88,7 +82,6 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 		Assert.Single(_previews);
 	}
 
-	/// <summary>An audio track the set does not have makes no preview and fails nothing.</summary>
 	[Fact]
 	public async Task BuildAsync_SkipsAnAudioTheSetDoesNotHave()
 	{
@@ -101,7 +94,6 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 		Assert.False(Directory.Exists(_cache) && Directory.EnumerateFiles(_cache).Any());
 	}
 
-	/// <summary>Content that is no audio makes no preview and fails nothing else in the set.</summary>
 	[Fact]
 	public async Task BuildAsync_SurvivesAnAudioThatIsNoAudio()
 	{
@@ -115,7 +107,6 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 		Assert.False(Directory.Exists(_cache) && Directory.EnumerateFiles(_cache).Any());
 	}
 
-	/// <summary>A difficulty that names no audio track has no preview to make.</summary>
 	[Fact]
 	public async Task BuildAsync_IgnoresADifficultyWithoutAudio()
 	{
@@ -129,17 +120,12 @@ public sealed class BeatmapPreviewMakerTests : IDisposable
 			Arg.Any<string>(), Arg.Any<CancellationToken>());
 	}
 
-	/// <summary>Makes the storage give back the given content under a name.</summary>
-	/// <param name="name">The stored audio's name.</param>
-	/// <param name="content">The stored audio's content.</param>
 	private void GiveAudio(string name, byte[] content)
 	{
 		_storage.OpenAsync(Arg.Any<BeatmapsetRecord>(), BeatmapsetFileType.Audio, name, Arg.Any<CancellationToken>())
 			.Returns(_ => Task.FromResult<Stream?>(new MemoryStream(content, false)));
 	}
 
-	/// <summary>Whether the ffmpeg tools the capability calls are on the PATH.</summary>
-	/// <returns><see langword="true" /> when both tools are found.</returns>
 	private static bool FfmpegIsInstalled()
 	{
 		var directories = (Environment.GetEnvironmentVariable("PATH") ?? "")

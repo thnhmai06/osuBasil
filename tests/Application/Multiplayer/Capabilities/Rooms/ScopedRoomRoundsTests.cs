@@ -5,12 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 
-/// <summary>
-///     The rounds of a room. The expected behaviour comes from
-///     docs/for-developers/multiplayer.md ("Rounds and score association") and the osu! multiplayer
-///     rules: a round needs a beatmap, the players who have it start playing, and the round ends when everybody
-///     has finished or failed.
-/// </summary>
 public sealed class ScopedRoomRoundsTests
 {
 	[Fact]

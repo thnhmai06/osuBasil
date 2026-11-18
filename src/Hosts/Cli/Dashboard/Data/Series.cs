@@ -1,7 +1,5 @@
 namespace Basil.Host.Cli.Dashboard.Data;
 
-/// <summary>A series of samples that keeps the most recent ones: a ring buffer.</summary>
-/// <param name="capacity">How many samples are kept.</param>
 public sealed class Series(int capacity)
 {
 	private readonly Lock _gate = new();
@@ -9,7 +7,6 @@ public sealed class Series(int capacity)
 	private int _count;
 	private int _next;
 
-	/// <summary>Gets how many samples are kept.</summary>
 	public int Count
 	{
 		get
@@ -21,7 +18,6 @@ public sealed class Series(int capacity)
 		}
 	}
 
-	/// <summary>Gets the newest sample, or 0 when there is none.</summary>
 	public double Latest
 	{
 		get
@@ -33,7 +29,6 @@ public sealed class Series(int capacity)
 		}
 	}
 
-	/// <summary>Adds a sample, dropping the oldest when the buffer is full.</summary>
 	public void Add(double value)
 	{
 		lock (_gate)
@@ -44,7 +39,6 @@ public sealed class Series(int capacity)
 		}
 	}
 
-	/// <summary>Gets the samples, oldest first.</summary>
 	public double[] Values()
 	{
 		lock (_gate)
@@ -55,7 +49,6 @@ public sealed class Series(int capacity)
 		}
 	}
 
-	/// <summary>Gets the largest sample, or 0 when there is none.</summary>
 	public double Max()
 	{
 		var values = Values();

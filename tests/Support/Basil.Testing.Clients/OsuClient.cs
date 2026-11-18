@@ -10,11 +10,6 @@ using Org.BouncyCastle.Crypto.Parameters;
 
 namespace Basil.Testing.Clients;
 
-/// <summary>
-///     Behaves like the osu! stable client over HTTP: logs in, keeps the <c>osu-token</c> header, polls, sends
-///     packets and calls the web endpoints. It writes the client's packets by hand from the osu! protocol so the
-///     server is tested against the wire, not against its own code.
-/// </summary>
 public sealed class OsuClient : IDisposable
 {
 	public const string UninstallId = "uninstall-id-1";
@@ -43,10 +38,8 @@ public sealed class OsuClient : IDisposable
 
 	public string? Token { get; private set; }
 
-	/// <summary>Gets the user id from the login reply: positive on success, negative failure reason otherwise.</summary>
 	public int LoginCode { get; private set; }
 
-	/// <summary>Gets every packet received so far, in order.</summary>
 	public IReadOnlyList<ServerPacket> Received => _received;
 
 	public void Dispose()
@@ -59,13 +52,11 @@ public sealed class OsuClient : IDisposable
 		return Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(password)));
 	}
 
-	/// <summary>Creates a client that has not logged in.</summary>
 	public static OsuClient Create(BasilHost host, string name, string password, bool tourney = false)
 	{
 		return new OsuClient(host.Url, password, name, tourney, host.Domain);
 	}
 
-	/// <summary>Logs in the way the stable client does.</summary>
 	public async Task<IReadOnlyList<ServerPacket>> LoginAsync(string? passwordOverride = null,
 		string? forwardedFor = null)
 	{
@@ -82,7 +73,6 @@ public sealed class OsuClient : IDisposable
 		return packets;
 	}
 
-	/// <summary>Posts packets (or none, to just poll) and returns what the server answered.</summary>
 	public async Task<IReadOnlyList<ServerPacket>> SendAsync(Action<ClientPacketWriter>? write = null)
 	{
 		var writer = new ClientPacketWriter();
@@ -100,7 +90,6 @@ public sealed class OsuClient : IDisposable
 		return SendAsync();
 	}
 
-	/// <summary>Sends a request with an arbitrary token (for the unknown-token case).</summary>
 	public async Task<IReadOnlyList<ServerPacket>> SendWithTokenAsync(string token)
 	{
 		using var request = Stable(HttpMethod.Post, []);
@@ -109,13 +98,11 @@ public sealed class OsuClient : IDisposable
 		return ServerPacket.Split(await response.Content.ReadAsByteArrayAsync());
 	}
 
-	/// <summary>Removes the packets received so far from the record.</summary>
 	public void ClearReceived()
 	{
 		_received.Clear();
 	}
 
-	/// <summary>Polls until a packet with the id (and matching the filter) has been received, or the polls run out.</summary>
 	public async Task<ServerPacket?> WaitForAsync(int id, Func<ServerPacket, bool>? where = null, int polls = 40)
 	{
 		bool Matches(ServerPacket packet)
@@ -134,10 +121,6 @@ public sealed class OsuClient : IDisposable
 		return null;
 	}
 
-	/// <summary>Polls until a condition on what has been received holds.</summary>
-	/// <param name="condition">What the received packets must satisfy.</param>
-	/// <param name="polls">How many times to poll before giving up.</param>
-	/// <exception cref="InvalidOperationException">The condition still does not hold after every poll.</exception>
 	public async Task WaitUntilAsync(Func<bool> condition, int polls = 40)
 	{
 		for (var index = 0; index < polls; index++)
@@ -159,14 +142,12 @@ public sealed class OsuClient : IDisposable
 
 	// --- web endpoints (osu.) ---
 
-	/// <summary>Calls GET on the web host with the client's credentials added.</summary>
 	public async Task<(HttpStatusCode Status, string Text)> WebGetAsync(string path, string userKey, string hashKey,
 		params (string Key, string Value)[] query)
 	{
 		return await WebGetAsync(path, userKey, hashKey, null, query);
 	}
 
-	/// <summary>Calls GET on the web host with the client's credentials added, from the given forwarded address.</summary>
 	public async Task<(HttpStatusCode Status, string Text)> WebGetAsync(string path, string userKey, string hashKey,
 		string? forwardedFor, params (string Key, string Value)[] query)
 	{
@@ -180,7 +161,6 @@ public sealed class OsuClient : IDisposable
 		return (response.StatusCode, await response.Content.ReadAsStringAsync());
 	}
 
-	/// <summary>Calls POST with a form on the web host with the client's credentials added.</summary>
 	public async Task<(HttpStatusCode Status, string Text)> WebPostFormAsync(string path, string userKey,
 		string hashKey, params (string Key, string Value)[] form)
 	{
@@ -240,7 +220,6 @@ public sealed class OsuClient : IDisposable
 		return (response.StatusCode, await response.Content.ReadAsStringAsync());
 	}
 
-	/// <summary>Registers an account the way the client's registration form does.</summary>
 	public static async Task<(HttpStatusCode Status, string Text)> RegisterAsync(BasilHost host, string name,
 		string password, bool checkOnly = false, string? forwardedFor = null)
 	{
@@ -259,7 +238,6 @@ public sealed class OsuClient : IDisposable
 		return (response.StatusCode, await response.Content.ReadAsStringAsync());
 	}
 
-	/// <summary>Submits a score as the client does: encrypted score data, client hash and replay.</summary>
 	public async Task<(HttpStatusCode Status, string Text)> SubmitScoreAsync(string beatmapMd5, int score,
 		bool passed = true, int mods = 0, int n300 = 100, string grade = "S", string? checksumOverride = null,
 		byte[]? replay = null)
@@ -326,7 +304,6 @@ public sealed class OsuClient : IDisposable
 		return request;
 	}
 
-	/// <summary>The client packet ids the tests send.</summary>
 	public static class Out
 	{
 		public const int ChangeAction = 0,
@@ -376,7 +353,6 @@ public sealed class OsuClient : IDisposable
 			TournamentLeaveMatchChannel = 109;
 	}
 
-	/// <summary>The server packet ids the tests look for.</summary>
 	public static class In
 	{
 		public const int UserId = 5,

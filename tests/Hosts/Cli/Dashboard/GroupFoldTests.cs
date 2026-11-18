@@ -4,7 +4,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The groups of a table during a search: those without a match are hidden, those with one are open, and the folds come back.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class GroupFoldTests
 {

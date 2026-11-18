@@ -2,13 +2,8 @@ using System.Collections.Concurrent;
 
 namespace Basil.Gateway.RateLimiting;
 
-/// <summary>Counts events per key inside a sliding window; keys whose events all expired are forgotten.</summary>
 public sealed class RateLimiter(TimeProvider clock)
 {
-	/// <summary>
-	///     The most keys remembered at the same time; beyond it the keys with the fewest recent events are forgotten
-	///     first.
-	/// </summary>
 	public const int MaxKeys = 100_000;
 
 	private static readonly TimeSpan PurgeEvery = TimeSpan.FromMinutes(1);
@@ -17,14 +12,8 @@ public sealed class RateLimiter(TimeProvider clock)
 	private readonly ConcurrentDictionary<string, Entry> _events = new();
 	private long _nextPurge;
 
-	/// <summary>Gets how many keys are remembered.</summary>
 	public int KeyCount => _events.Count;
 
-	/// <summary>Records an event unless the key already reached its limit in the window.</summary>
-	/// <param name="key">What is limited.</param>
-	/// <param name="count">How many events the window allows.</param>
-	/// <param name="window">The length of the window.</param>
-	/// <returns><see langword="true" /> when the event is allowed and recorded.</returns>
 	public bool TryAcquire(string key, int count, TimeSpan window)
 	{
 		var entry = Get(key);
@@ -39,8 +28,6 @@ public sealed class RateLimiter(TimeProvider clock)
 		}
 	}
 
-	/// <summary>Records an event without checking a limit.</summary>
-	/// <param name="key">What is counted.</param>
 	public void Record(string key)
 	{
 		var entry = Get(key);
@@ -50,8 +37,6 @@ public sealed class RateLimiter(TimeProvider clock)
 		}
 	}
 
-	/// <summary>Takes back the latest event of a key, such as an attempt that turned out to be a success.</summary>
-	/// <param name="key">What is counted.</param>
 	public void Refund(string key)
 	{
 		if (!_events.TryGetValue(key, out var entry)) return;
@@ -64,10 +49,6 @@ public sealed class RateLimiter(TimeProvider clock)
 		}
 	}
 
-	/// <summary>Counts the events of a key inside the window.</summary>
-	/// <param name="key">What is counted.</param>
-	/// <param name="window">The length of the window.</param>
-	/// <returns>The number of events recorded in the window.</returns>
 	public int Count(string key, TimeSpan window)
 	{
 		if (!_events.TryGetValue(key, out var entry)) return 0;
@@ -132,10 +113,8 @@ public sealed class RateLimiter(TimeProvider clock)
 
 	private sealed class Entry
 	{
-		/// <summary>When the recent hits happened.</summary>
 		public readonly Queue<DateTimeOffset> Events = new();
 
-		/// <summary>The span the recent hits are counted over.</summary>
 		public TimeSpan Window;
 	}
 }

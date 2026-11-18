@@ -3,7 +3,6 @@ using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Shared.Tests.Storage;
 
-/// <summary>Contract tests of the shaping of file names.</summary>
 public sealed class FileNamesTests
 {
 	[Fact]

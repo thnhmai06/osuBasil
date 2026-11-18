@@ -4,7 +4,4 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-/// <summary>Asks Users to remove the avatar of an account.</summary>
-/// <param name="Actor">The connection that asks.</param>
-/// <param name="Target">The account acted on.</param>
 public sealed record RemoveUserAvatar(Connection Actor, UserReference Target) : IRequest<UserOutcome>;

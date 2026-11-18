@@ -4,16 +4,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Multiplayer.Workers;
 
-/// <summary>Closes the rooms that stayed empty for too long, and announces their closing, every 30 seconds.</summary>
 internal sealed class EmptyRoomCloser(
 	Lobby lobby,
 	TimeProvider time,
 	ILogger<EmptyRoomCloser> logger) : BackgroundService
 {
-	/// <summary>The interval between two checks of the open rooms.</summary>
 	internal static readonly TimeSpan Period = TimeSpan.FromSeconds(30);
 
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(Period, time);

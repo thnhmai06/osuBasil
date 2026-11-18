@@ -7,11 +7,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Registry;
 
-/// <summary>
-///     The connection counters: a connection that opens, is refused or closes is counted once for its kind, and the
-///     bot's own connections are never counted. The counters are global, so every assertion is on a change, and the
-///     project runs its tests one at a time (<c>AssemblyInfo.cs</c>).
-/// </summary>
 public sealed class ConnectionCountTests
 {
 	private static long Total(SessionType type, ConnectionCount kind)

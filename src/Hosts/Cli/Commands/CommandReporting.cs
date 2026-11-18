@@ -3,15 +3,8 @@ using Basil.Host.Shared.Errors;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>Turns the results of Application behaviours into console output and exit codes.</summary>
 public static class CommandReporting
 {
-	/// <summary>Prints the confirmation of an action when it worked, or its refusal when it did not.</summary>
-	/// <param name="call">The running command.</param>
-	/// <param name="result">What the behaviour returned.</param>
-	/// <param name="confirmation">The line to print on success.</param>
-	/// <param name="missing">What the command acts on, named in the refusal when it does not exist.</param>
-	/// <returns>The exit code.</returns>
 	public static int Report<TOutcome>(this CommandCall call, TOutcome result, string confirmation,
 		string? missing = null)
 		where TOutcome : struct, Enum
@@ -27,7 +20,6 @@ public static class CommandReporting
 			: call.Refuse(result);
 	}
 
-	/// <summary>Prints the refusal in a result that is not ok.</summary>
 	public static int Refuse<TOutcome>(this CommandCall call, TOutcome result) where TOutcome : struct, Enum
 	{
 		var info = OutcomeErrors.Describe(result);
@@ -35,14 +27,12 @@ public static class CommandReporting
 		return info.Kind == ErrorKind.Invalid ? ExitCodes.Invalid : ExitCodes.Refused;
 	}
 
-	/// <summary>Prints that something does not exist.</summary>
 	public static int NotFound(this CommandCall call, string what)
 	{
 		call.Output.Error("notFound", $"No such {what}.");
 		return ExitCodes.Refused;
 	}
 
-	/// <summary>Writes a camelCase code as a sentence: <c>roomClosed</c> is <c>Room closed.</c>.</summary>
 	public static string Humanize(string code)
 	{
 		var text = new StringBuilder();

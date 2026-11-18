@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>The beatmap, score, settings, content, announcement and diagnostics commands.</summary>
 [Collection("CLI host")]
 public sealed class ContentCommandTests(CliFixture fixture)
 {

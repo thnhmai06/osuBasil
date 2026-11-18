@@ -5,7 +5,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Host.Cli.Tests.Shutdown;
 
-/// <summary>The Ctrl+C rules acting on the host: what is stopped, what is shown, which exit code the process gets.</summary>
 public sealed class ShutdownControllerTests
 {
 	private static (ShutdownController Controller, Lifetime Lifetime, FakeTimeProvider Clock, List<ShutdownMessage>

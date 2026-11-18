@@ -19,13 +19,10 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Registry;
 
-/// <summary>The users who are online and the connections through which they act.</summary>
 public sealed class UserRegistry
 {
-	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
-	/// <summary>A client that comes back from the same address this soon after its connection closed is the same connection.</summary>
 	internal static readonly TimeSpan ReopenWithin = TimeSpan.FromMinutes(5);
 
 	private static readonly OsuClient ServerClient =
@@ -39,10 +36,6 @@ public sealed class UserRegistry
 	private readonly ConcurrentDictionary<int, AccountGate> _gates = new();
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 
-	/// <summary>Creates the registry that owns online users and their connections.</summary>
-	/// <param name="accounts">The account operations that use persistence.</param>
-	/// <param name="context">The ports through which the users of this registry perform their behaviour.</param>
-	/// <param name="connectionContext">The ports through which the connections of this registry perform their behaviour.</param>
 	internal UserRegistry(IAccountRules accounts, UserContext context, ConnectionContext connectionContext)
 	{
 		_accounts = accounts;
@@ -50,35 +43,23 @@ public sealed class UserRegistry
 		_connectionContext = connectionContext;
 	}
 
-	/// <summary>Gets every online user by its account.</summary>
 	public IReadOnlyDictionary<UserRecord, User> Online => _online;
 
-	/// <summary>Gets the open osu! game client of an online user.</summary>
-	/// <param name="user">The account to look up.</param>
-	/// <returns>The open game client, or <see langword="null" /> when the user has none.</returns>
 	public StableConnection? OpenStableClient(UserRecord user)
 	{
 		return _online.GetValueOrDefault(user)?.Stable is { IsOpen: true } client ? client : null;
 	}
 
-	/// <summary>Gets the open osu! game client of every online user.</summary>
-	/// <returns>The open game clients.</returns>
 	public IEnumerable<StableConnection> OpenStableClients()
 	{
 		return _online.Select(pair => OpenStableClient(pair.Key)).OfType<StableConnection>();
 	}
 
-	/// <summary>Finds the open connection a token identifies.</summary>
-	/// <param name="token">The token the client presented.</param>
-	/// <returns>The connection, or <see langword="null" /> when no open connection has that token.</returns>
 	public Connection? Find(string token)
 	{
 		return _connections.GetValueOrDefault(token);
 	}
 
-	/// <summary>Finds the osu! client a connection is spectating.</summary>
-	/// <param name="connection">The connection to look up.</param>
-	/// <returns>The online osu! client being spectated, or <see langword="null" /> when the connection is not spectating.</returns>
 	public StableConnection? FindSpectating(Connection connection)
 	{
 		// ponytail: scans every online osu! client; add an index if the online count grows large.
@@ -87,51 +68,21 @@ public sealed class UserRegistry
 			.FirstOrDefault(host => host is not null && host.Spectators.Contains(connection));
 	}
 
-	/// <summary>Gets the online account object, or creates an unregistered object for an offline account.</summary>
-	/// <param name="record">The account to get.</param>
-	/// <returns>The live online object when the account is online; otherwise a transient offline object.</returns>
 	public User Of(UserRecord record)
 	{
 		return _online.GetValueOrDefault(record) ?? new User(record, _context);
 	}
 
-	/// <summary>Scopes account creation to a connection and its authority.</summary>
-	/// <param name="actor">The connection acting.</param>
-	/// <returns>A short-lived scope for creating accounts.</returns>
 	public ScopedUserRegistry ScopeTo(Connection actor)
 	{
 		return new ScopedUserRegistry(this, actor);
 	}
 
-	/// <summary>Scopes an account that is only referenced to a connection and its authority.</summary>
-	/// <param name="actor">The connection acting.</param>
-	/// <param name="target">The account the caller refers to.</param>
-	/// <returns>A short-lived scope that reads the account only once the actor's privilege to act has been checked.</returns>
 	public ScopedUser ScopeTo(Connection actor, UserReference target)
 	{
 		return new ScopedUser(this, target, actor);
 	}
 
-	/// <summary>Authenticates a login attempt and, on success, opens a connection of the requested kind.</summary>
-	/// <param name="attempt">The claimed username and password.</param>
-	/// <param name="type">The kind of connection requested.</param>
-	/// <param name="ip">The IP address the login came from.</param>
-	/// <param name="client">The osu! client that logged in, or <see langword="null" /> for IRC and the HTTP API.</param>
-	/// <param name="utcOffset">The client's UTC offset reported at login; used only by osu! game clients.</param>
-	/// <param name="ct">A token that cancels the login.</param>
-	/// <returns>The login's outcome: the new connection on success, or the reason it failed.</returns>
-	/// <exception cref="ArgumentOutOfRangeException"><paramref name="type" /> is not a defined value.</exception>
-	/// <exception cref="ArgumentException">
-	///     <paramref name="type" /> is an IRC client, which signs in with a key through
-	///     <see cref="LoginWithTokenAsync" />.
-	/// </exception>
-	/// <exception cref="ArgumentNullException">
-	///     <paramref name="client" /> is <see langword="null" /> for an osu! or osu!tourney login.
-	/// </exception>
-	/// <remarks>
-	///     An osu!tourney login needs <see cref="UserPrivileges.Tournament" /> in effect. Successful logins are
-	///     recorded.
-	/// </remarks>
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, SessionType type, IPAddress ip,
 		OsuClient? client, int utcOffset, CancellationToken ct = default)
 	{
@@ -199,23 +150,6 @@ public sealed class UserRegistry
 		};
 	}
 
-	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
-	/// <param name="type">The kind of client: <see cref="SessionType.Api" /> or <see cref="SessionType.Irc" />.</param>
-	/// <param name="token">The token or key the client presented.</param>
-	/// <param name="ip">The IP address the client came from.</param>
-	/// <param name="accepts">
-	///     Decides, before anything is opened, whether the key's owner is the account the client claims to be;
-	///     <see langword="null" /> accepts every owner.
-	/// </param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The connection the token opens, or why none could be opened.</returns>
-	/// <remarks>
-	///     A token that is not held by an open connection is verified against the stored sessions; only a valid one
-	///     is brought into memory. A token whose session has ended or expired opens nothing, and so does a token whose
-	///     owner <paramref name="accepts" /> refuses (<see cref="LoginFailure.InvalidToken" />). Using an API token
-	///     renews its expiry.
-	/// </remarks>
-	/// <exception cref="ArgumentException"><paramref name="type" /> is not Api or Irc.</exception>
 	public async Task<LoginResult> LoginWithTokenAsync(SessionType type, string token, IPAddress ip,
 		Func<UserRecord, bool>? accepts = null, CancellationToken ct = default)
 	{
@@ -313,30 +247,17 @@ public sealed class UserRegistry
 		};
 	}
 
-	/// <summary>Creates the stored form of a token or key.</summary>
-	/// <param name="token">The token or key.</param>
-	/// <returns>The SHA-256 hash of the token.</returns>
 	internal static Sha256 HashToken(string token)
 	{
 		return new Sha256(Encoding.UTF8.GetBytes(token));
 	}
 
-	/// <summary>Checks a registration attempt without creating the account.</summary>
-	/// <param name="attempt">The registration attempt to check.</param>
-	/// <param name="ct">A token that cancels the check.</param>
-	/// <returns><see langword="null" /> when the attempt would succeed; otherwise, why it would fail.</returns>
-	/// <remarks>Registration is refused while account creation is locked.</remarks>
 	public Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
 		CancellationToken ct = default)
 	{
 		return _accounts.CheckRegistrationAsync(attempt, ct);
 	}
 
-	/// <summary>Creates the account a registration attempt asks for.</summary>
-	/// <param name="attempt">The registration attempt.</param>
-	/// <param name="ct">A token that cancels the registration.</param>
-	/// <returns>The new user, or why the registration failed.</returns>
-	/// <remarks>Registration is refused while account creation is locked.</remarks>
 	public async Task<(UserRecord? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
 		CancellationToken ct = default)
 	{
@@ -347,13 +268,6 @@ public sealed class UserRegistry
 			null);
 	}
 
-	/// <summary>Closes a connection, taking its user offline if it was their last one.</summary>
-	/// <param name="connection">The connection to close.</param>
-	/// <param name="reason">Why the connection is closed.</param>
-	/// <remarks>
-	///     This system operation needs no privileges because the server itself calls it. An osu! client's logout within one
-	///     second of login is ignored. Closing an already closed connection does nothing.
-	/// </remarks>
 	public void Close(Connection connection, SessionEndReason reason)
 	{
 		if (reason is SessionEndReason.LoggedOut && connection is StableConnection &&
@@ -364,9 +278,6 @@ public sealed class UserRegistry
 		CloseCore(connection, reason);
 	}
 
-	/// <summary>Records that a client just sent something.</summary>
-	/// <param name="connection">The connection that sent a message.</param>
-	/// <remarks>This system operation needs no privileges because the server itself calls it.</remarks>
 	public void MarkActive(Connection connection)
 	{
 		if (connection.IsOpen)
@@ -378,12 +289,6 @@ public sealed class UserRegistry
 		}
 	}
 
-	/// <summary>Closes every connection that has sent nothing for too long.</summary>
-	/// <returns>How many connections were closed.</returns>
-	/// <remarks>
-	///     This system operation needs no privileges because the server itself calls it. BasilBot's connections are not closed
-	///     by this operation.
-	/// </remarks>
 	public int CloseIdle()
 	{
 		var now = _context.Clock.GetUtcNow();
@@ -399,24 +304,6 @@ public sealed class UserRegistry
 		return idleConnections.Count;
 	}
 
-	/// <summary>Makes the account with BasilBot's fixed id the bot, whatever that id holds.</summary>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The bot's account.</returns>
-	/// <remarks>
-	///     <para>
-	///         An account that holds the id is taken over: it loses its privileges, its password and its silence,
-	///         a deleted one is restored, and its connections are closed (the bot's own connections stay open when the
-	///         account is the bot already). A live account keeps its name and country; a deleted one gets
-	///         <see cref="BasilBot.DefaultName" />. When the id holds nothing, the bot is created.
-	///     </para>
-	///     <para>
-	///         This system operation needs no privileges because the server itself calls it at startup. Calling it again
-	///         changes nothing.
-	///     </para>
-	/// </remarks>
-	/// <exception cref="AlreadyExistsException">
-	///     The id holds a deleted account or nothing, and another user already has <see cref="BasilBot.DefaultName" />.
-	/// </exception>
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken ct = default)
 	{
 		var stored = await _context.Users.GetAsync(BasilBot.Id, ct);
@@ -435,13 +322,6 @@ public sealed class UserRegistry
 		return bot;
 	}
 
-	/// <summary>Opens the operator's connection, which acts as BasilBot and skips the privilege checks.</summary>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>A connection for the console; it is not registered, so it never appears online.</returns>
-	/// <remarks>
-	///     Only the server's own console calls this. BasilBot's account is created first when it does not exist yet, as the
-	///     server does at startup.
-	/// </remarks>
 	public async Task<OperatorConnection> OperateAsync(CancellationToken ct = default)
 	{
 		var bot = await _context.Users.GetAsync(BasilBot.Id, ct) ??
@@ -451,16 +331,6 @@ public sealed class UserRegistry
 		return new OperatorConnection(login, token) { User = Of(bot), IsOpen = true };
 	}
 
-	/// <summary>Brings BasilBot online with one osu! game client connection and one IRC connection of its own.</summary>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>
-	///     The online bot, or <see langword="null" /> when its record is not stored or a connection could not be opened.
-	/// </returns>
-	/// <remarks>
-	///     This system operation needs no privileges because the server itself calls it at startup. Only a connection that is
-	///     missing is opened, the game client one first, so calling it again changes nothing. No transport sits behind
-	///     either connection.
-	/// </remarks>
 	public async Task<User?> ConnectBotAsync(CancellationToken ct = default)
 	{
 		var user = await _context.Users.GetAsync(BasilBot.Id, ct);
@@ -481,17 +351,6 @@ public sealed class UserRegistry
 		return _online.GetValueOrDefault(user);
 	}
 
-	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
-	/// <param name="connection">The new connection.</param>
-	/// <returns><see langword="null" /> on success; otherwise, why the connection was refused.</returns>
-	/// <remarks>
-	///     A user holds at most the number of open connections of a kind that the server settings allow. At the limit,
-	///     the user's connections of that kind that sent nothing for too long are closed first; if the user is still at
-	///     the limit, an HTTP API connection replaces the one that was active longest ago and any other kind is refused
-	///     with <see cref="LoginFailure.TooManySessions" />. BasilBot's connections are limited to one of each kind
-	///     whatever the settings say. An osu!tourney connection needs <see cref="UserPrivileges.Tournament" /> in
-	///     effect.
-	/// </remarks>
 	internal LoginFailure? Open(Connection connection)
 	{
 		using var scope = Enter(connection.Record);
@@ -564,18 +423,11 @@ public sealed class UserRegistry
 		};
 	}
 
-	/// <summary>Creates the token of a new connection.</summary>
-	/// <returns>32 random bytes, encoded for use in URLs and headers.</returns>
 	internal static string NewToken()
 	{
 		return Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
 	}
 
-	/// <summary>Closes every open connection of a user.</summary>
-	/// <param name="user">The user whose connections are closed.</param>
-	/// <param name="reason">Why they are closed.</param>
-	/// <param name="except">A session whose connection stays open, or <see langword="null" /> to keep none.</param>
-	/// <param name="only">The one session to close, or <see langword="null" /> to close every session.</param>
 	internal void CloseAll(UserRecord user, SessionEndReason reason, long? except = null, long? only = null)
 	{
 		var online = _online.GetValueOrDefault(user);
@@ -589,8 +441,6 @@ public sealed class UserRegistry
 			Close(connection, reason);
 	}
 
-	/// <summary>Stores the activity of the sessions and connections that were used since the last time.</summary>
-	/// <remarks>Run regularly instead of storing each request.</remarks>
 	public async Task FlushActivityAsync()
 	{
 		var sessions = new List<SessionActivity>();
@@ -606,15 +456,6 @@ public sealed class UserRegistry
 		await _context.Connections.WriteActivityAsync(connections);
 	}
 
-	/// <summary>
-	///     Ends what a stop of the server left open: every connection still open is closed at the moment it was last
-	///     active, and so is the session of every osu! client, which lives only as long as its connection.
-	/// </summary>
-	/// <returns>How many connections were closed.</returns>
-	/// <remarks>
-	///     This system operation needs no privileges because the server itself calls it at startup. API tokens and IRC keys
-	///     stay valid.
-	/// </remarks>
 	public async Task<int> CloseStoppedAsync()
 	{
 		var closed = await _context.Connections.CloseOpenAsync(SessionEndReason.ServerStopped);
@@ -623,20 +464,12 @@ public sealed class UserRegistry
 		return closed;
 	}
 
-	/// <summary>
-	///     Deletes the sessions that ended longer ago than the server settings keep them; the moderation log is never
-	///     touched.
-	/// </summary>
-	/// <returns>How many sessions were deleted.</returns>
-	/// <remarks>Run regularly; the server calls it on its own, so it needs no privileges.</remarks>
 	public async Task<int> PurgeEndedSessionsAsync()
 	{
 		var retention = (await _context.Settings.GetAsync()).Sessions.RetentionPeriod;
 		return await _context.Sessions.DeleteEndedBeforeAsync(_context.Clock.GetUtcNow() - retention);
 	}
 
-	/// <summary>Closes connections of kinds the user may no longer use.</summary>
-	/// <param name="user">The online user whose privileges or silence changed.</param>
 	internal void CloseDisallowed(User user)
 	{
 		if (user.EffectivePrivileges(_context.Clock.GetUtcNow()).Allows(UserPrivileges.Tournament)) return;
@@ -665,12 +498,6 @@ public sealed class UserRegistry
 		_connections.TryRemove(new KeyValuePair<string, Connection>(connection.Token, connection));
 	}
 
-	/// <summary>
-	///     Serialises the changes of one account's sessions; accounts do not wait for each other. The lock order is this
-	///     gate, then <see cref="User" />.
-	/// </summary>
-	/// <param name="account">The account whose sessions change.</param>
-	/// <returns>A scope that holds the account's gate until disposed.</returns>
 	internal AccountScope Enter(UserRecord account)
 	{
 		return new AccountScope(_gates, account.Id);
@@ -710,11 +537,6 @@ public sealed class UserRegistry
 		return connection is { IsServerOwned: false, Type: SessionType.Api or SessionType.Irc };
 	}
 
-	/// <summary>Creates the identifier of a new session.</summary>
-	/// <returns>
-	///     A positive number a browser can hold without losing a digit; it marks the session on the API so that the hash
-	///     of its token is never shown.
-	/// </returns>
 	internal static long NewSessionId()
 	{
 		return RandomNumberGenerator.GetInt32(int.MaxValue) * 4194304L + RandomNumberGenerator.GetInt32(4194304) + 1;
@@ -732,13 +554,6 @@ public sealed class UserRegistry
 		return _accounts.CreateAsync(data, passwordHash, privileges);
 	}
 
-	/// <summary>Creates an account and reports the outcome as a user outcome.</summary>
-	/// <param name="data">The account data.</param>
-	/// <param name="passwordHash">The MD5 digest of the password.</param>
-	/// <param name="privileges">
-	///     The privileges of the account, or <see langword="null" /> for the default privileges of new accounts.
-	/// </param>
-	/// <returns>The new account when the result is ok; otherwise why none was created.</returns>
 	internal async Task<(UserRecord? User, UserOutcome Outcome)> RegisterAsync(UserData data, Md5 passwordHash,
 		UserPrivileges? privileges)
 	{
@@ -751,26 +566,19 @@ public sealed class UserRegistry
 		};
 	}
 
-	/// <summary>The lock of one account, shared by every scope that is open on it and dropped when the last one ends.</summary>
 	internal sealed class AccountGate
 	{
-		/// <summary>The lock guarding the account.</summary>
 		public readonly Lock Lock = new();
 
-		/// <summary>How many scopes are open on the account.</summary>
 		public int Users;
 	}
 
-	/// <summary>Holds the gate of one account until disposed.</summary>
 	internal readonly ref struct AccountScope : IDisposable
 	{
 		private readonly ConcurrentDictionary<int, AccountGate> _gates;
 		private readonly int _id;
 		private readonly AccountGate _gate;
 
-		/// <summary>Enters the gate of an account, creating it when no scope is open on the account.</summary>
-		/// <param name="gates">The gates by account id.</param>
-		/// <param name="id">The account id.</param>
 		public AccountScope(ConcurrentDictionary<int, AccountGate> gates, int id)
 		{
 			_gates = gates;
@@ -788,7 +596,6 @@ public sealed class UserRegistry
 			_gate.Lock.Enter();
 		}
 
-		/// <summary>Releases the gate.</summary>
 		public void Dispose()
 		{
 			_gate.Lock.Exit();

@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Content.Tests.Storage;
 
-/// <summary>Contract tests of FileMenuSeasonalsStorage, read through IMenuSeasonalsStorage.</summary>
 public sealed class FileMenuSeasonalsStorageTests : IDisposable
 {
 	private readonly TempData _data = new();

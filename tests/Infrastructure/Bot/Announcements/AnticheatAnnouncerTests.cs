@@ -9,10 +9,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Announcements;
 
-/// <summary>
-///     What BasilBot announces when a player's client reports signs of cheating: a line in the room channel and a
-///     private message to the room's online staff. Expected replies are named by the reply that owns the wording.
-/// </summary>
 public sealed class AnticheatAnnouncerTests
 {
 	private const OsuFlags TwoFlags = OsuFlags.SpeedHackDetected | OsuFlags.FastPress;

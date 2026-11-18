@@ -6,27 +6,20 @@ using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>What the <c>version</c> and <c>ruleset</c> commands say.</summary>
 public static class RulesetReplies
 {
-	/// <summary>Printed after a new ruleset version was staged.</summary>
 	public const string Staged =
 		"Staged the osu! rulesets {0}. Restart the server for them to take effect, then run `beatmapsets reload` to recompute the stored star ratings.";
 
-	/// <summary>Printed when no newer ruleset version exists.</summary>
 	public const string UpToDate = "The osu! rulesets are up to date ({0}).";
 
-	/// <summary>The code of the error printed when the ruleset feed fails.</summary>
 	public const string UpdateFailedCode = "rulesetUpdateFailed";
 
-	/// <summary>Printed when a beatmap reload was started.</summary>
 	public const string ReloadStarted = "Reloading beatmaps in the background.";
 }
 
-/// <summary>The <c>version</c> and <c>ruleset</c> commands.</summary>
 internal static class RulesetCommands
 {
-	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef

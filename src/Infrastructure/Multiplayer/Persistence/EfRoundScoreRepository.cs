@@ -8,11 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
-/// <summary>Stores which round each score belongs to.</summary>
 internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRepository scores)
 	: IRoundScoreRepository
 {
-	/// <inheritdoc />
 	public async Task<RoundScore> RecordAsync(RoundScore roundScore)
 	{
 		var round = roundScore.Round;
@@ -28,7 +26,6 @@ internal sealed class EfRoundScoreRepository(DatabaseSession database, IScoreRep
 		return roundScore;
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.RoundScores

@@ -2,7 +2,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Tests.Content;
 
-/// <summary>FAQ entries and the main menu: public to read, content managers to change.</summary>
 [Collection("REST host")]
 public sealed class MenuTests(RestHostFixture fixture)
 {

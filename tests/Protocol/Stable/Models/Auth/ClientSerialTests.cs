@@ -2,11 +2,6 @@ using Basil.Protocol.Stable.Models.Client;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 
-/// <summary>
-///     Verifies the client serial contract <c>uninstallId|diskSignature</c>: the text splits on the first
-///     <c>|</c> only (so the signature may contain further pipes), empty halves are allowed, and
-///     <see cref="ClientSerial.ToString" /> restores the wire text. Text without a <c>|</c> is rejected.
-/// </summary>
 public class ClientSerialTests
 {
 	public static TheoryData<string, string, string> ValidSerials()

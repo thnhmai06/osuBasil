@@ -5,7 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Capabilities;
 
-/// <summary>A change to an account that the store refuses reaches the caller and leaves the account as it was.</summary>
 public sealed class StoredChangeFailureTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

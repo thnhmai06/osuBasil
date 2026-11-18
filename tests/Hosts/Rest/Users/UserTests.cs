@@ -1,6 +1,5 @@
 namespace Basil.Host.Rest.Tests.Users;
 
-/// <summary>Accounts, sessions, restrictions and the redirects of the caller's own account.</summary>
 [Collection("REST host")]
 public sealed class UserTests(RestHostFixture fixture)
 {

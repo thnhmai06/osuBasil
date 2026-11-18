@@ -6,12 +6,8 @@ using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Support;
 
-/// <summary>Writes the replies that describe a channel to a client.</summary>
 internal static class IrcChannels
 {
-	/// <summary>Sends the topic of a channel.</summary>
-	/// <param name="session">The client.</param>
-	/// <param name="channel">The channel.</param>
 	public static void SendTopic(IrcSession session, Channel channel)
 	{
 		if (string.IsNullOrEmpty(channel.Topic))
@@ -20,9 +16,6 @@ internal static class IrcChannels
 			session.Numeric(IrcNumericReply.RplTopic, channel.Name, channel.Topic.ReplaceLineEndings(" "));
 	}
 
-	/// <summary>Sends the members of a channel, one user once however many connections they have.</summary>
-	/// <param name="session">The client.</param>
-	/// <param name="channel">The channel.</param>
 	public static void SendNames(IrcSession session, Channel channel)
 	{
 		var now = session.Now;
@@ -49,10 +42,6 @@ internal static class IrcChannels
 		session.Numeric(IrcNumericReply.RplEndOfNames, channel.Name, "End of /NAMES list.");
 	}
 
-	/// <summary>Sends what a client receives when it joins: its own <c>JOIN</c>, the topic and the members.</summary>
-	/// <param name="session">The client.</param>
-	/// <param name="channel">The channel.</param>
-	/// <param name="user">The account of the client.</param>
 	public static void SendJoin(IrcSession session, Channel channel, UserRecord user)
 	{
 		var mask = IrcView.Mask(user, session.Domain).ToString();

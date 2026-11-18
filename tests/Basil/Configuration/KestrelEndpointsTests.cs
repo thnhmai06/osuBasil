@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Tests.Configuration;
 
-/// <summary>What the server reads from the standard <c>Kestrel:Endpoints</c> settings.</summary>
 public sealed class KestrelEndpointsTests
 {
 	private static IConfiguration Endpoints(params string[] urls)

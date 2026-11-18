@@ -6,14 +6,8 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc.Session;
 
-/// <summary>
-///     Writes what an IRC client can do on this server: how to reach it, the capabilities it grants and the commands
-///     it answers.
-/// </summary>
-/// <param name="options">The address the server listens on.</param>
 public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 {
-	/// <summary>The commands the server answers, with whether they need the connection to be signed in first.</summary>
 	internal static readonly IReadOnlyList<(string Command, bool SignedIn, string Summary)> Commands =
 	[
 		("CAP", false, "Negotiate the IRCv3 capabilities (`LS`, `LIST`, `REQ`, `END`)."),
@@ -41,13 +35,10 @@ public sealed class IrcReference(IOptions<IrcOptions> options) : IDocumentPage
 		("INVITE", true, "Always refused: channels are managed through the API or `!channel`.")
 	];
 
-	/// <inheritdoc />
 	public string Slug => "irc";
 
-	/// <inheritdoc />
 	public string Title => "IRC";
 
-	/// <inheritdoc />
 	public string Markdown()
 	{
 		var text = new StringBuilder();

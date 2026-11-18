@@ -6,7 +6,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Chat.Tests.Registry;
 
-/// <summary>What <see cref="PmChannels" /> keeps: one channel per online user and the connections in it.</summary>
 public sealed class PmChannelsTests
 {
 	[Fact]

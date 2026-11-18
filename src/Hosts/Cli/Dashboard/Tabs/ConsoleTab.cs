@@ -13,10 +13,6 @@ using XenoAtom.Terminal.UI.Text;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>
-///     The console: the log of the server written straight on the screen, and, at the full level, the command box under
-///     it whose output goes into the same log.
-/// </summary>
 internal sealed class ConsoleTab
 {
 	private const int PopupSize = 8;
@@ -47,7 +43,6 @@ internal sealed class ConsoleTab
 	private TerminalApp? _app;
 	private long _seen;
 
-	/// <summary>Creates the tab.</summary>
 	public ConsoleTab(LogBuffer logBuffer, CommandRunner runner, CommandSuggestions suggestions, CliOptions options,
 		Glyphs glyphs, Palette tokens, Dialogs dialogs, TimeProvider clock, ILogger logger)
 	{
@@ -87,32 +82,26 @@ internal sealed class ConsoleTab
 			.Cell(Prompt, 2, 0);
 	}
 
-	/// <summary>Gets what the tab shows.</summary>
 	public Visual View { get; }
 
-	/// <summary>Gets the command box.</summary>
 	public PromptEditor Prompt { get; }
 
-	/// <summary>Connects the tab to the running application.</summary>
 	public void Attach(TerminalApp app)
 	{
 		_app = app;
 		Activate();
 	}
 
-	/// <summary>Gives the focus to the command box; call it when the tab comes into view.</summary>
 	public void Activate()
 	{
 		_app?.Focus(Prompt);
 	}
 
-	/// <summary>Stops the commands the tab still runs.</summary>
 	public void Stop()
 	{
 		_cancel.Cancel();
 	}
 
-	/// <summary>Moves the lines logged since the last call into the log control.</summary>
 	public void Pump()
 	{
 		if ((Prompt.Text ?? string.Empty) is var text && text != _lastText)
@@ -131,13 +120,11 @@ internal sealed class ConsoleTab
 		JumpToEndButton.Sync(_log);
 	}
 
-	/// <summary>Follows the newest line again.</summary>
 	public void JumpToEnd()
 	{
 		_log.ScrollToTail();
 	}
 
-	/// <summary>Clears the command box.</summary>
 	public void ClearPrompt()
 	{
 		Prompt.Text = string.Empty;
@@ -170,10 +157,6 @@ internal sealed class ConsoleTab
 		return "  " + _tokens.Wrap(ink, line.Text);
 	}
 
-	/// <summary>Runs a command as if the operator had typed it, showing it and its output in the log.</summary>
-	/// <param name="line">The command line.</param>
-	/// <param name="sink">Also receives each output line, on the thread that produced it, or <see langword="null" />.</param>
-	/// <returns>A task that ends when the command has finished.</returns>
 	public Task RunCommand(string line, Action<OutputLine>? sink = null)
 	{
 		var shown = Redactor.Redact(_runner.Catalog, line);
@@ -219,10 +202,8 @@ internal sealed class ConsoleTab
 
 	private Action? _decline;
 
-	/// <summary>Whether a confirmation is waiting for an answer.</summary>
 	public bool Asking => _decline is not null;
 
-	/// <summary>Answers the waiting confirmation with "no".</summary>
 	public void Decline()
 	{
 		_decline?.Invoke();
@@ -433,7 +414,6 @@ internal sealed class ConsoleTab
 
 	private sealed class LogOutput(ConsoleTab tab, Action<OutputLine>? sink = null) : ICommandOutput
 	{
-		/// <inheritdoc />
 		public void Write(OutputLine line)
 		{
 			sink?.Invoke(line);

@@ -7,13 +7,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Scores.Handlers;
 
-/// <summary>Builds the leaderboard of a beatmap for <see cref="GetLeaderboard" />.</summary>
 internal sealed class GetLeaderboardHandler(IBeatmapRepository beatmaps, IScoreRepository scores, IUserRepository users)
 	: IRequestHandler<GetLeaderboard, Leaderboard?>
 {
 	private const int Size = 50;
 
-	/// <inheritdoc />
 	public async ValueTask<Leaderboard?> Handle(GetLeaderboard request, CancellationToken ct)
 	{
 		if (await beatmaps.GetAsync(request.BeatmapHash, ct) is not { } map) return null;

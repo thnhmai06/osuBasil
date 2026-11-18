@@ -12,10 +12,8 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>The current session: sign in, sign out and who am I.</summary>
 internal static class AuthRoutes
 {
-	/// <summary>Maps the Auth routes.</summary>
 	public static void MapAuth(this RouteGroupBuilder v1)
 	{
 		var auth = v1.MapGroup("/auth").WithTags("Auth");
@@ -80,12 +78,9 @@ internal static class AuthRoutes
 		return result.Answer();
 	}
 
-	/// <summary>A sign-in request.</summary>
 	public sealed record LoginRequest(string? Username, string? Password);
 
-	/// <summary>The answer to a sign-in: the token is shown only here.</summary>
 	public sealed record LoginResponse(string Token, int UserId, long SessionId, DateTimeOffset? ExpiresAt);
 
-	/// <summary>The session of the calling token.</summary>
 	public sealed record SessionView(long SessionId, int UserId, DateTimeOffset StartedAt, DateTimeOffset? ExpiresAt);
 }

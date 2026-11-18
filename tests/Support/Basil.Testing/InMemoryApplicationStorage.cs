@@ -18,7 +18,6 @@ internal sealed class InMemoryUserRepository : IUserRepository
 	private readonly Dictionary<int, UserRecord> _users = [];
 	private int _nextId = 2;
 
-	/// <summary>Gets or sets the failure the next updates throw, or <see langword="null" /> to accept them.</summary>
 	public Exception? UpdateFailure { get; set; }
 
 	public Task<UserRecord> CreateAsync(UserData data)
@@ -135,7 +134,6 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 
 	public IReadOnlyList<SessionRecord> Entries => _entries;
 
-	/// <summary>Gets or sets the failure the next recordings throw, or <see langword="null" /> to accept them.</summary>
 	public Exception? RecordFailure { get; set; }
 
 	public Task CreateOrUpdateAsync(SessionRecord session)
@@ -238,15 +236,11 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.FromResult(deleted);
 	}
 
-	/// <summary>Drops a stored session, as if its record had not reached the store yet.</summary>
 	public void Forget(long id)
 	{
 		_entries.RemoveAll(entry => entry.Id == id);
 	}
 
-	/// <summary>Reads the stored expiry of a session's token.</summary>
-	/// <param name="id">The session.</param>
-	/// <returns>When the token expires, or <see langword="null" /> if it has no expiry.</returns>
 	public DateTimeOffset? ExpiryOf(long id)
 	{
 		return _entries.FirstOrDefault(entry => entry.Id == id)?.Value.ExpiresAt;
@@ -379,7 +373,6 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 
 	public IReadOnlyList<ModerationData> Entries => _values;
 
-	/// <summary>Gets or sets the failure the next appends throw, or <see langword="null" /> to accept them.</summary>
 	public Exception? AppendFailure { get; set; }
 
 	public Task AppendAsync(ModerationData entry)

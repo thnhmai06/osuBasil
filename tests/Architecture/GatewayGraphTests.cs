@@ -2,10 +2,6 @@ using System.Xml.Linq;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     <c>Basil.Gateway</c> is a leaf: it references no other Basil project and no ASP.NET Core, so the hosts and
-///     <c>Basil.Host.Shared</c> may depend on it and it can never depend back on them.
-/// </summary>
 public class GatewayGraphTests
 {
 	[Fact]

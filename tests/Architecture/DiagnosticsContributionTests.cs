@@ -6,10 +6,6 @@ using Mediator;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Every module that handles messages takes part in the diagnostics: its Infrastructure project owns a meter named
-///     <c>Basil.&lt;Module&gt;</c> and answers <see cref="CollectDiagnostics" /> with a handler.
-/// </summary>
 public class DiagnosticsContributionTests
 {
 	private const BindingFlags Declared = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |

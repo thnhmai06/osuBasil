@@ -6,11 +6,6 @@ using static Basil.Testing.BeatmapsetWorld;
 
 namespace Basil.Application.Beatmaps.Tests.Objects;
 
-/// <summary>
-///     Scanning the beatmapset storage, as <c>Beatmapsets.ScanAsync</c> documents it: what is waiting in the storage is
-///     taken in, stored sets stay in step with their archives, sets whose archive is gone are forgotten, and the
-///     events say what changed, imports first.
-/// </summary>
 public sealed class BeatmapsetsScanTests
 {
 	private static readonly Diff Easy = new("Easy", "easy file");
@@ -28,7 +23,6 @@ public sealed class BeatmapsetsScanTests
 		return app.Beatmapsets.ScanAsync(entry, TestContext.Current.CancellationToken);
 	}
 
-	/// <summary>Takes one set into the storage by a scan and returns its id.</summary>
 	private static async Task<int> TakeInAsync(BeatmapsetWorld world, TestApplication app, int id, params Diff[] diffs)
 	{
 		world.Storage.PlaceArchive($"{id}.osz", Osz.Build(id, diffs));

@@ -24,15 +24,6 @@ using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
 namespace Basil.Infrastructure.Beatmaps.Adapters;
 
-/// <summary>
-///     Calculates star rating and pp with ppy's osu!lazer ruleset libraries, keeping the difficulty attributes of each
-///     combination of beatmap, mode and difficulty-changing mods in the beatmapset's folder.
-/// </summary>
-/// <remarks>
-///     Only the lazer attributes are kept; pp is the cheap part and is calculated again from them each time. Calls for
-///     one combination at the same time share one calculation, and calculations of different combinations are limited to the
-///     number of processor cores so packet serving is not starved.
-/// </remarks>
 internal sealed class OsuBeatmapCalculator(
 	FileBeatmapsetStorage storage,
 	ILogger<OsuBeatmapCalculator> logger) : IBeatmapCalculator
@@ -42,14 +33,12 @@ internal sealed class OsuBeatmapCalculator(
 
 	private readonly SemaphoreSlim _gate = new(Environment.ProcessorCount);
 
-	/// <inheritdoc />
 	public async Task<double> GetStarsAsync(BeatmapRecord beatmap, GameMode mode, GameMods mods,
 		CancellationToken ct = default)
 	{
 		return (await AttributesAsync(beatmap, mode, mods, ct)).StarRating;
 	}
 
-	/// <inheritdoc />
 	public async Task<BeatmapPerformance> GetPerformanceAsync(BeatmapRecord beatmap, GameMode mode, GameMods mods,
 		HitCounts hits, int combo, CancellationToken ct = default)
 	{
@@ -80,7 +69,6 @@ internal sealed class OsuBeatmapCalculator(
 		       await _flights.RunAsync((beatmap.Hash, mode, mask), () => ProduceAsync(beatmap, mode, mask), ct);
 	}
 
-	/// <summary>Reads the stored attributes of a combination, or gives <see langword="null" /> when they are missing or stale.</summary>
 	private async Task<DifficultyAttributes?> ReadAsync(BeatmapRecord beatmap, GameMode mode, GameMods mask,
 		CancellationToken ct)
 	{
@@ -93,7 +81,6 @@ internal sealed class OsuBeatmapCalculator(
 			: null;
 	}
 
-	/// <summary>Calculates and stores the attributes of a combination; the work every caller of the combination shares.</summary>
 	private async Task<DifficultyAttributes> ProduceAsync(BeatmapRecord beatmap, GameMode mode, GameMods mask)
 	{
 		// Another run may have written the file between the caller's check and this one's start.
@@ -140,7 +127,6 @@ internal sealed class OsuBeatmapCalculator(
 		return attributes;
 	}
 
-	/// <summary>Gets the version of a ruleset's difficulty calculator, which changes when its numbers do.</summary>
 	private static int VersionOf(GameMode mode)
 	{
 		var ruleset = OsuBeatmapAnalyser.CreateRuleset(mode);
@@ -160,7 +146,6 @@ internal sealed class OsuBeatmapCalculator(
 		};
 	}
 
-	/// <summary>The mods of a play as lazer knows them; a stable play uses the classic scoring of osu!standard.</summary>
 	private static Mod[] PlayMods(Ruleset ruleset, GameMode mode, GameMods mods)
 	{
 		var lazer = ruleset.ConvertFromLegacyMods((LegacyMods)mods.RemoveInvalidMods(mode));
@@ -190,7 +175,6 @@ internal sealed class OsuBeatmapCalculator(
 		};
 	}
 
-	/// <summary>Gets the accuracy of a play by the rule of its game mode.</summary>
 	private static double AccuracyOf(GameMode mode, HitCounts hits)
 	{
 		double earned, total;
@@ -218,7 +202,6 @@ internal sealed class OsuBeatmapCalculator(
 		return total > 0 ? earned / total : 1;
 	}
 
-	/// <summary>Names the judgments of a play the way lazer's calculators count them.</summary>
 	private static Dictionary<HitResult, int> StatisticsOf(GameMode mode, HitCounts hits)
 	{
 		return mode switch
@@ -246,7 +229,6 @@ internal sealed class OsuBeatmapCalculator(
 		};
 	}
 
-	/// <summary>The judgments of a perfect play of a beatmap.</summary>
 	private static HitCounts PerfectHits(BeatmapRecord beatmap)
 	{
 		return beatmap.Metadata.ObjectCount switch

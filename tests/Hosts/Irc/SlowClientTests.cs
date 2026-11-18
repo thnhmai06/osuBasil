@@ -6,7 +6,6 @@ using Basil.Protocol.Irc.Models;
 
 namespace Basil.Host.Irc.Tests;
 
-/// <summary>A client that does not read cannot make the server queue lines without end.</summary>
 public sealed class SlowClientTests
 {
 	private static async Task<(IrcSession Session, TcpClient Client)> ConnectAsync()

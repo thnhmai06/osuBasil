@@ -12,12 +12,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Data;
 
-/// <summary>Reads the server once a second into the dashboard's model, from the same sample the HTTP diagnostics stream.</summary>
 public sealed class DashboardSampler(IServiceProvider services, DashboardModel model, TimeProvider clock)
 {
 	private readonly ExceptionWindow _exceptions = new();
 
-	/// <summary>Takes one sample and updates the model.</summary>
 	public void Sample()
 	{
 		var registry = services.GetRequiredService<UserRegistry>();

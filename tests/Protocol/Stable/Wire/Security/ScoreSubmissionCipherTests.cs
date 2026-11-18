@@ -8,12 +8,6 @@ using Org.BouncyCastle.Crypto.Parameters;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Security;
 
-/// <summary>
-///     Verifies the score submission cipher contract: Rijndael-256 in CBC mode with PKCS#7 padding, a key
-///     of the 24-byte constant <c>osu!-scoreburgr---------</c> followed by the osu! version (32 bytes with
-///     an eight-character version, 24 bytes with none), a 32-byte initialization vector, and base64
-///     inputs. Any prerequisite that trips throws the documented exception type.
-/// </summary>
 public class ScoreSubmissionCipherTests
 {
 	private static string ValidIvBase64 =>
@@ -124,11 +118,6 @@ public class ScoreSubmissionCipherTests
 		Assert.Throws<FormatException>(() => ScoreSubmissionCipher.Decrypt(ciphertext, iv, "20240815"));
 	}
 
-	/// <summary>
-	///     Produces a ciphertext per the client: Rijndael-256 in CBC mode with PKCS#7 padding over the UTF-8
-	///     plaintext under the 24-byte constant plus <paramref name="osuVersion" />, with the fixed
-	///     initialization vector <c>1..32</c>.
-	/// </summary>
 	private static (string CiphertextBase64, string IvBase64) Encrypt(string plaintext, string osuVersion)
 	{
 		var key = Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}");

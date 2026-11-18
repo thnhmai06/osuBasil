@@ -3,13 +3,10 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Tests.EndToEnd;
 
-/// <summary>One real server for the end-to-end scenarios that join the osu!, IRC and HTTP hosts.</summary>
 public sealed class HostEndToEndFixture : IAsyncLifetime
 {
-	/// <summary>Gets the server every client of the collection talks to.</summary>
 	public BasilHost Host { get; private set; } = null!;
 
-	/// <summary>Gets the database server, for a scenario that starts a server of its own and stops it.</summary>
 	public PersistenceFixture Database { get; } = new();
 
 	public async ValueTask InitializeAsync()

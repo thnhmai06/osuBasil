@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Stores a round with its decision.</summary>
 internal sealed class RoomRoundDecidedRecorder(IRoundRepository rounds) : INotificationHandler<RoomRoundDecided>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundDecided @event, CancellationToken ct)
 	{
 		await rounds.CreateOrUpdateAsync(@event.Round);

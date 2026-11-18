@@ -6,7 +6,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
-/// <summary>Keeps private-message-channel membership and lifetime in step with connection events.</summary>
 public sealed class PmChannelHandlerTests
 {
 	[Fact]

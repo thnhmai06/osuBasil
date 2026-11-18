@@ -10,16 +10,13 @@ using Mediator;
 
 namespace Basil.Host.Rest.Sse;
 
-/// <summary>Live gameplay of a player: spectating as an Api connection.</summary>
 internal static class SpectateRoutes
 {
-	/// <summary>The key of the root that follows a player.</summary>
 	public static string KeyOf(int userId)
 	{
 		return "spectate:" + userId;
 	}
 
-	/// <summary>Maps the Spectate routes.</summary>
 	public static void MapSpectate(this RouteGroupBuilder users)
 	{
 		users.MapGet("/{id:int}/spectate", SpectateAsync).RequireToken().Sse()
@@ -89,10 +86,8 @@ internal static class SpectateRoutes
 	}
 }
 
-/// <summary>Feeds the frames of a player to the stream of their Api spectators.</summary>
 internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<UserSpectatorFramesReceived>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorFramesReceived notification, CancellationToken ct)
 	{
 		hub.Publish(SpectateRoutes.KeyOf(notification.Host.Record.Id), SpectateRoutes.BundleOf(notification.Bundle));
@@ -100,10 +95,8 @@ internal sealed class SpectateFramesFeed(SseHub hub) : INotificationHandler<User
 	}
 }
 
-/// <summary>Feeds the status changes of a player to the stream of their Api spectators.</summary>
 internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<UserConnectionStatusChanged>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken ct)
 	{
 		hub.Publish(SpectateRoutes.KeyOf(notification.Connection.Record.Id),
@@ -112,10 +105,8 @@ internal sealed class SpectateStatusFeed(SseHub hub) : INotificationHandler<User
 	}
 }
 
-/// <summary>Ends the stream of an Api spectator when the spectating ends, for example when the player goes offline.</summary>
 internal sealed class SpectateEnd(SseHub hub) : INotificationHandler<UserSpectatorLeft>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken ct)
 	{
 		if (notification.Spectator is ApiConnection)

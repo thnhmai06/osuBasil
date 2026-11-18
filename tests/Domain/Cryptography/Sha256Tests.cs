@@ -3,7 +3,6 @@ using Basil.Domain.Cryptography;
 
 namespace Basil.Domain.Tests.Cryptography;
 
-/// <summary>A SHA-256 digest is 64 lower-case hexadecimal characters; the expected values are the FIPS 180-4 test vectors.</summary>
 public sealed class Sha256Tests
 {
 	[Theory]

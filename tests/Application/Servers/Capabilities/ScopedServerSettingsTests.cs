@@ -5,10 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Servers.Tests.Capabilities;
 
-/// <summary>
-///     Changing the settings needs the privilege to manage them; widening the default privileges of new accounts also
-///     needs those privileges.
-/// </summary>
 public sealed class ScopedServerSettingsTests
 {
 	private static ServerSettings WithDefault(UserPrivileges privileges)

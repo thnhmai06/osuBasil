@@ -5,11 +5,8 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <content>Round transitions: starting, aborting and the players' reports of what they do.</content>
 public sealed partial class Room
 {
-	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
-	/// <returns>Ok, InProgress, NoBeatmap or RoomClosed.</returns>
 	internal RoomOutcome StartRound()
 	{
 		lock (_sync)
@@ -24,8 +21,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
-	/// <returns>Ok, NotInProgress or RoomClosed.</returns>
 	internal RoomOutcome AbortRound()
 	{
 		lock (_sync)
@@ -39,13 +34,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Records that a player finished loading the beatmap.</summary>
-	/// <param name="actor">The reporting connection.</param>
-	/// <returns>Ok, NotPlaying or RoomClosed; reporting again returns Ok and does nothing.</returns>
-	/// <remarks>
-	///     The last player to load emits <see cref="RoomRoundAllLoaded" /> instead of
-	///     <see cref="RoomRoundPlayerLoaded" />.
-	/// </remarks>
 	internal RoomOutcome MarkLoaded(Connection actor)
 	{
 		lock (_sync)
@@ -70,13 +58,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Records that a player wants to skip the intro.</summary>
-	/// <param name="actor">The reporting connection.</param>
-	/// <returns>Ok, NotPlaying or RoomClosed; asking again returns Ok and does nothing.</returns>
-	/// <remarks>
-	///     The last player to ask emits <see cref="RoomRoundAllSkipped" /> instead of
-	///     <see cref="RoomRoundPlayerSkipped" />.
-	/// </remarks>
 	internal RoomOutcome SkipIntro(Connection actor)
 	{
 		lock (_sync)
@@ -101,9 +82,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Records that a player failed; the player keeps playing until completion.</summary>
-	/// <param name="actor">The reporting connection.</param>
-	/// <returns>Ok, NotPlaying or RoomClosed.</returns>
 	internal RoomOutcome ReportFailed(Connection actor)
 	{
 		lock (_sync)
@@ -116,13 +94,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Records that a player completed the beatmap.</summary>
-	/// <param name="actor">The reporting connection.</param>
-	/// <returns>Ok, NotPlaying or RoomClosed.</returns>
-	/// <remarks>
-	///     When the last player completes, the round ends and <see cref="RoomRoundCompleted" /> is emitted instead of
-	///     <see cref="RoomRoundPlayerCompleted" />.
-	/// </remarks>
 	internal RoomOutcome ReportCompleted(Connection actor)
 	{
 		lock (_sync)

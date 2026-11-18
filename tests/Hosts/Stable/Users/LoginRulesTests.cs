@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Stable.Tests.Users;
 
-/// <summary>The rules around logging in: closed sessions, restrictions, failed-attempt limits and restarts.</summary>
 [Collection("Stable host")]
 public sealed class LoginRulesTests(StableHostFixture fixture)
 {

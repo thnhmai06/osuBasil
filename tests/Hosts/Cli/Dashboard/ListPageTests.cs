@@ -4,7 +4,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The search of a list page: it waits for the text to stand still, and never shows an answer that was replaced.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class ListPageTests
 {

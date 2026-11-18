@@ -7,10 +7,8 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Tests.Shared;
 
-/// <summary>Pins what publishing an event does: it is stamped, queued, and delivered later to the handlers of its type.</summary>
 public sealed class EventPublisherTests
 {
-	/// <summary>An event carries the moment it was published, not the moment a handler received it.</summary>
 	[Fact]
 	public async Task Publish_StampsTheMomentItWasPublished()
 	{
@@ -26,7 +24,6 @@ public sealed class EventPublisherTests
 		Assert.Equal(published, Assert.Single(handler.Received).Timestamp);
 	}
 
-	/// <summary>Publishing returns before any handler has run.</summary>
 	[Fact]
 	public void Publish_RunsNoHandlerBeforeItReturns()
 	{
@@ -38,7 +35,6 @@ public sealed class EventPublisherTests
 		Assert.Empty(handler.Received);
 	}
 
-	/// <summary>An event that no handler observes is published without an error.</summary>
 	[Fact]
 	public async Task Publish_AcceptsAnEventNobodyHandles()
 	{
@@ -49,7 +45,6 @@ public sealed class EventPublisherTests
 		await world.DeliverAsync();
 	}
 
-	/// <summary>Every handler of an event type receives it, and the events arrive in the order they were published.</summary>
 	[Fact]
 	public async Task Publish_DeliversEveryEventToEveryHandlerInOrder()
 	{
@@ -66,7 +61,6 @@ public sealed class EventPublisherTests
 		Assert.Equal(["one", "two", "three"], second.Received.Select(e => e.Text));
 	}
 
-	/// <summary>A handler that throws loses its own event only: the other handlers and the later events still arrive.</summary>
 	[Fact]
 	public async Task Publish_KeepsDeliveringAfterAHandlerThrows()
 	{
@@ -80,12 +74,10 @@ public sealed class EventPublisherTests
 		Assert.Equal(["before", "after"], received.Received.Select(e => e.Text));
 	}
 
-	/// <summary>Records every notification it receives as it is.</summary>
 	private sealed class RecordingHandler : INotificationHandler<UserNotificationSent>
 	{
 		public List<UserNotificationSent> Received { get; } = [];
 
-		/// <inheritdoc />
 		public ValueTask Handle(UserNotificationSent notification, CancellationToken ct)
 		{
 			Received.Add(notification);
@@ -93,17 +85,14 @@ public sealed class EventPublisherTests
 		}
 	}
 
-	/// <summary>Fails on every notification it is given.</summary>
 	private sealed class ThrowingHandler : INotificationHandler<UserNotificationSent>
 	{
-		/// <inheritdoc />
 		public ValueTask Handle(UserNotificationSent notification, CancellationToken ct)
 		{
 			throw new InvalidOperationException("The handler failed.");
 		}
 	}
 
-	/// <summary>The application, composed with the handlers a test gives it; its event queue runs only when a test drains it.</summary>
 	private sealed class World : IDisposable
 	{
 		private readonly TestApplication _app;

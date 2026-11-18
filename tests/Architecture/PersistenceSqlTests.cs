@@ -1,9 +1,5 @@
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Pins the rule that the Infrastructure projects hold no SQL text: Entity Framework Core with LINQ and row
-///     objects only.
-/// </summary>
 public sealed class PersistenceSqlTests
 {
 	private static readonly string[] ForbiddenTokens =

@@ -12,10 +12,8 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>The server settings, announcements and screenshots.</summary>
 internal static class ContentRoutes
 {
-	/// <summary>Maps the Content routes.</summary>
 	public static void MapContent(this RouteGroupBuilder v1)
 	{
 		var settings = v1.MapGroup("/settings").WithTags("Settings").RequireToken();
@@ -121,9 +119,7 @@ internal static class ContentRoutes
 			: (await sender.Send(new DeleteScreenshot(actor, match.Value), context.RequestAborted)).Answer();
 	}
 
-	/// <summary>The body of an announcement; no recipients means everyone.</summary>
 	public sealed record AnnounceRequest(string? Text, int[]? To);
 
-	/// <summary>The answer to an announcement.</summary>
 	public sealed record AnnounceResponse(int Sent);
 }

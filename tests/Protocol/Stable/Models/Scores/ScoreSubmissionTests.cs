@@ -3,18 +3,8 @@ using Basil.Protocol.Stable.Models.Scores;
 
 namespace Basil.Protocol.Stable.Tests.Models.Scores;
 
-/// <summary>
-///     Verifies the colon-delimited wire text an osu! client posts to <c>osu-submit-modular</c>: eighteen or
-///     more fields, numeric fields parsed as i32, the <c>True</c>/non-<c>True</c> flags compared exactly,
-///     the timestamp read as <c>yyMMddHHmmss</c> in UTC, and the client version field's space count (with
-///     the value four masked off) as the client flags.
-/// </summary>
 public class ScoreSubmissionTests
 {
-	/// <summary>
-	///     An eighteen-field submission: "3 4 " as the client version field contains two spaces, so two
-	///     unmasked client-flag bits.
-	/// </summary>
 	private const string FullLine =
 		"md5:lyx:checksum:5:4:3:2:1:0:123456:999:True:XH:16:True:0:260419081102:3 4 ";
 
@@ -25,7 +15,6 @@ public class ScoreSubmissionTests
 	private const string LineWithoutLastTwoFields =
 		"md5:lyx:checksum:5:4:3:2:1:0:123456:999:True:XH:16:True:0";
 
-	/// <summary>The full recorded fields of <see cref="FullLine" />, asserted against the parser record-for-field.</summary>
 	[Fact]
 	public void EighteenFields_ParseAll()
 	{

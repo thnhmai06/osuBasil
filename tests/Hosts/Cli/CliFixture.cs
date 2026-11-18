@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests;
 
-/// <summary>One server and one PostgreSQL container for the command tests, which use names of their own.</summary>
 public sealed class CliFixture : IAsyncLifetime
 {
 	public BasilHost Host { get; private set; } = null!;
@@ -27,7 +26,6 @@ public sealed class CliFixture : IAsyncLifetime
 		await Database.DisposeAsync();
 	}
 
-	/// <summary>Runs a typed command line as the operator would.</summary>
 	public async Task<(int Code, string Text)> RunAsync(string line, CommandSession? session = null)
 	{
 		var output = new CollectedOutput();
@@ -36,7 +34,6 @@ public sealed class CliFixture : IAsyncLifetime
 		return (code, output.Text);
 	}
 
-	/// <summary>Makes a name no other test uses.</summary>
 	public static string Name(string prefix)
 	{
 		return prefix + Guid.NewGuid().ToString("N")[..8];

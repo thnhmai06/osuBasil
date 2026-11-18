@@ -10,10 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Scores.Persistence;
 
-/// <summary>Stores submitted scores.</summary>
 internal sealed class EfScoreRepository(DatabaseSession database) : IScoreRepository
 {
-	/// <inheritdoc />
 	public async Task<ScoreRecord> CreateAsync(ScoreData data)
 	{
 		var row = ToRow(0, data);
@@ -25,7 +23,6 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		return new ScoreRecord { Id = row.Id, Value = data };
 	}
 
-	/// <inheritdoc />
 	public async Task<(ScoreRecord Score, UserStats Stats)> CreateWithPlayAsync(ScoreData data, long rankedScore)
 	{
 		try
@@ -40,7 +37,6 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		}
 	}
 
-	/// <inheritdoc />
 	public async ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((ScoresDbContext context) => context.Scores
@@ -49,7 +45,6 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		return row is null ? null : ToScore(row);
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<ScoreRecord>> GetManyAsync(IReadOnlyCollection<int> ids,
 		CancellationToken ct = default)
 	{
@@ -62,7 +57,6 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		return [.. rows.Select(ToScore)];
 	}
 
-	/// <inheritdoc />
 	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery scoreQuery, PageRequest page,
 		CancellationToken ct = default)
 	{
@@ -91,14 +85,12 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		return new Page<ScoreRecord>(rows.Select(ToScore).ToList(), hasNext);
 	}
 
-	/// <inheritdoc />
 	public Task SetPpAsync(int id, double pp)
 	{
 		return database.WriteAsync((ScoresDbContext context) => context.Scores.Where(score => score.Id == id)
 			.ExecuteUpdateAsync(setters => setters.SetProperty(score => score.Pp, pp)));
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<ScoreRecord>> ListForPpAsync(int afterId, bool onlyMissing, int limit,
 		CancellationToken ct = default)
 	{
@@ -165,7 +157,6 @@ internal sealed class EfScoreRepository(DatabaseSession database) : IScoreReposi
 		return q;
 	}
 
-	/// <summary>Makes the row that stores a score, with the values it has now; the id is 0 for a score not stored yet.</summary>
 	private static ScoreRow ToRow(int id, ScoreData data)
 	{
 		return new ScoreRow

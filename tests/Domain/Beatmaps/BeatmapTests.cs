@@ -5,9 +5,6 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests.Beatmaps;
 
-/// <summary>
-///     Verifies the beatmap record's display name.
-/// </summary>
 public class BeatmapTests
 {
 	private static BeatmapRecord MakeBeatmap()

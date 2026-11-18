@@ -3,13 +3,8 @@ using System.Text;
 
 namespace Basil.Host.Irc.Support;
 
-/// <summary>Reads lines from a socket without letting one client hold unbounded memory.</summary>
 internal static class IrcLines
 {
-	/// <summary>Reads the lines of a stream until it ends.</summary>
-	/// <param name="stream">The socket stream.</param>
-	/// <param name="ct">A token that stops reading.</param>
-	/// <returns>Each line without its terminator, or <see langword="null" /> for a line longer than the limit.</returns>
 	public static async IAsyncEnumerable<string?> ReadAsync(Stream stream,
 		[EnumeratorCancellation] CancellationToken ct)
 	{

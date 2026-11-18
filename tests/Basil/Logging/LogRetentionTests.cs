@@ -3,7 +3,6 @@ using Basil.Logging;
 
 namespace Basil.Tests.Logging;
 
-/// <summary>Log files nobody wrote to for longer than the retention period are deleted; recent ones and other files stay.</summary>
 public sealed class LogRetentionTests : IDisposable
 {
 	private static readonly DateTimeOffset Now = new(2026, 10, 29, 12, 0, 0, TimeSpan.Zero);

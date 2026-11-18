@@ -11,13 +11,8 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     The commands that choose the beatmap and the mods of a room: <c>!mp map</c> and <c>!mp mods</c>. Expected
-///     replies are named by the reply that owns the wording.
-/// </summary>
 public sealed class MpMapAndModsTests
 {
-	/// <summary>The id of the beatmap the repository knows in these tests.</summary>
 	private const int KnownBeatmapId = 1234;
 
 	[Theory]
@@ -192,10 +187,6 @@ public sealed class MpMapAndModsTests
 		Assert.Equal(GameMods.NoMod, room.Settings.MatchSettings.Mods);
 	}
 
-	/// <summary>
-	///     Opens a room as "Creator" (seated in slot 1 as host, targeting the room) and seats "Player" in slot 2 with
-	///     <c>!mp join</c>.
-	/// </summary>
 	private static async Task<(Room Room, StableConnection Creator, StableConnection Player)> SetUpAsync(
 		BotHarness bot)
 	{
@@ -206,7 +197,6 @@ public sealed class MpMapAndModsTests
 		return (room, creator, player);
 	}
 
-	/// <summary>Makes the beatmap repository of the bot know a standard-mode beatmap under <see cref="KnownBeatmapId" />.</summary>
 	private static BeatmapRecord KnowBeatmap(BotHarness bot)
 	{
 		var now = DateTimeOffset.UnixEpoch;

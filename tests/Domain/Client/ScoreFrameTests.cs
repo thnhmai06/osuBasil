@@ -3,11 +3,6 @@ using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests.Client;
 
-/// <summary>
-///     Verifies the value semantics of the <see cref="ScoreFrame" /> wire record: two frames with the same
-///     property values are equal, a differing property makes them unequal, and the <c>with</c> expression
-///     produces a modified copy without touching the original.
-/// </summary>
 public class ScoreFrameTests
 {
 	private static ScoreFrame Frame => new(TimeSpan.FromMilliseconds(1000), 5,

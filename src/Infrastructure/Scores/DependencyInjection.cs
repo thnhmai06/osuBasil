@@ -12,12 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Scores;
 
-/// <summary>Registers the persistence implementations owned by Scores.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds Scores persistence implementations.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddScoresInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<ScoresDbContext>>();
@@ -30,9 +26,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Adds the rules that validate and record a submitted score.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddScoresLogic(this IServiceCollection services)
 	{
 		services.AddSingleton<IScoreRecorder, ScoreRecorder>();
@@ -40,9 +33,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Adds the background work of Scores: calculating the performance points of scores.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddScoresBackgroundWork(this IServiceCollection services)
 	{
 		services.AddHostedService<ScorePerformanceWorker>();

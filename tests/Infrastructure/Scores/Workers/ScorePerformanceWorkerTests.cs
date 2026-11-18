@@ -16,7 +16,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Scores.Tests.Workers;
 
-/// <summary>What the pp worker does with one queued score and at startup, and that a failure never stops it.</summary>
 public sealed class ScorePerformanceWorkerTests
 {
 	private readonly IBeatmapCalculator _calculator = Substitute.For<IBeatmapCalculator>();

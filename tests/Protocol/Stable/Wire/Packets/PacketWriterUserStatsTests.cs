@@ -2,11 +2,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the UserStats packet (id 11) field encodings reached through
-///     <c>PacketWriter.UserStats</c>: accuracy as a 32-bit float of accuracy / 100, and out-of-range
-///     fields throwing.
-/// </summary>
 public class PacketWriterUserStatsTests
 {
 	private static byte[] Write(

@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Carries out <see cref="WatchLobby" /> for the osu! client that asked.</summary>
 internal sealed class WatchLobbyHandler(Lobby lobby) : IRequestHandler<WatchLobby>
 {
-	/// <inheritdoc />
 	public ValueTask<Unit> Handle(WatchLobby request, CancellationToken ct)
 	{
 		lobby.ScopeTo(request.Actor).Watch();

@@ -3,18 +3,13 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard;
 
-/// <summary>The colour theme of the dashboard: a <see cref="ColorScheme" /> chosen by name and saved for the next start.</summary>
 public sealed class ThemeStore : IThemeControl
 {
-	/// <summary>The scheme used until the operator chooses another.</summary>
 	public static readonly string DefaultScheme = ColorScheme.RootLoopsDark.Name;
 
 	private readonly string _file;
 	private readonly Dictionary<string, ColorScheme> _schemes;
 
-	/// <summary>Creates the store and reads the saved choice.</summary>
-	/// <param name="directory">The folder the choice is saved in (<c>Configurations/</c>).</param>
-	/// <param name="monochrome">Whether the theme is fixed to the colours of the terminal (<c>--nocolor</c>).</param>
 	public ThemeStore(string directory, bool monochrome = false)
 	{
 		Locked = monochrome;
@@ -36,22 +31,16 @@ public sealed class ThemeStore : IThemeControl
 		Theme = Theme.FromScheme(_schemes.GetValueOrDefault(Current) ?? ColorScheme.RootLoopsDark);
 	}
 
-	/// <summary>The name of the fixed monochrome theme.</summary>
 	public const string MonochromeName = "monochrome";
 
-	/// <inheritdoc />
 	public bool Locked { get; }
 
-	/// <summary>Gets the theme in use.</summary>
 	public Theme Theme { get; private set; }
 
-	/// <inheritdoc />
 	public IReadOnlyList<string> Names => [.. _schemes.Keys.Order()];
 
-	/// <inheritdoc />
 	public string Current { get; private set; }
 
-	/// <inheritdoc />
 	public bool Set(string name)
 	{
 		if (Locked) return false;
@@ -74,7 +63,6 @@ public sealed class ThemeStore : IThemeControl
 		return true;
 	}
 
-	/// <summary>Occurs after the theme changed.</summary>
 	public event Action<Theme>? Changed;
 
 	private string? TryRead()

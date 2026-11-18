@@ -4,11 +4,9 @@ using Basil.Host.Cli.Commands;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>Every HTTP route has a console command, except the ones that have no meaning at a console.</summary>
 [Collection("CLI host")]
 public sealed partial class RouteCoverageTests(CliFixture fixture)
 {
-	/// <summary>The routes without a command, each with the reason.</summary>
 	private static readonly Dictionary<string, string> Excluded = new()
 	{
 		["POST /v1/auth/login"] = "authentication: the console is not signed in",

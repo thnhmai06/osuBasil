@@ -6,7 +6,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Scores.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the cumulative statistics of an account.</summary>
 [Collection("Persistence")]
 public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -193,9 +192,6 @@ public sealed class EfUserStatsRepositoryTests(PersistenceFixture container) : D
 		Assert.Equal(plays * (plays + 1) / 2 * 10, rows[0].Number("ranked_score"));
 	}
 
-	/// <summary>Creates the account the statistics of the test belong to.</summary>
-	/// <param name="name">The name of the account.</param>
-	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
 		return await Get<IUserRepository>()

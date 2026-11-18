@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Chat.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the general chat channels of the server.</summary>
 [Collection("Persistence")]
 public sealed class EfChannelRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -198,9 +197,6 @@ public sealed class EfChannelRepositoryTests(PersistenceFixture container) : Dat
 		Assert.Contains(channels, channel => channel.Name == "#elsewhere");
 	}
 
-	/// <summary>Builds the #osu channel with the given topic.</summary>
-	/// <param name="topic">The topic of the channel.</param>
-	/// <returns>The channel.</returns>
 	private static GeneralChannelRecord Osu(string topic)
 	{
 		return new GeneralChannelRecord { Name = "#osu", Value = new GeneralChannelData { Topic = topic } };

@@ -8,10 +8,6 @@ using Basil.Application.Diagnostics.Services;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
 
-/// <summary>
-///     Measures the process once a second: the runtime categories of the diagnostics that need nothing from the
-///     application, shared by the HTTP API and the console dashboard.
-/// </summary>
 internal sealed class RuntimeSampler : IDisposable, IClearTally
 {
 	private const int RecentExceptions = 20;
@@ -31,8 +27,6 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 	private long _lastExceptions;
 	private DateTimeOffset _lastSample;
 
-	/// <summary>Starts counting exceptions and request durations.</summary>
-	/// <param name="clock">The clock of the server.</param>
 	public RuntimeSampler(TimeProvider clock)
 	{
 		_clock = clock;
@@ -49,10 +43,8 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 		_listener.Start();
 	}
 
-	/// <summary>Gets or sets how the sample reads the number of log events dropped because the log queue was full.</summary>
 	public Func<long> LogsDropped { get; set; } = () => 0;
 
-	/// <inheritdoc />
 	public void Reset()
 	{
 		Interlocked.Exchange(ref _exceptions, 0);
@@ -60,15 +52,12 @@ internal sealed class RuntimeSampler : IDisposable, IClearTally
 		_recent.Clear();
 	}
 
-	/// <inheritdoc />
 	public void Dispose()
 	{
 		AppDomain.CurrentDomain.FirstChanceException -= OnException;
 		_listener.Dispose();
 	}
 
-	/// <summary>Takes the sample of the second; sampling again within the same second returns the same values.</summary>
-	/// <returns>The value of each category.</returns>
 	public IReadOnlyDictionary<string, object> Sample()
 	{
 		lock (_sync)

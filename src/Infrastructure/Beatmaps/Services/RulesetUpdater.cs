@@ -9,25 +9,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Services;
 
-/// <summary>Downloads the osu! ruleset packages from the NuGet feed, verifies their hash and stages their libraries.</summary>
 internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogger<RulesetUpdater> logger)
 	: IRulesetUpdater
 {
 	private const string Feed = "https://api.nuget.org/v3";
 
-	/// <inheritdoc />
 	public RulesetVersions Version()
 	{
 		return new RulesetVersions(store.Active, store.Staged());
 	}
 
-	/// <inheritdoc />
 	public async Task<RulesetCheck> CheckAsync(CancellationToken ct = default)
 	{
 		return new RulesetCheck(Version(), await LatestAsync(ct));
 	}
 
-	/// <inheritdoc />
 	public async Task<RulesetStageResult> StageAsync(CancellationToken ct = default)
 	{
 		var check = await CheckAsync(ct);
@@ -91,7 +87,6 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 		}
 	}
 
-	/// <summary>Reads the SHA-512 the feed publishes for a package (base64).</summary>
 	private async Task<string> ExpectedHashAsync(string id, string version, CancellationToken ct)
 	{
 		var leaf = await http.GetFromJsonAsync<RegistrationLeaf>($"{Feed}/registration5-gz-semver2/{id}/{version}.json",
@@ -120,7 +115,6 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 			Encoding.ASCII.GetBytes(expected));
 	}
 
-	/// <summary>Extracts only the library of the newest target framework of a package.</summary>
 	private static void Extract(string ruleset, string package, string folder)
 	{
 		using var archive = ZipFile.OpenRead(package);
@@ -134,7 +128,6 @@ internal sealed class RulesetUpdater(RulesetStore store, HttpClient http, ILogge
 		entry.ExtractToFile(Path.Combine(folder, name));
 	}
 
-	/// <summary>Reads the version of a <c>lib/netX.Y/...</c> entry; other frameworks give <see langword="null" />.</summary>
 	private static Version? FrameworkOf(string entryName)
 	{
 		var parts = entryName.Split('/');

@@ -9,22 +9,10 @@ using Basil.Protocol.Stable.Wire.Binary;
 
 namespace Basil.Protocol.Stable.Wire.Packets;
 
-/// <summary>
-///     Reads Stable packets from a client stream positioned at a packet boundary. This is the read side of the
-///     Stable binary protocol; all multibyte integers are little-endian, per the osu! protocol.
-/// </summary>
-/// <remarks>
-///     The reader decodes wire shapes only and gives no business meaning to the values it reads. A stream that ends
-///     before a value is complete throws <see cref="EndOfStreamException" />.
-/// </remarks>
-/// <param name="stream">The stream to read the packets from.</param>
 public sealed class PacketReader(Stream stream)
 {
 	private readonly BinaryReader _reader = new(stream);
 
-	/// <summary>Reads the 7-byte Stable packet header (id: u16, padding: u8, length: u32).</summary>
-	/// <returns>The packet type and the declared payload length.</returns>
-	/// <exception cref="InvalidDataException">The declared payload length is negative.</exception>
 	public (ClientPacketType Type, int Length) ReadHeader()
 	{
 		var type = (ClientPacketType)_reader.ReadUInt16();
@@ -36,16 +24,12 @@ public sealed class PacketReader(Stream stream)
 			: (type, length);
 	}
 
-	/// <summary>Reads a <see cref="StableMessage" /> from the buffer.</summary>
-	/// <returns>The message read.</returns>
 	public StableMessage ReadMessage()
 	{
 		return new StableMessage(_reader.ReadOsuString(), _reader.ReadOsuString(), _reader.ReadOsuString(),
 			_reader.ReadInt32());
 	}
 
-	/// <summary>Reads a multiplayer match from the buffer into a <see cref="RoomStatePacket" />.</summary>
-	/// <returns>The match state read.</returns>
 	public RoomStatePacket ReadMatch()
 	{
 		var id = _reader.ReadUInt16();
@@ -93,11 +77,6 @@ public sealed class PacketReader(Stream stream)
 			slotMods, seed);
 	}
 
-	/// <summary>
-	///     Reads a fixed 29-byte score frame, plus two doubles when score v2 is active, into a
-	///     <see cref="ScoreFrame" />.
-	/// </summary>
-	/// <returns>The score frame read.</returns>
 	public ScoreFrame ReadScoreFrame()
 	{
 		// 29-byte scoreframe layout: i32 time, u8 id, six u16 counts, i32 total, u16 max/current
@@ -128,8 +107,6 @@ public sealed class PacketReader(Stream stream)
 			currentHp, tagByte, scoreV2Portion);
 	}
 
-	/// <summary>Reads a single replay frame from the buffer.</summary>
-	/// <returns>The replay frame read.</returns>
 	public ReplayFrame ReadReplayFrame()
 	{
 		return new ReplayFrame(
@@ -139,8 +116,6 @@ public sealed class PacketReader(Stream stream)
 			TimeSpan.FromMilliseconds(_reader.ReadInt32()));
 	}
 
-	/// <summary>Reads a complete replay frame bundle, including its frames, action, score frame, and sequence number.</summary>
-	/// <returns>The spectator bundle read.</returns>
 	public SpectatorBundle ReadReplayFrameBundle()
 	{
 		_reader.ReadInt32(); // the leading extra value, which nothing uses
@@ -156,13 +131,6 @@ public sealed class PacketReader(Stream stream)
 		return new SpectatorBundle(action, frames, scoreFrame, sequence);
 	}
 
-	/// <summary>
-	///     Splits a client request body into its packets. Each packet carries exactly the payload its header declared, so
-	///     a reader over it can never run into the next packet.
-	/// </summary>
-	/// <param name="body">The request body: zero or more packets, each a 7-byte header and its payload.</param>
-	/// <returns>The packets of known types, in order. Packets of unknown types are skipped by their declared length.</returns>
-	/// <exception cref="EndOfStreamException">The body ends inside a header or before a declared payload is complete.</exception>
 	public static IReadOnlyList<ClientPacket> Split(ReadOnlySpan<byte> body)
 	{
 		const int headerSize = 7;
@@ -187,70 +155,47 @@ public sealed class PacketReader(Stream stream)
 		return packets;
 	}
 
-	/// <summary>Creates a reader over the payload of one packet.</summary>
-	/// <param name="payload">The payload bytes.</param>
-	/// <returns>A reader positioned at the start of <paramref name="payload" />.</returns>
 	public static PacketReader ForPayload(byte[] payload)
 	{
 		return new PacketReader(new MemoryStream(payload, false));
 	}
 
-	/// <summary>Reads an unsigned 8-bit integer.</summary>
-	/// <returns>The value read.</returns>
 	public byte ReadByte()
 	{
 		return _reader.ReadByte();
 	}
 
-	/// <summary>Reads a signed 32-bit integer.</summary>
-	/// <returns>The value read.</returns>
 	public int ReadInt32()
 	{
 		return _reader.ReadInt32();
 	}
 
-	/// <summary>Reads an unsigned 32-bit integer.</summary>
-	/// <returns>The value read.</returns>
 	public uint ReadUInt32()
 	{
 		return _reader.ReadUInt32();
 	}
 
-	/// <summary>Reads an osu! string; an absent string reads as empty.</summary>
-	/// <returns>The string read.</returns>
 	public string ReadOsuString()
 	{
 		return _reader.ReadOsuString();
 	}
 
-	/// <summary>Reads a list of 32-bit integers prefixed by a 16-bit unsigned count.</summary>
-	/// <returns>The values read.</returns>
 	public IReadOnlyList<int> ReadInt32List()
 	{
 		return _reader.ReadInt32List();
 	}
 
-	/// <summary>Reads the payload of a change-action packet.</summary>
-	/// <returns>The status read.</returns>
 	public ChangeAction ReadChangeAction()
 	{
 		return new ChangeAction(_reader.ReadByte(), _reader.ReadOsuString(), _reader.ReadOsuString(),
 			_reader.ReadUInt32(), _reader.ReadByte(), _reader.ReadInt32());
 	}
 
-	/// <summary>Reads the payload of a join-match packet.</summary>
-	/// <returns>The room id and password read.</returns>
 	public JoinMatchRequest ReadJoinMatch()
 	{
 		return new JoinMatchRequest(_reader.ReadInt32(), _reader.ReadOsuString());
 	}
 
-	/// <summary>
-	///     Reads the payload of a beatmap-info-request packet: a 32-bit count of file names with the names, then a 32-bit
-	///     count of ids with the ids.
-	/// </summary>
-	/// <returns>The file names and ids read.</returns>
-	/// <exception cref="InvalidDataException">A count is negative or above 65535.</exception>
 	public BeatmapInfoRequest ReadBeatmapInfoRequest()
 	{
 		var filenames = new string[ReadCount()];

@@ -3,7 +3,6 @@ using Basil.Host.Shared.Json;
 
 namespace Basil.Host.Rest.Tests.Http;
 
-/// <summary>Input the API cannot read is answered with the error envelope, never with an exception or an empty body.</summary>
 [Collection("REST host")]
 public sealed class InvalidInputTests(RestHostFixture fixture)
 {

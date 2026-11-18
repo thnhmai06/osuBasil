@@ -2,11 +2,6 @@ using Basil.Domain.Client;
 
 namespace Basil.Domain.Tests.Client;
 
-/// <summary>
-///     Pins the wire bit values (documented in the osu! replay format) that the replay frame reader casts
-///     bytes to: the mouse/keyboard <see cref="KeyState" /> bitfield and the osu!taiko drum-zone
-///     <see cref="TaikoDrumState" /> bitfield.
-/// </summary>
 public class SpectatorButtonValuesTests
 {
 	public static TheoryData<KeyState, int> KeysValues()

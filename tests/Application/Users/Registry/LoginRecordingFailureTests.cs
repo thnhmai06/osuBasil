@@ -2,7 +2,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Registry;
 
-/// <summary>A login whose session cannot be stored fails to the caller and leaves nobody online.</summary>
 public sealed class LoginRecordingFailureTests
 {
 	[Fact]

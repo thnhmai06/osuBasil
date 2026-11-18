@@ -8,18 +8,13 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>A line of muted text; when it has an action, the pointer over it changes its background and a click runs it.</summary>
 internal sealed partial class HoverLabel : Visual
 {
-	/// <summary>Gets whether the pointer is over the label; the framework tracks it to redraw the label.</summary>
 	[Bindable] private partial bool Hot { get; set; }
 
 	private readonly string _text;
 	private readonly Action? _click;
 
-	/// <summary>Creates the label.</summary>
-	/// <param name="text">The text.</param>
-	/// <param name="click">What a click does; <see langword="null" /> for a plain label.</param>
 	public HoverLabel(string text, Action? click)
 	{
 		_text = text;
@@ -27,13 +22,11 @@ internal sealed partial class HoverLabel : Visual
 		HorizontalAlignment = Align.Start;
 	}
 
-	/// <inheritdoc />
 	protected override SizeHints MeasureCore(in LayoutConstraints constraints)
 	{
 		return SizeHints.Fixed(new Size(_text.Length, 1));
 	}
 
-	/// <inheritdoc />
 	protected override void RenderOverride(CellBuffer buffer)
 	{
 		var rect = Bounds;
@@ -46,13 +39,11 @@ internal sealed partial class HoverLabel : Visual
 		buffer.WriteText(rect.X, rect.Y, _text.Length > rect.Width ? _text[..rect.Width] : _text, style);
 	}
 
-	/// <inheritdoc />
 	protected override void OnHoveredChanged(bool isHovered)
 	{
 		Hot = isHovered;
 	}
 
-	/// <inheritdoc />
 	protected override void OnPointerPressed(PointerEventArgs e)
 	{
 		if (_click is null || e.Button != TerminalMouseButton.Left) return;

@@ -5,13 +5,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>
-///     Brings a joined spectator and, for the first spectating connection, the spectated client into the client's
-///     spectator channel.
-/// </summary>
 internal sealed class SpectatorJoinedHandler(SpectatorChannels channels) : INotificationHandler<UserSpectatorJoined>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorJoined @event, CancellationToken ct)
 	{
 		// An HTTP API connection only watches: it takes no part in the spectator chat.

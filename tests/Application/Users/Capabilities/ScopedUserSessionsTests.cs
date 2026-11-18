@@ -11,11 +11,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Capabilities;
 
-/// <summary>
-///     Closing sessions remotely, from the table of the logout rules: a closed session cannot sign in again with what it
-///     stored, online or offline; an osu! client is disconnected but signs in again with its password; an IRC key closes
-///     alone; staff close everything of an account they outrank and leave a trace.
-/// </summary>
 public sealed class ScopedUserSessionsTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -25,7 +20,6 @@ public sealed class ScopedUserSessionsTests
 		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, ct: Token);
 	}
 
-	/// <summary>Opens an IRC key for a user acting on their own account.</summary>
 	private static async Task<(string Key, SessionRecord Session)> OpenIrcAsync(TestApplication app,
 		Connection actor, string label)
 	{

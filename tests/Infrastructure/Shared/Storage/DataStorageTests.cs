@@ -4,7 +4,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Shared.Tests.Storage;
 
-/// <summary>Contract tests of DataStorage: the files of one directory, saved atomically and never outside it.</summary>
 public sealed class DataStorageTests : IDisposable
 {
 	private readonly TempData _data = new();

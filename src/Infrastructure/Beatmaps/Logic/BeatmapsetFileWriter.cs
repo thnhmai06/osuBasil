@@ -5,16 +5,12 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
-/// <summary>Makes the files a stored beatmapset serves from its archive.</summary>
 internal sealed class BeatmapsetFileWriter(
 	IBeatmapsetReader reader,
 	IBeatmapsetStorage storage,
 	IBeatmapRepository beatmaps,
 	IBeatmapAssets assets)
 {
-	/// <summary>Makes every file a set serves from its archive, which is already stored.</summary>
-	/// <param name="set">The beatmapset, whose archive is stored.</param>
-	/// <remarks>The names are chosen the same way they were when the set was planned, so they match the records.</remarks>
 	internal async Task StoreFilesAsync(BeatmapsetRecord set)
 	{
 		await storage.ClearAsync(set);
@@ -78,12 +74,6 @@ internal sealed class BeatmapsetFileWriter(
 		await assets.BuildAsync(set, storedBeatmaps);
 	}
 
-	/// <summary>Stores one file of a set, once, under the name chosen for it.</summary>
-	/// <param name="set">The beatmapset.</param>
-	/// <param name="type">What the file is.</param>
-	/// <param name="file">The file of the set's archive, or <see langword="null" /> when the set has none of that kind.</param>
-	/// <param name="names">The name chosen for each file.</param>
-	/// <param name="done">The files already stored by this call; <paramref name="file" /> is added to it.</param>
 	private async Task SaveFileAsync(BeatmapsetRecord set, BeatmapsetFileType type, BeatmapsetContentFile? file,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> names, HashSet<BeatmapsetContentFile> done)
 	{

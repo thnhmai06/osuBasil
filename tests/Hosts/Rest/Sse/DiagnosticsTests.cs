@@ -3,7 +3,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Tests.Sse;
 
-/// <summary>Diagnostics need the privilege; a stream carries a full sample first and one per second after.</summary>
 [Collection("REST host")]
 public sealed class DiagnosticsTests(RestHostFixture fixture)
 {

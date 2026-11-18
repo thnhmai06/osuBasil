@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Scores.Logic;
 
-/// <summary>Calculates the performance points of a stored score and stores them, within the time the settings allow.</summary>
 internal sealed class ScorePerformanceCalculator(
 	IBeatmapRepository beatmaps,
 	IBeatmapCalculator calculator,
@@ -16,13 +15,6 @@ internal sealed class ScorePerformanceCalculator(
 	TimeProvider clock,
 	ILogger<ScorePerformanceCalculator> logger)
 {
-	/// <summary>Calculates and stores the performance points of a score.</summary>
-	/// <param name="score">The stored score.</param>
-	/// <param name="ct">A token that stops the calculation when the server shuts down.</param>
-	/// <returns>
-	///     <see langword="true" /> when the points were stored; <see langword="false" /> when the score keeps what it
-	///     has: it was failed, its beatmap or difficulty file is missing, or the calculation failed or ran out of time.
-	/// </returns>
 	public async Task<bool> CalculateAsync(ScoreRecord score, CancellationToken ct)
 	{
 		var data = score.Value;

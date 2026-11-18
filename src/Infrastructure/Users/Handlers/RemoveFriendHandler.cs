@@ -5,10 +5,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Carries out <see cref="RemoveFriend" /> on the account it names.</summary>
 internal sealed class RemoveFriendHandler(UserRegistry registry) : IRequestHandler<RemoveFriend, UserOutcome>
 {
-	/// <inheritdoc />
 	public async ValueTask<UserOutcome> Handle(RemoveFriend request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Relationships

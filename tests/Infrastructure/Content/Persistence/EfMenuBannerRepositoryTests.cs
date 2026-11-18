@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Content.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the banners shown on the main menu.</summary>
 [Collection("Persistence")]
 public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -194,9 +193,6 @@ public sealed class EfMenuBannerRepositoryTests(PersistenceFixture container) : 
 		Assert.Equal(Assert.Single(rows).Text("url"), found!.Url.ToString());
 	}
 
-	/// <summary>Builds a banner of the main menu.</summary>
-	/// <param name="image">The path of the image the banner shows.</param>
-	/// <param name="createdAt">The instant the banner was created at.</param>
 	[Fact]
 	public async Task LaterWindow_MoveAllowed()
 	{

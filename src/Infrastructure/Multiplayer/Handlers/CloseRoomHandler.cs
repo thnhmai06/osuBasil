@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Runs a <see cref="CloseRoom" /> on the room for the connection that asked.</summary>
 internal sealed class CloseRoomHandler : IRequestHandler<CloseRoom, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(CloseRoom request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

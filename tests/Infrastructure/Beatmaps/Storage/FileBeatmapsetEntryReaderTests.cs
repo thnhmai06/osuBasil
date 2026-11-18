@@ -4,7 +4,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Storage;
 
-/// <summary>Contract tests of the reading of an entry of the beatmapset storage.</summary>
 public sealed class FileBeatmapsetEntryReaderTests : IDisposable
 {
 	private readonly TempData _data = new();

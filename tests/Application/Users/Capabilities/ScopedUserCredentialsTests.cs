@@ -12,11 +12,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Capabilities;
 
-/// <summary>
-///     Changing a password: a user's own change needs the current password and signs out every other session; staff
-///     change another account's password under hierarchy and sign out everything; the area locked for profiles
-///     refuses everyone who does not manage accounts.
-/// </summary>
 public sealed class ScopedUserCredentialsTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

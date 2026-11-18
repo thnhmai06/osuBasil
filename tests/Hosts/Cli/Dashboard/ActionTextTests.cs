@@ -4,7 +4,6 @@ using Basil.Host.Cli.Dashboard.Tabs;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The text the buttons of the detail frame hand to the console and to confirmation dialogs.</summary>
 public sealed class ActionTextTests
 {
 	[Theory]

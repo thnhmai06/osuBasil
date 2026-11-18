@@ -5,7 +5,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Multiplayer;
 
-/// <summary>Verifies the validation of a persisted match.</summary>
 public class MatchRecordTests
 {
 	[Fact]

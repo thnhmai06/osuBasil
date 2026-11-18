@@ -8,7 +8,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>The messages that read and close the sessions of an account.</summary>
 public sealed class SessionHandlerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

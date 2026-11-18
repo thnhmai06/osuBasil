@@ -3,12 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Shared.Persistence;
 
-/// <summary>
-///     Runs the reads and the awaited writes of a repository, each on a context of its own; a write that fails reaches
-///     the caller.
-/// </summary>
-/// <param name="database">The database that creates the contexts.</param>
-/// <param name="time">The clock that paces the attempts to open a connection.</param>
 public class DatabaseSession(Database database, TimeProvider time)
 {
 	// Waits before the retries of opening a connection; the change itself is never retried.
@@ -18,12 +12,6 @@ public class DatabaseSession(Database database, TimeProvider time)
 	// A fixed number of reads at once, so a burst cannot take every pooled connection; tune if reads queue up.
 	private readonly SemaphoreSlim _readSlots = new(Environment.ProcessorCount * 2);
 
-	/// <summary>Runs a query on a context of its own; it sees what is committed.</summary>
-	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
-	/// <typeparam name="T">The type of the result.</typeparam>
-	/// <param name="query">The query to run.</param>
-	/// <param name="ct">A token that cancels the read.</param>
-	/// <returns>The result of the query.</returns>
 	public async Task<T> ReadAsync<TContext, T>(Func<TContext, Task<T>> query,
 		CancellationToken ct = default) where TContext : DbContext, IDatabaseContext<TContext>
 	{
@@ -39,13 +27,6 @@ public class DatabaseSession(Database database, TimeProvider time)
 		}
 	}
 
-	/// <summary>
-	///     Runs a change on a context of its own and stores it before returning; nothing is queued. Opening the
-	///     connection is retried a few times when the database is briefly unreachable; the change itself runs once.
-	/// </summary>
-	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
-	/// <param name="change">The change; entities it adds or modifies on the context are saved after it runs.</param>
-	/// <exception cref="AlreadyExistsException">The change stores a value that must be unique and is already stored.</exception>
 	public async Task WriteAsync<TContext>(Func<TContext, Task> change)
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
@@ -56,15 +37,6 @@ public class DatabaseSession(Database database, TimeProvider time)
 		});
 	}
 
-	/// <summary>
-	///     Runs a change like <see cref="WriteAsync{TContext}(Func{TContext, Task})" /> and gives back what the change
-	///     returned.
-	/// </summary>
-	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
-	/// <typeparam name="T">The type of the result.</typeparam>
-	/// <param name="change">The change; entities it adds or modifies on the context are saved after it runs.</param>
-	/// <returns>The result of the change.</returns>
-	/// <exception cref="AlreadyExistsException">The change stores a value that must be unique and is already stored.</exception>
 	public async Task<T> WriteAsync<TContext, T>(Func<TContext, Task<T>> change)
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
@@ -81,10 +53,6 @@ public class DatabaseSession(Database database, TimeProvider time)
 		}
 	}
 
-	/// <summary>Runs the changes of one business operation in a single transaction: all are stored or none is.</summary>
-	/// <typeparam name="TContext">The context of the module that owns the data.</typeparam>
-	/// <param name="work">The changes; entities it adds or modifies on the context are saved after it runs.</param>
-	/// <exception cref="AlreadyExistsException">A change stores a value that must be unique and is already stored.</exception>
 	public Task TransactAsync<TContext>(Func<TContext, Task> work)
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
@@ -97,8 +65,6 @@ public class DatabaseSession(Database database, TimeProvider time)
 		});
 	}
 
-	/// <summary>Opens the connection of a context; a test replaces it to make the database unreachable.</summary>
-	/// <param name="context">The context whose connection is opened.</param>
 	protected virtual Task OpenAsync(DbContext context)
 	{
 		return context.Database.OpenConnectionAsync();

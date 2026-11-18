@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Beatmaps;
 
-/// <summary>Beatmapsets and beatmaps: public reads, hidden sets, upload, management and the redirect rule.</summary>
 [Collection("REST host")]
 public sealed class BeatmapTests(RestHostFixture fixture)
 {

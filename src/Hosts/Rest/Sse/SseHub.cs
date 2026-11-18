@@ -12,17 +12,10 @@ using Microsoft.Extensions.Hosting;
 
 namespace Basil.Host.Rest.Sse;
 
-/// <summary>One event a root publishes; <paramref name="Id" /> becomes the SSE <c>id:</c> of the bundle that carries it.</summary>
-/// <param name="Data">The payload, serialized once into the bundle.</param>
-/// <param name="Id">The event id, or <see langword="null" /> for none.</param>
 public sealed record SseEvent(object Data, string? Id = null);
 
-/// <summary>What a root's poll found since the last second.</summary>
-/// <param name="Events">The new events.</param>
-/// <param name="Complete">Whether the root is over and its streams end after these events.</param>
 public sealed record SsePoll(IReadOnlyList<SseEvent> Events, bool Complete = false);
 
-/// <summary>One open SSE response: a bounded queue of ready-to-send chunks tied to the connection that opened it.</summary>
 public sealed class SseStream
 {
 	private const int Capacity = 8;
@@ -42,20 +35,16 @@ public sealed class SseStream
 		UserKey = userKey;
 	}
 
-	/// <summary>Gets the root the stream follows.</summary>
 	public string Key { get; }
 
-	/// <summary>Gets the Api connection whose token opened the stream, or <see langword="null" /> for a public stream.</summary>
 	public ApiConnection? Connection { get; }
 
 	internal string AddressKey { get; }
 
 	internal string? UserKey { get; }
 
-	/// <summary>Gets the chunks to send, in order; it ends when the stream is over.</summary>
 	public ChannelReader<byte[]> Reader => _channel.Reader;
 
-	/// <summary>Flips the stream to released; only the first call sees <see langword="true" />.</summary>
 	internal bool TryRelease()
 	{
 		return Interlocked.Exchange(ref _released, 1) == 0;
@@ -80,10 +69,6 @@ public sealed class SseStream
 	}
 }
 
-/// <summary>
-///     The one engine of every SSE route: roots collect events, and once a second the hub bundles what each root
-///     collected, serializes it once and hands the same bytes to every stream that follows the root.
-/// </summary>
 public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender sender) : IHostedService
 {
 	private static readonly byte[] KeepAlive = ": keep-alive\n\n"u8.ToArray();
@@ -96,43 +81,27 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 	private int _ticking;
 	private ITimer? _timer;
 
-	/// <summary>Gets a value that indicates whether the server is shutting down and takes no new streams.</summary>
 	public bool Stopping => _stopping;
 
-	/// <summary>Gets how many streams are open.</summary>
 	public int OpenStreams => _roots.Sum(pair => pair.Value.Count);
 
-	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
 		_timer = clock.CreateTimer(_ => Tick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
 		return Task.CompletedTask;
 	}
 
-	/// <inheritdoc />
 	public Task StopAsync(CancellationToken ct)
 	{
 		Announce(false);
 		return Task.CompletedTask;
 	}
 
-	/// <summary>
-	///     Stops taking new streams and makes the API answer new requests with 503, without touching the streams that are
-	///     open.
-	/// </summary>
 	public void StopAccepting()
 	{
 		_stopping = true;
 	}
 
-	/// <summary>
-	///     Tells every open stream that the server is going away with one final <c>server</c> event, at once and not at the
-	///     next second, and ends the streams.
-	/// </summary>
-	/// <param name="restarting">
-	///     Whether the server comes back, which the event says as <c>restarting</c> or
-	///     <c>shuttingDown</c>.
-	/// </param>
 	public void Announce(bool restarting)
 	{
 		_stopping = true;
@@ -149,26 +118,16 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		}
 	}
 
-	/// <summary>Gives an event to the root with a key; nothing happens when nobody follows it.</summary>
-	/// <param name="key">The root's key.</param>
-	/// <param name="data">The event.</param>
-	/// <param name="id">The SSE id of the event, if it has one.</param>
 	public void Publish(string key, object data, string? id = null)
 	{
 		if (_roots.TryGetValue(key, out var root)) root.Buffer.Enqueue(new SseEvent(data, id));
 	}
 
-	/// <summary>Gets how many events a root has collected since its last bundle.</summary>
-	/// <param name="key">The root's key.</param>
-	/// <returns>The number of events waiting, or 0 when nobody follows the root.</returns>
 	internal int Pending(string key)
 	{
 		return _roots.TryGetValue(key, out var root) ? root.Buffer.Count : 0;
 	}
 
-	/// <summary>Ends the streams of one connection on a root, or every stream of the root.</summary>
-	/// <param name="key">The root's key.</param>
-	/// <param name="connection">The connection whose streams end, or <see langword="null" /> for all of them.</param>
 	public void Close(string key, Connection? connection = null)
 	{
 		if (!_roots.TryGetValue(key, out var root)) return;
@@ -178,17 +137,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 				stream.Complete();
 	}
 
-	/// <summary>Opens a stream on a root; the root is created when it is the first follower.</summary>
-	/// <param name="key">The root's key.</param>
-	/// <param name="connection">The Api connection of the caller, or <see langword="null" /> when the route is public.</param>
-	/// <param name="ip">The address of the caller.</param>
-	/// <param name="snapshot">Builds the full state of the root.</param>
-	/// <param name="ct">A token that cancels the opening.</param>
-	/// <param name="poll">
-	///     Reads what changed in the root since the last second, for a root that has no feed of events; used when the
-	///     stream is the first follower of the root.
-	/// </param>
-	/// <returns>The stream and its snapshot chunk, or why none was opened.</returns>
 	public async Task<(SseStream? Stream, byte[]? Snapshot, IResult? Refusal)> OpenAsync(string key,
 		ApiConnection? connection, IPAddress ip, Func<CancellationToken, Task<(object Data, string? Id)>> snapshot,
 		CancellationToken ct, Func<CancellationToken, Task<SsePoll>>? poll = null)
@@ -228,8 +176,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		}
 	}
 
-	/// <summary>Takes a stream off its root; the last stream to leave removes the root and its buffer.</summary>
-	/// <param name="stream">The stream that ended.</param>
 	public void Release(SseStream stream)
 	{
 		stream.Complete();
@@ -261,8 +207,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many open streams.");
 	}
 
-	/// <summary>Marks the connection of a stream active, so a stream that is open keeps its session from idling out.</summary>
-	/// <param name="stream">The stream.</param>
 	public void Touch(SseStream stream)
 	{
 		if (stream.Connection is { IsOpen: true } connection) registry.MarkActive(connection);
@@ -285,7 +229,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		return Api.Error(StatusCodes.Status503ServiceUnavailable, "shuttingDown", "The server is shutting down.");
 	}
 
-	/// <summary>Runs one second of the hub: bundles each root's events and ships them to its streams.</summary>
 	internal void Tick()
 	{
 		if (Interlocked.Exchange(ref _ticking, 1) == 1) return;
@@ -349,13 +292,10 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 		private string? _snapshotId;
 		private long _snapshotTick = -1;
 
-		/// <summary>Reads the stream's next snapshot, if the stream is polled.</summary>
 		public Func<CancellationToken, Task<SsePoll>>? Poll { get; init; }
 
-		/// <summary>The events waiting to be sent.</summary>
 		public ConcurrentQueue<SseEvent> Buffer { get; } = new();
 
-		/// <summary>How many streams are open.</summary>
 		public int Count
 		{
 			get
@@ -367,7 +307,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 			}
 		}
 
-		/// <summary>Adds a stream; refused when the root already retired.</summary>
 		public bool Add(SseStream stream)
 		{
 			lock (_streams)
@@ -379,7 +318,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 			}
 		}
 
-		/// <summary>Closes a stream and forgets it.</summary>
 		public bool Remove(SseStream stream)
 		{
 			lock (_streams)
@@ -388,7 +326,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 			}
 		}
 
-		/// <summary>Retires the root when it has no stream left, so a stream that arrives later opens a fresh root.</summary>
 		public bool TryRetire()
 		{
 			lock (_streams)
@@ -400,7 +337,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 			}
 		}
 
-		/// <summary>The streams that are open now.</summary>
 		public SseStream[] Snapshot()
 		{
 			lock (_streams)
@@ -409,7 +345,6 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISender se
 			}
 		}
 
-		/// <summary>Builds the snapshot once for every stream that joins during the same second.</summary>
 		public async Task<(byte[] Data, string? Id)> SnapshotAsync(
 			Func<CancellationToken, Task<(object Data, string? Id)>> build, long tick,
 			CancellationToken ct)

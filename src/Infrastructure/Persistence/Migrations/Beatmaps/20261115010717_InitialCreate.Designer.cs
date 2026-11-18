@@ -14,7 +14,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
     [Migration("20261115010717_InitialCreate")]
     partial class InitialCreate
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

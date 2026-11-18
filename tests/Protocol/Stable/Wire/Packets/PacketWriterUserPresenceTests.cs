@@ -2,19 +2,8 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the UserPresence packet (id 83) field encodings reached through
-///     <c>PacketWriter.UserPresence</c>: the UTC offset is written plus 24, the game mode occupies the
-///     high bits of the privilege byte, and out-of-range fields throw.
-/// </summary>
 public class PacketWriterUserPresenceTests
 {
-	/// <summary>
-	///     Expected bytes for <c>UserPresence(userId: 0, name: "", ..., long/lat: 0, rank: 0)</c> with the
-	///     given offset byte and privilege byte, hand-laid-out per the osu! UserPresence layout: i32 id,
-	///     osu! string name, u8 offset+24, u8 country, u8 privileges|mode&lt;&lt;5, f32 longitude, f32 latitude,
-	///     i32 rank (payload of 20 bytes).
-	/// </summary>
 	private static byte[] Expected(byte offsetByte, byte privilegeByte)
 	{
 		return

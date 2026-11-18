@@ -7,7 +7,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>Wheel acceleration, the exceptions of the last minute, the labels of the settings and the search of the sessions.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class SmallPartsTests
 {

@@ -9,7 +9,6 @@ using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
 namespace Basil.Infrastructure.Beatmaps.Adapters;
 
-/// <summary>Reads what a beatmapset archive contains, with ppy's osu!lazer legacy decoder.</summary>
 internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 {
 	// At most 2,000 files per set; raise this only if legitimate osu! sets exceed it.
@@ -25,10 +24,6 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 
 	private const int BufferSize = 81920;
 
-	/// <inheritdoc />
-	/// <remarks>
-	///     Blank artist, title, or creator resolve to <c>Unknown</c>, because the domain rejects blank values.
-	/// </remarks>
 	public async Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken ct = default)
 	{
 		ZipArchive zip;
@@ -62,7 +57,6 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		}
 	}
 
-	/// <summary>Decodes the difficulties of a set's files and assembles what the set contains.</summary>
 	private static async Task<BeatmapsetContent?> ReadContentAsync(IReadOnlyList<BeatmapsetContentFile> files,
 		IAsyncDisposable? source, CancellationToken ct)
 	{
@@ -121,7 +115,6 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		return new BeatmapsetContent(onlineSetId, artist, title, creator, difficulties, files, storyboard, source);
 	}
 
-	/// <summary>Decodes one <c>.osu</c> file, or <see langword="null" /> when it is malformed.</summary>
 	private static async Task<DecodedDifficulty?> TryDecodeAsync(BeatmapsetContentFile file,
 		CancellationToken ct)
 	{
@@ -160,10 +153,6 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		}
 	}
 
-	/// <summary>
-	///     Reads the video a <c>.osu</c> file names in its <c>[Events]</c> section (<see langword="null" /> when it names
-	///     none) and whether that section holds a storyboard object.
-	/// </summary>
 	private static async Task<(string? Video, bool Storyboard)> ReadEventsAsync(Stream content,
 		CancellationToken ct)
 	{
@@ -192,7 +181,6 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		return (video, storyboard);
 	}
 
-	/// <summary>The quoted payload of <paramref name="line" /> when it begins with <paramref name="prefix" />.</summary>
 	private static string? FirstQuoted(string line, string prefix)
 	{
 		if (!line.StartsWith(prefix, StringComparison.Ordinal)) return null;
@@ -202,22 +190,16 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		return line[(first + 1)..last];
 	}
 
-	/// <summary>Finds the file a difficulty names, or <see langword="null" /> when the set has no such file.</summary>
 	private static BeatmapsetContentFile? FindFile(Dictionary<string, BeatmapsetContentFile> files, string? name)
 	{
 		return string.IsNullOrEmpty(name) ? null : files.GetValueOrDefault(Normalise(name));
 	}
 
-	/// <summary>Replaces backslashes with forward slashes.</summary>
 	private static string Normalise(string name)
 	{
 		return name.Replace('\\', '/');
 	}
 
-	/// <summary>
-	///     Whether a set's files are acceptable: every name is safe and unique ignoring case, and the set stays within
-	///     the file count and total size limits.
-	/// </summary>
 	private static bool IsAcceptable(IReadOnlyList<BeatmapsetContentFile> files)
 	{
 		if (files.Count > MaxFiles) return false;
@@ -236,7 +218,6 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		return true;
 	}
 
-	/// <summary>Whether a set-relative file name stays inside the set's own folder.</summary>
 	private static bool IsSafeName(string name)
 	{
 		if (string.IsNullOrEmpty(name)) return false;
@@ -245,9 +226,5 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		return !name.Split('/').Any(segment => segment is "" or "." or "..");
 	}
 
-	/// <summary>A decoded difficulty together with the video and storyboard its <c>.osu</c> file declares.</summary>
-	/// <param name="Beatmap">The decoded difficulty.</param>
-	/// <param name="Video">The video's name, or <see langword="null" /> when the file names none.</param>
-	/// <param name="Storyboard">Whether the file draws a storyboard of its own.</param>
 	private sealed record DecodedDifficulty(LazerBeatmap Beatmap, string? Video, bool Storyboard);
 }

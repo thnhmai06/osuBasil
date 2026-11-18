@@ -5,20 +5,8 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>Draws the title of a group the one way every table and form of the dashboard does: <c>▾ ── Name (4) ───</c>.</summary>
 internal static class GroupTitle
 {
-	/// <summary>Draws a title on one row.</summary>
-	/// <param name="buffer">What to draw on.</param>
-	/// <param name="rect">The area the title spans; it is drawn on row <paramref name="y" /> of it.</param>
-	/// <param name="y">The row.</param>
-	/// <param name="glyphs">The characters to draw with.</param>
-	/// <param name="noColor">Whether the dashboard is monochrome.</param>
-	/// <param name="theme">The theme in use.</param>
-	/// <param name="name">The name of the group; its first letter is shown in capital.</param>
-	/// <param name="count">The size shown next to the name.</param>
-	/// <param name="open">Whether the group is open.</param>
-	/// <param name="selected">Whether the title is the one the operator is on.</param>
 	public static void Draw(CellBuffer buffer, Rectangle rect, int y, Glyphs glyphs, bool noColor, Theme theme,
 		string name, string count, bool open, bool selected)
 	{

@@ -10,11 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     The commands that start and stop rounds and countdowns: <c>!mp start</c>, <c>timer</c>, <c>aborttimer</c> and
-///     <c>abort</c>. Expected replies are named by the reply that owns the wording; the countdown announces itself in
-///     the room, so the commands themselves say nothing when a countdown starts.
-/// </summary>
 public sealed class MpRoundsTests
 {
 	[Fact]
@@ -248,10 +243,6 @@ public sealed class MpRoundsTests
 		return bot.App.Provider.GetRequiredService<RoomCountdowns>().IsRunning(room);
 	}
 
-	/// <summary>
-	///     Opens a room as "Creator" (seated in slot 1 as host, targeting the room) and seats "Player" with
-	///     <c>!mp join</c>; a beatmap is selected on request through the room, as the creator.
-	/// </summary>
 	private static async Task<(Room Room, StableConnection Creator, StableConnection Player)> SetUpAsync(
 		BotHarness bot,
 		bool withBeatmap = false)

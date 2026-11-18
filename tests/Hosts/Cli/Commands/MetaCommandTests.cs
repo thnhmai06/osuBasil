@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>Services of the server with the control of its process replaced, so a test can shut a server down.</summary>
 internal sealed class WithControl(IServiceProvider inner, IServerControl control) : IServiceProvider
 {
 	public object? GetService(Type serviceType)
@@ -62,7 +61,6 @@ internal sealed class CapturedLog : ILoggerProvider
 	}
 }
 
-/// <summary>The commands that exist only on the console, and how a command is run and recorded.</summary>
 [Collection("CLI host")]
 public sealed class MetaCommandTests(CliFixture fixture)
 {

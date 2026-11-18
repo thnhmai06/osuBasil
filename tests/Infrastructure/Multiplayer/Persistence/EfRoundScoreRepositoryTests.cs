@@ -10,7 +10,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of which round each score belongs to.</summary>
 [Collection("Persistence")]
 public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -221,18 +220,11 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		Assert.Empty(listed);
 	}
 
-	/// <summary>Creates a match the round scores of the test belong to.</summary>
-	/// <param name="name">The name of the match.</param>
-	/// <returns>The match.</returns>
 	private async Task<MatchRecord> CreateMatchAsync(string name)
 	{
 		return await CreateStoredMatchAsync(name, First);
 	}
 
-	/// <summary>Creates a round of a match.</summary>
-	/// <param name="match">The match the round belongs to.</param>
-	/// <param name="index">The number of the round within its match.</param>
-	/// <returns>The round.</returns>
 	private async Task<Round> CreateRoundAsync(MatchRecord match, int index)
 	{
 		var round = StoredMatches.Round(match, index, First);
@@ -240,10 +232,6 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		return round;
 	}
 
-	/// <summary>Creates a round played in two opposing teams.</summary>
-	/// <param name="match">The match the round belongs to.</param>
-	/// <param name="index">The number of the round within its match.</param>
-	/// <returns>The round.</returns>
 	private async Task<Round> CreateTeamRoundAsync(MatchRecord match, int index)
 	{
 		var round = StoredMatches.TeamRound(match, index, First);
@@ -251,20 +239,12 @@ public sealed class EfRoundScoreRepositoryTests(PersistenceFixture container) : 
 		return round;
 	}
 
-	/// <summary>Creates the account that played.</summary>
-	/// <param name="name">The name of the account.</param>
-	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
 		return await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = name });
 	}
 
-	/// <summary>Creates a play of the given account.</summary>
-	/// <param name="player">The account that played.</param>
-	/// <param name="totalScore">The total score the play achieved.</param>
-	/// <param name="timestamp">The moment the play happened.</param>
-	/// <returns>The play.</returns>
 	private async Task<ScoreRecord> CreateScoreAsync(UserRecord player, int totalScore, DateTimeOffset timestamp)
 	{
 		return await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"),

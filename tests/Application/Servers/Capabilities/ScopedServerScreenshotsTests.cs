@@ -11,13 +11,6 @@ using NSubstitute;
 
 namespace Basil.Application.Servers.Tests.Capabilities;
 
-/// <summary>
-///     Behaviour of screenshot upload and deletion, from the XML contract of <see cref="ScopedServerScreenshots" />: an
-///     upload needs <see cref="UserPrivileges.Player" />, is at most the configured number of bytes and a PNG
-///     or JPEG
-///     of at most the configured pixels per side, told from content; a deletion needs
-///     <see cref="UserPrivileges.Moderator" />.
-/// </summary>
 public sealed class ScopedServerScreenshotsTests
 {
 	// The defaults of ServerSettings.Uploads: 10 MiB and 8192 pixels per side.

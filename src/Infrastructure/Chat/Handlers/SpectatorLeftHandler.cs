@@ -5,10 +5,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>Takes a left spectator and, once none remain, the spectated client out of the client's spectator channel.</summary>
 internal sealed class SpectatorLeftHandler(SpectatorChannels channels) : INotificationHandler<UserSpectatorLeft>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorLeft @event, CancellationToken ct)
 	{
 		if (@event.Spectator is ApiConnection || channels.Find(@event.Host) is not { } channel)

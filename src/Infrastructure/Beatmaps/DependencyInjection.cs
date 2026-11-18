@@ -17,12 +17,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps;
 
-/// <summary>Registers the persistence and capability implementations owned by Beatmaps.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds Beatmaps persistence and capability implementations.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBeatmapsInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
@@ -49,10 +45,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Reads the asset settings (<c>Basil:Assets</c>) once, so a later edit of the files waits for the next start.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <param name="configuration">The configuration to read.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBeatmapsInfrastructureOptions(this IServiceCollection services,
 		IConfiguration configuration)
 	{
@@ -60,9 +52,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Adds the rules that import, plan, store and scan beatmapsets.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBeatmapsLogic(this IServiceCollection services)
 	{
 		services.AddSingleton<DifficultyAnalyser>();
@@ -76,9 +65,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Adds the background work of Beatmaps: keeping the beatmapsets in step with their stored files.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBeatmapsBackgroundWork(this IServiceCollection services)
 	{
 		services.AddHostedService<BeatmapsetStorageWatcher>();

@@ -3,7 +3,6 @@ using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests.Scores;
 
-/// <summary>Verifies the validation of the scoring fields of a submitted play.</summary>
 public class ScoreDataTests
 {
 	private static ScoreData Make(int? userId = null, GameMode mode = GameMode.Standard, Grade grade = Grade.S,

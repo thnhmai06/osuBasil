@@ -3,13 +3,8 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Packets;
 
-/// <summary>Runs the packets of a client request in order, so one bad packet cannot spoil the rest.</summary>
 internal sealed class PacketDispatcher(PacketHandlers handlers, ILogger<PacketDispatcher> logger)
 {
-	/// <summary>Handles every packet of a request body for a connection.</summary>
-	/// <param name="actor">The connection that sent the body.</param>
-	/// <param name="body">The raw request body.</param>
-	/// <param name="ct">A token that cancels the handling.</param>
 	public async Task DispatchAsync(Connection actor, byte[] body, CancellationToken ct)
 	{
 		IReadOnlyList<ClientPacket> packets;

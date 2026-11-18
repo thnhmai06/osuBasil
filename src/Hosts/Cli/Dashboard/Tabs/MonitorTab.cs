@@ -12,11 +12,6 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>
-///     The server: eight graphs over the last fifteen minutes with their current values inside, a box of the other
-///     measurements for each category under them, and at the end of the page the explanation of the measurement that is selected. The whole page
-///     scrolls; the graphs and the boxes stand in the same columns.
-/// </summary>
 internal sealed class MonitorTab : ITabView
 {
 	private const int WarningPercent = 70;
@@ -57,13 +52,6 @@ internal sealed class MonitorTab : ITabView
 	private string? _selected;
 	private object? _seen;
 
-	/// <summary>Creates the tab.</summary>
-	/// <param name="model">What the dashboard sampled.</param>
-	/// <param name="themes">The theme that colours the graphs.</param>
-	/// <param name="glyphs">The characters to draw with.</param>
-	/// <param name="options">Tells whether the dashboard is monochrome.</param>
-	/// <param name="size">The size of the terminal in columns and rows; it must read the state that changes on resize.</param>
-	/// <param name="clock">Measures the time between the notches of the mouse wheel.</param>
 	public MonitorTab(DashboardModel model, ThemeStore themes, Glyphs glyphs, CliOptions options,
 		Func<(int Columns, int Rows)> size, TimeProvider clock)
 	{
@@ -117,28 +105,23 @@ internal sealed class MonitorTab : ITabView
 			.Stretch();
 	}
 
-	/// <inheritdoc />
 	public Visual View { get; }
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		Update();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 		Arrange();
 		if (!ReferenceEquals(_seen, _model.Diagnostics)) Update();
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		Update();

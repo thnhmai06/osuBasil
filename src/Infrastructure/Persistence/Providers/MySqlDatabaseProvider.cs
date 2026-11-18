@@ -6,12 +6,10 @@ using MySql.Data.MySqlClient;
 
 namespace Basil.Infrastructure.Persistence.Providers;
 
-/// <summary>The MySQL engine of the server: pooled connections, snake_case names and the migrations of this assembly.</summary>
 public sealed class MySqlDatabaseProvider : IDatabaseProvider
 {
 	private const int DuplicateEntry = 1062;
 
-	/// <inheritdoc />
 	public IDatabaseSource CreateSource(string connectionString, int poolSize)
 	{
 		var builder = new MySqlConnectionStringBuilder(connectionString);
@@ -19,7 +17,6 @@ public sealed class MySqlDatabaseProvider : IDatabaseProvider
 		return new Source(builder.ConnectionString);
 	}
 
-	/// <inheritdoc />
 	public void Configure(DbContextOptionsBuilder builder, IDatabaseSource source, string historyTable)
 	{
 		builder.UseMySQL(((Source)source).ConnectionString, mysql => mysql.MigrationsHistoryTable(historyTable)
@@ -28,13 +25,11 @@ public sealed class MySqlDatabaseProvider : IDatabaseProvider
 			.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
 	}
 
-	/// <inheritdoc />
 	public bool IsUniqueViolation(Exception exception)
 	{
 		return Chain(exception).OfType<MySqlException>().Any(error => error.Number == DuplicateEntry);
 	}
 
-	/// <inheritdoc />
 	public bool IsConnectionFailure(Exception exception)
 	{
 		return Chain(exception).Any(error => error is MySqlException { IsTransient: true } or SocketException

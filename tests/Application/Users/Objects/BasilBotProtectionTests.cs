@@ -4,10 +4,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Objects;
 
-/// <summary>
-///     BasilBot's account is a fixed record: nobody, whatever they hold, deletes it, restricts it, grants it
-///     privileges or sets its password.
-/// </summary>
 public sealed class BasilBotProtectionTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

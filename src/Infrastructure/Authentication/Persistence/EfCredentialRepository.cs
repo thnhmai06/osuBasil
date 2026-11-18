@@ -7,7 +7,6 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Authentication.Persistence;
 
-/// <summary>Stores the login credential of each user.</summary>
 internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCache memory) : ICredentialRepository
 {
 	// A hash of a fixed password, checked for an account that has no credential yet, so an unknown account takes
@@ -17,7 +16,6 @@ internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCa
 	// The bcrypt hash of each account that signed in, read on every login.
 	private readonly CacheAside<int, string> _hashes = new(memory);
 
-	/// <inheritdoc />
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken ct = default)
 	{
 		var userId = credentials.User.Id;
@@ -33,7 +31,6 @@ internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCa
 		return BCrypt.Net.BCrypt.Verify(credentials.PasswordHash.HashValue, stored);
 	}
 
-	/// <inheritdoc />
 	public async Task CreateOrUpdateAsync(Credentials credentials)
 	{
 		var row = new CredentialRow
@@ -46,7 +43,6 @@ internal sealed class EfCredentialRepository(DatabaseSession database, IMemoryCa
 		_hashes.Remove(row.UserId);
 	}
 
-	/// <inheritdoc />
 	public async Task DeleteAsync(UserRecord user)
 	{
 		await database.WriteAsync((AuthenticationDbContext context) => context.Credentials

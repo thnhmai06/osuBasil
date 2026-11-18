@@ -7,7 +7,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;
 
-/// <summary>Contract tests of the awaited writes of a repository.</summary>
 [Collection("Persistence")]
 public sealed class DatabaseSessionTests(PersistenceFixture container) : DatabaseTests(container)
 {

@@ -10,7 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>The <c>users</c> commands: what they print and what they change in the server.</summary>
 [Collection("CLI host")]
 public sealed class UserCommandTests(CliFixture fixture)
 {

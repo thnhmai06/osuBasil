@@ -9,10 +9,6 @@ using static Basil.Testing.BeatmapsetWorld;
 
 namespace Basil.Application.Beatmaps.Tests.Capabilities;
 
-/// <summary>
-///     Managing a stored beatmapset as a connection: deleting, hiding and locking need
-///     <see cref="UserPrivileges.Tournament" />, and a locked set cannot be deleted.
-/// </summary>
 public sealed class ScopedBeatmapsetTests
 {
 	private static readonly UserPrivileges Manager = UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
@@ -71,7 +67,6 @@ public sealed class ScopedBeatmapsetTests
 		Assert.NotEmpty(world.Sets.Records);
 	}
 
-	/// <summary>An actor with privileges fixed in advance, as a caller other than a connection would be.</summary>
 	[Fact]
 	public async Task NewSet_IsRanked()
 	{

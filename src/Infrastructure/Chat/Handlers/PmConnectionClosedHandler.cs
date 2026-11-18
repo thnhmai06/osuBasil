@@ -4,13 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>
-///     Takes a closed connection out of its user's private-message channel and closes the channel when the user goes
-///     offline.
-/// </summary>
 internal sealed class PmConnectionClosedHandler(PmChannels channels) : INotificationHandler<UserConnectionClosed>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var user = @event.Connection.User;

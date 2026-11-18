@@ -3,7 +3,6 @@ using Basil.Host.Cli.Dashboard.Shell;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The size ladder that every tab chooses its layout from.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class LayoutTests
 {

@@ -2,116 +2,74 @@ using System.Collections.Immutable;
 
 namespace Basil.Domain.Mechanics;
 
-/// <summary>
-///     Represents the gameplay modifier flags an osu! client can apply to a play.
-/// </summary>
-/// <remarks>
-///     A bitwise combination of the individual mods. The key-count mods and the cooperative key mod
-///     apply to osu!mania, and several mods apply to specific game modes only.
-/// </remarks>
 [Flags]
 public enum GameMods
 {
-	/// <summary>No mod is applied.</summary>
 	NoMod = 0,
 
-	/// <summary>Prevents the play from failing on a miss.</summary>
 	NoFail = 1 << 0,
 
-	/// <summary>Makes the beatmap easier to play.</summary>
 	Easy = 1 << 1,
 
-	/// <summary>Enables touch screen input. The old name for this mod was NoVideo.</summary>
 	TouchScreen = 1 << 2, // old: 'NoVideo'
 
-	/// <summary>Fades the hit objects out shortly before they are hit.</summary>
 	Hidden = 1 << 3,
 
-	/// <summary>Makes the beatmap harder to play.</summary>
 	HardRock = 1 << 4,
 
-	/// <summary>Fails the play on the first miss.</summary>
 	SuddenDeath = 1 << 5,
 
-	/// <summary>Speeds the beatmap up.</summary>
 	DoubleTime = 1 << 6,
 
-	/// <summary>Allows the play to be completed without clicking the hit objects.</summary>
 	Relax = 1 << 7,
 
-	/// <summary>Slows the beatmap down.</summary>
 	HalfTime = 1 << 8,
 
-	/// <summary>Applies the DoubleTime speed change together with a pitch shift.</summary>
 	Nightcore = 1 << 9,
 
-	/// <summary>Limits the visible area around the cursor.</summary>
 	Flashlight = 1 << 10,
 
-	/// <summary>Plays the beatmap automatically.</summary>
 	Autoplay = 1 << 11,
 
-	/// <summary>Automatically completes spinners.</summary>
 	SpunOut = 1 << 12,
 
-	/// <summary>Automates the cursor, leaving only the clicks to the player.</summary>
 	Autopilot = 1 << 13,
 
-	/// <summary>Fails the play on the first non-300 judgment.</summary>
 	Perfect = 1 << 14,
 
-	/// <summary>Restricts the play to four keys.</summary>
 	Key4 = 1 << 15,
 
-	/// <summary>Restricts the play to five keys.</summary>
 	Key5 = 1 << 16,
 
-	/// <summary>Restricts the play to six keys.</summary>
 	Key6 = 1 << 17,
 
-	/// <summary>Restricts the play to seven keys.</summary>
 	Key7 = 1 << 18,
 
-	/// <summary>Restricts the play to eight keys.</summary>
 	Key8 = 1 << 19,
 
-	/// <summary>Fades the notes in during the play.</summary>
 	FadeIn = 1 << 20,
 
-	/// <summary>Randomizes the column layout of the notes.</summary>
 	Random = 1 << 21,
 
-	/// <summary>Plays the beatmap as a cinematic without gameplay.</summary>
 	Cinema = 1 << 22,
 
-	/// <summary>Shows a target score the player should aim for.</summary>
 	Target = 1 << 23,
 
-	/// <summary>Restricts the play to nine keys.</summary>
 	Key9 = 1 << 24,
 
-	/// <summary>Combines two key counts for cooperative play.</summary>
 	KeyCoop = 1 << 25,
 
-	/// <summary>Restricts the play to one key.</summary>
 	Key1 = 1 << 26,
 
-	/// <summary>Restricts the play to three keys.</summary>
 	Key3 = 1 << 27,
 
-	/// <summary>Restricts the play to two keys.</summary>
 	Key2 = 1 << 28,
 
-	/// <summary>Uses the ScoreV2 scoring rules.</summary>
 	ScoreV2 = 1 << 29,
 
-	/// <summary>Mirrors the column layout of the notes.</summary>
 	Mirror = 1 << 30
 }
 
-/// <summary>
-///     Provides the business rules for combining and parsing <see cref="GameMods" /> values.
-/// </summary>
 public static class ModsExtensions
 {
 	private static readonly ImmutableDictionary<string, GameMods> ModStrToMod = ImmutableDictionary.CreateRange(
@@ -185,18 +143,8 @@ public static class ModsExtensions
 			["|18K|"] = GameMods.Key9 | GameMods.KeyCoop
 		});
 
-	/// <param name="gameMods">The mod combination to filter.</param>
 	extension(GameMods gameMods)
 	{
-		/// <summary>
-		///     Removes invalid mod combinations, leaving only the legal ones.
-		/// </summary>
-		/// <param name="mode">The gamemode used.</param>
-		/// <returns>The filtered mod combination.</returns>
-		/// <remarks>
-		///     Resolves conflicts between speed mods, drops mods that do not apply to the given mode,
-		///     and keeps only the first key mod when several are set.
-		/// </remarks>
 		public GameMods RemoveInvalidMods(GameMode mode)
 		{
 			var result = gameMods;
@@ -209,12 +157,6 @@ public static class ModsExtensions
 			return result;
 		}
 
-		/// <summary>Reduces the mods to the ones that change the difficulty of a beatmap in a game mode.</summary>
-		/// <param name="mode">The game mode the beatmap is played in.</param>
-		/// <returns>
-		///     The difficulty-changing mods of the legal combination, with Nightcore as DoubleTime because both play at the same
-		///     rate; two plays with the same result have the same difficulty.
-		/// </returns>
 		public GameMods ReduceToDifficulty(GameMode mode)
 		{
 			var reduced = gameMods.RemoveInvalidMods(mode) & GameModsGroups.Difficulty;
@@ -223,22 +165,12 @@ public static class ModsExtensions
 				: (reduced & ~GameMods.Nightcore) | GameMods.DoubleTime;
 		}
 
-		/// <summary>Determines whether the mods can be used together in a game mode.</summary>
-		/// <param name="mode">The game mode.</param>
-		/// <returns><see langword="true" /> when removing the mods invalid for the mode would change nothing.</returns>
-		/// <remarks>
-		///     The wire form a client sends for a mod counts as that mod: Nightcore arrives as DoubleTime and
-		///     Nightcore together, and Perfect as Perfect and SuddenDeath together.
-		/// </remarks>
 		public bool IsValid(GameMode mode)
 		{
 			var canonical = Canonical(gameMods);
 			return canonical == canonical.RemoveInvalidMods(mode);
 		}
 
-		/// <summary>Throws when the mods cannot be used together in a game mode.</summary>
-		/// <param name="mode">The game mode.</param>
-		/// <exception cref="ArgumentException">The mods are not valid for the mode.</exception>
 		public void ThrowIfInvalid(GameMode mode)
 		{
 			if (!gameMods.IsValid(mode))
@@ -246,13 +178,6 @@ public static class ModsExtensions
 		}
 	}
 
-	/// <summary>
-	///     Parses a mod string of two-character chunks into a <see cref="GameMods" /> value.
-	/// </summary>
-	/// <param name="s">The mod string, for example, "HDDTRX".</param>
-	/// <returns>
-	///     The parsed mod combination. Chunks that are not recognized mod codes are ignored.
-	/// </returns>
 	public static GameMods FromModString(string s)
 	{
 		var mods = GameMods.NoMod;
@@ -266,12 +191,6 @@ public static class ModsExtensions
 		return mods;
 	}
 
-	/// <summary>
-	///     Parses a now-playing mod string into a <see cref="GameMods" /> value.
-	/// </summary>
-	/// <param name="s">The space-delimited now-playing mod string, for example, "+Hidden +DoubleTime".</param>
-	/// <param name="mode">The gamemode used to filter the parsed mods.</param>
-	/// <returns>The parsed mod combination, filtered for the given mode.</returns>
 	public static GameMods FromNowPlayingString(string s, GameMode mode)
 	{
 		var mods = GameMods.NoMod;
@@ -283,11 +202,6 @@ public static class ModsExtensions
 		return mods.RemoveInvalidMods(mode);
 	}
 
-	/// <summary>
-	///     Reduces a mod combination the way a client sends it to the combination the server reasons about.
-	/// </summary>
-	/// <param name="mods">The mod combination to reduce.</param>
-	/// <returns>The combination without the bits a client adds to send a single mod.</returns>
 	private static GameMods Canonical(GameMods mods)
 	{
 		if ((mods & (GameMods.DoubleTime | GameMods.Nightcore)) == (GameMods.DoubleTime | GameMods.Nightcore))
@@ -393,23 +307,17 @@ public static class ModsExtensions
 	}
 }
 
-/// <summary>The combinations of <see cref="GameMods" /> the server reasons about.</summary>
 public static class GameModsGroups
 {
-	/// <summary>The mods that change the playback rate of the beatmap.</summary>
 	public const GameMods SpeedChanging = GameMods.DoubleTime | GameMods.Nightcore | GameMods.HalfTime;
 
-	/// <summary>The mods that restrict the play to a specific key count.</summary>
 	public const GameMods Key = GameMods.Key1 | GameMods.Key2 | GameMods.Key3 | GameMods.Key4 | GameMods.Key5 |
 	                            GameMods.Key6 | GameMods.Key7 | GameMods.Key8 | GameMods.Key9;
 
-	/// <summary>The mods that only apply to osu!standard.</summary>
 	public const GameMods OsuSpecific = GameMods.Autopilot | GameMods.SpunOut | GameMods.Target;
 
-	/// <summary>The mods that only apply to osu!mania.</summary>
 	public const GameMods ManiaSpecific = GameMods.Mirror | GameMods.Random | GameMods.FadeIn | GameMods.KeyCoop | Key;
 
-	/// <summary>The mods that change the difficulty of a beatmap, and so its star rating and pp.</summary>
 	public const GameMods Difficulty = GameMods.Easy | GameMods.HardRock | GameMods.DoubleTime | GameMods.Nightcore |
 	                                   GameMods.HalfTime | GameMods.Flashlight | GameMods.Hidden |
 	                                   GameMods.TouchScreen | GameMods.KeyCoop | Key;

@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Anticheat.Tests.Services;
 
-/// <summary>Verifies how the flags a game client reports become anticheat events.</summary>
 public sealed class AnticheatReporterTests
 {
 	[Fact]

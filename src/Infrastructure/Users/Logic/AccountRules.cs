@@ -9,14 +9,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Logic;
 
-/// <inheritdoc />
 internal sealed class AccountRules(
 	IUserRepository users,
 	ICredentialRepository credentials,
 	ISettingsRepository settings,
 	ILogger<AccountRules> logger) : IAccountRules
 {
-	/// <inheritdoc />
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
 		CancellationToken ct)
 	{
@@ -30,7 +28,6 @@ internal sealed class AccountRules(
 			: null;
 	}
 
-	/// <inheritdoc />
 	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
 		UserPrivileges? privileges)
 	{
@@ -59,7 +56,6 @@ internal sealed class AccountRules(
 		return (user, null);
 	}
 
-	/// <inheritdoc />
 	public async Task<(UserRecord? User, LoginFailure? Failure)> FindLoginUserAsync(LoginAttempt attempt,
 		CancellationToken ct)
 	{

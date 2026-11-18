@@ -63,13 +63,6 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	/// <summary>Starts a countdown after checking what the server no longer checks for it.</summary>
-	/// <param name="context">Who sent the command and how to answer it.</param>
-	/// <param name="room">The room the countdown runs in.</param>
-	/// <param name="seconds">How long the countdown runs.</param>
-	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> when it started; otherwise the reason was replied.</returns>
 	private async Task<bool> StartCountdownAsync(CommandContext context, Room room, int seconds,
 		bool startsRound,
 		CancellationToken ct)

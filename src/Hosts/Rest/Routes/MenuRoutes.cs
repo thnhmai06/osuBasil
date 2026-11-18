@@ -12,12 +12,10 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>FAQ entries and the main menu: public to read, for content managers to change.</summary>
 internal static class MenuRoutes
 {
 	private const long MaxImageBytes = 10L * 1024 * 1024;
 
-	/// <summary>Maps the Menu routes.</summary>
 	public static void MapMenu(this RouteGroupBuilder v1)
 	{
 		var faqs = v1.MapGroup("/faqs").WithTags("Faqs");
@@ -213,6 +211,5 @@ internal static class MenuRoutes
 			context.RequestAborted)).Answer();
 	}
 
-	/// <summary>The text of a FAQ entry.</summary>
 	public sealed record FaqRequest(string? Text);
 }

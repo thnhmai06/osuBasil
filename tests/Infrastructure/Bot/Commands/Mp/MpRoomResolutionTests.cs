@@ -8,13 +8,8 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     Which room a room-scoped <c>!mp</c> command applies to: the room of the channel, else the room remembered by
-///     <c>!mp in</c>, else the room the typist plays in. Expected replies are named by the reply that owns the wording.
-/// </summary>
 public sealed class MpRoomResolutionTests
 {
-	/// <summary>Everyone who must lock a room they do not create can do so with this, wherever they sit.</summary>
 	private static readonly UserPrivileges ManagerPrivileges =
 		UserPrivilegesExtensions.Default | UserPrivileges.Tournament;
 

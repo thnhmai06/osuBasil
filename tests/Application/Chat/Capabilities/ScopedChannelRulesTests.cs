@@ -17,12 +17,6 @@ using NSubstitute;
 
 namespace Basil.Application.Chat.Tests.Capabilities;
 
-/// <summary>
-///     Behaviour of <see cref="ScopedChannel" /> and <see cref="ScopedGeneralChannel" /> that
-///     <see cref="ScopedChannelTests" /> does not reach: reconnecting members, closed channels, the exact message-length
-///     boundary, private-message exceptions, and what a configuration change applies, rejects and persists. Expected
-///     values come from the XML contracts of the two types.
-/// </summary>
 public sealed class ScopedChannelRulesTests
 {
 	private const string ChannelName = "#rules";

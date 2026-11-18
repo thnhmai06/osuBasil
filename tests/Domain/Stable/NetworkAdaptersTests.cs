@@ -3,7 +3,6 @@ using Basil.Domain.Cryptography;
 
 namespace Basil.Domain.Tests.Stable;
 
-/// <summary>Verifies the Domain rules for network-adapter fingerprints reported by osu! clients.</summary>
 public class NetworkAdaptersTests
 {
 	private static NetworkAdapters MakeAdapters(string adapters)

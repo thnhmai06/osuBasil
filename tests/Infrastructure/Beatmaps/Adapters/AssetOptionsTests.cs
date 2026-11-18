@@ -7,7 +7,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>Where the audio previews are built: the configured directory, or one under the server's cache.</summary>
 [Collection("Persistence")]
 public sealed class AssetOptionsTests(PersistenceFixture container) : DatabaseTests(container)
 {

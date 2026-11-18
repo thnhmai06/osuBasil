@@ -7,10 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Users.Tests.Objects;
 
-/// <summary>
-///     Ended sessions are deleted once they are older than <c>Sessions.RetentionPeriod</c> (90 days by default); active
-///     sessions and the moderation log stay.
-/// </summary>
 public sealed class SessionRetentionTests
 {
 	private static readonly TimeSpan DefaultRetention = TimeSpan.FromDays(90);

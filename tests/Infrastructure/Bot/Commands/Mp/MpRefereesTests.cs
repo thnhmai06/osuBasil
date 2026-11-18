@@ -6,13 +6,8 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     The commands that manage and list the referees and the bans of a room: <c>!mp addref</c>, <c>removeref</c>,
-///     <c>listrefs</c> and <c>banlist</c>. Expected replies are named by the reply that owns the wording.
-/// </summary>
 public sealed class MpRefereesTests
 {
-	/// <summary>The most referees a match can have, besides its creator.</summary>
 	private const int RefereeLimit = 8;
 
 	[Fact]
@@ -234,7 +229,6 @@ public sealed class MpRefereesTests
 			lines.Skip(1).Order());
 	}
 
-	/// <summary>Opens a room as "Creator" with <c>!mp make</c>; the creator targets it.</summary>
 	private static async Task<(Room Room, StableConnection Creator)> SetUpAsync(BotHarness bot)
 	{
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");
@@ -242,7 +236,6 @@ public sealed class MpRefereesTests
 		return (room, creator);
 	}
 
-	/// <summary>Lists the ids of the referees of a room, lowest first.</summary>
 	private static int[] RefereeIds(Room room)
 	{
 		return [.. room.Authority.Referees.Select(referee => referee.Id).Order()];

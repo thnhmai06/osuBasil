@@ -9,7 +9,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Shared.Tests.Handlers;
 
-/// <summary>The database and events categories report real values, and say when the engine cannot measure the pool.</summary>
 public sealed class CollectDiagnosticsHandlerTests
 {
 	private static async Task<Collector> CollectAsync(ConnectionStats? pool)

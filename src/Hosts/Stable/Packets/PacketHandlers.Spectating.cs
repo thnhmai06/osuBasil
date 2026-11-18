@@ -27,7 +27,6 @@ internal sealed partial class PacketHandlers
 			await sender.Send(new ReportSpectatingFailed(osu, host), ct);
 	}
 
-	/// <summary>Relays the bytes of a frame bundle to the spectators; decodes it once only when an API client watches.</summary>
 	private async Task ForwardFramesAsync(StableConnection osu, byte[] raw, CancellationToken ct)
 	{
 		if (osu.Spectators.Count == 0) return;

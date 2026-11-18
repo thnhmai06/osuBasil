@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Irc.Tests.Users;
 
-/// <summary>Signing in to IRC: the key, the nickname rule, SASL, capabilities and the welcome.</summary>
 [Collection("IRC host")]
 public sealed class RegistrationTests(IrcHostFixture fixture)
 {

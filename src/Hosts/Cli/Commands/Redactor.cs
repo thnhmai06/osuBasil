@@ -1,17 +1,11 @@
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>Hides passwords and keys wherever a command is recorded: the log, the history and the suggestions.</summary>
 public static class Redactor
 {
-	/// <summary>The text that stands for a hidden value.</summary>
 	public const string Mask = "***";
 
 	private static readonly string[] AlwaysSecret = ["password", "new", "current", "key"];
 
-	/// <summary>Writes the arguments of a command with the values of its secret options hidden.</summary>
-	/// <param name="catalog">The commands, which say which options are secret.</param>
-	/// <param name="args">The words of the command line.</param>
-	/// <returns>The command line with secret values replaced.</returns>
 	public static string Redact(CommandCatalog catalog, IReadOnlyList<string> args)
 	{
 		var (words, _) = CommandCatalog.Separate(args);
@@ -59,7 +53,6 @@ public static class Redactor
 		return string.Join(' ', result.Select(Quote));
 	}
 
-	/// <summary>Redacts a typed line.</summary>
 	public static string Redact(CommandCatalog catalog, string line)
 	{
 		return Redact(catalog, CommandCatalog.Split(line));

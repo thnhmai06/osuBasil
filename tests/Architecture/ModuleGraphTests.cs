@@ -2,18 +2,6 @@ using System.Xml.Linq;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     The project graph of the server: every module is a pair of projects whose
-///     references the compiler enforces, so this test reads the <c>ProjectReference</c> items of every project under
-///     <c>src</c> (except the hosts, which are migrated separately) and fails on an edge outside the allowed graph or on a
-///     cycle. Domain is shared by every project; the module Application projects follow
-///     <c>Users -&gt; Authentication, Content</c>, <c>Anticheat -&gt; Users</c>, <c>Scores -&gt; Users, Beatmaps</c>,
-///     <c>Multiplayer -&gt; Users, Beatmaps, Content, Scores</c>, <c>Chat -&gt; Users, Multiplayer</c>,
-///     <c>Diagnostics -&gt; Users</c> and
-///     <c>Servers</c> on top of all of them, and <c>Bot</c> on top of <c>Servers</c>; a module Infrastructure project
-///     references only its own Application project
-///     and the Shared projects; <c>Basil</c> sits above every module and nothing references it.
-/// </summary>
 public class ModuleGraphTests
 {
 	private static readonly string[] Modules =
@@ -187,7 +175,6 @@ public class ModuleGraphTests
 		return !Path.GetRelativePath(directory, path).StartsWith("..", StringComparison.Ordinal);
 	}
 
-	/// <summary>Finds the cycles among a set of edges, each reported as the projects it passes through.</summary>
 	private static List<string> FindCycles(IEnumerable<(string From, string To)> edges)
 	{
 		var adjacency = edges.GroupBy(edge => edge.From)

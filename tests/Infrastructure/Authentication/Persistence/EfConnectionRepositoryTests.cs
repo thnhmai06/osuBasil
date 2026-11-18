@@ -10,7 +10,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;
 
-/// <summary>Contract tests of the trail of connections of sessions.</summary>
 [Collection("Persistence")]
 public sealed class EfConnectionRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {

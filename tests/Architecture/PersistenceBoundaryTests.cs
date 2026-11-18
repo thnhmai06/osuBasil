@@ -2,10 +2,6 @@ using System.Xml.Linq;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Pins that PostgreSQL stays behind <c>Basil.Infrastructure.Persistence</c>: only the composition root references
-///     that project, and no other project under <c>src</c> depends on Npgsql.
-/// </summary>
 public sealed class PersistenceBoundaryTests
 {
 	private const string Persistence = "Basil.Infrastructure.Persistence";

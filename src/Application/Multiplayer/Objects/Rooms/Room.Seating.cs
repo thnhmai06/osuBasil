@@ -5,14 +5,8 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <content>Seating, leaving and observing.</content>
 public sealed partial class Room
 {
-	/// <summary>Seats a player in the lowest-index empty, unlocked slot.</summary>
-	/// <param name="player">The connection to seat.</param>
-	/// <returns>The assigned slot, or <see langword="null" /> when no slot is available.</returns>
-	/// <remarks>Seating a player who already has a slot returns that slot. The caller reports the seating.</remarks>
-	/// <exception cref="InvalidOperationException">The user is banned from the room.</exception>
 	internal RoomSlot? Seat(StableConnection player)
 	{
 		if (Members.Banned.Contains(player.Record))
@@ -35,10 +29,6 @@ public sealed partial class Room
 		return slot;
 	}
 
-	/// <summary>Seats a player who passed the room's checks, replacing a closed connection of the same user if present.</summary>
-	/// <param name="player">The connection to seat.</param>
-	/// <param name="stale">The closed connection whose seat the player may take.</param>
-	/// <returns>The result of seating the player.</returns>
 	internal RoomOutcome TakeSeat(StableConnection player, StableConnection? stale)
 	{
 		if (stale is not null) return ReplaceSeat(player, stale);
@@ -50,20 +40,12 @@ public sealed partial class Room
 		return RoomOutcome.Ok;
 	}
 
-	/// <summary>Checks whether a connection is in the room: seated as a player or watching as an observer.</summary>
-	/// <param name="connection">The connection to check.</param>
 	public bool IsPresent(Connection connection)
 	{
 		return (connection is StableConnection player && Slots.Find(player) is not null)
 		       || (connection is TourneyConnection observer && Members.Observers.Contains(observer));
 	}
 
-	/// <summary>
-	///     Checks whether a connection takes part in the room: it is in the room, it manages the room while allowed to
-	///     join rooms, or it manages every room.
-	/// </summary>
-	/// <param name="connection">The connection to check.</param>
-	/// <param name="privileges">The privileges of the connection's user, which the caller read.</param>
 	public bool Involves(Connection connection, UserPrivileges privileges)
 	{
 		return IsPresent(connection)
@@ -71,9 +53,6 @@ public sealed partial class Room
 		       || privileges.Allows(UserPrivileges.Tournament);
 	}
 
-	/// <summary>Removes a seated player and updates the room's round and empty-room state.</summary>
-	/// <param name="actor">The player's game connection.</param>
-	/// <returns>Ok when the player left, otherwise NotInRoom.</returns>
 	private RoomOutcome LeaveSeat(StableConnection actor)
 	{
 		if (Vacate(actor) is not { } slot) return RoomOutcome.NotInRoom;
@@ -84,10 +63,6 @@ public sealed partial class Room
 		return RoomOutcome.Ok;
 	}
 
-	/// <summary>Clears the slot occupied by a player, passing host on when the player was host.</summary>
-	/// <param name="player">The connection to remove.</param>
-	/// <returns>The slot that was vacated, or <see langword="null" /> when the connection was not seated.</returns>
-	/// <remarks>When the host leaves, host passes to the next seated player by slot order.</remarks>
 	internal RoomSlot? Vacate(StableConnection player)
 	{
 		var slot = Slots.Find(player);
@@ -100,21 +75,16 @@ public sealed partial class Room
 		return slot;
 	}
 
-	/// <summary>Finds the room a player is seated in.</summary>
-	/// <param name="player">The player's game connection.</param>
-	/// <returns>The room containing the player, or <see langword="null" />.</returns>
 	internal Room? RoomOf(StableConnection player)
 	{
 		return Context.Lobby.RoomOf(player);
 	}
 
-	/// <summary>Tells the lobby that this room has a player again.</summary>
 	internal void MarkOccupied()
 	{
 		Context.Lobby.Occupied(this);
 	}
 
-	/// <summary>Tells the lobby when this room has no seated players.</summary>
 	internal void ReportIfEmpty()
 	{
 		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
@@ -128,10 +98,6 @@ public sealed partial class Room
 			?.Player;
 	}
 
-	/// <summary>Gives the seat of a closed connection to a new connection of the same user.</summary>
-	/// <param name="player">The connection taking the seat.</param>
-	/// <param name="stale">The closed connection whose seat is replaced.</param>
-	/// <returns>Ok after replacing the seated connection.</returns>
 	private RoomOutcome ReplaceSeat(StableConnection player, StableConnection stale)
 	{
 		var slot = Slots.Find(stale)!;

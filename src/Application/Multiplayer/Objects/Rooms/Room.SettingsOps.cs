@@ -5,11 +5,8 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <content>Settings transitions.</content>
 public sealed partial class Room
 {
-	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
-	/// <returns>Ok or RoomClosed; setting the current state again returns Ok and does nothing.</returns>
 	internal RoomOutcome SetLocked(bool locked)
 	{
 		lock (_sync)
@@ -23,10 +20,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Changes the room's settings in one step.</summary>
-	/// <param name="actor">The connection that changes them.</param>
-	/// <param name="change">The settings to change.</param>
-	/// <returns>Ok, InProgress, InvalidSettings, InvalidMods or RoomClosed.</returns>
 	internal RoomOutcome Configure(Connection actor, RoomSettingsChange change)
 	{
 		lock (_sync)
@@ -63,7 +56,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Tells whether every value of a change is one the room accepts.</summary>
 	private static bool AreValid(RoomSettingsChange change)
 	{
 		return !((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
@@ -74,7 +66,6 @@ public sealed partial class Room
 		         (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition)));
 	}
 
-	/// <summary>Selects or drops the beatmap; every ready player must ready up again for the new one.</summary>
 	private void ApplyBeatmap(RoomSettingsChange change)
 	{
 		if (change.Beatmap is null && !change.ClearBeatmap) return;
@@ -84,7 +75,6 @@ public sealed partial class Room
 			slot.SetStatus(RoomSlotStatus.NotReady);
 	}
 
-	/// <summary>Changes the mode and drops the mods, of the room and of every seated player, that the mode does not allow.</summary>
 	private void ApplyMode(GameMode newMode)
 	{
 		Settings.Editable.Mods = Settings.Editable.Mods.RemoveInvalidMods(newMode);
@@ -93,7 +83,6 @@ public sealed partial class Room
 			slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
 	}
 
-	/// <summary>Applies the room's mods; under freemod a seated caller keeps the rest of the mods as their own.</summary>
 	private void ApplyMods(Connection actor, GameMods newMods, bool freemods)
 	{
 		Settings.Editable.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
@@ -102,13 +91,6 @@ public sealed partial class Room
 			callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
 	}
 
-	/// <summary>Applies the room's freemod setting to the room's own mods and every seated player.</summary>
-	/// <param name="value">Whether freemod is on.</param>
-	/// <remarks>
-	///     Turning freemod on hands the room's non-speed-changing mods to every seated player and
-	///     leaves the room with only its speed-changing mods. Turning it off gives the room its
-	///     speed-changing mods plus the host's own mods, and clears every player's own mods.
-	/// </remarks>
 	private void ApplyFreemods(bool value)
 	{
 		var seated = Slots.Where(s => s.Player is not null).ToList();
@@ -133,8 +115,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Applies the room's team arrangement, reassigning the teams of the seated players.</summary>
-	/// <param name="value">The team arrangement to set.</param>
 	private void ApplyTeamType(GameTeamType value)
 	{
 		Settings.Editable.TeamType = value;

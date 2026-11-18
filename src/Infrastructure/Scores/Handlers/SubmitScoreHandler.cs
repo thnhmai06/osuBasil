@@ -6,11 +6,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Scores.Handlers;
 
-/// <summary>Records a submitted score with the privileges of the submitting game client.</summary>
 internal sealed class SubmitScoreHandler(ScoreSubmitter submitter)
 	: IRequestHandler<SubmitScore, (ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection, ScoreReceipt? Receipt)>
 {
-	/// <inheritdoc />
 	public async ValueTask<(ScoreSubmissionOutcome Result, ScoreRejectionReason? Rejection, ScoreReceipt? Receipt)> Handle(
 		SubmitScore request, CancellationToken ct)
 	{

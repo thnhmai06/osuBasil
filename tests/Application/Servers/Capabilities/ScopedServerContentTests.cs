@@ -10,7 +10,6 @@ using NSubstitute;
 
 namespace Basil.Application.Servers.Tests.Capabilities;
 
-/// <summary>Adding a main-menu banner leaves nothing behind when it cannot be stored.</summary>
 public sealed class ScopedServerContentTests
 {
 	[Fact]

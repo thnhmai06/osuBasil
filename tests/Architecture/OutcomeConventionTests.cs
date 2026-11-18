@@ -2,10 +2,6 @@ using System.Globalization;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Pins the convention that makes <c>Result&lt;TOutcome&gt;</c> safe: a denied result carries the default outcome, so
-///     success must never be the default value of an outcome enum.
-/// </summary>
 public class OutcomeConventionTests
 {
 	private static IEnumerable<Type> OutcomeEnums()

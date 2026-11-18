@@ -5,11 +5,6 @@ using Basil.Application.Users.Persistence;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     The project graph of the hosts: every transport shares <c>Basil.Host.Shared</c> and the transports stay
-///     independent of each other; the API and the console also stay independent of the Stable wire format. A transport
-///     that breaks one of these edges is caught here, before the solution compiles against a wrong reference.
-/// </summary>
 public partial class HostGraphTests
 {
 	private const string Shared = "Basil.Host.Shared";
@@ -113,7 +108,6 @@ public partial class HostGraphTests
 		}
 	}
 
-	/// <summary>Names the types that hold a repository or a storage in a constructor, a field or a method parameter.</summary>
 	private static List<string?> Offenders(IEnumerable<Type> types)
 	{
 		const BindingFlags all = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance |

@@ -9,7 +9,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>The messages that create an account and change its name, country, password, privileges and existence.</summary>
 public sealed class AccountHandlerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

@@ -4,12 +4,10 @@ using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Content.Storage;
 
-/// <summary>Stores the main-menu icon image as a file in the data directory.</summary>
 internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 {
 	private DataStorage Files => paths.MenuIcon;
 
-	/// <inheritdoc />
 	public async Task<ContentReference> SaveAsync(string name, Stream content)
 	{
 		await Files.SaveAsync(name, content, CancellationToken.None);
@@ -17,7 +15,6 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 		return Files.ReferenceOf(name);
 	}
 
-	/// <inheritdoc />
 	public Task<(ContentReference Reference, Stream Content)?> OpenAsync(CancellationToken ct = default)
 	{
 		var key = Files.Keys.Order(StringComparer.Ordinal).FirstOrDefault();
@@ -29,7 +26,6 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 			stream is null ? null : (Files.ReferenceOf(key), stream));
 	}
 
-	/// <inheritdoc />
 	public Task DeleteAsync()
 	{
 		Files.DeleteAllExcept(null);

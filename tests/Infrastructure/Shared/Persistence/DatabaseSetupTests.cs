@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Infrastructure.Shared.Tests.Persistence;
 
-/// <summary>The database settings: two connection strings and their pools.</summary>
 public sealed class DatabaseSetupTests
 {
 	private static IConfiguration Settings(params (string Key, string Value)[] values)

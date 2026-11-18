@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 
 namespace Basil.Host.Rest.Tests.Docs;
 
-/// <summary>The generated OpenAPI document is the one reference of the API.</summary>
 [Collection("REST host")]
 public sealed class OpenApiTests(RestHostFixture fixture)
 {

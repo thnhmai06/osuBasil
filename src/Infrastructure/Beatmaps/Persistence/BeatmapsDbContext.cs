@@ -10,10 +10,8 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 	internal const string LocalBeatmapsetIds = "local_beatmapset";
 	internal const string LocalBeatmapIds = "local_beatmap";
 
-	/// <summary>The stored beatmapsets.</summary>
 	public DbSet<BeatmapsetRow> Beatmapsets => Set<BeatmapsetRow>();
 
-	/// <summary>The stored beatmaps.</summary>
 	public DbSet<BeatmapRow> Beatmaps => Set<BeatmapRow>();
 
 	static string IDatabaseContext<BeatmapsDbContext>.HistoryTable => "__ef_migrations_beatmaps";
@@ -23,7 +21,6 @@ internal sealed class BeatmapsDbContext(DbContextOptions<BeatmapsDbContext> opti
 		return new BeatmapsDbContext(options);
 	}
 
-	/// <inheritdoc />
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		ContextModel.ApplyModuleConfigurations<BeatmapsDbContext>(modelBuilder);

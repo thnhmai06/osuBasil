@@ -11,10 +11,8 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>Management of the general channels; chat itself is not part of this API.</summary>
 internal static class ChannelRoutes
 {
-	/// <summary>Maps the Channels routes.</summary>
 	public static void MapChannels(this RouteGroupBuilder v1)
 	{
 		var channels = v1.MapGroup("/channels").WithTags("Channels").RequireToken();
@@ -89,7 +87,6 @@ internal static class ChannelRoutes
 		return result.Answer();
 	}
 
-	/// <summary>A new general channel.</summary>
 	public sealed record CreateChannelRequest(
 		string? Name,
 		string? Topic,
@@ -98,7 +95,6 @@ internal static class ChannelRoutes
 		bool? AutoJoin,
 		bool? Visible);
 
-	/// <summary>The fields of a channel that can change; absent fields stay as they are.</summary>
 	public sealed record PatchChannelRequest(
 		string? Topic,
 		byte? ReadPrivileges,

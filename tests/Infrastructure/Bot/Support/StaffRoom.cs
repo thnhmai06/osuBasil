@@ -8,15 +8,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Support;
 
-/// <summary>
-///     A room opened with <c>!mp make</c> and the people around it: its creator, an online referee, a referee who is
-///     offline, and a plain seated player.
-/// </summary>
-/// <param name="Room">The room.</param>
-/// <param name="Creator">The creator, seated as host.</param>
-/// <param name="Referee">A referee whose osu! client is online.</param>
-/// <param name="OfflineReferee">A referee who has no open connection.</param>
-/// <param name="Player">A seated player who holds no authority.</param>
 internal sealed record StaffRoom(
 	Room Room,
 	StableConnection Creator,
@@ -24,10 +15,6 @@ internal sealed record StaffRoom(
 	UserRecord OfflineReferee,
 	StableConnection Player)
 {
-	/// <summary>Opens a room and the people around it; their names start with the room's name.</summary>
-	/// <param name="bot">The harness the room lives in.</param>
-	/// <param name="name">The name of the room.</param>
-	/// <returns>The room and its people.</returns>
 	public static async Task<StaffRoom> OpenAsync(BotHarness bot, string name)
 	{
 		var creator = await RoomFixture.PlayerAsync(bot.App, name + "Creator");

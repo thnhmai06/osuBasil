@@ -1,15 +1,9 @@
 namespace Basil.Application.Shared.Paging;
 
-/// <summary>Reads every item of a paged listing.</summary>
 public static class Paging
 {
-	/// <summary>The number of items read per page.</summary>
 	public const int PageSize = 100;
 
-	/// <summary>Reads every page of a listing, from the first, until a page comes back short.</summary>
-	/// <param name="list">Reads one page.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>Every item, in listing order.</returns>
 	public static async Task<IReadOnlyList<T>> ListAllAsync<T>(Func<PageRequest, Task<Page<T>>> list,
 		CancellationToken ct = default)
 	{

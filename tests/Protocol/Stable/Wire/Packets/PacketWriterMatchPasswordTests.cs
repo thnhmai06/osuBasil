@@ -4,12 +4,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the password field of the match payload: an empty password is written as the
-///     single <c>0x00</c> marker byte (the "no password" form), not an osu! string and not the
-///     masked osu!-string form. The bytes ride on the match payload laid out in
-///     <c>ServerPacketWriterTests</c>, with the password field replaced by the marker byte.
-/// </summary>
 public class PacketWriterMatchPasswordTests
 {
 	private static RoomPacket Room()

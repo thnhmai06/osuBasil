@@ -5,15 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Bot.Tests.Support;
 
-/// <summary>
-///     Delivers the room and lobby events of a test application to the handlers that cancel countdowns, as the host
-///     does for every handler.
-/// </summary>
 internal static class CountdownEvents
 {
-	/// <summary>Starts delivering events to the countdown handlers of the harness's application.</summary>
-	/// <param name="bot">The harness whose events are delivered.</param>
-	/// <returns>The countdowns of the application.</returns>
 	public static RoomCountdowns Deliver(BotHarness bot)
 	{
 		var countdowns = bot.App.Provider.GetRequiredService<RoomCountdowns>();

@@ -11,7 +11,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Tests;
 
-/// <summary>Checks every module has one InitialCreate that owns its tables and preserves, migration order and foreign keys.</summary>
 [Collection("Persistence")]
 public sealed class ModuleMigrationTests(PersistenceFixture container) : DatabaseTests(container)
 {

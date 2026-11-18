@@ -5,7 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>The message that lists the friends of the sender's own account.</summary>
 public sealed class GetFriendsHandlerTests
 {
 	[Fact]

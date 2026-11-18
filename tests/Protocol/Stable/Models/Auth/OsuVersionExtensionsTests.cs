@@ -3,12 +3,6 @@ using Basil.Protocol.Stable.Models.Client;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 
-/// <summary>
-///     Verifies the build-string contract <c>bYYYYMMDD[.revision][stream]</c>: the <c>b</c> prefix is
-///     optional, the revision is a single digit, the stream suffix (and the whole text) parse
-///     case-insensitively, and <see cref="OsuVersionExtensions.ToText" /> returns the canonical lowercase wire text.
-///     Anything else is rejected.
-/// </summary>
 public class OsuVersionExtensionsTests
 {
 	public static TheoryData<string, string, int?, int> ValidBuilds()

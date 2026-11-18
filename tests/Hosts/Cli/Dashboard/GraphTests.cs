@@ -4,7 +4,6 @@ using Basil.Host.Cli.Dashboard.Graphs;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The history buffer, the braille graph and the meter.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class GraphTests
 {

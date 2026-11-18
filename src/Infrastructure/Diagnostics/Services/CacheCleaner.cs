@@ -4,10 +4,8 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
 
-/// <summary>Empties the cache folder of derived files, which are made again when needed.</summary>
 internal sealed class CacheCleaner(IOptions<StorageOptions> storage) : ICacheCleaner
 {
-	/// <inheritdoc />
 	public int Clear()
 	{
 		var directory = Path.Combine(storage.Value.Location, "Cache");

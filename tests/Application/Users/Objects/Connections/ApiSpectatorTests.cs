@@ -12,10 +12,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Users.Tests.Objects.Connections;
 
-/// <summary>
-///     An HTTP API connection spectates an osu! client under the rules of the game client and only watches: the host
-///     decodes frames only while an API connection watches.
-/// </summary>
 public sealed class ApiSpectatorTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

@@ -6,7 +6,6 @@ using Basil.Application.Users.Registry;
 
 namespace Basil.Application.Chat.Registry;
 
-/// <summary>Finds the open channel a <see cref="ChatTarget" /> names.</summary>
 public sealed class ChannelDirectory
 {
 	private readonly GeneralChannelRegistry _general;
@@ -16,7 +15,6 @@ public sealed class ChannelDirectory
 	private readonly RoomChannels _roomChannels;
 	private readonly SpectatorChannels _spectatorChannels;
 
-	/// <summary>Creates the directory over the registries that keep the channels.</summary>
 	internal ChannelDirectory(GeneralChannelRegistry general, Lobby lobby, RoomChannels roomChannels,
 		SpectatorChannels spectatorChannels, PmChannels pmChannels, UserRegistry registry)
 	{
@@ -28,10 +26,6 @@ public sealed class ChannelDirectory
 		_registry = registry;
 	}
 
-	/// <summary>Finds the open channel a target names for a connection.</summary>
-	/// <param name="target">Where the connection means to go.</param>
-	/// <param name="viewer">The connection the target is relative to (its own room and spectator channel).</param>
-	/// <returns>The open channel, or <see langword="null" /> when none matches.</returns>
 	public Channel? Find(ChatTarget target, Connection viewer)
 	{
 		switch (target)

@@ -6,25 +6,15 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>
-///     Pins the properties of the analysed stats rather than their exact numbers: the analyser follows the osu!
-///     rulesets, so the contract is that a valid difficulty gives usable, mod-consistent numbers.
-/// </summary>
 public sealed class OsuBeatmapAnalyserTests
 {
 	private readonly OsuBeatmapAnalyser _analyser = new();
 
-	/// <summary>Reads a sample difficulty again, from its start, for one analysis.</summary>
-	/// <param name="name">The sample's file name under the assets folder.</param>
-	/// <returns>The difficulty's content.</returns>
 	private static MemoryStream Open(string name)
 	{
 		return new MemoryStream(OszArchive.Sample(Path.Combine("Beatmaps", name)), false);
 	}
 
-	/// <summary>A difficulty of every mode gives a usable star rating and its own kind of object counts.</summary>
-	/// <param name="file">The sample difficulty.</param>
-	/// <param name="mode">The mode it is played in.</param>
 	[Theory]
 	[InlineData("standard.osu", GameMode.Standard)]
 	[InlineData("taiko.osu", GameMode.Taiko)]
@@ -46,7 +36,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.Equal(ExpectedType(mode), analysis.ObjectCount.GetType());
 	}
 
-	/// <summary>Every difficulty of a real set gives usable numbers, and a speed-up never lowers its stars.</summary>
 	[Fact]
 	public void Analyze_EveryDifficultyOfARealSetIsUsableAndDoubleTimeNeverLowersIt()
 	{
@@ -76,7 +65,6 @@ public sealed class OsuBeatmapAnalyserTests
 		return buffer;
 	}
 
-	/// <summary>A speed-up raises the star rating and shortens the playable length.</summary>
 	[Fact]
 	public void Analyze_WithDoubleTimeRaisesTheStarsAndShortensTheLength()
 	{
@@ -91,7 +79,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(fast.Difficulty.Bpm > normal.Difficulty.Bpm);
 	}
 
-	/// <summary>A slow-down lowers the star rating.</summary>
 	[Fact]
 	public void Analyze_WithHalfTimeLowersTheStars()
 	{
@@ -104,7 +91,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(slow.Difficulty.Star < normal.Difficulty.Star);
 	}
 
-	/// <summary>Hard Rock raises circle size and approach rate.</summary>
 	[Fact]
 	public void Analyze_WithHardRockRaisesCircleSizeAndApproachRate()
 	{
@@ -118,7 +104,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(hardRock.Difficulty.Ar > normal.Difficulty.Ar);
 	}
 
-	/// <summary>Easy lowers circle size and approach rate.</summary>
 	[Fact]
 	public void Analyze_WithEasyLowersCircleSizeAndApproachRate()
 	{
@@ -132,7 +117,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(easy.Difficulty.Ar < normal.Difficulty.Ar);
 	}
 
-	/// <summary>The same difficulty under the same mods gives the same numbers every time.</summary>
 	[Fact]
 	public void Analyze_TwiceGivesTheSameNumbers()
 	{
@@ -147,7 +131,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.Equal(first.ObjectCount.MaxCombo, second.ObjectCount.MaxCombo);
 	}
 
-	/// <summary>A standard difficulty is counted as circles, sliders and spinners.</summary>
 	[Fact]
 	public void Analyze_CountsEveryStandardObject()
 	{
@@ -161,7 +144,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(objects.Sliders > 0);
 	}
 
-	/// <summary>A catch difficulty counts the parts of its juice streams, not just the streams.</summary>
 	[Fact]
 	public void Analyze_CountsTheNestedPartsOfACatchDifficulty()
 	{
@@ -174,7 +156,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(objects.Droplets + objects.TinyDroplets > 0);
 	}
 
-	/// <summary>A mania difficulty counts notes and holds.</summary>
 	[Fact]
 	public void Analyze_CountsNotesAndHoldsOfAManiaDifficulty()
 	{
@@ -187,9 +168,6 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.True(objects.Notes > 0);
 	}
 
-	/// <summary>The object counts of a mode are the ones that mode names.</summary>
-	/// <param name="mode">The game mode.</param>
-	/// <returns>The object count type the mode uses.</returns>
 	private static Type ExpectedType(GameMode mode)
 	{
 		return mode switch

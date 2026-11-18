@@ -7,7 +7,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of what happened in matches.</summary>
 [Collection("Persistence")]
 public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -138,17 +137,11 @@ public sealed class EfMatchEventRepositoryTests(PersistenceFixture container) : 
 		Assert.Empty(listed);
 	}
 
-	/// <summary>Creates a match the events of the test belong to.</summary>
-	/// <param name="name">The name of the match.</param>
-	/// <returns>The match.</returns>
 	private async Task<MatchRecord> CreateMatchAsync(string name)
 	{
 		return await CreateStoredMatchAsync(name, First);
 	}
 
-	/// <summary>Waits until the given number of events of a match is stored.</summary>
-	/// <param name="match">The match whose events are waited for.</param>
-	/// <param name="count">How many events to wait for.</param>
 	private async Task WaitForEventsAsync(MatchRecord match, int count)
 	{
 		await StoredRows.WaitForAsync(ConnectionString, "select id from match_events where match_id = @id",

@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Shared.Persistence;
 
-/// <summary>Stores the server-wide settings.</summary>
 internal sealed class EfSettingsRepository(
 	DatabaseSession database,
 	ILogger<EfSettingsRepository> logger)
@@ -39,7 +38,6 @@ internal sealed class EfSettingsRepository(
 	private readonly SemaphoreSlim _gate = new(1, 1);
 	private ServerSettings? _settings;
 
-	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken ct)
 	{
 		var rows = await database.ReadAsync((SharedDbContext context) => context.Settings
@@ -63,12 +61,10 @@ internal sealed class EfSettingsRepository(
 		_settings = settings;
 	}
 
-	/// <inheritdoc />
 	public ServerSettings Current =>
 		Volatile.Read(ref _settings) ?? throw new InvalidOperationException(
 			"Server settings are read before the storage has started.");
 
-	/// <inheritdoc />
 	public ValueTask<ServerSettings> GetAsync(CancellationToken ct = default)
 	{
 		return ValueTask.FromResult(Volatile.Read(ref _settings)
@@ -76,7 +72,6 @@ internal sealed class EfSettingsRepository(
 			                            "Server settings are read before the storage has started."));
 	}
 
-	/// <inheritdoc />
 	public async Task CreateOrUpdateAsync(ServerSettings settings)
 	{
 		var values = Categories.ToDictionary(category => category.Name, category => category.Write(settings),
@@ -110,7 +105,6 @@ internal sealed class EfSettingsRepository(
 			                                  throw new JsonException("The category is null.")));
 	}
 
-	/// <summary>One nested category of the settings, stored as one JSON row.</summary>
 	private sealed record Category(
 		string Name,
 		Func<ServerSettings, string> Write,
@@ -118,14 +112,12 @@ internal sealed class EfSettingsRepository(
 
 	private sealed class ContentReferenceConverter : JsonConverter<ContentReference>
 	{
-		/// <inheritdoc />
 		public override ContentReference Read(ref Utf8JsonReader reader, Type typeToConvert,
 			JsonSerializerOptions options)
 		{
 			return ContentReference.Parse(reader.GetString() ?? throw new JsonException(), null);
 		}
 
-		/// <inheritdoc />
 		public override void Write(Utf8JsonWriter writer, ContentReference value, JsonSerializerOptions options)
 		{
 			writer.WriteStringValue(value.ToString());

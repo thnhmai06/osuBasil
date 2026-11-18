@@ -7,11 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
-/// <summary>Stores what happened in matches.</summary>
 internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepository users)
 	: IMatchEventRepository
 {
-	/// <inheritdoc />
 	public Task RecordAsync(MatchEvent matchEvent)
 	{
 		var row = new MatchEventRow
@@ -30,7 +28,6 @@ internal sealed class EfMatchEventRepository(DatabaseSession database, IUserRepo
 		});
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match,
 		CancellationToken ct = default)
 	{

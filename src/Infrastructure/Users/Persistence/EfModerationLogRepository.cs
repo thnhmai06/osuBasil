@@ -7,16 +7,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Users.Persistence;
 
-/// <summary>Stores the moderation history of users.</summary>
 internal sealed class EfModerationLogRepository(DatabaseSession database) : IModerationLogRepository
 {
-	/// <inheritdoc />
 	public Task AppendAsync(ModerationData entry)
 	{
 		return database.WriteAsync((UsersDbContext context) => AddAsync(context, entry));
 	}
 
-	/// <inheritdoc />
 	public async ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken ct = default)
 	{
@@ -66,7 +63,6 @@ internal sealed class EfModerationLogRepository(DatabaseSession database) : IMod
 		], hasNext);
 	}
 
-	/// <summary>Adds an entry to a context, to be stored with the other changes of that context.</summary>
 	internal static async Task AddAsync(UsersDbContext context, ModerationData entry)
 	{
 		var row = new ModerationLogRow

@@ -4,10 +4,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>
-///     Pins what the reader takes from archives of real, ranked sets. The expected values are the metadata the
-///     <c>.osu</c> files of each set declare, written by hand from those files.
-/// </summary>
 public sealed class OsuBeatmapsetReaderRealSetsTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -17,7 +13,6 @@ public sealed class OsuBeatmapsetReaderRealSetsTests
 		return new MemoryStream(OszArchive.Sample(Path.Combine("Sets", name)), false);
 	}
 
-	/// <summary>A set of twenty-six standard difficulties gives one difficulty per file, all in standard.</summary>
 	[Fact]
 	public async Task ReadAsync_AStandardSetGivesEveryDifficultyItHas()
 	{
@@ -40,7 +35,6 @@ public sealed class OsuBeatmapsetReaderRealSetsTests
 		});
 	}
 
-	/// <summary>A catch set reports its mode, the files it names and its preview point.</summary>
 	[Fact]
 	public async Task ReadAsync_ACatchSetReportsItsModeAndItsFiles()
 	{
@@ -64,7 +58,6 @@ public sealed class OsuBeatmapsetReaderRealSetsTests
 		});
 	}
 
-	/// <summary>A taiko set whose audio file is missing from the archive still reads; the missing file is left out.</summary>
 	[Fact]
 	public async Task ReadAsync_ATaikoSetWithoutItsAudioStillReads()
 	{
@@ -83,7 +76,6 @@ public sealed class OsuBeatmapsetReaderRealSetsTests
 		});
 	}
 
-	/// <summary>A mania set reports its mode and the creator's name with its spaces.</summary>
 	[Fact]
 	public async Task ReadAsync_AManiaSetReportsItsModeAndItsCreator()
 	{

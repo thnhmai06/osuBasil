@@ -6,7 +6,6 @@ using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Shared.Tests.Views;
 
-/// <summary>The names and descriptions the operator reads for every server setting.</summary>
 public sealed class SettingsTextTests
 {
 	private static readonly string[] Paths = FlattenedPaths();

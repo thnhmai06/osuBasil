@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 
 namespace Basil.Host.Rest.Tests.Sse;
 
-/// <summary>The live stream of a room.</summary>
 [Collection("REST host")]
 public sealed class RoomLiveTests(RestHostFixture fixture)
 {

@@ -2,7 +2,6 @@ using Basil.Domain.Content;
 
 namespace Basil.Domain.Tests.Content;
 
-/// <summary>Verifies the validation of the stamp that identifies stored content.</summary>
 public class ContentStampTests
 {
 	private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;

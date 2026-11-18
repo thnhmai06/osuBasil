@@ -12,10 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Scores.Tests.Capabilities;
 
-/// <summary>
-///     Verifies who may submit a score on an osu! client: the client itself, holding
-///     <see cref="UserPrivileges.Player" />.
-/// </summary>
 public sealed class ScopedScoreSubmitterTests
 {
 	private static readonly Md5 Hash = new("0123456789abcdef0123456789abcdef");

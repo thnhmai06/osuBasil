@@ -8,14 +8,12 @@ using Mediator;
 
 namespace Basil.Host.Stable.Delivery;
 
-/// <summary>Tells every osu! client that a user came online.</summary>
 internal sealed class UserOnlineDelivery(
 	UserRegistry registry,
 	Outbox outbox,
 	ISender sender,
 	TimeProvider clock) : INotificationHandler<UserConnectionOpened>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken ct)
 	{
 		if (!notification.CameOnline || notification.Connection.Type is not SessionType.Stable) return;
@@ -30,11 +28,9 @@ internal sealed class UserOnlineDelivery(
 	}
 }
 
-/// <summary>Tells every osu! client that a user went offline.</summary>
 internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
 	: INotificationHandler<UserConnectionClosed>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed notification, CancellationToken ct)
 	{
 		var connection = notification.Connection;
@@ -46,11 +42,9 @@ internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox)
 	}
 }
 
-/// <summary>Tells every osu! client the new status of a user.</summary>
 internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, ISender sender)
 	: INotificationHandler<UserConnectionStatusChanged>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(UserConnectionStatusChanged notification, CancellationToken ct)
 	{
 		var user = notification.Connection.User;
@@ -59,10 +53,8 @@ internal sealed class UserStatusDelivery(UserRegistry registry, Outbox outbox, I
 	}
 }
 
-/// <summary>Shows a notification on the osu! clients the server addressed.</summary>
 internal sealed class UserNotificationDelivery(Outbox outbox) : INotificationHandler<UserNotificationSent>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserNotificationSent notification, CancellationToken ct)
 	{
 		outbox.Send(notification.Recipients, writer => writer.Notification(notification.Text));
@@ -70,11 +62,9 @@ internal sealed class UserNotificationDelivery(Outbox outbox) : INotificationHan
 	}
 }
 
-/// <summary>Tells a user's osu! client how long the account is silenced.</summary>
 internal sealed class UserSilencedDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
 	: INotificationHandler<UserSilenced>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSilenced notification, CancellationToken ct)
 	{
 		var seconds = Math.Max(0, (int)(notification.Until - clock.GetUtcNow()).TotalSeconds);
@@ -83,11 +73,9 @@ internal sealed class UserSilencedDelivery(UserRegistry registry, Outbox outbox,
 	}
 }
 
-/// <summary>Tells a user's osu! client that the silence is over.</summary>
 internal sealed class UserUnsilencedDelivery(UserRegistry registry, Outbox outbox)
 	: INotificationHandler<UserUnsilenced>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserUnsilenced notification, CancellationToken ct)
 	{
 		outbox.Send(registry.Of(notification.User).Connections, writer => writer.SilenceEnd(0));
@@ -95,11 +83,9 @@ internal sealed class UserUnsilencedDelivery(UserRegistry registry, Outbox outbo
 	}
 }
 
-/// <summary>Sends a user's osu! clients their new role bits.</summary>
 internal sealed class UserPrivilegesDelivery(UserRegistry registry, Outbox outbox, TimeProvider clock)
 	: INotificationHandler<UserPrivilegesChanged>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserPrivilegesChanged notification, CancellationToken ct)
 	{
 		var user = registry.Of(notification.User);
@@ -109,10 +95,8 @@ internal sealed class UserPrivilegesDelivery(UserRegistry registry, Outbox outbo
 	}
 }
 
-/// <summary>Tells a host and its fellow spectators that someone started spectating.</summary>
 internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHandler<UserSpectatorJoined>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorJoined notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
@@ -127,10 +111,8 @@ internal sealed class SpectatorJoinedDelivery(Outbox outbox) : INotificationHand
 	}
 }
 
-/// <summary>Tells a host and its fellow spectators that someone stopped spectating.</summary>
 internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandler<UserSpectatorLeft>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorLeft notification, CancellationToken ct)
 	{
 		var (host, spectator) = (notification.Host, notification.Spectator);
@@ -140,10 +122,8 @@ internal sealed class SpectatorLeftDelivery(Outbox outbox) : INotificationHandle
 	}
 }
 
-/// <summary>Tells a host that a spectator lacks the beatmap.</summary>
 internal sealed class SpectatorFailedDelivery(Outbox outbox) : INotificationHandler<UserSpectatorFailed>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorFailed notification, CancellationToken ct)
 	{
 		outbox.Send(notification.Host, writer => writer.SpectatorCantSpectate(notification.Spectator.Record.Id));

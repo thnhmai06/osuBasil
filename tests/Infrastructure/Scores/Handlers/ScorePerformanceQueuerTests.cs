@@ -8,7 +8,6 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Infrastructure.Scores.Tests.Handlers;
 
-/// <summary>A stored score is queued for its pp at once, without waiting for it.</summary>
 public sealed class ScorePerformanceQueuerTests
 {
 	[Fact]

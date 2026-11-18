@@ -2,7 +2,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Stable.Tests.Multiplayer;
 
-/// <summary>A room's join password is shown to the people inside it, never to the lobby's watchers.</summary>
 [Collection("Stable host")]
 public sealed class LobbyPasswordTests(StableHostFixture fixture)
 {
@@ -10,7 +9,6 @@ public sealed class LobbyPasswordTests(StableHostFixture fixture)
 
 	private BasilHost Host => fixture.Host;
 
-	/// <summary>Reads the password field of a match payload: id, in-progress, type, mods, name, then the password.</summary>
 	private static string PasswordOf(ServerPacket packet)
 	{
 		var position = 8;

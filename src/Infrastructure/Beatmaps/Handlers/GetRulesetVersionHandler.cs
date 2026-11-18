@@ -5,11 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Handles <see cref="GetRulesetVersion" /> with the privileges of the sending actor.</summary>
 internal sealed class GetRulesetVersionHandler(Rulesets rulesets)
 	: IRequestHandler<GetRulesetVersion, (RulesetOutcome Result, RulesetVersions? Versions)>
 {
-	/// <inheritdoc />
 	public ValueTask<(RulesetOutcome Result, RulesetVersions? Versions)> Handle(GetRulesetVersion request,
 		CancellationToken ct)
 	{

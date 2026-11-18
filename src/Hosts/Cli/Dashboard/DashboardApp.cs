@@ -15,10 +15,6 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard;
 
-/// <summary>
-///     The terminal dashboard: ten tabs, a line of key hints under them, and a "too small" screen when the terminal is
-///     smaller than the tab in view needs; run on the thread that calls <see cref="Run" />.
-/// </summary>
 public sealed class DashboardApp
 {
 	private readonly Glyphs _glyphs;
@@ -44,7 +40,6 @@ public sealed class DashboardApp
 	private TabControl? _tabs;
 	private TabSpread? _spread;
 
-	/// <summary>Creates the dashboard.</summary>
 	public DashboardApp(IServiceProvider services, DashboardModel model, DashboardSampler sampler, CommandRunner runner,
 		CommandSuggestions suggestions, ShutdownController shutdown, ThemeStore themes, CliOptions mode,
 		TimeProvider clock, ILogger<DashboardApp> logger)
@@ -85,7 +80,6 @@ public sealed class DashboardApp
 
 	private DashboardTab Tab => (DashboardTab)Math.Clamp(_selected.Value, 0, Enum.GetValues<DashboardTab>().Length - 1);
 
-	/// <summary>Builds what the dashboard shows.</summary>
 	public Visual Build()
 	{
 		var pages = Enum.GetValues<DashboardTab>().Select(tab => new TabPage(
@@ -106,9 +100,6 @@ public sealed class DashboardApp
 		return _dialogs.Dim(new Padder(() => TooSmall() ? small : main).Stretch());
 	}
 
-	/// <summary>Runs the dashboard until the server stops.</summary>
-	/// <param name="terminal">The terminal to run on.</param>
-	/// <param name="stopped">Tells that the server stopped.</param>
 	public void Run(TerminalInstance terminal, CancellationToken stopped)
 	{
 		var root = Build();

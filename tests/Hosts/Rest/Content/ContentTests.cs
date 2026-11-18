@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Content;
 
-/// <summary>Settings by category, announcements and screenshots.</summary>
 [Collection("REST host")]
 public sealed class ContentTests(RestHostFixture fixture)
 {

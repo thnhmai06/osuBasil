@@ -5,13 +5,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Stores the rounds a recovery aborted, ends the recovered match and records the recovery.</summary>
 internal sealed class LobbyMatchRecoveredRecorder(
 	IRoundRepository rounds,
 	IMatchRepository matches,
 	IMatchEventRepository matchEvents) : INotificationHandler<LobbyMatchRecovered>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(LobbyMatchRecovered @event, CancellationToken ct)
 	{
 		foreach (var round in @event.AbortedRounds)

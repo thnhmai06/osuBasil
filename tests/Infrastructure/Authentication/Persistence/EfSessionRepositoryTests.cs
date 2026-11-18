@@ -10,7 +10,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;
 
-/// <summary>Contract tests of storing and listing account sessions.</summary>
 [Collection("Persistence")]
 public sealed class EfSessionRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -374,9 +373,6 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 		return new Sha256(input);
 	}
 
-	/// <summary>Records a session of an account.</summary>
-	/// <param name="user">The account that logged in.</param>
-	/// <param name="timestamp">The moment of the login.</param>
 	private async Task RecordAsync(UserRecord user, DateTimeOffset timestamp, long id)
 	{
 		await Sessions.CreateOrUpdateAsync(
@@ -384,8 +380,6 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 				new SessionFingerprint(IPAddress.Parse("192.0.2.10"), Client()), Sha(BitConverter.GetBytes(id))));
 	}
 
-	/// <summary>Waits until the given number of sessions is stored.</summary>
-	/// <param name="count">How many sessions to wait for.</param>
 	[Fact]
 	public async Task RecordedSession_PresentOnReturn()
 	{
@@ -429,7 +423,6 @@ public sealed class EfSessionRepositoryTests(PersistenceFixture container) : Dat
 			rows => rows.Count == count, $"{count} recorded sessions", TestContext.Current.CancellationToken);
 	}
 
-	/// <summary>Builds the osu! client a login reports.</summary>
 	private static OsuClient Client()
 	{
 		return new OsuClient(

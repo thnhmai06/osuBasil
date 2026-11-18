@@ -4,10 +4,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Client;
 
-/// <summary>
-///     Domain enums carry the numbering of the osu! (stable) client, because the protocol uses them directly: these are
-///     the numbers of the client's documented enums, every member pinned.
-/// </summary>
 public sealed class ClientNumberingTests
 {
 	[Theory]

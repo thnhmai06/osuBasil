@@ -7,13 +7,8 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>
-///     A rounded panel that shows the graph of one or two series: the current values on the first lines inside the
-///     border, then the graph, then the legend on the last line; the graph is drawn again for the size the panel has now.
-/// </summary>
 internal sealed class GraphPanel
 {
-	/// <summary>How many lines of current values every panel reserves, so that all panels have the same size.</summary>
 	public const int InfoLines = 3;
 
 	private static readonly int[,] DotBits = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
@@ -26,16 +21,6 @@ internal sealed class GraphPanel
 	private readonly Series? _secondary;
 	private readonly Func<Theme> _theme;
 
-	/// <summary>Creates the panel.</summary>
-	/// <param name="title">The title in the border.</param>
-	/// <param name="primary">The series drawn as a filled area.</param>
-	/// <param name="secondary">The series drawn as a dotted line over it, or <see langword="null" />.</param>
-	/// <param name="ceiling">The value that reaches the top of the graph.</param>
-	/// <param name="info">The lines of current values, as markup, at most <see cref="InfoLines" />.</param>
-	/// <param name="legend">The legend line, as markup.</param>
-	/// <param name="theme">The theme that colours the graph.</param>
-	/// <param name="glyphs">Tells whether the graph stays in ASCII.</param>
-	/// <param name="noColor">Whether the graph is monochrome.</param>
 	public GraphPanel(string title, Series primary, Series? secondary, Func<double> ceiling,
 		IReadOnlyList<Func<string>> info, string legend, Func<Theme> theme, Glyphs glyphs, bool noColor)
 	{
@@ -70,22 +55,18 @@ internal sealed class GraphPanel
 			.Padding(new Thickness(1, 0, 1, 0)).Content(grid.Rows([.. rows])).Stretch();
 	}
 
-	/// <summary>Gets the panel.</summary>
 	public Visual View { get; }
 
-	/// <summary>Gets the legend marker of the primary series.</summary>
 	public static string PrimaryMark(Glyphs glyphs)
 	{
 		return glyphs.Ascii ? "|" : "━";
 	}
 
-	/// <summary>Gets the legend marker of the secondary series.</summary>
 	public static string SecondaryMark(Glyphs glyphs)
 	{
 		return glyphs.Ascii ? "." : "┄";
 	}
 
-	/// <summary>Draws the graph again, after the series got a sample.</summary>
 	public void Refresh()
 	{
 		_version.Value++;
@@ -160,7 +141,6 @@ internal sealed class GraphPanel
 		return values.Length > count ? values[^count..] : values;
 	}
 
-	/// <summary>Draws every tone as ordinary text, for the monochrome dashboard.</summary>
 	private sealed class PlainSurface(IPaintSurface inner) : IPaintSurface
 	{
 		public int Width => inner.Width;

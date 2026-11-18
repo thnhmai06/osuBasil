@@ -10,12 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Multiplayer;
 
-/// <summary>Registers the runtime objects owned by Multiplayer.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the Multiplayer runtime objects.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddMultiplayerApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<IScoreBeatmapAcceptance>(sp => sp.GetRequiredService<Lobby>());

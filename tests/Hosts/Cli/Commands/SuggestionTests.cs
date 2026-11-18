@@ -2,7 +2,6 @@ using Basil.Host.Cli.Commands;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>What the command box offers and how it colours a typed line.</summary>
 public sealed class SuggestionTests
 {
 	private static readonly CommandCatalog Catalog = CommandCatalogFactory.Create();

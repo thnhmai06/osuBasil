@@ -6,11 +6,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 
-/// <summary>
-///     The settings of a room. The expected behaviour comes from docs/for-developers/multiplayer.md ("Membership,
-///     slots and settings"): a room's settings change as one validated operation, settings cannot change during a
-///     round, changing the team type reassigns teams and changing the mode drops the mods that mode does not allow.
-/// </summary>
 public sealed class ScopedRoomSettingsTests
 {
 	[Fact]

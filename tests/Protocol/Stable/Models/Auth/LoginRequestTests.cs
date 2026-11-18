@@ -6,10 +6,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Models.Auth;
 
-/// <summary>
-///     Verifies the login body contract: line 1 username, line 2 password md5, line 3
-///     <c>osuversion|utc_offset|display_city|client_hash|pm_private</c>, and the login failure reply ids -1 to -8.
-/// </summary>
 public class LoginRequestTests
 {
 	private const string Body =

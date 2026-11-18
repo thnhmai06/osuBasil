@@ -4,7 +4,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Shared.Tests.Storage;
 
-/// <summary>Contract tests of DataPaths: where every stored file lives and how the directories are created.</summary>
 public sealed class DataPathsTests : IDisposable
 {
 	private readonly TempData _data = new(false);

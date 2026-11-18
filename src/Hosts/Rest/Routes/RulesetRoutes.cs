@@ -6,10 +6,8 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>The application version, the osu! rulesets that compute star ratings, and reloading beatmaps with them.</summary>
 internal static class RulesetRoutes
 {
-	/// <summary>Maps the Rulesets routes.</summary>
 	public static void MapRulesets(this RouteGroupBuilder v1)
 	{
 		v1.MapGet("/version", VersionAsync).WithTags("Version")
@@ -68,15 +66,7 @@ internal static class RulesetRoutes
 		return result == RulesetOutcome.Ok ? Api.Accepted("Reload started") : result.Refusal();
 	}
 
-	/// <summary>The versions in use.</summary>
-	/// <param name="App">The version of the application.</param>
-	/// <param name="Ruleset">The version of the active rulesets.</param>
 	internal sealed record VersionBody(string App, string Ruleset);
 
-	/// <summary>The result of staging the newest rulesets.</summary>
-	/// <param name="Version">The newest stable version.</param>
-	/// <param name="Staged">Whether this call staged it.</param>
-	/// <param name="RestartRequired">Whether the server must restart for the staged version to take effect.</param>
-	/// <param name="ReloadRequired">Whether the stored beatmaps must be reloaded after that restart.</param>
 	internal sealed record UpdateBody(string Version, bool Staged, bool RestartRequired, bool ReloadRequired);
 }

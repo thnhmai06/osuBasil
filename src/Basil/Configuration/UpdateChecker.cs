@@ -6,10 +6,6 @@ using Velopack.Sources;
 
 namespace Basil.Configuration;
 
-/// <summary>
-///     Looks for a newer release of Basil and of the osu! rulesets when the server starts and reports it in the log; it
-///     never installs anything.
-/// </summary>
 internal sealed class UpdateChecker(
 	IOptionsMonitor<UpdateOptions> options,
 	IRulesetUpdater rulesets,
@@ -22,7 +18,6 @@ internal sealed class UpdateChecker(
 	private DateTimeOffset? _lastCheck;
 	private UpdateReport _status = new(UpdateState.NotChecked, null, UpdateState.NotChecked, null);
 
-	/// <inheritdoc />
 	public UpdateReport Status
 	{
 		get
@@ -31,7 +26,6 @@ internal sealed class UpdateChecker(
 		}
 	}
 
-	/// <inheritdoc />
 	public DateTimeOffset? LastCheck
 	{
 		get
@@ -40,7 +34,6 @@ internal sealed class UpdateChecker(
 		}
 	}
 
-	/// <inheritdoc />
 	public async Task CheckNowAsync(CancellationToken ct = default)
 	{
 		await CheckAppAsync(options.CurrentValue, ct);
@@ -53,7 +46,6 @@ internal sealed class UpdateChecker(
 		lock (_gate) _status = change(_status);
 	}
 
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		var update = options.CurrentValue;

@@ -11,11 +11,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 
-/// <summary>
-///     Searching the open rooms with the room search syntax (the plan of the dashboard, round 2): free text matches
-///     the name; <c>host:</c>, <c>creator:</c> and <c>player:</c> take a name or an id; <c>status:</c>, <c>mode:</c> and
-///     <c>password:</c> narrow by state; private rooms are listed only to those who may view them.
-/// </summary>
 public sealed class ListRoomsHandlerTests
 {
 	private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;

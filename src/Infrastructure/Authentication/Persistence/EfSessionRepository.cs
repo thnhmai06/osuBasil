@@ -10,10 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Authentication.Persistence;
 
-/// <summary>Records the history of sessions.</summary>
 internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRepository
 {
-	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(SessionRecord session)
 	{
 		var row = ToRow(session);
@@ -25,7 +23,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		});
 	}
 
-	/// <inheritdoc />
 	public async ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken ct = default)
 	{
@@ -56,7 +53,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		return new Page<SessionRecord>(rows.Select(row => ToRecord(row, user)).ToList(), hasNext);
 	}
 
-	/// <inheritdoc />
 	public async Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
@@ -65,7 +61,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		return row is null ? null : ToRecord(row, user);
 	}
 
-	/// <inheritdoc />
 	public async Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256 tokenHash, DateTimeOffset now,
 		CancellationToken ct = default)
 	{
@@ -80,7 +75,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			: new StoredSession(row.Id, row.UserId, row.Type, row.Ip, row.ClientInfo, row.StartedAt, row.ExpiresAt);
 	}
 
-	/// <inheritdoc />
 	public Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types,
 		DateTimeOffset at, SessionEndReason reason)
 	{
@@ -97,7 +91,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		});
 	}
 
-	/// <inheritdoc />
 	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason)
 	{
 		return database.WriteAsync((AuthenticationDbContext context) => context.Sessions
@@ -107,7 +100,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 				.SetProperty(row => row.EndReason, reason)));
 	}
 
-	/// <inheritdoc />
 	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity)
 	{
 		if (activity.Count == 0) return Task.CompletedTask;
@@ -126,7 +118,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		});
 	}
 
-	/// <inheritdoc />
 	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff)
 	{
 		var before = cutoff.ToUniversalTime();

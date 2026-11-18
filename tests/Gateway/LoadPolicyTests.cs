@@ -5,10 +5,6 @@ using AdmissionGate = Basil.Gateway.Admission.Admission;
 
 namespace Basil.Gateway.Tests;
 
-/// <summary>
-///     Work of a kind runs up to its own cap without affecting the other kinds; under load the listings are refused
-///     first and everything later; the health follows the load.
-/// </summary>
 public sealed class LoadPolicyTests
 {
 	private static readonly GatewayLimits Limits = new()

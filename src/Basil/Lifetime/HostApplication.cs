@@ -22,13 +22,8 @@ using SixLabors.ImageSharp.Web.Caching;
 
 namespace Basil.Lifetime;
 
-/// <summary>Builds the server application, the same way for the executable and for tests that run it in process.</summary>
 public static class HostApplication
 {
-	/// <summary>Creates the server application from the configuration.</summary>
-	/// <param name="args">The command-line arguments, which can override the configuration.</param>
-	/// <param name="configure">Changes the builder before the application is built; the tests use it to replace services.</param>
-	/// <returns>The application, not started.</returns>
 	public static WebApplication Create(string[] args, Action<WebApplicationBuilder>? configure = null)
 	{
 		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected,

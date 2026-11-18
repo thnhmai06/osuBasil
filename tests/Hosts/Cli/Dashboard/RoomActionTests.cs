@@ -2,7 +2,6 @@ using Basil.Host.Cli.Dashboard.Tabs;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>Which round and timer actions the detail of an open room offers for each state of the room.</summary>
 public sealed class RoomActionTests
 {
 	private static RoomItem Room(string state = "waiting", int players = 1, string map = "Map", bool countdown = false,

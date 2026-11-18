@@ -7,34 +7,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Beatmaps.Persistence;
 
-/// <summary>Which beatmaps a beatmap or beatmapset listing includes.</summary>
-/// <param name="Text">
-///     Free text matched against the artist, title, creator and difficulty name, or <see langword="null" />
-///     for any.
-/// </param>
-/// <param name="Mode">The game mode a beatmap must be for, or <see langword="null" /> for any.</param>
-/// <param name="Hidden">
-///     Whether only hidden (<see langword="true" />) or only visible (<see langword="false" />) beatmaps are included,
-///     or <see langword="null" /> for both; a beatmap is hidden when it or its beatmapset is. A user's search is
-///     narrowed with <see cref="LimitTo" />.
-/// </param>
-/// <param name="Stars">The star rating range, or <see langword="null" /> for any.</param>
-/// <param name="Ar">The approach rate range, or <see langword="null" /> for any.</param>
-/// <param name="Cs">The circle size range (the key count in osu!mania), or <see langword="null" /> for any.</param>
-/// <param name="Od">The overall difficulty range, or <see langword="null" /> for any.</param>
-/// <param name="Hp">The health drain range, or <see langword="null" /> for any.</param>
-/// <param name="Bpm">The beats-per-minute range, or <see langword="null" /> for any.</param>
-/// <param name="Length">The length range in seconds, or <see langword="null" /> for any.</param>
-/// <param name="Circles">The circle count range, or <see langword="null" /> for any.</param>
-/// <param name="Sliders">The slider count range, or <see langword="null" /> for any.</param>
-/// <param name="Creator">Text the beatmapset's creator name must contain, or <see langword="null" /> for any.</param>
-/// <param name="Artist">Text the artist must contain, or <see langword="null" /> for any.</param>
-/// <param name="Title">Text the title must contain, or <see langword="null" /> for any.</param>
-/// <param name="Difficulty">Text the difficulty name must contain, or <see langword="null" /> for any.</param>
-/// <param name="Status">The ranked status a beatmapset must report, or <see langword="null" /> for any.</param>
-/// <param name="Created">When the beatmapset must have been created, or <see langword="null" /> for any time.</param>
-/// <param name="Updated">When the beatmapset must last have been updated, or <see langword="null" /> for any time.</param>
-/// <param name="FileName">The osu! difficulty file name, or <see langword="null" /> for any.</param>
 public sealed record BeatmapQuery(
 	string? Text = null,
 	GameMode? Mode = null,
@@ -57,15 +29,6 @@ public sealed record BeatmapQuery(
 	Interval<DateTimeOffset>? Updated = null,
 	string? FileName = null) : IParsable<BeatmapQuery>
 {
-	/// <summary>Reads a query written in the osu! beatmap search syntax.</summary>
-	/// <param name="s">
-	///     The search text, for example <c>stars>5 ar=9 mode=0 hidden=0 "some title"</c>; <c>hidden</c> takes <c>1</c>,
-	///     <c>0</c> or <c>*</c> for both, and <c>mode</c> takes the number
-	///     of a game mode.
-	/// </param>
-	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
-	/// <returns>The query; a filter with an unknown key or a value that does not parse stays in <see cref="Text" />.</returns>
-	/// <exception cref="ArgumentNullException"><paramref name="s" /> is <see langword="null" />.</exception>
 	public static BeatmapQuery Parse(string s, IFormatProvider? provider = null)
 	{
 		ArgumentNullException.ThrowIfNull(s);
@@ -185,11 +148,6 @@ public sealed record BeatmapQuery(
 		}
 	}
 
-	/// <summary>Reads a query written in the osu! beatmap search syntax.</summary>
-	/// <param name="s">The search text.</param>
-	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
-	/// <param name="result">The query, or <see langword="null" /> when <paramref name="s" /> is <see langword="null" />.</param>
-	/// <returns><see langword="true" /> unless <paramref name="s" /> is <see langword="null" />; any text reads as a query.</returns>
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider,
 		[MaybeNullWhen(false)] out BeatmapQuery result)
 	{
@@ -197,17 +155,11 @@ public sealed record BeatmapQuery(
 		return result is not null;
 	}
 
-	/// <summary>Narrows the query to what a user with the given privileges may see.</summary>
-	/// <param name="effective">The asker's effective privileges.</param>
-	/// <returns>The query, which leaves hidden beatmaps out unless the asker may see them.</returns>
 	public BeatmapQuery LimitTo(UserPrivileges effective)
 	{
 		return MayViewHidden(effective) ? this : this with { Hidden = false };
 	}
 
-	/// <summary>Tells whether a user with the given privileges may see hidden beatmaps and beatmapsets.</summary>
-	/// <param name="effective">The asker's effective privileges.</param>
-	/// <returns><see langword="true" /> when hidden beatmaps are shown to the asker.</returns>
 	public static bool MayViewHidden(UserPrivileges effective)
 	{
 		return effective.Allows(UserPrivileges.Tournament);

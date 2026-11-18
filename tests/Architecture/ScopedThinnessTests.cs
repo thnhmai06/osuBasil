@@ -2,19 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Pins the owner rule that a <c>Scoped*</c> capability only checks privileges, calls the owning object and
-///     wraps its answer: it declares no nested type and its methods stay short.
-/// </summary>
 public sealed partial class ScopedThinnessTests
 {
-	/// <summary>The most lines (not blank, not comment) a method body of a Scoped type may hold.</summary>
 	private const int MaxBodyLines = 12;
 
-	/// <summary>
-	///     The Scoped files whose methods still hold the logic of their object; each is listed until it is thinned, and
-	///     <see cref="TheListOfFilesNotThinnedYet_HoldsOnlyFilesThatAreStillTooLong" /> removes it from the list.
-	/// </summary>
 	private static readonly HashSet<string> NotThinnedYet = new(StringComparer.Ordinal);
 
 	[Fact]

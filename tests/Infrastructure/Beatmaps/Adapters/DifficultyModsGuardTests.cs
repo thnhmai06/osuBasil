@@ -9,14 +9,8 @@ using osu.Game.Rulesets.Mods;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>
-///     Guards the list of mods that share an attributes file: a lazer difficulty mod missing from
-///     <see cref="GameModsGroups.Difficulty" /> would make two different combinations share one file unnoticed.
-/// </summary>
 public sealed class DifficultyModsGuardTests
 {
-	/// <summary>Every legacy mod that lazer counts in the difficulty of a ruleset is in the difficulty group.</summary>
-	/// <param name="mode">The game mode of the ruleset.</param>
 	[Theory]
 	[InlineData(GameMode.Standard)]
 	[InlineData(GameMode.Taiko)]

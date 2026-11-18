@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Stable.Tests.Multiplayer;
 
-/// <summary>The osu!tourney client observes a room without playing in it.</summary>
 [Collection("Stable host")]
 public sealed class TourneyTests(StableHostFixture fixture)
 {

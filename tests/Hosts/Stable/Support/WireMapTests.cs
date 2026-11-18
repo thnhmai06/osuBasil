@@ -7,10 +7,6 @@ using Basil.Protocol.Stable.Models.Multiplayer;
 
 namespace Basil.Host.Stable.Tests.Support;
 
-/// <summary>
-///     Numbers the osu! client sends reach Domain only through <see cref="WireMap" />, which refuses what Domain does
-///     not define; the two client concepts without a Domain twin (a slot's team and status) are mapped both ways.
-/// </summary>
 public sealed class WireMapTests
 {
 	[Theory]

@@ -6,12 +6,8 @@ using SixLabors.ImageSharp.Web.DependencyInjection;
 
 namespace Basil.Host.Rest.Images;
 
-/// <summary>Registers and serves the image hosts: avatars, menu images, screenshots and beatmap images (and the audio preview of a beatmapset).</summary>
 public static class ImageHosts
 {
-	/// <summary>Adds the image pipeline with its providers; the host names the folder of the file cache.</summary>
-	/// <param name="services">The service collection.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddRestImages(this IServiceCollection services)
 	{
 		services.AddImageSharp(options =>
@@ -49,12 +45,6 @@ public static class ImageHosts
 		return services;
 	}
 
-	/// <summary>
-	///     Serves the images; add it before the hosts' own steps, because the image middleware runs before routing and the
-	///     rate limit of the images has to run before it.
-	/// </summary>
-	/// <param name="app">The application pipeline.</param>
-	/// <returns><paramref name="app" />, for chaining.</returns>
 	public static IApplicationBuilder UseRestImages(this IApplicationBuilder app)
 	{
 		app.UseMiddleware<ImageAdmissionMiddleware>();
@@ -64,12 +54,10 @@ public static class ImageHosts
 	}
 }
 
-/// <summary>Asks the gateway whether an image request may enter, as picture work counted per address.</summary>
 internal sealed class ImageAdmissionMiddleware(RequestDelegate next)
 {
 	private static readonly HashSet<string> Labels = new(StringComparer.OrdinalIgnoreCase) { "a", "assets", "b" };
 
-	/// <summary>Applies the admission policy to a request for a picture.</summary>
 	public async Task InvokeAsync(HttpContext context, Admission admission)
 	{
 		var host = context.Request.Host.Host;
@@ -102,10 +90,8 @@ internal sealed class ImageAdmissionMiddleware(RequestDelegate next)
 	}
 }
 
-/// <summary>Answers 404 for a stored picture that cannot be decoded, because there is no image to serve.</summary>
 internal sealed class UndecodableImageMiddleware(RequestDelegate next)
 {
-	/// <summary>Answers 404 when the picture cannot be decoded.</summary>
 	public async Task InvokeAsync(HttpContext context)
 	{
 		try

@@ -8,7 +8,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Capabilities;
 
-/// <summary>A scope made from a reference refuses an unprivileged caller the same way whether or not the account exists.</summary>
 public sealed class ScopedUserReferenceTests
 {
 	private const int MissingId = 9_999_999;

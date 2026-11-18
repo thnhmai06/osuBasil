@@ -11,7 +11,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Services;
 
-/// <summary>Recomputing the stored metadata of every beatmap with the rulesets in use.</summary>
 public sealed class BeatmapReloaderTests
 {
 	private const double NewStar = 7.25;
@@ -28,7 +27,6 @@ public sealed class BeatmapReloaderTests
 			NullLogger<BeatmapReloader>.Instance);
 	}
 
-	/// <summary>Serves the given sets on the first page and nothing after it.</summary>
 	private BeatmapRecord OneSetWithABeatmap()
 	{
 		var set = AssetBeatmaps.Set();

@@ -5,11 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Answers whether the connection that asked may view a match.</summary>
 internal sealed class CanViewMatchHandler(Lobby lobby, IMatchRepository matches)
 	: IRequestHandler<CanViewMatch, bool>
 {
-	/// <inheritdoc />
 	public async ValueTask<bool> Handle(CanViewMatch request, CancellationToken ct)
 	{
 		var match = lobby.Find(request.MatchId)?.Match ?? await matches.GetAsync(request.MatchId, ct);

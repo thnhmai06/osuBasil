@@ -4,11 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers;
 
-/// <summary>Cancels a countdown that would start a round when a setting of that round changes.</summary>
 internal sealed class CancelCountdownOnSettingsChanged(RoomCountdowns countdowns)
 	: INotificationHandler<RoomSettingsChanged>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomSettingsChanged notification, CancellationToken ct)
 	{
 		if (notification.Change.AltersTheRound)

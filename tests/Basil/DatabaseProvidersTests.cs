@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Tests;
 
-/// <summary>Checks that each database endpoint names its own engine, and that the choice is validated at start.</summary>
 public sealed class DatabaseProvidersTests
 {
 	private static DatabaseOptions Options(string? read, string? write)

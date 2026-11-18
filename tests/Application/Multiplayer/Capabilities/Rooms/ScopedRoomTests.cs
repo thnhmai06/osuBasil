@@ -6,10 +6,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 
-/// <summary>
-///     The room itself: the roles a caller holds in it and what closing it does. The expected behaviour comes from
-///     AGENTS.md ("Authority") and docs/for-developers/multiplayer.md ("Creator, referee and host").
-/// </summary>
 public sealed class ScopedRoomTests
 {
 	[Fact]

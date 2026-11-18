@@ -5,9 +5,5 @@ using Mediator;
 
 namespace Basil.Application.Users.Messages;
 
-/// <summary>Asks Users for one session of an account.</summary>
-/// <param name="Actor">The connection that asks.</param>
-/// <param name="Target">The account acted on.</param>
-/// <param name="SessionId">The session to read.</param>
 public sealed record GetUserSession(Connection Actor, UserReference Target, long SessionId)
 	: IRequest<(UserOutcome Result, SessionRecord? Session)>;

@@ -19,10 +19,8 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>Accounts, their sessions, friends, blocks and silences.</summary>
 internal static class UserRoutes
 {
-	/// <summary>Maps the Users routes.</summary>
 	public static void MapUsers(this RouteGroupBuilder v1)
 	{
 		var users = v1.MapGroup("/users").WithTags("Users");
@@ -197,7 +195,6 @@ internal static class UserRoutes
 		return null;
 	}
 
-	/// <summary>Answers a refused away or private-message change: Denied means the caller is not the account itself.</summary>
 	private static IResult NotSelf(UserOutcome refused)
 	{
 		return refused == UserOutcome.Denied
@@ -381,7 +378,6 @@ internal static class UserRoutes
 			context.RequestAborted)).Answer();
 	}
 
-	/// <summary>The fields of an account that can change; absent fields stay as they are.</summary>
 	public sealed record PatchUserRequest(
 		string? Name,
 		string? Country,
@@ -389,25 +385,19 @@ internal static class UserRoutes
 		bool? PmPrivate,
 		UserPrivileges? Privileges);
 
-	/// <summary>A password change: the current password is needed for one's own account only.</summary>
 	public sealed record PasswordRequest(string? Current, string? New, bool? IncludeCurrent);
 
-	/// <summary>A new account made by staff.</summary>
 	public sealed record CreateUserRequest(
 		string? Username,
 		string? Password,
 		string? Country,
 		UserPrivileges? Privileges);
 
-	/// <summary>A request to close all sessions of one's own account.</summary>
 	public sealed record CloseSessionsRequest(bool? KeepCurrent);
 
-	/// <summary>A request to open an IRC key.</summary>
 	public sealed record IrcKeyRequest(string? Label);
 
-	/// <summary>A new IRC key; the key is shown only here.</summary>
 	public sealed record IrcKeyResponse(long SessionId, string Key);
 
-	/// <summary>A silence.</summary>
 	public sealed record SilenceRequest(DateTimeOffset EndsAt, string? Reason);
 }

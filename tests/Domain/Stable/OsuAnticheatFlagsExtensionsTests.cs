@@ -2,7 +2,6 @@ using Basil.Domain.Client;
 
 namespace Basil.Domain.Tests.Stable;
 
-/// <summary>Verifies how anticheat flags are read as readable names.</summary>
 public class OsuFlagsExtensionsTests
 {
 	[Fact]

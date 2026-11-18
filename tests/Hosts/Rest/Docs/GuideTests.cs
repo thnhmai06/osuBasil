@@ -1,6 +1,5 @@
 namespace Basil.Host.Rest.Tests.Docs;
 
-/// <summary>The guides the parts of the server write about themselves are served by the API host.</summary>
 [Collection("REST host")]
 public sealed class GuideTests(RestHostFixture fixture)
 {

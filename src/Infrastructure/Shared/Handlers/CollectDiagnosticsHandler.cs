@@ -5,14 +5,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Shared.Handlers;
 
-/// <summary>
-///     Reports the <c>database</c> category (commands, failures, latency of recent commands, connections when the engine
-///     tells) and the <c>events</c> category (published, pending, failed handlers).
-/// </summary>
 internal sealed class CollectDiagnosticsHandler(Database database, EventQueue queue)
 	: INotificationHandler<CollectDiagnostics>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(CollectDiagnostics notification, CancellationToken ct)
 	{
 		var collector = notification.Collector;

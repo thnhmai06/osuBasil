@@ -3,7 +3,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Stable.Tests.Multiplayer;
 
-/// <summary>Multiplayer as the osu! client plays it, end to end through the real server.</summary>
 [Collection("Stable host")]
 public sealed class MultiplayerTests(StableHostFixture fixture)
 {

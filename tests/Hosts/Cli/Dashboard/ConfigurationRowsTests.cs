@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The read-only configuration page: application configuration first, environment variables last, secrets hidden.</summary>
 public sealed class ConfigurationRowsTests
 {
 	private static IReadOnlyList<SettingsRow> Rows(Dictionary<string, string?> configuration, Dictionary<string, string> environment)

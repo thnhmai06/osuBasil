@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Tests.Logging;
 
-/// <summary>A logger provider that accepts every level, so that only the configured levels decide.</summary>
 internal sealed class AcceptingLoggerProvider : ILoggerProvider
 {
 	public ILogger CreateLogger(string categoryName)

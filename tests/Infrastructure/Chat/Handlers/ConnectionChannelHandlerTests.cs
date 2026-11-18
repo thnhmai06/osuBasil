@@ -10,10 +10,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
-/// <summary>
-///     What a connection does to its channels without the transport asking: it joins the channels that join
-///     themselves when it opens and leaves its channels when it closes.
-/// </summary>
 public sealed class ConnectionChannelHandlerTests
 {
 	[Fact]
@@ -55,11 +51,6 @@ public sealed class ConnectionChannelHandlerTests
 		return new ConnectionChannelHandler(app.Channels, NullLogger<ConnectionChannelHandler>.Instance);
 	}
 
-	/// <summary>Opens the channel a standard account makes for itself, with no read or write role required.</summary>
-	/// <param name="app">The application the channel lives in.</param>
-	/// <param name="name">The channel name, with its leading <c>#</c>.</param>
-	/// <param name="autoJoin">Whether a connection joins the channel at login.</param>
-	/// <returns>The open channel.</returns>
 	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app, string name, bool autoJoin = false)
 	{
 		var admin = await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password", UserPrivilegesExtensions.All);

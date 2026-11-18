@@ -6,14 +6,6 @@ using TestResult = NetArchTest.Rules.TestResult;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     Enforces the dependency direction inside and around the module projects: <c>Domain</c> knows no other project,
-///     a module's <c>Persistence</c> is its lowest layer and sees none of the folders above it, the capabilities do not
-///     react to events or run background work, the Application projects do not see Infrastructure, and the
-///     Infrastructure projects do not see the Application objects, the hosts or the bot. Which project may reference
-///     which is the business of <see cref="ModuleGraphTests" />.
-/// </summary>
-/// <remarks>The hosts are not covered yet: they are migrated after the tests.</remarks>
 public class LayeringTests
 {
 	private const string Protocol = "Basil.Protocol";
@@ -44,7 +36,6 @@ public class LayeringTests
 		"Basil.Application.Shared", "Basil.Infrastructure.Shared"
 	];
 
-	/// <summary>The sources whose entry points only send messages: they never scope an object themselves.</summary>
 	private static readonly string[] MessageOnlyHosts =
 	[
 		Path.Combine("Hosts", "Irc"), Path.Combine("Hosts", "Stable"), Path.Combine("Hosts", "Rest"),
@@ -428,7 +419,6 @@ public class LayeringTests
 		];
 	}
 
-	/// <summary>The folders that hold live objects and the registries that keep them.</summary>
 	private static string[] ObjectNamespaces()
 	{
 		return
@@ -438,7 +428,6 @@ public class LayeringTests
 		];
 	}
 
-	/// <summary>The folders that react to events and run background work.</summary>
 	private static string[] ReactionNamespaces()
 	{
 		return

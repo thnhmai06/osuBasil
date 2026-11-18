@@ -8,11 +8,6 @@ using static Basil.Testing.BeatmapsetWorld;
 
 namespace Basil.Application.Servers.Tests.Capabilities;
 
-/// <summary>
-///     Uploading a beatmapset as a connection, from the XML contract of <see cref="ScopedServerBeatmapsets" />: it needs
-///     <see cref="UserPrivileges.Player" />, a locked area refuses everyone but managers, and a set the
-///     server has is never overwritten.
-/// </summary>
 public sealed class ScopedServerBeatmapsetsTests
 {
 	private static readonly Diff Easy = new("Easy", "easy file");

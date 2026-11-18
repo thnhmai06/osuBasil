@@ -2,20 +2,13 @@ using System.Text;
 
 namespace Basil.Testing.Persistence;
 
-/// <summary>Builds the content streams the file storage tests hand to a storage.</summary>
 public static class TestStreams
 {
-	/// <summary>Creates a stream over the UTF-8 bytes of a text.</summary>
-	/// <param name="text">The text.</param>
-	/// <returns>The stream, positioned at its start.</returns>
 	public static MemoryStream Of(string text)
 	{
 		return new MemoryStream(Encoding.UTF8.GetBytes(text));
 	}
 
-	/// <summary>Reads a stream to its end as UTF-8 text and disposes it.</summary>
-	/// <param name="stream">The stream; <see langword="null" /> fails the test.</param>
-	/// <returns>The text.</returns>
 	public static async Task<string> ReadAllAsync(Stream? stream)
 	{
 		Assert.NotNull(stream);
@@ -26,7 +19,6 @@ public static class TestStreams
 		}
 	}
 
-	/// <summary>A stream that delivers some bytes and then fails, the way an upload that dies mid-transfer fails.</summary>
 	public sealed class Failing : Stream
 	{
 		private bool _delivered;
@@ -70,16 +62,12 @@ public static class TestStreams
 		}
 	}
 
-	/// <summary>A stream that delivers its first part at once and its last part only after it is released.</summary>
-	/// <param name="first">The text delivered at once.</param>
-	/// <param name="last">The text delivered after <see cref="Release" />.</param>
 	public sealed class Gated(string first, string last) : Stream
 	{
 		private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		private int _stage;
 
-		/// <summary>Gets a task that ends once the first part has been read.</summary>
 		public Task Started => _started.Task;
 
 		public override bool CanRead => true;
@@ -93,7 +81,6 @@ public static class TestStreams
 			set => throw new NotSupportedException();
 		}
 
-		/// <summary>Lets the last part be read.</summary>
 		public void Release()
 		{
 			_released.TrySetResult();

@@ -7,11 +7,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 
-/// <summary>
-///     The slots of a room. The expected behaviour comes from
-///     docs/for-developers/multiplayer.md ("Membership, slots and settings"): there are sixteen numbered positions,
-///     the room size counts the usable positions, and a locked room stops the players from changing slot or team.
-/// </summary>
 public sealed class ScopedRoomSlotsTests
 {
 	[Fact]

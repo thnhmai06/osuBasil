@@ -4,11 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Stores which round a submitted score belongs to.</summary>
 internal sealed class RoomRoundScoreSubmittedRecorder(IRoundScoreRepository roundScores)
 	: INotificationHandler<RoomRoundScoreSubmitted>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundScoreSubmitted @event, CancellationToken ct)
 	{
 		await roundScores.RecordAsync(@event.Score);

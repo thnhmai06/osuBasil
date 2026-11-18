@@ -5,17 +5,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests;
 
-/// <summary>One server and one PostgreSQL container for the REST host tests, which use different usernames.</summary>
 public sealed class RestHostFixture : IAsyncLifetime
 {
-	/// <summary>Staff: manages users and restrictions.</summary>
 	public static readonly UserPrivileges StaffPrivileges = UserPrivilegesExtensions.Default |
 	                                                        UserPrivileges.Owner |
 	                                                        UserPrivileges.Moderator;
 
 	public BasilHost Host { get; private set; } = null!;
 
-	/// <summary>Gets the database server, for tests that start a server of their own.</summary>
 	public PersistenceFixture Database { get; } = new();
 
 	public async ValueTask InitializeAsync()
@@ -31,7 +28,6 @@ public sealed class RestHostFixture : IAsyncLifetime
 		await Database.DisposeAsync();
 	}
 
-	/// <summary>Lifts the request limits, which all test clients share through the loopback address.</summary>
 	public static async Task RaiseLimitsAsync(BasilHost host)
 	{
 		var settings = host.Services.GetRequiredService<ISettingsRepository>();
@@ -54,7 +50,6 @@ public sealed class RestHostFixture : IAsyncLifetime
 		});
 	}
 
-	/// <summary>Creates an account and returns a client signed in as it.</summary>
 	public async Task<(RestClient Client, int Id)> SignInAsync(string name, UserPrivileges? privileges = null)
 	{
 		var user = await Host.CreateUserAsync(name, "password", privileges);

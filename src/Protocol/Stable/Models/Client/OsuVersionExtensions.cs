@@ -5,25 +5,13 @@ using Basil.Domain.Client;
 
 namespace Basil.Protocol.Stable.Models.Client;
 
-/// <summary>
-///     Reads and writes the build string an osu! client reports, <c>bYYYYMMDD[.revision][stream]</c>: a <c>b</c>
-///     prefix, a build date, an optional single-digit revision and an optional stream suffix.
-/// </summary>
 public static partial class OsuVersionExtensions
 {
-	/// <summary>Reads a client version from its wire text.</summary>
-	/// <param name="text">The wire text; the leading <c>b</c> is optional.</param>
-	/// <returns>The client version.</returns>
-	/// <exception cref="FormatException"><paramref name="text" /> is not a client build string.</exception>
 	public static OsuVersion Parse(string text)
 	{
 		return TryParse(text, out var version) ? version : throw new FormatException($"Invalid client build: {text}");
 	}
 
-	/// <summary>Reads a client version from its wire text without throwing.</summary>
-	/// <param name="text">The wire text, or <see langword="null" />.</param>
-	/// <param name="version">The client version when the text is well formed; otherwise the default value.</param>
-	/// <returns><see langword="true" /> if <paramref name="text" /> was read; otherwise, <see langword="false" />.</returns>
 	public static bool TryParse([NotNullWhen(true)] string? text, out OsuVersion version)
 	{
 		version = default;
@@ -56,12 +44,6 @@ public static partial class OsuVersionExtensions
 		return true;
 	}
 
-	/// <summary>
-	///     Returns the wire text of a client version: <c>b</c>, the date as <c>yyyyMMdd</c>, <c>.R</c> for a revision
-	///     and the lowercase stream name unless the stream is <see cref="OsuVersionStream.Stable" />.
-	/// </summary>
-	/// <param name="version">The client version.</param>
-	/// <returns>The wire text, for example <c>b20240815.2beta</c> or <c>b20240815</c>.</returns>
 	public static string ToText(this OsuVersion version)
 	{
 		var date = version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);

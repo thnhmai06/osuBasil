@@ -12,14 +12,12 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Basil.Infrastructure.Content.Tests.Adapters;
 
-/// <summary>Pins which pictures the inspector accepts, and that it reads dimensions without decoding them.</summary>
 public sealed class ImageSharpScreenshotInspectorTests
 {
 	private readonly ImageSharpScreenshotInspector _inspector = new();
 
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-	/// <summary>A PNG is reported as a PNG with its own dimensions.</summary>
 	[Fact]
 	public async Task InspectAsync_ReportsAPngWithItsDimensions()
 	{
@@ -30,7 +28,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Equal(new ScreenshotInfo("png", 1920, 1080), info);
 	}
 
-	/// <summary>A JPEG is reported as a JPEG with its own dimensions.</summary>
 	[Fact]
 	public async Task InspectAsync_ReportsAJpegWithItsDimensions()
 	{
@@ -41,7 +38,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Equal(new ScreenshotInfo("jpg", 1280, 720), info);
 	}
 
-	/// <summary>A GIF is not a picture the server accepts.</summary>
 	[Fact]
 	public async Task InspectAsync_ReturnsNullForAGif()
 	{
@@ -52,7 +48,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Null(info);
 	}
 
-	/// <summary>A TIFF is not a picture the server accepts.</summary>
 	[Fact]
 	public async Task InspectAsync_ReturnsNullForATiff()
 	{
@@ -63,7 +58,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Null(info);
 	}
 
-	/// <summary>A bitmap is not a picture the server accepts.</summary>
 	[Fact]
 	public async Task InspectAsync_ReturnsNullForABitmap()
 	{
@@ -74,8 +68,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Null(info);
 	}
 
-	/// <summary>Content that is no picture at all is not a screenshot.</summary>
-	/// <param name="length">How many bytes of content there are.</param>
 	[Theory]
 	[InlineData(0)]
 	[InlineData(8)]
@@ -89,7 +81,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Null(info);
 	}
 
-	/// <summary>A picture cut off before its header is not a screenshot.</summary>
 	[Fact]
 	public async Task InspectAsync_ReturnsNullForAPictureCutOffBeforeItsHeader()
 	{
@@ -101,7 +92,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Null(info);
 	}
 
-	/// <summary>Dimensions come from the header, so a picture cut off after it still has its dimensions.</summary>
 	[Fact]
 	public async Task InspectAsync_ReadsTheDimensionsWithoutDecodingThePicture()
 	{
@@ -114,11 +104,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 		Assert.Equal(new ScreenshotInfo("png", 640, 480), info);
 	}
 
-	/// <summary>Builds a picture of the given size, encoded in the given format.</summary>
-	/// <param name="width">The picture width in pixels.</param>
-	/// <param name="height">The picture height in pixels.</param>
-	/// <param name="encoder">The encoder of the picture format.</param>
-	/// <returns>The encoded picture, read from its start.</returns>
 	private static MemoryStream Picture(int width, int height, IImageEncoder encoder)
 	{
 		using var image = new Image<Rgba32>(width, height);
@@ -129,7 +114,6 @@ public sealed class ImageSharpScreenshotInspectorTests
 	}
 }
 
-/// <summary>Pins the inspector on pictures that real clients and users supply.</summary>
 public sealed class ImageSharpScreenshotInspectorRealPictureTests
 {
 	private readonly ImageSharpScreenshotInspector _inspector = new();
@@ -141,7 +125,6 @@ public sealed class ImageSharpScreenshotInspectorRealPictureTests
 		return new MemoryStream(OszArchive.Sample(Path.Combine("Images", name)), false);
 	}
 
-	/// <summary>A square RGBA avatar is a PNG of its own size.</summary>
 	[Fact]
 	public async Task InspectAsync_ReportsARealAvatarPng()
 	{
@@ -150,7 +133,6 @@ public sealed class ImageSharpScreenshotInspectorRealPictureTests
 		Assert.Equal(new ScreenshotInfo("png", 512, 512), await _inspector.InspectAsync(content, Token));
 	}
 
-	/// <summary>A baseline JPEG with EXIF data is a JPEG of its own size.</summary>
 	[Fact]
 	public async Task InspectAsync_ReportsARealJpegWithExifData()
 	{
@@ -159,7 +141,6 @@ public sealed class ImageSharpScreenshotInspectorRealPictureTests
 		Assert.Equal(new ScreenshotInfo("jpg", 1920, 1200), await _inspector.InspectAsync(content, Token));
 	}
 
-	/// <summary>The header of a large interlaced PNG, cut off before its pixel data, gives its dimensions.</summary>
 	[Fact]
 	public async Task InspectAsync_ReportsTheDimensionsOfAnInterlacedPngFromItsHeader()
 	{

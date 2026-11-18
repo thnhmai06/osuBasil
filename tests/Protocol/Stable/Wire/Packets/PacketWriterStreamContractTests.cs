@@ -2,10 +2,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the stream contract of <see cref="PacketWriter" />: seekable input required, and the stream is left
-///     open.
-/// </summary>
 public class PacketWriterStreamContractTests
 {
 	[Fact]

@@ -5,18 +5,14 @@ using XenoAtom.Terminal.UI.Text;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>Paints a <see cref="CanvasContext" /> as a dashboard surface, mapping tones to the colours of the theme.</summary>
 internal sealed class CanvasSurface(CanvasContext context, Theme theme) : IPaintSurface
 {
 	private static readonly Color Low = Colors.TerminalGreen;
 
-	/// <inheritdoc />
 	public int Width => context.Size.Width;
 
-	/// <inheritdoc />
 	public int Height => context.Size.Height;
 
-	/// <inheritdoc />
 	public void Put(int x, int y, char character, Tone tone, double heat = 0)
 	{
 		if (x < 0 || y < 0 || x >= Width || y >= Height) return;

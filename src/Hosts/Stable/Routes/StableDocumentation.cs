@@ -4,10 +4,8 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Routes;
 
-/// <summary>Describes the endpoints of the osu! (stable) client for the generated API documentation.</summary>
 public static class StableDocumentation
 {
-	/// <summary>The name of the documentation the endpoints of the osu! (stable) client are listed in.</summary>
 	public const string Group = ApiDocument.Stable;
 
 	private const string Overview = """
@@ -22,11 +20,8 @@ public static class StableDocumentation
 	                                as named for each endpoint. The game server uses the `osu-token` header after the login.
 	                                """;
 
-	/// <summary>The introduction of the documentation of the osu! (stable) client's endpoints.</summary>
 	public static readonly ApiDocument Document = new(Group, "Basil osu! (stable) client endpoints", Overview);
 
-	/// <summary>Describes the exchange of packets with the game server.</summary>
-	/// <returns>The Markdown description of <c>POST /</c>.</returns>
 	public static string ExchangeDescription()
 	{
 		var text = new StringBuilder();

@@ -9,10 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Chat.Tests.Handlers;
 
-/// <summary>
-///     What the spectator channel handlers keep in step: the first spectator brings the spectated client in, the last
-///     one takes it out, and a closed client's channel closes.
-/// </summary>
 public sealed class SpectatorChannelHandlerTests
 {
 	[Fact]
@@ -182,7 +178,6 @@ public sealed class SpectatorChannelHandlerTests
 		return app.Provider.GetRequiredService<SpectatorChannels>();
 	}
 
-	/// <summary>Runs the joined handler for every spectator of a client, as the event queue would.</summary>
 	private static async Task JoinBothAsync(TestApplication app, SpectatorChannels channels, StableConnection host)
 	{
 		var handler = new SpectatorJoinedHandler(channels);

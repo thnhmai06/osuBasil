@@ -7,11 +7,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     The bot acts with the privileges of the user who typed the command: managing a room is for its creator, its
-///     referees and whoever may manage every room; being the host, a plain player or an outsider grants no
-///     management privileges. Expected replies are named by the reply that owns the wording.
-/// </summary>
 public sealed class MpAuthorityTests
 {
 	[Theory]
@@ -94,10 +89,6 @@ public sealed class MpAuthorityTests
 		Assert.False(room.Slots.Locked);
 	}
 
-	/// <summary>
-	///     Opens a room with <c>!mp make</c> as its creator and puts a user with a role in it, using only commands,
-	///     then has that user target the room with <c>!mp in</c>.
-	/// </summary>
 	private static async Task<(Room Room, StableConnection Actor)> SetUpAsync(BotHarness bot, RoomRole role)
 	{
 		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator");

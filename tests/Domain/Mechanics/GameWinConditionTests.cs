@@ -3,7 +3,6 @@ using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests.Mechanics;
 
-/// <summary>Verifies how a win condition orders the scores of a match.</summary>
 public class GameWinConditionTests
 {
 	private static readonly HitCounts Perfect = new(100, 0, 0, 0, 0, 0);

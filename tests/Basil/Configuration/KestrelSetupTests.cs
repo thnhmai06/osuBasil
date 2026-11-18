@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Tests.Configuration;
 
-/// <summary>The web server hides what it is and refuses large request bodies unless a route asks for more.</summary>
 public sealed class KestrelSetupTests
 {
 	private static KestrelServerOptions Options()

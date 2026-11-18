@@ -6,39 +6,24 @@ using Basil.Domain.Authentication;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>What the server's process lets the console do to it.</summary>
 public interface IServerControl
 {
-	/// <summary>Starts the graceful shutdown.</summary>
-	/// <param name="restart">Whether the process ends with the restart exit code.</param>
 	void RequestShutdown(bool restart);
 }
 
-/// <summary>The colour themes of the dashboard.</summary>
 public interface IThemeControl
 {
-	/// <summary>Gets the names of the themes.</summary>
 	IReadOnlyList<string> Names { get; }
 
-	/// <summary>Gets the name of the theme in use.</summary>
 	string Current { get; }
 
-	/// <summary>Gets whether the theme is fixed and cannot change (<c>--nocolor</c>).</summary>
 	bool Locked { get; }
 
-	/// <summary>Changes the theme and saves the choice.</summary>
-	/// <param name="name">The name of the theme.</param>
-	/// <returns><see langword="true" /> when the theme exists.</returns>
 	bool Set(string name);
 }
 
-/// <summary>
-///     The commands that exist only on the console: <c>help</c>, <c>status</c>, <c>shutdown</c>, <c>restart</c> and
-///     <c>theme</c>.
-/// </summary>
 internal static class MetaCommands
 {
-	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create(Func<CommandCatalog> catalog)
 	{
 		yield return new CommandDef
@@ -203,9 +188,7 @@ internal static class MetaCommands
 	}
 }
 
-/// <summary>The replies of the <c>theme</c> command that are not about a particular theme.</summary>
 public static class ThemeReplies
 {
-	/// <summary>The theme is fixed by <c>--nocolor</c>.</summary>
 	public const string Locked = "The theme is fixed to monochrome by --nocolor.";
 }

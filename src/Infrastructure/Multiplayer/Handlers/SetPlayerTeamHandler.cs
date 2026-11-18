@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Runs a <see cref="SetPlayerTeam" /> on the room for the connection that asked.</summary>
 internal sealed class SetPlayerTeamHandler : IRequestHandler<SetPlayerTeam, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(SetPlayerTeam request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

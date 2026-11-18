@@ -9,11 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
-/// <summary>Stores the rounds played in matches.</summary>
 internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRepository roundScores)
 	: IRoundRepository
 {
-	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Round round)
 	{
 		var row = ToRow(round);
@@ -21,7 +19,6 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 			context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number));
 	}
 
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken ct = default)
 	{
 		var rows = await database.ReadAsync((MultiplayerDbContext context) => context.Rounds
@@ -63,7 +60,6 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 		};
 	}
 
-	/// <summary>Builds a round of the given match from its stored row.</summary>
 	private static Round ToRound(MatchRecord match, RoundRow row)
 	{
 		// The mods setter validates against the mode, so the stored mode must be restored first;
@@ -90,7 +86,6 @@ internal sealed class EfRoundRepository(DatabaseSession database, IRoundScoreRep
 		};
 	}
 
-	/// <summary>The decision of a round as the <c>result</c> column keeps it; the property names are the stored JSON names.</summary>
 	private sealed record StoredDecision(
 		IReadOnlyList<int> ScoreOrder,
 		int? WinnerId,

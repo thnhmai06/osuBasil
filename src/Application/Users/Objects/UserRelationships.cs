@@ -2,22 +2,15 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects;
 
-/// <summary>Owns the friends and blocks one account has set toward other users.</summary>
 public sealed class UserRelationships
 {
 	private readonly User _user;
 
-	/// <summary>Creates the relationship state for an account.</summary>
-	/// <param name="user">The account that owns the relationships.</param>
 	internal UserRelationships(User user)
 	{
 		_user = user;
 	}
 
-	/// <summary>Lists the relationships this account has set, of one kind.</summary>
-	/// <param name="type">The kind of relationship.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The relationships of that kind.</returns>
 	internal async Task<IReadOnlyList<Relationship>> ListAsync(RelationshipType type,
 		CancellationToken ct = default)
 	{
@@ -25,9 +18,6 @@ public sealed class UserRelationships
 		return all.Where(relationship => relationship.Type == type).ToList();
 	}
 
-	/// <summary>Sets a relationship toward another user, replacing the one it had.</summary>
-	/// <param name="target">The other user.</param>
-	/// <param name="type">The kind of relationship.</param>
 	internal Task SetAsync(UserRecord target, RelationshipType type)
 	{
 		return _user.Context.Relationships.CreateOrUpdateAsync(new Relationship
@@ -39,9 +29,6 @@ public sealed class UserRelationships
 		});
 	}
 
-	/// <summary>Removes a relationship of one kind toward another user, if it exists.</summary>
-	/// <param name="target">The other user.</param>
-	/// <param name="type">The kind of relationship.</param>
 	internal async Task<bool> RemoveAsync(UserRecord target, RelationshipType type)
 	{
 		var existing = (await ListAsync(type)).FirstOrDefault(relationship =>
@@ -52,9 +39,6 @@ public sealed class UserRelationships
 		return true;
 	}
 
-	/// <summary>Adds another user as a friend.</summary>
-	/// <param name="target">The other user.</param>
-	/// <returns>The outcome of adding the friend.</returns>
 	internal async Task<UserOutcome> AddFriendAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
@@ -65,9 +49,6 @@ public sealed class UserRelationships
 		return UserOutcome.Ok;
 	}
 
-	/// <summary>Removes another user as a friend.</summary>
-	/// <param name="target">The other user.</param>
-	/// <returns>The outcome of removing the friend; NotFound when the other user is not a friend.</returns>
 	internal async Task<UserOutcome> RemoveFriendAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
@@ -76,9 +57,6 @@ public sealed class UserRelationships
 		return await RemoveAsync(target, RelationshipType.Friend) ? UserOutcome.Ok : UserOutcome.NotFound;
 	}
 
-	/// <summary>Blocks another user.</summary>
-	/// <param name="target">The other user.</param>
-	/// <returns>The outcome of blocking the user.</returns>
 	internal async Task<UserOutcome> BlockAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
@@ -89,9 +67,6 @@ public sealed class UserRelationships
 		return UserOutcome.Ok;
 	}
 
-	/// <summary>Removes a block on another user.</summary>
-	/// <param name="target">The other user.</param>
-	/// <returns>The outcome of removing the block; NotFound when the other user is not blocked.</returns>
 	internal async Task<UserOutcome> UnblockAsync(UserRecord target)
 	{
 		if (_user.Record.Equals(target)) return UserOutcome.Self;
@@ -100,10 +75,6 @@ public sealed class UserRelationships
 		return await RemoveAsync(target, RelationshipType.Block) ? UserOutcome.Ok : UserOutcome.NotFound;
 	}
 
-	/// <summary>Lists the users this account has set a relationship toward, of one kind.</summary>
-	/// <param name="type">The kind of relationship.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The users the relationships name.</returns>
 	internal async Task<IReadOnlyList<UserRecord>> TargetsAsync(RelationshipType type,
 		CancellationToken ct)
 	{

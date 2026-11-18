@@ -3,10 +3,8 @@ using Basil.Gateway.Admission;
 
 namespace Basil.Host.Stable.Support;
 
-/// <summary>Asks the gateway whether a request of the osu! client may enter and answers 429 or 503 when it may not.</summary>
 internal sealed class StableAdmission(Admission admission, UserRegistry registry) : IEndpointFilter
 {
-	/// <inheritdoc />
 	public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext invocation,
 		EndpointFilterDelegate next)
 	{

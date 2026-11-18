@@ -9,10 +9,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Announcements;
 
-/// <summary>
-///     What BasilBot announces when a room's round or closing changes. Expected replies are named by the
-///     reply that owns the wording, filled with the arguments its documentation names.
-/// </summary>
 public sealed class RoomAnnouncerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -38,7 +34,6 @@ public sealed class RoomAnnouncerTests
 		return new RoomPlayerJoined(staff.Room, staff.Player, 2, null, null);
 	}
 
-	/// <summary>Has the creator start a round in the room and returns the event the room published for it.</summary>
 	private static async Task<RoomRoundStarted> StartRoundAsync(BotHarness bot, StaffRoom staff)
 	{
 		Assert.True(await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(

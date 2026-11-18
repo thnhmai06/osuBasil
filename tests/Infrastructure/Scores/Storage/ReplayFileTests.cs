@@ -6,16 +6,11 @@ using Basil.Infrastructure.Scores.Storage;
 
 namespace Basil.Infrastructure.Scores.Tests.Storage;
 
-/// <summary>
-///     Contract tests of the <c>.osr</c> file: its bytes are pinned against an independent oracle (the layout and the
-///     replay checksum of bancho.py's <c>build_full_replay</c>), not against what the code under test produces.
-/// </summary>
 public sealed class ReplayFileTests
 {
 	private const string Oracle =
 		"00672735010B2063306161626263636464656566663030313132323333343435353636373738380B08636F6F6B69657A690B203034323533623031303562373966383737666633646464646666333932653335EA01050003006400020001004E61BC00F40100480000000080E9E85FEB1BD9081E000000000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D2B02000000000000";
 
-	/// <summary>Where the six 16-bit hit counts start in <see cref="Oracle" />: after the three strings of its header.</summary>
 	private const int HitCountsOffset = 83;
 
 	private static readonly OsuVersion Version = new(new DateOnly(2026, 7, 11), null, OsuVersionStream.Stable);

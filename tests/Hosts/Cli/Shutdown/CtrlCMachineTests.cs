@@ -3,7 +3,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Host.Cli.Tests.Shutdown;
 
-/// <summary>The Ctrl+C rules of the specification, step by step, with a clock the test moves.</summary>
 public sealed class CtrlCMachineTests
 {
 	private static readonly TimeSpan Window = TimeSpan.FromSeconds(3);

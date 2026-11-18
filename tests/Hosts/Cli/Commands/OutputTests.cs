@@ -5,7 +5,6 @@ using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>The console prints people-readable text, not JSON: aligned fields, tables, flag names, local times.</summary>
 public sealed class OutputTests
 {
 	private static readonly ViewFormatter Utc = new(TimeZoneInfo.Utc);

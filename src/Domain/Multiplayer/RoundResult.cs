@@ -6,14 +6,10 @@ using Basil.Domain.Shared;
 
 namespace Basil.Domain.Multiplayer;
 
-/// <summary>Who won a round, and by how much, decided from the scores played in it.</summary>
 public abstract class RoundResult : IEquatable<RoundResult>
 {
-	/// <summary>Gets the round the result was decided for.</summary>
 	public required Round Round { get; init; }
 
-	/// <summary>Gets the scores the result was decided from, the winner first.</summary>
-	/// <exception cref="ArgumentException">A score does not belong to <see cref="Round" />.</exception>
 	public required IReadOnlyList<RoundScore> Scores
 	{
 		get;
@@ -25,36 +21,15 @@ public abstract class RoundResult : IEquatable<RoundResult>
 		}
 	}
 
-	/// <summary>
-	///     Gets how far the winner is ahead of the runner-up in the round's win metric; zero for a draw.
-	///     An opponent that did not play counts as zero.
-	/// </summary>
 	public double Margin { get; protected init; }
 
-	/// <summary>
-	///     Gets a value that indicates whether the round has no winner: the leading players or teams tie, or
-	///     nobody scored. A sole contender wins even with a metric of zero.
-	/// </summary>
 	public bool IsDraw { get; protected init; }
 
-	/// <summary>Determines whether another result was decided for the same round.</summary>
-	/// <param name="other">The result to compare against, or <see langword="null" />.</param>
-	/// <returns>
-	///     <see langword="true" /> if <paramref name="other" /> belongs to the same <see cref="Round" />;
-	///     otherwise, <see langword="false" />.
-	/// </returns>
 	public bool Equals(RoundResult? other)
 	{
 		return other is not null && Round.Equals(other.Round);
 	}
 
-	/// <summary>Decides who won a round from the scores played in it.</summary>
-	/// <param name="round">The round.</param>
-	/// <param name="scores">The scores submitted in the round.</param>
-	/// <returns>
-	///     A team result for a round played in teams, a head-to-head result otherwise, or <see langword="null" /> when
-	///     the round has no score.
-	/// </returns>
 	public static RoundResult? Decide(Round round, IReadOnlyCollection<RoundScore> scores)
 	{
 		return scores.Count == 0
@@ -64,24 +39,6 @@ public abstract class RoundResult : IEquatable<RoundResult>
 				: new HeadToHeadResult(round, scores);
 	}
 
-	/// <summary>Builds the result of a round from the decision that was stored for it, without deciding it again.</summary>
-	/// <remarks>
-	///     The ranking, the margin and the draw flag are the ones decided when the round finished; a later change
-	///     of the rules does not alter them.
-	/// </remarks>
-	/// <param name="round">The round.</param>
-	/// <param name="scores">The scores of the round.</param>
-	/// <param name="order">
-	///     The ids of the round's scores in the order decided when the round finished, the winner first. A score
-	///     it does not name comes last.
-	/// </param>
-	/// <param name="margin">How far the winner was ahead of the runner-up when the round finished.</param>
-	/// <param name="isDraw">Whether the round finished without a winner.</param>
-	/// <param name="winnerId">The winning player of a round without teams as stored, or <see langword="null" />.</param>
-	/// <param name="winner">The winning team of a team round as stored, or <see langword="null" />.</param>
-	/// <param name="redScore">The win metric the red team reached as stored; absent counts as zero.</param>
-	/// <param name="blueScore">The win metric the blue team reached as stored; absent counts as zero.</param>
-	/// <returns>The result, with the scores in the stored order and every other value as stored.</returns>
 	public static RoundResult Restore(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
 		double margin, bool isDraw, int? winnerId, GameTeam? winner, double? redScore, double? blueScore)
 	{
@@ -90,39 +47,23 @@ public abstract class RoundResult : IEquatable<RoundResult>
 			: new HeadToHeadResult(round, scores, order, margin, isDraw, winnerId);
 	}
 
-	/// <summary>Puts scores in the order a decision stored, scores it does not name last.</summary>
-	/// <param name="scores">The scores.</param>
-	/// <param name="order">The stored order of score ids.</param>
 	protected static List<RoundScore> InOrder(IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order)
 	{
 		var position = order.Select((id, index) => (id, index)).ToDictionary(entry => entry.id, entry => entry.index);
 		return [.. scores.OrderBy(score => position.GetValueOrDefault(score.Score.Id, order.Count))];
 	}
 
-	/// <summary>Determines whether this result equals another object.</summary>
-	/// <param name="obj">The object to compare against, or <see langword="null" />.</param>
-	/// <returns>
-	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="RoundResult" /> for the same
-	///     round; otherwise, <see langword="false" />.
-	/// </returns>
 	public override bool Equals(object? obj)
 	{
 		if (obj is null) return false;
 		return obj is RoundResult result && Equals(result);
 	}
 
-	/// <summary>Returns a hash code consistent with the result's equality.</summary>
-	/// <returns>The hash code of the round the result was decided for.</returns>
 	public override int GetHashCode()
 	{
 		return Round.GetHashCode();
 	}
 
-	/// <summary>Gets the margin between two scores in the round's win metric.</summary>
-	/// <param name="best">The higher-ranked score.</param>
-	/// <param name="runnerUp">The score behind it.</param>
-	/// <param name="condition">The win condition that selects the metric.</param>
-	/// <returns>The gap between the two, or zero when they tie.</returns>
 	protected static double MarginOf(RoundScore best, RoundScore runnerUp, GameWinCondition condition)
 	{
 		var difference = condition.Metric(best.Score.Value) - condition.Metric(runnerUp.Score.Value);
@@ -130,13 +71,8 @@ public abstract class RoundResult : IEquatable<RoundResult>
 	}
 }
 
-/// <summary>Who won a round played without teams, and by how much.</summary>
 public sealed class HeadToHeadResult : RoundResult
 {
-	/// <summary>Decides which player wins a head-to-head round from its scores.</summary>
-	/// <param name="round">The round.</param>
-	/// <param name="scores">The scores submitted in the round.</param>
-	/// <exception cref="ArgumentException">The round is played in a team mode.</exception>
 	[SetsRequiredMembers]
 	public HeadToHeadResult(Round round, IReadOnlyCollection<RoundScore> scores)
 	{
@@ -174,13 +110,6 @@ public sealed class HeadToHeadResult : RoundResult
 		IsDraw = WinnerId is null;
 	}
 
-	/// <summary>Builds a head-to-head result from the decision that was stored for it.</summary>
-	/// <param name="round">The round.</param>
-	/// <param name="scores">The scores of the round.</param>
-	/// <param name="order">The stored order of score ids, the winner first.</param>
-	/// <param name="margin">The stored margin.</param>
-	/// <param name="isDraw">Whether the stored decision is a draw.</param>
-	/// <param name="winnerId">The stored winning player, or <see langword="null" />.</param>
 	[SetsRequiredMembers]
 	internal HeadToHeadResult(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
 		double margin, bool isDraw, int? winnerId)
@@ -192,22 +121,13 @@ public sealed class HeadToHeadResult : RoundResult
 		WinnerId = winnerId;
 	}
 
-	/// <summary>
-	///     Gets the id of the winning player, or <see langword="null" /> for a draw or when the round has
-	///     no score.
-	/// </summary>
 	public int? WinnerId { get; }
 }
 
-/// <summary>Who won a team round, and by how much.</summary>
 public sealed class TeamVersusResult : RoundResult
 {
 	private static readonly GameTeam[] Teams = Enum.GetValues<GameTeam>();
 
-	/// <summary>Decides which team wins a team round from its scores.</summary>
-	/// <param name="round">The team round.</param>
-	/// <param name="scores">The scores submitted in the round.</param>
-	/// <exception cref="ArgumentException">The round is not played in a team mode.</exception>
 	[SetsRequiredMembers]
 	public TeamVersusResult(Round round, IReadOnlyCollection<RoundScore> scores)
 	{
@@ -248,15 +168,6 @@ public sealed class TeamVersusResult : RoundResult
 			.ToList();
 	}
 
-	/// <summary>Builds a team result from the decision that was stored for it.</summary>
-	/// <param name="round">The team round.</param>
-	/// <param name="scores">The scores of the round.</param>
-	/// <param name="order">The stored order of score ids, the winning team first.</param>
-	/// <param name="margin">The stored margin.</param>
-	/// <param name="isDraw">Whether the stored decision is a draw.</param>
-	/// <param name="winner">The stored winning team, or <see langword="null" />.</param>
-	/// <param name="redScore">The stored win metric of the red team.</param>
-	/// <param name="blueScore">The stored win metric of the blue team.</param>
 	[SetsRequiredMembers]
 	internal TeamVersusResult(Round round, IReadOnlyCollection<RoundScore> scores, IReadOnlyList<int> order,
 		double margin, bool isDraw, GameTeam? winner, double? redScore, double? blueScore)
@@ -274,20 +185,10 @@ public sealed class TeamVersusResult : RoundResult
 		Winner = winner;
 	}
 
-	/// <summary>
-	///     Gets the scores each team set, with a team that played none present as an empty sequence.
-	/// </summary>
 	public FrozenDictionary<GameTeam, IReadOnlyList<ScoreRecord>> TeamScores { get; }
 
-	/// <summary>
-	///     Gets the win metric each team reached — the sum of its scores or combos, or its average
-	///     accuracy — with a team that has no score counting as zero.
-	/// </summary>
 	public FrozenDictionary<GameTeam, double> TeamScore { get; }
 
-	/// <summary>
-	///     Gets the winning team, or <see langword="null" /> for a round without teams or a draw.
-	/// </summary>
 	public GameTeam? Winner { get; }
 
 	private static FrozenDictionary<GameTeam, IReadOnlyList<ScoreRecord>> ScoresByTeam(
@@ -314,7 +215,6 @@ public sealed class TeamVersusResult : RoundResult
 			team => teams.FirstOrDefault(t => t.Team == team).Total);
 	}
 
-	/// <summary>Ranks teams by their win metric, the team that is ahead first.</summary>
 	private static IOrderedEnumerable<(GameTeam Team, double Total)> Rank(
 		IEnumerable<RoundScore> scores, GameWinCondition condition)
 	{
@@ -324,10 +224,6 @@ public sealed class TeamVersusResult : RoundResult
 			.OrderByDescending(t => t.Total);
 	}
 
-	/// <summary>
-	///     Gets a team's win metric: the sum of its players' scores or combos, or their average accuracy.
-	/// </summary>
-	/// <remarks>The caller passes only the scores that contribute to the metric.</remarks>
 	private static double Total(IEnumerable<RoundScore> team, GameWinCondition condition)
 	{
 		return condition switch

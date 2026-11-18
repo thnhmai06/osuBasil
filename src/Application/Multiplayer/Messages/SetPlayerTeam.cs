@@ -7,11 +7,5 @@ using Mediator;
 
 namespace Basil.Application.Multiplayer.Messages;
 
-/// <summary>Asks Multiplayer to put a player in a team.</summary>
-/// <param name="Actor">The connection that acts.</param>
-/// <param name="Room">The room it acts on.</param>
-/// <param name="Player">The player to move.</param>
-/// <param name="Team">The team to put them in.</param>
-/// <remarks>The answer is what the operation answers for the actor's privileges and the room's state.</remarks>
 public sealed record SetPlayerTeam(Connection Actor, Room Room, UserReference Player, GameTeam Team)
 	: IRequest<RoomOutcome>;

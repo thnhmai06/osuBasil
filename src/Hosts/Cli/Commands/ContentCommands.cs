@@ -17,10 +17,6 @@ using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>
-///     The <c>menu</c>, <c>faqs</c>, <c>settings</c>, <c>announce</c>, <c>screenshots</c> and <c>diagnostics</c>
-///     commands.
-/// </summary>
 internal static class ContentCommands
 {
 	private static readonly OptionDef[] BannerFields =
@@ -30,7 +26,6 @@ internal static class ContentCommands
 		new("begins", "An ISO 8601 time the banner starts."), new("expires", "An ISO 8601 time the banner ends.")
 	];
 
-	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef
@@ -325,7 +320,6 @@ internal static class ContentCommands
 			: call.NotFound("entry");
 	}
 
-	/// <summary>Prints a JSON node as dotted <c>label: value</c> lines.</summary>
 	private static void Flatten(List<(string, string)> lines, string prefix, JsonNode? node)
 	{
 		switch (node)
@@ -405,7 +399,6 @@ internal static class ContentCommands
 		}
 	}
 
-	/// <summary>Reads a typed value: a number, true, false, null, a list or an object stays that; anything else is text.</summary>
 	private static JsonNode? ValueOf(string text)
 	{
 		try

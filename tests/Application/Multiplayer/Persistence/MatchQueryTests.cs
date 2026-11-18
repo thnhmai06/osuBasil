@@ -3,12 +3,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Tests.Persistence;
 
-/// <summary>
-///     Narrowing a match query to its asker. The rule comes from the owner's decision: an asker without
-///     <see cref="UserPrivileges.Tournament" /> sees private matches only when they took part in them or
-///     manage
-///     them.
-/// </summary>
 public sealed class MatchQueryTests
 {
 	private static readonly UserRecord Viewer = new() { Id = 7, Value = new UserData { Name = "viewer" } };

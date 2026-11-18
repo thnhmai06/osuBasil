@@ -3,10 +3,8 @@ using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Beatmaps.Storage;
 
-/// <summary>Removes the names the beatmapset storage was writing or setting aside when the server last stopped.</summary>
 internal sealed class IncomingLeftovers(DataPaths paths) : IResident
 {
-	/// <inheritdoc />
 	public Task LoadAsync(CancellationToken ct)
 	{
 		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path)
@@ -18,8 +16,6 @@ internal sealed class IncomingLeftovers(DataPaths paths) : IResident
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Removes one leftover, leaving what it cannot remove to the next startup.</summary>
-	/// <param name="delete">The removal.</param>
 	private static void DeleteLeftover(Action delete)
 	{
 		try

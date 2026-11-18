@@ -6,16 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>
-///     Puts a connection into the channels that join themselves when it opens, and out of its channels when it
-///     closes.
-/// </summary>
 internal sealed class ConnectionChannelHandler(
 	GeneralChannelRegistry channels,
 	ILogger<ConnectionChannelHandler> logger) : INotificationHandler<UserConnectionOpened>,
 	INotificationHandler<UserConnectionClosed>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		HandlerStep.Run(logger, "part its channels", "the closed connection of user", @event.Connection.Record.Id,
@@ -23,7 +18,6 @@ internal sealed class ConnectionChannelHandler(
 		return ValueTask.CompletedTask;
 	}
 
-	/// <inheritdoc />
 	public ValueTask Handle(UserConnectionOpened @event, CancellationToken ct)
 	{
 		channels.JoinAutoChannels(@event.Connection);

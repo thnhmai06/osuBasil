@@ -19,7 +19,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc.Transport;
 
-/// <summary>Accepts IRC sockets and runs one session per socket.</summary>
 internal sealed class IrcListener(
 	IOptions<IrcOptions> options,
 	IrcCommands commands,
@@ -38,10 +37,8 @@ internal sealed class IrcListener(
 	private readonly ConcurrentDictionary<IrcSession, Task> _sessions = new();
 	private TcpListener? _listener;
 
-	/// <summary>Gets the port the listener is bound to, which differs from the configured one when that is <c>0</c>.</summary>
 	public int Port => ((IPEndPoint)_listener!.LocalEndpoint).Port;
 
-	/// <inheritdoc />
 	public override Task StartAsync(CancellationToken ct)
 	{
 		try
@@ -60,7 +57,6 @@ internal sealed class IrcListener(
 		return base.StartAsync(ct);
 	}
 
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		while (!stoppingToken.IsCancellationRequested)
@@ -83,8 +79,6 @@ internal sealed class IrcListener(
 		}
 	}
 
-	/// <summary>Announces that the server is stopping to every client and closes their sockets.</summary>
-	/// <param name="restarting">Whether the server comes back, which only changes the wording.</param>
 	public void Announce(bool restarting)
 	{
 		state.AcceptingLogins = false;
@@ -96,7 +90,6 @@ internal sealed class IrcListener(
 		}
 	}
 
-	/// <inheritdoc />
 	public override async Task StopAsync(CancellationToken ct)
 	{
 		state.AcceptingLogins = false;

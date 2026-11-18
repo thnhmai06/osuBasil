@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Irc.Tests;
 
-/// <summary>A client that sends lines faster than the gateway allows is told so and disconnected.</summary>
 [Collection("IRC host")]
 public sealed class FloodTests(IrcHostFixture fixture)
 {

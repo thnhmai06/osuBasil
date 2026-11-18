@@ -4,13 +4,8 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
-/// <summary>Checks that a stored beatmapset has every file it serves.</summary>
 internal sealed class BeatmapsetFileAudit(IBeatmapsetStorage storage, IBeatmapRepository beatmaps)
 {
-	/// <summary>Determines whether a stored beatmapset misses a file it serves.</summary>
-	/// <param name="set">The stored beatmapset.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> when its archive or any file made from it is not stored.</returns>
 	public async Task<bool> MissingFilesAsync(BeatmapsetRecord set, CancellationToken ct = default)
 	{
 		if (await ArchiveMissingAsync(set, true, ct)) return true;

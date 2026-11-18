@@ -8,7 +8,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Replies;
 
-/// <summary>Contract tests of the reading of the replies file while the server runs.</summary>
 public sealed class RepliesWatcherTests : IDisposable
 {
 	private static readonly Reply Plain = new("test.plain", "You're not in a match.");

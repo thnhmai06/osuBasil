@@ -28,13 +28,8 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Testing.Clients;
 
-/// <summary>
-///     Runs the real server in the test process: Kestrel on a random port, a fake clock, a PostgreSQL database of its
-///     own and temporary data directories. Clients talk to it over the network.
-/// </summary>
 public sealed class BasilHost : IAsyncDisposable
 {
-	/// <summary>The domain the clients address; sub-domains such as <c>c.</c> and <c>osu.</c> go in the Host header.</summary>
 	public const string DomainName = "basil.test";
 
 	private readonly PersistenceFixture _database;
@@ -49,14 +44,12 @@ public sealed class BasilHost : IAsyncDisposable
 		_database = database;
 	}
 
-	/// <summary>Gets the clock the server uses; tests advance it instead of sleeping.</summary>
 	public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
 	public Uri Url { get; private set; } = null!;
 
 	public string Domain => DomainName;
 
-	/// <summary>Gets the port the IRC host listens on.</summary>
 	public int IrcPort => Services.GetRequiredService<IrcState>().Port;
 
 	public IServiceProvider Services => _app!.Services;
@@ -73,7 +66,6 @@ public sealed class BasilHost : IAsyncDisposable
 		if (Directory.Exists(_root)) Directory.Delete(_root, true);
 	}
 
-	/// <summary>Starts a server with an empty database.</summary>
 	public static async Task<BasilHost> StartAsync(PersistenceFixture database)
 	{
 		var host = new BasilHost(database);
@@ -124,13 +116,11 @@ public sealed class BasilHost : IAsyncDisposable
 			.First());
 	}
 
-	/// <summary>Waits until every event published so far has been delivered to its handlers.</summary>
 	public Task DrainEventsAsync()
 	{
 		return Services.GetRequiredService<EventQueue>().DrainAsync();
 	}
 
-	/// <summary>Stores an account with a password.</summary>
 	public async Task<UserRecord> CreateUserAsync(string name, string password = "password",
 		UserPrivileges? privileges = null)
 	{
@@ -141,10 +131,6 @@ public sealed class BasilHost : IAsyncDisposable
 		return user;
 	}
 
-	/// <summary>Issues an IRC key for an account, the way the account's owner would through the API.</summary>
-	/// <param name="name">The username.</param>
-	/// <param name="label">The label of the device.</param>
-	/// <returns>The key, shown only once.</returns>
 	public async Task<string> CreateIrcKeyAsync(string name, string label = "test-device")
 	{
 		var registry = Services.GetRequiredService<UserRegistry>();
@@ -158,9 +144,6 @@ public sealed class BasilHost : IAsyncDisposable
 		return key!;
 	}
 
-	/// <summary>Revokes an IRC key, the way the account's owner would through the API.</summary>
-	/// <param name="name">The username.</param>
-	/// <param name="key">The key to revoke.</param>
 	public async Task RevokeIrcKeyAsync(string name, string key)
 	{
 		var registry = Services.GetRequiredService<UserRegistry>();
@@ -170,10 +153,6 @@ public sealed class BasilHost : IAsyncDisposable
 		registry.Close(api, SessionEndReason.LoggedOut);
 	}
 
-	/// <summary>Stores an account with an IRC key and returns an IRC client for it, connected but not registered.</summary>
-	/// <param name="name">The username.</param>
-	/// <param name="privileges">The account's privileges, or the default ones.</param>
-	/// <returns>The client and the key.</returns>
 	public async Task<(IrcClient Client, string Key)> NewIrcClientAsync(string name,
 		UserPrivileges? privileges = null)
 	{
@@ -182,7 +161,6 @@ public sealed class BasilHost : IAsyncDisposable
 		return (await IrcClient.ConnectAsync(this), key);
 	}
 
-	/// <summary>Stores an account and returns an osu! client for it, not yet logged in.</summary>
 	public async Task<OsuClient> NewClientAsync(string name, string password = "password",
 		UserPrivileges? privileges = null, bool tourney = false)
 	{
@@ -190,7 +168,6 @@ public sealed class BasilHost : IAsyncDisposable
 		return OsuClient.Create(this, name, password, tourney);
 	}
 
-	/// <summary>Opens a general channel that every login joins.</summary>
 	public void OpenChannel(string name)
 	{
 		Services.GetRequiredService<Server>().OpenChannel(new GeneralChannelRecord
@@ -199,9 +176,6 @@ public sealed class BasilHost : IAsyncDisposable
 		});
 	}
 
-	/// <summary>Imports one of the sample beatmapsets of tests/Assets.</summary>
-	/// <param name="sample">The path under Assets, for example <c>Sets/padoru-standard.osz</c>.</param>
-	/// <returns>The imported beatmaps.</returns>
 	public async Task<IReadOnlyList<BeatmapRecord>> ImportSampleAsync(string sample)
 	{
 		await using var archive = new MemoryStream(OszArchive.Sample(sample));
@@ -212,10 +186,6 @@ public sealed class BasilHost : IAsyncDisposable
 		return existing.Items;
 	}
 
-	/// <summary>
-	///     Stops the server the way a shutdown does, so that the graceful steps run. The clock of the server is fake, so it
-	///     is advanced while the server stops; the steps' time limits then pass without waiting.
-	/// </summary>
 	public async Task StopAsync()
 	{
 		if (_app is null || _stopped) return;

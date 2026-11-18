@@ -2,7 +2,6 @@ using Basil.Domain.Content;
 
 namespace Basil.Domain.Tests.Content;
 
-/// <summary>Verifies the rules of the canonical reference to a stored or hosted asset.</summary>
 public class ContentReferenceTests
 {
 	[Theory]

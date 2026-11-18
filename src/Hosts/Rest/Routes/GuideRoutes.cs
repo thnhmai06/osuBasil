@@ -4,13 +4,11 @@ using Markdig;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>Serves the pages of the documentation that the parts of the server write about themselves.</summary>
 internal static class GuideRoutes
 {
 	private static readonly MarkdownPipeline Pipeline =
 		new MarkdownPipelineBuilder().UsePipeTables().DisableHtml().Build();
 
-	/// <summary>Maps the Guides routes.</summary>
 	public static void MapGuides(this IEndpointRouteBuilder app)
 	{
 		app.MapGet("/guides", (IEnumerable<IDocumentPage> pages) => Html("Guides",

@@ -7,7 +7,6 @@ using NSubstitute;
 
 namespace Basil.Tests.Configuration;
 
-/// <summary>The admission limits follow the server settings, and a change applies to the next decision.</summary>
 public sealed class SettingsGatewayLimitsTests
 {
 	private static ServerSettings WithRequests(int requests)

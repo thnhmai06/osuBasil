@@ -4,15 +4,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies <c>PacketReader.ReadScoreFrame</c> against a hand-laid-out scoreframe: exactly 29 bytes
-///     for score v1 plus 16 more bytes (two doubles) for score v2, truncation at any byte ending in
-///     <see cref="EndOfStreamException" />.
-/// </summary>
-/// <remarks>
-///     Fixture layout per the osu! scoreframe: i32 time, u8 id, six u16 counts, i32 total score,
-///     u16 max combo, u16 current combo, u8 perfect, u8 hp, u8 tag, u8 scoreV2 — all little-endian.
-/// </remarks>
 public class PacketReaderScoreFrameTests
 {
 	// time 1000, id 5, counts 2/3/4/5/6/7, score 0x11223344, maxCombo 300, combo 11,
@@ -24,7 +15,6 @@ public class PacketReaderScoreFrameTests
 	// the v1 hex's trailing scoreV2 byte 0x00 is replaced by 0x01, then the two doubles follow.
 	private static readonly string V2Hex = V1Hex[..^2] + "01" + "000000000000e03f" + "000000000000d03f";
 
-	/// <summary>The frame those fixture bytes describe, for <see cref="ScoreFrame" /> record equality.</summary>
 	private static ScoreFrame V1Frame => new(TimeSpan.FromMilliseconds(1000), 5,
 		new ScoreState(new HitCounts(2, 3, 4, 5, 6, 7), 287_454_020, 300, 11, false), 142, 9, null);
 

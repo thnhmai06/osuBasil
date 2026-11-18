@@ -2,7 +2,6 @@ using Basil.Host.Cli.Dashboard.Shell;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The spreading of a tab strip: the free space is split equally between the tabs, half before and half after each label.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class TabSpreadTests
 {

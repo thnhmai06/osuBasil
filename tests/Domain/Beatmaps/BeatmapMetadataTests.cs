@@ -3,7 +3,6 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests.Beatmaps;
 
-/// <summary>Verifies the validation of the metadata of one difficulty of a beatmapset.</summary>
 public class BeatmapMetadataTests
 {
 	[Theory]

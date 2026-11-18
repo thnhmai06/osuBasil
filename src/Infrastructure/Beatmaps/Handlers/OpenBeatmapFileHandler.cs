@@ -7,14 +7,12 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Opens the audio, video or background of a beatmap for a caller who may see it.</summary>
 internal sealed class OpenBeatmapFileHandler(
 	IBeatmapRepository beatmaps,
 	IBeatmapsetStorage storage,
 	TimeProvider clock)
 	: IRequestHandler<OpenBeatmapFile, BeatmapFile?>
 {
-	/// <inheritdoc />
 	public async ValueTask<BeatmapFile?> Handle(OpenBeatmapFile request, CancellationToken ct)
 	{
 		if (await beatmaps.GetAsync(request.BeatmapId, ct) is not { } map ||
@@ -27,7 +25,6 @@ internal sealed class OpenBeatmapFileHandler(
 			: null;
 	}
 
-	/// <summary>Gets the name of the file a beatmap keeps for a kind of file.</summary>
 	internal static string? FileOf(BeatmapRecord map, BeatmapsetFileType type)
 	{
 		return type switch

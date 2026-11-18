@@ -3,7 +3,6 @@ using Basil.Infrastructure.Beatmaps.Logic;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Logic;
 
-/// <summary>The plain names the files of a beatmapset are stored under: distinct, and valid on every file system.</summary>
 public sealed class StoredFileNamesTests
 {
 	private static BeatmapsetContentFile File(string name)

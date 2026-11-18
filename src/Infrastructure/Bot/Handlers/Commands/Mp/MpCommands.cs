@@ -15,14 +15,6 @@ using Mediator;
 
 namespace Basil.Infrastructure.Bot.Handlers.Commands.Mp;
 
-/// <summary>
-///     Executes the <c>!mp</c> chat command surface against the Basil server.
-/// </summary>
-/// <remarks>
-///     Operations run on the lobby and rooms scoped to the connection of the user who typed the command; the server
-///     enforces authority and returns a <see cref="RoomOutcome" />, which is mapped to a user-visible reply by
-///     <see cref="MpReplies.Describe" />.
-/// </remarks>
 internal sealed partial class MpCommands(
 	Lobby lobby,
 	UserRegistry registry,
@@ -31,28 +23,14 @@ internal sealed partial class MpCommands(
 	MpTargets targets,
 	ISender sender)
 {
-	/// <summary>The maximum length of a room name as accepted by the osu! client.</summary>
 	private const int MaxRoomNameLength = 50;
 
-	/// <summary>Default <c>!mp timer</c> length in seconds.</summary>
 	private const int DefaultTimerSeconds = 30;
 
-	/// <summary>The <c>!mp</c> subcommands that reject being chained on a <c>;</c> or <c>&amp;&amp;</c> line.</summary>
 	private static readonly FrozenSet<string> NonChainableSubcommands =
 		new[] { "", "help", "make", "makeprivate", "in", "join" }
 			.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
-	/// <summary>
-	///     Runs a <c>!mp &lt;subcommand&gt; [args...]</c> command for the sender.
-	/// </summary>
-	/// <param name="context">Who sent the command, where it was sent, and how to answer it.</param>
-	/// <param name="args">The tokens after <c>!mp</c>; <paramref name="args" />[0] is the subcommand.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>
-	///     <see langword="true" /> when the command was recognized and the server reported success;
-	///     <see langword="false" /> for usage errors, unknown subcommands, and any non-<see cref="RoomOutcome.Ok" />
-	///     result from the server.
-	/// </returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken ct)
 	{
@@ -75,15 +53,6 @@ internal sealed partial class MpCommands(
 		};
 	}
 
-	/// <summary>
-	///     Reports whether a <c>!mp &lt;subcommand&gt;</c> segment is allowed inside a
-	///     <c>;</c> / <c>&amp;&amp;</c> chain.
-	/// </summary>
-	/// <param name="subcommand">The subcommand name as written by the user, case-insensitive.</param>
-	/// <returns>
-	///     <see langword="false" /> for <c>help</c>, <c>make</c>, <c>makeprivate</c>, <c>in</c>, <c>join</c>, and the bare
-	///     prefix with no subcommand; <see langword="true" /> otherwise.
-	/// </returns>
 	public static bool IsChainable(string subcommand)
 	{
 		return !NonChainableSubcommands.Contains(subcommand);
@@ -134,17 +103,6 @@ internal sealed partial class MpCommands(
 		};
 	}
 
-	/// <summary>
-	///     Answers a room-scoped command with the room named on every line when the reply is not posted in
-	///     that room's own channel.
-	/// </summary>
-	/// <param name="context">The context the command was sent with.</param>
-	/// <param name="roomId">The room the command resolved to.</param>
-	/// <returns>
-	///     A context whose replies posted outside <c>#mp_{roomId}</c>
-	///     prefix each non-empty line with <see cref="MpReplies.RoomPrefix" />; a private reply always goes to a
-	///     direct message, so <see cref="CommandContext.ReplyPrivately(Reply, CancellationToken)" /> is always prefixed.
-	/// </returns>
 	private static CommandContext NameRoom(CommandContext context, int roomId)
 	{
 		var prefix = context.Replies.Text(MpReplies.RoomPrefix, new { room = roomId });
@@ -166,12 +124,6 @@ internal sealed partial class MpCommands(
 
 	// ── scope resolution ─────────────────────────────────────────────────────────────────
 
-	/// <summary>Finds the room a room-scoped command applies to.</summary>
-	/// <param name="context">The context the command was sent with.</param>
-	/// <returns>
-	///     The room of the channel the command came from, else the room the sender last named with <c>!mp in</c>, else
-	///     the room the sender plays in; <see langword="null" /> when the sender is in none of them.
-	/// </returns>
 	private Room? ResolveRoom(CommandContext context)
 	{
 		var actor = context.Actor;

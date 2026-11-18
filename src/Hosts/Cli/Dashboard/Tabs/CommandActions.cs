@@ -10,22 +10,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>
-///     Runs the console commands that the buttons of the detail frame stand for, tells the operator how each one really
-///     ended and makes every page read again what it may have changed.
-/// </summary>
 internal sealed class CommandActions(IServiceProvider services, ConsoleTab console, ToastTray toasts, Changes changes,
 	Action<Action> post)
 {
-	/// <summary>Writes a value as one word of a command line.</summary>
-	/// <param name="value">The value, such as a name or a reason.</param>
 	public static string Quote(string value)
 	{
 		return $"\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
 	}
 
-	/// <summary>Runs a command line; a toast tells how it ended.</summary>
-	/// <param name="line">The command line, which is also shown in the console log.</param>
 	public void Run(string line)
 	{
 		var output = new ConcurrentQueue<OutputLine>();
@@ -33,17 +25,11 @@ internal sealed class CommandActions(IServiceProvider services, ConsoleTab conso
 			.ContinueWith(_ => post(() => Finish(output)), TaskScheduler.Default);
 	}
 
-	/// <summary>Tells the operator that nothing was run, such as when a form was left empty.</summary>
-	/// <param name="text">What to say.</param>
 	public void Notify(string text)
 	{
 		toasts.Show(text, ToastKind.Warning);
 	}
 
-	/// <summary>Runs <paramref name="then" /> when a check holds, and otherwise tells the operator why not.</summary>
-	/// <param name="check">Reads whether the action can go on.</param>
-	/// <param name="otherwise">What to say when it cannot.</param>
-	/// <param name="then">The action.</param>
 	public void When(Func<Task<bool>> check, string otherwise, Action then)
 	{
 		_ = check().ContinueWith(task => post(() =>
@@ -53,9 +39,6 @@ internal sealed class CommandActions(IServiceProvider services, ConsoleTab conso
 		}), TaskScheduler.Default);
 	}
 
-	/// <summary>Runs a command line that names an account the operator typed, by id or by name.</summary>
-	/// <param name="template">The command line, with <c>{0}</c> where the account id goes.</param>
-	/// <param name="who">The id or the name of the account.</param>
 	public void RunForUser(string template, string who)
 	{
 		var text = who.Trim();

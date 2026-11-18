@@ -6,10 +6,8 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <summary>An osu! multiplayer room's 16 player slots, and whether the room's slots are locked as a whole.</summary>
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {
-	/// <summary>The room these slots belong to.</summary>
 	public readonly Room Room;
 
 	private readonly ImmutableArray<RoomSlot> _slots;
@@ -20,16 +18,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		_slots = [.. Enumerable.Range(1, RoomRules.MaxPlayers).Select(index => new RoomSlot(this, index))];
 	}
 
-	/// <summary>Gets a value that indicates whether the room's slots are locked as a whole.</summary>
-	/// <remarks>A locked room stops players from changing their own slot or team; referees still can.</remarks>
 	public bool Locked { get; internal set; }
 
-	/// <summary>Gets the number of slots, which is always <see cref="RoomRules.MaxPlayers" />.</summary>
 	public int Count => _slots.Length;
 
-	/// <summary>Gets a slot by its number.</summary>
-	/// <param name="index">The slot number, from 1 to <see cref="RoomRules.MaxPlayers" />.</param>
-	/// <exception cref="ArgumentOutOfRangeException">The number is outside 1 to <see cref="RoomRules.MaxPlayers" />.</exception>
 	public RoomSlot this[int index]
 	{
 		get
@@ -39,8 +31,6 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		}
 	}
 
-	/// <summary>Enumerates the slots in order, from slot 1.</summary>
-	/// <returns>An enumerator over the slots.</returns>
 	public IEnumerator<RoomSlot> GetEnumerator()
 	{
 		return ((IEnumerable<RoomSlot>)_slots).GetEnumerator();
@@ -51,31 +41,22 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return GetEnumerator();
 	}
 
-	/// <summary>Finds the slot occupied by a player.</summary>
-	/// <param name="user">The player to look up.</param>
-	/// <returns>The player's slot, or <see langword="null" /> when they have none.</returns>
 	public RoomSlot? Find(UserRecord user)
 	{
 		return _slots.FirstOrDefault(s => user.Equals(s.Player?.Record));
 	}
 
-	/// <summary>Finds the slot occupied by a player connection.</summary>
-	/// <param name="player">The connection to look up.</param>
-	/// <returns>The connection's slot, or <see langword="null" /> when they have none.</returns>
 	public RoomSlot? Find(StableConnection player)
 	{
 		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
 	}
 
-	/// <summary>Sets every playing or finished player back to not ready.</summary>
 	internal void ResetPlayers()
 	{
 		foreach (var slot in this.Where(s => s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
 			slot.SetStatus(RoomSlotStatus.NotReady);
 	}
 
-	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
-	/// <param name="size">The new number of available slots, from 1 to 16.</param>
 	internal void Resize(int size)
 	{
 		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
@@ -88,7 +69,6 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			slot.Locked = open-- <= 0;
 	}
 
-	/// <summary>Gets the slot with a given number, or <see langword="null" /> when the number is outside 1 to 16.</summary>
 	public RoomSlot? At(int index)
 	{
 		return index is >= 1 and <= RoomRules.MaxPlayers ? _slots[index - 1] : null;

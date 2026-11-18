@@ -15,11 +15,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Bot.Tests.Chat;
 
-/// <summary>
-///     Which channel messages the bot answers as commands, where it answers them, and how long answers are posted.
-///     Every case hands the handler a message, waits until the worker has run everything the handler queued, and then
-///     looks at what the server said.
-/// </summary>
 public sealed class ChatHandlerTests : IAsyncLifetime
 {
 	private const int MaxPieceLength = 2000;
@@ -54,7 +49,6 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 		_bot.Dispose();
 	}
 
-	/// <summary>Has the typist post a message and waits until the worker has run what the handler queued.</summary>
 	private async Task PostAsync(Channel channel, string content, bool isNotice = false, UserRecord? author = null)
 	{
 		var message = new Message
@@ -67,7 +61,6 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 		await DrainAsync();
 	}
 
-	/// <summary>Waits until every command queued so far has run, by queueing one more behind them.</summary>
 	private async Task DrainAsync()
 	{
 		var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -96,7 +89,6 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 			.Returns(Task.FromException<StreamReader?>(new InvalidOperationException()));
 	}
 
-	/// <summary>Gets the non-empty lines of a reply, which is how the bot posts a reply of several lines.</summary>
 	private static List<string> Lines(string text)
 	{
 		return [.. text.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0)];

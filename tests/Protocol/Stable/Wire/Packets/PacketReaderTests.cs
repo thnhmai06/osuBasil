@@ -6,11 +6,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies `PacketReader`'s decoding of raw byte sequences into each primitive type
-///     (i8/i16/i32/i64/u8/uleb128/string/bool/double), including sign wraparound and uleb128
-///     string-length semantics.
-/// </summary>
 public class PacketReaderTests
 {
 	private static PacketReader Reader(string hex)

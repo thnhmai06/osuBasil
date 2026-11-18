@@ -4,11 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers.Channels;
 
-/// <summary>Deletes a general channel for the connection that asked.</summary>
 internal sealed class DeleteGeneralChannelHandler(Server server)
 	: IRequestHandler<DeleteGeneralChannel, GeneralChannelAnswer>
 {
-	/// <inheritdoc />
 	public async ValueTask<GeneralChannelAnswer> Handle(DeleteGeneralChannel request,
 		CancellationToken ct)
 	{

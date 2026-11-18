@@ -2,12 +2,10 @@ using Basil.Gateway.Admission;
 
 namespace Basil.Host.Rest.Http;
 
-/// <summary>Asks the gateway whether the request may enter, as the kind of work its route declared, and reports a refusal.</summary>
 internal sealed class RestAdmission(RequestDelegate next)
 {
 	private const string HealthPath = "/health";
 
-	/// <summary>Runs the step for one routed request.</summary>
 	public async Task InvokeAsync(HttpContext context, Admission admission)
 	{
 		// The health probe has to answer exactly when the server is shedding.

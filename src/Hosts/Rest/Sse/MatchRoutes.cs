@@ -12,10 +12,8 @@ using Mediator;
 
 namespace Basil.Host.Rest.Sse;
 
-/// <summary>Match reports: the list for managers and the live report of one match.</summary>
 internal static class MatchRoutes
 {
-	/// <summary>Maps the Matches routes.</summary>
 	public static void MapMatches(this RouteGroupBuilder v1)
 	{
 		var matches = v1.MapGroup("/matches").WithTags("Matches");
@@ -132,6 +130,5 @@ internal static class MatchRoutes
 			JsonSerializer.SerializeToUtf8Bytes(SnapshotOf(report), Api.Json)));
 	}
 
-	/// <summary>The full report of a match: the match and its entries in time order.</summary>
 	public sealed record ReportView(MatchView Match, IReadOnlyList<object> Entries);
 }

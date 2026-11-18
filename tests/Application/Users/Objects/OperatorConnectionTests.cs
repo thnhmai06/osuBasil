@@ -6,10 +6,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Objects;
 
-/// <summary>
-///     The console acts as BasilBot and is the one authority that skips the privilege checks; BasilBot's own connections
-///     gain nothing from it.
-/// </summary>
 public sealed class OperatorConnectionTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -113,7 +109,6 @@ public sealed class OperatorConnectionTests
 	}
 }
 
-/// <summary>What only the operator may do with relationships and profiles of other accounts.</summary>
 public sealed class OperatorRelationshipTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

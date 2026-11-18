@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Beatmaps.Services;
 
-/// <summary>Recomputes the stored metadata of every beatmap from its stored difficulty file, one page of sets at a time.</summary>
 internal sealed class BeatmapReloader(
 	IBeatmapsetRepository sets,
 	IBeatmapRepository beatmaps,
@@ -23,10 +22,8 @@ internal sealed class BeatmapReloader(
 	private readonly CancellationTokenSource _stop = new();
 	private int _running;
 
-	/// <inheritdoc />
 	public bool Running => Volatile.Read(ref _running) == 1;
 
-	/// <inheritdoc />
 	public bool TryStart()
 	{
 		if (Interlocked.Exchange(ref _running, 1) == 1) return false;
@@ -35,15 +32,12 @@ internal sealed class BeatmapReloader(
 		return true;
 	}
 
-	/// <summary>Stops a running reload when the server shuts down.</summary>
 	public void Dispose()
 	{
 		_stop.Cancel();
 		_stop.Dispose();
 	}
 
-	/// <summary>Recomputes every beatmap and ends the running state; a failure is logged, never thrown.</summary>
-	/// <param name="ct">A token that stops the reload.</param>
 	internal async Task RunAsync(CancellationToken ct)
 	{
 		try
@@ -65,8 +59,6 @@ internal sealed class BeatmapReloader(
 		}
 	}
 
-	/// <summary>Walks the sets page by page and recomputes the beatmaps of each.</summary>
-	/// <returns>How many beatmaps were recomputed and how many were left as they were.</returns>
 	internal async Task<(int Done, int Failed)> ReloadAllAsync(CancellationToken ct)
 	{
 		int done = 0, failed = 0, offset = 0;

@@ -7,26 +7,15 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 
-/// <summary>What a caller is expected to get from a room operation.</summary>
 public enum RoomExpectation
 {
-	/// <summary>The operation succeeds and changes the room.</summary>
 	Allowed,
 
-	/// <summary>The caller lacks the room privilege; the outcome names the role refusal.</summary>
 	RoleDenied,
 
-	/// <summary>The caller may not join rooms at all; the denial names the missing permission.</summary>
 	RoomJoinDenied
 }
 
-/// <summary>
-///     Who may do what in a room. The expected privileges come from AGENTS.md ("Authority") and
-///     docs/for-developers/multiplayer.md ("Room roles and privileges"): the creator holds every room privilege, a
-///     referee holds every privilege except managing referees, the host holds the in-client host operations, a player
-///     may chat and invite, and a user who may manage every room acts with the creator's authority wherever they
-///     are.
-/// </summary>
 public sealed class ScopedRoomAuthorityTests
 {
 	[Theory]

@@ -8,11 +8,6 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>
-///     The frame under a list that shows one item and the actions on it. It is a third of the terminal high whatever
-///     it shows, the fields scroll on the left and the buttons stand in a column of fixed width on the right. An
-///     action that leads to another tab replaces what the frame shows and adds a step to the breadcrumb on its border.
-/// </summary>
 internal sealed class DetailPanel
 {
 	private const int CompactWidth = 100;
@@ -32,14 +27,6 @@ internal sealed class DetailPanel
 	private TerminalApp? _app;
 	private bool _compact;
 
-	/// <summary>Creates the frame.</summary>
-	/// <param name="root">The name of the tab, which starts the breadcrumb.</param>
-	/// <param name="glyphs">The characters to draw with.</param>
-	/// <param name="palette">Colours the field values.</param>
-	/// <param name="dialogs">Shows the dialog that holds the actions in a narrow terminal.</param>
-	/// <param name="toasts">Tells the operator when an action failed.</param>
-	/// <param name="post">Runs an action on the thread of the interface.</param>
-	/// <param name="changes">Tells the frame to read its steps again when an action changed something.</param>
 	public DetailPanel(string root, Glyphs glyphs, Palette palette, Dialogs dialogs, ToastTray toasts, Action<Action> post,
 		Changes changes)
 	{
@@ -54,22 +41,17 @@ internal sealed class DetailPanel
 			.IsVisible(_open).MinHeight(() => _height.Value).MaxHeight(() => _height.Value).HorizontalAlignment(Align.Stretch);
 	}
 
-	/// <summary>Gets the frame to put under a list.</summary>
 	public Visual View => _box;
 
-	/// <summary>Gets whether the frame is open.</summary>
 	public bool IsOpen => _open.Value;
 
-	/// <summary>Occurs when the frame closes.</summary>
 	public event Action? Closed;
 
-	/// <summary>Connects the frame to the running application.</summary>
 	public void Attach(TerminalApp app)
 	{
 		_app = app;
 	}
 
-	/// <summary>Shows an item and opens the frame, dropping the steps taken from the item before.</summary>
 	public void Show(DetailView view)
 	{
 		_steps.Clear();
@@ -78,9 +60,6 @@ internal sealed class DetailPanel
 		_open.Value = true;
 	}
 
-	/// <summary>Opens the frame on a view that is read first, dropping the steps taken before; a loading state stands meanwhile.</summary>
-	/// <param name="title">The name of the item, shown while it loads.</param>
-	/// <param name="read">Reads and builds the view off the interface thread.</param>
 	public void ShowAsync(string title, Func<Task<DetailView>> read)
 	{
 		_steps.Clear();
@@ -88,7 +67,6 @@ internal sealed class DetailPanel
 		Load(title, read);
 	}
 
-	/// <summary>Shows fresh data of the item the frame stands on, without leaving the step the operator is in.</summary>
 	public void Update(DetailView view)
 	{
 		if (_steps.Count > 1) return;
@@ -96,7 +74,6 @@ internal sealed class DetailPanel
 		Show(view);
 	}
 
-	/// <summary>Goes back one step, or closes the frame when it is on its first.</summary>
 	public void Back()
 	{
 		if (_steps.Count > 1)
@@ -109,7 +86,6 @@ internal sealed class DetailPanel
 		Close();
 	}
 
-	/// <summary>Closes the frame.</summary>
 	public void Close()
 	{
 		if (!_open.Value) return;
@@ -119,9 +95,6 @@ internal sealed class DetailPanel
 		Closed?.Invoke();
 	}
 
-	/// <summary>Keeps the frame a third of the terminal high, and folds its actions into one button below 100 columns.</summary>
-	/// <param name="width">The columns of the terminal.</param>
-	/// <param name="rows">The rows of the terminal.</param>
 	public void Fit(int width, int rows)
 	{
 		if (width <= 0 || rows <= 0) return;

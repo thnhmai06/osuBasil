@@ -17,25 +17,11 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>One score in the scores table.</summary>
-/// <param name="Id">The score id.</param>
-/// <param name="UserId">The id of the player, when known.</param>
-/// <param name="Player">The name of the player, or the id when the account is gone.</param>
-/// <param name="Mask">The privilege flags of the player as a number, which colour the name.</param>
-/// <param name="BeatmapId">The id of the beatmap played, when the server knows it.</param>
-/// <param name="Beatmap">The name of the beatmap played, or its hash when the server does not know it.</param>
-/// <param name="Mods">The mods, as text.</param>
-/// <param name="Score">The total score.</param>
-/// <param name="Accuracy">The accuracy, as a percentage.</param>
-/// <param name="Grade">The grade earned.</param>
-/// <param name="Time">When the play happened.</param>
 internal sealed record ScoreItem(int Id, int? UserId, string Player, ulong Mask, int? BeatmapId, string Beatmap, string Mods,
 	int Score, double Accuracy, Grade Grade, DateTimeOffset Time);
 
-/// <summary>Reads the newest scores that match <c>user:&lt;id|name&gt; beatmap:&lt;id|query&gt;</c>.</summary>
 internal sealed partial class ScoresSource(IServiceProvider services) : IListSource<ScoreItem>
 {
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<SectionData<ScoreItem>>> LoadAsync(string query, int limit,
 		CancellationToken ct)
 	{
@@ -72,7 +58,6 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 		return [new SectionData<ScoreItem>("Scores", items, page.HasNext)];
 	}
 
-	/// <summary>Reads the search text; a beatmap value with spaces is quoted, and any other text is ignored.</summary>
 	private static (UserReference? User, int? BeatmapId, BeatmapQuery? Beatmaps) Parse(string text)
 	{
 		UserReference? user = null;
@@ -100,7 +85,6 @@ internal sealed partial class ScoresSource(IServiceProvider services) : IListSou
 	private static partial Regex Token();
 }
 
-/// <summary>The scores, newest first, with a jump to the beatmap or the player of each.</summary>
 internal sealed class ScoresTab : ITabView, ISearchable
 {
 	private const string Help = """
@@ -113,7 +97,6 @@ internal sealed class ScoresTab : ITabView, ISearchable
 	private readonly ListPage<ScoreItem> _page;
 	private bool _opened;
 
-	/// <summary>Creates the tab.</summary>
 		public ScoresTab(IServiceProvider services, UserDetails users, BeatmapDetails beatmaps, Glyphs glyphs,
 		ShellKit kit, CliOptions options, TimeProvider clock, Action<Action> post, ILogger logger)
 	{
@@ -122,16 +105,13 @@ internal sealed class ScoresTab : ITabView, ISearchable
 			glyphs, kit, options.NoColor, clock, post, logger);
 	}
 
-	/// <inheritdoc />
 	public Visual View => _page.View;
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 		_page.Attach(app);
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		_page.FocusList();
@@ -141,32 +121,26 @@ internal sealed class ScoresTab : ITabView, ISearchable
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 		_page.Tick();
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void FocusSearch()
 	{
 		_page.FocusSearch();
 	}
 
-	/// <inheritdoc />
 	public void ShowHelp()
 	{
 		_page.ShowHelp();
 	}
 
-	/// <summary>Makes the columns of a table of scores.</summary>
-	/// <param name="users">Opens the player's detail when the name is opened; <see langword="null" /> for none.</param>
 	internal static IReadOnlyList<Column<ScoreItem>> Columns(UserDetails? users)
 	{
 		return

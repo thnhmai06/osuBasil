@@ -2,13 +2,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Infrastructure.Shared.Persistence;
 
-/// <summary>Reads where the server stores its data (PostgreSQL) from <c>ConnectionStrings</c> and <c>Basil:Database</c>.</summary>
 public static class DatabaseSetup
 {
-	/// <summary>Reads the database settings.</summary>
-	/// <param name="configuration">The configuration.</param>
-	/// <returns>The settings of the connections that read and the connections that store changes.</returns>
-	/// <exception cref="InvalidOperationException">There is no connection string to store changes.</exception>
 	public static DatabaseOptions Read(IConfiguration configuration)
 	{
 		var settings = configuration.GetSection("Basil:Database").Get<DatabaseSettings>() ?? new DatabaseSettings();

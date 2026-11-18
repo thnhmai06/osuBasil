@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Http.Features;
 
 namespace Basil.Host.Rest.Tests.Http;
 
-/// <summary>An upload route lifts the request size limit for itself.</summary>
 public sealed class UploadLimitTests
 {
 	[Fact]

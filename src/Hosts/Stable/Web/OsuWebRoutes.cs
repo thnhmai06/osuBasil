@@ -34,16 +34,12 @@ using Mediator;
 
 namespace Basil.Host.Stable.Web;
 
-/// <summary>The web endpoints of the osu! client (<c>osu.</c>), kept as the client expects them.</summary>
 internal static class OsuWebRoutes
 {
-	/// <summary>How many name checks one address may make in <see cref="RegistrationCheckWindow" />.</summary>
 	internal const int RegistrationChecksPerWindow = 20;
 
 	private static readonly TimeSpan RegistrationCheckWindow = TimeSpan.FromMinutes(10);
 
-	/// <summary>Maps the web endpoints; each one declares its admission policy.</summary>
-	/// <param name="app">The route builder of the <c>osu.</c> host.</param>
 	public static void MapOsuWeb(this IEndpointRouteBuilder app)
 	{
 		var web = app.MapGroup("").WithGroupName(StableDocumentation.Group).WithTags("Web")
@@ -367,7 +363,6 @@ internal static class OsuWebRoutes
 		return Text(string.Join('\n', lines));
 	}
 
-	/// <summary>Writes a beatmapset as osu!direct lists it: the set, then its difficulties from the easiest.</summary>
 	private static string SearchLine(BeatmapsetDetail detail)
 	{
 		var meta = detail.Set.Metadata;
@@ -408,7 +403,6 @@ internal static class OsuWebRoutes
 		return Text(DirectLine(detail.Set));
 	}
 
-	/// <summary>Serves a beatmapset from local storage (osu!direct), or answers 404 when the server does not have it.</summary>
 	private static async Task<IResult> DownloadAsync(HttpContext context, string setId, WebAuthentication auth,
 		ISender sender, CancellationToken ct)
 	{
@@ -543,14 +537,12 @@ internal static class OsuWebRoutes
 
 	private sealed record BeatmapInfoBody
 	{
-		/// <summary>The file names of the beatmaps being asked about.</summary>
 		public string[] Filenames { get; init; } = [];
 	}
 }
 
 internal static class Md5Text
 {
-	/// <summary>Parses a hash from text; <see langword="false" /> when the text is not a valid hash.</summary>
 	public static bool TryParse(string? text, out Md5 hash)
 	{
 		hash = default;

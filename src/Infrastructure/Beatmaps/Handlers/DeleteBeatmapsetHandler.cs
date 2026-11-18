@@ -4,11 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Deletes a beatmapset with the privileges of the sending connection.</summary>
 internal sealed class DeleteBeatmapsetHandler(Beatmapsets beatmapsets)
 	: IRequestHandler<DeleteBeatmapset, BeatmapsetOutcome>
 {
-	/// <inheritdoc />
 	public async ValueTask<BeatmapsetOutcome> Handle(DeleteBeatmapset request,
 		CancellationToken ct)
 	{

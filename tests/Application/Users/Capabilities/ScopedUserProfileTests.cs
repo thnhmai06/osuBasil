@@ -10,11 +10,6 @@ using NSubstitute;
 
 namespace Basil.Application.Users.Tests.Capabilities;
 
-/// <summary>
-///     Changing a profile: a user changes their own; staff change another account's under hierarchy; the area locked
-///     for profiles refuses everyone who does not manage accounts; BasilBot's profile changes like anyone's. An avatar
-///     is a PNG or JPEG picture within the configured byte and pixel limits, told from its content.
-/// </summary>
 public sealed class ScopedUserProfileTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -321,7 +316,6 @@ public sealed class ScopedUserProfileTests
 		Assert.Equal([9], avatars.Images[bot.Id]);
 	}
 
-	/// <summary>An avatar store that keeps the images in memory.</summary>
 	private sealed class MemoryAvatars : IUserAvatarStorage
 	{
 		public Dictionary<int, byte[]> Images { get; } = [];
@@ -347,7 +341,6 @@ public sealed class ScopedUserProfileTests
 		}
 	}
 
-	/// <summary>A stream that counts the bytes handed to its reader.</summary>
 	private sealed class CountingStream(byte[] content) : MemoryStream(content)
 	{
 		public long BytesRead { get; private set; }

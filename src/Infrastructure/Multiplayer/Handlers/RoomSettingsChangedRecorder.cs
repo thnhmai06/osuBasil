@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Stores the match again when its name or privacy changed.</summary>
 internal sealed class RoomSettingsChangedRecorder(IMatchRepository matches) : INotificationHandler<RoomSettingsChanged>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomSettingsChanged @event, CancellationToken ct)
 	{
 		if (@event.Change.Name is not null || @event.Change.IsPrivate is not null)

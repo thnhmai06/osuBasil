@@ -18,7 +18,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc.Commands;
 
-/// <summary>Runs the commands of IRC clients: registration first, then chat through the clients' scoped objects.</summary>
 [AdmissionPolicy]
 internal sealed partial class IrcCommands(
 	UserRegistry registry,
@@ -34,14 +33,12 @@ internal sealed partial class IrcCommands(
 	IrcState state,
 	IOptions<IrcOptions> options)
 {
-	/// <summary>The IRCv3 capabilities the server grants.</summary>
 	internal static readonly string[] Capabilities =
 	[
 		"cap-notify", "sasl", "server-time", "message-tags", "account-tag", "account-notify", "away-notify",
 		"extended-join", "multi-prefix", "userhost-in-names", "echo-message", "standard-replies"
 	];
 
-	/// <summary>Every command the server answers, with the admission policy metadata it is received under.</summary>
 	internal static IReadOnlyList<(string Name, IReadOnlyList<object> Metadata)> EntryPoints { get; } =
 	[
 		.. IrcReference.Commands.Select(command => (command.Command,
@@ -50,10 +47,6 @@ internal sealed partial class IrcCommands(
 
 	private IrcOptions Options => options.Value;
 
-	/// <summary>Handles one line from a client.</summary>
-	/// <param name="session">The socket that sent it.</param>
-	/// <param name="message">The parsed line.</param>
-	/// <param name="ct">A token that cancels the handling.</param>
 	public async Task HandleAsync(IrcSession session, IrcMessage message, CancellationToken ct)
 	{
 		if (session.Connection is { } connection) registry.MarkActive(connection);
@@ -139,8 +132,6 @@ internal sealed partial class IrcCommands(
 		await WelcomeAsync(session, ct);
 	}
 
-	/// <summary>Opens the connection a key belongs to, if the key's owner is the claimed account.</summary>
-	/// <returns><see langword="null" /> on success, otherwise the text to close the socket with.</returns>
 	private async Task<string?> SignInAsync(IrcSession session, string key, string claimed,
 		CancellationToken ct)
 	{

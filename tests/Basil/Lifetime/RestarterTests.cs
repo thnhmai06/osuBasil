@@ -6,7 +6,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Tests.Lifetime;
 
-/// <summary>A restarted server waits for the ports the replaced process still holds, but only for a while.</summary>
 public sealed class RestarterTests
 {
 	[Fact]

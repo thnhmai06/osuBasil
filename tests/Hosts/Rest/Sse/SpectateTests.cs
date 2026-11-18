@@ -2,7 +2,6 @@ using System.Text.Json.Nodes;
 
 namespace Basil.Host.Rest.Tests.Sse;
 
-/// <summary>Watching a player in game through the API: snapshot first, one bundle per second, tied to the session.</summary>
 [Collection("REST host")]
 public sealed class SpectateTests(RestHostFixture fixture)
 {

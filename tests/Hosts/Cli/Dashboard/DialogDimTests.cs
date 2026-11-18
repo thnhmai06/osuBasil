@@ -3,7 +3,6 @@ using XenoAtom.Terminal.UI.Controls;
 
 namespace Basil.Host.Cli.Tests.Dashboard;
 
-/// <summary>The dim behind dialogs: with no dialog open it must not take the pointer from the page.</summary>
 [Collection(HostedTerminalCollection.Name)]
 public sealed class DialogDimTests
 {

@@ -5,11 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands;
 
-/// <summary>
-///     <c>!channel list|create|set|delete</c>, which does what the HTTP API that manages the general channels does.
-///     Expected replies are named by the reply that owns the wording; whether a typist may manage channels is the
-///     channel's rule, so the tests pair each refusal with the privilege it names.
-/// </summary>
 public sealed class ChannelCommandsTests
 {
 	private static readonly UserPrivileges

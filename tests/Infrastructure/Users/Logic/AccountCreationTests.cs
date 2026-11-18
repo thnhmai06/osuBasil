@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Users.Tests.Logic;
 
-/// <summary>An account is created whole: its credential and its record are stored, or neither.</summary>
 public sealed class AccountCreationTests
 {
 	[Fact]

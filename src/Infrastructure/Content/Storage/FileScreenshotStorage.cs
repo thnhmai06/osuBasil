@@ -4,19 +4,16 @@ using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Content.Storage;
 
-/// <summary>Stores player-uploaded screenshots as files in the data directory.</summary>
 internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorage
 {
 	private DataStorage Files => paths.Screenshots;
 
-	/// <inheritdoc />
 	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken ct = default)
 	{
 		return Task.FromResult(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
 	}
 
-	/// <inheritdoc />
 	public async Task<ContentReference> SaveAsync(Stream content, string extension)
 	{
 		if (extension.Length is < 1 or > 8 || !extension.All(char.IsAsciiLetterOrDigit))
@@ -27,13 +24,11 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 		return Files.ReferenceOf(name);
 	}
 
-	/// <inheritdoc />
 	public Task<Stream?> OpenAsync(ContentReference screenshot, CancellationToken ct = default)
 	{
 		return Task.FromResult<Stream?>(Files.TryGetName(screenshot, out var name) ? Files.Open(name) : null);
 	}
 
-	/// <inheritdoc />
 	public Task DeleteAsync(ContentReference screenshot)
 	{
 		if (Files.TryGetName(screenshot, out var name))

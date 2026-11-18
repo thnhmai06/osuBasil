@@ -4,11 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>Parts a former referee from the room's chat channel unless they are still involved in the room.</summary>
 internal sealed class RoomRefereeRemovedHandler(RoomChannels channels, TimeProvider clock)
 	: INotificationHandler<RoomRefereeRemoved>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(RoomRefereeRemoved @event, CancellationToken ct)
 	{
 		if (channels.Find(@event.Room) is not { } channel) return ValueTask.CompletedTask;

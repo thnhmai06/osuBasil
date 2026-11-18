@@ -5,10 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands.Mp;
 
-/// <summary>
-///     The commands that open, enter, target and close rooms: <c>!mp make</c>, <c>!mp makeprivate</c>, <c>!mp join</c>,
-///     <c>!mp in</c> and <c>!mp close</c>. Expected replies are named by the reply that owns the wording.
-/// </summary>
 public sealed class MpLifecycleTests
 {
 	[Fact]

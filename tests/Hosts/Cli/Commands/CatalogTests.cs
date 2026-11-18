@@ -2,7 +2,6 @@ using Basil.Host.Cli.Commands;
 
 namespace Basil.Host.Cli.Tests.Commands;
 
-/// <summary>Matching a typed line with a command, and hiding secrets: the parser's contract.</summary>
 public sealed class CatalogTests
 {
 	private static readonly CommandCatalog Catalog = CommandCatalogFactory.Create();

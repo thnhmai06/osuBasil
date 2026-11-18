@@ -7,15 +7,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Stores the state of a session when its connection closes.</summary>
 internal sealed class SessionEndHandler(ISessionRepository sessions, ILogger<SessionEndHandler> logger)
 	: INotificationHandler<UserConnectionClosed>
 {
-	/// <summary>Counts the sessions whose closing could not be stored.</summary>
 	internal static readonly Counter<long> UpdateFailures = UsersMeter.Instance
 		.CreateCounter<long>("basil.sessions.update.failed", description: "Sessions whose closing was not stored.");
 
-	/// <inheritdoc />
 	public async ValueTask Handle(UserConnectionClosed @event, CancellationToken ct)
 	{
 		var session = @event.Connection.Snapshot();

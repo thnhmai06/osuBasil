@@ -3,7 +3,6 @@ using Basil.Infrastructure.Diagnostics.Services;
 
 namespace Basil.Infrastructure.Diagnostics.Tests.Services;
 
-/// <summary>Each watcher gets the newest sample; one that falls behind skips older samples and never delays another.</summary>
 public sealed class DiagnosticsFeedTests
 {
 	private static DiagnosticsSample Sample(int number)

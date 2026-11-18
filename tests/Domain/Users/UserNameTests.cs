@@ -2,7 +2,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Users;
 
-/// <summary>A username follows osu!'s registration rules; the check answers without throwing.</summary>
 public sealed class UserNameTests
 {
 	[Theory]

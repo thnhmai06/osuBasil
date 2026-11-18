@@ -4,17 +4,14 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Shared.Views;
 
-/// <summary>A user as another resource refers to them.</summary>
 public sealed record UserRef(int Id, string Name)
 {
-	/// <summary>Describes an account.</summary>
 	public static UserRef Of(UserRecord user)
 	{
 		return new UserRef(user.Id, user.Value.Name);
 	}
 }
 
-/// <summary>An account as the API shows it.</summary>
 public sealed record UserView(
 	int Id,
 	string Name,
@@ -23,7 +20,6 @@ public sealed record UserView(
 	ulong EffectivePrivileges,
 	DateTimeOffset? SilencedUntil)
 {
-	/// <summary>Describes an account; a silence that has ended is not shown.</summary>
 	public static UserView Of(UserRegistry registry, UserRecord record, TimeProvider clock)
 	{
 		var user = registry.Of(record);
@@ -34,7 +30,6 @@ public sealed record UserView(
 	}
 }
 
-/// <summary>One connection of a session as the API shows it.</summary>
 public sealed record ConnectionView(
 	string Ip,
 	string? ClientInfo,
@@ -43,7 +38,6 @@ public sealed record ConnectionView(
 	DateTimeOffset? ClosedAt,
 	SessionEndReason? CloseReason)
 {
-	/// <summary>Describes a connection.</summary>
 	public static ConnectionView Of(ConnectionRecord c)
 	{
 		var data = c.Value;
@@ -52,7 +46,6 @@ public sealed record ConnectionView(
 	}
 }
 
-/// <summary>A session as the API shows it.</summary>
 public sealed record SessionView(
 	long Id,
 	SessionType Type,
@@ -63,7 +56,6 @@ public sealed record SessionView(
 	DateTimeOffset? EndedAt,
 	SessionEndReason? EndReason)
 {
-	/// <summary>Describes a session.</summary>
 	public static SessionView Of(SessionRecord s)
 	{
 		var data = s.Value;

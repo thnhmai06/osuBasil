@@ -2,12 +2,8 @@ using System.Text;
 
 namespace Basil.Testing.Clients;
 
-/// <summary>One packet the server sent to an osu! client, with helpers to read common payload shapes.</summary>
-/// <param name="Id">The server packet id.</param>
-/// <param name="Payload">The payload bytes.</param>
 public sealed record ServerPacket(int Id, byte[] Payload)
 {
-	/// <summary>Splits a response body into packets.</summary>
 	public static IReadOnlyList<ServerPacket> Split(byte[] body)
 	{
 		var packets = new List<ServerPacket>();
@@ -23,14 +19,11 @@ public sealed record ServerPacket(int Id, byte[] Payload)
 		return packets;
 	}
 
-	/// <summary>Reads the payload as one 32-bit integer.</summary>
 	public int AsInt()
 	{
 		return BitConverter.ToInt32(Payload, 0);
 	}
 
-	/// <summary>Reads the strings at the start of the payload, osu! encoded.</summary>
-	/// <param name="count">How many strings to read.</param>
 	public IReadOnlyList<string> Strings(int count)
 	{
 		var strings = new List<string>();
@@ -39,7 +32,6 @@ public sealed record ServerPacket(int Id, byte[] Payload)
 		return strings;
 	}
 
-	/// <summary>Reads an osu! string at a position.</summary>
 	public string ReadString(ref int position)
 	{
 		if (Payload[position++] == 0) return string.Empty;

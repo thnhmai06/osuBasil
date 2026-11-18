@@ -7,13 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;
 
-/// <summary>Narrows the stored beatmaps to the ones a beatmap query asks for.</summary>
 internal static class BeatmapQueryFilter
 {
-	/// <summary>Applies the conditions of a beatmap query to the stored beatmaps.</summary>
-	/// <param name="beatmaps">The stored beatmaps, with their sets reachable through <see cref="BeatmapRow.Set" />.</param>
-	/// <param name="query">The query to filter by.</param>
-	/// <returns>The beatmaps that match every condition of the query.</returns>
 	public static IQueryable<BeatmapRow> Apply(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
 		beatmaps = ByState(beatmaps, query);
@@ -23,7 +18,6 @@ internal static class BeatmapQueryFilter
 		return ByVersionAndFileName(beatmaps, query);
 	}
 
-	/// <summary>Keeps the beatmaps in the asked status, visibility and mode.</summary>
 	private static IQueryable<BeatmapRow> ByState(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
 		if (query.Status is { } status)
@@ -43,7 +37,6 @@ internal static class BeatmapQueryFilter
 		return beatmaps;
 	}
 
-	/// <summary>Keeps the beatmaps whose numbers and dates lie within the asked intervals.</summary>
 	private static IQueryable<BeatmapRow> ByRanges(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
 		beatmaps = Within(beatmaps, row => row.Star, query.Stars);
@@ -70,7 +63,6 @@ internal static class BeatmapQueryFilter
 		return beatmaps;
 	}
 
-	/// <summary>Keeps the beatmaps that match every word of the free text.</summary>
 	private static IQueryable<BeatmapRow> ByFreeText(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
 		// Free text: every whitespace-separated word must match artist, title, creator or version.
@@ -86,7 +78,6 @@ internal static class BeatmapQueryFilter
 		return beatmaps;
 	}
 
-	/// <summary>Keeps the beatmaps whose creator, artist and title contain the asked text.</summary>
 	private static IQueryable<BeatmapRow> ByNames(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
 		if (!string.IsNullOrWhiteSpace(query.Creator))
@@ -110,7 +101,6 @@ internal static class BeatmapQueryFilter
 		return beatmaps;
 	}
 
-	/// <summary>Keeps the beatmaps with the asked difficulty name and file name.</summary>
 	private static IQueryable<BeatmapRow> ByVersionAndFileName(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
 		if (!string.IsNullOrWhiteSpace(query.Difficulty))
@@ -145,7 +135,6 @@ internal static class BeatmapQueryFilter
 		return beatmaps;
 	}
 
-	/// <summary>Keeps the beatmaps whose selected value lies within an interval, when the query gives one.</summary>
 	private static IQueryable<BeatmapRow> Within<T>(IQueryable<BeatmapRow> beatmaps,
 		Expression<Func<BeatmapRow, T>> selector, Interval<T>? interval, Func<T, T>? convert = null)
 		where T : struct, IComparable<T>
@@ -162,7 +151,6 @@ internal static class BeatmapQueryFilter
 		return beatmaps;
 	}
 
-	/// <summary>Builds the condition that compares the selected value with a bound.</summary>
 	private static Expression<Func<BeatmapRow, bool>> Compare<T>(Expression<Func<BeatmapRow, T>> selector, T bound,
 		ExpressionType comparison)
 	{

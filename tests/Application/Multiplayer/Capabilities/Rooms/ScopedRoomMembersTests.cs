@@ -11,12 +11,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities.Rooms;
 
-/// <summary>
-///     Who belongs to a room and how they come and go. The expected behaviour comes from
-///     docs/for-developers/multiplayer.md ("Membership, slots and settings") and the osu! multiplayer rules: a join
-///     checks the password, the bans, the seat and the room's other members, and the host passes on when the host
-///     leaves.
-/// </summary>
 public sealed class ScopedRoomMembersTests
 {
 	[Fact]

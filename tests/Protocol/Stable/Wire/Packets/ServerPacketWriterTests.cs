@@ -5,10 +5,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies `ServerPacketWriter`'s wire output for each server packet type, byte-for-byte
-///     against golden expected payloads.
-/// </summary>
 public class ServerPacketWriterTests
 {
 	private static RoomPacket MakeMatch()

@@ -8,7 +8,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Servers.Tests.Handlers;
 
-/// <summary>The messages that create, configure and delete the general channels of the server.</summary>
 public sealed class ChannelHandlerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;

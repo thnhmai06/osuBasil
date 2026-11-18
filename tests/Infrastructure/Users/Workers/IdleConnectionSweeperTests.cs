@@ -8,20 +8,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Users.Tests.Workers;
 
-/// <summary>
-///     Pins that a sweep closes what has been quiet for the time its kind allows, leaves a connection that just spoke
-///     and the server's own bot alone, and closes each connection once.
-/// </summary>
 public sealed class IdleConnectionSweeperTests
 {
-	/// <summary>The interval between two sweeps of the sweeper.</summary>
 	private static readonly TimeSpan SweepPeriod = TimeSpan.FromSeconds(100);
 
-	/// <summary>How long a test waits for a sweep to close a connection before calling the sweeper dead.</summary>
 	private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
 
-	/// <summary>A game, IRC or tournament connection is closed once it has sent nothing for 300 seconds.</summary>
-	/// <param name="type">The kind of connection.</param>
 	[Theory]
 	[InlineData(SessionType.Stable)]
 	[InlineData(SessionType.Irc)]
@@ -45,7 +37,6 @@ public sealed class IdleConnectionSweeperTests
 		Assert.False(connection.IsOpen);
 	}
 
-	/// <summary>A connection that sent something within 300 seconds is still open.</summary>
 	[Fact]
 	public async Task ExecuteAsync_LeavesAConnectionThatJustSpokeOpen()
 	{
@@ -64,7 +55,6 @@ public sealed class IdleConnectionSweeperTests
 		Assert.True(active.IsOpen);
 	}
 
-	/// <summary>A recently active HTTP API connection remains open while an older client is swept.</summary>
 	[Fact]
 	public async Task ExecuteAsync_LeavesARecentlyActiveApiConnectionOpen()
 	{
@@ -83,7 +73,6 @@ public sealed class IdleConnectionSweeperTests
 		Assert.True(connection.IsOpen);
 	}
 
-	/// <summary>An HTTP API connection closes once it has been quiet for more than 300 seconds.</summary>
 	[Fact]
 	public async Task ExecuteAsync_ClosesAnApiConnectionQuietForMoreThan300Seconds()
 	{
@@ -99,7 +88,6 @@ public sealed class IdleConnectionSweeperTests
 		Assert.False(connection.IsOpen);
 	}
 
-	/// <summary>The server's own bot connections are never closed for being quiet.</summary>
 	[Fact]
 	public async Task ExecuteAsync_LeavesTheBotConnectionsOpen()
 	{
@@ -118,7 +106,6 @@ public sealed class IdleConnectionSweeperTests
 		Assert.All(bot.Connections, connection => Assert.True(connection.IsOpen));
 	}
 
-	/// <summary>A connection closed once is not closed again by a later sweep.</summary>
 	[Fact]
 	public async Task ExecuteAsync_ClosesAConnectionOnlyOnce()
 	{
@@ -138,7 +125,6 @@ public sealed class IdleConnectionSweeperTests
 			@event => ReferenceEquals(@event.Connection, first));
 	}
 
-	/// <summary>Runs the sweeper once the periodic timer it waits on exists.</summary>
 	private static async Task<RunningSweeper> StartAsync(TestApplication app)
 	{
 		var time = new SignalingTimeProvider(app.Clock);
@@ -148,13 +134,6 @@ public sealed class IdleConnectionSweeperTests
 		return new RunningSweeper(sweeper);
 	}
 
-	/// <summary>Moves the clock one sweep at a time until the awaited change has happened.</summary>
-	/// <param name="app">The application whose clock moves.</param>
-	/// <param name="until">The change to wait for.</param>
-	/// <param name="keepActive">
-	///     Connections that speak after every move of the clock, so that how many moves happen before a sweep gets to
-	///     run cannot make them idle.
-	/// </param>
 	private static async Task SweepUntilAsync(TestApplication app, Task until, params Connection[] keepActive)
 	{
 		for (var sweep = 0; sweep < 20 && !until.IsCompleted; sweep++)
@@ -178,10 +157,8 @@ public sealed class IdleConnectionSweeperTests
 		return closed.Task;
 	}
 
-	/// <summary>The sweeper a test started, disposed after it stops.</summary>
 	private sealed class RunningSweeper(IdleConnectionSweeper sweeper) : IDisposable
 	{
-		/// <inheritdoc />
 		public void Dispose()
 		{
 			sweeper.Dispose();

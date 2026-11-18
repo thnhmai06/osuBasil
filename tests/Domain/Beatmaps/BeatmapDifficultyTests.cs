@@ -3,7 +3,6 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests.Beatmaps;
 
-/// <summary>Verifies the validation of the gameplay settings of a difficulty.</summary>
 public class BeatmapDifficultyTests
 {
 	private static BeatmapDifficulty Make(double bpm = 180.0, TimeSpan? length = null, double cs = 4.0, double ar = 9.0,

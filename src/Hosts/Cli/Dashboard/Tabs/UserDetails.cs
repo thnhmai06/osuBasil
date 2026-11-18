@@ -15,19 +15,11 @@ using XenoAtom.Terminal.UI;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>
-///     Builds the detail of an account and of a session, the ones every tab shows when the operator opens a user's name
-///     or a session; the navigation buttons open the related views inside the same frame, and every console command that
-///     applies to an account or a session has a button.
-/// </summary>
-/// <remarks>The reads run off the interface thread; the frame shows a loading state until they end.</remarks>
 internal sealed class UserDetails(IServiceProvider services, CommandActions actions, BeatmapDetails beatmaps,
 	CliOptions options, Dialogs dialogs, Glyphs glyphs, TimeProvider clock, Action<string> openChat)
 {
 	private const int RowsShown = 20;
 
-	/// <summary>Reads an account and builds its detail.</summary>
-	/// <param name="reference">The account, by id or name.</param>
 	public async Task<DetailView> OfAsync(UserReference reference)
 	{
 		var record = await services.GetRequiredService<ISender>().Send(new GetUser(reference));
@@ -38,8 +30,6 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		return Of(ItemOf(record));
 	}
 
-	/// <summary>Builds the detail of an account that is already read.</summary>
-	/// <param name="user">The account.</param>
 	public DetailView Of(UserItem user)
 	{
 		var room = user.Room.Length == 0 ? "-" : user.Room;
@@ -90,8 +80,6 @@ internal sealed class UserDetails(IServiceProvider services, CommandActions acti
 		return new DetailView(user.Name, fields, list) { Reload = reload };
 	}
 
-	/// <summary>Builds the detail of a session.</summary>
-	/// <param name="session">The session.</param>
 	public DetailView Of(SessionItem session)
 	{
 		var fields = new List<(string, string, Ink)>

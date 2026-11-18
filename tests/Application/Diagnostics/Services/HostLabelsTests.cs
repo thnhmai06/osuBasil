@@ -2,7 +2,6 @@ using Basil.Application.Diagnostics.Services;
 
 namespace Basil.Application.Diagnostics.Tests.Services;
 
-/// <summary>The Host header never becomes a new metric label.</summary>
 public sealed class HostLabelsTests
 {
 	private const string Domain = "basil.test";

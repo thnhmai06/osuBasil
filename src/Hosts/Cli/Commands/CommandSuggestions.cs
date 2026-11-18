@@ -2,46 +2,30 @@ using System.Globalization;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>What a word of a typed command is, so the command box can colour it.</summary>
 public enum TokenKind : byte
 {
-	/// <summary>The first word of a command.</summary>
 	Command,
 
-	/// <summary>A later word that names part of the command.</summary>
 	Subcommand,
 
-	/// <summary>A value in the command, such as an id.</summary>
 	Value,
 
-	/// <summary>An option name.</summary>
 	Option,
 
-	/// <summary>The value of an option.</summary>
 	OptionValue,
 
-	/// <summary>A word that no command accepts here.</summary>
 	Unknown
 }
 
-/// <summary>A coloured stretch of a typed command line.</summary>
-/// <param name="Start">The index of the first character.</param>
-/// <param name="Length">The number of characters.</param>
-/// <param name="Kind">What it is.</param>
 public readonly record struct Token(int Start, int Length, TokenKind Kind);
 
-/// <summary>Where the ids that complete a command come from.</summary>
 public interface ISuggestionSource
 {
-	/// <summary>Lists the ids of something that exists, such as <c>users</c>, <c>rooms</c> or <c>channels</c>.</summary>
-	/// <param name="resource">The word that precedes the id in the command.</param>
 	IEnumerable<string> Ids(string resource);
 }
 
-/// <summary>The suggestions for a typed line: what could come next, and what the line already is.</summary>
 public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource source)
 {
-	/// <summary>Splits a line into words with their positions; text in double quotes is one word.</summary>
 	public static IReadOnlyList<(int Start, int Length, string Text)> Words(string line)
 	{
 		var words = new List<(int, int, string)>();
@@ -68,9 +52,6 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		return words;
 	}
 
-	/// <summary>Colours a typed line.</summary>
-	/// <param name="line">The line.</param>
-	/// <returns>One token for every word.</returns>
 	public IReadOnlyList<Token> Highlight(string line)
 	{
 		var tokens = new List<Token>();
@@ -113,9 +94,6 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		return tokens;
 	}
 
-	/// <summary>Lists what could be typed at the end of the line.</summary>
-	/// <param name="line">The text before the caret.</param>
-	/// <returns>The words that fit, the index where the word being typed starts, and its length.</returns>
 	public (IReadOnlyList<string> Words, int ReplaceStart, int ReplaceLength) Suggest(string line)
 	{
 		var words = Words(line);
@@ -136,12 +114,6 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		return ([.. result.Distinct()], start, partial.Length);
 	}
 
-	/// <summary>Lists what could be typed at the end of the line, each with a short description.</summary>
-	/// <param name="line">The text before the caret.</param>
-	/// <returns>
-	///     The words that fit with what each does (empty for an id), the index where the word being typed starts, and its
-	///     length.
-	/// </returns>
 	public (IReadOnlyList<(string Word, string Description)> Items, int ReplaceStart, int ReplaceLength) SuggestDescribed(
 		string line)
 	{
@@ -202,9 +174,6 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 			.Select(option => $"--{option.Name}"));
 	}
 
-	/// <summary>Describes the command a line is heading for: <c>pattern  summary</c>.</summary>
-	/// <param name="line">The line.</param>
-	/// <returns>The description, or an empty string when no command fits.</returns>
 	public string Describe(string line)
 	{
 		var positional = Words(line).Select(word => word.Text).TakeWhile(word => !CommandCatalog.IsOption(word))

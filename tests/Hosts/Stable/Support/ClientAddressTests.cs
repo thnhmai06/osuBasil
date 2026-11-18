@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 
 namespace Basil.Host.Stable.Tests.Support;
 
-/// <summary>The caller's address and country are read in the order bancho.py uses.</summary>
 public sealed class ClientAddressTests
 {
 	private static DefaultHttpContext Request(params (string Name, string Value)[] headers)

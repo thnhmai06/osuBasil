@@ -2,12 +2,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the write side of the osu! string wire format (<c>WriteOsuString</c>, reached through
-///     <c>PacketWriter.MatchChangePassword</c>, whose payload is exactly one osu! string): existence
-///     byte <c>0x0B</c>, ULEB128 byte length, UTF-8 bytes, and a single <c>0x00</c> for <c>null</c> and
-///     <c>""</c>.
-/// </summary>
 public class PacketWriterOsuStringTests
 {
 	private static byte[] Write(Action<PacketWriter> write)

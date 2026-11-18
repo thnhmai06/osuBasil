@@ -7,7 +7,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Authentication.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the login credential of an account.</summary>
 [Collection("Persistence")]
 public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -178,8 +177,6 @@ public sealed class EfCredentialRepositoryTests(PersistenceFixture container) : 
 			TestContext.Current.CancellationToken));
 	}
 
-	/// <summary>Computes the digest of a password, the way the osu! client sends it.</summary>
-	/// <param name="password">The password to hash.</param>
 	private static Md5 HashOf(string password)
 	{
 		return new Md5(Encoding.UTF8.GetBytes(password));

@@ -5,36 +5,24 @@ namespace Basil.Application.Servers.Objects;
 
 public sealed partial class Server
 {
-	/// <summary>Gets the FAQ entries of the server, changed without a privilege check.</summary>
 	public ServerFaq Faq => new(this);
 
-	/// <summary>Gets the main-menu banners of the server, changed without a privilege check.</summary>
 	public ServerBanners Banners => new(this);
 
-	/// <summary>Gets the seasonal backgrounds of the server, changed without a privilege check.</summary>
 	public ServerSeasonals Seasonals => new(this);
 
-	/// <summary>Gets the main-menu icon of the server, changed without a privilege check.</summary>
 	public ServerIcon Icon => new(this);
 }
 
-/// <summary>The FAQ entries of the server, changed without a privilege check.</summary>
 public readonly struct ServerFaq
 {
 	private readonly Server _server;
 
-	/// <summary>Creates the view of a server.</summary>
-	/// <param name="server">The server.</param>
 	internal ServerFaq(Server server)
 	{
 		_server = server;
 	}
 
-	/// <summary>Creates or replaces a FAQ entry.</summary>
-	/// <param name="entry">The entry name; <c>:</c> separates folders.</param>
-	/// <param name="text">The text of the entry.</param>
-	/// <returns>Ok.</returns>
-	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
 	internal async Task<ServerOutcome> SaveAsync(string entry, string text)
 	{
 		await using var writer = await _server.Context.Faqs.CreateOrUpdateAsync(entry);
@@ -43,10 +31,6 @@ public readonly struct ServerFaq
 		return ServerOutcome.Ok;
 	}
 
-	/// <summary>Deletes a FAQ entry.</summary>
-	/// <param name="entry">The entry name.</param>
-	/// <returns>Ok, or NotFound when no such entry exists.</returns>
-	/// <exception cref="ArgumentException">The entry name is not a safe name.</exception>
 	internal async Task<ServerOutcome> DeleteAsync(string entry)
 	{
 		using (var stored = await _server.Context.Faqs.ReadAsync(entry))
@@ -58,27 +42,15 @@ public readonly struct ServerFaq
 	}
 }
 
-/// <summary>The main-menu banners of the server, changed without a privilege check.</summary>
 public readonly struct ServerBanners
 {
 	private readonly Server _server;
 
-	/// <summary>Creates the view of a server.</summary>
-	/// <param name="server">The server.</param>
 	internal ServerBanners(Server server)
 	{
 		_server = server;
 	}
 
-	/// <summary>Adds a main-menu banner whose image is uploaded.</summary>
-	/// <param name="name">The file name of the image.</param>
-	/// <param name="image">The image.</param>
-	/// <param name="url">The address the banner links to.</param>
-	/// <param name="startsAt">When it starts showing, or <see langword="null" /> for now.</param>
-	/// <param name="endsAt">When it stops showing, or <see langword="null" /> for never.</param>
-	/// <returns>Ok and the banner.</returns>
-	/// <remarks>When storing the banner fails, the stored image is deleted again and the failure is rethrown.</remarks>
-	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
 	internal async Task<(ServerOutcome Outcome, MenuBanner Banner)> CreateAsync(string name, Stream image, Uri url,
 		DateTimeOffset? startsAt, DateTimeOffset? endsAt)
 	{
@@ -103,9 +75,6 @@ public readonly struct ServerBanners
 		return (ServerOutcome.Ok, banner);
 	}
 
-	/// <summary>Deletes a main-menu banner and its image.</summary>
-	/// <param name="banner">The banner.</param>
-	/// <returns>Ok, or NotFound when the banner does not exist.</returns>
 	internal async Task<ServerOutcome> DeleteAsync(MenuBanner banner)
 	{
 		if (await _server.Context.Banners.GetAsync(banner.Image) is null) return ServerOutcome.NotFound;
@@ -116,31 +85,20 @@ public readonly struct ServerBanners
 	}
 }
 
-/// <summary>The seasonal backgrounds of the server, changed without a privilege check.</summary>
 public readonly struct ServerSeasonals
 {
 	private readonly Server _server;
 
-	/// <summary>Creates the view of a server.</summary>
-	/// <param name="server">The server.</param>
 	internal ServerSeasonals(Server server)
 	{
 		_server = server;
 	}
 
-	/// <summary>Adds a seasonal background.</summary>
-	/// <param name="name">The file name of the image.</param>
-	/// <param name="image">The image.</param>
-	/// <returns>Ok and the reference of the image.</returns>
-	/// <exception cref="ArgumentException">The name is not valid.</exception>
 	internal async Task<(ServerOutcome Outcome, ContentReference Image)> CreateAsync(string name, Stream image)
 	{
 		return (ServerOutcome.Ok, await _server.Context.Seasonals.SaveAsync(name, image));
 	}
 
-	/// <summary>Deletes a seasonal background.</summary>
-	/// <param name="image">The reference of the image.</param>
-	/// <returns>Ok, or NotFound when the background does not exist.</returns>
 	internal async Task<ServerOutcome> DeleteAsync(ContentReference image)
 	{
 		if (!(await _server.Context.Seasonals.ListAsync()).Contains(image)) return ServerOutcome.NotFound;
@@ -150,24 +108,15 @@ public readonly struct ServerSeasonals
 	}
 }
 
-/// <summary>The main-menu icon of the server, changed without a privilege check.</summary>
 public readonly struct ServerIcon
 {
 	private readonly Server _server;
 
-	/// <summary>Creates the view of a server.</summary>
-	/// <param name="server">The server.</param>
 	internal ServerIcon(Server server)
 	{
 		_server = server;
 	}
 
-	/// <summary>Sets the main-menu icon: its image, the address it links to, or both.</summary>
-	/// <param name="name">The file name of the image, or <see langword="null" /> to keep the image.</param>
-	/// <param name="image">The image, or <see langword="null" /> to keep the image.</param>
-	/// <param name="url">The address the icon links to, or <see langword="null" /> for none.</param>
-	/// <returns>Ok.</returns>
-	/// <exception cref="ArgumentException">The name or the address is not valid.</exception>
 	internal async Task<ServerOutcome> ReplaceAsync(string? name, Stream? image, Uri? url)
 	{
 		var settings = await _server.Context.Settings.GetAsync();
@@ -179,8 +128,6 @@ public readonly struct ServerIcon
 		return ServerOutcome.Ok;
 	}
 
-	/// <summary>Removes the main-menu icon.</summary>
-	/// <returns>Ok, or NotFound when the server has no icon.</returns>
 	internal async Task<ServerOutcome> DeleteAsync()
 	{
 		var settings = await _server.Context.Settings.GetAsync();

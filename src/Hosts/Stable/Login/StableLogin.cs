@@ -20,7 +20,6 @@ using Mediator;
 
 namespace Basil.Host.Stable.Login;
 
-/// <summary>Logs osu! clients in and builds the first reply of a session.</summary>
 internal sealed class StableLogin(
 	UserRegistry registry,
 	GeneralChannelRegistry channels,
@@ -32,11 +31,6 @@ internal sealed class StableLogin(
 {
 	private const int ProtocolVersion = 19;
 
-	/// <summary>Handles a request that carries no token: a login.</summary>
-	/// <param name="context">The request.</param>
-	/// <param name="body">The login body.</param>
-	/// <param name="ct">A token that cancels the login.</param>
-	/// <returns>The token for the client (or a placeholder) and the packets to answer with.</returns>
 	public async Task<(string Token, byte[] Reply)> LoginAsync(HttpContext context, byte[] body,
 		CancellationToken ct)
 	{

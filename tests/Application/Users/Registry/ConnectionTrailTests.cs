@@ -8,11 +8,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Registry;
 
-/// <summary>
-///     The trail of connections of a session: one entry for each time a client was connected, written when it connects
-///     and when it leaves, continued when the same client comes back soon from the same address, and ended by the next
-///     start when the server stopped with it open.
-/// </summary>
 public sealed class ConnectionTrailTests
 {
 	private static readonly IPAddress Elsewhere = IPAddress.Parse("192.0.2.77");

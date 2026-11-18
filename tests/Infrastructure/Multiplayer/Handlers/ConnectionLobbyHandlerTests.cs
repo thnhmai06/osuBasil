@@ -7,10 +7,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 
-/// <summary>
-///     What a closed connection leaves behind in the multiplayer lobby: its room and its place among the lobby's
-///     watchers.
-/// </summary>
 public sealed class ConnectionLobbyHandlerTests
 {
 	[Fact]

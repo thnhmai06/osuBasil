@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Sse;
 
-/// <summary>The per-address stream limit holds across roots, under parallel opens, and frees up when streams close.</summary>
 [Collection("REST host")]
 public sealed class StreamBudgetTests(RestHostFixture fixture)
 {

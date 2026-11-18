@@ -3,10 +3,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>Lists the configuration of the server for the read-only page: the application configuration, then the environment variables.</summary>
 internal static partial class ConfigurationRows
 {
-	/// <summary>The name of the group that holds the environment variables.</summary>
 	public const string Environment = "Environment variables";
 
 	private const string Root = "General";
@@ -14,13 +12,6 @@ internal static partial class ConfigurationRows
 
 	private static readonly string[] EnvironmentPrefixes = ["DOTNET_", "ASPNETCORE_"];
 
-	/// <summary>Lists the configuration, with the values of secrets hidden.</summary>
-	/// <param name="configuration">The configuration of the server.</param>
-	/// <param name="environment">The environment variables of the process.</param>
-	/// <returns>
-	///     The application configuration grouped by section, then the environment variables grouped by prefix. A key the
-	///     configuration took from an environment variable is listed with the variables, not with the configuration.
-	/// </returns>
 	public static IReadOnlyList<SettingsRow> Of(IConfiguration configuration, IReadOnlyDictionary<string, string> environment)
 	{
 		var fromEnvironment = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

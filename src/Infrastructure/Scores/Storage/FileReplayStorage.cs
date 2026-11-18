@@ -12,19 +12,16 @@ using Basil.Infrastructure.Shared.Storage;
 
 namespace Basil.Infrastructure.Scores.Storage;
 
-/// <summary>Stores the replays of scores as complete .osr files, one per score, named like osu! names an exported replay.</summary>
 internal sealed class FileReplayStorage(
 	DataPaths paths,
 	IUserRepository users,
 	IBeatmapRepository beatmaps) : IReplayStorage
 {
-	/// <summary>The most bytes a replay's file name may take: the 255 of common file systems, less the extension.</summary>
 	private const int MaxNameBytes = 255 - 4;
 
 	private static readonly SearchValues<char> UnportableChars = SearchValues.Create("<>:\"/\\|?*");
 	private DataStorage Files => paths.Replays;
 
-	/// <inheritdoc />
 	public async Task SaveAsync(ScoreRecord score, OsuVersion clientVersion, Stream content)
 	{
 		var user = score.Value.UserId is { } userId ? await users.GetAsync(userId) : null;
@@ -38,13 +35,11 @@ internal sealed class FileReplayStorage(
 			Files.Delete(previous);
 	}
 
-	/// <inheritdoc />
 	public Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken ct = default)
 	{
 		return Task.FromResult<Stream?>(Find(score.Id).FirstOrDefault() is { } name ? Files.Open(name) : null);
 	}
 
-	/// <inheritdoc />
 	public async Task<Stream?> OpenFramesAsync(ScoreRecord score, CancellationToken ct = default)
 	{
 		if (await OpenAsync(score, ct) is not { } file) return null;
@@ -90,7 +85,6 @@ internal sealed class FileReplayStorage(
 		};
 	}
 
-	/// <summary>Replaces every character some operating system refuses in a file name with an underscore.</summary>
 	private static string Portable(string name)
 	{
 		return string.Create(name.Length, name, static (span, source) =>

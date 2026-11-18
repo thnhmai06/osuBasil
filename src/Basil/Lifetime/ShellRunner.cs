@@ -5,17 +5,10 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Lifetime;
 
-/// <summary>
-///     Runs a console command given on the command line of the executable: forwarded to the server when it runs, directly
-///     against the storage when it does not and the command allows it.
-/// </summary>
 public static class ShellRunner
 {
-	/// <summary>The hosted services an offline command needs: the event dispatch and the storage startup.</summary>
 	private static readonly string[] OfflineServices = ["EventDispatcher", "StorageStartup"];
 
-	/// <summary>Tells whether the command line starts with the name of a console command.</summary>
-	/// <param name="args">The command-line arguments.</param>
 	public static bool IsCommand(string[] args)
 	{
 		if (args.Length == 0 || args[0].StartsWith('-')) return false;
@@ -24,13 +17,6 @@ public static class ShellRunner
 			.Any(command => command.Words[0].Equals(args[0], StringComparison.OrdinalIgnoreCase));
 	}
 
-	/// <summary>Runs the command.</summary>
-	/// <param name="args">The command-line arguments.</param>
-	/// <param name="configure">Changes the builder before it is built; the tests use it to point at their storage.</param>
-	/// <param name="output">Where the output goes (default: the console).</param>
-	/// <param name="input">Where the confirmation is read from (default: the console).</param>
-	/// <param name="ct">A token that cancels the command.</param>
-	/// <returns>The exit code of the command.</returns>
 	public static async Task<int> RunAsync(string[] args, Action<WebApplicationBuilder>? configure = null,
 		TextWriter? output = null,
 		TextReader? input = null, CancellationToken ct = default)

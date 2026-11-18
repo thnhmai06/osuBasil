@@ -3,7 +3,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Users.Tests.Registry;
 
-/// <summary>Logins of one account are serialised and logins of different accounts do not disturb each other.</summary>
 public sealed class AccountGateTests
 {
 	[Fact]

@@ -4,10 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Bot.Workers;
 
-/// <summary>
-///     Reads the replies file at startup and again whenever it is saved, so the wording changes while the server
-///     runs.
-/// </summary>
 internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, ILogger<RepliesWatcher> logger)
 	: IHostedService, IDisposable
 {
@@ -18,13 +14,8 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 	private bool _stopped;
 	private FileSystemWatcher? _watcher;
 
-	/// <summary>
-	///     Gets a value that indicates whether saves of the file are noticed by the file system; tests turn it off and
-	///     signal changes themselves.
-	/// </summary>
 	internal bool WatchFileSystem { get; init; } = true;
 
-	/// <inheritdoc />
 	public void Dispose()
 	{
 		lock (_gate)
@@ -37,7 +28,6 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 		_watcher?.Dispose();
 	}
 
-	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
 		catalog.Load();
@@ -67,14 +57,12 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 		return Task.CompletedTask;
 	}
 
-	/// <inheritdoc />
 	public Task StopAsync(CancellationToken ct)
 	{
 		Dispose();
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Reads the file again once it has stayed unchanged for a moment, as an editor saves it in several steps.</summary>
 	internal void Changed()
 	{
 		lock (_gate)

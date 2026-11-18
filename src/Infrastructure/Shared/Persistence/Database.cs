@@ -4,7 +4,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Shared.Persistence;
 
-/// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 public sealed class Database : IAsyncDisposable
 {
 	private readonly DatabaseProviders _providers;
@@ -13,9 +12,6 @@ public sealed class Database : IAsyncDisposable
 	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
 	private readonly IDatabaseSource _synchronousSource;
 
-	/// <summary>Creates the database connections used for reads and for confirmed writes.</summary>
-	/// <param name="providers">The database engine of each endpoint.</param>
-	/// <param name="options">The database connection settings.</param>
 	public Database(DatabaseProviders providers, IOptions<DatabaseOptions> options)
 	{
 		_providers = providers;
@@ -26,10 +22,8 @@ public sealed class Database : IAsyncDisposable
 		_synchronousSource = providers.Write.CreateSource(write, settings.WritePoolSize);
 	}
 
-	/// <summary>Gets what the commands sent to the database measured.</summary>
 	public DatabaseMetrics Metrics { get; } = new();
 
-	/// <summary>Gets the connections in use and idle across both endpoints, or <see langword="null" /> when the engine does not tell.</summary>
 	public ConnectionStats? Connections
 	{
 		get
@@ -39,33 +33,28 @@ public sealed class Database : IAsyncDisposable
 		}
 	}
 
-	/// <inheritdoc />
 	public async ValueTask DisposeAsync()
 	{
 		await _readSource.DisposeAsync();
 		await _synchronousSource.DisposeAsync();
 	}
 
-	/// <summary>Tells whether a write failed because a value that must be unique is already stored.</summary>
 	internal bool IsUniqueViolation(Exception exception)
 	{
 		return _providers.Write.IsUniqueViolation(exception);
 	}
 
-	/// <summary>Tells whether a failure means an endpoint could not be reached.</summary>
 	internal bool IsConnectionFailure(Exception exception)
 	{
 		return _providers.Read.IsConnectionFailure(exception) || _providers.Write.IsConnectionFailure(exception);
 	}
 
-	/// <summary>Makes a context for reading, on the connections meant for reads.</summary>
 	public TContext CreateReadContext<TContext>()
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{
 		return TContext.Create(OptionsFor<TContext>(_readOptions, _providers.Read, _readSource));
 	}
 
-	/// <summary>Makes a context whose commits are confirmed before it returns, for writes whose outcome the caller needs.</summary>
 	public TContext CreateConfirmedContext<TContext>()
 		where TContext : DbContext, IDatabaseContext<TContext>
 	{

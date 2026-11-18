@@ -4,12 +4,10 @@ using Mediator;
 
 namespace Basil.Infrastructure.Diagnostics.Services;
 
-/// <summary>Merges the process measurements with the counts every module reports about itself.</summary>
 internal sealed class DiagnosticsIntake(
 	RuntimeSampler runtime,
 	IEnumerable<INotificationHandler<CollectDiagnostics>> modules) : IDiagnosticsIntake
 {
-	/// <inheritdoc />
 	public async ValueTask<DiagnosticsSample> TakeSampleAsync(CancellationToken ct = default)
 	{
 		var reported = new Reported();

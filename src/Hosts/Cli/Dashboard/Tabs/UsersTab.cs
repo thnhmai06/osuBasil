@@ -12,25 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>One account in the users table.</summary>
-/// <param name="Id">The account id.</param>
-/// <param name="Name">The account name.</param>
-/// <param name="Country">The two-letter country code.</param>
-/// <param name="Privileges">The privilege flags, as text.</param>
-/// <param name="Mask">The privilege flags as a number.</param>
-/// <param name="Connections">The kinds of connection it holds, empty when it is offline.</param>
-/// <param name="Room">The room it sits in, or empty.</param>
-/// <param name="Managed">The rooms it created or referees.</param>
-/// <param name="Activity">What the osu! client reports it is doing, or empty.</param>
-/// <param name="Silenced">Whether it is silenced now.</param>
-/// <param name="Granted">The privilege flags stored on the account, as a number; the ones in force now may be fewer.</param>
 internal sealed record UserItem(int Id, string Name, string Country, string Privileges, ulong Mask,
 	string Connections, string Room, string Managed, string Activity, bool Silenced, ulong Granted);
 
-/// <summary>Reads the accounts: the ones online from memory, the others from the database.</summary>
 internal sealed class UsersSource(IServiceProvider services, TimeProvider clock) : IListSource<UserItem>
 {
-	/// <inheritdoc />
 	public async Task<IReadOnlyList<SectionData<UserItem>>> LoadAsync(string query, int limit, CancellationToken ct)
 	{
 		var registry = services.GetRequiredService<UserRegistry>();
@@ -88,7 +74,6 @@ internal sealed class UsersSource(IServiceProvider services, TimeProvider clock)
 	}
 }
 
-/// <summary>The accounts: who is online and who is not, with what can be done to each.</summary>
 internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 {
 	private const string Help = """
@@ -102,7 +87,6 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 	private readonly ListPage<UserItem> _page;
 	private bool _opened;
 
-	/// <summary>Creates the tab.</summary>
 	public UsersTab(IServiceProvider services, UserDetails users, CliOptions options, Glyphs glyphs, ShellKit kit,
 		TimeProvider clock, Action<Action> post, ILogger logger)
 	{
@@ -118,16 +102,13 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 			users.Of, glyphs, kit, colours, clock, post, logger);
 	}
 
-	/// <inheritdoc />
 	public Visual View => _page.View;
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 		_page.Attach(app);
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		_page.FocusList();
@@ -137,31 +118,26 @@ internal sealed class UsersTab : ITabView, ISelectable, ISearchable
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 		_page.Tick();
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		_page.Refresh();
 	}
 
-	/// <inheritdoc />
 	public void FocusSearch()
 	{
 		_page.FocusSearch();
 	}
 
-	/// <inheritdoc />
 	public void ShowHelp()
 	{
 		_page.ShowHelp();
 	}
 
-	/// <inheritdoc />
 	public void Select(string id)
 	{
 		_page.Select(id);

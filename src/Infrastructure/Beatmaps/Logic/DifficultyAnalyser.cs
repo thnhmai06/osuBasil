@@ -4,17 +4,8 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
-/// <summary>Analyses the difficulties of a beatmapset.</summary>
 internal sealed class DifficultyAnalyser(IBeatmapAnalyser analyser)
 {
-	/// <summary>
-	///     Analyses a difficulty, reusing the analysis of the stored beatmap with the same file when it has a star
-	///     rating.
-	/// </summary>
-	/// <param name="difficulty">The difficulty to analyse.</param>
-	/// <param name="stored">The stored beatmap of the same file, or <see langword="null" /> when there is none.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
 	public async Task<BeatmapAnalysis> AnalyseAsync(BeatmapsetDifficulty difficulty, BeatmapRecord? stored,
 		CancellationToken ct)
 	{
@@ -35,8 +26,6 @@ internal sealed class DifficultyAnalyser(IBeatmapAnalyser analyser)
 		}
 	}
 
-	/// <summary>A zero difficulty and no objects in a game mode.</summary>
-	/// <param name="mode">The game mode.</param>
 	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
 	{
 		var objects = BeatmapObjectCount.Empty(mode);

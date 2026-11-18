@@ -2,15 +2,8 @@ using System.Globalization;
 
 namespace Basil.Host.Cli.Dashboard.Data;
 
-/// <summary>What the monitor calls and explains each measurement of the server, written for the operator who reads it.</summary>
-/// <remarks>
-///     Keys are the dotted names the sample is flattened to, for example <c>process.cpuPercent</c>; a host name, a
-///     connection kind or a status class inside a key is written <c>*</c>. A measurement the table does not know still
-///     shows, under a name made from its key, with the description of its category.
-/// </remarks>
 internal static class MonitorMetrics
 {
-	/// <summary>The key of the measurement of the exceptions of the last minute.</summary>
 	public const string LastExceptions = "exceptions.lastMinute";
 
 	private const string HostNote = "The server answers on several host names; the group is the host measured.";
@@ -181,23 +174,16 @@ internal static class MonitorMetrics
 			Alarm: true)
 	};
 
-	/// <summary>Gets the title of a category.</summary>
-	/// <param name="category">The first part of a dotted name.</param>
 	public static string Title(string category)
 	{
 		return Titles.TryGetValue(category, out var title) ? title : Capital(category);
 	}
 
-	/// <summary>Gets the title of a group inside a category, such as a host or a kind of connection.</summary>
-	/// <param name="group">The part of the key that names the group.</param>
 	public static string GroupTitle(string group)
 	{
 		return Groups.TryGetValue(group, out var title) ? title : Capital(group);
 	}
 
-	/// <summary>Describes a measurement.</summary>
-	/// <param name="key">The dotted name.</param>
-	/// <returns>The name inside its group, the unit and the explanation.</returns>
 	public static MetricInfo Of(string key)
 	{
 		if (key.LastIndexOf('#') is var cut and > 0 && int.TryParse(key[(cut + 1)..], out var index))
@@ -218,10 +204,6 @@ internal static class MonitorMetrics
 			" This one has no longer explanation yet.");
 	}
 
-	/// <summary>Writes a value for the operator, in the unit of its measurement.</summary>
-	/// <param name="info">The measurement the value belongs to.</param>
-	/// <param name="value">The value as the sample holds it.</param>
-	/// <param name="ascii">Whether the dashboard stays in ASCII.</param>
 	public static string Show(MetricInfo info, string value, bool ascii)
 	{
 		if (info.Unit == MetricUnit.Text || !double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))

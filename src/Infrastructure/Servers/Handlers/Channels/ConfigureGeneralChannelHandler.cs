@@ -4,11 +4,9 @@ using Mediator;
 
 namespace Basil.Infrastructure.Servers.Handlers.Channels;
 
-/// <summary>Changes a general channel for the connection that asked.</summary>
 internal sealed class ConfigureGeneralChannelHandler(Server server)
 	: IRequestHandler<ConfigureGeneralChannel, GeneralChannelAnswer>
 {
-	/// <inheritdoc />
 	public async ValueTask<GeneralChannelAnswer> Handle(ConfigureGeneralChannel request,
 		CancellationToken ct)
 	{

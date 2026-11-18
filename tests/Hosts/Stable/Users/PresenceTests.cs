@@ -3,7 +3,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Stable.Tests.Users;
 
-/// <summary>Who sees whom online, and friends.</summary>
 [Collection("Stable host")]
 public sealed class PresenceTests(StableHostFixture fixture)
 {

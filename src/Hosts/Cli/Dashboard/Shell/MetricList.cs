@@ -10,14 +10,8 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>
-///     The measurements of one category: a label on the left and its value right-aligned, with a foldable title for
-///     each group. One row at a time is selected; inside a <see cref="XenoAtom.Terminal.UI.Controls.ScrollViewer" /> it
-///     scrolls with a bar of its own.
-/// </summary>
 internal sealed partial class MetricList : Visual, IScrollable
 {
-	/// <summary>Counts the changes of the content, which the framework tracks to redraw the list.</summary>
 	[Bindable] public partial int Revision { get; set; }
 
 	private readonly Glyphs _glyphs;
@@ -30,9 +24,6 @@ internal sealed partial class MetricList : Visual, IScrollable
 	private int _cursor = -1;
 	private int _bodyHeight;
 
-	/// <summary>Creates the list.</summary>
-	/// <param name="glyphs">The characters to draw with.</param>
-	/// <param name="noColor">Whether the list is monochrome.</param>
 	public MetricList(Glyphs glyphs, bool noColor)
 	{
 		_glyphs = glyphs;
@@ -44,14 +35,10 @@ internal sealed partial class MetricList : Visual, IScrollable
 		VerticalAlignment = Align.Stretch;
 	}
 
-	/// <inheritdoc />
 	public ScrollModel Scroll => _scroll;
 
-	/// <summary>Occurs when the operator picks a measurement.</summary>
 	public event Action<string>? Picked;
 
-	/// <summary>Sets which measurement is highlighted, or <see langword="null" /> for none of this list.</summary>
-	/// <param name="key">The key of the selected measurement.</param>
 	public void Select(string? key)
 	{
 		if (key == _selectedKey) return;
@@ -67,8 +54,6 @@ internal sealed partial class MetricList : Visual, IScrollable
 		Revision++;
 	}
 
-	/// <summary>Replaces the measurements, keeping the fold state and the cursor.</summary>
-	/// <param name="lines">The measurements; the ones with a group are listed after those without, under a title.</param>
 	public void SetLines(IReadOnlyList<MetricLine> lines)
 	{
 		var keep = _cursor >= 0 && _cursor < _rows.Count ? _rows[_cursor] : default;
@@ -94,13 +79,11 @@ internal sealed partial class MetricList : Visual, IScrollable
 		_scroll.SetExtent(_scroll.ViewportWidth, _rows.Count);
 	}
 
-	/// <inheritdoc />
 	protected override SizeHints MeasureCore(in LayoutConstraints constraints)
 	{
 		return SizeHints.Flex(new Size(8, 2), new Size(24, 6), new Size(int.MaxValue, int.MaxValue), 1, 1, 1, 1).Normalize();
 	}
 
-	/// <inheritdoc />
 	protected override void ArrangeCore(in Rectangle finalRect)
 	{
 		_bodyHeight = finalRect.Height;
@@ -109,7 +92,6 @@ internal sealed partial class MetricList : Visual, IScrollable
 		Settle();
 	}
 
-	/// <inheritdoc />
 	protected override void RenderOverride(CellBuffer buffer)
 	{
 		var rect = Bounds;
@@ -188,7 +170,6 @@ internal sealed partial class MetricList : Visual, IScrollable
 		buffer.WriteText(rect.X + rect.Width - 1 - value.Length, y, value, valueStyle);
 	}
 
-	/// <inheritdoc />
 	protected override void OnKeyDown(KeyEventArgs e)
 	{
 		var handled = true;
@@ -212,7 +193,6 @@ internal sealed partial class MetricList : Visual, IScrollable
 
 	private bool OnTitle => _cursor >= 0 && _cursor < _rows.Count && _rows[_cursor].IsTitle;
 
-	/// <inheritdoc />
 	protected override void OnPointerPressed(PointerEventArgs e)
 	{
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.Button != TerminalMouseButton.Left) return;

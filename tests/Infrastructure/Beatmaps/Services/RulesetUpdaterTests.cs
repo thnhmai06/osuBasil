@@ -12,7 +12,6 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Services;
 
-/// <summary>Finding, verifying and staging new versions of the osu! rulesets from a package feed.</summary>
 public sealed class RulesetUpdaterTests : IDisposable
 {
 	private const string NewVersion = "2999.101.0";
@@ -51,10 +50,6 @@ public sealed class RulesetUpdaterTests : IDisposable
 		return Convert.ToBase64String(SHA512.HashData(bytes));
 	}
 
-	/// <summary>
-	///     A feed that offers <see cref="NewVersion" />; <paramref name="corrupt" /> publishes a wrong hash for one
-	///     package.
-	/// </summary>
 	private static HttpClient Feed(string latest, string? corrupt = null)
 	{
 		return new HttpClient(new FeedHandler(latest, corrupt));

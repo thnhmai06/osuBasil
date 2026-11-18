@@ -23,11 +23,6 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>
-///     The server settings: a strip of pages, one form per page with a search box and the categories of the page as
-///     foldable groups (their own groups inside them) that saves each field when the operator presses Enter or leaves
-///     it, the description of the field in focus beside it, and a read-only page of the configuration.
-/// </summary>
 internal sealed class SettingsTab : ITabView
 {
 	private const string StripHelp = "Down or Enter goes to the settings of the tab; Left and Right change the tab.";
@@ -66,7 +61,6 @@ internal sealed class SettingsTab : ITabView
 	private int _saving;
 	private bool _reload;
 
-	/// <summary>Creates the tab.</summary>
 	public SettingsTab(IServiceProvider services, ConsoleTab console, CliOptions options, Glyphs glyphs, ShellKit kit,
 		TimeProvider clock, Action<Action> post, ILogger logger)
 	{
@@ -134,16 +128,13 @@ internal sealed class SettingsTab : ITabView
 		ShowStripHelp();
 	}
 
-	/// <inheritdoc />
 	public Visual View { get; }
 
-	/// <inheritdoc />
 	public void Attach(TerminalApp app)
 	{
 		_app = app;
 	}
 
-	/// <inheritdoc />
 	public void Activate()
 	{
 		// An edit left unsaved when the operator switched tabs is saved before the form is read again.
@@ -153,7 +144,6 @@ internal sealed class SettingsTab : ITabView
 		ShowStripHelp();
 	}
 
-	/// <inheritdoc />
 	public void Tick()
 	{
 		_spread.Fit(View.Bounds.Width);
@@ -198,7 +188,6 @@ internal sealed class SettingsTab : ITabView
 		if (!anyFocused && (_strip.HasFocus || ReferenceEquals(_app?.FocusedElement, _search))) ShowStripHelp();
 	}
 
-	/// <inheritdoc />
 	public void Refresh()
 	{
 		Load();
@@ -535,7 +524,6 @@ internal sealed class SettingsTab : ITabView
 			}), TaskScheduler.Default);
 	}
 
-	/// <summary>Writes what the operator typed as the JSON the command reads, or <see langword="null" /> when it is not valid for the kind.</summary>
 	private static string? ToJson(SettingsFieldKind kind, string text)
 	{
 		switch (kind)
@@ -556,7 +544,6 @@ internal sealed class SettingsTab : ITabView
 		}
 	}
 
-	/// <summary>Writes a value as one word of a command line.</summary>
 	private static string Quote(string value)
 	{
 		return $"\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";

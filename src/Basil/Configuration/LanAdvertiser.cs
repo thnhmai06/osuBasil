@@ -4,26 +4,19 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Configuration;
 
-/// <summary>
-///     Answers multicast DNS queries for the server's domain and the sub-domains it serves, so a client on the same
-///     network finds it.
-/// </summary>
 internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<LanAdvertiser> logger)
 	: IHostedService, IDisposable
 {
-	/// <summary>The sub-domains the server serves; the <c>ppy.sh</c> hosts are never advertised.</summary>
 	internal static readonly string[] Labels = ["c", "ce", "c4", "c5", "c6", "osu", "b", "a", "api", "assets", "irc"];
 
 	private MulticastService? _service;
 
-	/// <inheritdoc />
 	public void Dispose()
 	{
 		_service?.Dispose();
 		_service = null;
 	}
 
-	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
 		var server = options.Value;
@@ -61,14 +54,12 @@ internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<Lan
 		return Task.CompletedTask;
 	}
 
-	/// <inheritdoc />
 	public Task StopAsync(CancellationToken ct)
 	{
 		Dispose();
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Creates the responder with the address families the settings leave on.</summary>
 	internal static MulticastService NewService(ServerOptions.MulticastSettings multicast)
 	{
 		return new MulticastService { UseIpv4 = multicast.UseIPv4, UseIpv6 = multicast.UseIPv6 };

@@ -3,7 +3,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Stable.Tests.Chat;
 
-/// <summary>Chat as an osu! client sees it: channel messages, private messages and the limits.</summary>
 [Collection("Stable host")]
 public sealed class ChatTests(StableHostFixture fixture)
 {

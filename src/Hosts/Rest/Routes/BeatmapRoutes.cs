@@ -13,12 +13,10 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>Beatmapsets, beatmaps and their files.</summary>
 internal static class BeatmapRoutes
 {
 	private const string OpaqueType = "application/octet-stream";
 
-	/// <summary>The content types each kind of file may be served as; anything else is an opaque download.</summary>
 	private static readonly Dictionary<BeatmapsetFileType, Dictionary<string, string>> AllowedTypes = new()
 	{
 		[BeatmapsetFileType.Background] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -31,7 +29,6 @@ internal static class BeatmapRoutes
 			{ [".mp4"] = "video/mp4", [".avi"] = "video/x-msvideo", [".flv"] = "video/x-flv", [".webm"] = "video/webm" }
 	};
 
-	/// <summary>Maps the Beatmaps routes.</summary>
 	public static void MapBeatmaps(this RouteGroupBuilder v1)
 	{
 		var sets = v1.MapGroup("/beatmapsets").WithTags("Beatmapsets");
@@ -211,6 +208,5 @@ internal static class BeatmapRoutes
 			: Results.Redirect($"/v1/beatmaps/{detail.Beatmaps[0].Id}/{name}", false, true);
 	}
 
-	/// <summary>The management properties of a set that can change; the content never changes.</summary>
 	public sealed record PatchSetRequest(BeatmapsetStatus? Status, bool? Visible, bool? Locked);
 }

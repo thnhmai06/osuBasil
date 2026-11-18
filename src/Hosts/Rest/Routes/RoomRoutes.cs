@@ -12,10 +12,8 @@ using Mediator;
 
 namespace Basil.Host.Rest.Routes;
 
-/// <summary>Multiplayer rooms: reading them and one route for each room command of <c>!mp</c>.</summary>
 internal static class RoomRoutes
 {
-	/// <summary>Maps the Rooms routes.</summary>
 	public static void MapRooms(this RouteGroupBuilder v1)
 	{
 		var rooms = v1.MapGroup("/rooms").WithTags("Rooms").RequireToken();
@@ -38,7 +36,6 @@ internal static class RoomRoutes
 		foreach (var command in RoomCommands.All) Command(rooms, command);
 	}
 
-	/// <summary>Maps <c>POST /rooms/{id}/{name}</c> to a room operation of the scoped room.</summary>
 	private static void Command(RouteGroupBuilder rooms, RoomCommand command)
 	{
 		rooms.MapPost("/{id:int}/" + command.Name, async (HttpContext context, int id, Lobby lobby, ISender sender) =>

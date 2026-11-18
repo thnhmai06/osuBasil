@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Runs a <see cref="SetReady" /> on the room for the connection that asked.</summary>
 internal sealed class SetReadyHandler : IRequestHandler<SetReady, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(SetReady request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

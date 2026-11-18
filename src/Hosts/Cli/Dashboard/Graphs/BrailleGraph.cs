@@ -1,26 +1,14 @@
 namespace Basil.Host.Cli.Dashboard.Graphs;
 
-/// <summary>
-///     Draws a series as a btop-style line graph of braille characters: every cell is 2 dots wide and 4 dots high, so a
-///     graph has twice the horizontal and four times the vertical resolution of its cells, and each column is coloured
-///     by its value.
-/// </summary>
 public static class BrailleGraph
 {
 	private const int DotsPerColumn = 2;
 	private const int DotsPerRow = 4;
 
-	/// <summary>Gets the narrowest terminal that shows the big graphs; below it they are hidden.</summary>
 	public const int MinimumWidthForGraphs = 100;
 
-	/// <summary>The bit of each dot in a braille character, by [dot column, dot row from the top].</summary>
 	private static readonly int[,] Bits = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
 
-	/// <summary>Draws the most recent values of a series, newest at the right edge.</summary>
-	/// <param name="surface">Where to draw.</param>
-	/// <param name="area">The rectangle the graph fills.</param>
-	/// <param name="values">The series, oldest first.</param>
-	/// <param name="maximum">The value that reaches the top; at least 1.</param>
 	public static void Draw(IPaintSurface surface, Area area, IReadOnlyList<double> values, double maximum)
 	{
 		if (area.Width <= 0 || area.Height <= 0) return;
@@ -52,22 +40,14 @@ public static class BrailleGraph
 		}
 	}
 
-	/// <summary>Tells whether the terminal is wide enough for the big graphs.</summary>
 	public static bool FitsGraphs(int width)
 	{
 		return width >= MinimumWidthForGraphs;
 	}
 }
 
-/// <summary>A horizontal meter of block characters, filled in proportion to a value.</summary>
 public static class Meter
 {
-	/// <summary>Draws <c>label [█████   ] 42%</c> in one row.</summary>
-	/// <param name="surface">Where to draw.</param>
-	/// <param name="area">The row (its height is 1).</param>
-	/// <param name="label">What is measured.</param>
-	/// <param name="fraction">The filled part, from 0 to 1.</param>
-	/// <param name="caption">The text after the bar, such as <c>42%</c>.</param>
 	public static void Draw(IPaintSurface surface, Area area, string label, double fraction, string caption)
 	{
 		var barWidth = area.Width - label.Length - caption.Length - 4;

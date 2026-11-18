@@ -6,7 +6,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Multiplayer;
 
-/// <summary>Verifies that a score's team agrees with the kind of round it was played in, however it is built.</summary>
 public class RoundScoreTests
 {
 	private static Round MakeRound(GameTeamType teamType)

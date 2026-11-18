@@ -15,27 +15,14 @@ using XenoAtom.Terminal;
 
 namespace Basil.Host.Cli;
 
-/// <summary>Registers the console of the server: the commands, the control socket, the dashboard and the Ctrl+C rules.</summary>
 public static class CliHost
 {
-	/// <summary>
-	///     Adds what the event handlers of the console need, so a container that handles events is complete without the
-	///     rest of it.
-	/// </summary>
-	/// <param name="services">The service collection.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddCliFeeds(this IServiceCollection services)
 	{
 		services.TryAddSingleton<ChatFeed>();
 		return services;
 	}
 
-	/// <summary>Adds the console.</summary>
-	/// <param name="services">The service collection.</param>
-	/// <param name="mode">How the server shows itself.</param>
-	/// <param name="socketPath">Finds the path of the control socket once the options are bound.</param>
-	/// <param name="configurationDirectory">The folder where the dashboard saves its theme.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddCli(this IServiceCollection services, CliOptions mode,
 		Func<IServiceProvider, string> socketPath,
 		string configurationDirectory)
@@ -76,11 +63,9 @@ public static class CliHost
 	}
 }
 
-/// <summary>Lists the ids that exist, so the command box can complete them.</summary>
 internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, GeneralChannelRegistry channels)
 	: ISuggestionSource
 {
-	/// <summary>Lists the ids that exist for a resource kind.</summary>
 	public IEnumerable<string> Ids(string resource)
 	{
 		return resource.ToLowerInvariant() switch
@@ -93,10 +78,8 @@ internal sealed class LiveSuggestions(UserRegistry registry, Lobby lobby, Genera
 	}
 }
 
-/// <summary>Lets time pass for the Ctrl+C rules once a second.</summary>
 internal sealed class ShutdownTicker(ShutdownController controller, TimeProvider clock) : BackgroundService
 {
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1), clock);
@@ -110,10 +93,6 @@ internal sealed class ShutdownTicker(ShutdownController controller, TimeProvider
 	}
 }
 
-/// <summary>
-///     Shows the server in the terminal: the dashboard unless the console is log only, where the messages of the Ctrl+C
-///     rules are plain log lines.
-/// </summary>
 internal sealed class DisplayService(
 	CliOptions setting,
 	IServiceProvider services,
@@ -124,7 +103,6 @@ internal sealed class DisplayService(
 	private readonly CancellationTokenSource _stopped = new();
 	private Thread? _thread;
 
-	/// <inheritdoc />
 	public Task StartAsync(CancellationToken ct)
 	{
 		if (!setting.HasDashboard)
@@ -154,7 +132,6 @@ internal sealed class DisplayService(
 		return Task.CompletedTask;
 	}
 
-	/// <inheritdoc />
 	public Task StopAsync(CancellationToken ct)
 	{
 		shutdown.Message -= Log;

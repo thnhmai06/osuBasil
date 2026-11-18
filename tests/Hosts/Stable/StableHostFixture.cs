@@ -3,7 +3,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Host.Stable.Tests;
 
-/// <summary>One server and one PostgreSQL container for all the osu! host tests, which use different usernames.</summary>
 public sealed class StableHostFixture : IAsyncLifetime
 {
 	private readonly PersistenceFixture _database = new();

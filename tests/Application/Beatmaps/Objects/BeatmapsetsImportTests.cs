@@ -6,11 +6,6 @@ using static Basil.Testing.BeatmapsetWorld;
 
 namespace Basil.Application.Beatmaps.Tests.Objects;
 
-/// <summary>
-///     Importing an uploaded beatmapset archive, as <c>Beatmapsets.ImportAsync</c> documents it: an unreadable or
-///     locked archive is rejected and nothing of it is kept, an accepted one adds or replaces the beatmapset it
-///     belongs to, and one <see cref="BeatmapsetImported" /> says so.
-/// </summary>
 public sealed class BeatmapsetsImportTests
 {
 	private static readonly Diff Easy = new("Easy", "easy file");

@@ -8,7 +8,6 @@ using NSubstitute;
 
 namespace Basil.Application.Servers.Tests.Capabilities;
 
-/// <summary>Creating a general channel needs the privilege to manage channels, and a name is used once.</summary>
 public sealed class ScopedServerChannelsTests
 {
 	private static GeneralChannelRecord Record(string name)

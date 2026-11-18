@@ -324,7 +324,6 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	/// <summary>Only an osu! beatmap can be played in another mode (a conversion); any other keeps its own mode.</summary>
 	private static GameMode ModeFor(GameMode beatmapMode, GameMode? requested)
 	{
 		return beatmapMode == GameMode.Standard ? requested ?? beatmapMode : beatmapMode;

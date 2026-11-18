@@ -5,14 +5,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Diagnostics.Workers;
 
-/// <summary>Takes the sample once a second from the start of the server and hands it to the feed.</summary>
 internal sealed class DiagnosticsSampler(
 	IDiagnosticsIntake intake,
 	DiagnosticsFeed feed,
 	TimeProvider clock,
 	ILogger<DiagnosticsSampler> logger) : BackgroundService
 {
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1), clock);

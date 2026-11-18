@@ -8,11 +8,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Handlers;
 
-/// <summary>
-///     What a room and the lobby leave behind as stored matches, rounds and match events. The expected values come
-///     from docs/for-developers/multiplayer.md: a match is created when a room opens, every seat and authority change
-///     is a match event, a round is stored when it starts and again when it ends, and a closed room ends its match.
-/// </summary>
 public sealed class MatchRecorderTests
 {
 	[Fact]
@@ -248,19 +243,14 @@ public sealed class MatchRecorderTests
 		Assert.True(await setup.Room.ScopeTo(setup.Player).Rounds.CompleteAsync() == RoomOutcome.Ok);
 	}
 
-	/// <summary>The storage ports the recorders write to.</summary>
 	private sealed class RecordingRecorder
 	{
-		/// <summary>Gets the port through which matches are stored.</summary>
 		public IMatchRepository Matches { get; } = Substitute.For<IMatchRepository>();
 
-		/// <summary>Gets the port through which rounds are stored.</summary>
 		public IRoundRepository Rounds { get; } = Substitute.For<IRoundRepository>();
 
-		/// <summary>Gets the port through which match events are stored.</summary>
 		public IMatchEventRepository MatchEvents { get; } = Substitute.For<IMatchEventRepository>();
 
-		/// <summary>Gets the port through which the scores of rounds are stored.</summary>
 		public IRoundScoreRepository RoundScores { get; } = Substitute.For<IRoundScoreRepository>();
 	}
 }

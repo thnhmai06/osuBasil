@@ -7,14 +7,8 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>
-///     Prints the record views that the HTTP API returns as people read them: an object as aligned <c>label: value</c>
-///     lines, a list as a table, a bitmask followed by the names of its flags, times in the operator's time zone.
-/// </summary>
-/// <param name="zone">The time zone times are shown in.</param>
 public sealed class ViewFormatter(TimeZoneInfo zone)
 {
-	/// <summary>The flags enum each bitmask-valued field of the views holds.</summary>
 	private static readonly Dictionary<string, Type> Masks = new(StringComparer.OrdinalIgnoreCase)
 	{
 		["privileges"] = typeof(UserPrivileges), ["effectivePrivileges"] = typeof(UserPrivileges),
@@ -22,15 +16,11 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 		["types"] = typeof(SessionType)
 	};
 
-	/// <summary>Formats a time.</summary>
 	public string Time(DateTimeOffset value)
 	{
 		return TimeZoneInfo.ConvertTime(value, zone).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 	}
 
-	/// <summary>Formats a bitmask with the names of the flags that are set.</summary>
-	/// <param name="name">The name of the field, which says what the bits mean.</param>
-	/// <param name="value">The bitmask.</param>
 	public static string Mask(string name, ulong value)
 	{
 		if (!Masks.TryGetValue(name, out var type)) return value.ToString(CultureInfo.InvariantCulture);
@@ -44,7 +34,6 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 			: $"{value} ({string.Join(", ", names)})";
 	}
 
-	/// <summary>Prints one view as aligned fields.</summary>
 	public void Print(ICommandOutput output, object view, string indent = "")
 	{
 		var fields = new List<(string, string)>();
@@ -88,7 +77,6 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 		return value is IEnumerable sequence && Items(sequence) is { } rows && rows.All(IsRef) ? rows : null;
 	}
 
-	/// <summary>Prints a list of views as a table.</summary>
 	public void PrintTable(ICommandOutput output, IReadOnlyList<object> items, string indent = "")
 	{
 		if (items.Count == 0)
@@ -171,7 +159,6 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 			.Where(property => property.GetIndexParameters().Length == 0 && property.Name != "EqualityContract");
 	}
 
-	/// <summary>Writes a name the way the API does: first letter lower case.</summary>
 	public static string Camel(string name)
 	{
 		return name.Length == 0 ? name : char.ToLowerInvariant(name[0]) + name[1..];

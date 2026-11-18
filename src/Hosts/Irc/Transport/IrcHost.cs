@@ -7,12 +7,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Host.Irc.Transport;
 
-/// <summary>Registers the IRC host.</summary>
 public static class IrcHost
 {
-	/// <summary>Adds the services the IRC host needs, including the handlers that deliver chat to IRC clients.</summary>
-	/// <param name="services">The service collection.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddIrcHost(this IServiceCollection services)
 	{
 		services.TryAddSingleton<RateLimiter>();
@@ -25,13 +21,6 @@ public static class IrcHost
 		return services;
 	}
 
-	/// <summary>
-	///     Adds the socket listener, which is what makes the server answer on the IRC port; the port is
-	///     <c>Basil:Server:Irc:Port</c> and the domain <c>Basil:Server:Domain</c>.
-	/// </summary>
-	/// <param name="services">The service collection.</param>
-	/// <param name="configuration">The configuration to read.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddIrcListener(this IServiceCollection services,
 		IConfiguration configuration)
 	{

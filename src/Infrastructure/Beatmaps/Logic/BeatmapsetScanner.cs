@@ -6,7 +6,6 @@ using Basil.Domain.Content;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
-/// <summary>Keeps the beatmapsets the server has in step with the archives in the storage.</summary>
 internal sealed class BeatmapsetScanner(
 	IBeatmapsetStorage storage,
 	IBeatmapsetRepository beatmapsets,
@@ -16,7 +15,6 @@ internal sealed class BeatmapsetScanner(
 	BeatmapsetFileWriter files,
 	BeatmapsetFileAudit audit) : IBeatmapsetScanner
 {
-	/// <inheritdoc />
 	public async Task<BeatmapsetScanOutcome> ScanAsync(CancellationToken ct = default)
 	{
 		var packed = new List<BeatmapsetArchive>();
@@ -32,7 +30,6 @@ internal sealed class BeatmapsetScanner(
 		}
 	}
 
-	/// <inheritdoc />
 	public async Task<BeatmapsetScanOutcome> ScanAsync(BeatmapsetSource entry,
 		CancellationToken ct = default)
 	{
@@ -44,10 +41,6 @@ internal sealed class BeatmapsetScanner(
 		};
 	}
 
-	/// <summary>Brings the server in step with every entry of the storage.</summary>
-	/// <param name="packed">The archives packed from loose files during the scan, added to as they are packed.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
 	private async Task<BeatmapsetScanOutcome> ScanAllAsync(
 		List<BeatmapsetArchive> packed, CancellationToken ct)
 	{
@@ -66,11 +59,6 @@ internal sealed class BeatmapsetScanner(
 			remove);
 	}
 
-	/// <summary>Sorts every entry of the storage into what is queued for reading, unchanged and changed in name only.</summary>
-	/// <param name="packed">The archives packed from loose files, added to as they are packed.</param>
-	/// <param name="claims">The claims of this scan; a changed set claims its place.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The entries of the scan.</returns>
 	private async Task<ScanEntries> ClassifyAsync(List<BeatmapsetArchive> packed, SetClaims claims,
 		CancellationToken ct)
 	{
@@ -128,14 +116,6 @@ internal sealed class BeatmapsetScanner(
 		return entries;
 	}
 
-	/// <summary>
-	///     Reads and plans the queued archives; those that a set of this scan already has, or that are locked, are left
-	///     out.
-	/// </summary>
-	/// <param name="entries">The entries of the scan; the sets it finds are added to <see cref="ScanEntries.Seen" />.</param>
-	/// <param name="claims">The claims of this scan.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The planned archives that are to be stored.</returns>
 	private async Task<List<BeatmapsetPlan>> PlanQueuedAsync(ScanEntries entries, SetClaims claims,
 		CancellationToken ct)
 	{
@@ -169,10 +149,6 @@ internal sealed class BeatmapsetScanner(
 		return indexed;
 	}
 
-	/// <summary>Forgets the sets the scan did not see and commits every change of the scan at once.</summary>
-	/// <param name="entries">The entries of the scan.</param>
-	/// <param name="indexed">The planned archives that are to be stored.</param>
-	/// <returns>The forgotten sets and the stored sets: first those of the planned archives, then the changed ones.</returns>
 	private async Task<(List<BeatmapsetRecord> Remove, IReadOnlyList<BeatmapsetRecord> StoredSets)> CommitAsync(
 		ScanEntries entries, List<BeatmapsetPlan> indexed)
 	{
@@ -191,11 +167,6 @@ internal sealed class BeatmapsetScanner(
 		return (remove, storedSets);
 	}
 
-	/// <summary>Saves the archives and makes the files of what was stored, and makes missing files again.</summary>
-	/// <param name="entries">The entries of the scan.</param>
-	/// <param name="indexed">The planned archives that were stored.</param>
-	/// <param name="storedSets">The stored sets: first those of the planned archives, then the changed ones.</param>
-	/// <returns>The beatmapsets taken in, with their difficulties.</returns>
 	private async Task<List<BeatmapsetIndexed>> StoreFilesAsync(ScanEntries entries, List<BeatmapsetPlan> indexed,
 		IReadOnlyList<BeatmapsetRecord> storedSets)
 	{
@@ -225,11 +196,6 @@ internal sealed class BeatmapsetScanner(
 		return imported;
 	}
 
-	/// <summary>Brings the server in step with one folder of the storage.</summary>
-	/// <param name="folder">The folder as it is now.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
-	/// <remarks>The folder keeps its files when its beatmapset is forgotten.</remarks>
 	private async Task<BeatmapsetScanOutcome> ScanFolderAsync(BeatmapsetFolder folder,
 		CancellationToken ct)
 	{
@@ -267,15 +233,6 @@ internal sealed class BeatmapsetScanner(
 		return BeatmapsetScanOutcome.Forgotten(deleted);
 	}
 
-	/// <summary>Brings the server in step with one archive lying in the storage.</summary>
-	/// <param name="archive">The archive as it is now.</param>
-	/// <param name="folderId">The id of the folder the archive lies in, or <see langword="null" /> when it lies loose.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
-	/// <remarks>
-	///     An archive whose hash is the one stored for the folder's beatmapset needs no indexing; an archive that cannot
-	///     be read forgets the beatmapset of the folder it lay in, keeping its files.
-	/// </remarks>
 	private async Task<BeatmapsetScanOutcome> ScanArchiveAsync(BeatmapsetArchive archive, int? folderId,
 		CancellationToken ct)
 	{
@@ -315,19 +272,14 @@ internal sealed class BeatmapsetScanner(
 			[imported], []);
 	}
 
-	/// <summary>The entries of the storage as one scan sorted them.</summary>
 	private sealed class ScanEntries
 	{
-		/// <summary>The ids of the stored sets the scan found their archive for.</summary>
 		public HashSet<int> Seen { get; } = [];
 
-		/// <summary>The archives to read, with the id of their folder and their fingerprint when it is already taken.</summary>
 		public List<(BeatmapsetArchive Archive, int? FolderId, ContentFingerprint? Fingerprint)> Queued { get; } = [];
 
-		/// <summary>The sets whose archive has not changed.</summary>
 		public List<BeatmapsetRecord> Unchanged { get; } = [];
 
-		/// <summary>The sets whose archive changed in name only, with the change that stores them.</summary>
 		public List<(BeatmapsetChange Change, BeatmapsetRecord Set)> Changed { get; } = [];
 	}
 }

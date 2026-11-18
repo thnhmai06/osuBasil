@@ -3,11 +3,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the match payload guards shared by <c>UpdateMatch</c>, <c>NewMatch</c> and
-///     <c>MatchJoinSuccess</c>: exactly 16 slots required, and the room id (u16 on the wire) cannot
-///     exceed 65535.
-/// </summary>
 public class PacketWriterMatchPayloadGuardTests
 {
 	private static RoomPacket Room(int slotCount, int id)

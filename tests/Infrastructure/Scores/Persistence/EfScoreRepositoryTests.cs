@@ -10,7 +10,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Scores.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of submitted scores.</summary>
 [Collection("Persistence")]
 public sealed class EfScoreRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -345,10 +344,6 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		Assert.Equal(winner, await Scores.GetAsync(winner.Id, TestContext.Current.CancellationToken));
 	}
 
-	/// <summary>Creates a play for every player at the same moment, all with the same checksum.</summary>
-	/// <param name="players">The players, one creation each.</param>
-	/// <param name="checksum">The checksum every play carries.</param>
-	/// <returns>The stored score or the exception of every creation.</returns>
 	private async Task<List<object>> RaceAsync(IReadOnlyList<UserRecord> players, Md5 checksum)
 	{
 		var start = new TaskCompletionSource();
@@ -380,23 +375,11 @@ public sealed class EfScoreRepositoryTests(PersistenceFixture container) : Datab
 		Assert.Equal(1, Assert.Single(rows).Number("n"));
 	}
 
-	/// <summary>Creates the account that played.</summary>
-	/// <param name="name">The name of the account.</param>
-	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
 		return await Get<IUserRepository>()
 			.CreateAsync(new UserData { Name = name });
 	}
-
-	/// <summary>Creates a play of the given account.</summary>
-	/// <param name="player">The account that played.</param>
-	/// <param name="beatmapHash">The hash of the beatmap played.</param>
-	/// <param name="totalScore">The total score the play achieved.</param>
-	/// <param name="timestamp">The moment the play happened.</param>
-	/// <param name="checksum">The checksum the client computed for the submission.</param>
-	/// <param name="mods">The mods applied to the play.</param>
-	/// <returns>The play.</returns>
 
 	[Fact]
 	public async Task BestPerPlayerPassedOnly_IgnoresHigherFailedPlay()

@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Irc.Tests.Chat;
 
-/// <summary>Joining, leaving and reading channels, and the commands IRC may not use to manage them.</summary>
 [Collection("IRC host")]
 public sealed class ChannelTests(IrcHostFixture fixture)
 {

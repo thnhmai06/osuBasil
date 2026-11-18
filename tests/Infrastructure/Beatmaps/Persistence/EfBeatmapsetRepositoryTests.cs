@@ -7,7 +7,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of beatmapsets.</summary>
 [Collection("Persistence")]
 public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -356,19 +355,11 @@ public sealed class EfBeatmapsetRepositoryTests(PersistenceFixture container) : 
 			Get<IBeatmapRepository>().UpdateAsync(orphan));
 	}
 
-	/// <summary>Commits one beatmapset as a new set.</summary>
-	/// <param name="data">The set as it is stored.</param>
-	/// <returns>The stored set.</returns>
 	private async Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetData data)
 	{
 		return await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []));
 	}
 
-	/// <summary>Copies a beatmapset with the lock and the visibility the test names.</summary>
-	/// <param name="set">The set to copy.</param>
-	/// <param name="locked">Whether the copy is write-locked.</param>
-	/// <param name="visible">Whether the copy is shown.</param>
-	/// <returns>The copy.</returns>
 	private static BeatmapsetRecord Changed(BeatmapsetRecord set, bool locked = false, bool visible = true)
 	{
 		return new BeatmapsetRecord

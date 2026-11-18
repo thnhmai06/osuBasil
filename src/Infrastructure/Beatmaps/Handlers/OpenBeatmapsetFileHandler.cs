@@ -6,7 +6,6 @@ using Mediator;
 
 namespace Basil.Infrastructure.Beatmaps.Handlers;
 
-/// <summary>Opens the audio preview or the storyboard of a beatmapset for a caller who may see it.</summary>
 internal sealed class OpenBeatmapsetFileHandler(
 	IBeatmapsetRepository sets,
 	IBeatmapRepository beatmaps,
@@ -16,7 +15,6 @@ internal sealed class OpenBeatmapsetFileHandler(
 	// shortcut: the stored name is the fixed storyboard name of the importer; read it from there if it ever varies.
 	private const string StoryboardName = "storyboard.osb";
 
-	/// <inheritdoc />
 	public async ValueTask<BeatmapFile?> Handle(OpenBeatmapsetFile request, CancellationToken ct)
 	{
 		var mayViewHidden = BeatmapVisibility.MayViewHidden(request.Actor, clock);

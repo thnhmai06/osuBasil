@@ -19,7 +19,6 @@ using OsuClient = Basil.Testing.Clients.OsuClient;
 
 namespace Basil.Host.Stable.Tests.Web;
 
-/// <summary>The osu! client's web endpoints, called the way the client calls them.</summary>
 [Collection("Stable host")]
 public sealed class WebEndpointTests(StableHostFixture fixture)
 {

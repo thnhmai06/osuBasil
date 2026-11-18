@@ -6,14 +6,12 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Reads the report of a match for a caller who may view it.</summary>
 internal sealed class GetMatchReportHandler(
 	Lobby lobby,
 	IMatchRepository matches,
 	IMatchReportRepository reports,
 	IRoundScoreRepository roundScores) : IRequestHandler<GetMatchReport, MatchReportSnapshot?>
 {
-	/// <inheritdoc />
 	public async ValueTask<MatchReportSnapshot?> Handle(GetMatchReport request, CancellationToken ct)
 	{
 		if (await matches.GetAsync(request.MatchId, ct) is not { } match) return null;

@@ -6,7 +6,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Multiplayer.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the rounds played in matches.</summary>
 [Collection("Persistence")]
 public sealed class EfRoundRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -248,9 +247,6 @@ public sealed class EfRoundRepositoryTests(PersistenceFixture container) : Datab
 		Assert.Empty(listed);
 	}
 
-	/// <summary>Creates a match the rounds of the test belong to.</summary>
-	/// <param name="name">The name of the match.</param>
-	/// <returns>The match.</returns>
 	private async Task<MatchRecord> CreateMatchAsync(string name)
 	{
 		return await CreateStoredMatchAsync(name, First);

@@ -9,10 +9,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>
-///     Pins the properties of the calculated numbers rather than the numbers themselves, and the way the calculator keeps
-///     its attributes as files of the beatmapset.
-/// </summary>
 public sealed class OsuBeatmapCalculatorTests : IDisposable
 {
 	private readonly CalculatorWorld _world = new();
@@ -46,8 +42,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		};
 	}
 
-	/// <summary>The star rating of every mode is a usable number, and is kept as a file named by mode and mask.</summary>
-	/// <param name="mode">The mode.</param>
 	[Theory]
 	[InlineData(GameMode.Standard)]
 	[InlineData(GameMode.Taiko)]
@@ -63,7 +57,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 			"0.json"), _world.AttributesFile(mode, GameMods.NoMod));
 	}
 
-	/// <summary>A speed-up has more stars than no mod, and has a file of its own.</summary>
 	[Fact]
 	public async Task DoubleTime_HasMoreStarsThanNoMod()
 	{
@@ -76,7 +69,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.True(File.Exists(_world.AttributesFile(GameMode.Standard, GameMods.DoubleTime)));
 	}
 
-	/// <summary>Plays that differ only in mods that do not change the difficulty share the file and the stars.</summary>
 	[Fact]
 	public async Task ScoringOnlyMods_ShareTheNoModFile()
 	{
@@ -91,7 +83,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 			SearchOption.AllDirectories));
 	}
 
-	/// <summary>A later calculator reads the file and needs neither the beatmap file nor the calculation.</summary>
 	[Fact]
 	public async Task StoredAttributes_AnswerWithoutTheBeatmapFile()
 	{
@@ -104,8 +95,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.Equal(first, again);
 	}
 
-	/// <summary>A file of another calculator version, or a damaged file, is calculated again and replaced.</summary>
-	/// <param name="content">What the file holds.</param>
 	[Theory]
 	[InlineData("{\"Version\":-1,\"Attributes\":{\"9\":999}}")]
 	[InlineData("this is not json")]
@@ -122,7 +111,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.NotEqual(content, await File.ReadAllTextAsync(path, Ct));
 	}
 
-	/// <summary>A beatmap the server has no file for cannot be calculated, and the failure is not kept.</summary>
 	[Fact]
 	public async Task MissingBeatmapFile_Fails_AndIsNotKept()
 	{
@@ -138,7 +126,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.True(await _calculator.GetStarsAsync(map, GameMode.Mania, GameMods.NoMod, Ct) > 0);
 	}
 
-	/// <summary>Many calls for one combination at the same time all get the same stars and write one file.</summary>
 	[Fact]
 	public async Task ManyCallsForOneCombination_AllGetTheSameStars()
 	{
@@ -151,7 +138,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.True(File.Exists(_world.AttributesFile(GameMode.Standard, GameMods.HardRock)));
 	}
 
-	/// <summary>A set deleted while its attributes are being written does not get its folder back.</summary>
 	[Fact]
 	public async Task WriteAfterTheSetIsDeleted_DoesNotCreateTheFolder()
 	{
@@ -165,7 +151,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.False(Directory.Exists(_world.Folder));
 	}
 
-	/// <summary>Clearing a set's derived files removes its attributes too, and keeps the archive.</summary>
 	[Fact]
 	public async Task ClearingTheSet_RemovesTheAttributes()
 	{
@@ -177,8 +162,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.True(File.Exists(Path.Combine(_world.Folder, FileBeatmapsetNames.ArchiveName)));
 	}
 
-	/// <summary>The pp of a perfect play is finite and positive, and no play is above it.</summary>
-	/// <param name="mode">The mode.</param>
 	[Theory]
 	[InlineData(GameMode.Standard)]
 	[InlineData(GameMode.Taiko)]
@@ -195,7 +178,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		Assert.True(result.MaxPp >= result.Pp);
 	}
 
-	/// <summary>More misses never give more pp.</summary>
 	[Theory]
 	[InlineData(GameMode.Standard)]
 	[InlineData(GameMode.Taiko)]
@@ -221,7 +203,6 @@ public sealed class OsuBeatmapCalculatorTests : IDisposable
 		}
 	}
 
-	/// <summary>A speed-up raises the pp of a perfect play of osu!standard.</summary>
 	[Fact]
 	public async Task DoubleTime_RaisesThePpOfAPerfectPlay()
 	{

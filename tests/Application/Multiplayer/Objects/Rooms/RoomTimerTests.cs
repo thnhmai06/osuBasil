@@ -3,10 +3,6 @@ using Basil.Application.Multiplayer.Objects.Rooms;
 
 namespace Basil.Application.Multiplayer.Tests.Objects.Rooms;
 
-/// <summary>
-///     A room timer whose work fails neither ends the process nor goes unnoticed: the failure is counted on the
-///     server's meter, and the timer returns normally.
-/// </summary>
 public sealed class RoomTimerTests
 {
 	[Fact]

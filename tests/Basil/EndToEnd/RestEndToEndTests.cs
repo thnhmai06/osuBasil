@@ -4,10 +4,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Tests.EndToEnd;
 
-/// <summary>
-///     The HTTP host end to end: signing in, reading the session, changing a room, watching the room and its match
-///     report live, reconnecting after the last event, and watching a player through the API.
-/// </summary>
 [Collection("Host end to end")]
 public sealed class RestEndToEndTests(HostEndToEndFixture fixture)
 {

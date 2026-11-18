@@ -5,10 +5,6 @@ using Fakes.Basil.Application.Fake.Capabilities;
 
 namespace Basil.ArchitectureTests;
 
-/// <summary>
-///     A capability (<c>Scoped*</c> view) serves one request and is then dropped, so no class or struct may keep one in a
-///     field or property: a kept capability would let its privileges outlive a change of privileges.
-/// </summary>
 public class ScopedLifetimeTests
 {
 	private const string CapabilityNamespace = @"(^|\.)Basil\.Application\.\w+\.Capabilities";

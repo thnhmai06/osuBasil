@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Users.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the relationships between accounts.</summary>
 [Collection("Persistence")]
 public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -224,8 +223,6 @@ public sealed class EfRelationshipRepositoryTests(PersistenceFixture container) 
 		Assert.Equal(second.Id, Assert.Single(secondList).Actor.Id);
 	}
 
-	/// <summary>Waits until the given number of relationships is stored.</summary>
-	/// <param name="count">How many relationships to wait for.</param>
 	private async Task WaitForRelationshipsAsync(int count)
 	{
 		await StoredRows.WaitForAsync(ConnectionString, "select actor_id from relationships", null,

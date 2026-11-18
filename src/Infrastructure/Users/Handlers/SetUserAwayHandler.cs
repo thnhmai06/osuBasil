@@ -5,10 +5,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Users.Handlers;
 
-/// <summary>Carries out <see cref="SetUserAway" /> on the account it names.</summary>
 internal sealed class SetUserAwayHandler(UserRegistry registry) : IRequestHandler<SetUserAway, UserOutcome>
 {
-	/// <inheritdoc />
 	public async ValueTask<UserOutcome> Handle(SetUserAway request, CancellationToken ct)
 	{
 		return await registry.ScopeTo(request.Actor, request.Target).Profile.SetAwayAsync(request.Message);

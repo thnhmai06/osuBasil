@@ -12,11 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Multiplayer.Tests.Capabilities;
 
-/// <summary>
-///     Opening rooms. The expected behaviour comes from AGENTS.md ("Authority") and
-///     docs/for-developers/multiplayer.md ("Room lifecycle and concurrency"): a room needs its creator, a room
-///     opened in game seats its creator, and every room is limited by the same number of rooms per creator.
-/// </summary>
 public sealed class ScopedLobbyTests
 {
 	[Fact]

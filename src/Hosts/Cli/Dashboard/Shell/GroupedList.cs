@@ -10,36 +10,19 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>One column of a table.</summary>
-/// <param name="Header">The title in the header row.</param>
-/// <param name="Width">The width in cells; 0 shares what the fixed columns leave, by <see cref="Weight" />.</param>
-/// <param name="Text">Reads the cell of an item.</param>
-/// <param name="Kind">Tells what kind of text the cell holds, which decides its colour.</param>
 internal sealed record Column<T>(string Header, int Width, Func<T, string> Text, Func<T, Ink>? Kind = null)
 {
-	/// <summary>Gets how many parts of the shared room a column of width 0 takes.</summary>
 	public int Weight { get; init; } = 1;
 
-	/// <summary>Gets whether the cell and its header stand against the right edge, as numbers do.</summary>
 	public bool Right { get; init; }
 
-	/// <summary>Gets the view a click on the cell of an item reads instead of the item's own detail, or <see langword="null" />.</summary>
 	public Func<T, (string Title, Func<Task<DetailView>> Read)?>? Link { get; init; }
 }
 
-/// <summary>A titled group of items in a table.</summary>
-/// <param name="Title">The name of the group, such as <c>Online</c>.</param>
-/// <param name="Count">The size shown next to the title, such as <c>70</c> or <c>150+</c>.</param>
-/// <param name="Items">The items.</param>
 internal sealed record Section<T>(string Title, string Count, IReadOnlyList<T> Items);
 
-/// <summary>
-///     A table of items in titled groups: a header row that stays on top, the title of the group in view that stays
-///     under it, a selected row (a title can be selected, and folds or opens its group), and a scroll bar when it is inside a <see cref="XenoAtom.Terminal.UI.Controls.ScrollViewer" />.
-/// </summary>
 internal sealed partial class GroupedList<T> : Visual, IScrollable
 {
-	/// <summary>Counts the changes of the content, which the framework tracks to redraw the table.</summary>
 	[Bindable] public partial int Revision { get; set; }
 
 	// A shared-width column is worth showing only from this width; a narrower table drops its last columns instead.
@@ -58,12 +41,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 	private int _selected = -1;
 	private int _bodyHeight;
 
-	/// <summary>Creates the table.</summary>
-	/// <param name="columns">The columns.</param>
-	/// <param name="key">Reads the id of an item, which keeps the selection when the items are replaced.</param>
-	/// <param name="glyphs">The characters to draw with.</param>
-	/// <param name="noColor">Whether the table is monochrome.</param>
-	/// <param name="clock">Measures the time between the notches of the mouse wheel.</param>
 	public GroupedList(IReadOnlyList<Column<T>> columns, Func<T, string> key, Glyphs glyphs, bool noColor,
 		TimeProvider clock)
 	{
@@ -79,22 +56,16 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		IsTabStop = true;
 	}
 
-	/// <inheritdoc />
 	public ScrollModel Scroll => _scroll;
 
-	/// <summary>Gets the selected item, or the default when nothing is selected.</summary>
 	public T? Selected => HasSelection ? _rows[_selected].Item : default;
 
-	/// <summary>Gets whether an item is selected; the selection can also sit on the title of a group.</summary>
 	public bool HasSelection => _selected >= 0 && _selected < _rows.Count && !_rows[_selected].IsHeader;
 
-	/// <summary>Gets whether the selection is on the first row, or there is nothing to select.</summary>
 	public bool AtFirst => _selected <= 0;
 
-	/// <summary>Gets how many items there are in all groups.</summary>
 	public int ItemCount => _rows.Count(row => !row.IsHeader);
 
-	/// <summary>Gets the position, counted among the items, of the first and the last item in view, from 1; 0 when none.</summary>
 	public (int First, int Last) VisibleItems()
 	{
 		var first = 0;
@@ -116,27 +87,16 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		return (first, last);
 	}
 
-	/// <summary>Occurs when the operator opens the selected item with Enter or a double click.</summary>
 	public event Action<T>? Activated;
 
-	/// <summary>Gets the column that the last activation hit, or -1 when it came from the keyboard.</summary>
 	public int ActivatedColumn { get; private set; } = -1;
 
-	/// <summary>Gets or sets a hook that sees every key first and returns whether it used the key.</summary>
 	public Func<KeyEventArgs, bool>? KeyHook { get; set; }
 
-	/// <summary>Occurs when the selected item changes by key, wheel or click.</summary>
 	public event Action? Moved;
 
-	/// <summary>Occurs when the selection reaches the last rows, so that the next page can be loaded.</summary>
 	public event Action? NearEnd;
 
-	/// <summary>Replaces the groups, keeping the selected row when it is still there.</summary>
-	/// <param name="sections">The groups; an empty one still shows its title.</param>
-	/// <param name="searching">
-	///     Whether the items are the result of a search: groups with items are open and groups without are hidden,
-	///     and what the operator folded before is back when the search ends.
-	/// </param>
 	public void SetSections(IReadOnlyList<Section<T>> sections, bool searching = false)
 	{
 		var keepItem = HasSelection ? _key(_rows[_selected].Item!) : null;
@@ -157,25 +117,18 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		Revision++;
 	}
 
-	/// <summary>Finds a listed item by its id, whether or not its group is open.</summary>
-	/// <param name="id">The id read by the key function.</param>
-	/// <param name="item">The item, when it is listed.</param>
 	public bool TryFind(string id, out T item)
 	{
 		item = _sections.SelectMany(section => section.Items).FirstOrDefault(candidate => _key(candidate) == id)!;
 		return item is not null;
 	}
 
-	/// <summary>Selects the first item.</summary>
 	public void SelectFirst()
 	{
 		var first = _rows.FindIndex(row => !row.IsHeader);
 		MoveTo(first < 0 ? 0 : first);
 	}
 
-	/// <summary>Selects the item with an id, opening its group when it is folded.</summary>
-	/// <param name="id">The id read by the key function.</param>
-	/// <returns>Whether the item is in the table.</returns>
 	public bool Select(string id)
 	{
 		var owner = _sections.FirstOrDefault(section => section.Items.Any(item => _key(item) == id));
@@ -205,9 +158,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		_rows = rows;
 	}
 
-	/// <summary>Opens or folds the group whose title is at a row, keeping that title selected.</summary>
-	/// <param name="index">The row of the title.</param>
-	/// <param name="open">Whether the group should end open; <see langword="null" /> flips it.</param>
 	private void Fold(int index, bool? open = null)
 	{
 		var row = _rows[index];
@@ -221,14 +171,12 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		Moved?.Invoke();
 	}
 
-	/// <inheritdoc />
 	protected override SizeHints MeasureCore(in LayoutConstraints constraints)
 	{
 		return SizeHints.Flex(new Size(10, 3), new Size(60, 10), new Size(int.MaxValue, int.MaxValue), 1, 1, 1, 1)
 			.Normalize();
 	}
 
-	/// <inheritdoc />
 	protected override void ArrangeCore(in Rectangle finalRect)
 	{
 		_bodyHeight = Math.Max(finalRect.Height - 2, 0);
@@ -237,7 +185,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		Settle();
 	}
 
-	/// <inheritdoc />
 	protected override void RenderOverride(CellBuffer buffer)
 	{
 		var rect = Bounds;
@@ -283,7 +230,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		}
 	}
 
-	/// <inheritdoc />
 	protected override void OnKeyDown(KeyEventArgs e)
 	{
 		if (KeyHook?.Invoke(e) == true)
@@ -316,7 +262,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 
 	private bool OnTitle => _selected >= 0 && _selected < _rows.Count && _rows[_selected].IsHeader;
 
-	/// <inheritdoc />
 	protected override void OnPointerPressed(PointerEventArgs e)
 	{
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.Button != TerminalMouseButton.Left) return;
@@ -341,7 +286,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		e.Handled = true;
 	}
 
-	/// <inheritdoc />
 	protected override void OnPointerWheel(PointerEventArgs e)
 	{
 		if (e.RoutingPhase != RoutingPhase.Bubble || e.WheelDelta == 0) return;
@@ -382,7 +326,6 @@ internal sealed partial class GroupedList<T> : Visual, IScrollable
 		if (index >= _rows.Count - 3) NearEnd?.Invoke();
 	}
 
-	/// <summary>Scrolls so that the selected row is inside the view, below the title that stays on top.</summary>
 	private void Settle()
 	{
 		if (_selected < 0 || _selected >= _rows.Count || _bodyHeight <= 0) return;

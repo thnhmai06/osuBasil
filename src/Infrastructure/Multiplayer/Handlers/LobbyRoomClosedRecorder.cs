@@ -5,13 +5,11 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Stores the round a closing room aborted, ends its match and records who closed it.</summary>
 internal sealed class LobbyRoomClosedRecorder(
 	IRoundRepository rounds,
 	IMatchRepository matches,
 	IMatchEventRepository matchEvents) : INotificationHandler<LobbyRoomClosed>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(LobbyRoomClosed @event, CancellationToken ct)
 	{
 		if (@event.AbortedRound is { } abortedRound)

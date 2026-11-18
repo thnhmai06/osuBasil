@@ -11,76 +11,50 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Shared.Views;
 
-/// <summary>The body of a room creation.</summary>
 public sealed record CreateRoomRequest(string? Name, string? Password, bool? IsPrivate);
 
-/// <summary>The body of a command that names a user.</summary>
 public sealed record UserRequest(int User);
 
-/// <summary>The body of <c>/move</c>.</summary>
 public sealed record MoveRequest(int User, int Slot);
 
-/// <summary>The body of <c>/team</c>.</summary>
 public sealed record TeamRequest(int User, GameTeam Team);
 
-/// <summary>The body of <c>/size</c>.</summary>
 public sealed record SizeRequest(int Size);
 
-/// <summary>The body of <c>/set</c>.</summary>
 public sealed record SetRequest(GameTeamType TeamType, GameWinCondition? WinCondition, int? Size);
 
-/// <summary>The body of <c>/map</c>.</summary>
 public sealed record MapRequest(int Beatmap, GameMode? Mode);
 
-/// <summary>The body of <c>/mods</c>; mods are acronyms such as <c>HD</c>.</summary>
 public sealed record ModsRequest(string[]? Mods, bool? Freemod);
 
-/// <summary>The body of <c>/start</c> and <c>/timer</c>.</summary>
 public sealed record CountdownRequest(int? Seconds);
 
-/// <summary>The body of <c>/password</c>; an empty password removes it.</summary>
 public sealed record PasswordRequest(string? Password);
 
-/// <summary>The body of <c>/name</c>.</summary>
 public sealed record NameRequest(string? Name);
 
-/// <summary>The body of <c>/private</c>.</summary>
 public sealed record PrivateRequest(bool Private);
 
-/// <summary>The room a command acts on and the connection that asks, with the way to send the request.</summary>
-/// <param name="Sender">Sends the request.</param>
-/// <param name="Actor">The connection that asks.</param>
-/// <param name="Room">The room the command acts on.</param>
 public readonly record struct RoomCall(ISender Sender, Connection Actor, Room Room)
 {
-	/// <summary>Sends a room request and returns its answer.</summary>
 	public Task<RoomOutcome> Ask(IRequest<RoomOutcome> request, CancellationToken ct)
 	{
 		return Sender.Send(request, ct).AsTask();
 	}
 }
 
-/// <summary>One room command: a name, the body it takes, and what it asks of a room for the caller.</summary>
-/// <param name="Name">The route segment, also the console word.</param>
-/// <param name="Summary">One sentence that says what the command does.</param>
-/// <param name="Body">The type of the body, or <see langword="null" /> when the command takes none.</param>
-/// <param name="Run">Runs the command on a room with the body.</param>
 public sealed record RoomCommand(
 	string Name,
 	string Summary,
 	Type? Body,
 	Func<RoomCall, object?, IServiceProvider, CancellationToken, Task<RoomOutcome>> Run);
 
-/// <summary>The room commands that both the HTTP API and the console offer, one for each room command of <c>!mp</c>.</summary>
 public static class RoomCommands
 {
-	/// <summary>The longest room name.</summary>
 	public const int MaxRoomNameLength = 50;
 
-	/// <summary>The most slots a room has.</summary>
 	public const int MaxRoomSize = 16;
 
-	/// <summary>Gets every room command.</summary>
 	public static IReadOnlyList<RoomCommand> All { get; } =
 	[
 		Command<object?>("close", "Close the room.", (r, _, _, ct) => r.Ask(new CloseRoom(r.Actor, r.Room), ct)),
@@ -161,7 +135,6 @@ public static class RoomCommands
 			(r, _, _, ct) => r.Ask(new AbortRound(r.Actor, r.Room), ct))
 	];
 
-	/// <summary>Cuts a room name to the longest length.</summary>
 	public static string Truncate(string name)
 	{
 		return name.Length > MaxRoomNameLength ? name[..MaxRoomNameLength] : name;

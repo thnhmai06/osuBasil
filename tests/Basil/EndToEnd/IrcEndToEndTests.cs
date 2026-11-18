@@ -2,7 +2,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Tests.EndToEnd;
 
-/// <summary>The IRC host joins the same account and the same chat as the osu! client.</summary>
 [Collection("Host end to end")]
 public sealed class IrcEndToEndTests(HostEndToEndFixture fixture)
 {

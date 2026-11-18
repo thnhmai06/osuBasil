@@ -7,7 +7,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Host.Stable.Tests.Web;
 
-/// <summary>The answer to a score submission, written as bancho.py writes it: hand-written expectations.</summary>
 public sealed class SubmissionChartsTests
 {
 	private const string Origin = "https://osu.example";

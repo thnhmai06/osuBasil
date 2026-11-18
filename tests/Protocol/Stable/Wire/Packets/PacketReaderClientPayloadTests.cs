@@ -4,10 +4,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the client request split (<c>PacketReader.Split</c>) and the typed payload readers against
-///     hand-written payload bytes, per the packet layouts bancho.py reads.
-/// </summary>
 public class PacketReaderClientPayloadTests
 {
 	private static PacketReader Reader(string hex)

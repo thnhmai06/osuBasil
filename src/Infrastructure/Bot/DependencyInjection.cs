@@ -8,13 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Bot;
 
-/// <summary>Registers the implementations of BasilBot's ports.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the commands, the replies catalog and the workers BasilBot needs.</summary>
-	/// <remarks>The event handlers of the bot are registered by the host together with every other handler.</remarks>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBotInfrastructure(this IServiceCollection services)
 	{
 		services.AddOptions<RepliesOptions>();
@@ -31,10 +26,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Reads where BasilBot's replies file is from <c>Basil:Bot:Replies</c>.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <param name="configuration">The configuration to read.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBotInfrastructureOptions(this IServiceCollection services,
 		IConfiguration configuration)
 	{

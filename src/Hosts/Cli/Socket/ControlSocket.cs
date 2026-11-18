@@ -7,38 +7,30 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Host.Cli.Socket;
 
-/// <summary>The local control socket: its path and the framing of a request and its reply.</summary>
 public static class ControlSocket
 {
-	/// <summary>The file name of the socket inside the data directory.</summary>
 	public const string FileName = "basil.sock";
 
-	/// <summary>The longest path a Unix domain socket can have on Linux, minus a margin for the terminator.</summary>
 	public const int MaxPathLength = 100;
 
 	private const string OutputPrefix = "o ";
 	private const string ExitPrefix = "x ";
 
-	/// <summary>Gets the path of the socket for a data directory.</summary>
 	public static string PathIn(string dataDirectory)
 	{
 		return Path.Combine(Path.GetFullPath(dataDirectory), FileName);
 	}
 
-	/// <summary>Frames a line of output for the client.</summary>
 	public static IEnumerable<string> FrameOutput(string text)
 	{
 		return text.Split('\n').Select(line => OutputPrefix + line.TrimEnd('\r'));
 	}
 
-	/// <summary>Frames the end of a reply.</summary>
 	public static string FrameExit(int code)
 	{
 		return ExitPrefix + code;
 	}
 
-	/// <summary>Reads a framed reply: writes the output lines and returns the exit code.</summary>
-	/// <returns>The exit code, or <see langword="null" /> when the reply ended without one.</returns>
 	public static async Task<int?> ReadReplyAsync(StreamReader reader, TextWriter output,
 		CancellationToken ct)
 	{
@@ -52,8 +44,6 @@ public static class ControlSocket
 		return null;
 	}
 
-	/// <summary>Connects to a socket.</summary>
-	/// <returns>The connected socket, or <see langword="null" /> when nothing listens there.</returns>
 	public static async Task<System.Net.Sockets.Socket?> TryConnectAsync(string path,
 		CancellationToken ct)
 	{
@@ -73,13 +63,8 @@ public static class ControlSocket
 	}
 }
 
-/// <summary>Runs a command in a server that is running, over its local socket.</summary>
 public static class ControlClient
 {
-	/// <summary>Opens a connection to the running server.</summary>
-	/// <param name="path">The path of the socket.</param>
-	/// <param name="ct">A token that cancels the connection.</param>
-	/// <returns>The open connection, or <see langword="null" /> when no server is running.</returns>
 	public static async Task<ControlConnection?> ConnectAsync(string path, CancellationToken ct)
 	{
 		return await ControlSocket.TryConnectAsync(path, ct) is { } socket
@@ -88,20 +73,13 @@ public static class ControlClient
 	}
 }
 
-/// <summary>An open connection to a running server, which takes one command.</summary>
 public sealed class ControlConnection(System.Net.Sockets.Socket socket) : IDisposable
 {
-	/// <inheritdoc />
 	public void Dispose()
 	{
 		socket.Dispose();
 	}
 
-	/// <summary>Sends a command and writes the reply as it arrives.</summary>
-	/// <param name="args">The words of the command line.</param>
-	/// <param name="output">Where the output goes.</param>
-	/// <param name="ct">A token that cancels the wait.</param>
-	/// <returns>The exit code of the command.</returns>
 	public async Task<int> RunAsync(IReadOnlyList<string> args, TextWriter output, CancellationToken ct)
 	{
 		await using var stream = new NetworkStream(socket, false);
@@ -112,16 +90,11 @@ public sealed class ControlConnection(System.Net.Sockets.Socket socket) : IDispo
 	}
 }
 
-/// <summary>Listens on the local control socket of a running server and runs the commands it receives as the operator.</summary>
-/// <param name="runner">Runs the commands.</param>
-/// <param name="path">The path of the socket.</param>
-/// <param name="logger">Where problems are logged.</param>
 public sealed class ControlServer(CommandRunner runner, string path, ILogger<ControlServer> logger) : BackgroundService
 {
 	private static readonly TimeSpan RequestTimeout = TimeSpan.FromMinutes(5);
 	private System.Net.Sockets.Socket? _listener;
 
-	/// <inheritdoc />
 	public override async Task StartAsync(CancellationToken ct)
 	{
 		if (path.Length > ControlSocket.MaxPathLength)
@@ -148,7 +121,6 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 		await base.StartAsync(ct);
 	}
 
-	/// <inheritdoc />
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		if (_listener is null) return;
@@ -174,7 +146,6 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 		}
 	}
 
-	/// <inheritdoc />
 	public override async Task StopAsync(CancellationToken ct)
 	{
 		await base.StopAsync(ct);
@@ -222,7 +193,6 @@ public sealed class ControlServer(CommandRunner runner, string path, ILogger<Con
 
 	private sealed class SocketOutput(StreamWriter writer) : ICommandOutput
 	{
-		/// <inheritdoc />
 		public void Write(OutputLine line)
 		{
 			foreach (var framed in ControlSocket.FrameOutput(line.Text)) writer.WriteLine(framed);

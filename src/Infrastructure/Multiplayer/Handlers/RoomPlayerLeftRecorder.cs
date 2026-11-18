@@ -5,12 +5,10 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Records a player leaving, and the round the departure ended.</summary>
 internal sealed class RoomPlayerLeftRecorder(
 	IRoundRepository rounds,
 	IMatchEventRepository matchEvents) : INotificationHandler<RoomPlayerLeft>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomPlayerLeft @event, CancellationToken ct)
 	{
 		if (@event.RoundProgress is { Completed: true } progress)

@@ -2,10 +2,8 @@ using Basil.Infrastructure.Beatmaps.Adapters;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>Verifies that callers asking for the same key at once share one run of the work.</summary>
 public sealed class SingleFlightTests
 {
-	/// <summary>Many callers of one key start the work once and all get its value.</summary>
 	[Fact]
 	public async Task SameKeyAtTheSameTime_RunsTheWorkOnce()
 	{
@@ -25,7 +23,6 @@ public sealed class SingleFlightTests
 		Assert.Equal(1, runs);
 	}
 
-	/// <summary>The work of one key does not hold back another key.</summary>
 	[Fact]
 	public async Task DifferentKeys_DoNotWaitForEachOther()
 	{
@@ -46,7 +43,6 @@ public sealed class SingleFlightTests
 		Assert.Equal(1, await stuck);
 	}
 
-	/// <summary>A failed run is given to everyone waiting for it and is not kept: the next call runs the work again.</summary>
 	[Fact]
 	public async Task FailedRun_IsNotKept()
 	{
@@ -69,7 +65,6 @@ public sealed class SingleFlightTests
 		Assert.Equal(5, again);
 	}
 
-	/// <summary>A caller that stops waiting does not stop the work the others wait for.</summary>
 	[Fact]
 	public async Task CallerThatCancels_DoesNotCancelTheSharedWork()
 	{

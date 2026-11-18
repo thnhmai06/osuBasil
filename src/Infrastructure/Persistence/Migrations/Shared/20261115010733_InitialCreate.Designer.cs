@@ -13,7 +13,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Shared
     [Migration("20261115010733_InitialCreate")]
     partial class InitialCreate
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

@@ -6,20 +6,12 @@ using Basil.Domain.Cryptography;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
-/// <summary>Reads archives and plans the beatmapsets they hold.</summary>
 internal sealed class BeatmapsetPlanner(
 	IBeatmapsetReader reader,
 	IBeatmapRepository beatmaps,
 	DifficultyAnalyser analyser,
 	BeatmapsetMatcher matcher)
 {
-	/// <summary>Reads an archive lying in the storage, keeping it open while its content lives.</summary>
-	/// <param name="archive">The archive to read.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>
-	///     What the archive contains and the open stream it is read from; both <see langword="null" /> when it is not a
-	///     readable beatmapset archive. The caller releases the content first and the stream after it.
-	/// </returns>
 	internal async Task<(BeatmapsetContent? Content, Stream? Stream)> ReadAsync(BeatmapsetArchive archive,
 		CancellationToken ct)
 	{
@@ -37,13 +29,6 @@ internal sealed class BeatmapsetPlanner(
 		}
 	}
 
-	/// <summary>Plans one archive's beatmapset: its records and the name of every file it serves.</summary>
-	/// <param name="archive">The archive to plan.</param>
-	/// <param name="fingerprint">The archive's fingerprint when it is already taken, or <see langword="null" />.</param>
-	/// <param name="content">What the archive contains.</param>
-	/// <param name="folderId">The id of the stored folder the archive lies in, or <see langword="null" /> when it lies loose.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
-	/// <returns>The archive, the stored beatmapset it belongs to, and the set as read from it.</returns>
 	internal async Task<BeatmapsetPlan> PlanAsync(BeatmapsetArchive archive, ContentFingerprint? fingerprint,
 		BeatmapsetContent content,
 		int? folderId, CancellationToken ct)
@@ -110,10 +95,6 @@ internal sealed class BeatmapsetPlanner(
 			});
 	}
 
-	/// <summary>Describes a stored beatmapset as it is, with its archive's new fingerprint.</summary>
-	/// <param name="set">The stored beatmapset, with its difficulties as they are stored.</param>
-	/// <param name="fingerprint">The fingerprint of the set's archive, unchanged in content.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
 	internal async Task<BeatmapsetChange> ChangeOfAsync(BeatmapsetRecord set, ContentFingerprint fingerprint,
 		CancellationToken ct)
 	{

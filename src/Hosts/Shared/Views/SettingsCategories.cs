@@ -5,7 +5,6 @@ using Basil.Host.Shared.Json;
 
 namespace Basil.Host.Shared.Views;
 
-/// <summary>The categories of the server settings and how each one is read, changed by a JSON merge patch and replaced.</summary>
 public static class SettingsCategories
 {
 	private static readonly Dictionary<string, (Func<ServerSettings, object> Get,
@@ -24,30 +23,23 @@ public static class SettingsCategories
 			["cors"] = Category(s => s.Cors, (s, v) => s with { Cors = v })
 		};
 
-	/// <summary>Gets the names of the categories.</summary>
 	public static IEnumerable<string> Names => Categories.Keys;
 
-	/// <summary>Finds a category by name, ignoring case.</summary>
 	public static bool Exists(string category)
 	{
 		return Categories.ContainsKey(category);
 	}
 
-	/// <summary>Reads one category of the settings.</summary>
 	public static object Get(string category, ServerSettings settings)
 	{
 		return Categories[category].Get(settings);
 	}
 
-	/// <summary>Reads every category of the settings, by name.</summary>
 	public static IReadOnlyDictionary<string, object> GetAll(ServerSettings settings)
 	{
 		return Categories.ToDictionary(c => c.Key, c => c.Value.Get(settings));
 	}
 
-	/// <summary>Merges a patch into one category and returns the changed settings.</summary>
-	/// <exception cref="ArgumentException">The merged category is not valid.</exception>
-	/// <exception cref="JsonException">The merged category cannot be read.</exception>
 	public static ServerSettings Patch(string category, ServerSettings settings, JsonObject patch)
 	{
 		var entry = Categories[category];
@@ -56,7 +48,6 @@ public static class SettingsCategories
 		return entry.Apply(settings, merged);
 	}
 
-	/// <summary>Merges a patch into a node the way JSON merge patch does: objects merge, anything else replaces.</summary>
 	private static void Merge(JsonNode target, JsonObject patch)
 	{
 		if (target is not JsonObject targetObject) return;

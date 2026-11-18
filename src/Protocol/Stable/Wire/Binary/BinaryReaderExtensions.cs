@@ -2,22 +2,14 @@
 
 namespace Basil.Protocol.Stable.Wire.Binary;
 
-/// <summary>Provides low-level binary decoding primitives for the Stable protocol.</summary>
-/// <remarks>
-///     All multi-byte integers are read in little-endian byte order, matching the osu! protocol.
-/// </remarks>
 internal static class BinaryReaderExtensions
 {
-	/// <summary>The largest string the reader decodes, in UTF-8 bytes.</summary>
 	public const int MaxStringBytes = 1_048_576;
 
 	extension(BinaryReader reader)
 	{
 		#region Raw
 
-		/// <summary>Reads exactly <paramref name="length" /> bytes from the stream.</summary>
-		/// <param name="length">The number of bytes to read.</param>
-		/// <returns>A new byte array containing the next <paramref name="length" /> bytes.</returns>
 		private byte[] ReadRaw(int length)
 		{
 			var value = reader.ReadBytes(length);
@@ -28,8 +20,6 @@ internal static class BinaryReaderExtensions
 
 		#region Complex
 
-		/// <summary>Reads a list of 32-bit integers prefixed by a 16-bit unsigned count.</summary>
-		/// <returns>The list of values read, empty when the count is zero.</returns>
 		public IReadOnlyList<int> ReadInt32List()
 		{
 			var length = reader.ReadUInt16();
@@ -41,22 +31,6 @@ internal static class BinaryReaderExtensions
 			return values;
 		}
 
-		/// <summary>
-		///     Reads an osu!-format string: an existence byte, a ULEB128 length, then the UTF-8
-		///     bytes.
-		/// </summary>
-		/// <returns>
-		///     The string value read, or an empty string when the existence byte is not
-		///     <c>0x0B</c> (the null marker).
-		/// </returns>
-		/// <exception cref="EndOfStreamException">
-		///     The stream ends before the existence byte, the length, or the string bytes can be
-		///     read.
-		/// </exception>
-		/// <exception cref="InvalidDataException">
-		///     The length needs more than five bytes, is negative, or is above
-		///     <see cref="MaxStringBytes" />.
-		/// </exception>
 		public string ReadOsuString()
 		{
 			const int maxLengthBytes = 5;

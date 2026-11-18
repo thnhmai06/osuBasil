@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Runs a <see cref="InvitePlayer" /> on the room for the connection that asked.</summary>
 internal sealed class InvitePlayerHandler : IRequestHandler<InvitePlayer, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(InvitePlayer request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

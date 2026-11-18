@@ -6,7 +6,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Users.Tests.Persistence;
 
-/// <summary>Contract tests of the storing of the moderation history of an account.</summary>
 [Collection("Persistence")]
 public sealed class EfModerationLogRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -190,10 +189,6 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 		Assert.Single(page.Items);
 	}
 
-	/// <summary>Records a moderation action against an account.</summary>
-	/// <param name="moderator">The account that performed the action.</param>
-	/// <param name="target">The account the action was aimed at.</param>
-	/// <param name="timestamp">The moment of the action.</param>
 	private async Task AppendAsync(UserRecord moderator, UserRecord target, DateTimeOffset timestamp)
 	{
 		await Log.AppendAsync(new ModerationData
@@ -205,8 +200,6 @@ public sealed class EfModerationLogRepositoryTests(PersistenceFixture container)
 		});
 	}
 
-	/// <summary>Waits until the given number of entries is stored.</summary>
-	/// <param name="count">How many entries to wait for.</param>
 	private async Task WaitForEntriesAsync(int count)
 	{
 		await StoredRows.WaitForAsync(ConnectionString, "select id from moderation_log", null,

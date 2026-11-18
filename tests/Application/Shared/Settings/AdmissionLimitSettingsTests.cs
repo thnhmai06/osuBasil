@@ -2,10 +2,6 @@ using Basil.Application.Shared.Settings;
 
 namespace Basil.Application.Shared.Tests.Settings;
 
-/// <summary>
-///     The admission limits are server settings with the gateway's defaults and an accepted boundary of 1 for the
-///     hard shed load.
-/// </summary>
 public class AdmissionLimitSettingsTests
 {
 	[Fact]

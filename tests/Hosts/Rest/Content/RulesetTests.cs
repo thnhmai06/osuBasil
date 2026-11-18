@@ -2,7 +2,6 @@ using Basil.Domain.Users;
 
 namespace Basil.Host.Rest.Tests.Content;
 
-/// <summary>The version routes, the ruleset routes and the beatmap reload.</summary>
 [Collection("REST host")]
 public sealed class RulesetTests(RestHostFixture fixture)
 {

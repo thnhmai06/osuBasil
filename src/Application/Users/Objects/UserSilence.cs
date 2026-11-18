@@ -4,19 +4,15 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Objects;
 
-/// <summary>Owns the silence of one account: the moment it ends, and the moderation log entries it leaves.</summary>
 public sealed class UserSilence
 {
 	private readonly User _user;
 
-	/// <summary>Creates the silence state for an account.</summary>
-	/// <param name="user">The account that owns the silence.</param>
 	internal UserSilence(User user)
 	{
 		_user = user;
 	}
 
-	/// <summary>Gets the moment the silence ends, or <see langword="null" /> when the account is not silenced.</summary>
 	public DateTimeOffset? Until
 	{
 		get
@@ -26,11 +22,6 @@ public sealed class UserSilence
 		}
 	}
 
-	/// <summary>Silences the account until a moment.</summary>
-	/// <param name="endsAt">When the silence ends.</param>
-	/// <param name="reason">Why the account is silenced, if known.</param>
-	/// <param name="actor">The account imposing the silence.</param>
-	/// <returns>The outcome of silencing the account.</returns>
 	internal async Task<UserOutcome> ImposeAsync(DateTimeOffset endsAt, string? reason, UserRecord actor)
 	{
 		var now = _user.Context.Clock.GetUtcNow();
@@ -44,10 +35,6 @@ public sealed class UserSilence
 		return UserOutcome.Ok;
 	}
 
-	/// <summary>Ends the silence of the account now.</summary>
-	/// <param name="reason">Why the silence is lifted, if known.</param>
-	/// <param name="actor">The account lifting the silence.</param>
-	/// <returns>The outcome of lifting the silence; NotFound when the account is not silenced.</returns>
 	internal async Task<UserOutcome> LiftAsync(string? reason, UserRecord actor)
 	{
 		var now = _user.Context.Clock.GetUtcNow();

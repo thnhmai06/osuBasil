@@ -9,10 +9,6 @@ using osu.Game.Beatmaps;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Adapters;
 
-/// <summary>
-///     Verifies that stored difficulty attributes read back as the attributes that were stored, for every ruleset: this is
-///     what lets a stored file stand in for the calculation.
-/// </summary>
 public sealed class AttributeFileTests : IDisposable
 {
 	private readonly CalculatorWorld _world = new();
@@ -22,7 +18,6 @@ public sealed class AttributeFileTests : IDisposable
 		_world.Dispose();
 	}
 
-	/// <summary>Calculates the attributes of a sample difficulty the way the calculator does.</summary>
 	private DifficultyAttributes Calculate(GameMode mode, GameMods mask, out int version)
 	{
 		var ruleset = OsuBeatmapAnalyser.CreateRuleset(mode);
@@ -44,9 +39,6 @@ public sealed class AttributeFileTests : IDisposable
 		};
 	}
 
-	/// <summary>The stored attributes of every ruleset read back with the same numbers, under no mods and a speed-up.</summary>
-	/// <param name="mode">The ruleset's game mode.</param>
-	/// <param name="mods">The mods the attributes were calculated under.</param>
 	[Theory]
 	[InlineData(GameMode.Standard, GameMods.NoMod)]
 	[InlineData(GameMode.Standard, GameMods.DoubleTime | GameMods.HardRock | GameMods.Flashlight)]
@@ -70,10 +62,6 @@ public sealed class AttributeFileTests : IDisposable
 		Assert.Equal(Pairs(original), Pairs(restored));
 	}
 
-	/// <summary>
-	///     osu!standard is the one ruleset whose attributes need the object counts of the stored beatmap; the other three are
-	///     whole without any online information.
-	/// </summary>
 	[Fact]
 	public void StandardAttributes_TakeTheirObjectCountsFromTheStoredBeatmap()
 	{
@@ -90,7 +78,6 @@ public sealed class AttributeFileTests : IDisposable
 		Assert.Equal(original.HitCircleCount, restored.HitCircleCount);
 	}
 
-	/// <summary>Attributes calculated by another version of the calculator are not read back.</summary>
 	[Fact]
 	public void OtherVersion_IsNotRead()
 	{
@@ -100,7 +87,6 @@ public sealed class AttributeFileTests : IDisposable
 			Empty(GameMode.Taiko), new StoredOnlineInfo(_world.Beatmaps[GameMode.Taiko])));
 	}
 
-	/// <summary>Damaged text is not read back, whatever way it is damaged.</summary>
 	[Theory]
 	[InlineData("")]
 	[InlineData("not json at all")]

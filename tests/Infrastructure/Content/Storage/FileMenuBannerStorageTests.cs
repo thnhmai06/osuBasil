@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Content.Tests.Storage;
 
-/// <summary>Contract tests of FileMenuBannerStorage, read through IMenuBannerStorage.</summary>
 public sealed class FileMenuBannerStorageTests : IDisposable
 {
 	private readonly IMenuBannerStorage _banners;

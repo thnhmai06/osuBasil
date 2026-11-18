@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Runs a <see cref="MarkRoundLoaded" /> on the room for the connection that asked.</summary>
 internal sealed class MarkRoundLoadedHandler : IRequestHandler<MarkRoundLoaded, RoomOutcome>
 {
-	/// <inheritdoc />
 	public ValueTask<RoomOutcome> Handle(MarkRoundLoaded request, CancellationToken ct)
 	{
 		return new ValueTask<RoomOutcome>(

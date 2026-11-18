@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>Parts a player from a room's chat channel when locking their slot removes them.</summary>
 internal sealed class RoomSlotLockChangedHandler(RoomChannels channels) : INotificationHandler<RoomSlotLockChanged>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(RoomSlotLockChanged @event, CancellationToken ct)
 	{
 		if (@event.Evicted is { } evicted && channels.Find(@event.Room) is { } channel &&

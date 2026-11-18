@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Stable.Tests.Support;
 
-/// <summary>A client that never polls cannot make the server queue packets without end.</summary>
 [Collection("Stable host")]
 public sealed class OutboxTests(StableHostFixture fixture)
 {

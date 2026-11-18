@@ -5,7 +5,6 @@ using Basil.Testing.Persistence;
 
 namespace Basil.Infrastructure.Content.Tests.Storage;
 
-/// <summary>Contract tests of FileMenuIconStorage, read through IMenuIconStorage.</summary>
 public sealed class FileMenuIconStorageTests : IDisposable
 {
 	private readonly TempData _data = new();
@@ -114,7 +113,6 @@ public sealed class FileMenuIconStorageTests : IDisposable
 		Assert.Null(await StoredAsync());
 	}
 
-	/// <summary>Opens the stored icon, reads it to its end and closes it.</summary>
 	private async Task<(ContentReference Reference, string Text)?> StoredAsync()
 	{
 		var opened = await _icon.OpenAsync(TestContext.Current.CancellationToken);

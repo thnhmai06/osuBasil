@@ -9,18 +9,12 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Host.Stable.Support;
 
-/// <summary>Translates the server's objects into what osu! clients show.</summary>
 internal static class StableView
 {
-	/// <summary>The name osu! clients show for the room channel the player is in.</summary>
 	public const string MultiplayerAlias = "#multiplayer";
 
-	/// <summary>The name osu! clients show for the channel of the player's spectators.</summary>
 	public const string SpectatorAlias = "#spectator";
 
-	/// <summary>Gets the name a client uses for a channel.</summary>
-	/// <param name="channel">The channel.</param>
-	/// <returns>The alias for a room or spectator channel, otherwise the channel's own name.</returns>
 	public static string ChannelName(Channel channel)
 	{
 		return channel switch
@@ -31,27 +25,16 @@ internal static class StableView
 		};
 	}
 
-	/// <summary>Gets the roles an account shows to clients.</summary>
-	/// <param name="effective">The account's effective privileges.</param>
-	/// <returns>The effective privileges; the player role when there is none.</returns>
 	public static UserPrivileges Roles(UserPrivileges effective)
 	{
 		return effective == UserPrivileges.None ? UserPrivileges.Player : effective;
 	}
 
-	/// <summary>Gets the role bits a client shows for an account.</summary>
-	/// <param name="effective">The account's effective privileges.</param>
-	/// <returns>The client's privilege bits for the account's roles.</returns>
 	public static int Privileges(UserPrivileges effective)
 	{
 		return (int)Roles(effective);
 	}
 
-	/// <summary>Writes the presence packet of a user.</summary>
-	/// <param name="writer">The writer to add the packet to.</param>
-	/// <param name="user">The user.</param>
-	/// <param name="stats">The user's statistics in the mode they are in.</param>
-	/// <param name="now">The current time, for the effective privileges.</param>
 	public static void WritePresence(PacketWriter writer, User user, UserStats stats, DateTimeOffset now)
 	{
 		var client = user.Stable;
@@ -60,10 +43,6 @@ internal static class StableView
 			(int)(client?.Status.GameMode ?? GameMode.Standard), 0, 0, stats.Rank);
 	}
 
-	/// <summary>Writes the stats packet of a user.</summary>
-	/// <param name="writer">The writer to add the packet to.</param>
-	/// <param name="user">The user.</param>
-	/// <param name="stats">The user's statistics in the mode they are in.</param>
 	public static void WriteStats(PacketWriter writer, User user, UserStats stats)
 	{
 		var status = user.Stable?.Status ?? PlayerStatus.Idle;
@@ -74,9 +53,6 @@ internal static class StableView
 			UserStats.Accuracy, stats.PlayCount, stats.TotalScore, stats.Rank, UserStats.Pp);
 	}
 
-	/// <summary>Translates a room into the match a client shows.</summary>
-	/// <param name="room">The room.</param>
-	/// <returns>The match packet model.</returns>
 	public static RoomPacket Match(Room room)
 	{
 		var slots = room.Slots.Select(slot => new RoomSlotPacket(SlotStatus(slot),

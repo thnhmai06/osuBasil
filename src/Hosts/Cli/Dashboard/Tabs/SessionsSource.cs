@@ -5,13 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Cli.Dashboard.Tabs;
 
-/// <summary>
-///     Reads the sessions open now. A search text only filters them, by account name or id, address, client or kind;
-///     it never reads the history of an account.
-/// </summary>
 internal sealed class SessionsSource(IServiceProvider services, TimeProvider clock) : IListSource<SessionItem>
 {
-	/// <inheritdoc />
 	public Task<IReadOnlyList<SectionData<SessionItem>>> LoadAsync(string query, int limit, CancellationToken ct)
 	{
 		var now = clock.GetUtcNow();

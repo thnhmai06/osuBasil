@@ -2,10 +2,8 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests.Mechanics;
 
-/// <summary>Verifies the reduction of a play's mods to the ones that change the difficulty of the beatmap.</summary>
 public class GameModsDifficultyTests
 {
-	/// <summary>Mods that only change how a play is scored or judged leave no trace in the reduction.</summary>
 	[Theory]
 	[InlineData(GameMods.NoFail)]
 	[InlineData(GameMods.SuddenDeath)]
@@ -19,7 +17,6 @@ public class GameModsDifficultyTests
 		Assert.Equal(GameMods.NoMod, mods.ReduceToDifficulty(GameMode.Standard));
 	}
 
-	/// <summary>Mods that change the difficulty are kept.</summary>
 	[Theory]
 	[InlineData(GameMods.Easy)]
 	[InlineData(GameMods.HardRock)]
@@ -32,7 +29,6 @@ public class GameModsDifficultyTests
 		Assert.Equal(mods, mods.ReduceToDifficulty(GameMode.Standard));
 	}
 
-	/// <summary>Nightcore and DoubleTime play at the same rate, so they share one reduction, in either wire form.</summary>
 	[Theory]
 	[InlineData(GameMods.Nightcore)]
 	[InlineData(GameMods.DoubleTime | GameMods.Nightcore)]
@@ -41,14 +37,12 @@ public class GameModsDifficultyTests
 		Assert.Equal(GameMods.DoubleTime, mods.ReduceToDifficulty(GameMode.Standard));
 	}
 
-	/// <summary>The mods a play drops as invalid do not count: EasyHardRock is Easy.</summary>
 	[Fact]
 	public void ConflictingMods_ReduceAsTheLegalCombination()
 	{
 		Assert.Equal(GameMods.Easy, (GameMods.Easy | GameMods.HardRock).ReduceToDifficulty(GameMode.Standard));
 	}
 
-	/// <summary>The key count is part of the difficulty in mania only.</summary>
 	[Fact]
 	public void KeyMod_CountsInManiaOnly()
 	{
@@ -57,7 +51,6 @@ public class GameModsDifficultyTests
 		Assert.Equal(GameMods.NoMod, GameMods.Key7.ReduceToDifficulty(GameMode.Taiko));
 	}
 
-	/// <summary>Two plays that differ only in a scoring mod reduce to the same value.</summary>
 	[Fact]
 	public void PlaysThatDifferInScoringMods_ShareTheReduction()
 	{
@@ -68,7 +61,6 @@ public class GameModsDifficultyTests
 		Assert.Equal(plain, noisy);
 	}
 
-	/// <summary>The reduction is stable: reducing a reduced value changes nothing.</summary>
 	[Theory]
 	[InlineData(GameMode.Standard, GameMods.Nightcore | GameMods.Hidden | GameMods.NoFail)]
 	[InlineData(GameMode.Mania, GameMods.Key4 | GameMods.KeyCoop | GameMods.HalfTime | GameMods.Mirror)]

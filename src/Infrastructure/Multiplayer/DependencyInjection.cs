@@ -6,12 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Multiplayer;
 
-/// <summary>Registers the persistence implementations owned by Multiplayer.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds Multiplayer persistence implementations.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddMultiplayerInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<MultiplayerDbContext>>();
@@ -23,9 +19,6 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Adds the background work of Multiplayer: closing rooms that stay empty.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddMultiplayerBackgroundWork(this IServiceCollection services)
 	{
 		services.AddHostedService<EmptyRoomCloser>();

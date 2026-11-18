@@ -5,15 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Diagnostics;
 
-/// <summary>Registers what the Diagnostics module implements.</summary>
 public static class DependencyInjection
 {
-	/// <summary>
-	///     Adds the intake, the feed and the sampler that feeds it; its handlers are registered with the other Mediator
-	///     handlers.
-	/// </summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddDiagnosticsInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton(sp => new RuntimeSampler(sp.GetRequiredService<TimeProvider>()));

@@ -4,10 +4,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Tests.Lifetime;
 
-/// <summary>
-///     The graceful shutdown runs its steps one after the other, in order, and each step has a time limit, so a component
-///     that hangs delays the shutdown by its limit and no more. The clock is a fake one: nothing here sleeps.
-/// </summary>
 public sealed class ShutdownSequenceTests
 {
 	private static readonly TimeSpan Limit = TimeSpan.FromSeconds(5);

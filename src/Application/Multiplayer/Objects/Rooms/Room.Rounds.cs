@@ -4,11 +4,8 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <content>The round lifecycle.</content>
 public sealed partial class Room
 {
-	/// <summary>Runs the work of a timer so that a fault in it cannot end the process.</summary>
-	/// <param name="action">The work.</param>
 	internal static void Fire(Action action)
 	{
 		try
@@ -22,9 +19,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Ends a room's round in progress and sets its players back to not ready.</summary>
-	/// <param name="aborted">Whether the round ends as aborted rather than played out.</param>
-	/// <returns>The round that ended, or <see langword="null" /> when no round was in progress.</returns>
 	internal Round? EndCurrentRound(bool aborted)
 	{
 		if (Rounds.CurrentRound is not { } round) return null;
@@ -39,8 +33,6 @@ public sealed partial class Room
 		return round;
 	}
 
-	/// <summary>Begins a round and marks the seated players who have the beatmap as playing.</summary>
-	/// <returns>The new round and the players taking part.</returns>
 	internal (Round Round, IReadOnlyList<StableConnection> Players) BeginRound()
 	{
 		var round = new Round
@@ -68,15 +60,6 @@ public sealed partial class Room
 		return (round, players);
 	}
 
-	/// <summary>Works out what the players who are still playing have all done, after a player stopped playing.</summary>
-	/// <returns>
-	///     What changed for the round in progress, or <see langword="null" /> when no round is in progress or nothing
-	///     changed.
-	/// </returns>
-	/// <remarks>
-	///     Ends the round when nobody is playing any more; otherwise reports that every remaining player has loaded or
-	///     skipped, once per round.
-	/// </remarks>
 	internal RoomRoundProgress? AdvanceRound()
 	{
 		if (Rounds.CurrentRound is not { } round) return null;

@@ -12,17 +12,13 @@ using Mediator;
 
 namespace Basil.Host.Cli.Commands;
 
-/// <summary>What the <c>scores</c> commands say.</summary>
 public static class ScoreReplies
 {
-	/// <summary>Printed after the calculation of pp was started.</summary>
 	public const string RecalculationStarted = "Calculating the pp of scores in the background.";
 }
 
-/// <summary>The <c>beatmapsets</c>, <c>beatmaps</c> and <c>scores</c> commands.</summary>
 internal static class BeatmapScoreCommands
 {
-	/// <summary>Creates the commands of this group.</summary>
 	public static IEnumerable<CommandDef> Create()
 	{
 		yield return new CommandDef

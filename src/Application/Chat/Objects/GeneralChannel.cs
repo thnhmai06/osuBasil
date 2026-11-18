@@ -6,10 +6,8 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Chat.Objects;
 
-/// <summary>A configured chat channel while it is open.</summary>
 public sealed class GeneralChannel : Channel
 {
-	/// <summary>The name of the general channel the multiplayer lobby uses for discussion.</summary>
 	public const string LobbyName = "#lobby";
 
 	internal GeneralChannel(GeneralChannelRecord record, ChannelContext context) : base(context)
@@ -17,31 +15,22 @@ public sealed class GeneralChannel : Channel
 		Record = record;
 	}
 
-	/// <summary>Gets the stored identity and settings of this channel.</summary>
 	public GeneralChannelRecord Record { get; }
 
-	/// <inheritdoc />
 	public override string Name => Record.Name;
 
-	/// <inheritdoc />
 	public override string Topic => Record.Value.Topic;
 
-	/// <inheritdoc />
 	internal override bool CanRead(Connection connection, UserPrivileges privileges)
 	{
 		return privileges.Allows(Record.Value.ReadPrivileges);
 	}
 
-	/// <inheritdoc />
 	internal override bool CanWrite(Connection connection, UserPrivileges privileges)
 	{
 		return privileges.Allows(Record.Value.WritePrivileges);
 	}
 
-	/// <summary>Applies a change to the channel and removes the members who may no longer read it.</summary>
-	/// <param name="change">The settings to change.</param>
-	/// <param name="privilegesOf">Gives the effective privileges a member holds.</param>
-	/// <returns>Ok, or Closed when the channel has closed.</returns>
 	internal async Task<ChannelOutcome> ConfigureAsync(GeneralChannelChange change,
 		Func<Connection, UserPrivileges> privilegesOf)
 	{
@@ -63,8 +52,6 @@ public sealed class GeneralChannel : Channel
 		return ChannelOutcome.Ok;
 	}
 
-	/// <summary>Closes the channel and deletes it.</summary>
-	/// <returns>Ok.</returns>
 	internal async Task<ChannelOutcome> DeleteAsync()
 	{
 		Close();

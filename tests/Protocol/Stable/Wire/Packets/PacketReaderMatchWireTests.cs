@@ -2,20 +2,8 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies <c>PacketReader.ReadMatch</c> against hand-laid-out room payloads: fixed-byte header fields
-///     (u16 id, sbyte in-progress, sbyte powerplay, i32 mods), four osu! strings, 16 slot status bytes,
-///     16 slot team bytes, an i32 player id only for occupied slots, host id, mode/win/team/free-mods
-///     sbytes, the 16 per-slot mod i32 words when free mods are on, and the i32 seed. All fields are
-///     little-endian and the reader consumes the payload exactly.
-/// </summary>
 public class PacketReaderMatchWireTests
 {
-	/// <summary>
-	///     Builds a room payload per the osu! wire format. <paramref name="playerIds" /> is written as the i32
-	///     words following the statuses; the caller supplies exactly the ids the fixture's occupied statuses
-	///     require. Strings are written as an empty osu! string (<c>0x0B 0x00</c>), map id and mods as zero.
-	/// </summary>
 	private static MemoryStream MatchPayload(
 		ushort id,
 		byte[] statuses,

@@ -2,7 +2,6 @@ using Basil.Testing.Clients;
 
 namespace Basil.Host.Irc.Tests.Users;
 
-/// <summary>Capability negotiation and SASL PLAIN, with the wire text of the IRCv3 specifications.</summary>
 [Collection("IRC host")]
 public sealed class CapabilityTests(IrcHostFixture fixture)
 {

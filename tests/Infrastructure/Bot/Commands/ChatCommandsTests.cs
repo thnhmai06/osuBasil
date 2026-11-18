@@ -8,11 +8,6 @@ using NSubstitute;
 
 namespace Basil.Infrastructure.Bot.Tests.Commands;
 
-/// <summary>
-///     The chat commands any user can type: which messages are commands, what <c>!help</c>, <c>!roll</c>,
-///     <c>!where</c> and <c>!faq</c> answer, and the rules of chained commands. Expected replies are named by the
-///     reply that owns the wording.
-/// </summary>
 public sealed class ChatCommandsTests
 {
 	[Fact]
@@ -248,7 +243,6 @@ public sealed class ChatCommandsTests
 		Assert.Equal([bot.Text(MpReplies.NotInARoom)], said.Here);
 	}
 
-	/// <summary>Dice that record what they were asked and give a chosen result.</summary>
 	private sealed class RecordingRandom : Random
 	{
 		public List<(long Min, long Max)> Requests { get; } = [];

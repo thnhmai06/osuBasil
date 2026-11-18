@@ -10,29 +10,15 @@ using XenoAtom.Terminal.UI.Styling;
 
 namespace Basil.Host.Cli.Dashboard.Shell;
 
-/// <summary>The items of one group, as a source returns them.</summary>
-/// <param name="Title">The name of the group.</param>
-/// <param name="Items">The items loaded so far.</param>
-/// <param name="HasMore">Whether the source holds more items for the group than <paramref name="Items" />.</param>
 internal sealed record SectionData<T>(string Title, IReadOnlyList<T> Items, bool HasMore);
 
-/// <summary>Where a list page gets its items.</summary>
 internal interface IListSource<T>
 {
-	/// <summary>Loads the groups for a search text.</summary>
-	/// <param name="query">The text of the search box.</param>
-	/// <param name="limit">How many items a group that lives in the database may return.</param>
-	/// <param name="ct">Cancels the load when the operator searches again.</param>
 	Task<IReadOnlyList<SectionData<T>>> LoadAsync(string query, int limit, CancellationToken ct);
 }
 
-/// <summary>
-///     A page that lists the items of a table with a search box on top, groups that keep their title, a footer with the
-///     range in view, and a detail frame under the list; every table tab builds on it.
-/// </summary>
 internal sealed class ListPage<T>
 {
-	/// <summary>How long the search text must stand still before the database is asked.</summary>
 	public static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(500);
 
 	private const int PageSize = 100;
@@ -69,7 +55,6 @@ internal sealed class ListPage<T>
 	private TextBox? _search;
 	private TerminalApp? _app;
 
-	/// <summary>Creates the page.</summary>
 	public ListPage(string title, string help, IReadOnlyList<Column<T>> columns, Func<T, string> key, IListSource<T> source,
 		Func<T, DetailView> detail, Glyphs glyphs, ShellKit kit, bool noColor, TimeProvider clock,
 		Action<Action> post, ILogger logger)
@@ -120,24 +105,20 @@ internal sealed class ListPage<T>
 			});
 	}
 
-	/// <summary>Gets the page to put in a tab.</summary>
 	public Visual View { get; }
 
-	/// <summary>Connects the page to the running application.</summary>
 	public void Attach(TerminalApp app)
 	{
 		_app = app;
 		_detail.Attach(app);
 	}
 
-	/// <summary>Loads the first page; call it when the tab opens and when the operator refreshes.</summary>
 	public void Refresh()
 	{
 		_pages = 1;
 		Start();
 	}
 
-	/// <summary>Lets time pass: starts the search once the text stood still long enough.</summary>
 	public void Tick()
 	{
 		_searchBox.Tick();
@@ -170,25 +151,21 @@ internal sealed class ListPage<T>
 		}
 	}
 
-	/// <summary>Opens the help of the search box in a dialog.</summary>
 	public void ShowHelp()
 	{
 		_dialogs.Info($"{_title}: search", _help.Split('\n'));
 	}
 
-	/// <summary>Focuses the search box.</summary>
 	public void FocusSearch()
 	{
 		if (_search is not null) _app?.Focus(_search);
 	}
 
-	/// <summary>Moves the focus to the list as soon as the tab is on screen.</summary>
 	public void FocusList()
 	{
 		_focusList = true;
 	}
 
-	/// <summary>Selects an item by its id, loading it first when needed.</summary>
 	public void Select(string id)
 	{
 		_pendingSelect = id;
@@ -313,7 +290,6 @@ internal sealed class ListPage<T>
 		e.Handled = true;
 	}
 
-	/// <summary>Esc and Alt+Left: goes back in the detail or closes it, else clears the search, else leaves the search box.</summary>
 	private void Back()
 	{
 		if (_detail.IsOpen) _detail.Back();

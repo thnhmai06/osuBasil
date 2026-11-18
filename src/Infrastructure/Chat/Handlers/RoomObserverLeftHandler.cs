@@ -4,10 +4,8 @@ using Mediator;
 
 namespace Basil.Infrastructure.Chat.Handlers;
 
-/// <summary>Parts a room observer from the room's chat channel unless they manage the room.</summary>
 internal sealed class RoomObserverLeftHandler(RoomChannels channels) : INotificationHandler<RoomObserverLeft>
 {
-	/// <inheritdoc />
 	public ValueTask Handle(RoomObserverLeft @event, CancellationToken ct)
 	{
 		if (channels.Find(@event.Room) is { } channel && !@event.Room.Authority.IsManagedBy(@event.Observer.Record))

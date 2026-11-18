@@ -9,11 +9,6 @@ using Microsoft.Extensions.Hosting;
 
 namespace Basil.Tests.EndToEnd;
 
-/// <summary>
-///     A graceful shutdown as the operating system asks for it: new work is refused with 503 and a
-///     <c>Retry-After</c>, every client is told in its own protocol, the osu! packets are taken by one more poll,
-///     the rooms close, and the queues drain before the listeners go.
-/// </summary>
 [Collection("Host end to end")]
 public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 {
@@ -160,12 +155,6 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 		Assert.Equal("restarting", (string)JsonNode.Parse(final.Data!)!["state"]!);
 	}
 
-	/// <summary>
-	///     Polls an osu! client again and again until something else has happened. The server tells the IRC clients only
-	///     once the osu! clients have taken their packets, and anything queued for a client after its poll (another
-	///     user joining its channel) means it must poll once more; the clock of the host is fake, so no time limit ends
-	///     that wait.
-	/// </summary>
 	private static async Task<(IReadOnlyList<ServerPacket> Polled, T Result)> PollWhileAsync<T>(OsuClient client,
 		Task<T> until)
 	{

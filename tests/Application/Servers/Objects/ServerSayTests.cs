@@ -7,7 +7,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Servers.Tests.Objects;
 
-/// <summary>Behaviour of BasilBot speaking in a channel, from the XML contract of <c>Server.SayAsync</c>.</summary>
 public sealed class ServerSayTests
 {
 	private const string ChannelName = "#announce";

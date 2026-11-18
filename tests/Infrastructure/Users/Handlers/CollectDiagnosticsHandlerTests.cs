@@ -5,7 +5,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>Users reports the users online and the open connections of every type, including types with none.</summary>
 public sealed class CollectDiagnosticsHandlerTests
 {
 	private static async Task<Dictionary<(string Category, string Name), long>> CollectAsync(TestApplication app)

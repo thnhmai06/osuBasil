@@ -2,7 +2,6 @@ using Basil.Logging;
 
 namespace Basil.Tests.Logging;
 
-/// <summary>Sizes in the settings are written with the usual units, in powers of 1024.</summary>
 public sealed class ByteSizeTests
 {
 	[Theory]

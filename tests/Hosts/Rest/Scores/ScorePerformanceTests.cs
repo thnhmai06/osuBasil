@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Scores;
 
-/// <summary>How the API shows the pp of a score, and who may start calculating it.</summary>
 [Collection("REST host")]
 public sealed class ScorePerformanceTests(RestHostFixture fixture)
 {

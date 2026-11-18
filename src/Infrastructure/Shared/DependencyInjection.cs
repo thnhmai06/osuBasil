@@ -12,12 +12,8 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Shared;
 
-/// <summary>Registers the infrastructure services shared by every module.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the shared database, file paths and event delivery services.</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddSharedInfrastructure(this IServiceCollection services)
 	{
 		if (services.Any(descriptor => descriptor.ServiceType == typeof(SharedInfrastructureRegistration)))
@@ -40,27 +36,12 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Adds the migration of the shared tables (the server settings).</summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
-	/// <remarks>
-	///     It must be called after the migrations of the module whose first migration created the <c>settings</c> table
-	///     (Content), because the shared migration only creates that table when it is missing.
-	/// </remarks>
 	public static IServiceCollection AddSharedMigration(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<SharedDbContext>>();
 		return services;
 	}
 
-	/// <summary>
-	///     Reads the storage location (<c>Basil:Storage</c>) and the database settings (<c>ConnectionStrings</c>,
-	///     <c>Basil:Database</c>) once, so a later edit of the files waits for the next start.
-	/// </summary>
-	/// <param name="services">The service collection to add to.</param>
-	/// <param name="configuration">The configuration to read.</param>
-	/// <returns><paramref name="services" />, for chaining.</returns>
-	/// <exception cref="InvalidOperationException">There is no storage location or no connection string to store changes.</exception>
 	public static IServiceCollection AddSharedInfrastructureOptions(this IServiceCollection services,
 		IConfiguration configuration)
 	{

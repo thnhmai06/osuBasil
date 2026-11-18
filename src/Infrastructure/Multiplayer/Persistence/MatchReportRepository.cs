@@ -3,13 +3,11 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
-/// <summary>Builds reports from the rounds and scores of each match.</summary>
 internal sealed class MatchReportRepository(
 	IMatchRepository matches,
 	IRoundRepository rounds,
 	IMatchEventRepository events) : IMatchReportRepository
 {
-	/// <inheritdoc />
 	public async ValueTask<MatchReport> GetAsync(MatchRecord match, CancellationToken ct = default)
 	{
 		// The report shows the match as it is stored now, not the copy the caller read earlier.

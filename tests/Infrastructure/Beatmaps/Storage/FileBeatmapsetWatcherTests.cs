@@ -6,7 +6,6 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Infrastructure.Beatmaps.Tests.Storage;
 
-/// <summary>Contract tests of the watching of the beatmapset storage.</summary>
 public sealed class FileBeatmapsetWatcherTests : IDisposable
 {
 	private readonly TempData _data = new();

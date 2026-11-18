@@ -4,11 +4,6 @@ using Basil.Testing;
 
 namespace Basil.Application.Multiplayer.Tests.Objects.Rooms;
 
-/// <summary>
-///     What happens when two callers act on a room at the same time. The room admits one state transition at a
-///     time (docs/for-developers/multiplayer.md, "Room lifecycle and concurrency"), so the outcome of a race is
-///     decided by the room and not by the order in which the callers happen to arrive.
-/// </summary>
 public sealed class RoomConcurrencyTests
 {
 	[Fact]

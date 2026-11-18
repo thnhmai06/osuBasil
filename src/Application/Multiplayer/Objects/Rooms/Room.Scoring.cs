@@ -7,21 +7,8 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Objects.Rooms;
 
-/// <content>Taking the scores of a round and deciding it.</content>
 public sealed partial class Room
 {
-	/// <summary>Offers a stored score to this room as the score of a player of its latest round.</summary>
-	/// <param name="score">The stored score.</param>
-	/// <param name="player">The player who set it.</param>
-	/// <returns>
-	///     Ok when the score was taken as a score of the latest round; RoundMismatch when the round does not await a
-	///     score like it from the player (another beatmap, a round already decided or aborted, a player who left before
-	///     completing, or a second score); RoomClosed.
-	/// </returns>
-	/// <remarks>
-	///     The round is decided as soon as it has ended and every player still awaited has a score; otherwise
-	///     the score wait of the server settings (10 seconds by default) after it ended, with the scores that came in.
-	/// </remarks>
 	internal RoomOutcome ReceiveScore(ScoreRecord score, UserRecord player)
 	{
 		lock (_sync)
@@ -39,10 +26,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Tells whether the latest round awaits a score from a player on a beatmap.</summary>
-	/// <param name="player">The player.</param>
-	/// <param name="beatmap">The hash of the beatmap.</param>
-	/// <returns><see langword="true" /> when the round has not been decided or aborted and awaits such a score.</returns>
 	internal bool AwaitsScore(UserRecord player, Md5 beatmap)
 	{
 		lock (_sync)
@@ -52,9 +35,6 @@ public sealed partial class Room
 		}
 	}
 
-	/// <summary>Starts the settlement of a round with the players who took part in it.</summary>
-	/// <param name="round">The round that started.</param>
-	/// <param name="players">The players taking part.</param>
 	private void BeginSettlement(Round round, IReadOnlyList<StableConnection> players)
 	{
 		DecideForClosing();
@@ -63,7 +43,6 @@ public sealed partial class Room
 			players.Select(player => (player.Record, Slots.Find(player)?.Team)));
 	}
 
-	/// <summary>Settles a round that ended and was not aborted: it is decided now, or after the wait for its scores.</summary>
 	private void SettleRound()
 	{
 		if (Rounds.Settlement is not { Closed: false } settlement || settlement.Round.EndedAt is null) return;
@@ -79,7 +58,6 @@ public sealed partial class Room
 				wait, Timeout.InfiniteTimeSpan);
 	}
 
-	/// <summary>Decides a round that ended and still waits for scores, because the room closes or the next round starts.</summary>
 	internal void DecideForClosing()
 	{
 		if (Rounds.Settlement is { Closed: false, Round.EndedAt: not null } settlement)

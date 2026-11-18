@@ -12,11 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Users.Tests.Objects;
 
-/// <summary>
-///     The HTTP API token: 256 random bits, stored only as a SHA-256 hash, renewed by use for the lifetime of the
-///     server settings, verified against the stored sessions the first time, then held by an open connection until it
-///     has been idle for 300 seconds.
-/// </summary>
 public sealed class ApiTokenTests
 {
 	private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);

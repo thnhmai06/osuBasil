@@ -1,17 +1,9 @@
 namespace Basil.Host.Shared.Views;
 
-/// <summary>The name of each server setting as the operator reads it, by path.</summary>
-/// <remarks>
-///     Paths are the camel-case JSON paths of the settings, beginning with the category name used by
-///     <see cref="SettingsCategories" />, as in <see cref="SettingsDescriptions" />; <c>menuIcon</c> is not a category
-///     but its fields are listed. Every setting of <c>ServerSettings</c> has one entry.
-/// </remarks>
 public static class SettingsLabels
 {
-	/// <summary>The most characters a label may have, so that it fits the label column of a settings form.</summary>
 	public const int MaxLength = 36;
 
-	/// <summary>Gets the human-readable name of each setting, by path.</summary>
 	public static readonly IReadOnlyDictionary<string, string> All = new Dictionary<string, string>
 	{
 		["general.motd"] = "Message of the day",
@@ -66,9 +58,6 @@ public static class SettingsLabels
 		["menuIcon.image"] = "Main menu icon image"
 	};
 
-	/// <summary>Gets the name of one setting.</summary>
-	/// <param name="path">The camel-case path of the setting, such as <c>bot.commandPrefix</c>.</param>
-	/// <returns>The name, or <see langword="null" /> when no setting has that path.</returns>
 	public static string? Of(string path)
 	{
 		return All.GetValueOrDefault(path);

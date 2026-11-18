@@ -3,10 +3,6 @@ using Basil.Protocol.Stable.Wire.Packets;
 
 namespace Basil.Protocol.Stable.Tests.Wire.Packets;
 
-/// <summary>
-///     Verifies the server packets with ids 10, 45, 62 and 69 and <c>PacketWriter.Build</c> against hand-written
-///     bytes (header: u16 id, padding, u32 length; strings: 0x0B, ULEB128 length, UTF-8).
-/// </summary>
 public class PacketWriterParityPacketsTests
 {
 	private static byte[] Hex(string hex)

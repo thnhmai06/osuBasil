@@ -9,62 +9,40 @@ using Basil.Application.Users.Objects.Connections;
 
 namespace Basil.Host.Shared.Errors;
 
-/// <summary>How a refused operation is classified, independent of the transport that reports it.</summary>
 public enum ErrorKind : byte
 {
-	/// <summary>The caller lacks privileges.</summary>
 	PrivilegeDenied = 1,
 
-	/// <summary>The caller may not do this although the request is valid (hierarchy, ownership).</summary>
 	Forbidden,
 
-	/// <summary>The password given is wrong.</summary>
 	WrongPassword,
 
-	/// <summary>The thing does not exist or the caller may not see it.</summary>
 	NotFound,
 
-	/// <summary>The state of the system does not allow the operation.</summary>
 	Conflict,
 
-	/// <summary>An area is locked.</summary>
 	Locked,
 
-	/// <summary>The target is BasilBot's fixed record.</summary>
 	SystemAccount,
 
-	/// <summary>The room is closed.</summary>
 	Gone,
 
-	/// <summary>The input is not valid.</summary>
 	Invalid
 }
 
-/// <summary>A refusal as a stable machine-readable code and its classification.</summary>
-/// <param name="Code">The camelCase code clients can rely on.</param>
-/// <param name="Kind">The classification.</param>
 public readonly record struct ErrorInfo(string Code, ErrorKind Kind);
 
-/// <summary>The one table that turns the outcome of an operation into a code and a kind, shared by every transport.</summary>
 public static class OutcomeErrors
 {
-	/// <summary>The code of a refusal for lack of privileges.</summary>
 	public const string PrivilegeDeniedCode = "privilegeDenied";
 
 	private const int OkValue = 1;
 
-	/// <summary>Checks whether an outcome of any Application object is its <c>Ok</c> member.</summary>
-	/// <param name="outcome">The outcome.</param>
-	/// <returns><see langword="true" /> when the operation succeeded.</returns>
 	public static bool IsOk<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
 	{
 		return Convert.ToInt32(outcome, CultureInfo.InvariantCulture) == OkValue;
 	}
 
-	/// <summary>Describes an outcome that is not <c>Ok</c>; the default value is a refusal for lack of privileges.</summary>
-	/// <param name="outcome">The outcome of any Application object.</param>
-	/// <returns>The code and kind of the refusal.</returns>
-	/// <exception cref="ArgumentException">The outcome's enum is not covered by the table.</exception>
 	public static ErrorInfo Describe<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
 	{
 		if (EqualityComparer<TOutcome>.Default.Equals(outcome, default))

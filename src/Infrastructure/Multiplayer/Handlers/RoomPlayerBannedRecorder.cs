@@ -5,12 +5,10 @@ using Mediator;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers;
 
-/// <summary>Records a player being banned, and the round the departure ended.</summary>
 internal sealed class RoomPlayerBannedRecorder(
 	IRoundRepository rounds,
 	IMatchEventRepository matchEvents) : INotificationHandler<RoomPlayerBanned>
 {
-	/// <inheritdoc />
 	public async ValueTask Handle(RoomPlayerBanned @event, CancellationToken ct)
 	{
 		if (@event.RoundProgress is { Completed: true } progress)

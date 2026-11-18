@@ -4,7 +4,6 @@ using Basil.Testing;
 
 namespace Basil.Infrastructure.Users.Tests.Handlers;
 
-/// <summary>The messages that change the profile settings of the sender's own account.</summary>
 public sealed class ProfileSettingHandlerTests
 {
 	[Fact]

@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Rest.Tests.Images;
 
-/// <summary>The image hosts: public, through one pipeline, with HTTP caching and the visibility rules inside.</summary>
 [Collection("REST host")]
 public sealed class ImageTests(RestHostFixture fixture)
 {

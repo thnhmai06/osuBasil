@@ -3,13 +3,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Application.Shared.Events;
 
-/// <summary>Turns a published event into a delivery on the event queue instead of running its handlers at once.</summary>
-/// <param name="queue">The queue that holds deliveries.</param>
-/// <param name="logger">The logger that reports handler failures.</param>
 public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<QueuedNotificationPublisher> logger)
 	: INotificationPublisher
 {
-	/// <inheritdoc />
 	public ValueTask Publish<TNotification>(NotificationHandlers<TNotification> handlers,
 		TNotification notification, CancellationToken ct) where TNotification : INotification
 	{
@@ -23,7 +19,6 @@ public sealed class QueuedNotificationPublisher(EventQueue queue, ILogger<Queued
 		ILogger logger,
 		EventQueue queue) : IEventDelivery where TNotification : INotification
 	{
-		/// <inheritdoc />
 		public async ValueTask DeliverAsync(CancellationToken ct)
 		{
 			foreach (var handler in handlers)

@@ -4,13 +4,11 @@ using Basil.Application.Beatmaps.Storage;
 
 namespace Basil.Infrastructure.Beatmaps.Logic;
 
-/// <summary>Imports one uploaded beatmapset archive.</summary>
 internal sealed class BeatmapsetImporter(
 	IBeatmapsetStorage storage,
 	BeatmapsetPlanner planner,
 	BeatmapsetStorer storer) : IBeatmapsetImporter
 {
-	/// <inheritdoc />
 	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
 		bool replaceExisting, CancellationToken ct = default)
 	{
