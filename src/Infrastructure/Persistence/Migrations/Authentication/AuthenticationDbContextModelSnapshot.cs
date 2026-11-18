@@ -20,47 +20,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                 .HasAnnotation("ProductVersion", "10.0.14");
 
 
-            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.ConnectionRow", b =>
-                {
-                    b.Property<long>("Id")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ClientInfo")
-                        .HasColumnName("client_info");
-
-                    b.Property<byte?>("CloseReason")
-                        .HasColumnName("close_reason");
-
-                    b.Property<DateTimeOffset?>("ClosedAt")
-                        .HasColumnName("closed_at");
-
-                    b.Property<string>("Ip")
-                        .IsRequired()
-                        .HasMaxLength(45)
-                        .HasColumnName("ip");
-
-                    b.Property<DateTimeOffset>("LastActiveAt")
-                        .HasColumnName("last_active_at");
-
-                    b.Property<DateTimeOffset>("OpenedAt")
-                        .HasColumnName("opened_at");
-
-                    b.Property<long>("SessionId")
-                        .HasColumnName("session_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_connections");
-
-                    b.HasIndex("ClosedAt")
-                        .HasDatabaseName("ix_connections_closed_at");
-
-                    b.HasIndex("SessionId", "OpenedAt")
-                        .IsDescending(false, true)
-                        .HasDatabaseName("ix_connections_session_id_opened_at");
-
-                    b.ToTable("connections", (string)null);
-                });
-
             modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.CredentialRow).FullName!, b =>
                 {
                     b.Property<int>("UserId")
@@ -101,9 +60,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
 
                     b.Property<DateTimeOffset?>("EndedAt")
                         .HasColumnName("ended_at");
-
-                    b.Property<DateTimeOffset?>("ExpiresAt")
-                        .HasColumnName("expires_at");
 
                     b.Property<string>("Ip")
                         .IsRequired()
@@ -153,28 +109,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                     b.ToTable("sessions", (string)null);
                 });
 
-            modelBuilder.Entity(typeof(Basil.Infrastructure.Shared.Persistence.IdCounterRow).FullName!, b =>
-                {
-                    b.Property<string>("FullName")
-                        .HasMaxLength(64)
-                        .HasColumnName("name");
-
-                    b.Property<long>("Next")
-                        .HasColumnName("next");
-
-                    b.HasKey("FullName")
-                        .HasName("pk_connection_id_counters");
-
-                    b.ToTable("connection_id_counters", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Name = "connection",
-                            Next = 1L
-                        });
-                });
-
             modelBuilder.Entity(ContextModel.UsersTable, b =>
                 {
                     b.Property<int>("Id")
@@ -189,16 +123,6 @@ namespace Basil.Infrastructure.Persistence.Migrations.Authentication
                         {
                             t.ExcludeFromMigrations();
                         });
-                });
-
-            modelBuilder.Entity("Basil.Infrastructure.Authentication.Persistence.ConnectionRow", b =>
-                {
-                    b.HasOne(typeof(Basil.Infrastructure.Authentication.Persistence.SessionRow).FullName!, null)
-                        .WithMany()
-                        .HasForeignKey("SessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_connections_sessions_session_id");
                 });
 
             modelBuilder.Entity(typeof(Basil.Infrastructure.Authentication.Persistence.CredentialRow).FullName!, b =>

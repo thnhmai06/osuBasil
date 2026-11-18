@@ -20,7 +20,6 @@ internal sealed class AuthenticationDbContext(DbContextOptions<AuthenticationDbC
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-		IdCounters.Map(modelBuilder, "connection_id_counters", ("connection", 1));
 		ContextModel.MapUsersReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<AuthenticationDbContext>(modelBuilder);
 	}

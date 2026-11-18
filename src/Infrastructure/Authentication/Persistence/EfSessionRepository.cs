@@ -13,33 +13,29 @@ namespace Basil.Infrastructure.Authentication.Persistence;
 
 internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRepository
 {
-	public Task CreateOrUpdateAsync(SessionRecord session)
+	public Task CreateAsync(Session session)
 	{
 		var row = ToRow(session);
-		return database.WriteAsync(async (AuthenticationDbContext context) =>
+		return database.WriteAsync((AuthenticationDbContext context) =>
 		{
-			var stored = await context.Sessions.AsTracking().FirstOrDefaultAsync(item => item.Id == row.Id);
-			if (stored is null) context.Sessions.Add(row);
-			else context.Entry(stored).CurrentValues.SetValues(row);
+			context.Sessions.Add(row);
+			return Task.CompletedTask;
 		});
 	}
 
-	public async ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
+	public async ValueTask<Page<Session>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken ct = default)
 	{
 		var user = query.User;
 		var types = query.Types;
-		var now = query.Now.ToUniversalTime();
 		var fetched = await database.ReadAsync(async (AuthenticationDbContext context) =>
 		{
 			var sessions = context.Sessions.Where(row => row.UserId == user.Id);
 			if (types is not null) sessions = sessions.Where(row => types.Contains(row.Type));
 			sessions = query.State switch
 			{
-				SessionState.Active => sessions.Where(row =>
-					row.EndedAt == null && (row.ExpiresAt == null || row.ExpiresAt > now)),
-				SessionState.Ended => sessions.Where(row =>
-					row.EndedAt != null || (row.ExpiresAt != null && row.ExpiresAt <= now)),
+				SessionFilter.Active => sessions.Where(row => row.EndedAt == null),
+				SessionFilter.Ended => sessions.Where(row => row.EndedAt != null),
 				_ => sessions
 			};
 			return await sessions
@@ -51,38 +47,65 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		}, ct);
 
 		var (rows, hasNext) = page.Slice(fetched);
-		return new Page<SessionRecord>(rows.Select(row => ToRecord(row, user)).ToList(), hasNext);
+		return new Page<Session>(rows.Select(row => ToSession(row, user)).ToList(), hasNext);
 	}
 
-	public async Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
+	public async Task<Session?> GetAsync(UserRecord user, long id, CancellationToken ct = default)
 	{
 		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
 				.FirstOrDefaultAsync(item => item.Id == id && item.UserId == user.Id, ct),
 			ct);
-		return row is null ? null : ToRecord(row, user);
+		return row is null ? null : ToSession(row, user);
 	}
 
-	public async Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256Hash tokenHash, DateTimeOffset now,
+	public async Task<int?> FindOpenOwnerAsync(SessionType type, Sha256Hash tokenHash,
 		CancellationToken ct = default)
 	{
-		var at = now.ToUniversalTime();
 		var hash = Convert.FromHexString(tokenHash.HashValue);
-		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
-				.FirstOrDefaultAsync(item => item.TokenHash == hash && item.Type == type && item.EndedAt == null &&
-				                             (item.ExpiresAt == null || item.ExpiresAt > at), ct),
+		return await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
+				.Where(item => item.TokenHash == hash && item.Type == type && item.EndedAt == null)
+				.Select(item => (int?)item.UserId)
+				.FirstOrDefaultAsync(ct),
 			ct);
-		return row is null
-			? null
-			: new StoredSession(row.Id, row.UserId, row.Type, row.Ip, row.ClientInfo, row.StartedAt, row.ExpiresAt);
 	}
 
-	public Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types,
-		DateTimeOffset at, SessionEndReason reason)
+	public async Task<Session?> FindOpenByTokenAsync(UserRecord user, SessionType type, Sha256Hash tokenHash,
+		CancellationToken ct = default)
+	{
+		var hash = Convert.FromHexString(tokenHash.HashValue);
+		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
+				.FirstOrDefaultAsync(item => item.TokenHash == hash && item.Type == type && item.UserId == user.Id &&
+				                             item.EndedAt == null, ct),
+			ct);
+		return row is null ? null : ToSession(row, user);
+	}
+
+	public async Task<Session?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default)
+	{
+		var row = await database.ReadAsync((AuthenticationDbContext context) => context.Sessions
+				.Where(item => item.UserId == user.Id && item.Type == type && item.EndedAt == null)
+				.OrderByDescending(item => item.LastActiveAt)
+				.FirstOrDefaultAsync(ct),
+			ct);
+		return row is null ? null : ToSession(row, user);
+	}
+
+	public Task EndAsync(long id, SessionEnded ended)
+	{
+		var end = ended.At.ToUniversalTime();
+		return database.WriteAsync((AuthenticationDbContext context) => context.Sessions
+			.Where(row => row.Id == id && row.EndedAt == null)
+			.ExecuteUpdateAsync(setters => setters
+				.SetProperty(row => row.EndedAt, end)
+				.SetProperty(row => row.EndReason, ended.Reason)));
+	}
+
+	public Task EndAsync(UserRecord user, long? only, long? except, SessionEndReason reason, DateTimeOffset at)
 	{
 		var end = at.ToUniversalTime();
 		return database.WriteAsync(async (AuthenticationDbContext context) =>
 		{
-			var query = context.Sessions.Where(row => row.UserId == user.Id && types.Contains(row.Type));
+			var query = context.Sessions.Where(row => row.UserId == user.Id);
 			if (only is { } one) query = query.Where(row => row.Id == one);
 			if (except is { } kept) query = query.Where(row => row.Id != kept);
 
@@ -92,13 +115,34 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 		});
 	}
 
-	public Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason)
+	public Task<int> EndOpenAsync(SessionType type, SessionEndReason reason, DateTimeOffset at)
 	{
+		var end = at.ToUniversalTime();
 		return database.WriteAsync((AuthenticationDbContext context) => context.Sessions
-			.Where(row => row.EndedAt == null && types.Contains(row.Type))
+			.Where(row => row.EndedAt == null && row.Type == type)
 			.ExecuteUpdateAsync(setters => setters
-				.SetProperty(row => row.EndedAt, row => row.LastActiveAt)
+				.SetProperty(row => row.EndedAt, end)
 				.SetProperty(row => row.EndReason, reason)));
+	}
+
+	public Task<int> EndSilentAsync(DateTimeOffset now)
+	{
+		var end = now.ToUniversalTime();
+		return database.WriteAsync(async (AuthenticationDbContext context) =>
+		{
+			var ended = 0;
+			foreach (var type in Enum.GetValues<SessionType>())
+			{
+				var silentSince = end - type.ExpiresAfter;
+				ended += await context.Sessions
+					.Where(row => row.EndedAt == null && row.Type == type && row.LastActiveAt <= silentSince)
+					.ExecuteUpdateAsync(setters => setters
+						.SetProperty(row => row.EndedAt, end)
+						.SetProperty(row => row.EndReason, SessionEndReason.TimedOut));
+			}
+
+			return ended;
+		});
 	}
 
 	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity)
@@ -110,11 +154,8 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			foreach (var item in activity)
 			{
 				var last = item.LastActiveAt.ToUniversalTime();
-				var expires = item.ExpiresAt?.ToUniversalTime();
 				await context.Sessions.Where(row => row.Id == item.Id && row.EndedAt == null)
-					.ExecuteUpdateAsync(setters => setters
-						.SetProperty(row => row.LastActiveAt, last)
-						.SetProperty(row => row.ExpiresAt, expires));
+					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.LastActiveAt, last));
 			}
 		});
 	}
@@ -123,30 +164,24 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 	{
 		var before = cutoff.ToUniversalTime();
 		return database.WriteAsync(async (AuthenticationDbContext context) =>
-			await context.Sessions.Where(row => (row.EndedAt != null && row.EndedAt < before) ||
-			                                    (row.EndedAt == null && row.ExpiresAt != null &&
-			                                     row.ExpiresAt < before))
+			await context.Sessions.Where(row => row.EndedAt != null && row.EndedAt < before)
 				.ExecuteDeleteAsync());
 	}
 
-	private static SessionRecord ToRecord(SessionRow row, UserRecord user)
+	private static Session ToSession(SessionRow row, UserRecord user)
 	{
-		var ended = row.EndedAt is { } at ? new SessionEnded(at, row.EndReason!.Value) : (SessionEnded?)null;
-		return new SessionRecord
+		var session = new Session
 		{
 			Id = row.Id,
-			Value = new SessionData
-			{
-				User = user,
-				Type = row.Type,
-				StartedAt = row.StartedAt,
-				Fingerprint = new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
-				TokenHash = new Sha256Hash(Convert.ToHexStringLower(row.TokenHash)),
-				ExpiresAt = row.ExpiresAt,
-				LastActiveAt = row.LastActiveAt,
-				Ended = ended
-			}
+			User = user,
+			Type = row.Type,
+			StartedAt = row.StartedAt,
+			Fingerprint = new SessionFingerprint(row.Ip, ToClient(row), row.ClientInfo),
+			TokenHash = new Sha256Hash(Convert.ToHexStringLower(row.TokenHash)),
+			LastActiveAt = row.LastActiveAt
 		};
+		if (row.EndedAt is { } at) session.End(at, row.EndReason!.Value);
+		return session;
 	}
 
 	private static OsuClient? ToClient(SessionRow row)
@@ -162,14 +197,13 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 				adapters));
 	}
 
-	private static SessionRow ToRow(SessionRecord session)
+	private static SessionRow ToRow(Session data)
 	{
-		var data = session.Value;
 		var device = data.Fingerprint;
 		var client = device.Client;
 		return new SessionRow
 		{
-			Id = session.Id,
+			Id = data.Id,
 			UserId = data.User.Id,
 			Type = data.Type,
 			Ip = device.Ip,
@@ -179,7 +213,6 @@ internal sealed class EfSessionRepository(DatabaseSession database) : ISessionRe
 			EndedAt = data.Ended?.At.ToUniversalTime(),
 			EndReason = data.Ended?.Reason,
 			TokenHash = Convert.FromHexString(data.TokenHash.HashValue),
-			ExpiresAt = data.ExpiresAt?.ToUniversalTime(),
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
 			ClientRevision = client?.Version.Revision,
 			ClientStream = client is null ? null : (int?)client.Version.Stream,

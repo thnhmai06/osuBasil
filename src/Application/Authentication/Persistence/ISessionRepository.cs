@@ -1,4 +1,3 @@
-using System.Net;
 using Basil.Application.Shared.Paging;
 using Basil.Domain.Authentication;
 
@@ -7,7 +6,7 @@ using Basil.Shared.Structures.Cryptography;
 
 namespace Basil.Application.Authentication.Persistence;
 
-public enum SessionState : byte
+public enum SessionFilter : byte
 {
 	Any,
 
@@ -18,37 +17,34 @@ public enum SessionState : byte
 
 public sealed record SessionQuery(
 	UserRecord User,
-	SessionState State,
-	IReadOnlyList<SessionType>? Types,
-	DateTimeOffset Now);
+	SessionFilter State,
+	IReadOnlyList<SessionType>? Types);
 
-public sealed record StoredSession(
-	long Id,
-	int UserId,
-	SessionType Type,
-	IPAddress Ip,
-	string? ClientInfo,
-	DateTimeOffset StartedAt,
-	DateTimeOffset? ExpiresAt);
-
-public sealed record SessionActivity(long Id, DateTimeOffset LastActiveAt, DateTimeOffset? ExpiresAt);
+public sealed record SessionActivity(long Id, DateTimeOffset LastActiveAt);
 
 public interface ISessionRepository
 {
-	Task CreateOrUpdateAsync(SessionRecord session);
+	Task CreateAsync(Session session);
 
-	ValueTask<Page<SessionRecord>> ListAsync(SessionQuery query, PageRequest page,
+	ValueTask<Page<Session>> ListAsync(SessionQuery query, PageRequest page,
 		CancellationToken ct = default);
 
-	Task<SessionRecord?> GetAsync(UserRecord user, long id, CancellationToken ct = default);
+	Task<Session?> GetAsync(UserRecord user, long id, CancellationToken ct = default);
 
-	Task<StoredSession?> FindByTokenAsync(SessionType type, Sha256Hash tokenHash, DateTimeOffset now,
+	Task<int?> FindOpenOwnerAsync(SessionType type, Sha256Hash tokenHash, CancellationToken ct = default);
+
+	Task<Session?> FindOpenByTokenAsync(UserRecord user, SessionType type, Sha256Hash tokenHash,
 		CancellationToken ct = default);
 
-	Task EndAsync(UserRecord user, long? only, long? except, IReadOnlyList<SessionType> types, DateTimeOffset at,
-		SessionEndReason reason);
+	Task<Session?> FindOpenAsync(UserRecord user, SessionType type, CancellationToken ct = default);
 
-	Task<int> EndOpenAsync(IReadOnlyList<SessionType> types, SessionEndReason reason);
+	Task EndAsync(long id, SessionEnded ended);
+
+	Task EndAsync(UserRecord user, long? only, long? except, SessionEndReason reason, DateTimeOffset at);
+
+	Task<int> EndOpenAsync(SessionType type, SessionEndReason reason, DateTimeOffset at);
+
+	Task<int> EndSilentAsync(DateTimeOffset now);
 
 	Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity);
 

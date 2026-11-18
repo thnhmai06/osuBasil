@@ -28,8 +28,6 @@ internal sealed class SessionRow
 
 	public byte[] TokenHash { get; set; } = [];
 
-	public DateTimeOffset? ExpiresAt { get; set; }
-
 	public string? ClientDate { get; set; }
 
 	public int? ClientRevision { get; set; }
