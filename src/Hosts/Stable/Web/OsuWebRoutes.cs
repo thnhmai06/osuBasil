@@ -30,6 +30,7 @@ using Basil.Protocol.Game.Stable.Models.Client;
 using Basil.Protocol.Game.Stable.Models.Scores;
 using Basil.Protocol.Game.Stable.Wire.Security;
 using Basil.Shared.Structures.Cryptography;
+using Basil.Domain.Beatmaps;
 using Mediator;
 
 namespace Basil.Host.Stable.Web;
@@ -370,7 +371,7 @@ internal static class OsuWebRoutes
 		{
 			var d = map.Metadata.Difficulty;
 			return string.Create(CultureInfo.InvariantCulture,
-				$"[{d.Star:0.00}\u2b50] {DirectText(map.Metadata.Version)} {{cs: {Decimal(d.Cs)} / od: {Decimal(d.Od)} / ar: {Decimal(d.Ar)} / hp: {Decimal(d.Hp)}}}@{(int)d.Mode}");
+				$"[{d.Star:0.00}\u2b50] {DirectText(map.Metadata.VersionName)} {{cs: {Decimal(d.Cs)} / od: {Decimal(d.Od)} / ar: {Decimal(d.Ar)} / hp: {Decimal(d.Hp)}}}@{(int)d.Mode}");
 		}));
 		var hasVideo = detail.Beatmaps.Any(map => map.Assets.VideoFile is not null) ? 1 : 0;
 		return

@@ -46,9 +46,9 @@ internal sealed class BeatmapsSource(IServiceProvider services) : IListSource<Be
 	internal static BeatmapItem Item(BeatmapRecord map, BeatmapsetRecord set, int versions)
 	{
 		var d = map.Metadata.Difficulty;
-		return new BeatmapItem(map.Id, set.Id, map.Metadata.Version, set.Status, map.IsLocallyIngested,
+		return new BeatmapItem(map.Id, set.Id, map.Metadata.VersionName, set.Status, map.IsLocallyIngested,
 			map.UpdatedAt, map.CreatedAt, d.Cs, d.Ar, d.Od, d.Hp, d.Star, d.Length, !set.Visible, set.Locked,
-			versions, $"{set.Metadata.Artist} - {set.Metadata.Title} [{map.Metadata.Version}]");
+			versions, $"{set.Metadata.Artist} - {set.Metadata.Title} [{map.Metadata.VersionName}]");
 	}
 }
 

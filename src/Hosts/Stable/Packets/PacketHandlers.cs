@@ -15,6 +15,7 @@ using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Beatmaps;
 using Basil.Protocol.Game.Stable.Wire.Packets;
 using Basil.Shared.Structures.Cryptography;
+using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Host.Stable.Packets;

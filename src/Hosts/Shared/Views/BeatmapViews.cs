@@ -42,7 +42,7 @@ public sealed record BeatmapView(
 	public static BeatmapView Of(BeatmapRecord map, bool withSet)
 	{
 		var d = map.Metadata.Difficulty;
-		return new BeatmapView(map.Id, map.Metadata.Version, d.Mode, d.Star, d.Bpm, d.Ar, d.Cs, d.Od, d.Hp,
+		return new BeatmapView(map.Id, map.Metadata.VersionName, d.Mode, d.Star, d.Bpm, d.Ar, d.Cs, d.Od, d.Hp,
 			d.Length.TotalSeconds, map.Visible, map.Locked, withSet ? SetView.Of(map.Beatmapset) : null);
 	}
 }

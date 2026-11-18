@@ -48,6 +48,11 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 		return Image == other.Image;
 	}
 
+	public static bool IsValidWindow(DateTimeOffset? startsAt, DateTimeOffset? endsAt)
+	{
+		return !(startsAt > endsAt);
+	}
+
 	public bool IsCurrent(DateTimeOffset now)
 	{
 		return (StartsAt is null || StartsAt <= now) && (EndsAt is null || now < EndsAt);

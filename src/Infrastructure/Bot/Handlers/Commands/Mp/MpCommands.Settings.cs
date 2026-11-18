@@ -319,7 +319,7 @@ internal sealed partial class MpCommands
 			{
 				artist = beatmap.Beatmapset.Metadata.Artist,
 				title = beatmap.Beatmapset.Metadata.Title,
-				version = beatmap.Metadata.Version
+				version = beatmap.Metadata.VersionName
 			}, ct);
 		return true;
 	}

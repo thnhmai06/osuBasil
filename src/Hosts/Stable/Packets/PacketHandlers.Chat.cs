@@ -4,6 +4,7 @@ using Basil.Application.Shared.Settings;
 using Basil.Application.Users.Objects.Connections;
 using Basil.Host.Stable.Support;
 using Basil.Protocol.Game.Stable.Models.Chat;
+using Basil.Domain.Users;
 
 namespace Basil.Host.Stable.Packets;
 

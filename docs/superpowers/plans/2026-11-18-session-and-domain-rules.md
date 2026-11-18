@@ -22,7 +22,7 @@
 - Room invariants stay: one `Lock` per room held across the whole transition, events published inside it, never `await` under it, a closed room answers `RoomClosed`.
 - Every outcome enum keeps `Denied = 0`, `Ok = 1`.
 - AGENTS.md rules apply: no `.ConfigureAwait(false)`, no reflowed lines, `nameof`/`typeof` instead of type-name strings, internal handlers.
-- Owner rule (memory `delegated-agents-test-once`): agents run `dotnet build` only; tests are written in each task but run **once**, in Task 12. At most two agents at once, each in its own worktree.
+- Owner rule (2026-11-18): **no tests.** Skip every test step in every task; do not touch `tests/`. The build gate is `dotnet build src/Basil -c Release --nologo -v q` → 0 errors. Task 12 is the build plus the diff review only. At most two agents at once, each in its own worktree.
 - New EF migration per module touched; do not edit `InitialCreate`.
 
 ## Review Focus

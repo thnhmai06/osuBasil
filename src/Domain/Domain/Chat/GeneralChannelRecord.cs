@@ -24,6 +24,12 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 		return other is not null && StringComparer.OrdinalIgnoreCase.Equals(Name, other.Name);
 	}
 
+	public static bool IsValidName(string? name)
+	{
+		return !string.IsNullOrEmpty(name) && name.Length >= 2 && name[0] == '#' && !name.Any(char.IsWhiteSpace) &&
+		       !name.Contains(',') && !name.Contains('\0');
+	}
+
 	public override bool Equals(object? obj)
 	{
 		return obj is GeneralChannelRecord other && Equals(other);
@@ -62,4 +68,14 @@ public sealed class GeneralChannelData
 	public bool AutoJoin { get; set; }
 
 	public bool Visible { get; set; } = true;
+
+	public static bool IsValidTopic(string? topic)
+	{
+		return topic is not null && !topic.HasNul();
+	}
+
+	public static bool IsValidPrivileges(UserPrivileges privileges)
+	{
+		return privileges.IsValid();
+	}
 }

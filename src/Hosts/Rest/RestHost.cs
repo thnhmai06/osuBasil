@@ -26,7 +26,7 @@ public static class RestHost
 		public IServiceCollection AddRestApi(IConfiguration configuration)
 		{
 			services.AddOptions<RestOptions>().Configure(rest =>
-				rest.Domain = ConfigurationBinder.GetValue(configuration, (Type)"Basil:Server:Domain", rest.Domain)!);
+				rest.Domain = configuration.GetValue("Basil:Server:Domain", rest.Domain)!);
 			services.AddBasilOpenApi();
 			// Bad parameters throw instead of answering an empty 400, so that the pipeline answers with the envelope.
 			services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);

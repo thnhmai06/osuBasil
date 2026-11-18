@@ -10,6 +10,7 @@ using Basil.Domain.Game.Users;
 using Basil.Gateway.RateLimiting;
 using Basil.Host.Stable.Support;
 using Basil.Shared.Structures.Cryptography;
+using Basil.Domain.Users;
 using Mediator;
 
 namespace Basil.Host.Stable.Web;

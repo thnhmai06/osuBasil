@@ -6,6 +6,7 @@ using Basil.Domain.Game.Mechanics;
 using Basil.Domain.Game.Users;
 using Basil.Protocol.Game.Stable.Models.Multiplayer;
 using Basil.Protocol.Game.Stable.Wire.Packets;
+using Basil.Domain.Users;
 
 namespace Basil.Host.Stable.Support;
 

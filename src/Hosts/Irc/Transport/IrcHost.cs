@@ -27,8 +27,8 @@ public static class IrcHost
 		{
 			services.AddOptions<IrcOptions>().Configure(irc =>
 			{
-				irc.Port = ConfigurationBinder.GetValue(configuration, (Type)"Basil:Server:Irc:Port", (string)irc.Port);
-				irc.Domain = ConfigurationBinder.GetValue(configuration, (Type)"Basil:Server:Domain", irc.Domain)!;
+				irc.Port = configuration.GetValue("Basil:Server:Irc:Port", irc.Port);
+				irc.Domain = configuration.GetValue("Basil:Server:Domain", irc.Domain)!;
 			});
 			services.AddSingleton<IrcListener>();
 			services.AddHostedService(sp => sp.GetRequiredService<IrcListener>());
