@@ -1,5 +1,6 @@
 using System.Buffers.Text;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,7 +37,7 @@ public sealed class UserRegistry
 	// Sessions ended here whose end the store has not confirmed yet: their tokens never resume meanwhile.
 	private readonly ConcurrentDictionary<long, byte> _ended = new();
 	// Accounts whose stored sessions are being revoked: those started before the revocation never resume meanwhile.
-	private readonly ConcurrentDictionary<int, Revocation> _revoking = new();
+	private readonly ConcurrentDictionary<int, ImmutableList<Revocation>> _revoking = new();
 	private readonly SessionContext _sessionContext;
 	private readonly ConcurrentDictionary<string, Session> _tokens = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
@@ -230,8 +231,8 @@ public sealed class UserRegistry
 	private bool IsEnding(SessionState stored)
 	{
 		return _ended.ContainsKey(stored.Id) ||
-		       (_revoking.TryGetValue(stored.User.Id, out var revocation) && stored.StartedAt <= revocation.At &&
-		        stored.Id != revocation.Except);
+		       (_revoking.TryGetValue(stored.User.Id, out var pending) &&
+		        pending.Any(r => stored.StartedAt <= r.At && stored.Id != r.Except));
 	}
 
 	// Called before the sessions close and their end is written, so no resume slips in between.
@@ -244,7 +245,7 @@ public sealed class UserRegistry
 		}
 
 		var revocation = new Revocation(at, except);
-		_revoking[user.Id] = revocation;
+		_revoking.AddOrUpdate(user.Id, _ => [revocation], (_, list) => list.Add(revocation));
 		return revocation;
 	}
 
@@ -252,7 +253,15 @@ public sealed class UserRegistry
 	{
 		if (only is { } id) ConfirmEnded(id);
 		else if (revocation is not null)
-			_revoking.TryRemove(new KeyValuePair<int, Revocation>(user.Id, revocation));
+		{
+			while (_revoking.TryGetValue(user.Id, out var list))
+			{
+				var rest = list.Remove(revocation);
+				if (rest.IsEmpty
+					    ? _revoking.TryRemove(new KeyValuePair<int, ImmutableList<Revocation>>(user.Id, list))
+					    : _revoking.TryUpdate(user.Id, rest, list)) break;
+			}
+		}
 	}
 
 	private Session NewSession(SessionState state, string token, int utcOffset)
@@ -599,7 +608,11 @@ public sealed class UserRegistry
 		};
 	}
 
-	internal sealed record Revocation(DateTimeOffset At, long? Except);
+	internal sealed class Revocation(DateTimeOffset at, long? except)
+	{
+		internal DateTimeOffset At { get; } = at;
+		internal long? Except { get; } = except;
+	}
 
 	internal sealed class AccountGate
 	{
