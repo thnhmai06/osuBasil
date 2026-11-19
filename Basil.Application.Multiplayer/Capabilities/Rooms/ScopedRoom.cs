@@ -1,4 +1,3 @@
-using Basil.Application.Shared.Privileges;
 using Basil.Application.Users.Objects.Sessions;
 using Basil.Domain.Users;
 using Basil.Domain.Multiplayer.Room;
@@ -80,9 +79,10 @@ public readonly struct ScopedRoom
 		return privileges;
 	}
 
-	internal RoomActionResult? Require(RoomPrivileges needed)
+	// Succeeds when the caller holds at least one of the allowed roles.
+	internal RoomActionResult? Require(RoomPrivileges allowed)
 	{
-		if (!ScopedPrivileges.Lacks(Privileges, needed))
+		if ((Privileges & allowed) != 0)
 			return null;
 
 		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomActionResult.RoleDenied;
@@ -99,6 +99,6 @@ public readonly struct ScopedRoom
 
 	public Task<RoomActionResult> CloseAsync()
 	{
-		return Task.FromResult(Require(RoomPrivileges.RoomClose) ?? Room.Close(Actor.Record));
+		return Task.FromResult(Require(RoomPrivileges.Moderators) ?? Room.Close(Actor.Record));
 	}
 }

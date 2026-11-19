@@ -30,7 +30,7 @@ public readonly struct ScopedRoomMembers
 
 	public async Task<RoomActionResult> KickAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPrivileges.MembersKick) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Staff) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Kick(_scoped.Actor.Record, record)
 			: RoomActionResult.NotFound;
@@ -38,7 +38,7 @@ public readonly struct ScopedRoomMembers
 
 	public async Task<RoomActionResult> BanAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Ban(_scoped.Actor.Record, record)
 			: RoomActionResult.NotFound;
@@ -46,7 +46,7 @@ public readonly struct ScopedRoomMembers
 
 	public async Task<RoomActionResult> UnbanAsync(UserReference player)
 	{
-		if (_scoped.Require(RoomPrivileges.MembersBan) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.Unban(record)
 			: RoomActionResult.NotFound;
@@ -54,7 +54,7 @@ public readonly struct ScopedRoomMembers
 
 	public async Task<RoomActionResult> InviteAsync(User target)
 	{
-		if (_scoped.Require(RoomPrivileges.MembersInvite) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Player | RoomPrivileges.Moderators) is { } denied) return denied;
 		if (!target.IsOnline) return RoomActionResult.TargetOffline;
 		if (!_scoped.ManagesAnyRoom &&
 		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.Actor.Record))

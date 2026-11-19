@@ -15,7 +15,7 @@ Rules for Domain and Application objects, capabilities, events and naming. Moved
   the requirement through `ScopedPrivileges.Lacks(held, required)`: `true` means something required is not held. A `[Flags]`
   enum is met when every required bit is held; any other enum is ordered levels and is met when the held value is at least
   the required one. Most capabilities hold the caller's **effective** `UserPrivileges` and answer `XResult.Denied`;
-  `ScopedRoom` holds `RoomPrivileges`, the room privileges its roles give, computed once from creator, referee, host and player
+  `ScopedRoom` holds `RoomPrivileges`, the roles the caller holds in the room, computed once from creator, referee, host and player
   roles and the global privileges; a role refusal is the outcome `RoleDenied`, or `Denied` when the caller
   may not join rooms at all. An implementation never compares privileges itself.
 * **Every behaviour that can be refused returns the outcome enum of its object** (`RoomActionResult`, `ChannelJoinResult`,

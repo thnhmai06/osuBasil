@@ -10,7 +10,7 @@ touching users, connections, privileges, silences or the bot.
   account holds `Player | Supporter`; granting `Tournament` also grants `Supporter`. Nothing implies another privilege,
   so an owner who must act on everyone is granted every privilege. Which privilege owns which action is the table in
   [`privileges.md`](../for-developers/privileges.md).
-* **Room privileges are a separate concept.** `RoomPrivileges` (Domain) is what a user may do in one room. It is derived per room from the roles the caller holds (creator, referee, host, seated player), never stored, and no account privilege is derived from it. A room scope only starts from the account's effective `UserPrivileges` (`Tournament` holds every room privilege, a missing `Player` holds none). See [`multiplayer.md`](../for-developers/multiplayer.md).
+* **Room privileges are a separate concept.** `RoomPrivileges` (Domain) is the set of roles a user holds in one room (creator, referee, host, seated player). It is derived per room, never stored, and no account privilege is derived from it. A room scope only starts from the account's effective `UserPrivileges` (`Tournament` holds the creator role in every room, a missing `Player` holds no role). See [`multiplayer.md`](../for-developers/multiplayer.md).
 * **Privilege checks require every bit** (`UserPrivileges.Allows`); an empty requirement is satisfied. A refusal is the
   outcome `Denied` and does not name the privileges.
 * **A silence is a stored end time, not a restriction.** `UserData.SilencedUntil` holds the moment a silence ends; no

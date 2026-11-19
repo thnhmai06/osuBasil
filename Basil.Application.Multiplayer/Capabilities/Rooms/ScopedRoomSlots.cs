@@ -23,7 +23,7 @@ public readonly struct ScopedRoomSlots
 
 	public async Task<RoomActionResult> MoveAsync(UserReference player, int index)
 	{
-		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.MovePlayer(record, index)
 			: RoomActionResult.NotFound;
@@ -31,7 +31,7 @@ public readonly struct ScopedRoomSlots
 
 	public Task<RoomActionResult> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement)
 	{
-		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsMovePlayers) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.Moderators) ??
 		                       _scoped.Room.ArrangeSlots(arrangement));
 	}
 
@@ -58,7 +58,7 @@ public readonly struct ScopedRoomSlots
 
 	public async Task<RoomActionResult> SetTeamAsync(UserReference player, GameTeam team)
 	{
-		if (_scoped.Require(RoomPrivileges.SlotsMovePlayers) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Moderators) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(player) is { } record
 			? _scoped.Room.SetTeam(record, team)
 			: RoomActionResult.NotFound;
@@ -73,7 +73,7 @@ public readonly struct ScopedRoomSlots
 
 	public Task<RoomActionResult> ToggleLockAsync(int index)
 	{
-		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsLock) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.Staff) ??
 		                       _scoped.Room.ToggleSlotLock(_scoped.Actor, index));
 	}
 }

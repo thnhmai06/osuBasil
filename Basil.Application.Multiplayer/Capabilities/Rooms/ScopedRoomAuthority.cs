@@ -15,7 +15,7 @@ public readonly struct ScopedRoomAuthority
 
 	public async Task<RoomActionResult> AddRefereeAsync(UserReference user)
 	{
-		if (_scoped.Require(RoomPrivileges.RefereesManage) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
 			? _scoped.Room.AddReferee(_scoped.Actor.Record, record)
 			: RoomActionResult.NotFound;
@@ -23,7 +23,7 @@ public readonly struct ScopedRoomAuthority
 
 	public async Task<RoomActionResult> RemoveRefereeAsync(UserReference user)
 	{
-		if (_scoped.Require(RoomPrivileges.RefereesManage) is { } denied) return denied;
+		if (_scoped.Require(RoomPrivileges.Creator) is { } denied) return denied;
 		return await _scoped.Room.Context.Users.FindAsync(user) is { } record
 			? _scoped.Room.RemoveReferee(_scoped.Actor.Record, record)
 			: RoomActionResult.NotFound;
@@ -31,7 +31,7 @@ public readonly struct ScopedRoomAuthority
 
 	public Task<RoomActionResult> SetHostAsync(StableSession? host)
 	{
-		return Task.FromResult(_scoped.Require(RoomPrivileges.HostTransfer) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.Staff) ??
 		                       _scoped.Room.SetHost(_scoped.Actor.Record, host));
 	}
 }

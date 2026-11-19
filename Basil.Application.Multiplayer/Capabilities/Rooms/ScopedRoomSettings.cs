@@ -13,19 +13,16 @@ public readonly struct ScopedRoomSettings
 
 	public Task<RoomActionResult> ConfigureAsync(RoomSettingsChange change)
 	{
-		// Build required permissions from the change
-		var required = RoomPrivileges.SettingsChange;
-		if (change.Name is not null) required |= RoomPrivileges.SettingsRename;
-		if (change.Password is not null) required |= RoomPrivileges.SettingsPassword;
-		if (change.IsPrivate is not null) required |= RoomPrivileges.SettingsPrivate;
+		// Making the room private is for moderators; every other change is for the staff.
+		var allowed = change.IsPrivate is not null ? RoomPrivileges.Moderators : RoomPrivileges.Staff;
 
-		return Task.FromResult(_scoped.Require(required) ??
+		return Task.FromResult(_scoped.Require(allowed) ??
 		                       _scoped.Room.Configure(_scoped.Actor, change));
 	}
 
 	public Task<RoomActionResult> SetLockedAsync(bool locked)
 	{
-		return Task.FromResult(_scoped.Require(RoomPrivileges.SlotsMovePlayers) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.Moderators) ??
 		                       _scoped.Room.SetLocked(locked));
 	}
 }

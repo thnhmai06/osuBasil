@@ -13,18 +13,18 @@ public readonly struct ScopedRoomRounds
 
 	public Task<RoomActionResult> StartAsync()
 	{
-		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsStart) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.Staff) ??
 		                       _scoped.Room.StartRound());
 	}
 
 	public RoomActionResult? RequireStart()
 	{
-		return _scoped.Require(RoomPrivileges.RoundsStart);
+		return _scoped.Require(RoomPrivileges.Staff);
 	}
 
 	public Task<RoomActionResult> AbortAsync()
 	{
-		return Task.FromResult(_scoped.Require(RoomPrivileges.RoundsAbort) ??
+		return Task.FromResult(_scoped.Require(RoomPrivileges.Staff) ??
 		                       _scoped.Room.AbortRound());
 	}
 
